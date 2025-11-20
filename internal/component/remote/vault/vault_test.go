@@ -3,6 +3,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	stdlog "log"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	vaultapi "github.com/hashicorp/vault/api"
 
+	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
@@ -23,6 +25,9 @@ import (
 )
 
 func Test_GetSecrets(t *testing.T) {
+	if !dockerAvailable(t) {
+		t.Skip("Skipping Vault integration test: Docker daemon unavailable")
+	}
 	var (
 		ctx = componenttest.TestContext(t)
 		l   = util.TestLogger(t)
@@ -107,6 +112,9 @@ func Test_PollSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if !dockerAvailable(t) {
+				t.Skip("Skipping Vault integration test: Docker daemon unavailable")
+			}
 			var (
 				ctx = componenttest.TestContext(t)
 				l   = util.TestLogger(t)
@@ -203,4 +211,26 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 
 	cli.SetToken("secretkey")
 	return cli
+}
+
+func dockerAvailable(t *testing.T) bool {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		t.Logf("docker client unavailable: %v", err)
+		return false
+	}
+	defer func() {
+		_ = cli.Close()
+	}()
+
+	if _, err := cli.Ping(ctx); err != nil {
+		t.Logf("docker daemon unreachable: %v", err)
+		return false
+	}
+	return true
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -27,6 +28,9 @@ import (
 func TestPyroscopeJavaIntegration(t *testing.T) {
 	if os.Getenv("GITHUB_ACTIONS") == "true" && os.Getenv("GITHUB_JOB") != "test_pyroscope" {
 		t.Skip("Skipping Pyroscope Java integration test in GitHub Actions (job name is not test_pyroscope)")
+	}
+	if !dockerAvailable(t) {
+		t.Skip("Skipping Pyroscope Java integration test: Docker daemon unavailable")
 	}
 	wg := sync.WaitGroup{}
 	defer func() {
@@ -134,4 +138,26 @@ func burn(url string) {
 	_, _ = http.DefaultClient.Get(url + "/owners/find")
 	_, _ = http.DefaultClient.Get(url + "/vets")
 	_, _ = http.DefaultClient.Get(url + "/oups")
+}
+
+func dockerAvailable(t *testing.T) bool {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		t.Logf("docker client unavailable: %v", err)
+		return false
+	}
+	defer func() {
+		_ = cli.Close()
+	}()
+
+	if _, err := cli.Ping(ctx); err != nil {
+		t.Logf("docker daemon unreachable: %v", err)
+		return false
+	}
+	return true
 }
