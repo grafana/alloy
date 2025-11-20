@@ -532,6 +532,6 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	}
 
 	// Stop the endpoint: it waits until the current batch is sent
-	endpoint.Stop()
+	endpoint.stop()
 	close(receivedReqsChan)
 }
