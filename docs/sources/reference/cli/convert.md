@@ -75,7 +75,8 @@ This includes Prometheus features such as [`scrape_config`][scrape_config], [`re
 Unsupported features in a source configuration result in [errors][].
 
 {{< admonition type="warning" >}}
-The converter does not support prometheus feature gates, if you are using feature gates like created-timestamp-zero-ingestion ensure you update your Alloy configuration after conversion.
+The `convert` command doesn't support Prometheus feature gates.
+If you use feature gates like `created-timestamp-zero-ingestion` ensure that you update your {{< param "PRODUCT_NAME" >}} configuration after conversion.
 {{< /admonition >}}
 
 Refer to [Migrate from Prometheus to {{< param "PRODUCT_NAME" >}}][migrate prometheus] for a detailed migration guide.
