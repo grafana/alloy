@@ -138,7 +138,7 @@ func newEndpoint(metrics *Metrics, cfg Config, logger log.Logger) (*endpoint, er
 		cancel:  cancel,
 	}
 
-	c.shards.start(cfg.Queue.MinShards)
+	c.shards.start(cfg.QueueConfig.MinShards)
 
 	c.wg.Go(func() { c.run() })
 	return c, nil

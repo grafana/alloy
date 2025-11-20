@@ -40,7 +40,7 @@ func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
 	// the channel capacity would be calculated as: bufferChannelSize = Capacity / BatchSize.
 	// For example, assuming BatchSize is the 1 MiB default and Capacity is 100 MiB,
 	// the underlying buffered channel would buffer up to 100 batches.
-	capacity := max(cfg.Queue.Capacity/max(cfg.BatchSize, 1), 1)
+	capacity := max(cfg.QueueConfig.Capacity/max(cfg.BatchSize, 1), 1)
 
 	return &queue{
 		cfg:     cfg,
@@ -277,7 +277,7 @@ func (s *shards) stop() {
 	select {
 	case <-s.done:
 		return
-	case <-time.After(s.cfg.Queue.DrainTimeout):
+	case <-time.After(s.cfg.QueueConfig.DrainTimeout):
 	}
 
 	// Perform hard shutdown
