@@ -47,7 +47,7 @@ type QueueConfig struct {
 	// is the 1 MiB default, and a capacity of 100 MiB, the underlying buffered channel would buffer up to 100 batches.
 	Capacity int
 
-	// MinShards is the minimum amount of concurrent shards sending batches to the endpoint.
+	// MinShards is the minimum number of concurrent shards sending batches to the endpoint.
 	MinShards int
 
 	// DrainTimeout controls the maximum time that draining the send queue can take.
