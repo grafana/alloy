@@ -13,7 +13,10 @@ Main (unreleased)
 ### Features
 
 - A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
 - Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+
+- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
 
 ### Enhancements
 
@@ -96,6 +99,7 @@ v1.12.0-rc.0
   - The `otelcol.exporter.s3` component has new configuration options `s3_base_prefix` and `s3_partition_timezone`.
   - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
   - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
+
 
 ### Enhancements
 
