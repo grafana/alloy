@@ -136,7 +136,7 @@ The following arguments are supported:
 | --------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB` | no       |
 | `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
-| `min_shards`    | `number`   | Minimum amount of concurrent shards sending samples to the endpoint.                                                                                                          | `1`      | no       |
+| `min_shards`    | `number`   | Minimum number of concurrent shards sending samples to the endpoint.                                                                                                          | `1`      | no       |
 
 Each endpoint manages a number of concurrent _shards_ which is responsible for sending a fraction of batches, number of shards are controlled with `min_shards` argument.
 Each shard has a queue of batches it keeps in memory, controlled with the `capacity` argument.
