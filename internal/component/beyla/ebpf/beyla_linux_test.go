@@ -723,7 +723,7 @@ func TestConvert_Attributes(t *testing.T) {
 			InformersSyncTimeout:  15 * time.Second,
 			InformersResyncPeriod: 30 * time.Minute,
 			ResourceLabels:        beyla.DefaultConfig.Attributes.Kubernetes.ResourceLabels,
-			MetaCacheAddress:       "localhost:9090",
+			MetaCacheAddress:      "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,
