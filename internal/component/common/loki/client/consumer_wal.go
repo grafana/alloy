@@ -1,14 +1,11 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
@@ -57,16 +54,18 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		}
 		markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.WithCurriedId(name))
 
-		endpoint, err := newWalEndpoint(metrics, walEndpointMetrics.CurryWithId(name), cfg, logger, markerHandler)
+		endpoint, err := newEndpoint(metrics, cfg, logger, markerHandler)
 		if err != nil {
-			return nil, fmt.Errorf("error starting wal endpoint: %w", err)
+			return nil, fmt.Errorf("error starting endpoint: %w", err)
 		}
+
+		adapter := newWalEndpointAdapter(endpoint, logger, walEndpointMetrics, markerHandler)
 
 		// subscribe watcher's wal.WriteTo to writer events. This will make the writer trigger the cleanup of the wal.WriteTo
 		// series cache whenever a segment is deleted.
-		writer.SubscribeCleanup(endpoint)
+		writer.SubscribeCleanup(adapter)
 
-		watcher := wal.NewWatcher(walCfg.Dir, name, walWatcherMetrics, endpoint, log.With(logger, "component", name), walCfg.WatchConfig, markerHandler)
+		watcher := wal.NewWatcher(walCfg.Dir, name, walWatcherMetrics, adapter, log.With(logger, "component", name), walCfg.WatchConfig, markerHandler)
 
 		// subscribe watcher to wal write events
 		writer.SubscribeWrite(watcher)
@@ -76,7 +75,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 
 		m.pairs = append(m.pairs, endpointWatcherPair{
 			watcher:  watcher,
-			endpoint: endpoint,
+			endpoint: adapter,
 		})
 	}
 
@@ -87,7 +86,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 
 type endpointWatcherPair struct {
 	watcher  *wal.Watcher
-	endpoint *walEndpoint
+	endpoint *walEndpointAdapter
 }
 
 // Stop will proceed to stop, in order, watcher and the endpoint.
@@ -117,8 +116,8 @@ func (m *WALConsumer) Stop() {
 	m.stop(false)
 }
 
-// StopAndDrain will stop the manager, its WalWriter, Write-Ahead Log watchers,
-// and queues accordingly. It attempt to drain the WAL completely.
+// StopAndDrain will stop the consumer, its WalWriter, Write-Ahead Log watchers,
+// and endpoints accordingly. It attempt to drain the WAL completely.
 func (m *WALConsumer) StopAndDrain() {
 	m.stop(true)
 }
@@ -141,24 +140,11 @@ func (m *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpoint(metrics *Metrics, wcMetrics *WALEndpointMetrics, cfg Config, logger log.Logger, markerHandler internal.MarkerHandler) (*walEndpoint, error) {
-	logger = log.With(logger, "component", "endpoint", "host", cfg.URL.Host)
-
-	shards, err := newShards(metrics, logger, markerHandler, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	c := &walEndpoint{
-		logger:    logger,
-		cfg:       cfg,
+func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, wcMetrics *WALEndpointMetrics, markerHandler internal.MarkerHandler) *walEndpointAdapter {
+	c := &walEndpointAdapter{
+		logger:    log.With(logger, "component", "waladapter"),
 		weMetrics: wcMetrics,
-		shards:    shards,
-
-		ctx:    ctx,
-		cancel: cancel,
+		endpoint:  endpoint,
 
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
@@ -166,22 +152,17 @@ func newWalEndpoint(metrics *Metrics, wcMetrics *WALEndpointMetrics, cfg Config,
 		markerHandler: markerHandler,
 	}
 
-	c.shards.start(cfg.QueueConfig.MinShards)
-
-	return c, nil
+	return c
 }
 
-// walEndpoint is a WAL-specific remote write implementation. This endpoint attests to the wal.WriteTo interface,
-// which allows it to be injected in the wal.Watcher as a destination where to write read series and entries. As the watcher
-// reads from the WAL, batches are created and dispatched onto a send queue when ready to be sent.
-type walEndpoint struct {
-	weMetrics *WALEndpointMetrics
+// walEndpointAdapter is an adapter between watcher and endpoint. This component attests to the wal.WriteTo interface,
+// which allows it to be injected in the wal.Watcher as a destination where to write series and entries. As the watcher
+// reads from the WAL, entires are forwarded here so it can be written to endpoint.
+type walEndpointAdapter struct {
 	logger    log.Logger
-	cfg       Config
-	shards    *shards
+	weMetrics *WALEndpointMetrics
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	endpoint *endpoint
 
 	// series cache
 	series        map[chunks.HeadSeriesRef]model.LabelSet
@@ -191,7 +172,7 @@ type walEndpoint struct {
 	markerHandler internal.MarkerHandler
 }
 
-func (c *walEndpoint) SeriesReset(segmentNum int) {
+func (c *walEndpointAdapter) SeriesReset(segmentNum int) {
 	c.seriesLock.Lock()
 	defer c.seriesLock.Unlock()
 	for k, v := range c.seriesSegment {
@@ -203,7 +184,7 @@ func (c *walEndpoint) SeriesReset(segmentNum int) {
 	}
 }
 
-func (c *walEndpoint) StoreSeries(series []record.RefSeries, segment int) {
+func (c *walEndpointAdapter) StoreSeries(series []record.RefSeries, segment int) {
 	c.seriesLock.Lock()
 	defer c.seriesLock.Unlock()
 	for _, seriesRec := range series {
@@ -212,28 +193,31 @@ func (c *walEndpoint) StoreSeries(series []record.RefSeries, segment int) {
 	}
 }
 
-func (c *walEndpoint) AppendEntries(entries wal.RefEntries, segment int) error {
+func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) error {
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
-	var maxSeenTimestamp int64 = -1
-	if ok {
-		for _, e := range entries.Entries {
-			ok := c.appendSingleEntry(loki.Entry{Labels: l, Entry: e}, segment)
-			if !ok {
-				return nil
-			}
 
-			if e.Timestamp.Unix() > maxSeenTimestamp {
-				maxSeenTimestamp = e.Timestamp.Unix()
-			}
-		}
-		// count all enqueued appended entries as received from WAL
-		c.markerHandler.UpdateReceivedData(segment, len(entries.Entries))
-	} else {
+	if !ok {
 		// TODO(thepalbi): Add metric here
 		level.Debug(c.logger).Log("msg", "series for entry not found")
+		return nil
 	}
+
+	var maxSeenTimestamp int64 = -1
+	for _, e := range entries.Entries {
+		ok := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
+		if !ok {
+			return nil
+		}
+
+		if e.Timestamp.Unix() > maxSeenTimestamp {
+			maxSeenTimestamp = e.Timestamp.Unix()
+		}
+	}
+
+	// count all enqueued appended entries as received from WAL
+	c.markerHandler.UpdateReceivedData(segment, len(entries.Entries))
 
 	// It's safe to assume that upon an AppendEntries call, there will always be at least
 	// one entry.
@@ -242,24 +226,9 @@ func (c *walEndpoint) AppendEntries(entries wal.RefEntries, segment int) error {
 	return nil
 }
 
-func (c *walEndpoint) appendSingleEntry(entry loki.Entry, segmentNum int) bool {
-	backoff := backoff.New(c.ctx, backoff.Config{
-		MinBackoff: 5 * time.Millisecond,
-		MaxBackoff: 50 * time.Millisecond,
-	})
-	for !c.shards.enqueue(entry, segmentNum) {
-		if !backoff.Ongoing() {
-			// we could not enqueue and endpoint is stopped.
-			return false
-		}
-	}
-	return true
-}
-
 // Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
 // limited by a deadline, controlled by a configured drain timeout, which is global to the Stop call.
-func (c *walEndpoint) Stop() {
-	// drain shards
-	c.shards.stop()
+func (c *walEndpointAdapter) Stop() {
+	c.endpoint.Stop()
 	c.markerHandler.Stop()
 }
