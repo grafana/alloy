@@ -113,7 +113,7 @@ v1.12.0-rc.0
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Update Beyla component to 2.7.4. (@grcevski)
+- Update Beyla component to 2.7.8. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
