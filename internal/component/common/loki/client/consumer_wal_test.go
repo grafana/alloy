@@ -36,9 +36,9 @@ func TestWALConsumer(t *testing.T) {
 		WatchConfig:   wal.DefaultWatchConfig,
 	}
 	// start all necessary resources
-	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
+	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
 
-	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig)
+	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testEndpointConfig)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -72,7 +72,7 @@ func TestWALConsumer(t *testing.T) {
 	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
 
 	var seenEntries = map[string]struct{}{}
-	// assert over rw client received entries
+	// assert over rw received entries
 	defer receivedRequests.DoneIterate()
 	for _, req := range receivedRequests.StartIterate() {
 		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
@@ -84,9 +84,9 @@ func TestWALConsumer(t *testing.T) {
 }
 
 func TestWALConsumer_MultipleConfigs(t *testing.T) {
-	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
-	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
-	testClientConfig2.Name = "test-client-2"
+	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
+	testEndpointConfig2, rwReceivedReqs2, closeServer2 := newServerAndEndpointConfig(t)
+	testEndpointConfig2.Name = "test-client-2"
 
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
@@ -95,7 +95,7 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 		MaxSegmentAge: time.Second * 10,
 	}
 
-	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
+	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testEndpointConfig, testEndpointConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -134,14 +134,14 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 		}
 	}
 
-	// times 2 due to clients being run
+	// times 2 due to endpoint being run
 	expectedTotalLines := totalLines * 2
 	require.Eventually(t, func() bool {
 		return receivedRequests.Length() == expectedTotalLines
 	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
 
 	var seenEntries int
-	// assert over rw client received entries
+	// assert over rw received entries
 	defer receivedRequests.DoneIterate()
 	for _, req := range receivedRequests.StartIterate() {
 		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
@@ -152,12 +152,12 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 }
 
 func TestWALConsumer_InvalidConfig(t *testing.T) {
-	t.Run("no clients", func(t *testing.T) {
+	t.Run("no endpoints", func(t *testing.T) {
 		_, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{})
 		require.Error(t, err)
 	})
 
-	t.Run("repeated client", func(t *testing.T) {
+	t.Run("repeated endpoints", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
 		_, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{}, config, config)
@@ -166,7 +166,7 @@ func TestWALConsumer_InvalidConfig(t *testing.T) {
 }
 
 type testCase struct {
-	// numLines is the total number of lines sent through the client in the benchmark.
+	// numLines is the total number of lines sent through the endpoint in the benchmark.
 	numLines int
 
 	// numSeries is the different number of series to use in entries. Series are dynamically generated for each entry, but
@@ -182,7 +182,7 @@ type testCase struct {
 	expectedRWReqsCount int64
 }
 
-func TestWALClient(t *testing.T) {
+func TestWALEndpoint(t *testing.T) {
 	for name, tc := range map[string]testCase{
 		"small test": {
 			numLines:  3,
@@ -247,7 +247,6 @@ func TestWALClient(t *testing.T) {
 			err := serverURL.Set(server.URL)
 			require.NoError(t, err)
 
-			// Instance the client
 			cfg := Config{
 				URL:           serverURL,
 				BatchWait:     tc.batchWait,
@@ -261,7 +260,7 @@ func TestWALClient(t *testing.T) {
 
 			logger := log.NewLogfmtLogger(os.Stdout)
 
-			wc, err := newWalClient(NewMetrics(reg), NewWALClientMetrics(reg).CurryWithId("test"), cfg, logger, internal.NewNopMarkerHandler())
+			wc, err := newWalEndpoint(NewMetrics(reg), NewWALEndpointMetrics(reg).CurryWithId("test"), cfg, logger, internal.NewNopMarkerHandler())
 			require.NoError(t, err)
 
 			//labels := model.LabelSet{"app": "test"}
@@ -299,14 +298,14 @@ func TestWALClient(t *testing.T) {
 				require.Equal(t, tc.expectedRWReqsCount, receivedRWsCount.Load(), "number for remote write request not expected")
 			}
 
-			// Stop the client: it waits until the current batch is sent
+			// Stop the endpoint: it waits until the current batch is sent
 			wc.Stop()
 			close(receivedReqsChan)
 		})
 	}
 }
 
-func BenchmarkClientImplementations(b *testing.B) {
+func BenchmarkEndpointImplementations(b *testing.B) {
 	for name, bc := range map[string]testCase{
 		"100 entries, single series, no batching": {
 			numLines:  100,
@@ -331,13 +330,13 @@ func BenchmarkClientImplementations(b *testing.B) {
 	} {
 		b.Run(name, func(b *testing.B) {
 			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
-				runWALClientBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
 					return internal.NewNopMarkerHandler()
 				})
 			})
 
 			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
-				runWALClientBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
 					dir := b.TempDir()
 					nopLogger := log.NewNopLogger()
 
@@ -351,13 +350,13 @@ func BenchmarkClientImplementations(b *testing.B) {
 			})
 
 			b.Run("implementation=regular", func(b *testing.B) {
-				runRegularClientBenchCase(b, bc)
+				runEndpointBenchCase(b, bc)
 			})
 		})
 	}
 }
 
-func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) internal.MarkerHandler) {
+func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) internal.MarkerHandler) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -387,7 +386,6 @@ func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.
 	err := serverURL.Set(server.URL)
 	require.NoError(b, err)
 
-	// Instance the client
 	cfg := Config{
 		URL:           serverURL,
 		BatchWait:     time.Millisecond * 50,
@@ -404,7 +402,7 @@ func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	qc, err := newWalClient(NewMetrics(reg), NewWALClientMetrics(reg).CurryWithId("test"), cfg, logger, mhFactory(b))
+	qc, err := newWalEndpoint(NewMetrics(reg), NewWALEndpointMetrics(reg).CurryWithId("test"), cfg, logger, mhFactory(b))
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -444,12 +442,12 @@ func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.
 		reset()
 	}
 
-	// Stop the client: it waits until the current batch is sent
+	// Stop the endpoint: it waits until the current batch is sent
 	qc.Stop()
 	close(receivedReqsChan)
 }
 
-func runRegularClientBenchCase(b *testing.B, bc testCase) {
+func runEndpointBenchCase(b *testing.B, bc testCase) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -479,7 +477,6 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	err := serverURL.Set(server.URL)
 	require.NoError(b, err)
 
-	// Instance the client
 	cfg := Config{
 		URL:           serverURL,
 		BatchWait:     time.Millisecond * 50,
@@ -497,7 +494,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := newClient(m, cfg, logger)
+	qc, err := newEndpoint(m, cfg, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -530,7 +527,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 		reset()
 	}
 
-	// Stop the client: it waits until the current batch is sent
+	// Stop the endpoint: it waits until the current batch is sent
 	qc.Stop()
 	close(receivedReqsChan)
 }

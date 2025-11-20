@@ -181,7 +181,7 @@ loop:
 // It validates the configuration and creates an HTTP client for sending batches to Loki.
 func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
 	if cfg.URL.URL == nil {
-		return nil, errors.New("client needs target URL")
+		return nil, errors.New("endpoint needs target URL")
 	}
 
 	err := cfg.Client.Validate()
