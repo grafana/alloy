@@ -825,14 +825,35 @@ func TestConvert_Prometheus(t *testing.T) {
 		Features:                        []string{"application", "network"},
 		Instrumentations:                []string{"redis", "sql"},
 		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             nil,
+		ExtraSpanResourceLabels:         []string{"service.version"},
 	}
 
 	expectedConfig := beyla.DefaultConfig.Prometheus
 	expectedConfig.Features = args.Features
 	expectedConfig.Instrumentations = args.Instrumentations
 	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 
 	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
+
+	args = Metrics{
+		Features:                        []string{"application", "network"},
+		Instrumentations:                []string{"redis", "sql"},
+		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             []string{"service.version"},
+	}
+
+	expectedConfig = beyla.DefaultConfig.Prometheus
+	expectedConfig.Features = args.Features
+	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
+	expectedConfig.ExtraSpanResourceLabels = []string{"k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"}
+
+	config = args.Convert()
 
 	require.Equal(t, expectedConfig, config)
 }
