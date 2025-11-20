@@ -57,17 +57,17 @@ discovery.relabel "logs_name_jobName" {
 	}
 }
 
-local.file_match "logs_name_jobName" {
-	path_targets = discovery.relabel.logs_name_jobName.output
-}
-
 loki.source.file "logs_name_jobName" {
-	targets    = local.file_match.logs_name_jobName.targets
+	targets    = discovery.relabel.logs_name_jobName.output
 	forward_to = [loki.write.logs_name.receiver]
 
 	file_watch {
 		min_poll_frequency = "1s"
 		max_poll_frequency = "5s"
+	}
+
+	file_match {
+		enabled = true
 	}
 	legacy_positions_file = "\\path\\name.yml"
 }
@@ -109,17 +109,17 @@ discovery.relabel "logs_name2_jobName" {
 	}
 }
 
-local.file_match "logs_name2_jobName" {
-	path_targets = discovery.relabel.logs_name2_jobName.output
-}
-
 loki.source.file "logs_name2_jobName" {
-	targets    = local.file_match.logs_name2_jobName.targets
+	targets    = discovery.relabel.logs_name2_jobName.output
 	forward_to = [loki.write.logs_name2.receiver]
 
 	file_watch {
 		min_poll_frequency = "1s"
 		max_poll_frequency = "5s"
+	}
+
+	file_match {
+		enabled = true
 	}
 	legacy_positions_file = "\\path\\name2.yml"
 }
