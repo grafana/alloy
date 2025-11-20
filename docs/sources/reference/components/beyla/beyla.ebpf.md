@@ -535,6 +535,8 @@ The `metrics` block configures which metrics Beyla collects.
 | `allow_service_graph_self_references` | `bool`         | Allow service graph metrics to reference the same service. | `false`           | no       |
 | `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
 | `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
+| `extra_resource_labels`               | `list(string)` | List of OTEL resource labels to include on `target_info`.  | `[]`              | no       |
+| `extra_span_resource_labels`          | `list(string)` | List of OTEL resource labels to include on span metrics.   | `["k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"]`           | no       |
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
@@ -558,6 +560,20 @@ The `metrics` block configures which metrics Beyla collects.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
+
+`extra_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
+on the service, that you want to include on the `target_info` metric.
+
+`extra_span_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
+on the service, that you want to include on the span metrics. The default list includes:
+
+* `k8s.cluster.name`
+* `k8s.namespace.name` 
+* `service.version`
+* `deployment.environment`
+
+The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in 
+Grafana Cloud.
 
 #### `network` metrics
 

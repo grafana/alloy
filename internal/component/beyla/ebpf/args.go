@@ -118,6 +118,8 @@ type Metrics struct {
 	Instrumentations                []string `alloy:"instrumentations,attr,optional"`
 	AllowServiceGraphSelfReferences bool     `alloy:"allow_service_graph_self_references,attr,optional"`
 	Network                         Network  `alloy:"network,block,optional"`
+	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
+	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
 }
 
 type Traces struct {
