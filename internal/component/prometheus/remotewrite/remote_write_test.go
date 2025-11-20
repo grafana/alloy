@@ -7,14 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/storage/remote"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Test is an integration-level test which ensures that metrics can get sent to
@@ -80,11 +81,20 @@ func Test(t *testing.T) {
 		},
 	}}
 
+	var results []prompb.TimeSeries
 	select {
 	case <-time.After(time.Minute):
 		require.FailNow(t, "timed out waiting for metrics")
 	case res := <-writeResult:
-		require.Equal(t, expect, res.Timeseries)
+		if len(res.Timeseries) == 1 {
+			results = append(results, res.Timeseries[0])
+		} else if len(res.Timeseries) == 2 {
+			results = res.Timeseries
+		}
+		// When we have two results make sure they match what we expect
+		if len(res.Timeseries) == 2 {
+			require.Equal(t, expect, res.Timeseries)
+		}
 	}
 }
 
