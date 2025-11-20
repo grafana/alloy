@@ -138,7 +138,7 @@ The following arguments are supported:
 | `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
 | `min_shards`    | `number`   | Minimum number of concurrent shards sending samples to the endpoint.                                                                                                          | `1`      | no       |
 
-Each endpoint manages a number of concurrent _shards_ which is responsible for sending a fraction of batches, number of shards are controlled with `min_shards` argument.
+Each endpoint is divided into a number of concurrent _shards_ which are responsible for sending a fraction of batches. The number of shards is controlled with `min_shards` argument.
 Each shard has a queue of batches it keeps in memory, controlled with the `capacity` argument.
 
 ### `tls_config`
