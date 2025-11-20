@@ -76,7 +76,7 @@ func (c *FanoutConsumer) Stop() {
 	// Stop all endpoints.
 	for _, c := range c.endpoints {
 		stopWG.Go(func() {
-			c.Stop()
+			c.stop()
 		})
 	}
 

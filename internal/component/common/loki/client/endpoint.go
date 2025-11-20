@@ -51,6 +51,7 @@ func (c *endpoint) enqueue(entry loki.Entry, segmentNum int) bool {
 		MinBackoff: 5 * time.Millisecond,
 		MaxBackoff: 50 * time.Millisecond,
 	})
+
 	for !c.shards.enqueue(entry, segmentNum) {
 		backoff.Wait()
 		if !backoff.Ongoing() {
@@ -60,7 +61,7 @@ func (c *endpoint) enqueue(entry loki.Entry, segmentNum int) bool {
 	return true
 }
 
-func (c *endpoint) Stop() {
+func (c *endpoint) stop() {
 	c.shards.stop()
 	c.cancel()
 }

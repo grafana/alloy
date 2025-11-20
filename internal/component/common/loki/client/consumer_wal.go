@@ -140,11 +140,11 @@ func (m *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, wcMetrics *WALEndpointMetrics, markerHandler internal.MarkerHandler) *walEndpointAdapter {
+func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *WALEndpointMetrics, markerHandler internal.MarkerHandler) *walEndpointAdapter {
 	c := &walEndpointAdapter{
-		logger:    log.With(logger, "component", "waladapter"),
-		weMetrics: wcMetrics,
-		endpoint:  endpoint,
+		logger:   log.With(logger, "component", "waladapter"),
+		metrics:  metrics,
+		endpoint: endpoint,
 
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
@@ -159,8 +159,8 @@ func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, wcMetrics *WAL
 // which allows it to be injected in the wal.Watcher as a destination where to write series and entries. As the watcher
 // reads from the WAL, entires are forwarded here so it can be written to endpoint.
 type walEndpointAdapter struct {
-	logger    log.Logger
-	weMetrics *WALEndpointMetrics
+	logger  log.Logger
+	metrics *WALEndpointMetrics
 
 	endpoint *endpoint
 
@@ -197,38 +197,33 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
-
-	if !ok {
+	var maxSeenTimestamp int64 = -1
+	if ok {
+		for _, e := range entries.Entries {
+			ok := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
+			if !ok {
+				return nil
+			}
+			if e.Timestamp.Unix() > maxSeenTimestamp {
+				maxSeenTimestamp = e.Timestamp.Unix()
+			}
+		}
+		// count all enqueued appended entries as received from WAL
+		c.markerHandler.UpdateReceivedData(segment, len(entries.Entries))
+	} else {
 		// TODO(thepalbi): Add metric here
 		level.Debug(c.logger).Log("msg", "series for entry not found")
-		return nil
 	}
-
-	var maxSeenTimestamp int64 = -1
-	for _, e := range entries.Entries {
-		ok := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
-		if !ok {
-			return nil
-		}
-
-		if e.Timestamp.Unix() > maxSeenTimestamp {
-			maxSeenTimestamp = e.Timestamp.Unix()
-		}
-	}
-
-	// count all enqueued appended entries as received from WAL
-	c.markerHandler.UpdateReceivedData(segment, len(entries.Entries))
 
 	// It's safe to assume that upon an AppendEntries call, there will always be at least
 	// one entry.
-	c.weMetrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp))
-
+	c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp))
 	return nil
 }
 
 // Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
 // limited by a deadline, controlled by a configured drain timeout, which is global to the Stop call.
 func (c *walEndpointAdapter) Stop() {
-	c.endpoint.Stop()
+	c.endpoint.stop()
 	c.markerHandler.Stop()
 }

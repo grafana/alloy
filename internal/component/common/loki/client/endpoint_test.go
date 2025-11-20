@@ -431,7 +431,7 @@ func TestEndpoint(t *testing.T) {
 			}
 
 			// Stop the endpoint: it waits until the current batch is sent
-			c.Stop()
+			c.stop()
 			close(receivedReqsChan)
 
 			// Get all push requests received on the server side
