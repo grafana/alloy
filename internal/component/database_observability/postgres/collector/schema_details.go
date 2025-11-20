@@ -482,7 +482,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		}
 
 		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
+			return fmt.Errorf("failed to iterate over tables result set for database %s schema %s: %w", dbName, schemaName, err)
 		}
 	}
 
