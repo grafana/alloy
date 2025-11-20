@@ -25,9 +25,9 @@ import (
 )
 
 func TestFanoutConsumer(t *testing.T) {
-	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
+	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
 
-	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
+	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testEndpointConfig)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -61,7 +61,7 @@ func TestFanoutConsumer(t *testing.T) {
 	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
 
 	var seenEntries = map[string]struct{}{}
-	// assert over rw client received entries
+	// assert over rw received entries
 	defer receivedRequests.DoneIterate()
 	for _, req := range receivedRequests.StartIterate() {
 		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
@@ -73,12 +73,12 @@ func TestFanoutConsumer(t *testing.T) {
 }
 
 func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
-	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
-	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
-	testClientConfig2.Name = "test-client-2"
+	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
+	testEndpointConfig2, rwReceivedReqs2, closeServer2 := newServerAndEndpointConfig(t)
+	testEndpointConfig2.Name = "test-client-2"
 
 	// start writer and consumer
-	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
+	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testEndpointConfig, testEndpointConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -117,14 +117,14 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 		}
 	}
 
-	// times 2 due to clients being run
+	// times 2 due to endpoints being run
 	expectedTotalLines := totalLines * 2
 	require.Eventually(t, func() bool {
 		return receivedRequests.Length() == expectedTotalLines
 	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
 
 	var seenEntries int
-	// assert over rw client received entries
+	// assert over rw received entries
 	defer receivedRequests.DoneIterate()
 	for _, req := range receivedRequests.StartIterate() {
 		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
@@ -135,12 +135,12 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 }
 
 func TestFanoutConsumer_InvalidConfig(t *testing.T) {
-	t.Run("no clients", func(t *testing.T) {
+	t.Run("no endpoints", func(t *testing.T) {
 		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry())
 		require.Error(t, err)
 	})
 
-	t.Run("repeated client", func(t *testing.T) {
+	t.Run("repeated endpoint", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
 		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
@@ -182,23 +182,20 @@ var logEntries = []loki.Entry{
 	},
 }
 
-func TestClient_Handle(t *testing.T) {
+func TestEndpoint(t *testing.T) {
 	tests := map[string]struct {
-		clientBatchSize       int
-		clientBatchWait       time.Duration
-		clientMaxRetries      int
-		clientTenantID        string
-		clientDropRateLimited bool
-		serverResponseStatus  int
-		inputEntries          []loki.Entry
-		inputDelay            time.Duration
-		expectedReqs          []util.RemoteWriteRequest
-		expectedMetrics       string
+		endpointConfig       Config
+		serverResponseStatus int
+		inputEntries         []loki.Entry
+		inputDelay           time.Duration
+		expectedReqs         []util.RemoteWriteRequest
+		expectedMetrics      string
 	}{
 		"batch log entries together until the batch size is reached": {
-			clientBatchSize:      10,
-			clientBatchWait:      100 * time.Millisecond,
-			clientMaxRetries:     3,
+			endpointConfig: Config{
+				BatchSize: 10,
+				BatchWait: 100 * time.Millisecond,
+			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1], logEntries[2]},
 			expectedReqs: []util.RemoteWriteRequest{
@@ -236,9 +233,10 @@ func TestClient_Handle(t *testing.T) {
                        `,
 		},
 		"batch log entries together until the batch wait time is reached": {
-			clientBatchSize:      10,
-			clientBatchWait:      100 * time.Millisecond,
-			clientMaxRetries:     3,
+			endpointConfig: Config{
+				BatchSize: 10,
+				BatchWait: 100 * time.Millisecond,
+			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
 			inputDelay:           110 * time.Millisecond,
@@ -277,9 +275,10 @@ func TestClient_Handle(t *testing.T) {
                        `,
 		},
 		"retry send a batch up to backoff's max retries in case the server responds with a 5xx": {
-			clientBatchSize:      10,
-			clientBatchWait:      10 * time.Millisecond,
-			clientMaxRetries:     3,
+			endpointConfig: Config{
+				BatchSize: 10,
+				BatchWait: 10 * time.Millisecond,
+			},
 			serverResponseStatus: 500,
 			inputEntries:         []loki.Entry{logEntries[0]},
 			expectedReqs: []util.RemoteWriteRequest{
@@ -321,9 +320,10 @@ func TestClient_Handle(t *testing.T) {
                        `,
 		},
 		"do not retry send a batch in case the server responds with a 4xx": {
-			clientBatchSize:      10,
-			clientBatchWait:      10 * time.Millisecond,
-			clientMaxRetries:     3,
+			endpointConfig: Config{
+				BatchSize: 10,
+				BatchWait: 10 * time.Millisecond,
+			},
 			serverResponseStatus: 400,
 			inputEntries:         []loki.Entry{logEntries[0]},
 			expectedReqs: []util.RemoteWriteRequest{
@@ -357,9 +357,10 @@ func TestClient_Handle(t *testing.T) {
                        `,
 		},
 		"do retry sending a batch in case the server responds with a 429": {
-			clientBatchSize:      10,
-			clientBatchWait:      10 * time.Millisecond,
-			clientMaxRetries:     3,
+			endpointConfig: Config{
+				BatchSize: 10,
+				BatchWait: 10 * time.Millisecond,
+			},
 			serverResponseStatus: 429,
 			inputEntries:         []loki.Entry{logEntries[0]},
 			expectedReqs: []util.RemoteWriteRequest{
@@ -400,13 +401,14 @@ func TestClient_Handle(t *testing.T) {
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do not retry in case of 429 when client is configured to drop rate limited batches": {
-			clientBatchSize:       10,
-			clientBatchWait:       10 * time.Millisecond,
-			clientMaxRetries:      3,
-			clientDropRateLimited: true,
-			serverResponseStatus:  429,
-			inputEntries:          []loki.Entry{logEntries[0]},
+		"do not retry in case of 429 when endpoint is configured to drop rate limited batches": {
+			endpointConfig: Config{
+				BatchSize:              10,
+				BatchWait:              10 * time.Millisecond,
+				DropRateLimitedBatches: true,
+			},
+			serverResponseStatus: 429,
+			inputEntries:         []loki.Entry{logEntries[0]},
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -437,11 +439,12 @@ func TestClient_Handle(t *testing.T) {
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"batch log entries together honoring the client tenant ID": {
-			clientBatchSize:      100,
-			clientBatchWait:      100 * time.Millisecond,
-			clientMaxRetries:     3,
-			clientTenantID:       "tenant-default",
+		"batch log entries together honoring the endpoint tenant ID": {
+			endpointConfig: Config{
+				BatchSize: 100,
+				BatchWait: 100 * time.Millisecond,
+				TenantID:  "tenant-default",
+			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
 			expectedReqs: []util.RemoteWriteRequest{
@@ -475,10 +478,11 @@ func TestClient_Handle(t *testing.T) {
                        `,
 		},
 		"batch log entries together honoring the tenant ID overridden while processing the pipeline stages": {
-			clientBatchSize:      100,
-			clientBatchWait:      100 * time.Millisecond,
-			clientMaxRetries:     3,
-			clientTenantID:       "tenant-default",
+			endpointConfig: Config{
+				BatchSize: 100,
+				BatchWait: 100 * time.Millisecond,
+				TenantID:  "tenant-default",
+			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[3], logEntries[4], logEntries[5]},
 			expectedReqs: []util.RemoteWriteRequest{
@@ -547,7 +551,7 @@ func TestClient_Handle(t *testing.T) {
 		},
 	}
 
-	for testName, testData := range tests {
+	for testName, tt := range tests {
 		t.Run(testName, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
@@ -555,7 +559,7 @@ func TestClient_Handle(t *testing.T) {
 			receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 			// Start a local HTTP server
-			server := util.NewRemoteWriteServer(receivedReqsChan, testData.serverResponseStatus)
+			server := util.NewRemoteWriteServer(receivedReqsChan, tt.serverResponseStatus)
 			require.NotNil(t, server)
 			defer server.Close()
 
@@ -564,38 +568,31 @@ func TestClient_Handle(t *testing.T) {
 			err := serverURL.Set(server.URL)
 			require.NoError(t, err)
 
-			// Instance the client
-			cfg := Config{
-				URL:                    serverURL,
-				BatchWait:              testData.clientBatchWait,
-				BatchSize:              testData.clientBatchSize,
-				DropRateLimitedBatches: testData.clientDropRateLimited,
-				Client:                 config.DefaultHTTPClientConfig,
-				BackoffConfig:          backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: testData.clientMaxRetries},
-				Timeout:                1 * time.Second,
-				TenantID:               testData.clientTenantID,
-			}
+			tt.endpointConfig.URL = serverURL
+			tt.endpointConfig.Client = config.DefaultHTTPClientConfig
+			tt.endpointConfig.BackoffConfig = backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 3}
+			tt.endpointConfig.Timeout = 1 * time.Second
 
 			m := NewMetrics(reg)
-			c, err := newClient(m, cfg, log.NewNopLogger())
+			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries
-			for i, logEntry := range testData.inputEntries {
+			for i, logEntry := range tt.inputEntries {
 				c.Chan() <- logEntry
 
-				if testData.inputDelay > 0 && i < len(testData.inputEntries)-1 {
-					time.Sleep(testData.inputDelay)
+				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
+					time.Sleep(tt.inputDelay)
 				}
 			}
 
 			// Wait until the expected push requests are received (with a timeout)
 			deadline := time.Now().Add(1 * time.Second)
-			for len(receivedReqsChan) < len(testData.expectedReqs) && time.Now().Before(deadline) {
+			for len(receivedReqsChan) < len(tt.expectedReqs) && time.Now().Before(deadline) {
 				time.Sleep(5 * time.Millisecond)
 			}
 
-			// Stop the client: it waits until the current batch is sent
+			// Stop the endpoint: it waits until the current batch is sent
 			c.Stop()
 			close(receivedReqsChan)
 
@@ -605,26 +602,26 @@ func TestClient_Handle(t *testing.T) {
 				receivedReqs = append(receivedReqs, req)
 			}
 
-			assert.ElementsMatch(t, testData.expectedReqs, receivedReqs)
+			assert.ElementsMatch(t, tt.expectedReqs, receivedReqs)
 
-			expectedMetrics := strings.ReplaceAll(testData.expectedMetrics, "__HOST__", serverURL.Host)
+			expectedMetrics := strings.ReplaceAll(tt.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total", "loki_write_mutated_entries_total", "loki_write_mutated_bytes_total")
 			assert.NoError(t, err)
 		})
 	}
 }
 
-func newServerAndClientConfig(t *testing.T) (Config, chan util.RemoteWriteRequest, func()) {
+func newServerAndEndpointConfig(t *testing.T) (Config, chan util.RemoteWriteRequest, func()) {
 	receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 	// Start a local HTTP server
 	server := util.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
 	require.NotNil(t, server)
 
-	testClientURL, _ := url.Parse(server.URL)
-	testClientConfig := Config{
+	url, _ := url.Parse(server.URL)
+	endpointConfig := Config{
 		Name:      "test-client",
-		URL:       flagext.URLValue{URL: testClientURL},
+		URL:       flagext.URLValue{URL: url},
 		Timeout:   time.Second * 2,
 		BatchSize: 1,
 		BackoffConfig: backoff.Config{
@@ -635,7 +632,7 @@ func newServerAndClientConfig(t *testing.T) (Config, chan util.RemoteWriteReques
 			DrainTimeout: time.Second * 10,
 		},
 	}
-	return testClientConfig, receivedReqsChan, func() {
+	return endpointConfig, receivedReqsChan, func() {
 		server.Close()
 		close(receivedReqsChan)
 	}
