@@ -51,6 +51,7 @@ type KubernetesDecorator struct {
 	InformersResyncPeriod time.Duration `alloy:"informers_resync_period,attr,optional"`
 	DisableInformers      []string      `alloy:"disable_informers,attr,optional"`
 	MetaRestrictLocalNode bool          `alloy:"meta_restrict_local_node,attr,optional"`
+	MetaCacheAddress      string        `alloy:"meta_cache_address,attr,optional"`
 }
 
 type InstanceIDConfig struct {

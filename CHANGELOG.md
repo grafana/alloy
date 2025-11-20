@@ -22,6 +22,8 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
+
 ### Bugfixes
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
