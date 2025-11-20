@@ -312,6 +312,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
+	if args.ScrapeCreatedTimestampZeroIngestion && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("scrape_created_timestamp_zero_ingestion is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		// NOTE: This is not Update()-able.
