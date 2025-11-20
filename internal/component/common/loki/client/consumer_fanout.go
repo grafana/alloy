@@ -8,43 +8,43 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/grafana/dskit/backoff"
 )
 
-func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, clientCfgs ...Config) (*FanoutConsumer, error) {
-	if len(clientCfgs) == 0 {
+func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
+	if len(cfgs) == 0 {
 		return nil, fmt.Errorf("at least one client config must be provided")
 	}
 
 	m := &FanoutConsumer{
-		clients: make([]*client, 0, len(clientCfgs)),
-		recv:    make(chan loki.Entry),
+		endpoints: make([]*endpoint, 0, len(cfgs)),
+		recv:      make(chan loki.Entry),
 	}
 
 	var (
-		metrics      = NewMetrics(reg)
-		clientsCheck = make(map[string]struct{})
+		metrics        = NewMetrics(reg)
+		endpointsCheck = make(map[string]struct{})
 	)
 
-	for _, cfg := range clientCfgs {
-		// Don't allow duplicate clients, we have client specific metrics that need at least one unique label value (name).
-		clientName := getClientName(cfg)
-		if _, ok := clientsCheck[clientName]; ok {
-			return nil, fmt.Errorf("duplicate client configs are not allowed, found duplicate for name: %s", cfg.Name)
+	for _, cfg := range cfgs {
+		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
+		name := getEndpointName(cfg)
+		if _, ok := endpointsCheck[name]; ok {
+			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
 
-		clientsCheck[clientName] = struct{}{}
-		client, err := newClient(metrics, cfg, logger)
+		endpointsCheck[name] = struct{}{}
+		endpoint, err := newEndpoint(metrics, cfg, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error starting client: %w", err)
 		}
 
-		m.clients = append(m.clients, client)
+		m.endpoints = append(m.endpoints, endpoint)
 	}
 
 	m.wg.Go(m.run)
@@ -54,15 +54,15 @@ func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, clientCfgs 
 var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
-	clients []*client
-	wg      sync.WaitGroup
-	once    sync.Once
-	recv    chan loki.Entry
+	endpoints []*endpoint
+	wg        sync.WaitGroup
+	once      sync.Once
+	recv      chan loki.Entry
 }
 
 func (c *FanoutConsumer) run() {
 	for e := range c.recv {
-		for _, c := range c.clients {
+		for _, c := range c.endpoints {
 			c.Chan() <- e
 		}
 	}
@@ -78,20 +78,20 @@ func (c *FanoutConsumer) Stop() {
 	c.wg.Wait()
 
 	var stopWG sync.WaitGroup
-	// Stop all clients.
-	for _, c := range c.clients {
+	// Stop all endpoints.
+	for _, c := range c.endpoints {
 		stopWG.Go(func() {
 			c.Stop()
 		})
 	}
 
-	// Wait for all clients to stop.
+	// Wait for all endpoints to stop.
 	stopWG.Wait()
 }
 
-// getClientName computes the specific name for each client config. The name is either the configured Name setting in Config,
+// getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
 // or a hash of the config as whole, this allows us to detect repeated configs.
-func getClientName(cfg Config) string {
+func getEndpointName(cfg Config) string {
 	if cfg.Name != "" {
 		return cfg.Name
 	}
@@ -108,8 +108,7 @@ func asSha256(o any) string {
 
 var userAgent = useragent.Get()
 
-// Client for pushing logs in snappy-compressed protos over HTTP.
-type client struct {
+type endpoint struct {
 	cfg     Config
 	entries chan loki.Entry
 
@@ -121,8 +120,8 @@ type client struct {
 	shards *shards
 }
 
-func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error) {
-	logger = log.With(logger, "component", "client", "host", cfg.URL.Host)
+func newEndpoint(metrics *Metrics, cfg Config, logger log.Logger) (*endpoint, error) {
+	logger = log.With(logger, "component", "endpoint", "host", cfg.URL.Host)
 
 	shards, err := newShards(metrics, logger, internal.NewNopMarkerHandler(), cfg)
 	if err != nil {
@@ -131,7 +130,7 @@ func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	c := &client{
+	c := &endpoint{
 		cfg:     cfg,
 		entries: make(chan loki.Entry),
 		shards:  shards,
@@ -145,7 +144,7 @@ func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error)
 	return c, nil
 }
 
-func (c *client) run() {
+func (c *endpoint) run() {
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -164,11 +163,11 @@ func (c *client) run() {
 	}
 }
 
-func (c *client) Chan() chan<- loki.Entry {
+func (c *endpoint) Chan() chan<- loki.Entry {
 	return c.entries
 }
 
-func (c *client) Stop() {
+func (c *endpoint) Stop() {
 	c.shards.stop()
 	c.cancel()
 	c.wg.Wait()
