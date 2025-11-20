@@ -44,7 +44,7 @@ func newEndpoint(metrics *Metrics, cfg Config, logger log.Logger, markerHandler 
 	return c, nil
 }
 
-// enqueue will try to enqueue entry. If endpoint it stopped any active attempts will
+// enqueue will try to enqueue entry. If endpoint is stopped any active attempts will
 // be stopped and false will be returned.
 func (c *endpoint) enqueue(entry loki.Entry, segmentNum int) bool {
 	backoff := backoff.New(c.ctx, backoff.Config{
