@@ -115,6 +115,8 @@ v1.12.0-rc.1
 
 - `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
 
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
