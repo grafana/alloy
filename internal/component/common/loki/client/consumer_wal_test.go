@@ -259,9 +259,11 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			logger := log.NewLogfmtLogger(os.Stdout)
+			marker := internal.NewNopMarkerHandler()
 
-			wc, err := newWalEndpoint(NewMetrics(reg), NewWALEndpointMetrics(reg).CurryWithId("test"), cfg, logger, internal.NewNopMarkerHandler())
+			endpoint, err := newEndpoint(NewMetrics(reg), cfg, logger, marker)
 			require.NoError(t, err)
+			adapter := newWalEndpointAdapter(endpoint, logger, NewWALEndpointMetrics(reg).CurryWithId("test"), marker)
 
 			//labels := model.LabelSet{"app": "test"}
 			lines := make([]string, 0, tc.numLines)
@@ -272,7 +274,7 @@ func TestWALEndpoint(t *testing.T) {
 			// Send all the input log entries
 			for i, l := range lines {
 				mod := i % tc.numSeries
-				wc.StoreSeries([]record.RefSeries{
+				adapter.StoreSeries([]record.RefSeries{
 					{
 						Labels: labels.New(
 							labels.Label{Name: "app", Value: fmt.Sprintf("test-%d", mod)},
@@ -281,7 +283,7 @@ func TestWALEndpoint(t *testing.T) {
 					},
 				}, 0)
 
-				_ = wc.AppendEntries(wal.RefEntries{
+				_ = adapter.AppendEntries(wal.RefEntries{
 					Ref: chunks.HeadSeriesRef(mod),
 					Entries: []push.Entry{{
 						Timestamp: time.Now(),
@@ -299,7 +301,7 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			// Stop the endpoint: it waits until the current batch is sent
-			wc.Stop()
+			adapter.Stop()
 			close(receivedReqsChan)
 		})
 	}
@@ -401,9 +403,11 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	logger := log.NewLogfmtLogger(os.Stdout)
+	marker := mhFactory(b)
 
-	qc, err := newWalEndpoint(NewMetrics(reg), NewWALEndpointMetrics(reg).CurryWithId("test"), cfg, logger, mhFactory(b))
+	endpoint, err := newEndpoint(NewMetrics(reg), cfg, logger, marker)
 	require.NoError(b, err)
+	adapter := newWalEndpointAdapter(endpoint, logger, NewWALEndpointMetrics(reg).CurryWithId("test"), marker)
 
 	//labels := model.LabelSet{"app": "test"}
 	var lines []string
@@ -415,7 +419,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries
-			qc.StoreSeries([]record.RefSeries{
+			adapter.StoreSeries([]record.RefSeries{
 				{
 					Labels: labels.New(
 						// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
@@ -425,7 +429,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 				},
 			}, 0)
 
-			_ = qc.AppendEntries(wal.RefEntries{
+			_ = adapter.AppendEntries(wal.RefEntries{
 				Ref: chunks.HeadSeriesRef(seriesId),
 				Entries: []push.Entry{{
 					Timestamp: time.Now(),
@@ -443,7 +447,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	// Stop the endpoint: it waits until the current batch is sent
-	qc.Stop()
+	adapter.Stop()
 	close(receivedReqsChan)
 }
 
@@ -494,7 +498,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := newEndpoint(m, cfg, logger)
+	endpoint, err := newEndpoint(m, cfg, logger, internal.NewNopMarkerHandler())
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -507,7 +511,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries
-			qc.Chan() <- loki.Entry{
+			endpoint.enqueue(loki.Entry{
 				Labels: model.LabelSet{
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
@@ -516,7 +520,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 					Timestamp: time.Now(),
 					Line:      l,
 				},
-			}
+			}, 0)
 		}
 
 		require.Eventually(b, func() bool {
@@ -528,6 +532,6 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	}
 
 	// Stop the endpoint: it waits until the current batch is sent
-	qc.Stop()
+	endpoint.Stop()
 	close(receivedReqsChan)
 }
