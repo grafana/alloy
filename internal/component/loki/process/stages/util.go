@@ -184,13 +184,3 @@ func getString(unk interface{}) (string, error) {
 		return "", fmt.Errorf("can't convert %v to string", unk)
 	}
 }
-
-func stringsContain(values []string, search string) bool {
-	for _, v := range values {
-		if search == v {
-			return true
-		}
-	}
-
-	return false
-}
