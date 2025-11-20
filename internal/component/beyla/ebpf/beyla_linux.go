@@ -444,6 +444,12 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 		p.Instrumentations = args.Instrumentations
 	}
 	p.AllowServiceGraphSelfReferences = args.AllowServiceGraphSelfReferences
+	if args.ExtraResourceLabels != nil {
+		p.ExtraResourceLabels = args.ExtraResourceLabels
+	}
+	if args.ExtraSpanResourceLabels != nil {
+		p.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
+	}
 	return p
 }
 
