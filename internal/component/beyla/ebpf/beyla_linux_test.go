@@ -48,6 +48,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				cluster_name = "test"
 				disable_informers = ["node"]
 				meta_restrict_local_node = true
+				meta_cache_address = "localhost:9090"
 			}
 			select {
 				attr = "sql_client_duration"
@@ -159,6 +160,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Attributes.Kubernetes.ClusterName)
 	require.Equal(t, []string{"node"}, cfg.Attributes.Kubernetes.DisableInformers)
 	require.True(t, cfg.Attributes.Kubernetes.MetaRestrictLocalNode)
+	require.Equal(t, "localhost:9090", cfg.Attributes.Kubernetes.MetaCacheAddress)
 	require.Len(t, cfg.Attributes.Select, 1)
 	sel, ok := cfg.Attributes.Select["sql_client_duration"]
 	require.True(t, ok)
@@ -701,6 +703,7 @@ func TestConvert_Attributes(t *testing.T) {
 		Kubernetes: KubernetesDecorator{
 			Enable:               "true",
 			InformersSyncTimeout: 15 * time.Second,
+			MetaCacheAddress:     "localhost:9090",
 		},
 		Select: Selections{
 			{
@@ -720,6 +723,7 @@ func TestConvert_Attributes(t *testing.T) {
 			InformersSyncTimeout:  15 * time.Second,
 			InformersResyncPeriod: 30 * time.Minute,
 			ResourceLabels:        beyla.DefaultConfig.Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:      "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,
