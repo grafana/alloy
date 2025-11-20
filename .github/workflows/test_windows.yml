@@ -32,4 +32,4 @@ jobs:
         cache: false
     - name: Test
       run: '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork,slicelabels"
-        $(go list ./... |  grep -v -E ''/integration-tests/|/integration-tests-k8s/'')'''
+        $(go list ./... |  grep -v -E "/integration-tests/|/integration-tests-k8s/")'''
