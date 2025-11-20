@@ -70,7 +70,7 @@ func (r *EndpointOptions) Validate() error {
 	return nil
 }
 
-// QueueConfig controls how shards and queue are configured for client.
+// QueueConfig controls how shards and queue are configured for endpoint.
 type QueueConfig struct {
 	Capacity     units.Base2Bytes `alloy:"capacity,attr,optional"`
 	MinShards    int              `alloy:"min_shards,attr,optional"`
@@ -86,7 +86,7 @@ func (q *QueueConfig) SetToDefault() {
 	}
 }
 
-func (args Arguments) convertClientConfigs() []client.Config {
+func (args Arguments) convertEndpointConfigs() []client.Config {
 	var res []client.Config
 	for _, cfg := range args.Endpoints {
 		url, _ := url.Parse(cfg.URL)
@@ -106,7 +106,7 @@ func (args Arguments) convertClientConfigs() []client.Config {
 			TenantID:               cfg.TenantID,
 			MaxStreams:             args.MaxStreams,
 			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
-			Queue: client.QueueConfig{
+			QueueConfig: client.QueueConfig{
 				Capacity:     int(cfg.QueueConfig.Capacity),
 				MinShards:    cfg.QueueConfig.MinShards,
 				DrainTimeout: cfg.QueueConfig.DrainTimeout,
