@@ -222,7 +222,8 @@ type shards struct {
 	queues  []*queue
 
 	// running is used to track the number of running shards.
-	running atomic.Int32
+	running  atomic.Int32
+	onceDone sync.Once
 	// done is used to signal that all shards have finished.
 	done chan struct{}
 
@@ -251,6 +252,7 @@ func (s *shards) start(n int) {
 	s.queues = queues
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.running.Store(int32(n))
+	s.onceDone = sync.Once{}
 	s.done = make(chan struct{})
 	s.softShutdown = make(chan struct{})
 
@@ -301,7 +303,7 @@ func (s *shards) runShard(q *queue) {
 		maxWaitCheck.Stop()
 
 		if s.running.Dec() == 0 {
-			close(s.done)
+			s.onceDone.Do(func() { close(s.done) })
 		}
 	}()
 
