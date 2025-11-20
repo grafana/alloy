@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -61,12 +59,6 @@ func TestMimirClient_CreateAlertmanagerConfigs(t *testing.T) {
 
 	// Load expected response from test data file
 	expectedResponseBytes, err := os.ReadFile("testdata/alertmanager/response.good.yml")
-
-	if runtime.GOOS == "windows" {
-		// On Windows, line endings from the file different, so we need to replace them
-		expectedResponseBytes = []byte(strings.ReplaceAll(string(expectedResponseBytes), "\r\n", "\n"))
-	}
-
 	require.NoError(t, err)
 	expectedResponse := string(expectedResponseBytes)
 
