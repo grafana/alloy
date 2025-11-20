@@ -46,7 +46,7 @@ You can use the following blocks with `loki.write`:
 | `endpoint` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
 | `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
-| `endpoint` > [`queue_config`][queue_config]        | Configure the queue used for endpoint.                     | no       |
+| `endpoint` > [`queue_config`][queue_config]        | Configure the queue used for the endpoint.                     | no       |
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`wal`][wal]                                       | Write-ahead log configuration.                             | no       |
 
