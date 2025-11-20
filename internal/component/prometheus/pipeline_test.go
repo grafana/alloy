@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 
 	"github.com/grafana/alloy/internal/component"
