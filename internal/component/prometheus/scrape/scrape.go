@@ -350,7 +350,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		unregisterer:        unregisterer,
 	}
 
-	interceptor := NewInterceptor(livedebugging.ComponentID(o.ID), ls, c.debugDataPublisher, alloyAppendable)
+	interceptor := NewInterceptor(livedebugging.ComponentID(o.ID), c.debugDataPublisher, alloyAppendable)
 
 	scraper, err := scrape.NewManager(
 		scrapeOptions,

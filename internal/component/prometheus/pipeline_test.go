@@ -177,7 +177,7 @@ func newDefaultPipeline(t testing.TB, logger log.Logger) (storage.Appendable, la
 	ls := labelstore.New(logger, promclient.DefaultRegisterer)
 	rwAppendable, rwDestination := newRemoteWriteComponent(t, logger, ls)
 	pipelineAppendable := prometheus.NewFanout([]storage.Appendable{rwAppendable}, promclient.DefaultRegisterer, ls)
-	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", ls, livedebugging.NewLiveDebugging(), pipelineAppendable)
+	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", livedebugging.NewLiveDebugging(), pipelineAppendable)
 
 	return scrapeInterceptor, ls, rwDestination
 }
@@ -187,7 +187,7 @@ func newRelabelPipeline(t testing.TB, logger log.Logger) (storage.Appendable, la
 	rwAppendable, rwDestination := newRemoteWriteComponent(t, logger, ls)
 	relabelAppendable := newRelabelComponent(t, logger, []storage.Appendable{rwAppendable}, ls)
 	pipelineAppendable := prometheus.NewFanout([]storage.Appendable{relabelAppendable}, promclient.DefaultRegisterer, ls)
-	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", ls, livedebugging.NewLiveDebugging(), pipelineAppendable)
+	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", livedebugging.NewLiveDebugging(), pipelineAppendable)
 
 	return scrapeInterceptor, ls, rwDestination
 }

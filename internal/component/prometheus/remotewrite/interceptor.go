@@ -43,7 +43,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 	}
 
 	return prometheus.NewInterceptor(
-		store, ls,
+		store,
 		prometheus.WithComponentID(componentID),
 		// In the methods below, conversion is needed because remote_writes assume
 		// they are responsible for generating ref IDs. This means two

@@ -10,16 +10,15 @@ import (
 	"github.com/prometheus/prometheus/storage"
 
 	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 // NewInterceptor creates a new Prometheus storage.Appendable interceptor proxies calls to the provided appendable publishing
 // live debugging data using the provided debugDataPublisher if live debugging is active.
-func NewInterceptor(componentID livedebugging.ComponentID, ls labelstore.LabelStore, debugDataPublisher livedebugging.DebugDataPublisher, appendable storage.Appendable) *prometheus.Interceptor {
-	return prometheus.NewInterceptor(appendable, ls,
+func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher livedebugging.DebugDataPublisher, appendable storage.Appendable) *prometheus.Interceptor {
+	return prometheus.NewInterceptor(appendable,
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.Append(globalRef, l, t, v)
+			newRef, nextErr := next.Append(globalRef, l, t, v)
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -28,10 +27,10 @@ func NewInterceptor(componentID livedebugging.ComponentID, ls labelstore.LabelSt
 					return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
 				},
 			))
-			return globalRef, nextErr
+			return newRef, nextErr
 		}),
 		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
+			newRef, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -48,10 +47,10 @@ func NewInterceptor(componentID livedebugging.ComponentID, ls labelstore.LabelSt
 					return data
 				},
 			))
-			return globalRef, nextErr
+			return newRef, nextErr
 		}),
 		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.UpdateMetadata(globalRef, l, m)
+			newRef, nextErr := next.UpdateMetadata(globalRef, l, m)
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -60,10 +59,10 @@ func NewInterceptor(componentID livedebugging.ComponentID, ls labelstore.LabelSt
 					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
 				},
 			))
-			return globalRef, nextErr
+			return newRef, nextErr
 		}),
 		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.AppendExemplar(globalRef, l, e)
+			newRef, nextErr := next.AppendExemplar(globalRef, l, e)
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -72,7 +71,7 @@ func NewInterceptor(componentID livedebugging.ComponentID, ls labelstore.LabelSt
 					return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
 				},
 			))
-			return globalRef, nextErr
+			return newRef, nextErr
 		}),
 	)
 }

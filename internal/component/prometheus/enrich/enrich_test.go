@@ -5,15 +5,16 @@ import (
 	"testing"
 	"time"
 
+	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/storage"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
-	prom "github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/storage"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEnricher(t *testing.T) {
@@ -108,9 +109,8 @@ func TestEnricher(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ls := labelstore.New(nil, prom.DefaultRegisterer)
 			fanout := prometheus.NewInterceptor(
-				nil, ls,
+				nil,
 				prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 					for name, value := range tt.expectedLabels {
 						require.Equal(t, l.Get(name), value)
