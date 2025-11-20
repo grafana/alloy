@@ -109,11 +109,10 @@ func NewWriter(walCfg Config, logger log.Logger, reg prometheus.Registerer) (*Wr
 		_ = reg.Register(wrt.lastWrittenTimestamp)
 	}
 
-	wrt.start(walCfg.MaxSegmentAge)
 	return wrt, nil
 }
 
-func (wrt *Writer) start(maxSegmentAge time.Duration) {
+func (wrt *Writer) Start(maxSegmentAge time.Duration) {
 	// main WAL writer routine
 	wrt.wg.Go(func() {
 		for e := range wrt.entries {
