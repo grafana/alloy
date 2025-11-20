@@ -166,7 +166,7 @@ func newWalEndpoint(metrics *Metrics, wcMetrics *WALEndpointMetrics, cfg Config,
 		markerHandler: markerHandler,
 	}
 
-	c.shards.start(cfg.Queue.MinShards)
+	c.shards.start(cfg.QueueConfig.MinShards)
 
 	return c, nil
 }

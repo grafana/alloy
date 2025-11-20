@@ -627,7 +627,7 @@ func newServerAndEndpointConfig(t *testing.T) (Config, chan util.RemoteWriteRequ
 		BackoffConfig: backoff.Config{
 			MaxRetries: 0,
 		},
-		Queue: QueueConfig{
+		QueueConfig: QueueConfig{
 			Capacity:     10, // buffered channel of size 10
 			DrainTimeout: time.Second * 10,
 		},

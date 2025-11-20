@@ -255,7 +255,7 @@ func TestWALEndpoint(t *testing.T) {
 				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
 				Timeout:       1 * time.Second,
 				TenantID:      "",
-				Queue:         tc.queueConfig,
+				QueueConfig:   tc.queueConfig,
 			}
 
 			logger := log.NewLogfmtLogger(os.Stdout)
@@ -394,7 +394,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
 		Timeout:       1 * time.Second,
 		TenantID:      "",
-		Queue: QueueConfig{
+		QueueConfig: QueueConfig{
 			Capacity:     1000, // queue size of 100
 			DrainTimeout: time.Second * 10,
 		},
@@ -485,7 +485,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
 		Timeout:       1 * time.Second,
 		TenantID:      "",
-		Queue: QueueConfig{
+		QueueConfig: QueueConfig{
 			Capacity:     1000, // queue size of 100
 			DrainTimeout: time.Second * 10,
 		},

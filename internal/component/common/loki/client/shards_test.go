@@ -24,7 +24,7 @@ func TestQueue_append(t *testing.T) {
 	// a queue with 8 bytes batches and only one batch can queued.
 	q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 		BatchSize: 8,
-		Queue: QueueConfig{
+		QueueConfig: QueueConfig{
 			Capacity: 8,
 		},
 	})
@@ -61,7 +61,7 @@ func TestQueue_drain(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
 		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
-			Queue: QueueConfig{
+			QueueConfig: QueueConfig{
 				Capacity: 8,
 			},
 		})
@@ -83,7 +83,7 @@ func TestQueue_drain(t *testing.T) {
 		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
 			BatchWait: 10 * time.Second,
-			Queue: QueueConfig{
+			QueueConfig: QueueConfig{
 				Capacity: 8,
 			},
 		})
@@ -106,7 +106,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
 		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
-			Queue: QueueConfig{
+			QueueConfig: QueueConfig{
 				Capacity: 8,
 			},
 		})
@@ -144,7 +144,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
 		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
-			Queue: QueueConfig{
+			QueueConfig: QueueConfig{
 				Capacity: 8,
 			},
 		})
