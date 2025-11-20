@@ -507,7 +507,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		if !cacheHit {
 			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "err", err)
+				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
 				continue
 			}
 			if c.cache != nil {
