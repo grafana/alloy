@@ -25,32 +25,8 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-func TestRelabelThroughAppend(t *testing.T) {
-	appendable, relabeller := generateRelabel(t)
-	lbls := labels.FromStrings("__address__", "localhost")
-
-	app := appendable.Appender(t.Context())
-	relabedRef, err := app.Append(storage.SeriesRef(0), lbls, time.Now().UnixMilli(), 0)
-	require.NoError(t, err)
-	require.NoError(t, app.Commit())
-
-	require.True(t, relabeller.cache.Len() == 1)
-	// Get the first entry since we only have one we can get oldest
-	ref, cachedLbls, _ := relabeller.cache.GetOldest()
-
-	// We shouldn't have allowed a zero ref to be cached
-	require.NotEqual(t, storage.SeriesRef(0), ref)
-	require.NotEqual(t, lbls, cachedLbls)
-
-	// We should have added a new ref after relabeling
-	require.NotEqual(t, storage.SeriesRef(0), relabedRef)
-
-	// That ref should not be the cached ref
-	require.NotEqual(t, relabedRef, ref)
-}
-
 func TestUpdateReset(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
 	require.True(t, relabeller.cache.Len() == 1)
@@ -72,8 +48,7 @@ func TestValidator(t *testing.T) {
 }
 
 func TestNil(t *testing.T) {
-	ls := labelstore.New(nil, prom.DefaultRegisterer)
-	fanout := prometheus.NewInterceptor(nil, ls, prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 		require.True(t, false)
 		return ref, nil
 	}))
@@ -102,7 +77,7 @@ func TestNil(t *testing.T) {
 }
 
 func TestLRU(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 
 	for i := 0; i < 600_000; i++ {
 		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
@@ -112,7 +87,7 @@ func TestLRU(t *testing.T) {
 }
 
 func TestLRUNaN(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	ref := storage.SeriesRef(1)
 	relabeller.relabel(ref, 0, lbls)
@@ -127,7 +102,7 @@ func TestLRUNaN(t *testing.T) {
 }
 
 func TestMetrics(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 
 	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
@@ -138,8 +113,7 @@ func TestMetrics(t *testing.T) {
 }
 
 func BenchmarkCache(b *testing.B) {
-	ls := labelstore.New(nil, prom.DefaultRegisterer)
-	fanout := prometheus.NewInterceptor(nil, ls, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 		require.True(b, l.Has("new_label"))
 		return ref, nil
 	}))
@@ -173,17 +147,12 @@ func BenchmarkCache(b *testing.B) {
 	app.Commit()
 }
 
-func generateRelabel(t *testing.T) (storage.Appendable, *Component) {
-	ls := labelstore.New(nil, prom.DefaultRegisterer)
-	fanout := prometheus.NewInterceptor(nil, ls)
-	var appendable storage.Appendable
+func generateRelabel(t *testing.T) *Component {
+	fanout := prometheus.NewInterceptor(nil)
 	relabeller, err := New(component.Options{
-		ID:     "1",
-		Logger: util.TestAlloyLogger(t),
-		OnStateChange: func(e component.Exports) {
-			newE := e.(Exports)
-			appendable = newE.Receiver
-		},
+		ID:             "1",
+		Logger:         util.TestAlloyLogger(t),
+		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
 	}, Arguments{
@@ -201,7 +170,7 @@ func generateRelabel(t *testing.T) (storage.Appendable, *Component) {
 	})
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
-	return appendable, relabeller
+	return relabeller
 }
 
 func TestRuleGetter(t *testing.T) {
