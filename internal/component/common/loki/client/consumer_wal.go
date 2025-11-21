@@ -59,7 +59,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 			return nil, fmt.Errorf("error starting endpoint: %w", err)
 		}
 
-		adapter := newWalEndpointAdapter(endpoint, logger, walEndpointMetrics, markerHandler)
+		adapter := newWalEndpointAdapter(endpoint, logger, walEndpointMetrics.CurryWithId(name), markerHandler)
 
 		// subscribe watcher's wal.WriteTo to writer events. This will make the writer trigger the cleanup of the wal.WriteTo
 		// series cache whenever a segment is deleted.
