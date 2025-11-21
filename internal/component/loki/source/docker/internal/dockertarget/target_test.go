@@ -14,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
@@ -25,7 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
 func TestDockerTarget(t *testing.T) {

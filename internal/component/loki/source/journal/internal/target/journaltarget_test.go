@@ -25,7 +25,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
