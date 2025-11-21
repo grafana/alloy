@@ -1,0 +1,26 @@
+loki.source.journal "systemd" {
+	format_as_json = true
+	max_age        = "12h0m0s"
+	matches        = "_SYSTEMD_UNIT=sshd.service"
+	relabel_rules  = null
+	forward_to     = [loki.write.default.receiver]
+	labels         = {
+		job = "systemd-journal",
+	}
+}
+
+loki.source.journal "kernel" {
+	matches       = "_TRANSPORT=kernel"
+	relabel_rules = null
+	forward_to    = [loki.write.default.receiver]
+	labels        = {
+		job = "kernel-logs",
+	}
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}
