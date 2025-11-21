@@ -63,8 +63,8 @@ func (c *endpoint) enqueue(entry loki.Entry, segmentNum int) bool {
 }
 
 func (c *endpoint) stop() {
-	c.shards.stop()
 	c.cancel()
+	c.shards.stop()
 }
 
 // getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
