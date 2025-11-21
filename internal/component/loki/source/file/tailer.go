@@ -21,11 +21,11 @@ import (
 	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type tailer struct {
@@ -388,7 +388,7 @@ func (t *tailer) stop(done chan struct{}) {
 		level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.key.Path, "error", err)
 	}
 	if err := t.tail.Stop(); err != nil {
-		if utils.IsEphemeralOrFileClosed(err) {
+		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
 			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "path", t.key.Path, "error", err)
