@@ -19,7 +19,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -116,6 +116,7 @@ func TestRestart(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
+	defer entryHandler.Stop()
 	go tailer.Run(t.Context())
 
 	// The container is already running, expect log lines.
@@ -154,6 +155,8 @@ func TestTargetNeverStarted(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
+	defer entryHandler.Stop()
+
 	ctx, cancel := context.WithCancel(t.Context())
 	go tailer.Run(ctx)
 
@@ -167,10 +170,10 @@ func TestTargetNeverStarted(t *testing.T) {
 	require.NotPanics(t, func() { cancel() })
 }
 
-func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *fake.Client) {
+func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *loki.CollectingHandler) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	entryHandler = fake.NewClient(func() {})
+	entryHandler = loki.NewCollectingHandler()
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
