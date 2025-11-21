@@ -138,7 +138,7 @@ local.file_match "labeled_logs" {
       "__address__" = "localhost",
       "instance"    = "web-server-01", 
       "job"         = "apache",
-      "service"     = "web"
+      "service"     = "web",
     },
     {
       "__path__"       = "/var/log/nginx/*.log",
@@ -146,8 +146,8 @@ local.file_match "labeled_logs" {
       "__address__"    = "localhost",
       "instance"       = "web-server-01",
       "job"            = "nginx", 
-      "service"        = "web"
-    }
+      "service"        = "web",
+    },
   ]
 }
 
@@ -158,11 +158,11 @@ loki.source.file "web_logs" {
 
 loki.write "endpoint" {
   endpoint {
-      url = <LOKI_URL>
-      basic_auth {
-          username = <USERNAME>
-          password = <PASSWORD>
-      }
+    url = "<LOKI_URL>"
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
+    }
   }
 }
 ```
@@ -210,10 +210,10 @@ loki.source.file "pods" {
 
 loki.write "endpoint" {
   endpoint {
-      url = <LOKI_URL>
+      url = "<LOKI_URL>"
       basic_auth {
-          username = <USERNAME>
-          password = <PASSWORD>
+          username = "<USERNAME>"
+          password = "<PASSWORD>"
       }
   }
 }
