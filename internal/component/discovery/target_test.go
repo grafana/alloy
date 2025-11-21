@@ -800,9 +800,9 @@ func TestHashLabelsWithPredicateClearsStringSlicePool(t *testing.T) {
 			"job": "hash-test",
 			"env": "prod",
 		})
-		recordedLens []int
-		scratch      []string
-		originalBorrow = borrowLabelsSlice
+		recordedLens    []int
+		scratch         []string
+		originalBorrow  = borrowLabelsSlice
 		originalRelease = releaseLabelsSlice
 	)
 

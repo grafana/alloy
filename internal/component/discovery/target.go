@@ -32,7 +32,8 @@ var (
 		return stringSlicesPool.Get().([]string)
 	}
 	releaseLabelsSlice = func(labels []string) {
-		stringSlicesPool.Put(labels[:0])
+		// We can ignore linter warning here, because slice headers are small and the underlying array will be reused.
+		stringSlicesPool.Put(labels[:0]) //nolint:staticcheck // SA6002
 	}
 
 	_ syntax.Capsule                = Target{}
