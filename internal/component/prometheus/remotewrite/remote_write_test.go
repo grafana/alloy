@@ -92,8 +92,8 @@ func Test(t *testing.T) {
 			results = res.Timeseries
 		}
 		// When we have two results make sure they match what we expect
-		if len(res.Timeseries) == 2 {
-			require.Equal(t, expect, res.Timeseries)
+		if len(results) == 2 {
+			require.Equal(t, expect, results)
 		}
 	}
 }

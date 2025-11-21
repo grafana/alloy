@@ -26,7 +26,7 @@ import (
 )
 
 func TestUpdateReset(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
 	require.True(t, relabeller.cache.Len() == 1)
@@ -77,7 +77,7 @@ func TestNil(t *testing.T) {
 }
 
 func TestLRU(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 
 	for i := 0; i < 600_000; i++ {
 		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
@@ -87,7 +87,7 @@ func TestLRU(t *testing.T) {
 }
 
 func TestLRUNaN(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	ref := storage.SeriesRef(1)
 	relabeller.relabel(ref, 0, lbls)
@@ -102,7 +102,7 @@ func TestLRUNaN(t *testing.T) {
 }
 
 func TestMetrics(t *testing.T) {
-	_, relabeller := generateRelabel(t)
+	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 
 	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
@@ -147,16 +147,12 @@ func BenchmarkCache(b *testing.B) {
 	app.Commit()
 }
 
-func generateRelabel(t *testing.T) (storage.Appendable, *Component) {
+func generateRelabel(t *testing.T) *Component {
 	fanout := prometheus.NewInterceptor(nil)
-	var appendable storage.Appendable
 	relabeller, err := New(component.Options{
-		ID:     "1",
-		Logger: util.TestAlloyLogger(t),
-		OnStateChange: func(e component.Exports) {
-			newE := e.(Exports)
-			appendable = newE.Receiver
-		},
+		ID:             "1",
+		Logger:         util.TestAlloyLogger(t),
+		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
 	}, Arguments{
@@ -174,7 +170,7 @@ func generateRelabel(t *testing.T) (storage.Appendable, *Component) {
 	})
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
-	return appendable, relabeller
+	return relabeller
 }
 
 func TestRuleGetter(t *testing.T) {
