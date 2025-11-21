@@ -27,7 +27,7 @@ var (
 	seps = []byte{'\xff'}
 	// used in tests to simulate hash conflicts
 	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
-	stringSlicesPool = sync.Pool{New: func() interface{} { return make([]string, 0, 20) }}
+	stringSlicesPool = sync.Pool{New: func() any { return make([]string, 0, 20) }}
 
 	_ syntax.Capsule                = Target{}
 	_ syntax.ConvertibleIntoCapsule = Target{}
@@ -285,7 +285,7 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck //TODO(@piotr) take a look at this optimization SA6002
+	defer stringSlicesPool.Put(labelsInOrder[:0])
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -299,7 +299,7 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck //TODO(@piotr) take a look at this optimization SA6002
+	defer stringSlicesPool.Put(labelsInOrder[:0])
 
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))
@@ -309,9 +309,8 @@ func (t Target) groupLabelsHash() uint64 {
 }
 
 // NOTE 1: This function is copied from Prometheus codebase (labels.StableHash()) and adapted to work correctly with Alloy types.
-// NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have
-//
-//	smooth rollouts without duplicated or missing data. There are tests to verify this behaviour. Do not change it.
+// NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have smooth clustering
+// rollouts without duplicated or missing scraping of targets. There are tests to verify this behaviour. Do not change it.
 func (t Target) hashLabelsInOrder(order []string) uint64 {
 	// This optimisation is adapted from prometheus/model/labels.
 	// Use xxhash.Sum64(b) for fast path as it's faster.
