@@ -21,10 +21,10 @@ import (
 	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
