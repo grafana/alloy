@@ -24,7 +24,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/loki/util"
 )
@@ -42,7 +41,7 @@ func TestWALConsumer(t *testing.T) {
 	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
+	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	go func() {
 		for req := range rwReceivedReqs {
 			receivedRequests.Append(req)
@@ -99,7 +98,7 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
+	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
 	go func(ctx context.Context) {
 		for {
@@ -227,7 +226,7 @@ func TestWALClient(t *testing.T) {
 			var receivedRWsCount atomic.Int64
 			var receivedEntriesCount atomic.Int64
 
-			receivedReqs := utils.NewSyncSlice[util.RemoteWriteRequest]()
+			receivedReqs := util.NewSyncSlice[util.RemoteWriteRequest]()
 			go func() {
 				for req := range receivedReqsChan {
 					receivedReqs.Append(req)

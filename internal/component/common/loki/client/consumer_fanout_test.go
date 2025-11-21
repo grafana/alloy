@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/loki/util"
 )
 
@@ -31,7 +30,7 @@ func TestFanoutConsumer(t *testing.T) {
 	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
+	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	go func() {
 		for req := range rwReceivedReqs {
 			receivedRequests.Append(req)
@@ -82,7 +81,7 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
+	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
 	go func(ctx context.Context) {
 		for {
