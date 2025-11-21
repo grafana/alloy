@@ -794,6 +794,45 @@ func TestHashing(t *testing.T) {
 	}
 }
 
+func TestHashLabelsWithPredicateClearsStringSlicePool(t *testing.T) {
+	var (
+		target = NewTargetFromMap(map[string]string{
+			"job": "hash-test",
+			"env": "prod",
+		})
+		recordedLens []int
+		scratch      []string
+		originalBorrow = borrowLabelsSlice
+		originalRelease = releaseLabelsSlice
+	)
+
+	t.Cleanup(func() {
+		borrowLabelsSlice = originalBorrow
+		releaseLabelsSlice = originalRelease
+	})
+
+	borrowLabelsSlice = func() []string {
+		if scratch == nil {
+			scratch = make([]string, 0, 8)
+		}
+		return scratch
+	}
+	releaseLabelsSlice = func(labels []string) {
+		recordedLens = append(recordedLens, len(labels))
+		scratch = labels
+	}
+
+	target.HashLabelsWithPredicate(func(string) bool {
+		return true
+	})
+	target.HashLabelsWithPredicate(func(string) bool {
+		return false
+	})
+
+	require.GreaterOrEqual(t, len(recordedLens), 2)
+	require.Equal(t, 0, recordedLens[len(recordedLens)-1], "pool slice must be cleared before returning")
+}
+
 func TestHashLargeLabelSets(t *testing.T) {
 	sharedLabels := 50
 	ownLabels := 100
