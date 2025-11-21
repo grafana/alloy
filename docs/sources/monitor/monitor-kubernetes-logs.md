@@ -120,7 +120,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    1. Get the name of the {{< param "PRODUCT_NAME" >}} Pod:
 
       ```shell
-      export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=alloy-logs,app.kubernetes.io/instance=k8s" -o jsonpath="{.items[0].metadata.name}")
+      export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=alloy-logs,app.kubernetes.io/instance=k8s-alloy-logs" -o jsonpath="{.items[0].metadata.name}")
       ```
 
    1. Set up port-forwarding:

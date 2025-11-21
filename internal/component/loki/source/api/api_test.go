@@ -33,7 +33,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/loki/util"
@@ -96,12 +95,12 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	receiver := fake.NewClient(func() {})
-	defer receiver.Stop()
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8532
-		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
+		a.ForwardTo = []loki.LogsReceiver{handler.Receiver()}
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
@@ -122,12 +121,12 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 
 	require.Eventually(
 		t,
-		func() bool { return len(receiver.Received()) == 1 },
+		func() bool { return len(handler.Received()) == 1 },
 		5*time.Second,
 		10*time.Millisecond,
 		"did not receive the forwarded message within the timeout",
 	)
-	received := receiver.Received()[0]
+	received := handler.Received()[0]
 	assert.Equal(t, received.Line, "hello world!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -141,12 +140,12 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	receiver := fake.NewClient(func() {})
+	receiver := loki.NewCollectingHandler()
 	defer receiver.Stop()
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8583
-		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
+		a.ForwardTo = []loki.LogsReceiver{receiver.Receiver()}
 		a.UseIncomingTimestamp = true
 		a.Labels = map[string]string{"test_label": "before"}
 	})
@@ -216,9 +215,9 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 	defer cancel()
 
 	const receiversCount = 10
-	var receivers = make([]*fake.Client, receiversCount)
+	var receivers = make([]*loki.CollectingHandler, receiversCount)
 	for i := range receiversCount {
-		receivers[i] = fake.NewClient(func() {})
+		receivers[i] = loki.NewCollectingHandler()
 	}
 
 	args := testArgsWith(func(a *Arguments) {
@@ -362,15 +361,15 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	testCert, testKey, err := generateTestCertAndKey()
 	require.NoError(t, err)
 
-	receiver := fake.NewClient(func() {})
-	defer receiver.Stop()
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.TLSConfig = &fnet.TLSConfig{
 			Cert: testCert,
 			Key:  alloytypes.Secret(testKey),
 		}
-		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
+		a.ForwardTo = []loki.LogsReceiver{handler.Receiver()}
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
@@ -393,13 +392,13 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	require.Eventually(
 		t,
 		func() bool {
-			return len(receiver.Received()) == 1
+			return len(handler.Received()) == 1
 		},
 		10*time.Second,
 		10*time.Millisecond,
 		"did not receive the forwarded message within the timeout",
 	)
-	received := receiver.Received()[0]
+	received := handler.Received()[0]
 	assert.Equal(t, received.Line, "hello world over TLS!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -610,10 +609,10 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
-func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
+func mapToChannels(clients []*loki.CollectingHandler) []loki.LogsReceiver {
 	channels := make([]loki.LogsReceiver, len(clients))
 	for i := range clients {
-		channels[i] = clients[i].LogsReceiver()
+		channels[i] = clients[i].Receiver()
 	}
 	return channels
 }

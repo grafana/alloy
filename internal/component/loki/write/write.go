@@ -11,9 +11,9 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/prometheus/common/model"
 )
 
@@ -197,7 +197,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create cliens: %w", err)
 	}
 
-	c.sink = newEntryHandler(c.consumer, utils.ToLabelSet(c.args.ExternalLabels))
+	c.sink = newEntryHandler(c.consumer, util.MapToModelLabelSet(c.args.ExternalLabels))
 
 	return nil
 }

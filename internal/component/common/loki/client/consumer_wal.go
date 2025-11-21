@@ -93,6 +93,8 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		})
 	}
 
+	writer.Start(walCfg.MaxSegmentAge)
+
 	return m, nil
 }
 

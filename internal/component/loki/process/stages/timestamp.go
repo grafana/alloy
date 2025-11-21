@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"time"
 	_ "time/tzdata" // embed timezone data
 
@@ -73,7 +74,7 @@ func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
 	if cfg.ActionOnFailure == "" {
 		cfg.ActionOnFailure = TimestampActionOnFailureDefault
 	} else {
-		if !stringsContain(TimestampActionOnFailureOptions, cfg.ActionOnFailure) {
+		if !slices.Contains(TimestampActionOnFailureOptions, cfg.ActionOnFailure) {
 			return nil, fmt.Errorf(ErrInvalidActionOnFailure.Error(), TimestampActionOnFailureOptions)
 		}
 	}

@@ -15,7 +15,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/tools/txtar"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
@@ -2235,7 +2235,7 @@ func TestNewExplainPlan(t *testing.T) {
 	defer db.Close()
 
 	logger := log.NewNopLogger()
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
@@ -2728,7 +2728,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	})
 
 	t.Run("query validation", func(t *testing.T) {
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}

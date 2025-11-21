@@ -141,3 +141,55 @@ func AddLabelsMiddleware(additionalLabels model.LabelSet) EntryMiddleware {
 		})
 	})
 }
+
+// CollectingHandler is a EntryHandler that will
+// collect all received entries so it can later be inspected.
+// Used in tests.
+type CollectingHandler struct {
+	ch      chan Entry
+	entries []Entry
+	once    sync.Once
+	mut     sync.Mutex
+	wg      sync.WaitGroup
+}
+
+func NewCollectingHandler() *CollectingHandler {
+	c := &CollectingHandler{
+		ch: make(chan Entry),
+	}
+	c.wg.Go(func() {
+		for e := range c.ch {
+			c.mut.Lock()
+			c.entries = append(c.entries, e)
+			c.mut.Unlock()
+		}
+	})
+	return c
+}
+
+func (c *CollectingHandler) Stop() {
+	c.once.Do(func() { close(c.ch) })
+	c.wg.Wait()
+}
+
+func (c *CollectingHandler) Chan() chan<- Entry {
+	return c.ch
+}
+
+func (c *CollectingHandler) Receiver() LogsReceiver {
+	return NewLogsReceiver(WithChannel(c.ch))
+}
+
+func (c *CollectingHandler) Received() []Entry {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	cpy := make([]Entry, len(c.entries))
+	copy(cpy, c.entries)
+	return cpy
+}
+
+func (c *CollectingHandler) Clear() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	c.entries = []Entry{}
+}

@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
+	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/alloy/internal/mimir/client/internal"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
-	alertmgr_cfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 )

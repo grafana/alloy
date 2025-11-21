@@ -76,8 +76,7 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 		level.Warn(m.logger).Log("msg", "invalid label value parsed", "value", value)
 		return err
 	}
-	lines := strings.Split(s, "\r\n")
-	for _, line := range lines {
+	for line := range strings.SplitSeq(s, "\r\n") {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) < 2 {
 			level.Debug(m.logger).Log("msg", "invalid line parsed from message", "line", line)
