@@ -167,7 +167,6 @@ func NewCollectingHandler() *CollectingHandler {
 	return c
 }
 
-// Stop implements client.Client
 func (c *CollectingHandler) Stop() {
 	c.once.Do(func() { close(c.ch) })
 	c.wg.Wait()
