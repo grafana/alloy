@@ -145,9 +145,9 @@ func TestDockerChunkWriter(t *testing.T) {
 	timestamp := []byte("2023-12-09T12:00:00.000000000Z ")
 	shortLine := []byte("short log line\n")
 
-	longContent := make([]byte, 50*1024)
-	for i := range longContent {
-		longContent[i] = 'a'
+	var longContent []byte
+	for range 50 * 1024 {
+		longContent = append(longContent, 'a')
 	}
 	longContent = append(longContent, '\n')
 
