@@ -1,6 +1,7 @@
 package awss3
 
 import (
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
 
@@ -25,7 +26,7 @@ func init() {
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := awss3receiver.NewFactory()
-			return awss3receiver.New(opts, fact, args.(Arguments))
+			return receiver.New(opts, fact, args.(Arguments))
 		},
 	})
 }
