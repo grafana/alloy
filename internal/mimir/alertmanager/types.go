@@ -49,7 +49,7 @@ func (c Config) String() (string, error) {
 	return string(confBytes), nil
 }
 
-// This is a standard Unmarshal functioion.
+// This is a standard Unmarshal function.
 // The benefit of having it here is that it's guaranteed to use the correct "gopkg.in/yaml.v2" package.
 func Unmarshal(data []byte) (*Config, error) {
 	var c Config
@@ -132,7 +132,7 @@ type Receiver struct {
 	PagerdutyConfigs  []*PagerdutyConfig  `yaml:"pagerduty_configs,omitempty" json:"pagerduty_configs,omitempty"`
 	SlackConfigs      []*SlackConfig      `yaml:"slack_configs,omitempty" json:"slack_configs,omitempty"`
 	WebhookConfigs    []*WebhookConfig    `yaml:"webhook_configs,omitempty" json:"webhook_configs,omitempty"`
-	WeChatConfigs     []*WeChatConfig     `yaml:"wechat_configs,omitempty" json:"wechat_config,omitempty"`
+	WeChatConfigs     []*WeChatConfig     `yaml:"wechat_configs,omitempty" json:"wechat_configs,omitempty"`
 	EmailConfigs      []*EmailConfig      `yaml:"email_configs,omitempty" json:"email_configs,omitempty"`
 	PushoverConfigs   []*PushoverConfig   `yaml:"pushover_configs,omitempty" json:"pushover_configs,omitempty"`
 	VictorOpsConfigs  []*VictorOpsConfig  `yaml:"victorops_configs,omitempty" json:"victorops_configs,omitempty"`
