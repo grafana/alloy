@@ -116,7 +116,6 @@ func TestRestart(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
-	defer entryHandler.Stop()
 	go tailer.Run(t.Context())
 
 	// The container is already running, expect log lines.
@@ -155,7 +154,6 @@ func TestTargetNeverStarted(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
-	defer entryHandler.Stop()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	go tailer.Run(ctx)
