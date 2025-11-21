@@ -34,7 +34,7 @@ type queuedBatch struct {
 	Batch    *batch
 }
 
-func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
+func newQueue(metrics *metrics, logger log.Logger, cfg Config) *queue {
 	// Capacity is the worst case size in bytes desired for the send queue. This value is used to calculate the size of
 	// the buffered channel. The worst case scenario assumed is that every batch buffered in full, hence
 	// the channel capacity would be calculated as: bufferChannelSize = Capacity / BatchSize.
@@ -57,7 +57,7 @@ func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
 // reach the configured batch size limit.
 type queue struct {
 	cfg     Config
-	metrics *Metrics
+	metrics *metrics
 	logger  log.Logger
 	c       chan queuedBatch
 
@@ -179,7 +179,7 @@ loop:
 
 // newShards creates a new shards instance for parallel processing of log entries.
 // It validates the configuration and creates an HTTP client for sending batches to Loki.
-func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
+func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("endpoint needs target URL")
 	}
@@ -213,7 +213,7 @@ func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarker
 type shards struct {
 	cfg           Config
 	logger        log.Logger
-	metrics       *Metrics
+	metrics       *metrics
 	client        *http.Client
 	markerHandler SentDataMarkerHandler
 
