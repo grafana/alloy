@@ -51,16 +51,16 @@ prometheus.exporter.oracledb "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.oracledb`:
 
-| Name                | Type           | Description                                                                                                                  | Default | Required |
-| ------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `connection_string` | `secret`       | The connection string used to connect to an Oracle Database. Can be provided as an environment variable `DB_CONNECT_STRING`. |         | yes      |
-| `username`          | `string`       | The username to use for authentication to the Oracle Database. Can be provided as an environment variable `DB_USERNAME`.     |         | no       |
-| `password`          | `secret`       | The password to use for authentication to the Oracle Database. Can be provided as an environment variable `DB_PASSWORD`.     |         | no       |
-| `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool.                                                                   | `0`     | no       |
-| `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool.                                                                   | `10`    | no       |
-| `query_timeout`     | `int`          | The query timeout in seconds.                                                                                                | `5`     | no       |
-| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)                                                                          |         | no       |
-| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)                                                                         |         | no       |
+| Name                | Type           | Description                                                    | Default | Required |
+| ------------------- | -------------- | -------------------------------------------------------------- | ------- | -------- |
+| `connection_string` | `secret`       | The connection string used to connect to an Oracle Database.   |         | yes      |
+| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)           |         | no       |
+| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)            |         | no       |
+| `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool.     | `0`     | no       |
+| `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool.     | `10`    | no       |
+| `password`          | `secret`       | The password to use for authentication to the Oracle Database. |         | no       |
+| `query_timeout`     | `int`          | The query timeout in seconds.                                  | `5`     | no       |
+| `username`          | `string`       | The username to use for authentication to the Oracle Database. |         | no       |
 
 Examples of TOML metrics files can be found in the [`oracledb_exporter` repository](https://github.com/oracle/oracle-db-appdev-monitoring).
 
