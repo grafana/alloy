@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
@@ -160,8 +159,7 @@ func TestPushTarget(t *testing.T) {
 	for name, tc := range cases {
 		outerName := t.Name()
 		t.Run(name, func(t *testing.T) {
-			// Create fake promtail client
-			eh := fake.NewClient(func() {})
+			eh := loki.NewCollectingHandler()
 			defer eh.Stop()
 
 			port, err := freeport.GetFreePort()
@@ -232,8 +230,7 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
@@ -260,9 +257,6 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 		_ = pt.Stop()
 	}()
 
-	// Clear received lines after test case is ran
-	defer eh.Clear()
-
 	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
 	require.NoError(t, err, "expected request to be created successfully")
 	res, err := http.DefaultClient.Do(req)
@@ -283,8 +277,7 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
@@ -343,8 +336,7 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
@@ -368,9 +360,6 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 	defer func() {
 		_ = pt.Stop()
 	}()
-
-	// Clear received lines after test case is ran
-	defer eh.Clear()
 
 	for caseName, testPayload := range map[string]string{
 		"invalid JSON": "{",
@@ -474,7 +463,7 @@ func TestPushTarget_UsePushTimeout(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, res.StatusCode, "expected timeout response")
 }
 
-func waitForMessages(eh *fake.Client) {
+func waitForMessages(eh *loki.CollectingHandler) {
 	countdown := 1000
 	for len(eh.Received()) != 1 && countdown > 0 {
 		time.Sleep(1 * time.Millisecond)
