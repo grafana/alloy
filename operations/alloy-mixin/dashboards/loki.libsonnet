@@ -135,6 +135,42 @@ local filename = 'alloy-loki.json';
       ])
     ),
 
+    // Loki write entries sent
+    (
+      panel.new(title='Entries sent in $cluster', type='timeseries') +
+      panel.withDescription(|||
+        Entries sent per second.
+      |||) +
+      panel.withStacked() +
+      panel.withUnit('cps') +
+      panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withQueries([
+        panel.newQuery(
+          expr=|||
+            sum by (instance) (rate(loki_write_sent_entires_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+          ||| % $._config,
+        ),
+      ])
+    ),
+
+    // Loki write entries dropped
+    (
+      panel.new(title='Bytes dropped in $cluster', type='timeseries') +
+      panel.withDescription(|||
+        Entries dropped per second.
+      |||) +
+      panel.withStacked() +
+      panel.withUnit('cps') +
+      panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withQueries([
+        panel.newQuery(
+          expr=|||
+            sum by(instance) (rate(loki_write_dropped_entries_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+          ||| % $._config,
+        ),
+      ])
+    ),
+
     // Loki write bytes sent
     (
       panel.new(title='Bytes sent in $cluster', type='timeseries') +
