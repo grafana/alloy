@@ -142,7 +142,9 @@ func AddLabelsMiddleware(additionalLabels model.LabelSet) EntryMiddleware {
 	})
 }
 
-// CollectingHandler is a fake client used for testing.
+// CollectingHandler is a EntryHandler that will
+// collect all received entries so it can later be inspected.
+// Used in tests.
 type CollectingHandler struct {
 	ch      chan Entry
 	entries []Entry
@@ -187,8 +189,6 @@ func (c *CollectingHandler) Received() []Entry {
 	return cpy
 }
 
-// Clear is used to cleanup the buffered received entries, so the same client can be re-used between
-// test cases.
 func (c *CollectingHandler) Clear() {
 	c.mut.Lock()
 	defer c.mut.Unlock()
