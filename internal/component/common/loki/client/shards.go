@@ -129,52 +129,76 @@ func (q *queue) drain() []queuedBatch {
 
 	var batches []queuedBatch
 
+	// First drain all batches in queue.
 loop:
 	for {
 		select {
-		case b := <-q.c:
-			// Drain all batches from the channel
+		case b, ok := <-q.c:
+			if !ok {
+				break loop
+			}
 			batches = append(batches, b)
 		default:
-			// Check for age-based ready batches
-			for tenantID, batch := range q.batches {
-				if batch.age() < q.cfg.BatchWait {
-					continue
-				}
-
-				// Batch has exceeded wait time, remove from map and return it
-				delete(q.batches, tenantID)
-				batches = append(batches, queuedBatch{
-					TenantID: tenantID,
-					Batch:    batch,
-				})
-			}
 			break loop
 		}
 	}
+
+	// Then check batches that are not queued but should be flushed anyway.
+	for tenantID, batch := range q.batches {
+		if batch.age() < q.cfg.BatchWait {
+			continue
+		}
+
+		// Batch has exceeded wait time, remove from map and return it.
+		delete(q.batches, tenantID)
+		batches = append(batches, queuedBatch{
+			TenantID: tenantID,
+			Batch:    batch,
+		})
+	}
+
 	return batches
 }
 
 // flushAndShutdown flushes all remaining batches and closes the channel.
-// It will stop early if the done channel is signaled.
+// It will stop early if the done channel is closed.
 func (q *queue) flushAndShutdown(done chan struct{}) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
 loop:
-	for tenantID, batch := range q.batches {
+	for q.tryEnqueueingBatch(done) {
 		select {
-		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
-			// Successfully enqueued batch for sending
 		case <-done:
-			// Shutdown timeout reached, stop trying to flush
 			break loop
+		case <-time.After(time.Second):
 		}
 	}
 
-	// It's safe to set batches to nil because a queue is never reused once we have closed it.
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	q.batches = nil
 	close(q.c)
+}
+
+// tryEnqueueingBatch tries to send a batch if necessary. If sending needs to
+// be retried it will return true.
+func (q *queue) tryEnqueueingBatch(done <-chan struct{}) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	for tenantID, batch := range q.batches {
+		select {
+		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
+			// Successfully queued a batch. If we have more we should retry this.
+			delete(q.batches, tenantID)
+			return len(q.batches) > 0
+		case <-done:
+			// Shutdown timeout reached, stop trying to flush.
+			return false
+		default:
+			// Queue is full so we should try again.
+			return true
+		}
+	}
+	return false
 }
 
 // newShards creates a new shards instance for parallel processing of log entries.
