@@ -11,9 +11,9 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/prometheus/common/model"
 )
 
@@ -79,26 +79,24 @@ var (
 
 // Component implements the loki.write component.
 type Component struct {
-	opts    component.Options
-	metrics *client.Metrics
+	opts component.Options
 
 	mut      sync.RWMutex
 	args     Arguments
 	receiver loki.LogsReceiver
 
-	// remote write components
-	clientManger *client.Manager
+	// remote write consumer
+	consumer client.Consumer
 
-	// sink is the place where log entries received by this component should be written to. If WAL
-	// is enabled, this will be the WAL Writer, otherwise, the client manager
+	// sink is the place where log entries received by this component should be written to.
+	// It will in turn write to client.Consumer.
 	sink loki.EntryHandler
 }
 
 // New creates a new loki.write component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:    o,
-		metrics: client.NewMetrics(o.Registerer),
+		opts: o,
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -122,9 +120,13 @@ func (c *Component) Run(ctx context.Context) error {
 			c.sink.Stop()
 		}
 
-		if c.clientManger != nil {
-			// drain, since the component is shutting down. That means Alloy is shutting down as well
-			c.clientManger.StopWithDrain(true)
+		if c.consumer != nil {
+			if d, ok := c.consumer.(client.DrainableConsumer); ok {
+				// stop and drain since component is shutting down.
+				d.StopAndDrain()
+			} else {
+				c.consumer.Stop()
+			}
 		}
 	}()
 
@@ -157,9 +159,9 @@ func (c *Component) Update(args component.Arguments) error {
 		c.sink.Stop()
 	}
 
-	if c.clientManger != nil {
+	if c.consumer != nil {
 		// only drain on component shutdown
-		c.clientManger.Stop()
+		c.consumer.Stop()
 	}
 
 	cfgs := newArgs.convertClientConfigs()
@@ -185,12 +187,17 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	var err error
-	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
-	if err != nil {
-		return fmt.Errorf("failed to create client manager: %w", err)
+	if walCfg.Enabled {
+		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+	} else {
+		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
-	c.sink = newEntryHandler(c.clientManger, utils.ToLabelSet(c.args.ExternalLabels))
+	if err != nil {
+		return fmt.Errorf("failed to create cliens: %w", err)
+	}
+
+	c.sink = newEntryHandler(c.consumer, util.MapToModelLabelSet(c.args.ExternalLabels))
 
 	return nil
 }

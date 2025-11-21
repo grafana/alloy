@@ -14,9 +14,17 @@ Main (unreleased)
 
 - A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
 
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+
+- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+
+- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
 ### Bugfixes
 
@@ -94,6 +102,7 @@ v1.12.0-rc.0
   - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
   - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
 
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
@@ -108,7 +117,7 @@ v1.12.0-rc.0
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Update Beyla component to 2.7.4. (@grcevski)
+- Update Beyla component to 2.7.8. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
