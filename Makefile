@@ -15,9 +15,10 @@
 ##
 ## Targets for running tests:
 ##
-##   test              Run tests
-##   lint              Lint code
-##   integration-test  Run integration tests
+##   test                  Run tests
+##   lint                  Lint code
+##   integration-test      Run integration tests
+##   integration-test-k8s  Run Kubernetes integration tests
 ##
 ## Targets for building binaries:
 ##
