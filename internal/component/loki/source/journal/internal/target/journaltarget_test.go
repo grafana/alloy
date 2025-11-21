@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
@@ -104,7 +104,7 @@ func TestJournalTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := fake.NewClient(func() {})
+	client := loki
 
 	relabelCfg := `
 - source_labels: ['__journal_code_file']
@@ -425,18 +425,18 @@ func TestJournalTarget_Matches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
 
 	cfg := scrapeconfig.JournalTargetConfig{
 		Matches: "UNIT=foo.service PRIORITY=1",
 	}
 
-	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, client, ps, "test", nil,
+	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
 		&cfg, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
 	r := jt.r.(*mockJournalReader)
 	matches := []sdjournal.Match{{Field: "UNIT", Value: "foo.service"}, {Field: "PRIORITY", Value: "1"}}
 	require.Equal(t, r.config.Matches, matches)
-	client.Stop()
+	handler.Stop()
 }

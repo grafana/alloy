@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
 
@@ -30,7 +30,7 @@ func TestPullTarget_RunStop(t *testing.T) {
 
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 		require.Eventually(t, func() bool {
-			return len(tc.promClient.Received()) > 0
+			return len(tc.handler.Received()) > 0
 		}, time.Second, 50*time.Millisecond)
 
 		require.NoError(t, tc.target.Stop())
@@ -48,7 +48,7 @@ func TestPullTarget_RunStop(t *testing.T) {
 		tc.sub.errors <- errors.New("something bad")
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 		require.Eventually(t, func() bool {
-			return len(tc.promClient.Received()) > 0
+			return len(tc.handler.Received()) > 0
 		}, time.Second, 50*time.Millisecond)
 
 		require.NoError(t, tc.target.Stop())
@@ -81,7 +81,7 @@ func TestPullTarget_RunStop(t *testing.T) {
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 
 		require.Eventually(t, func() bool {
-			return len(tc.promClient.Received()) > 1
+			return len(tc.handler.Received()) > 1
 		}, time.Second, 50*time.Millisecond)
 
 		require.NoError(t, tc.target.Stop())
@@ -100,9 +100,9 @@ func TestPullTarget_Labels(t *testing.T) {
 }
 
 type testContext struct {
-	target     *PullTarget
-	promClient *fake.Client
-	sub        *fakeSubscription
+	target  *PullTarget
+	handler *loki.CollectingHandler
+	sub     *fakeSubscription
 }
 
 func testPullTarget(t *testing.T) *testContext {
@@ -110,11 +110,11 @@ func testPullTarget(t *testing.T) *testContext {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	sub := newFakeSubscription()
-	promClient := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
 	target := &PullTarget{
 		metrics:       NewMetrics(prometheus.NewRegistry()),
 		logger:        log.NewNopLogger(),
-		handler:       promClient,
+		handler:       handler,
 		relabelConfig: nil,
 		ctx:           ctx,
 		cancel:        cancel,
@@ -127,9 +127,9 @@ func testPullTarget(t *testing.T) *testContext {
 	}
 
 	return &testContext{
-		target:     target,
-		promClient: promClient,
-		sub:        sub,
+		target:  target,
+		handler: handler,
+		sub:     sub,
 	}
 }
 
