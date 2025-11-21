@@ -34,7 +34,6 @@ func TestDockerTarget(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	entryHandler := loki.NewCollectingHandler()
-	defer entryHandler.Stop()
 	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
 
@@ -95,7 +94,6 @@ func TestStartStopStressTest(t *testing.T) {
 
 	logger := log.NewNopLogger()
 	entryHandler := loki.NewCollectingHandler()
-	defer entryHandler.Stop()
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
