@@ -18,7 +18,7 @@ const (
 
 var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonLineTooLong}
 
-type Metrics struct {
+type metrics struct {
 	encodedBytes                 *prometheus.CounterVec
 	sentBytes                    *prometheus.CounterVec
 	droppedBytes                 *prometheus.CounterVec
@@ -32,8 +32,8 @@ type Metrics struct {
 	countersWithHostTenantReason []*prometheus.CounterVec
 }
 
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	var m Metrics
+func newMetrics(reg prometheus.Registerer) *metrics {
+	var m metrics
 
 	m.encodedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_encoded_bytes_total",
@@ -95,12 +95,12 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return &m
 }
 
-type WALEndpointMetrics struct {
+type walEndpointMetrics struct {
 	lastReadTimestamp *prometheus.GaugeVec
 }
 
-func NewWALEndpointMetrics(reg prometheus.Registerer) *WALEndpointMetrics {
-	m := &WALEndpointMetrics{
+func newWALEndpointMetrics(reg prometheus.Registerer) *walEndpointMetrics {
+	m := &walEndpointMetrics{
 		lastReadTimestamp: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "loki_write",
@@ -118,8 +118,8 @@ func NewWALEndpointMetrics(reg prometheus.Registerer) *WALEndpointMetrics {
 	return m
 }
 
-func (m *WALEndpointMetrics) CurryWithId(id string) *WALEndpointMetrics {
-	return &WALEndpointMetrics{
+func (m *walEndpointMetrics) CurryWithId(id string) *walEndpointMetrics {
+	return &walEndpointMetrics{
 		lastReadTimestamp: m.lastReadTimestamp.MustCurryWith(map[string]string{
 			"id": id,
 		}),

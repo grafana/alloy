@@ -22,7 +22,7 @@ var entry = loki.Entry{
 
 func TestQueue_append(t *testing.T) {
 	// a queue with 8 bytes batches and only one batch can queued.
-	q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+	q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 		BatchSize: 8,
 		QueueConfig: QueueConfig{
 			Capacity: 8,
@@ -59,7 +59,7 @@ func TestQueue_append(t *testing.T) {
 func TestQueue_drain(t *testing.T) {
 	t.Run("should drain queue and current batch", func(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
-		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
 			QueueConfig: QueueConfig{
 				Capacity: 8,
@@ -80,7 +80,7 @@ func TestQueue_drain(t *testing.T) {
 
 	t.Run("should only drain queue", func(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
-		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
 			BatchWait: 10 * time.Second,
 			QueueConfig: QueueConfig{
@@ -104,7 +104,7 @@ func TestQueue_drain(t *testing.T) {
 func TestQueue_flushAndShutdown(t *testing.T) {
 	t.Run("should flush all batches to queue", func(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
-		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
 			QueueConfig: QueueConfig{
 				Capacity: 8,
@@ -142,7 +142,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 
 	t.Run("should stop early if done channel is closed", func(t *testing.T) {
 		// a queue with 8 bytes batches and only one batch can queued at any given time.
-		q := newQueue(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
 			BatchSize: 8,
 			QueueConfig: QueueConfig{
 				Capacity: 8,
