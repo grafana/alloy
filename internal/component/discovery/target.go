@@ -26,8 +26,14 @@ type Target struct {
 var (
 	seps = []byte{'\xff'}
 	// used in tests to simulate hash conflicts
-	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
-	stringSlicesPool = sync.Pool{New: func() any { return make([]string, 0, 20) }}
+	labelSetEqualsFn  = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	stringSlicesPool  = sync.Pool{New: func() any { return make([]string, 0, 20) }}
+	borrowLabelsSlice = func() []string {
+		return stringSlicesPool.Get().([]string)
+	}
+	releaseLabelsSlice = func(labels []string) {
+		stringSlicesPool.Put(labels[:0])
+	}
 
 	_ syntax.Capsule                = Target{}
 	_ syntax.ConvertibleIntoCapsule = Target{}
@@ -284,8 +290,8 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
-	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:0])
+	labelsInOrder := borrowLabelsSlice()
+	defer releaseLabelsSlice(labelsInOrder)
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -298,8 +304,8 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
-	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:0])
+	labelsInOrder := borrowLabelsSlice()
+	defer releaseLabelsSlice(labelsInOrder)
 
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))
