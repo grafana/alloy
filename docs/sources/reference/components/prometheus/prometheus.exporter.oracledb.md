@@ -17,7 +17,7 @@ The `prometheus.exporter.oracledb` component embeds
 
 Ensure you have the following:
 
-- Oracle Instant Client Basic installed on the system running Grafana Alloy
+- Oracle Instant Client Basic installed on the system running {{< param "PRODUCT_NAME" >}}
 - Appropriate environment variables configured for Oracle Client libraries
 
 ### Oracle instant client basic
@@ -26,7 +26,7 @@ When you run the standalone binary, you must install the [Oracle Instant Client 
 Only the basic version is required for the exporter.
 
 {{< admonition type="note" >}}
-The Alloy Docker image includes the Oracle Instant Client, so this prerequisite only applies to standalone binary installations.
+The {{< param "PRODUCT_NAME" >}} Docker image includes the Oracle Instant Client, so this prerequisite only applies to standalone binary installations.
 {{< /admonition >}}
 
 ### Environment variables
