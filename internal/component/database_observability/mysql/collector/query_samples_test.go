@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
@@ -129,7 +129,7 @@ func TestQuerySamples(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:              db,
@@ -229,7 +229,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
@@ -324,7 +324,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
@@ -491,7 +491,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
@@ -610,7 +610,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -727,7 +727,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -835,7 +835,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -1096,7 +1096,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:              db,
@@ -1165,7 +1165,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
@@ -1293,7 +1293,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
@@ -1419,7 +1419,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
@@ -1639,7 +1639,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			),
 		)
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		c := &QuerySamples{
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
@@ -2103,7 +2103,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                          db,
@@ -2212,7 +2212,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                          db,

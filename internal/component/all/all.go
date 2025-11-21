@@ -61,6 +61,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/source/syslog"                       // Import loki.source.syslog
 	_ "github.com/grafana/alloy/internal/component/loki/source/windowsevent"                 // Import loki.source.windowsevent
 	_ "github.com/grafana/alloy/internal/component/loki/write"                               // Import loki.write
+	_ "github.com/grafana/alloy/internal/component/mimir/alerts/kubernetes"                  // Import mimir.alerts.kubernetes
 	_ "github.com/grafana/alloy/internal/component/mimir/rules/kubernetes"                   // Import mimir.rules.kubernetes
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/basic"                       // Import otelcol.auth.basic
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/bearer"                      // Import otelcol.auth.bearer
@@ -163,6 +164,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
 	_ "github.com/grafana/alloy/internal/component/prometheus/write/queue"                   // Import prometheus.write.queue
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
+	_ "github.com/grafana/alloy/internal/component/pyroscope/enrich"                         // Import pyroscope.enrich
 	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java
 	_ "github.com/grafana/alloy/internal/component/pyroscope/receive_http"                   // Import pyroscope.receive_http
 	_ "github.com/grafana/alloy/internal/component/pyroscope/relabel"                        // Import pyroscope.relabel

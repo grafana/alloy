@@ -10,6 +10,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,10 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 const (
