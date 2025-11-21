@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func Test_TopicDiscovery(t *testing.T) {
@@ -79,7 +79,7 @@ func Test_TopicDiscovery(t *testing.T) {
 func Test_NewTarget(t *testing.T) {
 	ts := &TargetSyncer{
 		logger: log.NewNopLogger(),
-		client: fake.NewClient(func() {}),
+		client: loki.NewCollectingHandler(),
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
 				{

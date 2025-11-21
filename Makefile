@@ -88,7 +88,6 @@ GOARM                ?= $(shell go env GOARM)
 CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
-GO_TAGS              ?= slicelabels
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
