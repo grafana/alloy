@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/libpf/pfelf"
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 
@@ -264,7 +265,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 	}
 	rep := newReporter()
 	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{
-		symbols: map[symbolizerKey]samples.SourceInfo{
+		symbols: map[symbolizerKey]irsymcache.SourceInfo{
 			key: {
 				LineNumber:   9,
 				FunctionName: libpf.Intern("_ZN15PlatformMonitor4waitEm"),
@@ -406,7 +407,7 @@ Mappings
 }
 
 type symbolizer struct {
-	symbols map[symbolizerKey]samples.SourceInfo
+	symbols map[symbolizerKey]irsymcache.SourceInfo
 }
 
 type symbolizerKey struct {
@@ -422,7 +423,7 @@ func (s symbolizer) ObserveExecutable(id host.FileID, ref *pfelf.Reference) erro
 	return nil
 }
 
-func (s symbolizer) ResolveAddress(file host.FileID, addr uint64) (samples.SourceInfo, error) {
+func (s symbolizer) ResolveAddress(file host.FileID, addr uint64) (irsymcache.SourceInfo, error) {
 	return s.symbols[symbolizerKey{fid: file, addr: addr}], nil
 }
 

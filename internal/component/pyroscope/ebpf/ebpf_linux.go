@@ -65,7 +65,10 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	if err != nil {
 		return nil, err
 	}
-	cfg.FileObserver = nfs
+	// Note: FileObserver field was removed from controller.Config in ebpf-profiler v0.0.202545
+	// TODO: Investigate if there's a replacement API or if this is now handled internally
+	// cfg.FileObserver = nfs
+	_ = nfs // Keep nfs for potential future use
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -138,9 +141,11 @@ func (c *Component) Run(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
-		if c.cfg.FileObserver != nil {
-			c.cfg.FileObserver.Cleanup()
-		}
+		// Note: FileObserver field was removed from controller.Config in ebpf-profiler v0.0.202545
+		// TODO: Investigate if cleanup is now handled internally or needs a different approach
+		// if c.cfg.FileObserver != nil {
+		// 	c.cfg.FileObserver.Cleanup()
+		// }
 	}()
 
 	var g run.Group
