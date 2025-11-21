@@ -14,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
@@ -25,7 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
 func TestDockerTarget(t *testing.T) {
@@ -34,7 +33,8 @@ func TestDockerTarget(t *testing.T) {
 
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
 	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
 
@@ -94,7 +94,8 @@ func TestStartStopStressTest(t *testing.T) {
 	defer server.Close()
 
 	logger := log.NewNopLogger()
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
@@ -178,7 +179,7 @@ func newDockerServer(t *testing.T) *httptest.Server {
 }
 
 // assertExpectedLog will verify that all expectedLines were received, in any order, without duplicates.
-func assertExpectedLog(c *assert.CollectT, entryHandler *fake.Client, expectedLines []string) {
+func assertExpectedLog(c *assert.CollectT, entryHandler *loki.CollectingHandler, expectedLines []string) {
 	logLines := entryHandler.Received()
 	testLogLines := make(map[string]int)
 	for _, l := range logLines {
