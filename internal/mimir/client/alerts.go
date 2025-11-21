@@ -3,8 +3,8 @@ package client
 import (
 	"context"
 
+	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	alertmgr_cfg "github.com/prometheus/alertmanager/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,11 +17,13 @@ type configCompat struct {
 }
 
 func (r *MimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf *alertmgr_cfg.Config, templateFiles map[string]string) error {
-	// If we don't set this, secrets will be obfuscated by being set to "<secret>".
-	alertmgr_cfg.MarshalSecretValue = true
+	confStr, err := conf.String()
+	if err != nil {
+		return err
+	}
 
 	payload := configCompat{
-		AlertmanagerConfig: conf.String(),
+		AlertmanagerConfig: confStr,
 		TemplateFiles:      templateFiles,
 	}
 	payloadStr, err := yaml.Marshal(&payload)
