@@ -35,12 +35,19 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-// Upstream prometheus implementation https://github.com/prometheus/prometheus/blob/main/tsdb/agent/db.go
-// 	based on the prometheus tsdb head wal https://github.com/prometheus/prometheus/blob/main/tsdb/head_wal.go
+var (
+	// Upstream prometheus implementation https://github.com/prometheus/prometheus/blob/main/tsdb/agent/db.go
+	// 	based on the prometheus tsdb head wal https://github.com/prometheus/prometheus/blob/main/tsdb/head_wal.go
 
-// ErrWALClosed is an error returned when a WAL operation can't run because the
-// storage has already been closed.
-var ErrWALClosed = fmt.Errorf("WAL storage closed")
+	// ErrWALClosed is an error returned when a WAL operation can't run because the
+	// storage has already been closed.
+	ErrWALClosed = fmt.Errorf("WAL storage closed")
+
+	// TODO(x1unix): use errors from "storage" pkg after prometheus package will be upgraded.
+
+	ErrSTNewerThanSample = errors.New("ST is newer or the same as sample's timestamp, ignoring")
+	ErrOutOfOrderST      = errors.New("start timestamp out of order, ignoring")
+)
 
 type storageMetrics struct {
 	r prometheus.Registerer
@@ -888,9 +895,54 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	return storage.SeriesRef(series.ref), nil
 }
 
-func (a *appender) AppendCTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ int64, _ int64) (storage.SeriesRef, error) {
+func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, st int64) (storage.SeriesRef, error) {
 	// TODO(ptodev): implement this later
-	return 0, nil
+	if st >= t {
+		return 0, ErrSTNewerThanSample
+	}
+
+	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
+	if series == nil {
+		l = l.WithoutEmpty()
+		if l.IsEmpty() {
+			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
+		}
+
+		if lbl, dup := l.HasDuplicateLabelNames(); dup {
+			return 0, fmt.Errorf(`label name "%s" is not unique: %w`, lbl, tsdb.ErrInvalidSample)
+		}
+
+		newSeries, created := a.getOrCreate(l)
+		if created {
+			a.pendingSeries = append(a.pendingSeries, record.RefSeries{
+				Ref:    newSeries.ref,
+				Labels: l,
+			})
+			a.w.metrics.numActiveSeries.Inc()
+		}
+
+		series = newSeries
+	}
+
+	series.Lock()
+	defer series.Unlock()
+
+	if st <= series.lastTs {
+		// discard the sample if it's out of order.
+		return 0, ErrOutOfOrderST
+	}
+	series.lastTs = st
+
+	// NOTE: always modify pendingSamples and sampleSeries together.
+	a.pendingSamples = append(a.pendingSamples, record.RefSample{
+		Ref: series.ref,
+		T:   st,
+		V:   0,
+	})
+	a.sampleSeries = append(a.sampleSeries, series)
+	a.w.metrics.totalAppendedSamples.Inc()
+
+	return storage.SeriesRef(series.ref), nil
 }
 
 func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
@@ -903,9 +955,74 @@ func (a *appender) SetOptions(_ *storage.AppendOptions) {
 	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
 }
 
-func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	// TODO: implement this later
-	return 0, nil
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if h != nil {
+		if err := h.Validate(); err != nil {
+			return 0, err
+		}
+	}
+	if fh != nil {
+		if err := fh.Validate(); err != nil {
+			return 0, err
+		}
+	}
+	if st >= t {
+		return 0, ErrSTNewerThanSample
+	}
+
+	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
+	if series == nil {
+		// Ensure no empty labels have gotten through.
+		l = l.WithoutEmpty()
+		if l.IsEmpty() {
+			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
+		}
+
+		if lbl, dup := l.HasDuplicateLabelNames(); dup {
+			return 0, fmt.Errorf(`label name "%s" is not unique: %w`, lbl, tsdb.ErrInvalidSample)
+		}
+
+		var created bool
+		series, created = a.getOrCreate(l)
+		if created {
+			a.pendingSeries = append(a.pendingSeries, record.RefSeries{
+				Ref:    series.ref,
+				Labels: l,
+			})
+			a.w.metrics.numActiveSeries.Inc()
+		}
+	}
+
+	series.Lock()
+	defer series.Unlock()
+
+	if st <= series.lastTs {
+		// discard the sample if it's out of order.
+		return 0, ErrOutOfOrderST
+	}
+	series.lastTs = st
+
+	switch {
+	case h != nil:
+		zeroHistogram := &histogram.Histogram{}
+		a.pendingHistograms = append(a.pendingHistograms, record.RefHistogramSample{
+			Ref: series.ref,
+			T:   st,
+			H:   zeroHistogram,
+		})
+		a.histogramSeries = append(a.histogramSeries, series)
+	case fh != nil:
+		a.pendingFloatHistograms = append(a.pendingFloatHistograms, record.RefFloatHistogramSample{
+			Ref: series.ref,
+			T:   st,
+			FH:  &histogram.FloatHistogram{},
+		})
+		a.floatHistogramSeries = append(a.floatHistogramSeries, series)
+	}
+
+	// TODO: prometheus uses CounterVec metric here.
+	a.w.metrics.totalAppendedSamples.Inc()
+	return storage.SeriesRef(series.ref), nil
 }
 
 // Commit submits the collected samples and purges the batch.
