@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 func TestWALConsumer(t *testing.T) {
@@ -41,7 +42,7 @@ func TestWALConsumer(t *testing.T) {
 	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
 	go func() {
 		for req := range rwReceivedReqs {
 			receivedRequests.Append(req)
@@ -98,7 +99,7 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
 	go func(ctx context.Context) {
 		for {
@@ -220,13 +221,13 @@ func TestWALClient(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
-			receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+			receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 			// count the number for remote-write requests received (which should correlated with the number of sent batches),
 			// and the total number of entries.
 			var receivedRWsCount atomic.Int64
 			var receivedEntriesCount atomic.Int64
 
-			receivedReqs := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+			receivedReqs := utils.NewSyncSlice[util.RemoteWriteRequest]()
 			go func() {
 				for req := range receivedReqsChan {
 					receivedReqs.Append(req)
@@ -238,7 +239,7 @@ func TestWALClient(t *testing.T) {
 			}()
 
 			// Start a local HTTP server
-			server := utils.NewRemoteWriteServer(receivedReqsChan, 200)
+			server := util.NewRemoteWriteServer(receivedReqsChan, 200)
 			require.NotNil(t, server)
 			defer server.Close()
 
@@ -361,7 +362,7 @@ func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
-	receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+	receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 	// count the number for remote-write requests received (which should correlated with the number of sent batches),
 	// and the total number of entries.
 	var receivedEntriesCount atomic.Int64
@@ -378,7 +379,7 @@ func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.
 	}()
 
 	// Start a local HTTP server
-	server := utils.NewRemoteWriteServer(receivedReqsChan, 200)
+	server := util.NewRemoteWriteServer(receivedReqsChan, 200)
 	require.NotNil(b, server)
 	defer server.Close()
 
@@ -453,7 +454,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
-	receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+	receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 	// count the number for remote-write requests received (which should correlated with the number of sent batches),
 	// and the total number of entries.
 	var receivedEntriesCount atomic.Int64
@@ -470,7 +471,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	}()
 
 	// Start a local HTTP server
-	server := utils.NewRemoteWriteServer(receivedReqsChan, 200)
+	server := util.NewRemoteWriteServer(receivedReqsChan, 200)
 	require.NotNil(b, server)
 	defer server.Close()
 

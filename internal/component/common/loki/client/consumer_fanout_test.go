@@ -31,7 +31,7 @@ func TestFanoutConsumer(t *testing.T) {
 	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
 	go func() {
 		for req := range rwReceivedReqs {
 			receivedRequests.Append(req)
@@ -82,7 +82,7 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
-	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	receivedRequests := utils.NewSyncSlice[util.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
 	go func(ctx context.Context) {
 		for {
@@ -615,11 +615,11 @@ func TestClient_Handle(t *testing.T) {
 	}
 }
 
-func newServerAndClientConfig(t *testing.T) (Config, chan utils.RemoteWriteRequest, func()) {
-	receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+func newServerAndClientConfig(t *testing.T) (Config, chan util.RemoteWriteRequest, func()) {
+	receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 	// Start a local HTTP server
-	server := utils.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
+	server := util.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
 	require.NotNil(t, server)
 
 	testClientURL, _ := url.Parse(server.URL)
