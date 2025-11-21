@@ -104,9 +104,9 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	// Add entry to existing batch. If we cannot add entry to batch we will drop it.
 	if err := batch.add(entry, segmentNum); err != nil {
 		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
-		reason := ReasonGeneric
+		reason := reasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
-			reason = ReasonStreamLimited
+			reason = reasonStreamLimited
 		}
 		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(len(entry.Line)))
 		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Inc()
@@ -355,7 +355,7 @@ func (s *shards) initBatchMetrics(tenantID string) {
 	// Initialize counters to 0 so the metrics are exported before the first
 	// occurrence of incrementing to avoid missing metrics.
 	for _, counter := range s.metrics.countersWithHostTenantReason {
-		for _, reason := range Reasons {
+		for _, reason := range reasons {
 			counter.WithLabelValues(s.cfg.URL.Host, tenantID, reason).Add(0)
 		}
 	}
@@ -399,8 +399,8 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if s.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
 			level.Warn(s.logger).Log("msg", "dropping batch due to rate limiting applied at ingester")
-			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, ReasonRateLimited).Add(bufBytes)
-			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, ReasonRateLimited).Add(float64(entriesCount))
+			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(bufBytes)
+			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(float64(entriesCount))
 			return
 		}
 
@@ -428,9 +428,9 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 	level.Error(s.logger).Log("msg", "final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
 	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
 	// were for a different reason
-	dropReason := ReasonGeneric
+	dropReason := reasonGeneric
 	if batchIsRateLimited(status) {
-		dropReason = ReasonRateLimited
+		dropReason = reasonRateLimited
 	}
 	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
 	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
