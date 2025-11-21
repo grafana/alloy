@@ -51,6 +51,7 @@ type KubernetesDecorator struct {
 	InformersResyncPeriod time.Duration `alloy:"informers_resync_period,attr,optional"`
 	DisableInformers      []string      `alloy:"disable_informers,attr,optional"`
 	MetaRestrictLocalNode bool          `alloy:"meta_restrict_local_node,attr,optional"`
+	MetaCacheAddress      string        `alloy:"meta_cache_address,attr,optional"`
 }
 
 type InstanceIDConfig struct {
@@ -117,6 +118,8 @@ type Metrics struct {
 	Instrumentations                []string `alloy:"instrumentations,attr,optional"`
 	AllowServiceGraphSelfReferences bool     `alloy:"allow_service_graph_self_references,attr,optional"`
 	Network                         Network  `alloy:"network,block,optional"`
+	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
+	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
 }
 
 type Traces struct {

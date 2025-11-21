@@ -405,6 +405,10 @@ stage.static_labels {
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
 			},
+			FileMatch: lsf.FileMatch{
+				Enabled:    false,
+				SyncPeriod: 10 * time.Second,
+			},
 		})
 		require.NoError(t, err)
 	}()

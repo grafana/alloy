@@ -72,7 +72,10 @@ type Arguments struct {
 	Encoding                             string        `alloy:"encoding,attr,optional"` // Deprecated
 	PartitionTracesByID                  bool          `alloy:"partition_traces_by_id,attr,optional"`
 	PartitionMetricsByResourceAttributes bool          `alloy:"partition_metrics_by_resource_attributes,attr,optional"`
+	PartitionLogsByResourceAttributes    bool          `alloy:"partition_logs_by_resource_attributes,attr,optional"`
+	PartitionLogsByTraceID               bool          `alloy:"partition_logs_by_trace_id,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
+	IncludeMetadataKeys                  []string      `alloy:"include_metadata_keys,attr,optional"`
 
 	Logs    *KafkaExporterSignalConfig `alloy:"logs,block,optional"`
 	Metrics *KafkaExporterSignalConfig `alloy:"metrics,block,optional"`
@@ -90,8 +93,9 @@ type Arguments struct {
 }
 
 type KafkaExporterSignalConfig struct {
-	Topic    string `alloy:"topic,attr,optional"`
-	Encoding string `alloy:"encoding,attr,optional"`
+	Topic                string `alloy:"topic,attr,optional"`
+	TopicFromMetadataKey string `alloy:"topic_from_metadata_key,attr,optional"`
+	Encoding             string `alloy:"encoding,attr,optional"`
 }
 
 // A utility struct for handling deprecated arguments.
@@ -114,6 +118,7 @@ func (c *KafkaExporterSignalConfig) convert(topic, encoding deprecatedArg) kafka
 		if len(c.Encoding) > 0 {
 			result.Encoding = c.Encoding
 		}
+		result.TopicFromMetadataKey = c.TopicFromMetadataKey
 	} else { // Try to use deprecated attributes only if the new block is not set.
 		if len(topic.value) > 0 {
 			result.Topic = topic.value
@@ -140,7 +145,7 @@ type Producer struct {
 	MaxMessageBytes int `alloy:"max_message_bytes,attr,optional"`
 
 	// RequiredAcks Number of acknowledgements required to assume that a message has been sent.
-	// https://pkg.go.dev/github.com/IBM/sarama@v1.30.0#RequiredAcks
+	// https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
 	// The options are:
 	//   0 -> NoResponse.  doesn't send any response
 	//   1 -> WaitForLocal. waits for only the local commit to succeed before responding ( default )
@@ -159,16 +164,20 @@ type Producer struct {
 	// broker request. Defaults to 0 for unlimited. Similar to
 	// `queue.buffering.max.messages` in the JVM producer.
 	FlushMaxMessages int `alloy:"flush_max_messages,attr,optional"`
+
+	// Whether or not to allow automatic topic creation.
+	AllowAutoTopicCreation bool `alloy:"allow_auto_topic_creation,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
 func (args Producer) Convert() configkafka.ProducerConfig {
 	return configkafka.ProducerConfig{
-		MaxMessageBytes:   args.MaxMessageBytes,
-		RequiredAcks:      configkafka.RequiredAcks(args.RequiredAcks),
-		Compression:       args.Compression,
-		CompressionParams: args.CompressionParams.Convert(),
-		FlushMaxMessages:  args.FlushMaxMessages,
+		MaxMessageBytes:        args.MaxMessageBytes,
+		RequiredAcks:           configkafka.RequiredAcks(args.RequiredAcks),
+		Compression:            args.Compression,
+		CompressionParams:      args.CompressionParams.Convert(),
+		FlushMaxMessages:       args.FlushMaxMessages,
+		AllowAutoTopicCreation: args.AllowAutoTopicCreation,
 	}
 }
 
@@ -192,7 +201,7 @@ var (
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Brokers:  []string{"localhost:9092"},
-		ClientID: "sarama",
+		ClientID: "otel-collector",
 		Timeout:  5 * time.Second,
 		Metadata: otelcol.KafkaMetadataArguments{
 			Full:            true,
@@ -209,7 +218,8 @@ func (args *Arguments) SetToDefault() {
 			CompressionParams: CompressionParams{
 				Level: 0, // Default compression level
 			},
-			FlushMaxMessages: 0,
+			FlushMaxMessages:       0,
+			AllowAutoTopicCreation: true,
 		},
 	}
 	args.Retry.SetToDefault()
@@ -247,6 +257,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// result.Encoding = args.Encoding
 	result.PartitionTracesByID = args.PartitionTracesByID
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
+	result.PartitionLogsByResourceAttributes = args.PartitionLogsByResourceAttributes
+	result.PartitionLogsByTraceID = args.PartitionLogsByTraceID
+	result.IncludeMetadataKeys = args.IncludeMetadataKeys
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}

@@ -228,8 +228,3 @@ func TestWindowsEventValidate(t *testing.T) {
 		})
 	}
 }
-
-func TestWindowsEventStabilityLevel(t *testing.T) {
-	_, err := NewPipeline(log.NewNopLogger(), loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityPublicPreview)
-	require.ErrorContains(t, err, `invalid stage config stage "windowsevent" is at stability level "experimental", which is below the minimum allowed stability level "public-preview". Use --stability.level command-line flag to enable "experimental" features`)
-}

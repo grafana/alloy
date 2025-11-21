@@ -39,12 +39,16 @@ otelcol.exporter.kafka "LABEL" {
 You can use the following arguments with `otelcol.exporter.kafka`:
 
 | Name                                       | Type           | Description                                                                                                                 | Default              | Required |
-| ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- |
+|--------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------|----------------------|----------|
 | `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                              |                      | yes      |
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
-| `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"sarama"`           | no       |
+| `allow_auto_topic_creation`                | `bool`         | Whether to allow automatic topic creation.                                                                                  | `true`               | no       |
+| `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"otel-collector"`   | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                           | `"otlp_proto"`       | no       |
+| `include_metadata_keys`                    | `list(string)` | List of metadata keys to propagate as Kafka message headers.                                                                | `[]`                 | no       |
 | `partition_metrics_by_resource_attributes` | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `false`              | no       |
+| `partition_logs_by_resource_attributes`    | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in log messages sent to Kafka.    | `false`              | no       |
+| `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
@@ -55,9 +59,14 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
 {{< /admonition >}}
 
+When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
 When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
 
 `partition_traces_by_id` doesn't have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.
+
+`partition_logs_by_resource_attributes` and `partition_logs_by_trace_id` are mutually exclusive and can't both be `true`.
+
+`include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
 
 ## Blocks
 
@@ -112,28 +121,31 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 	
 The `logs` block configures how to send logs to Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default        | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`    | `string` | The name of the Kafka topic to which logs will be exported.                  | `"otlp_logs"`  | no       |
+| Name                     | Type     | Description                                                                  | Default        | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
+| `topic`                  | `string` | The name of the Kafka topic to which logs will be exported.                  | `"otlp_logs"`  | no       |
+| `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
 ### `metrics`
 
 The `metrics` block configures how to send metrics to Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default          | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
-| `topic`    | `string` | The name of the Kafka topic to which metrics will be exported.               | `"otlp_metrics"` | no       |
+| Name                     | Type     | Description                                                                  | Default          | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
+| `topic`                  | `string` | The name of the Kafka topic to which metrics will be exported.               | `"otlp_metrics"` | no       |
+| `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`             | no       |
 
 ### `traces`
 
 The `traces` block configures how to send traces to Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default        | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`    | `string` | The name of the Kafka topic to which traces will be exported.                | `"otlp_spans"` | no       |
+| Name                     | Type     | Description                                                                  | Default        | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
+| `topic`                  | `string` | The name of the Kafka topic to which traces will be exported.                | `"otlp_spans"` | no       |
+| `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
 ### `authentication`
 
@@ -241,7 +253,6 @@ The `sending_queue` block configures queueing and batching for the exporter.
 ### `batch`
 
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
-By default, the `batch` block is not used.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

@@ -14,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,6 +21,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 )
 
@@ -179,25 +178,28 @@ func TestHerokuDrainTarget(t *testing.T) {
 				},
 				RelabelConfigs: []*relabel.Config{
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_host"},
-						TargetLabel:  "host",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_host"},
+						TargetLabel:          "host",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_app"},
-						TargetLabel:  "app",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_app"},
+						TargetLabel:          "app",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_proc"},
-						TargetLabel:  "procID",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_proc"},
+						TargetLabel:          "procID",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 				},
 			},
@@ -224,32 +226,36 @@ func TestHerokuDrainTarget(t *testing.T) {
 				},
 				RelabelConfigs: []*relabel.Config{
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_host"},
-						TargetLabel:  "host",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_host"},
+						TargetLabel:          "host",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_app"},
-						TargetLabel:  "app",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_app"},
+						TargetLabel:          "app",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_proc"},
-						TargetLabel:  "procID",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_proc"},
+						TargetLabel:          "procID",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__heroku_drain_param_some_query_param"},
-						TargetLabel:  "query_param",
-						Replacement:  "$1",
-						Action:       relabel.Replace,
-						Regex:        relabel.MustNewRegexp("(.*)"),
+						SourceLabels:         model.LabelNames{"__heroku_drain_param_some_query_param"},
+						TargetLabel:          "query_param",
+						Replacement:          "$1",
+						Action:               relabel.Replace,
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						NameValidationScheme: model.LegacyValidation,
 					},
 				},
 			},
@@ -269,8 +275,7 @@ func TestHerokuDrainTarget(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			// Create fake promtail client
-			eh := fake.NewClient(func() {})
+			eh := loki.NewCollectingHandler()
 			defer eh.Stop()
 
 			serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -330,8 +335,7 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -374,7 +378,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	logger := log.NewLogfmtLogger(w)
 
 	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -389,11 +393,12 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
 	tenantIDRelabelConfig := []*relabel.Config{
 		{
-			SourceLabels: model.LabelNames{"__tenant_id__"},
-			TargetLabel:  "tenant_id",
-			Replacement:  "$1",
-			Action:       relabel.Replace,
-			Regex:        relabel.MustNewRegexp("(.*)"),
+			SourceLabels:         model.LabelNames{"__tenant_id__"},
+			TargetLabel:          "tenant_id",
+			Replacement:          "$1",
+			Action:               relabel.Replace,
+			Regex:                relabel.MustNewRegexp("(.*)"),
+			NameValidationScheme: model.LegacyValidation,
 		},
 	}
 	pt, err := NewHerokuTarget(metrics, logger, eh, tenantIDRelabelConfig, config, prometheus.DefaultRegisterer)
@@ -421,7 +426,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels["tenant_id"])
 }
 
-func waitForMessages(eh *fake.Client) {
+func waitForMessages(eh *loki.CollectingHandler) {
 	countdown := 1000
 	for len(eh.Received()) != 1 && countdown > 0 {
 		time.Sleep(1 * time.Millisecond)

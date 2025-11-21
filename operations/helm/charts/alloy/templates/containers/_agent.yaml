@@ -32,8 +32,8 @@
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    {{- range $values.extraEnv }}
-    - {{- toYaml . | nindent 6 }}
+    {{- with $values.extraEnv }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- if $values.envFrom }}
   envFrom:

@@ -7,13 +7,12 @@ package extension
 
 import (
 	"context"
-	"os"
 
-	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
@@ -143,18 +142,19 @@ func (e *Extension) Update(args component.Arguments) error {
 	settings := otelextension.Settings{
 		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(e.opts.Logger),
-
+			Logger:         zapadapter.New(e.opts.Logger),
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
 		},
 
-		BuildInfo: otelcomponent.BuildInfo{
-			Command:     os.Args[0],
-			Description: "Grafana Alloy",
-			Version:     build.Version,
-		},
+		BuildInfo: otelcolutil.GetBuildInfo(),
 	}
+
+	resource, err := otelcolutil.GetTelemetrySettingsResource()
+	if err != nil {
+		return err
+	}
+	settings.TelemetrySettings.Resource = resource
 
 	extensionConfig, err := rargs.Convert(e.opts)
 	if err != nil {

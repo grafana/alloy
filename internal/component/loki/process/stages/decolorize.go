@@ -1,7 +1,7 @@
 package stages
 
 import (
-	"github.com/grafana/loki/v3/pkg/logql/log"
+	"github.com/grafana/regexp"
 )
 
 type DecolorizeConfig struct{}
@@ -12,18 +12,18 @@ func newDecolorizeStage(_ DecolorizeConfig) (Stage, error) {
 	return &decolorizeStage{}, nil
 }
 
+// regexp to select ANSI characters courtesy of https://github.com/acarl005/stripansi
+const ansiPattern = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+
+var ansiRegex = regexp.MustCompile(ansiPattern)
+
 // Run implements Stage
 func (m *decolorizeStage) Run(in chan Entry) chan Entry {
-	decolorizer, _ := log.NewDecolorizer()
 	out := make(chan Entry)
 	go func() {
 		defer close(out)
 		for e := range in {
-			decolorizedLine, _ := decolorizer.Process(
-				e.Timestamp.Unix(),
-				[]byte(e.Entry.Line),
-				nil,
-			)
+			decolorizedLine := ansiRegex.ReplaceAll([]byte(e.Line), []byte{})
 			e.Entry.Line = string(decolorizedLine)
 			out <- e
 		}

@@ -151,6 +151,7 @@ func TestUnmarshalDefault(t *testing.T) {
 					Endpoint:              "0.0.0.0:4318",
 					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 					CORS:                  configoptional.Some[confighttp.CORSConfig](confighttp.CORSConfig{}),
+					KeepAlivesEnabled:     true,
 				},
 				TracesURLPath:  "/v1/traces",
 				MetricsURLPath: "/v1/metrics",

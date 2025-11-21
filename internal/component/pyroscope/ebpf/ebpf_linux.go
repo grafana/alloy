@@ -65,7 +65,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	if err != nil {
 		return nil, err
 	}
-	cfg.FileObserver = nfs
+	cfg.ExecutableReporter = nfs
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -138,8 +138,10 @@ func (c *Component) Run(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
-		if c.cfg.FileObserver != nil {
-			c.cfg.FileObserver.Cleanup()
+		if c.cfg.ExecutableReporter != nil {
+			if nfs, ok := c.cfg.ExecutableReporter.(*irsymcache.Resolver); ok {
+				nfs.Cleanup()
+			}
 		}
 	}()
 
@@ -235,6 +237,9 @@ func NewDefaultArguments() Arguments {
 		DotNetEnabled:   true,
 		OffCPUThreshold: 0,
 		GoEnabled:       true,
+		LoadProbe:       false,
+		UProbeLinks:     []string{},
+		VerboseMode:     false,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
@@ -259,10 +264,14 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	}
 
 	cfg := &controller.Config{Config: cfgProtoType}
+	cfg.SendErrorFrames = true
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
 	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.LoadProbe = args.LoadProbe
+	cfg.UProbeLinks = args.UProbeLinks
+	cfg.VerboseMode = args.VerboseMode
 	return cfg, nil
 }
 

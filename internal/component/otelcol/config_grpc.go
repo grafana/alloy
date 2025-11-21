@@ -188,9 +188,9 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 		return nil, nil
 	}
 
-	opaqueHeaders := make(map[string]configopaque.String)
+	opaqueHeaders := configopaque.MapList{}
 	for headerName, headerVal := range args.Headers {
-		opaqueHeaders[headerName] = configopaque.String(headerVal)
+		opaqueHeaders.Set(headerName, configopaque.String(headerVal))
 	}
 
 	// Configure authentication if args.Auth is set.

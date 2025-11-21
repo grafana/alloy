@@ -5,9 +5,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ func TestFormat(t *testing.T) {
 		relabel              []*relabel.Config
 		useIncomingTimestamp bool
 		useFullLine          bool
-		expected             api.Entry
+		expected             loki.Entry
 	}{
 		{
 			name: "relabelling",
@@ -32,40 +33,44 @@ func TestFormat(t *testing.T) {
 			},
 			relabel: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__gcp_resource_labels_backend_service_name"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "backend_service_name",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_resource_labels_backend_service_name"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "backend_service_name",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__gcp_resource_labels_bucket_name"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "bucket_name",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_resource_labels_bucket_name"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "bucket_name",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__gcp_severity"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "severity",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_severity"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "severity",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__gcp_labels_dataflow_googleapis_com_region"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "region",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_labels_dataflow_googleapis_com_region"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "region",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			useIncomingTimestamp: true,
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname":              "pubsub-test",
 					"backend_service_name": "http-loki",
@@ -88,7 +93,7 @@ func TestFormat(t *testing.T) {
 				"jobname": "pubsub-test",
 			},
 			useIncomingTimestamp: true,
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -106,7 +111,7 @@ func TestFormat(t *testing.T) {
 			labels: model.LabelSet{
 				"jobname": "pubsub-test",
 			},
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -125,7 +130,7 @@ func TestFormat(t *testing.T) {
 			labels: model.LabelSet{
 				"jobname": "pubsub-test",
 			},
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -143,7 +148,7 @@ func TestFormat(t *testing.T) {
 			labels: model.LabelSet{
 				"jobname": "pubsub-test",
 			},
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -157,7 +162,7 @@ func TestFormat(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := parseGCPLogsEntry(c.msg.Data, c.labels, nil, c.useIncomingTimestamp, c.useFullLine, c.relabel)
+			got, err := parseGCPLogsEntry(c.msg.Data, c.labels, labels.EmptyLabels(), c.useIncomingTimestamp, c.useFullLine, c.relabel)
 
 			require.NoError(t, err)
 

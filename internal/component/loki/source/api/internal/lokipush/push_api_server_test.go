@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,11 +25,48 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax"
 )
+
+type fakeBatchReceiver struct {
+	entries  chan []loki.Entry
+	received []loki.Entry
+	mtx      sync.Mutex
+	wg       sync.WaitGroup
+}
+
+func newFakeBatchReceiver() *fakeBatchReceiver {
+	c := &fakeBatchReceiver{
+		entries: make(chan []loki.Entry),
+	}
+	c.wg.Go(func() {
+		for batch := range c.entries {
+			c.mtx.Lock()
+			c.received = append(c.received, batch...)
+			c.mtx.Unlock()
+		}
+	})
+	return c
+}
+
+func (c *fakeBatchReceiver) Chan() chan []loki.Entry {
+	return c.entries
+}
+
+func (c *fakeBatchReceiver) Received() []loki.Entry {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	cpy := make([]loki.Entry, len(c.received))
+	copy(cpy, c.received)
+	return cpy
+}
+
+func (c *fakeBatchReceiver) Stop() {
+	close(c.entries)
+	c.wg.Wait()
+}
 
 const localhost = "127.0.0.1"
 
@@ -56,14 +94,12 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/api/v1/push")
 	require.NoError(t, err)
 
-	ccfg := client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
 		BatchSize: 100 * 1024,
-	}
-	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, logger)
+	})
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -72,7 +108,7 @@ regex = "dropme"
 		"stream":             "stream1",
 		"__anotherdroplabel": "dropme",
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
@@ -143,14 +179,12 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/loki/api/v1/push")
 	require.NoError(t, err)
 
-	ccfg := client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
 		BatchSize: 100 * 1024,
-	}
-	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, logger)
+	})
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -159,7 +193,7 @@ regex = "dropme"
 		"stream":             "stream1",
 		"__anotherdroplabel": "dropme",
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
@@ -217,7 +251,7 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/api/v1/push")
 	require.NoError(t, err)
 
-	ccfg := client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
@@ -225,9 +259,7 @@ regex = "dropme"
 		Headers: map[string]string{
 			"X-Scope-OrgID": "tenant1",
 		},
-	}
-	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, logger)
+	})
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -236,7 +268,7 @@ regex = "dropme"
 		"stream":             "stream1",
 		"__anotherdroplabel": "dropme",
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
@@ -287,7 +319,7 @@ regex = "dropme"
 func TestPlaintextPushTarget(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
+	eh := newFakeBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -322,7 +354,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 	// Send some logs
 	ts := time.Now()
 	body := new(bytes.Buffer)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		body.WriteString("line" + strconv.Itoa(i))
 		_, err := http.Post(fmt.Sprintf("http://%s:%d/api/v1/raw", localhost, port), "text/json", body)
 		require.NoError(t, err)
@@ -356,7 +388,8 @@ func TestPlaintextPushTarget(t *testing.T) {
 func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
+
+	eh := newFakeBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -433,10 +466,6 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 
 func TestReady(t *testing.T) {
 	logger := log.NewNopLogger()
-	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
-	defer eh.Stop()
-
 	// Get a randomly available port by open and closing a TCP socket
 	addr, err := net.ResolveTCPAddr("tcp", localhost+":0")
 	require.NoError(t, err)
@@ -454,7 +483,7 @@ func TestReady(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
+	pt, err := NewPushAPIServer(logger, serverConfig, nil, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -497,9 +526,9 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fake.Client) {
+func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fakeBatchReceiver) {
 	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
+	eh := newFakeBatchReceiver()
 	t.Cleanup(func() {
 		eh.Stop()
 	})

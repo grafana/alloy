@@ -2,7 +2,6 @@ package remotecfg
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -25,8 +24,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
-	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/alloy/syntax/token"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -608,37 +605,6 @@ func TestRemoteConfigStatus_InitialState(t *testing.T) {
 	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET, false)
 }
 
-func TestGetErrorMessage_DiagnosticErrors(t *testing.T) {
-	// Test that diagnostic errors use AllMessages() for detailed error information
-
-	// Create a mock diagnostic error
-	mockDiags := diag.Diagnostics{
-		{
-			Severity: diag.SeverityLevelError,
-			StartPos: token.Position{Filename: "test.alloy", Line: 1, Column: 1},
-			Message:  "first error",
-		},
-		{
-			Severity: diag.SeverityLevelError,
-			StartPos: token.Position{Filename: "test.alloy", Line: 2, Column: 1},
-			Message:  "second error",
-		},
-	}
-
-	// Test getErrorMessage function directly
-	errorMsg := getErrorMessage(mockDiags)
-
-	// Should contain both error messages, not just the first
-	assert.Contains(t, errorMsg, "first error")
-	assert.Contains(t, errorMsg, "second error")
-	assert.Contains(t, errorMsg, ";") // Should be joined with semicolon
-
-	// Test with regular error
-	regularErr := errors.New("simple error")
-	regularMsg := getErrorMessage(regularErr)
-	assert.Equal(t, "simple error", regularMsg)
-}
-
 func TestRemoteConfigStatusTransitions(t *testing.T) {
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
@@ -827,4 +793,80 @@ func TestRemoteConfigStatusNotifications(t *testing.T) {
 
 	assert.GreaterOrEqual(t, appliedCount, 1, "Should have sent at least one APPLIED status")
 	assert.GreaterOrEqual(t, failedCount, 1, "Should have sent at least one FAILED status")
+}
+
+// EffectiveConfig integration test
+
+func TestEffectiveConfigInGetConfig(t *testing.T) {
+	client := &mockCollectorClient{}
+
+	var capturedEffectiveConfig *collectorv1.EffectiveConfig
+	var captureMutex sync.Mutex
+
+	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		captureMutex.Lock()
+		capturedEffectiveConfig = req.Msg.EffectiveConfig
+		captureMutex.Unlock()
+		return &connect.Response[collectorv1.GetConfigResponse]{
+			Msg: &collectorv1.GetConfigResponse{
+				Content: "test config from server",
+				Hash:    "test-hash",
+			},
+		}, nil
+	}
+
+	var registerCalled atomic.Bool
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`url = "https://example.com/"`))
+
+	// First GetConfig call - should not include effective config (not set yet)
+	_, err := env.svc.getConfig()
+	require.NoError(t, err)
+	captureMutex.Lock()
+	captured := capturedEffectiveConfig
+	captureMutex.Unlock()
+	assert.Nil(t, captured, "effective config should be nil on first call before any config is loaded")
+
+	// Manually trigger a config load to set effective config
+	env.svc.cm.setEffectiveConfig([]byte("current running config"))
+
+	// Second GetConfig call - should include effective config (first time sending it)
+	captureMutex.Lock()
+	capturedEffectiveConfig = nil
+	captureMutex.Unlock()
+	_, err = env.svc.getConfig()
+	require.NoError(t, err)
+	captureMutex.Lock()
+	captured = capturedEffectiveConfig
+	captureMutex.Unlock()
+	assert.NotNil(t, captured, "effective config should be sent on first call after being set")
+	assert.Equal(t, []byte("current running config"), captured.ConfigMap.ConfigMap[""].Body)
+
+	// Third GetConfig call - should not include effective config (no change)
+	captureMutex.Lock()
+	capturedEffectiveConfig = nil
+	captureMutex.Unlock()
+	_, err = env.svc.getConfig()
+	require.NoError(t, err)
+	captureMutex.Lock()
+	captured = capturedEffectiveConfig
+	captureMutex.Unlock()
+	assert.Nil(t, captured, "effective config should not be sent when unchanged")
+
+	// Update the effective config
+	env.svc.cm.setEffectiveConfig([]byte("updated running config"))
+
+	// Fourth GetConfig call - should include updated effective config
+	captureMutex.Lock()
+	capturedEffectiveConfig = nil
+	captureMutex.Unlock()
+	_, err = env.svc.getConfig()
+	require.NoError(t, err)
+	captureMutex.Lock()
+	captured = capturedEffectiveConfig
+	captureMutex.Unlock()
+	assert.NotNil(t, captured, "effective config should be sent after change")
+	assert.Equal(t, []byte("updated running config"), captured.ConfigMap.ConfigMap[""].Body)
 }

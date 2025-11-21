@@ -1,13 +1,11 @@
 package stages
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -39,7 +37,7 @@ type StageConfig struct {
 	RegexConfig                  *RegexConfig                  `alloy:"regex,block,optional"`
 	ReplaceConfig                *ReplaceConfig                `alloy:"replace,block,optional"`
 	StaticLabelsConfig           *StaticLabelsConfig           `alloy:"static_labels,block,optional"`
-	StructuredMetadata           *LabelsConfig                 `alloy:"structured_metadata,block,optional"`
+	StructuredMetadata           *StructuredMetadataConfig     `alloy:"structured_metadata,block,optional"`
 	StructuredMetadataDropConfig *StructuredMetadataDropConfig `alloy:"structured_metadata_drop,block,optional"`
 	SamplingConfig               *SamplingConfig               `alloy:"sampling,block,optional"`
 	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"`
@@ -48,10 +46,6 @@ type StageConfig struct {
 	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
 }
-
-var rateLimiter *rate.Limiter
-var rateLimiterDrop bool
-var rateLimiterDropReason = "global_rate_limiter_drop"
 
 // Pipeline pass down a log entry to each stage for mutation and/or label extraction.
 type Pipeline struct {
@@ -151,16 +145,6 @@ func (p *Pipeline) Wrap(next loki.EntryHandler) loki.EntryHandler {
 	go func() {
 		defer wg.Done()
 		for e := range pipelineOut {
-			if rateLimiter != nil {
-				if rateLimiterDrop {
-					if !rateLimiter.Allow() {
-						p.dropCount.WithLabelValues(rateLimiterDropReason).Inc()
-						continue
-					}
-				} else {
-					_ = rateLimiter.Wait(context.Background())
-				}
-			}
 			nextChan <- e.Entry
 		}
 	}()
@@ -184,9 +168,4 @@ func (p *Pipeline) Wrap(next loki.EntryHandler) loki.EntryHandler {
 // Size gets the current number of stages in the pipeline
 func (p *Pipeline) Size() int {
 	return len(p.stages)
-}
-
-func SetReadLineRateLimiter(rateVal float64, burstVal int, drop bool) {
-	rateLimiter = rate.NewLimiter(rate.Limit(rateVal), burstVal)
-	rateLimiterDrop = drop
 }

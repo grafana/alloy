@@ -12,9 +12,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"
@@ -23,6 +21,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -249,31 +248,15 @@ func (t *SyslogTarget) messageSender(entries chan<- loki.Entry) {
 	t.messagesDone <- struct{}{}
 }
 
-// Type returns SyslogTargetType.
-func (t *SyslogTarget) Type() target.TargetType {
-	return target.SyslogTargetType
-}
-
 // Ready indicates whether or not the syslog target is ready to be read from.
 func (t *SyslogTarget) Ready() bool {
 	return t.transport.Ready()
-}
-
-// DiscoveredLabels returns the set of labels discovered by the syslog target, which
-// is always nil. Implements Target.
-func (t *SyslogTarget) DiscoveredLabels() model.LabelSet {
-	return nil
 }
 
 // Labels returns the set of labels that statically apply to all log entries
 // produced by the SyslogTarget.
 func (t *SyslogTarget) Labels() model.LabelSet {
 	return t.config.Labels
-}
-
-// Details returns target-specific details.
-func (t *SyslogTarget) Details() interface{} {
-	return map[string]string{}
 }
 
 // Stop shuts down the SyslogTarget.

@@ -177,6 +177,10 @@ rbac:
     - apiGroups: ["monitoring.coreos.com"]
       resources: ["prometheusrules"]
       verbs: ["get", "list", "watch"]
+    # -- Rules required for the `mimir.alerts.kubernetes` component.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["alertmanagerconfigs"]
+      verbs: ["get", "list", "watch"]
     # -- Rules required for the `prometheus.operator.*` components.
     - apiGroups: ["monitoring.coreos.com"]
       resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]

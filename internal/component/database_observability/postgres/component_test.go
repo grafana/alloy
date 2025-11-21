@@ -11,7 +11,6 @@ import (
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -37,7 +36,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -59,7 +58,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -81,7 +80,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -104,7 +103,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -127,7 +126,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -149,7 +148,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -171,7 +170,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -193,7 +192,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 
@@ -215,7 +214,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: true,
-			collector.ExplainPlanCollector:   false,
+			collector.ExplainPlanCollector:   true,
 		}, actualCollectors)
 	})
 }
@@ -303,9 +302,9 @@ func TestCollectionIntervals(t *testing.T) {
 
 func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
-		lokiClient := loki_fake.NewClient(func() {})
-		defer lokiClient.Stop()
-		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-system-id")
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+		entryHandler := addLokiLabels(handler, "some-instance-key", "some-system-id")
 
 		go func() {
 			ts := time.Now().UnixNano()
@@ -318,16 +317,16 @@ func Test_addLokiLabels(t *testing.T) {
 		}()
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
+			return len(handler.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
 
-		require.Len(t, lokiClient.Received(), 1)
+		require.Len(t, handler.Received(), 1)
 		assert.Equal(t, model.LabelSet{
 			"job":       database_observability.JobName,
 			"instance":  model.LabelValue("some-instance-key"),
 			"server_id": model.LabelValue("some-system-id"),
-		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
+		}, handler.Received()[0].Labels)
+		assert.Equal(t, "some-message", handler.Received()[0].Line)
 	})
 }
 

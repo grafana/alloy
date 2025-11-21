@@ -60,8 +60,8 @@ func TestConfigConversion(t *testing.T) {
 					WriteBufferSize: 512 * 1024,
 					MaxIdleConns:    100,
 					IdleConnTimeout: 90 * time.Second,
-					Headers: map[string]configopaque.String{
-						"X-Scope-OrgID": "123",
+					Headers: configopaque.MapList{
+						configopaque.Pair{Name: "X-Scope-OrgID", Value: "123"},
 					},
 				},
 				QueueConfig: defaultQueueConfig,
@@ -90,7 +90,7 @@ func TestConfigConversion(t *testing.T) {
 					WriteBufferSize: 512 * 1024,
 					MaxIdleConns:    100,
 					IdleConnTimeout: 90 * time.Second,
-					Headers:         map[string]configopaque.String{},
+					Headers:         configopaque.MapList{},
 				},
 				QueueConfig: defaultQueueConfig,
 				RetryConfig: defaultRetrySettings,

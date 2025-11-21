@@ -15,11 +15,10 @@ type metrics struct {
 	reg prometheus.Registerer
 
 	// File-specific metrics
-	readBytes        *prometheus.GaugeVec
-	totalBytes       *prometheus.GaugeVec
-	readLines        *prometheus.CounterVec
-	encodingFailures *prometheus.CounterVec
-	filesActive      prometheus.Gauge
+	readBytes   *prometheus.GaugeVec
+	totalBytes  *prometheus.GaugeVec
+	readLines   *prometheus.CounterVec
+	filesActive prometheus.Gauge
 }
 
 // newMetrics creates a new set of file metrics. If reg is non-nil, the metrics
@@ -40,10 +39,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		Name: "loki_source_file_read_lines_total",
 		Help: "Number of lines read.",
 	}, []string{"path"})
-	m.encodingFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_source_file_encoding_failures_total",
-		Help: "Number of encoding failures.",
-	}, []string{"path"})
 	m.filesActive = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "loki_source_file_files_active_total",
 		Help: "Number of active files.",
@@ -53,7 +48,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		m.readBytes = util.MustRegisterOrGet(reg, m.readBytes).(*prometheus.GaugeVec)
 		m.totalBytes = util.MustRegisterOrGet(reg, m.totalBytes).(*prometheus.GaugeVec)
 		m.readLines = util.MustRegisterOrGet(reg, m.readLines).(*prometheus.CounterVec)
-		m.encodingFailures = util.MustRegisterOrGet(reg, m.encodingFailures).(*prometheus.CounterVec)
 		m.filesActive = util.MustRegisterOrGet(reg, m.filesActive).(prometheus.Gauge)
 	}
 

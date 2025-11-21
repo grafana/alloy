@@ -129,18 +129,20 @@ func TestHandler(t *testing.T) {
 			Body: readTestData(t, "testdata/direct_put.json"),
 			Relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__aws_firehose_request_id"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					Replacement:  "$1",
-					TargetLabel:  "aws_request_id",
-					Action:       relabel.Replace,
+					SourceLabels:         model.LabelNames{"__aws_firehose_request_id"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					Replacement:          "$1",
+					TargetLabel:          "aws_request_id",
+					Action:               relabel.Replace,
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__aws_firehose_source_arn"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					Replacement:  "$1",
-					TargetLabel:  "aws_source_arn",
-					Action:       relabel.Replace,
+					SourceLabels:         model.LabelNames{"__aws_firehose_source_arn"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					Replacement:          "$1",
+					TargetLabel:          "aws_source_arn",
+					Action:               relabel.Replace,
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
@@ -479,11 +481,12 @@ func assertCloudwatchDataContents(t *testing.T, _ *httptest.ResponseRecorder, en
 
 func keepLabelRule(src, dst string) *relabel.Config {
 	return &relabel.Config{
-		SourceLabels: model.LabelNames{model.LabelName(src)},
-		Regex:        relabel.MustNewRegexp("(.*)"),
-		Replacement:  "$1",
-		TargetLabel:  dst,
-		Action:       relabel.Replace,
+		SourceLabels:         model.LabelNames{model.LabelName(src)},
+		Regex:                relabel.MustNewRegexp("(.*)"),
+		Replacement:          "$1",
+		TargetLabel:          dst,
+		Action:               relabel.Replace,
+		NameValidationScheme: model.LegacyValidation,
 	}
 }
 

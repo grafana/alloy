@@ -55,7 +55,7 @@ func AssertTracesAvailable(t *testing.T, tags map[string]string) {
 	query := TempoSearchQuery(tags)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var searchResponse TempoTraceSearchResponse
-		err := FetchDataFromURL(query, &searchResponse)
+		_, err := FetchDataFromURL(query, &searchResponse)
 		assert.NoError(c, err)
 		assert.NotEmpty(c, searchResponse.Traces, "Expected to find traces matching the search criteria")
 

@@ -201,7 +201,6 @@ func (c *Component) DebugInfo() interface{} {
 
 	for _, t := range c.targets {
 		res.ListenersInfo = append(res.ListenersInfo, listenerInfo{
-			Type:          string(t.Type()),
 			Ready:         t.Ready(),
 			ListenAddress: t.ListenAddress().String(),
 			Labels:        t.Labels().String(),
@@ -215,7 +214,6 @@ type readerDebugInfo struct {
 }
 
 type listenerInfo struct {
-	Type          string `alloy:"type,attr"`
 	Ready         bool   `alloy:"ready,attr"`
 	ListenAddress string `alloy:"listen_address,attr"`
 	Labels        string `alloy:"labels,attr"`

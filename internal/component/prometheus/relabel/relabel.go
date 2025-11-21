@@ -153,7 +153,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 	}
 
-	c.fanout = prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, prometheus.NoopMetadataStore{})
+	c.fanout = prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
 		ls,
@@ -261,8 +261,8 @@ func (c *Component) relabel(ref storage.SeriesRef, val float64, lbls labels.Labe
 	newLbls, found := c.getFromCache(ref)
 	if found {
 		c.cacheHits.Inc()
-		// If newLbls is nil but cache entry was found then we want to keep the value nil, if it's not we want to reuse the labels
-		if newLbls != nil {
+		// If newLbls is empty but cache entry was found then we want to keep the value empty, if it's not we want to reuse the labels
+		if !newLbls.IsEmpty() {
 			relabelled = newLbls
 		}
 	} else {
@@ -325,7 +325,7 @@ func (c *Component) addToCache(originalID storage.SeriesRef, lbls labels.Labels,
 	defer c.cacheMut.Unlock()
 
 	if !keep {
-		c.cache.Add(originalID, nil)
+		c.cache.Add(originalID, labels.EmptyLabels())
 		return
 	}
 	c.cache.Add(originalID, lbls)

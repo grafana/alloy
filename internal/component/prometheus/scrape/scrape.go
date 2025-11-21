@@ -159,7 +159,7 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
 		ScrapeNativeHistograms:   false,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
-		MetricNameValidationScheme:     config.LegacyValidationConfig,
+		MetricNameValidationScheme:     model.LegacyValidation.String(),
 		ConvertClassicHistogramsToNHCB: false,
 		EnableCompression:              true,
 		NativeHistogramBucketLimit:     0,
@@ -220,14 +220,14 @@ func (arg *Arguments) Validate() error {
 	}
 
 	switch arg.MetricNameValidationScheme {
-	case config.UTF8ValidationConfig, config.LegacyValidationConfig:
+	case model.UTF8Validation.String(), model.LegacyValidation.String():
 	default:
-		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, config.UTF8ValidationConfig, config.LegacyValidationConfig)
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, model.UTF8Validation.String(), model.LegacyValidation.String())
 	}
 
 	switch arg.MetricNameEscapingScheme {
 	case "":
-		if arg.MetricNameValidationScheme == config.LegacyValidationConfig {
+		if arg.MetricNameValidationScheme == model.LegacyValidation.String() {
 			arg.MetricNameEscapingScheme = model.EscapeUnderscores
 		} else {
 			arg.MetricNameEscapingScheme = model.AllowUTF8
@@ -238,7 +238,7 @@ func (arg *Arguments) Validate() error {
 		return fmt.Errorf("invalid metric_name_escaping_scheme: %q, supported values: %v", arg.MetricNameEscapingScheme, supportedValues)
 	}
 
-	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != config.UTF8ValidationConfig {
+	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != model.UTF8Validation.String() {
 		return fmt.Errorf("metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'")
 	}
 
@@ -310,14 +310,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
-	var metadataStore prometheus.UpdateableMetadataStore
-	if args.HonorMetadata {
-		metadataStore = prometheus.NewMetadataStore()
-	} else {
-		metadataStore = prometheus.NoopMetadataStore{}
-	}
-
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
@@ -327,6 +320,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// NOTE: This is not Update()-able.
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
 		AppendMetadata:                  args.HonorMetadata,
+		// otelcol.receiver.prometheus gets metadata from context
+		PassMetadataInContext: args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -535,11 +530,12 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	} else {
 		dec.JobName = jobName
 	}
+	copyScrapeClassicHistograms := c.ScrapeClassicHistograms // make a copy as Prometheus wants a pointer.
 	dec.HonorLabels = c.HonorLabels
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
 	dec.Params = c.Params
-	dec.AlwaysScrapeClassicHistograms = c.ScrapeClassicHistograms
+	dec.AlwaysScrapeClassicHistograms = &copyScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
 	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile
@@ -562,7 +558,13 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	// HTTP scrape client settings
 	dec.HTTPClientConfig = *c.HTTPClientConfig.Convert()
 
-	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
+	validationScheme := model.UnsetValidation
+	if model.LegacyValidation.String() == c.MetricNameValidationScheme {
+		validationScheme = model.LegacyValidation
+	} else if model.UTF8Validation.String() == c.MetricNameValidationScheme {
+		validationScheme = model.UTF8Validation
+	}
+	dec.MetricNameValidationScheme = validationScheme
 	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
 	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
 	convertToNHCB := c.ConvertClassicHistogramsToNHCB

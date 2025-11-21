@@ -22,6 +22,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Brokers:         []string{"10.10.10.10:9092"},
 				ProtocolVersion: "2.0.0",
 				ClientID:        "otel-collector",
+				RackID:          "",
+				UseLeaderEpoch:  true,
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -43,6 +45,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				MinFetchSize:           1,
 				DefaultFetchSize:       1048576,
 				MaxFetchSize:           0,
+				MaxPartitionFetchSize:  1048576,
 				MaxFetchWait:           250 * time.Millisecond,
 				GroupRebalanceStrategy: "range",
 			},
@@ -220,6 +223,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				min_fetch_size = 2
 				default_fetch_size = 10000
 				max_fetch_size = 20
+				max_partition_fetch_size = 30000
+				rack_id = "test-rack"
 				output {}
 			`,
 			expected: kafkareceiver.Config{
@@ -239,6 +244,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Brokers:         []string{"10.10.10.10:9092"},
 					ProtocolVersion: "2.0.0",
 					ClientID:        "test_client_id",
+					RackID:          "test-rack",
+					UseLeaderEpoch:  true,
 					Metadata: configkafka.MetadataConfig{
 						Full:            true,
 						RefreshInterval: 10 * time.Minute,
@@ -260,6 +267,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MinFetchSize:           2,
 					DefaultFetchSize:       10000,
 					MaxFetchSize:           20,
+					MaxPartitionFetchSize:  30000,
 					MaxFetchWait:           2 * time.Second,
 					GroupRebalanceStrategy: "roundrobin",
 				},
@@ -331,8 +339,12 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
 				"default_fetch_size":       1048576,
+				"max_fetch_size":           0,
+				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
+				"rack_id":                  "",
+				"use_leader_epoch":         true,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -408,8 +420,12 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
 				"default_fetch_size":       1048576,
+				"max_fetch_size":           0,
+				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
+				"rack_id":                  "",
+				"use_leader_epoch":         true,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -491,8 +507,12 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
 				"default_fetch_size":       1048576,
+				"max_fetch_size":           0,
+				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
+				"rack_id":                  "",
+				"use_leader_epoch":         true,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -575,8 +595,12 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
 				"default_fetch_size":       1048576,
+				"max_fetch_size":           0,
+				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
+				"rack_id":                  "",
+				"use_leader_epoch":         true,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,

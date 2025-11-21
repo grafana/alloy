@@ -28,7 +28,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				BlockOnOverflow: false,
 				Sizer:           otelexporterhelper.RequestSizerTypeRequests,
 				WaitForResult:   false,
-				Batch:           configoptional.None[otelexporterhelper.BatchConfig](),
+				Batch:           otelexporterhelper.NewDefaultQueueConfig().Batch,
 			},
 		},
 		{
@@ -48,7 +48,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				BlockOnOverflow: true,
 				Sizer:           otelexporterhelper.RequestSizerTypeBytes,
 				WaitForResult:   true,
-				Batch:           configoptional.None[otelexporterhelper.BatchConfig](),
+				Batch:           otelexporterhelper.NewDefaultQueueConfig().Batch,
 			},
 		},
 		{
@@ -97,7 +97,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				BlockOnOverflow: false,
 				Sizer:           otelexporterhelper.RequestSizerTypeRequests,
 				WaitForResult:   false,
-				Batch:           configoptional.None[otelexporterhelper.BatchConfig](),
+				Batch:           otelexporterhelper.NewDefaultQueueConfig().Batch,
 			},
 		},
 		{

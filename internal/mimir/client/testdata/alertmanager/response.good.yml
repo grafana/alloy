@@ -1,0 +1,249 @@
+template_files:
+    template1.tmpl: '{{ range .Alerts }}Alert: {{ .Summary }}{{ end }}'
+    template2.tmpl: '{{ .CommonLabels.alertname }}'
+alertmanager_config: |
+    global:
+      resolve_timeout: 5m
+      http_config:
+        follow_redirects: true
+        enable_http2: true
+        proxy_url: http://127.0.0.1:1025
+      smtp_from: alertmanager@example.org
+      smtp_hello: host.example.org
+      smtp_smarthost: localhost:25
+      smtp_auth_username: alertmanager
+      smtp_auth_password: |-
+        multiline
+        mysecret
+      smtp_require_tls: true
+      smtp_tls_config:
+        insecure_skip_verify: false
+      slack_api_url: http://mysecret.example.com/
+      pagerduty_url: https://events.pagerduty.com/v2/enqueue
+      opsgenie_api_url: https://api.opsgenie.com/
+      wechat_api_url: https://qyapi.weixin.qq.com/cgi-bin/
+      victorops_api_url: https://alert.victorops.com/integrations/generic/20131114/alert/
+      telegram_api_url: https://api.telegram.org
+      webex_api_url: https://webexapis.com/v1/messages
+      rocketchat_api_url: https://open.rocket.chat/
+    route:
+      receiver: team-X-mails
+      group_by:
+      - alertname
+      - cluster
+      - service
+      continue: false
+      routes:
+      - receiver: team-X-mails
+        match_re:
+          service: ^(foo1|foo2|baz)$
+        continue: false
+        routes:
+        - receiver: team-X-pager
+          match:
+            severity: critical
+          continue: false
+      - receiver: team-Y-mails
+        match:
+          service: files
+        continue: false
+        routes:
+        - receiver: team-Y-pager
+          match:
+            severity: critical
+          continue: false
+      - receiver: team-DB-pager
+        group_by:
+        - alertname
+        - cluster
+        - database
+        match:
+          service: database
+        continue: false
+        routes:
+        - receiver: team-X-pager
+          match:
+            owner2: team-X
+          continue: true
+        - receiver: team-Y-pager
+          match:
+            owner: team-Y
+          continue: false
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 3h
+    inhibit_rules:
+    - source_match:
+        severity: critical
+      target_match:
+        severity: warning
+      equal:
+      - alertname
+      - cluster
+      - service
+    receivers:
+    - name: team-X-mails
+      email_configs:
+      - send_resolved: false
+        to: team-X+alerts@example.org
+        from: alertmanager@example.org
+        hello: host.example.org
+        smarthost: localhost:25
+        auth_username: alertmanager
+        auth_password: |-
+          multiline
+          mysecret
+        html: '{{ template "email.default.html" . }}'
+        require_tls: true
+        tls_config:
+          insecure_skip_verify: false
+    - name: team-X-pager
+      email_configs:
+      - send_resolved: false
+        to: team-X+alerts-critical@example.org
+        from: alertmanager@example.org
+        hello: host.example.org
+        smarthost: localhost:25
+        auth_username: alertmanager
+        auth_password: |-
+          multiline
+          mysecret
+        html: '{{ template "email.default.html" . }}'
+        require_tls: true
+        tls_config:
+          insecure_skip_verify: false
+      pagerduty_configs:
+      - send_resolved: true
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        routing_key: mysecret
+        url: https://events.pagerduty.com/v2/enqueue
+        client: '{{ template "pagerduty.default.client" . }}'
+        client_url: '{{ template "pagerduty.default.clientURL" . }}'
+        description: '{{ template "pagerduty.default.description" .}}'
+        details:
+          firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+          num_firing: '{{ .Alerts.Firing | len }}'
+          num_resolved: '{{ .Alerts.Resolved | len }}'
+          resolved: '{{ template "pagerduty.default.instances" .Alerts.Resolved }}'
+        source: '{{ template "pagerduty.default.client" . }}'
+    - name: team-Y-mails
+      email_configs:
+      - send_resolved: false
+        to: team-Y+alerts@example.org
+        from: alertmanager@example.org
+        hello: host.example.org
+        smarthost: localhost:25
+        auth_username: alertmanager
+        auth_password: |-
+          multiline
+          mysecret
+        html: '{{ template "email.default.html" . }}'
+        require_tls: true
+        tls_config:
+          insecure_skip_verify: false
+    - name: team-Y-pager
+      pagerduty_configs:
+      - send_resolved: true
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        routing_key: mysecret
+        url: https://events.pagerduty.com/v2/enqueue
+        client: '{{ template "pagerduty.default.client" . }}'
+        client_url: '{{ template "pagerduty.default.clientURL" . }}'
+        description: '{{ template "pagerduty.default.description" .}}'
+        details:
+          firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+          num_firing: '{{ .Alerts.Firing | len }}'
+          num_resolved: '{{ .Alerts.Resolved | len }}'
+          resolved: '{{ template "pagerduty.default.instances" .Alerts.Resolved }}'
+        source: '{{ template "pagerduty.default.client" . }}'
+    - name: team-DB-pager
+      pagerduty_configs:
+      - send_resolved: true
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        routing_key: mysecret
+        url: https://events.pagerduty.com/v2/enqueue
+        client: '{{ template "pagerduty.default.client" . }}'
+        client_url: '{{ template "pagerduty.default.clientURL" . }}'
+        description: '{{ template "pagerduty.default.description" .}}'
+        details:
+          firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+          num_firing: '{{ .Alerts.Firing | len }}'
+          num_resolved: '{{ .Alerts.Resolved | len }}'
+          resolved: '{{ template "pagerduty.default.instances" .Alerts.Resolved }}'
+        source: '{{ template "pagerduty.default.client" . }}'
+    - name: victorOps-receiver
+      victorops_configs:
+      - send_resolved: true
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        api_key: mysecret
+        api_url: https://alert.victorops.com/integrations/generic/20131114/alert/
+        routing_key: Sample_route
+        message_type: CRITICAL
+        state_message: '{{ template "victorops.default.state_message" . }}'
+        entity_display_name: '{{ template "victorops.default.entity_display_name" . }}'
+        monitoring_tool: '{{ template "victorops.default.monitoring_tool" . }}'
+    - name: opsGenie-receiver
+      opsgenie_configs:
+      - send_resolved: true
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        api_key: mysecret
+        api_url: https://api.opsgenie.com/
+        message: '{{ template "opsgenie.default.message" . }}'
+        description: '{{ template "opsgenie.default.description" . }}'
+        source: '{{ template "opsgenie.default.source" . }}'
+    - name: pushover-receiver
+      pushover_configs:
+      - send_resolved: true
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        user_key: key
+        token: mysecret
+        title: '{{ template "pushover.default.title" . }}'
+        message: '{{ template "pushover.default.message" . }}'
+        url: '{{ template "pushover.default.url" . }}'
+        priority: '{{ if eq .Status "firing" }}2{{ else }}0{{ end }}'
+        retry: 1m0s
+        expire: 1h0m0s
+        html: false
+    - name: slack-receiver
+      slack_configs:
+      - send_resolved: false
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+          proxy_url: http://127.0.0.1:1025
+        api_url: http://mysecret.example.com/
+        channel: '#my-channel'
+        username: '{{ template "slack.default.username" . }}'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '{{ template "slack.default.title" . }}'
+        title_link: '{{ template "slack.default.titlelink" . }}'
+        pretext: '{{ template "slack.default.pretext" . }}'
+        text: '{{ template "slack.default.text" . }}'
+        short_fields: false
+        footer: '{{ template "slack.default.footer" . }}'
+        fallback: '{{ template "slack.default.fallback" . }}'
+        callback_id: '{{ template "slack.default.callbackid" . }}'
+        icon_emoji: '{{ template "slack.default.iconemoji" . }}'
+        icon_url: '{{ template "slack.default.iconurl" . }}'
+        image_url: http://some.img.com/img.png
+        link_names: false
+    templates:
+    - /etc/alertmanager/template/*.tmpl

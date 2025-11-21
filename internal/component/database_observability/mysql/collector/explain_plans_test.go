@@ -11,10 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/util/syncbuffer"
-
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func stringPtr(s string) *string {
@@ -1489,7 +1488,7 @@ func TestExplainPlans(t *testing.T) {
 		defer db.Close()
 
 		lastSeen := time.Now().Add(-time.Hour)
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
@@ -1555,7 +1554,7 @@ func TestExplainPlans(t *testing.T) {
 		defer db.Close()
 
 		lastSeen := time.Now().Add(-time.Hour)
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
@@ -1666,6 +1665,43 @@ func TestExplainPlans(t *testing.T) {
 			)
 		})
 
+		t.Run("passes queries beginning in with", func(t *testing.T) {
+			lokiClient.Clear()
+			logBuffer.Reset()
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_sample_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"with cte as (select * from some_table where id = 1) select * from cte",
+				lastSeen,
+			))
+
+			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+			mock.ExpectQuery(selectExplainPlanPrefix + "with cte as (select * from some_table where id = 1) select * from cte").WillReturnRows(sqlmock.NewRows([]string{
+				"json",
+			}).AddRow(
+				[]byte(`{"query_block": {"select_id": 1}}`),
+			))
+
+			err = c.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			require.NotContains(t, logBuffer.String(), "error")
+
+			require.Eventually(
+				t,
+				func() bool { return len(lokiClient.Received()) == 1 },
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+		})
+
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 	})
@@ -1677,7 +1713,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 	defer db.Close()
 
 	lastSeen := time.Now().Add(-time.Hour)
-	lokiClient := loki_fake.NewClient(func() {})
+	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}
@@ -1768,7 +1804,7 @@ func TestSchemaDenylist(t *testing.T) {
 	defer db.Close()
 
 	lastSeen := time.Now().Add(-time.Hour)
-	lokiClient := loki_fake.NewClient(func() {})
+	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}

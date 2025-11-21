@@ -3,8 +3,9 @@ package kubernetes
 import (
 	"testing"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -45,6 +46,7 @@ func TestAttachMetadata(t *testing.T) {
         role = "pod"
     attach_metadata {
 	    node = true
+		namespace = true
     }
 `
 

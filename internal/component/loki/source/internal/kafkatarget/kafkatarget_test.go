@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/IBM/sarama"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // Consumergroup handler
@@ -142,11 +142,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_key"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_key",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_key"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_key",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_key": "foo"},
@@ -159,11 +160,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_key"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_key",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_key"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_key",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_key": "none"},
@@ -176,11 +178,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_offset"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_offset",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_offset"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_offset",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_offset": "42"},
@@ -193,11 +196,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_offset"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_offset",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_offset"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_offset",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_offset": "0"},
@@ -206,23 +210,16 @@ func Test_TargetRun(t *testing.T) {
 	for _, tt := range tc {
 		t.Run(tt.name, func(t *testing.T) {
 			session, claim := &testSession{}, newTestClaim("footopic", 10, 12)
-			var closed bool
-			fc := fake.NewClient(
-				func() {
-					closed = true
-				},
-			)
+			handler := loki.NewCollectingHandler()
 
-			tg := NewKafkaTarget(nil, session, claim, tt.inDiscoveredLS, tt.inLS, tt.relabels, fc, true, &KafkaTargetMessageParser{})
+			tg := NewKafkaTarget(nil, session, claim, tt.inDiscoveredLS, tt.inLS, tt.relabels, handler, true, &KafkaTargetMessageParser{})
 
 			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				tg.run()
-			}()
+			})
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				claim.Send(&sarama.ConsumerMessage{
 					Timestamp: time.Unix(0, int64(i)),
 					Value:     []byte(fmt.Sprintf("%d", i)),
@@ -232,11 +229,10 @@ func Test_TargetRun(t *testing.T) {
 			}
 			claim.Stop()
 			wg.Wait()
-			re := fc.Received()
+			re := handler.Received()
 
 			require.Len(t, session.markedMessage, 10)
 			require.Len(t, re, 10)
-			require.True(t, closed)
 			for _, e := range re {
 				require.Equal(t, tt.expectedLS.String(), e.Labels.String())
 			}

@@ -79,7 +79,8 @@ metrics:
 			ScrapeTimeout:              model.Duration(33 * time.Second),
 			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
 			EvaluationInterval:         model.Duration(1 * time.Minute),
-			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
+			MetricNameValidationScheme: model.UTF8Validation,
+			MetricNameEscapingScheme:   model.AllowUTF8,
 		},
 	}
 
@@ -103,7 +104,8 @@ metrics:
 			ScrapeTimeout:              model.Duration(33 * time.Second),
 			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
 			EvaluationInterval:         model.Duration(1 * time.Minute),
-			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
+			MetricNameValidationScheme: model.UTF8Validation,
+			MetricNameEscapingScheme:   model.AllowUTF8,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")
@@ -123,7 +125,7 @@ metrics:
   global:
     external_labels:
       foo: ${1}`
-	expect := labels.Labels{{Name: "foo", Value: "${1}"}}
+	expect := labels.FromStrings("foo", "${1}")
 
 	fs := flag.NewFlagSet("test", flag.ExitOnError)
 	c, err := LoadFromFunc(fs, []string{"-config.file", "test"}, func(_, _ string, _ bool, c *Config) error {

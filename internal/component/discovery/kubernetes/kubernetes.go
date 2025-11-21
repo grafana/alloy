@@ -95,11 +95,13 @@ func (sc *SelectorConfig) convert() *promk8s.SelectorConfig {
 }
 
 type AttachMetadataConfig struct {
-	Node bool `alloy:"node,attr,optional"`
+	Node      bool `alloy:"node,attr,optional"`
+	Namespace bool `alloy:"namespace,attr,optional"`
 }
 
 func (am *AttachMetadataConfig) convert() *promk8s.AttachMetadataConfig {
 	return &promk8s.AttachMetadataConfig{
-		Node: am.Node,
+		Node:      am.Node,
+		Namespace: am.Namespace,
 	}
 }

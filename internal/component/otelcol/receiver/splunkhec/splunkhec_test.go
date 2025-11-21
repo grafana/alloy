@@ -193,6 +193,7 @@ func TestUnmarshalDefault(t *testing.T) {
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint:              "localhost:8088",
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
+			KeepAlivesEnabled:     true,
 		},
 		RawPath:    "/services/collector/raw",
 		HealthPath: "/services/collector/health",

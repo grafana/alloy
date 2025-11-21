@@ -11,14 +11,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -110,15 +109,12 @@ func NewWriter(walCfg Config, logger log.Logger, reg prometheus.Registerer) (*Wr
 		_ = reg.Register(wrt.lastWrittenTimestamp)
 	}
 
-	wrt.start(walCfg.MaxSegmentAge)
 	return wrt, nil
 }
 
-func (wrt *Writer) start(maxSegmentAge time.Duration) {
-	wrt.wg.Add(1)
+func (wrt *Writer) Start(maxSegmentAge time.Duration) {
 	// main WAL writer routine
-	go func() {
-		defer wrt.wg.Done()
+	wrt.wg.Go(func() {
 		for e := range wrt.entries {
 			if err := wrt.entryWriter.WriteEntry(e, wrt.wal, wrt.log); err != nil {
 				level.Error(wrt.log).Log("msg", "failed to write entry", "err", err)
@@ -135,11 +131,10 @@ func (wrt *Writer) start(maxSegmentAge time.Duration) {
 			}
 			wrt.writeSubscribersLock.RUnlock()
 		}
-	}()
+	})
+
 	// WAL cleanup routine that cleans old segments
-	wrt.wg.Add(1)
-	go func() {
-		defer wrt.wg.Done()
+	wrt.wg.Go(func() {
 		// By cleaning every 10th of the configured threshold for considering a segment old, we are allowing a maximum slip
 		// of 10%. If the configured time is 1 hour, that'd be 6 minutes.
 		triggerEvery := maxSegmentAge / 10
@@ -159,7 +154,7 @@ func (wrt *Writer) start(maxSegmentAge time.Duration) {
 				return
 			}
 		}
-	}()
+	})
 }
 
 func (wrt *Writer) Chan() chan<- loki.Entry {
@@ -244,14 +239,14 @@ func (wrt *Writer) SubscribeWrite(subscriber WriteEventSubscriber) {
 // entryWriter writes loki.Entry to a WAL, keeping in memory a single Record object that's reused
 // across every write.
 type entryWriter struct {
-	reusableWALRecord *wal.Record
+	reusableWALRecord *Record
 }
 
 // newEntryWriter creates a new entryWriter.
 func newEntryWriter() *entryWriter {
 	return &entryWriter{
-		reusableWALRecord: &wal.Record{
-			RefEntries: make([]wal.RefEntries, 0, 1),
+		reusableWALRecord: &Record{
+			RefEntries: make([]RefEntries, 0, 1),
 			Series:     make([]record.RefSeries, 0, 1),
 		},
 	}
@@ -261,15 +256,14 @@ func newEntryWriter() *entryWriter {
 // write, it first has to be reset, and then overwritten accordingly. Therefore, WriteEntry is not thread-safe.
 func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error {
 	// Reset wal record slices
-	ew.reusableWALRecord.RefEntries = ew.reusableWALRecord.RefEntries[:0]
-	ew.reusableWALRecord.Series = ew.reusableWALRecord.Series[:0]
+	ew.reusableWALRecord.Reset()
 
 	var fp uint64
 	lbs := labels.FromMap(util.ModelLabelSetToMap(entry.Labels))
 	fp, _ = lbs.HashWithoutLabels(nil, []string(nil)...)
 
 	// Append the entry to an already existing stream (if any)
-	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, wal.RefEntries{
+	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, RefEntries{
 		Ref: chunks.HeadSeriesRef(fp),
 		Entries: []push.Entry{
 			entry.Entry,

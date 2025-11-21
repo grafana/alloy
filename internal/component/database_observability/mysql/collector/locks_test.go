@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestLocks(t *testing.T) {
@@ -23,7 +23,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,
@@ -67,7 +67,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,
@@ -122,7 +122,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,
@@ -189,7 +189,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,
@@ -244,7 +244,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,
@@ -302,7 +302,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,
@@ -366,7 +366,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewLocks(LocksArguments{
 			DB:              db,

@@ -13,7 +13,7 @@ const query = "http://localhost:3100/loki/api/v1/query_range?query={test_name=%2
 func TestReadLogFile(t *testing.T) {
 	var logResponse common.LogResponse
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := common.FetchDataFromURL(query, &logResponse)
+		_, err := common.FetchDataFromURL(query, &logResponse)
 		assert.NoError(c, err)
 		if assert.NotEmpty(c, logResponse.Data.Result) {
 			logs := make([]string, 0)

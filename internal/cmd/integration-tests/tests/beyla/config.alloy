@@ -11,6 +11,18 @@ beyla.ebpf "default" {
       ]
   }
   output {
+    traces = [otelcol.processor.attributes.beyla.input]
+  }
+}
+
+otelcol.processor.attributes "beyla" {
+  action {
+    key = "test_name"
+    value = "beyla"
+    action = "insert"
+  }
+
+  output {
     traces = [otelcol.processor.batch.beyla.input]
   }
 }

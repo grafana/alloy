@@ -21,7 +21,10 @@ type Arguments struct {
 	DotNetEnabled       bool                   `alloy:"dotnet_enabled,attr,optional"`
 	GoEnabled           bool                   `alloy:"go_enabled,attr,optional"`
 	Demangle            string                 `alloy:"demangle,attr,optional"`
-	OffCPUThreshold     float64                `alloy:"off_cpu_threshold,attr,optional"` //TODO: Document this as a float?
+	OffCPUThreshold     float64                `alloy:"off_cpu_threshold,attr,optional"`
+	LoadProbe           bool                   `alloy:"load_probe,attr,optional"`
+	UProbeLinks         []string               `alloy:"u_probe_links,attr,optional"`
+	VerboseMode         bool                   `alloy:"verbose_mode,attr,optional"`
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
 	// undocumented

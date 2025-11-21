@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 
@@ -61,7 +60,7 @@ type WriteTo interface {
 	// found in.
 	StoreSeries(series []record.RefSeries, segmentNum int)
 
-	AppendEntries(entries wal.RefEntries, segmentNum int) error
+	AppendEntries(entries RefEntries, segmentNum int) error
 }
 
 // Marker allows the Watcher to start from a specific segment in the WAL.
@@ -332,7 +331,7 @@ func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	var readData bool
 
 	rec := recordPool.GetRecord()
-	if err := wal.DecodeRecord(b, rec); err != nil {
+	if err := DecodeRecord(b, rec); err != nil {
 		w.metrics.recordDecodeFails.WithLabelValues(w.id).Inc()
 		return readData, err
 	}

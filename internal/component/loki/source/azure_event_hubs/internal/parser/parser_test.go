@@ -198,11 +198,12 @@ func Test_parseMessage_relable_config(t *testing.T) {
 
 	relableConfigs := []*relabel.Config{
 		{
-			SourceLabels: model.LabelNames{"__azure_event_hubs_category"},
-			Regex:        relabel.MustNewRegexp("(.*)"),
-			TargetLabel:  "category",
-			Replacement:  "$1",
-			Action:       "replace",
+			SourceLabels:         model.LabelNames{"__azure_event_hubs_category"},
+			Regex:                relabel.MustNewRegexp("(.*)"),
+			TargetLabel:          "category",
+			Replacement:          "$1",
+			Action:               "replace",
+			NameValidationScheme: model.LegacyValidation,
 		},
 	}
 

@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
@@ -91,47 +90,53 @@ func TestPushTarget(t *testing.T) {
 				},
 				RelabelConfigs: []*relabel.Config{
 					{
-						SourceLabels: model.LabelNames{"__gcp_attributes_logging_googleapis_com_timestamp"},
-						Regex:        relabel.MustNewRegexp("(.*)"),
-						Replacement:  "$1",
-						TargetLabel:  "google_timestamp",
-						Action:       relabel.Replace,
+						SourceLabels:         model.LabelNames{"__gcp_attributes_logging_googleapis_com_timestamp"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "google_timestamp",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__gcp_message_id"},
-						Regex:        relabel.MustNewRegexp("(.*)"),
-						Replacement:  "$1",
-						TargetLabel:  "message_id",
-						Action:       relabel.Replace,
+						SourceLabels:         model.LabelNames{"__gcp_message_id"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "message_id",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__gcp_subscription_name"},
-						Regex:        relabel.MustNewRegexp("(.*)"),
-						Replacement:  "$1",
-						TargetLabel:  "subscription",
-						Action:       relabel.Replace,
+						SourceLabels:         model.LabelNames{"__gcp_subscription_name"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "subscription",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
 					},
 					// Internal GCP Log entry attributes and labels
 					{
-						SourceLabels: model.LabelNames{"__gcp_logname"},
-						Regex:        relabel.MustNewRegexp("(.*)"),
-						Replacement:  "$1",
-						TargetLabel:  "log_name",
-						Action:       relabel.Replace,
+						SourceLabels:         model.LabelNames{"__gcp_logname"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "log_name",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__gcp_resource_type"},
-						Regex:        relabel.MustNewRegexp("(.*)"),
-						Replacement:  "$1",
-						TargetLabel:  "resource_type",
-						Action:       relabel.Replace,
+						SourceLabels:         model.LabelNames{"__gcp_resource_type"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "resource_type",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
 					},
 					{
-						SourceLabels: model.LabelNames{"__gcp_resource_labels_cluster_name"},
-						Regex:        relabel.MustNewRegexp("(.*)"),
-						Replacement:  "$1",
-						TargetLabel:  "cluster",
-						Action:       relabel.Replace,
+						SourceLabels:         model.LabelNames{"__gcp_resource_labels_cluster_name"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "cluster",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
 					},
 				},
 			},
@@ -154,8 +159,7 @@ func TestPushTarget(t *testing.T) {
 	for name, tc := range cases {
 		outerName := t.Name()
 		t.Run(name, func(t *testing.T) {
-			// Create fake promtail client
-			eh := fake.NewClient(func() {})
+			eh := loki.NewCollectingHandler()
 			defer eh.Stop()
 
 			port, err := freeport.GetFreePort()
@@ -226,8 +230,7 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
@@ -254,9 +257,6 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 		_ = pt.Stop()
 	}()
 
-	// Clear received lines after test case is ran
-	defer eh.Clear()
-
 	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
 	require.NoError(t, err, "expected request to be created successfully")
 	res, err := http.DefaultClient.Do(req)
@@ -277,8 +277,7 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
@@ -300,11 +299,12 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
 	tenantIDRelabelConfig := []*relabel.Config{
 		{
-			SourceLabels: model.LabelNames{"__tenant_id__"},
-			Regex:        relabel.MustNewRegexp("(.*)"),
-			Replacement:  "$1",
-			TargetLabel:  "tenant_id",
-			Action:       relabel.Replace,
+			SourceLabels:         model.LabelNames{"__tenant_id__"},
+			Regex:                relabel.MustNewRegexp("(.*)"),
+			Replacement:          "$1",
+			TargetLabel:          "tenant_id",
+			Action:               relabel.Replace,
+			NameValidationScheme: model.LegacyValidation,
 		},
 	}
 	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
@@ -336,8 +336,7 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	// Create fake promtail client
-	eh := fake.NewClient(func() {})
+	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
@@ -361,9 +360,6 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 	defer func() {
 		_ = pt.Stop()
 	}()
-
-	// Clear received lines after test case is ran
-	defer eh.Clear()
 
 	for caseName, testPayload := range map[string]string{
 		"invalid JSON": "{",
@@ -446,11 +442,12 @@ func TestPushTarget_UsePushTimeout(t *testing.T) {
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
 	tenantIDRelabelConfig := []*relabel.Config{
 		{
-			SourceLabels: model.LabelNames{"__tenant_id__"},
-			Regex:        relabel.MustNewRegexp("(.*)"),
-			Replacement:  "$1",
-			TargetLabel:  "tenant_id",
-			Action:       relabel.Replace,
+			SourceLabels:         model.LabelNames{"__tenant_id__"},
+			Regex:                relabel.MustNewRegexp("(.*)"),
+			Replacement:          "$1",
+			TargetLabel:          "tenant_id",
+			Action:               relabel.Replace,
+			NameValidationScheme: model.LegacyValidation,
 		},
 	}
 	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
@@ -466,7 +463,7 @@ func TestPushTarget_UsePushTimeout(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, res.StatusCode, "expected timeout response")
 }
 
-func waitForMessages(eh *fake.Client) {
+func waitForMessages(eh *loki.CollectingHandler) {
 	countdown := 1000
 	for len(eh.Received()) != 1 && countdown > 0 {
 		time.Sleep(1 * time.Millisecond)

@@ -106,28 +106,33 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 type ResourceAttrsToS3 struct {
 	// S3Prefix indicates the mapping of the key (directory) prefix used for writing into the bucket to a specific resource attribute value.
 	S3Prefix string `alloy:"s3_prefix,attr"`
+	// S3Bucket indicates the mapping of the bucket name used for uploading to a specific resource attribute value.
+	S3Bucket string `alloy:"s3_bucket,attr,optional"`
 }
 
 func (args ResourceAttrsToS3) Convert() awss3exporter.ResourceAttrsToS3 {
 	return awss3exporter.ResourceAttrsToS3{
 		S3Prefix: args.S3Prefix,
+		S3Bucket: args.S3Bucket,
 	}
 }
 
 // S3 Uploader Arguments Block
 type S3Uploader struct {
-	Region            string                 `alloy:"region,attr,optional"`
-	S3Bucket          string                 `alloy:"s3_bucket,attr"`
-	S3Prefix          string                 `alloy:"s3_prefix,attr"`
-	S3PartitionFormat string                 `alloy:"s3_partition_format,attr,optional"`
-	RoleArn           string                 `alloy:"role_arn,attr,optional"`
-	FilePrefix        string                 `alloy:"file_prefix,attr,optional"`
-	Endpoint          string                 `alloy:"endpoint,attr,optional"`
-	S3ForcePathStyle  bool                   `alloy:"s3_force_path_style,attr,optional"`
-	DisableSSL        bool                   `alloy:"disable_ssl,attr,optional"`
-	Compression       configcompression.Type `alloy:"compression,attr,optional"`
-	ACL               string                 `alloy:"acl,attr,optional"`
-	StorageClass      string                 `alloy:"storage_class,attr,optional"`
+	Region              string                 `alloy:"region,attr,optional"`
+	S3Bucket            string                 `alloy:"s3_bucket,attr"`
+	S3Prefix            string                 `alloy:"s3_prefix,attr"`
+	S3BasePrefix        string                 `alloy:"s3_base_prefix,attr,optional"`
+	S3PartitionFormat   string                 `alloy:"s3_partition_format,attr,optional"`
+	S3PartitionTimezone string                 `alloy:"s3_partition_timezone,attr,optional"`
+	RoleArn             string                 `alloy:"role_arn,attr,optional"`
+	FilePrefix          string                 `alloy:"file_prefix,attr,optional"`
+	Endpoint            string                 `alloy:"endpoint,attr,optional"`
+	S3ForcePathStyle    bool                   `alloy:"s3_force_path_style,attr,optional"`
+	DisableSSL          bool                   `alloy:"disable_ssl,attr,optional"`
+	Compression         configcompression.Type `alloy:"compression,attr,optional"`
+	ACL                 string                 `alloy:"acl,attr,optional"`
+	StorageClass        string                 `alloy:"storage_class,attr,optional"`
 
 	RetryMode        string        `alloy:"retry_mode,attr,optional"`
 	RetryMaxAttempts int           `alloy:"retry_max_attempts,attr,optional"`
@@ -150,21 +155,23 @@ func (args *S3Uploader) SetToDefault() {
 
 func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 	return awss3exporter.S3UploaderConfig{
-		Region:            args.Region,
-		S3Bucket:          args.S3Bucket,
-		S3Prefix:          args.S3Prefix,
-		S3PartitionFormat: args.S3PartitionFormat,
-		FilePrefix:        args.FilePrefix,
-		Endpoint:          args.Endpoint,
-		RoleArn:           args.RoleArn,
-		S3ForcePathStyle:  args.S3ForcePathStyle,
-		DisableSSL:        args.DisableSSL,
-		Compression:       args.Compression,
-		ACL:               args.ACL,
-		StorageClass:      args.StorageClass,
-		RetryMode:         args.RetryMode,
-		RetryMaxAttempts:  args.RetryMaxAttempts,
-		RetryMaxBackoff:   args.RetryMaxBackoff,
+		Region:              args.Region,
+		S3Bucket:            args.S3Bucket,
+		S3Prefix:            args.S3Prefix,
+		S3PartitionFormat:   args.S3PartitionFormat,
+		S3PartitionTimezone: args.S3PartitionTimezone,
+		S3BasePrefix:        args.S3BasePrefix,
+		FilePrefix:          args.FilePrefix,
+		Endpoint:            args.Endpoint,
+		RoleArn:             args.RoleArn,
+		S3ForcePathStyle:    args.S3ForcePathStyle,
+		DisableSSL:          args.DisableSSL,
+		Compression:         args.Compression,
+		ACL:                 args.ACL,
+		StorageClass:        args.StorageClass,
+		RetryMode:           args.RetryMode,
+		RetryMaxAttempts:    args.RetryMaxAttempts,
+		RetryMaxBackoff:     args.RetryMaxBackoff,
 	}
 }
 

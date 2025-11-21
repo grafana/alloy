@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
 )
 
 type blackboxHandler struct {
@@ -44,9 +45,9 @@ func (bbh *blackboxHandler) Targets(ep integrations.Endpoint) []*targetgroup.Gro
 		Source: fmt.Sprintf("%s/%s", bbh.cfg.Name(), bbh.cfg.Name()),
 	}
 
-	for _, lbl := range bbh.cfg.Common.ExtraLabels {
+	bbh.cfg.Common.ExtraLabels.Range(func(lbl labels.Label) {
 		group.Labels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	for _, t := range bbh.cfg.BlackboxTargets {
 		labelSet := model.LabelSet{

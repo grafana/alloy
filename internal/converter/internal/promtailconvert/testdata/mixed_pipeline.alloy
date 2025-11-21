@@ -7,22 +7,6 @@ discovery.consulagent "uber_pipeline" {
 	datacenter = "bigdata"
 }
 
-discovery.relabel "uber_pipeline" {
-	targets = array.concat(
-		discovery.kubernetes.uber_pipeline.targets,
-		discovery.consulagent.uber_pipeline.targets,
-	)
-
-	rule {
-		source_labels = ["__trail__"]
-		target_label  = "__path__"
-	}
-}
-
-local.file_match "uber_pipeline" {
-	path_targets = discovery.relabel.uber_pipeline.output
-}
-
 loki.process "uber_pipeline" {
 	forward_to = [loki.write.default.receiver]
 
@@ -36,9 +20,25 @@ loki.process "uber_pipeline" {
 	}
 }
 
+discovery.relabel "uber_pipeline" {
+	targets = array.concat(
+		discovery.kubernetes.uber_pipeline.targets,
+		discovery.consulagent.uber_pipeline.targets,
+	)
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
 loki.source.file "uber_pipeline" {
-	targets               = local.file_match.uber_pipeline.targets
-	forward_to            = [loki.process.uber_pipeline.receiver]
+	targets    = discovery.relabel.uber_pipeline.output
+	forward_to = [loki.process.uber_pipeline.receiver]
+
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/tmp/positions.yaml"
 }
 
