@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
-	"github.com/grafana/dskit/backoff"
 )
 
 type endpoint struct {
@@ -22,7 +23,7 @@ type endpoint struct {
 	shards *shards
 }
 
-func newEndpoint(metrics *Metrics, cfg Config, logger log.Logger, markerHandler internal.MarkerHandler) (*endpoint, error) {
+func newEndpoint(metrics *metrics, cfg Config, logger log.Logger, markerHandler internal.MarkerHandler) (*endpoint, error) {
 	logger = log.With(logger, "component", "endpoint", "host", cfg.URL.Host)
 
 	shards, err := newShards(metrics, logger, markerHandler, cfg)

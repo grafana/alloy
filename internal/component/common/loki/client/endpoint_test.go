@@ -411,7 +411,7 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.BackoffConfig = backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 3}
 			tt.endpointConfig.Timeout = 1 * time.Second
 
-			m := NewMetrics(reg)
+			m := newMetrics(reg)
 			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger(), internal.NewNopMarkerHandler())
 			require.NoError(t, err)
 

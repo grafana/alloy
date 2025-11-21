@@ -261,9 +261,9 @@ func TestWALEndpoint(t *testing.T) {
 			logger := log.NewLogfmtLogger(os.Stdout)
 			marker := internal.NewNopMarkerHandler()
 
-			endpoint, err := newEndpoint(NewMetrics(reg), cfg, logger, marker)
+			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
 			require.NoError(t, err)
-			adapter := newWalEndpointAdapter(endpoint, logger, NewWALEndpointMetrics(reg).CurryWithId("test"), marker)
+			adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), marker)
 
 			//labels := model.LabelSet{"app": "test"}
 			lines := make([]string, 0, tc.numLines)
@@ -405,9 +405,9 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	logger := log.NewLogfmtLogger(os.Stdout)
 	marker := mhFactory(b)
 
-	endpoint, err := newEndpoint(NewMetrics(reg), cfg, logger, marker)
+	endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
 	require.NoError(b, err)
-	adapter := newWalEndpointAdapter(endpoint, logger, NewWALEndpointMetrics(reg).CurryWithId("test"), marker)
+	adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), marker)
 
 	//labels := model.LabelSet{"app": "test"}
 	var lines []string
@@ -497,7 +497,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	m := NewMetrics(reg)
+	m := newMetrics(reg)
 	endpoint, err := newEndpoint(m, cfg, logger, internal.NewNopMarkerHandler())
 	require.NoError(b, err)
 

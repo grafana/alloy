@@ -32,12 +32,12 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 	}
 
 	var (
-		metrics        = NewMetrics(reg)
+		metrics        = newMetrics(reg)
 		endpointsCheck = make(map[string]struct{})
 
 		walWatcherMetrics  = wal.NewWatcherMetrics(reg)
 		walMarkerMetrics   = internal.NewMarkerMetrics(reg)
-		walEndpointMetrics = NewWALEndpointMetrics(reg)
+		walEndpointMetrics = newWALEndpointMetrics(reg)
 	)
 
 	for _, cfg := range cfgs {
@@ -52,7 +52,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		if err != nil {
 			return nil, err
 		}
-		markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.WithCurriedId(name))
+		markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.CurryWithId(name))
 
 		endpoint, err := newEndpoint(metrics, cfg, logger, markerHandler)
 		if err != nil {
@@ -140,7 +140,7 @@ func (m *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *WALEndpointMetrics, markerHandler internal.MarkerHandler) *walEndpointAdapter {
+func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *walEndpointMetrics, markerHandler internal.MarkerHandler) *walEndpointAdapter {
 	c := &walEndpointAdapter{
 		logger:   log.With(logger, "component", "waladapter"),
 		metrics:  metrics,
@@ -160,7 +160,7 @@ func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *WALEn
 // reads from the WAL, entires are forwarded here so it can be written to endpoint.
 type walEndpointAdapter struct {
 	logger  log.Logger
-	metrics *WALEndpointMetrics
+	metrics *walEndpointMetrics
 
 	endpoint *endpoint
 
