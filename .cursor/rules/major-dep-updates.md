@@ -72,7 +72,11 @@ Throughout this process, you will be using several tools to gather the informati
 
 For all the major dependencies as listed in "List of major dependencies" section, use the tools described in "Tools" section to find the current and the latest versions.
 
-List these versions in a form of a table containing three columns: the dependency name, the current version, the latest version and the emoji indicating whether it needs an update. Write this table to the output. Don't write much more to keep it brief.
+List these versions in a form of a table containing columns: the dependency name, the current version, the latest version and the emoji indicating whether it needs an update. Write this table to the output. Don't write much more to keep it brief.
+
+Now, the major dependencies also depend on each other. You can see this in the 'Relationships' paragraph above. For each major dependency, take a look at its latest version and see what are the versions of the major dependencies that it uses. For example, we know that Beyla depends on Prometheus client libraries. We want to know what are the versions of these Prometheus client libraries that Beyla pulls in. Create a table for each major dependency that lists the other major dependencies that it pulls. Include columns: dependency name, current version, latest version, an emoji indicating whether the update is required.
+
+The major dependencies that are using the same versions as the ones we want to update to should be denoted with "READY TO GO ✅". Otherwise, recommend what needs to be updated by the owners of the project.
 
 ### Step 3: List the current forks and what changes have been added to them
 
@@ -112,6 +116,8 @@ If you encounter conflicts, you need to resolve them. You can do this by:
   - What would be the simplest and fastest approach to handle the issue? Can we update to an older version of major dependencies instead while the conflicts are resolved?
 
 - DO NOT simply declare that 'this is an upstream issue'. In order to do that, explore the changelog and isolate specific commits and changes that happened upstream with specific examples of why this is an upstream issue.
+
+- Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
 
 If you were able to produce a working go.mod file and the `go mod tidy` command passes, don't yet worry about building the project or running the tests. These are the next steps to be taken later.
 
@@ -164,6 +170,8 @@ As you encounter errors, you need to fix them. Use the tools described in the "T
 
 - DO NOT simply declare that 'this is an upstream issue'. In order to truly establish that, explore the changelog and isolate specific commits and diff the changes that happened upstream to provide specific examples of why this is an upstream issue that cannot be solved by changing dependency versions or the Alloy code.
 
+- Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
+
 If you were able to fix the compilation errors, explain what you did and how confident you are that these are correct fixes. You can now proceed to the next step.
 
 If we still have compilation errors, stop here and explain briefly what issues are left to resolve. Provide snippets of `go build` commnads that we can run to reproduce the errors and continue the investigation. Provide the options we have and your recommendations. Be concise and clear.
@@ -204,6 +212,8 @@ As you encounter errors, you need to fix them. Use the tools described in the "T
 - Don't be too quick to conclude that there is an upstream bug. It's relatively rare and it is much more frequent that we are using mismatched versions of these dependencies or that we are doing something wrong in our code. Investigate all test failures thoroughly before concluding they're upstream bugs. Try to find workarounds or fixes in our codebase first, and don't assume upstream bugs without exhausting all options.  
 
 - If you think you found a real issue upstream, search the issues and PRs, maybe there is someone who has already found it and maybe there are fixes already in the main. Use the Tools descirbed in this doc. If the issue is fixed upstream, you can switch to use that commit SHA after merge (important! take the commit SHA that is on the main branch upstream, not development branch).
+
+- Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
 
 Consider this step successful if all the tests pass and there were no big changes to test expectations.
 
