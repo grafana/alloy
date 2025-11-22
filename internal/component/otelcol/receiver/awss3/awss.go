@@ -56,7 +56,7 @@ type Encoding struct {
 }
 
 type Notifications struct {
-	OpAMP *component.ID `alloy:"opampextension,attr"`
+	OpAMPExtension *otelcomponent.ID `alloy:"opampextension,attr"`
 }
 
 type Arguments struct {
@@ -76,15 +76,56 @@ func (*Arguments) SetToDefault() {
 	// Defaults filled by upstream OTel receiver in a factory.
 }
 
-// Validate implements syntax.Validator.
-func (args *Arguments) Validate() error {
-	// TODO
-	return nil
+func (args Arguments) receiverConfig() *awss3receiver.Config {
+	encodings := make([]awss3receiver.Encoding, 0, len(args.Encodings))
+	for _, enc := range args.Encodings {
+		encodings = append(encodings, awss3receiver.Encoding{
+			Extension: enc.Extension,
+			Suffix:    enc.Suffix,
+		})
+	}
+
+	var sqsCfg *awss3receiver.SQSConfig = nil
+	if args.SQS != nil {
+		sqsCfg = &awss3receiver.SQSConfig{
+			QueueURL:            args.SQS.QueueURL,
+			Region:              args.SQS.Region,
+			Endpoint:            args.SQS.Endpoint,
+			WaitTimeSeconds:     args.SQS.WaitTimeSeconds,
+			MaxNumberOfMessages: args.SQS.MaxNumberOfMessages,
+		}
+	}
+
+	return &awss3receiver.Config{
+		StartTime: args.StartTime,
+		EndTime:   args.EndTime,
+		Encodings: encodings,
+		SQS:       sqsCfg,
+		S3Downloader: awss3receiver.S3DownloaderConfig{
+			Region:              args.S3Downloader.Region,
+			S3Bucket:            args.S3Downloader.S3Bucket,
+			S3Prefix:            args.S3Downloader.S3Prefix,
+			S3Partition:         args.S3Downloader.S3Partition,
+			FilePrefix:          args.S3Downloader.FilePrefix,
+			Endpoint:            args.S3Downloader.Endpoint,
+			EndpointPartitionID: args.S3Downloader.EndpointPartitionID,
+			S3ForcePathStyle:    args.S3Downloader.S3ForcePathStyle,
+		},
+		Notifications: awss3receiver.Notifications{
+			OpAMP: args.Notifications.OpAMPExtension,
+		},
+	}
 }
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	panic("TODO")
+	return args.receiverConfig(), nil
+}
+
+// Validate implements syntax.Validator.
+func (args *Arguments) Validate() error {
+	otelCfg := args.receiverConfig()
+	return otelCfg.Validate()
 }
 
 // DebugMetricsConfig implements receiver.Arguments.
