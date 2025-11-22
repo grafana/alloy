@@ -49,6 +49,7 @@
 ##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   sync-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
 ##
 ## Other targets:
 ##
@@ -192,7 +193,7 @@ integration-test-k8s: alloy-image
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: sync-module-dependencies
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -240,8 +241,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest generate-snmp
-generate: generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest generate-snmp
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest generate-snmp sync-module-dependencies
+generate: generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest generate-snmp sync-module-dependencies
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
@@ -255,6 +256,13 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	bash ./operations/helm/scripts/rebuild-tests.sh
+endif
+
+sync-module-dependencies:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./tools/sync-module-dependencies && $(GO_ENV) go generate
 endif
 
 generate-ui:
