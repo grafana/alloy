@@ -5,15 +5,10 @@ labels:
   stage: public-preview
   products:
     - oss
-  tags:
-    - text: Community
-      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.exporter.file
 ---
 
 # `otelcol.exporter.file`
-
-{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.file` accepts metrics, logs, and traces telemetry data from other `otelcol` components and writes it to files on disk.
 You can write data in JSON or Protocol Buffers `proto` format.
