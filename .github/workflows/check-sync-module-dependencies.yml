@@ -22,6 +22,11 @@ jobs:
         run: |
           make sync-module-dependencies
 
+      - name: Run tests
+        run: |
+          cd tools/sync-module-dependencies
+          go test -v .
+
       - name: Check for go.mod changes
         run: |
           # List changed go.mod files (added/modified/deleted)
