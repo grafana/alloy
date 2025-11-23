@@ -195,20 +195,28 @@ func (p *Connector) Update(args component.Arguments) error {
 	var metricsConnector otelconnector.Metrics
 	var logsConnector otelconnector.Logs
 
-	switch p.args.ConnectorType() {
-	case ConnectorTracesToMetrics:
-		if len(next.Traces) > 0 || len(next.Logs) > 0 {
-			return errors.New("this connector can only output metrics")
-		}
+	connectorType := p.args.ConnectorType()
 
-		if len(next.Metrics) > 0 {
-			fanout := fanoutconsumer.Metrics(next.Metrics)
-			metricsInterceptor := interceptconsumer.Metrics(fanout,
-				func(ctx context.Context, md pmetric.Metrics) error {
-					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
-					return fanout.ConsumeMetrics(ctx, md)
-				},
-			)
+	// Check if connector outputs to metrics
+	outputsToMetrics := (connectorType&ConnectorTracesToMetrics) != 0 ||
+		(connectorType&ConnectorMetricsToMetrics) != 0 ||
+		(connectorType&ConnectorLogsToMetrics) != 0
+
+	if outputsToMetrics && (len(next.Traces) > 0 || len(next.Logs) > 0) {
+		return errors.New("this connector can only output metrics")
+	}
+
+	if len(next.Metrics) > 0 {
+		fanout := fanoutconsumer.Metrics(next.Metrics)
+		metricsInterceptor := interceptconsumer.Metrics(fanout,
+			func(ctx context.Context, md pmetric.Metrics) error {
+				livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+				return fanout.ConsumeMetrics(ctx, md)
+			},
+		)
+
+		// Create traces to metrics connector if supported
+		if (connectorType & ConnectorTracesToMetrics) != 0 {
 			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
 			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
@@ -216,19 +224,19 @@ func (p *Connector) Update(args component.Arguments) error {
 				components = append(components, tracesConnector)
 			}
 		}
-	case ConnectorLogsToMetrics:
-		if len(next.Traces) > 0 || len(next.Logs) > 0 {
-			return errors.New("this connector can only output metrics")
+
+		// Create metrics to metrics connector if supported
+		if (connectorType & ConnectorMetricsToMetrics) != 0 {
+			metricsConnector, err = p.factory.CreateMetricsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+				return err
+			} else if metricsConnector != nil {
+				components = append(components, metricsConnector)
+			}
 		}
 
-		if len(next.Metrics) > 0 {
-			fanout := fanoutconsumer.Metrics(next.Metrics)
-			metricsInterceptor := interceptconsumer.Metrics(fanout,
-				func(ctx context.Context, md pmetric.Metrics) error {
-					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
-					return fanout.ConsumeMetrics(ctx, md)
-				},
-			)
+		// Create logs to metrics connector if supported
+		if (connectorType & ConnectorLogsToMetrics) != 0 {
 			logsConnector, err = p.factory.CreateLogsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
 			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
@@ -236,8 +244,10 @@ func (p *Connector) Update(args component.Arguments) error {
 				components = append(components, logsConnector)
 			}
 		}
-	default:
-		return errors.New("unsupported connector type")
+	}
+
+	if len(components) == 0 {
+		return errors.New("no connectors were created")
 	}
 
 	updateConsumersFunc := func() {

@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add `otelcol.connector.count` component to count the number of spans, metrics, and logs passing through it. (@hhertout)
+
 - A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
 
 - Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
