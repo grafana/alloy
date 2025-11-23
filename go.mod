@@ -2,6 +2,10 @@ module github.com/grafana/alloy
 
 go 1.25.5
 
+// This local replace is required for local development and testing of the syntax submodule.
+// It is intentionally kept outside the generated block to avoid being overwritten by dependency management tools.
+replace github.com/grafana/alloy/syntax => ./syntax
+
 require (
 	cloud.google.com/go/pubsub v1.50.1
 	cloud.google.com/go/pubsub/v2 v2.0.0
@@ -1068,9 +1072,6 @@ replace (
 )
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
-
-// Submodules.
-replace github.com/grafana/alloy/syntax => ./syntax
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
 // versions.
