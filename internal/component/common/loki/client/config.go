@@ -33,11 +33,11 @@ type Config struct {
 	// prevent HOL blocking in multitenant deployments.
 	DropRateLimitedBatches bool
 
-	// QueueConfig controls how shards and queues are configured for endpoints.
+	// QueueConfig controls how shards and queues are configured for endpoint.
 	QueueConfig QueueConfig
 }
 
-// QueueConfig controls how shards and queue are configured for client.
+// QueueConfig controls how shards and queues are configured for endpoints.
 type QueueConfig struct {
 	// Capacity is the worst case size in bytes desired for the send queue. This value is used to calculate the size of
 	// the buffered channel used underneath. The worst case scenario assumed is that every batch buffered in full, hence
