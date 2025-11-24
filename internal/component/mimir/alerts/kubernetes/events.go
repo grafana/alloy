@@ -8,6 +8,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus-operator/prometheus-operator/pkg/alertmanager"
 	validation_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/alertmanager/validation/v1alpha1"
@@ -15,13 +16,11 @@ import (
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promListers_v1alpha "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
-	alertmgr_cfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/labels"
 	go_k8s "k8s.io/client-go/kubernetes"
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/mimir/util"
@@ -180,8 +179,12 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &monitoringv1.Alertmanager{})
 	)
 
-	convertedCfg := c.baseCfg.String()
-	err := cfgBuilder.InitializeFromRawConfiguration([]byte(convertedCfg))
+	convertedCfg, err := c.baseCfg.String()
+	if err != nil {
+		return nil, err
+	}
+
+	err = cfgBuilder.InitializeFromRawConfiguration([]byte(convertedCfg))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize from global AlertmangerConfig: %w", err)
 	}
@@ -195,13 +198,12 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 		return nil, fmt.Errorf("failed to marshal configuration: %w", err)
 	}
 
-	var res alertmgr_cfg.Config
-	err = yaml.Unmarshal(generatedConfig, &res)
+	res, err := alertmgr_cfg.Unmarshal(generatedConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal generated final configuration: %w", err)
 	}
 
-	return &res, nil
+	return res, nil
 }
 
 func (e *eventProcessor) reconcileState(ctx context.Context) error {

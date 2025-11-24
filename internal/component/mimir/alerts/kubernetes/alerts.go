@@ -9,13 +9,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/dskit/backoff"
-	alertmgr_cfg "github.com/prometheus/alertmanager/config"
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
 	_ "k8s.io/component-base/metrics/prometheus/workqueue"
 	controller "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/yaml"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/mimir/util"
@@ -230,13 +229,12 @@ func (c *Component) Startup(ctx context.Context) error {
 		return err
 	}
 
-	var baseCfg alertmgr_cfg.Config
-	err = yaml.Unmarshal([]byte(c.args.GlobalConfig), &baseCfg)
+	baseCfg, err := alertmgr_cfg.Unmarshal([]byte(c.args.GlobalConfig))
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
 
-	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, baseCfg)
+	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg)
 
 	go c.eventProcessor.run(ctx)
 	return nil

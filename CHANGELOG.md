@@ -10,7 +10,7 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-v1.12.0-rc.1
+v1.12.0-rc.2
 -----------------
 
 ### Breaking changes
@@ -94,7 +94,7 @@ v1.12.0-rc.1
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Update Beyla component to 2.7.4. (@grcevski)
+- Update Beyla component to 2.7.8. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
@@ -114,6 +114,8 @@ v1.12.0-rc.1
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
 - `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
+
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
 ### Bugfixes
 
