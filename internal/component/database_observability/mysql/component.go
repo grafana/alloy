@@ -39,7 +39,7 @@ const selectServerInfo = `SELECT @@server_uuid, VERSION()`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
