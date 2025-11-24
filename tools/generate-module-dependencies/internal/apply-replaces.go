@@ -10,15 +10,6 @@ import (
 	"github.com/grafana/replace-generator/internal/types"
 )
 
-// detectLineEnding detects the line ending style used in the content.
-// Returns "\r\n" for Windows-style, "\n" for Unix-style, or "\n" as default.
-func detectLineEnding(content string) string {
-	if strings.Contains(content, "\r\n") {
-		return "\r\n"
-	}
-	return "\n"
-}
-
 func main() {
 	fileHelper := helpers.GetFileHelper()
 	projectReplaces, err := fileHelper.LoadProjectReplaces()
@@ -78,9 +69,6 @@ func getMarkers(fileType types.FileType) (startMarker, endMarker string, err err
 
 // Upserts the generated block using the markers, or lack thereof, as a guide
 func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker string) (string, error) {
-	// Detect and preserve the line ending style of the target file
-	lineEnding := detectLineEnding(targetContent)
-
 	startIdx := strings.Index(targetContent, startMarker)
 	startFound := startIdx != -1
 
@@ -91,10 +79,8 @@ func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker str
 		}
 
 		// Neither start not end marker found, append to the end of the file
-		// Trim all possible line ending combinations
-		targetContent = strings.TrimRight(targetContent, "\r\n")
 		targetContent = strings.TrimRight(targetContent, "\n")
-		return targetContent + lineEnding + replacement, nil
+		return targetContent + "\n" + replacement, nil
 	}
 
 	// Start found: search end marker after the start
