@@ -1,0 +1,24 @@
+otelcol.receiver.awss3 "default" {
+	s3downloader {
+		region                = "us-west-1"
+		s3_bucket             = "mybucket"
+		s3_prefix             = "mytrace"
+		s3_partition          = "minute"
+		endpoint_partition_id = "aws"
+	}
+
+	sqs {
+		queue_url = "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
+		region    = "us-east-1"
+	}
+
+	output {
+		logs = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
