@@ -216,6 +216,26 @@ func (p *Connector) Update(args component.Arguments) error {
 				components = append(components, tracesConnector)
 			}
 		}
+	case ConnectorLogsToMetrics:
+		if len(next.Traces) > 0 || len(next.Logs) > 0 {
+			return errors.New("this connector can only output metrics")
+		}
+
+		if len(next.Metrics) > 0 {
+			fanout := fanoutconsumer.Metrics(next.Metrics)
+			metricsInterceptor := interceptconsumer.Metrics(fanout,
+				func(ctx context.Context, md pmetric.Metrics) error {
+					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+					return fanout.ConsumeMetrics(ctx, md)
+				},
+			)
+			logsConnector, err = p.factory.CreateLogsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+				return err
+			} else if logsConnector != nil {
+				components = append(components, logsConnector)
+			}
+		}
 	default:
 		return errors.New("unsupported connector type")
 	}
