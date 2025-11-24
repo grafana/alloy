@@ -1,5 +1,5 @@
 
-# sync-module-dependencies
+# generate-module-dependencies
 
 A small utility to keep Go module replace directives consistent across the repository from a single source of truth.
 
@@ -15,17 +15,20 @@ A small utility to keep Go module replace directives consistent across the repos
 
 Generated blocks are wrapped with:
 ```
-text BEGIN GENERATED REPLACES - DO NOT EDIT ...  END GENERATED REPLACES
+BEGIN GENERATED REPLACES - DO NOT EDIT ...  END GENERATED REPLACES
 ```
 
 **Do not edit anything between these markers**, manually—update `dependency-replacements.yaml` instead. Anything 
 changed manually within these markers will be overwritten during the next run.
 
+Please note that local replacement directives (ie pointing a dependency to a local module) are _not_ meant to be included
+in `dependency-replacements.yaml`. These must be included separately in `go.mod` files, outside of the template boundaries
+
 ## Usage
 
 - One-off run from repo root:
-    - `make sync-module-dependencies`
-    - or `cd tools/sync-module-dependencies && go generate`
+    - `make generate-module-dependencies`
+    - or `cd tools/generate-module-dependencies && go generate`
 
 - Automatically invoked by:
     - `make alloy` (locally, via a prerequisite)
@@ -46,4 +49,5 @@ Comments are normalized (single-line) and included above the corresponding `repl
 ## Notes
 
 - This tool writes only the generated block; existing content outside the markers is preserved.
-- CI skips this step by design—commit any changes produced locally to keep the repo in sync.
+- CI skips the generation step by design—commit any changes produced locally to keep the repo in sync.
+- However, CI will run a check and fail if the output of the generate-module-dependencies step differs from the committed version.

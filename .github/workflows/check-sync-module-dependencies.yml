@@ -1,4 +1,4 @@
-name: Check sync-module-dependencies
+name: Check generate-module-dependencies
 permissions:
   contents: read
 on: pull_request
@@ -18,13 +18,13 @@ jobs:
         with:
           go-version: '1.25.x'
 
-      - name: Run sync-module-dependencies
+      - name: Run generate-module-dependencies
         run: |
-          make sync-module-dependencies
+          make generate-module-dependencies
 
       - name: Run tests
         run: |
-          cd tools/sync-module-dependencies
+          cd tools/generate-module-dependencies
           go test -v .
 
       - name: Check for go.mod changes
@@ -33,7 +33,7 @@ jobs:
           CHANGED=$(git status --porcelain | awk '{print $2}' | grep -E '(^|/)go\.mod$' || true)
 
           if [ -n "$CHANGED" ]; then
-            echo "::error::go.mod files are out of sync with sync-module-dependencies."
+            echo "::error::go.mod files are out of sync with generate-module-dependencies."
             echo "The following go.mod files changed:"
             echo "$CHANGED"
             echo
@@ -41,6 +41,6 @@ jobs:
             git --no-pager diff -- $CHANGED || true
             echo
             echo "To fix locally, run:"
-            echo "  make sync-module-dependencies"
+            echo "  make generate-module-dependencies"
             exit 1
           fi
