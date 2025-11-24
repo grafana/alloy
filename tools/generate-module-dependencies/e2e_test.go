@@ -74,7 +74,7 @@ func setupTestEnv(t *testing.T, yamlContent, goModContent string) *testEnv {
 	t.Helper()
 
 	tmpDir := t.TempDir()
-	scriptDir := filepath.Join(tmpDir, "tools", "sync-module-dependencies")
+	scriptDir := filepath.Join(tmpDir, "tools", "generate-module-dependencies")
 	if err := os.MkdirAll(scriptDir, 0755); err != nil {
 		t.Fatalf("Failed to create script directory: %v", err)
 	}
