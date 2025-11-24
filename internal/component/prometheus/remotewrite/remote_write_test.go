@@ -41,7 +41,9 @@ func Test(t *testing.T) {
 			remote_timeout = "100ms"
 
 			queue_config {
-				batch_send_deadline = "100ms"
+                // This will guarantee that we get both samples we expect or the test times out
+				max_samples_per_send = 2
+				batch_send_deadline = "1m"
 			}
 		}
 	`, srv.URL))
@@ -81,20 +83,11 @@ func Test(t *testing.T) {
 		},
 	}}
 
-	var results []prompb.TimeSeries
 	select {
 	case <-time.After(time.Minute):
 		require.FailNow(t, "timed out waiting for metrics")
 	case res := <-writeResult:
-		if len(res.Timeseries) == 1 {
-			results = append(results, res.Timeseries[0])
-		} else if len(res.Timeseries) == 2 {
-			results = res.Timeseries
-		}
-		// When we have two results make sure they match what we expect
-		if len(results) == 2 {
-			require.Equal(t, expect, results)
-		}
+		require.Equal(t, expect, res.Timeseries)
 	}
 }
 
@@ -231,6 +224,7 @@ func sendMetric(
 }
 
 func testArgsForConfig(t *testing.T, cfg string) remotewrite.Arguments {
+	t.Helper()
 	var args remotewrite.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	return args
