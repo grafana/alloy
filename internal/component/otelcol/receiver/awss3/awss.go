@@ -50,22 +50,11 @@ type SQSConfig struct {
 	MaxNumberOfMessages *int64 `alloy:"max_number_of_messages,attr,optional"`
 }
 
-type Encoding struct {
-	Extension otelcomponent.ID `alloy:"extension,attr"`
-	Suffix    string           `alloy:"suffix,attr"`
-}
-
-type Notifications struct {
-	OpAMPExtension *otelcomponent.ID `alloy:"opampextension,attr"`
-}
-
 type Arguments struct {
-	StartTime     string             `alloy:"start_time,attr,optional"`
-	EndTime       string             `alloy:"end_time,attr,optional"`
-	Encodings     []Encoding         `alloy:"encoding,block,optional"`
-	Notifications Notifications      `alloy:"notifications,block,optional"`
-	S3Downloader  S3DownloaderConfig `alloy:"s3downloader,block"`
-	SQS           *SQSConfig         `alloy:"sqs,block,optional"`
+	StartTime    string             `alloy:"start_time,attr,optional"`
+	EndTime      string             `alloy:"end_time,attr,optional"`
+	S3Downloader S3DownloaderConfig `alloy:"s3downloader,block"`
+	SQS          *SQSConfig         `alloy:"sqs,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -77,30 +66,10 @@ func (*Arguments) SetToDefault() {
 }
 
 func (args Arguments) receiverConfig() *awss3receiver.Config {
-	encodings := make([]awss3receiver.Encoding, 0, len(args.Encodings))
-	for _, enc := range args.Encodings {
-		encodings = append(encodings, awss3receiver.Encoding{
-			Extension: enc.Extension,
-			Suffix:    enc.Suffix,
-		})
-	}
-
-	var sqsCfg *awss3receiver.SQSConfig = nil
-	if args.SQS != nil {
-		sqsCfg = &awss3receiver.SQSConfig{
-			QueueURL:            args.SQS.QueueURL,
-			Region:              args.SQS.Region,
-			Endpoint:            args.SQS.Endpoint,
-			WaitTimeSeconds:     args.SQS.WaitTimeSeconds,
-			MaxNumberOfMessages: args.SQS.MaxNumberOfMessages,
-		}
-	}
-
-	return &awss3receiver.Config{
+	// TODO(x1unix): map Encodings and Notification with components.
+	cfg := &awss3receiver.Config{
 		StartTime: args.StartTime,
 		EndTime:   args.EndTime,
-		Encodings: encodings,
-		SQS:       sqsCfg,
 		S3Downloader: awss3receiver.S3DownloaderConfig{
 			Region:              args.S3Downloader.Region,
 			S3Bucket:            args.S3Downloader.S3Bucket,
@@ -111,10 +80,19 @@ func (args Arguments) receiverConfig() *awss3receiver.Config {
 			EndpointPartitionID: args.S3Downloader.EndpointPartitionID,
 			S3ForcePathStyle:    args.S3Downloader.S3ForcePathStyle,
 		},
-		Notifications: awss3receiver.Notifications{
-			OpAMP: args.Notifications.OpAMPExtension,
-		},
 	}
+
+	if args.SQS != nil {
+		cfg.SQS = &awss3receiver.SQSConfig{
+			QueueURL:            args.SQS.QueueURL,
+			Region:              args.SQS.Region,
+			Endpoint:            args.SQS.Endpoint,
+			WaitTimeSeconds:     args.SQS.WaitTimeSeconds,
+			MaxNumberOfMessages: args.SQS.MaxNumberOfMessages,
+		}
+	}
+
+	return cfg
 }
 
 // Convert implements receiver.Arguments.
@@ -145,6 +123,7 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	// TODO(x1unix): expose components after Encodings will be exposed
 	return nil
 }
 
