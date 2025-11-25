@@ -299,10 +299,6 @@ func readWAL(dir string) ([]loki.Entry, error) {
 				})
 			}
 		}
-
-		// reset entry
-		walRec.Series = walRec.Series[:]
-		walRec.RefEntries = walRec.RefEntries[:]
 	}
 
 	return seenEntries, nil
