@@ -29,7 +29,8 @@ The receiver has two modes of operation:
 The receiver supports the following encodings:
 
 - otlp_json (OpenTelemetry Protocol format represented as json) with a suffix of `.json`
-- otlp_proto (OpenTelemetry Protocol format represented as Protocol Buffers) with a suffix of `.binpb`
+- `otlp_json` (OpenTelemetry Protocol format represented as JSON) with a suffix of `.json`
+- `otlp_proto` (OpenTelemetry Protocol format represented as Protocol Buffers) with a suffix of `.binpb`
 
 {{< admonition type="note" >}}
 Currently, `otelcol.receiver.awss3` receiver doesn't support encoding extensions.
@@ -101,14 +102,14 @@ The following arguments are supported:
 
 | Name                    | Type     | Description                                                                                           | Default       | Required |
 | ----------------------- | -------- | ----------------------------------------------------------------------------------------------------- | ------------- | -------- |
-| `region`                | `string` | AWS region.                                                                                           | `"us-east-1"` | no       |
 | `s3_bucket`             | `string` | S3 bucket.                                                                                            |               | yes      |
 | `s3_prefix`             | `string` | Prefix for the S3 key (root directory inside bucket).                                                 |               | yes      |
-| `s3_partition`          | `string` | Time granularity of S3 key: hour or minute.                                                           | `"minute"`    | no       |
-| `file_prefix`           | `string` | File prefix defined by user.                                                                          |               | no       |
-| `endpoint`              | `string` | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |               | no       |
 | `endpoint_partition_id` | `string` | Partition id to use if `endpoint` is specified.                                                       | `"aws"`       | no       |
+| `endpoint`              | `string` | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |               | no       |
+| `file_prefix`           | `string` | File prefix defined by user.                                                                          |               | no       |
+| `region`                | `string` | AWS region.                                                                                           | `"us-east-1"` | no       |
 | `s3_force_path_style`   | `bool`   | When enabled, forces the request to use [path-style addressing][s3-force-path-style-ref].             | `false`       | no       |
+| `s3_partition`          | `string` | Time granularity of S3 key: hour or minute.                                                           | `"minute"`    | no       |
 
 [s3-force-path-style-ref]: http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html
 
