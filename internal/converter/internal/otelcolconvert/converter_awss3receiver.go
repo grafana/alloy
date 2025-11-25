@@ -43,7 +43,7 @@ func (awss3ReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toAWSS3Receiver(state *State, id componentstatus.InstanceID, cfg *awss3receiver.Config) (*awss3.Arguments, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	nextLogs := state.Next(id, pipeline.SignalLogs)
+	nextTraces := state.Next(id, pipeline.SignalTraces)
 
 	// TODO(x1unix): map Encodings
 	if len(cfg.Encodings) > 0 {
@@ -74,7 +74,7 @@ func toAWSS3Receiver(state *State, id componentstatus.InstanceID, cfg *awss3rece
 			S3ForcePathStyle:    cfg.S3Downloader.S3ForcePathStyle,
 		},
 		Output: &otelcol.ConsumerArguments{
-			Logs: ToTokenizedConsumers(nextLogs),
+			Traces: ToTokenizedConsumers(nextTraces),
 		},
 	}
 
