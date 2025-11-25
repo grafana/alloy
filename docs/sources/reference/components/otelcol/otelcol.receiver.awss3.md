@@ -12,7 +12,7 @@ title: otelcol.receiver.awss3
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.awss3` receives traces previously stored in S3 by the [AWS S3 Exporter](./otelcol.exporter.awss3.md).
+`otelcol.receiver.awss3` receives traces stored in S3 by the [AWS S3 Exporter](./otelcol.exporter.awss3.md).
 
 {{< admonition type="warning" >}}
 `otelcol.receiver.awss3` is a wrapper over the upstream OpenTelemetry Collector [`awss3`][] receiver.
@@ -24,9 +24,9 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 The receiver has two modes of operation:
 
 - **Time Range Mode** - Specify start and end to fetch data from a specific time range.
-- **SQS Message Mode** - Subscribe to SQS messages to process new objects as they arrive.
+- **SQS Message Mode** - Subscribe to SQS messages to process objects as they arrive.
 
-The receiver supports following encodings:
+The receiver supports the following encodings:
 
 - otlp_json (OpenTelemetry Protocol format represented as json) with a suffix of `.json`
 - otlp_proto (OpenTelemetry Protocol format represented as Protocol Buffers) with a suffix of `.binpb`
@@ -66,10 +66,10 @@ You can use the following arguments with `otelcol.receiver.awss3`:
 | `start_time` | `string` | The time at which to start retrieving data. |         | Required if fetching by time. |
 | `end_time`   | `string` | The time at which to stop retrieving data.  |         | Required if fetching by time. |
 
-The `start_time` and `end_time` fields time format is either RFC3339, `YYYY-MM-DD HH:MM` or simply `YYYY-MM-DD`, in which case the time is assumed to be `00:00`.
+The `start_time` and `end_time` fields use one of the following time formats: RFC3339, `YYYY-MM-DD HH:MM`, or `YYYY-MM-DD`. When using `YYYY-MM-DD`, the time defaults to `00:00`.
 
 {{< admonition type="note" >}}
-Time-based configuration (`start_time` and `end_time` arguments) cannot be combined together with [`sqs`][] block.
+Time-based configuration (`start_time` and `end_time` arguments) can't be combined together with [`sqs`][] block.
 
 [`sqs`]: #sqs
 
@@ -95,7 +95,7 @@ You can use the following blocks with `otelcol.receiver.awss3`:
 
 {{< badge text="Required" >}}
 
-The `s3downloader` block contains AWS S3 downloader related config to control things like bucket, prefix, batching, connections, retries, etc.
+The `s3downloader` block contains AWS S3 downloader related configuration to control things like bucket, prefix, batching, connections, retries, etc.
 
 The following arguments are supported:
 
@@ -108,7 +108,7 @@ The following arguments are supported:
 | `file_prefix`           | `string` | File prefix defined by user.                                                                          |               | no       |
 | `endpoint`              | `string` | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |               | no       |
 | `endpoint_partition_id` | `string` | Partition id to use if `endpoint` is specified.                                                       | `"aws"`       | no       |
-| `s3_force_path_style`   | `bool`   | Wnen enabled, forces the request to use [path-style addressing][s3-force-path-style-ref].             | `false`       | no       |
+| `s3_force_path_style`   | `bool`   | When enabled, forces the request to use [path-style addressing][s3-force-path-style-ref].             | `false`       | no       |
 
 [s3-force-path-style-ref]: http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html
 
@@ -127,7 +127,8 @@ The following arguments are supported:
 | `wait_time_seconds`      | `int`    | Wait time in seconds for long polling SQS requests.             | `20`    | no       |
 
 {{< admonition type="note" >}}
-You must configure your S3 bucket to send event notifications to the SQS queue. Time-based configuration (`start_time`/`end_time`) and SQS configuration cannot be used together.
+You must configure your S3 bucket to send event notifications to the SQS queue.
+Time-based configuration (`start_time`/`end_time`) and SQS configuration can't be used together.
 {{< /admonition >}}
 
 ### `output`
