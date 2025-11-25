@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -258,6 +259,53 @@ func eventuallyReadWAL(t *testing.T, expectedEntries int, dir string) []loki.Ent
 		return len(readEntries) == expectedEntries
 	}, time.Second*5, time.Second, "timed out waiting for WAL")
 	return readEntries
+}
+
+// readWAL will read all entries in the WAL located under dir.
+func readWAL(dir string) ([]loki.Entry, error) {
+	reader, closeFn, err := newWalReader(dir, -1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { closeFn.Close() }()
+
+	seenSeries := make(map[uint64]model.LabelSet)
+	seenEntries := []loki.Entry{}
+
+	for reader.Next() {
+		var walRec = Record{}
+		bytes := reader.Record()
+		err = DecodeRecord(bytes, &walRec)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding wal record: %w", err)
+		}
+
+		// first read series
+		for _, series := range walRec.Series {
+			if _, ok := seenSeries[uint64(series.Ref)]; !ok {
+				seenSeries[uint64(series.Ref)] = util.MapToModelLabelSet(series.Labels.Map())
+			}
+		}
+
+		for _, entries := range walRec.RefEntries {
+			for _, entry := range entries.Entries {
+				labels, ok := seenSeries[uint64(entries.Ref)]
+				if !ok {
+					return nil, fmt.Errorf("found entry without matching series")
+				}
+				seenEntries = append(seenEntries, loki.Entry{
+					Labels: labels,
+					Entry:  entry,
+				})
+			}
+		}
+
+		// reset entry
+		walRec.Series = walRec.Series[:]
+		walRec.RefEntries = walRec.RefEntries[:]
+	}
+
+	return seenEntries, nil
 }
 
 func BenchmarkWriter_WriteEntries(b *testing.B) {
