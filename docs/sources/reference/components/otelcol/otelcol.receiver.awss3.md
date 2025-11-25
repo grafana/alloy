@@ -79,7 +79,7 @@ Refer to the upstream receiver [documentation](https://github.com/open-telemetry
 
 ## Blocks
 
-You can use the following blocks with `otelcol.receiver.cloudflare`:
+You can use the following blocks with `otelcol.receiver.awss3`:
 
 | Block                          | Description                                                                  | Required                                  |
 | ------------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------- |
