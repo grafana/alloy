@@ -84,7 +84,7 @@ You can use the following blocks with `otelcol.receiver.cloudflare`:
 | Block                          | Description                                                                  | Required                                  |
 | ------------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------- |
 | [`s3downloader`][s3downloader] | Configures S3 downloader.                                                    | yes                                       |
-| [`sqs`][output]                | Configures SQS queue configuration for receiving object change notification. | Required if fetching by SQS notification. |
+| [`sqs`][sqs]                   | Configures SQS queue configuration for receiving object change notification. | Required if fetching by SQS notification. |
 | [`output`][output]             | Configures where to send received telemetry data.                            | yes                                       |
 
 [s3downloader]: #s3downloader
