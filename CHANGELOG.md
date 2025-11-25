@@ -18,6 +18,8 @@ Main (unreleased)
 
 - (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
 
+- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
@@ -464,7 +466,6 @@ v1.10.0
 - Add the `otelcol.receiver.faro` receiver to receive traces and logs from the Grafana Faro Web SDK. (@mar4uk)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
-- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal) 
 
 ### Enhancements
 
