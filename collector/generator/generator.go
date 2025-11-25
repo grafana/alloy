@@ -29,6 +29,12 @@ func main() {
 		log.Fatalf("failed to replace command factory: %v", err)
 	}
 
+	// Export components function to a separate package for otelcmd
+	// The generator runs from collector directory, so components.go is in the same directory
+	if err := exportComponents(dir); err != nil {
+		log.Fatalf("failed to export components: %v", err)
+	}
+
 }
 
 // copyAlloyMainTemplateFromFile copies the template from templatePath to dstPath.
@@ -83,5 +89,35 @@ func replaceCmdFactory(filePath string) error {
 	if err := os.WriteFile(filePath, []byte(newContent), mode); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
+	return nil
+}
+
+// exportComponents copies components.go and modifies it to be importable by otelcmd.
+// baseDir is the collector directory where components.go is located.
+func exportComponents(baseDir string) error {
+	componentsPath := filepath.Join(baseDir, "components.go")
+	data, err := os.ReadFile(componentsPath)
+	if err != nil {
+		return fmt.Errorf("read components.go: %w", err)
+	}
+
+	content := string(data)
+
+	// Change package from main to components
+	content = strings.Replace(content, "package main", "package components", 1)
+
+	// Change function name from components() to Components()
+	content = strings.Replace(content, "func components()", "func Components()", 1)
+
+	exportPath := filepath.Join(baseDir, "otelcmd", "internal", "components", "components_impl.go")
+
+	if err := os.MkdirAll(filepath.Dir(exportPath), 0755); err != nil {
+		return fmt.Errorf("create dir: %w", err)
+	}
+
+	if err := os.WriteFile(exportPath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("write export: %w", err)
+	}
+
 	return nil
 }

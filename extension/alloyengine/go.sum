@@ -1762,6 +1762,7 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancing
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.138.0/go.mod h1:8b+5kIk92O+ezzsR25VXYU68m6d0LNS75wdbaSmTMZ8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0 h1:2Vu5fp72wN18qKX/s8HIZLSwrmOJLVlSyXynL0PnR3I=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0/go.mod h1:Oyxv2r1NHL/pdogUs1NT6SXOPckxVcX5I9LlZ30GzXo=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0/go.mod h1:R+yjL64rqkiJD+7qK8W3/0nCNDkaTC6Mwc/es31qqe4=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0 h1:2wa0+KJbl0Q2YWT2EhRBu0ZQ1Co07LCFyVZhVpRH58M=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0/go.mod h1:oQDGoH289a5XADpayJy4OyYYU/dHlqRIdvu4DyMVkF8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.139.0 h1:4MVJ5n299cbzJfLwRcnbzEx6yngd+gYRxF/fFOZcnlE=
@@ -2063,6 +2064,7 @@ github.com/prometheus/common v0.31.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+
 github.com/prometheus/common v0.32.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
 github.com/prometheus/common v0.67.1 h1:OTSON1P4DNxzTg4hmKCc37o4ZAZDv0cfXLkOt0oEowI=
 github.com/prometheus/common v0.67.1/go.mod h1:RpmT9v35q2Y+lsieQsdOh5sXZ6ajUGC8NjZAmr8vb0Q=
+github.com/prometheus/common v0.67.2/go.mod h1:63W3KZb1JOKgcjlIr64WW/LvFGAqKPj0atm+knVGEko=
 github.com/prometheus/common/assets v0.2.0 h1:0P5OrzoHrYBOSM1OigWL3mY8ZvV2N4zIE/5AahrSrfM=
 github.com/prometheus/common/assets v0.2.0/go.mod h1:D17UVUE12bHbim7HzwUvtqm6gwBEaDQ0F+hIGbFbccI=
 github.com/prometheus/common/sigv4 v0.1.0 h1:qoVebwtwwEhS85Czm2dSROY5fTo2PAPEVdDeppTwGX4=
@@ -2073,6 +2075,7 @@ github.com/prometheus/exporter-toolkit v0.7.0/go.mod h1:ZUBIj498ePooX9t/2xtDjeQY
 github.com/prometheus/exporter-toolkit v0.7.1/go.mod h1:ZUBIj498ePooX9t/2xtDjeQYwvRpiPP2lh5u4iblj2g=
 github.com/prometheus/exporter-toolkit v0.14.1 h1:uKPE4ewweVRWFainwvAcHs3uw15pjw2dk3I7b+aNo9o=
 github.com/prometheus/exporter-toolkit v0.14.1/go.mod h1:di7yaAJiaMkcjcz48f/u4yRPwtyuxTU5Jr4EnM2mhtQ=
+github.com/prometheus/exporter-toolkit v0.15.0/go.mod h1:OyRWd2iTo6Xge9Kedvv0IhCrJSBu36JCfJ2yVniRIYk=
 github.com/prometheus/memcached_exporter v0.13.0 h1:d246RYODFCXy39XA8S2PBrqp5jLCSvl9b4KsYspDCHk=
 github.com/prometheus/memcached_exporter v0.13.0/go.mod h1:fp7Wk6v0RFijeP3Syvd1TShBSJoCG5iFfvPdi5dCMEU=
 github.com/prometheus/otlptranslator v1.0.0 h1:s0LJW/iN9dkIH+EnhiD3BlkkP5QVIUVEoIwkU+A6qos=

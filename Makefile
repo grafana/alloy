@@ -196,7 +196,7 @@ alloy: generate-otel-collector-distro
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
+	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
 endif
 
 # alloy-service is not included in binaries since it's Windows-only.

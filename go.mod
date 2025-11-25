@@ -62,6 +62,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.12
+	github.com/grafana/alloy/extension/alloyengine v0.1.0 // indirect
+	github.com/grafana/alloy/otelcol v0.0.0-00010101000000-000000000000
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla/v2 v2.7.8
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
@@ -125,7 +127,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.138.0 // bug with v139 https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/43950
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0 // TODO: Upgrade this when we can use a new version of otlptranslator
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0 // TODO: Upgrade this when we can use a new version of otlptranslator
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.139.0
@@ -195,13 +197,13 @@ require (
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.1
+	github.com/prometheus/common v0.67.2
 	github.com/prometheus/consul_exporter v0.8.0
 	github.com/prometheus/memcached_exporter v0.13.0
 	github.com/prometheus/mysqld_exporter v0.17.2
 	github.com/prometheus/node_exporter v1.9.1
 	github.com/prometheus/procfs v0.17.0
-	github.com/prometheus/prometheus v0.305.1-0.20250818080900-0a40df33fb4e // replaced by a fork of v3.7.1 further down this file
+	github.com/prometheus/prometheus v0.307.1 // replaced by a fork of v3.7.1 further down this file
 	github.com/prometheus/sigv4 v0.2.1
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.28.0
@@ -814,7 +816,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.12.1 // indirect
-	github.com/prometheus/exporter-toolkit v0.14.1 // indirect
+	github.com/prometheus/exporter-toolkit v0.15.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
@@ -1005,7 +1007,22 @@ require (
 	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
 	github.com/linode/go-metadata v0.2.2 // indirect
 	github.com/mitchellh/hashstructure v1.1.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.139.0 // indirect
 	github.com/twmb/franz-go/pkg/kadm v1.17.1 // indirect
+	go.opentelemetry.io/collector/confmap/provider/envprovider v1.45.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.45.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/httpprovider v1.45.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.45.0 // indirect
+	go.opentelemetry.io/collector/connector/forwardconnector v0.139.0 // indirect
+	go.opentelemetry.io/collector/exporter/nopexporter v0.139.0 // indirect
+	go.opentelemetry.io/collector/extension/zpagesextension v0.139.0 // indirect
+	go.opentelemetry.io/contrib/zpages v0.63.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
 )
 
@@ -1073,6 +1090,10 @@ replace (
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
 // Submodules.
+replace github.com/grafana/alloy/extension/alloyengine => ./extension/alloyengine
+
+replace github.com/grafana/alloy/otelcol => ./collector
+
 replace github.com/grafana/alloy/syntax => ./syntax
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
