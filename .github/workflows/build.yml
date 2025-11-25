@@ -42,7 +42,7 @@ jobs:
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.22-boringcrypto@sha256:a6fa44bb736498737c17aaeada5d237572be1af9f24849ab3b557692b46be57e
+    container: grafana/alloy-build-image:v0.1.22-boringcrypto@sha256:b609db5a06d6cd768514d1daac6bb81bed9f7fed4336f48cfb5410b8a3d8d65d
     strategy:
       matrix:
         os: [linux]

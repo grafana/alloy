@@ -39,7 +39,7 @@ const selectServerInfo = `SELECT @@server_uuid, VERSION()`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -143,7 +143,7 @@ var DefaultArguments = Arguments{
 	},
 
 	QuerySamplesArguments: QuerySamplesArguments{
-		CollectInterval:             1 * time.Minute,
+		CollectInterval:             10 * time.Second,
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
@@ -364,7 +364,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.SchemaDetailsCollector:  true,
 		collector.SetupConsumersCollector: true,
 		collector.QuerySamplesCollector:   true,
-		collector.ExplainPlansCollector:   false,
+		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
 	}
 

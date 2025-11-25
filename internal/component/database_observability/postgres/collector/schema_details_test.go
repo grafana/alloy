@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -17,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -33,19 +34,23 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/books_store",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -68,7 +73,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("authors"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.authors").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "authors").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -136,19 +141,23 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/books_store",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -180,7 +189,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("spatial_ref_sys"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.authors").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "authors").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -214,7 +223,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.categories").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "categories").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -248,7 +257,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("postgis.spatial_ref_sys").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("postgis", "spatial_ref_sys").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -320,6 +329,116 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[7].Line)
 	})
 
+	t.Run("collector discovers and collects from multiple databases", func(t *testing.T) {
+		t.Parallel()
+
+		/*
+			This is the only test that sets up 3 mock connections representing a Postgres instance with 3 separate databases,
+			better representing the individual connections of database discovery.
+			ExpectationsWereMet() is called on each connection at end of the test, asserting that the connections are
+			correctly used.
+			This is the only test that will fail if distinct connections are not made.
+		*/
+		initialConnectionDb, initialConnectionMock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer initialConnectionDb.Close()
+		db1, db1Mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db1.Close()
+		db2, db2Mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db2.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              initialConnectionDb,
+			DSN:             "postgres://user:pass@localhost:5432/postgres",
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				switch dsn {
+				case "postgres://user:pass@localhost:5432/db1":
+					return db1, nil
+				case "postgres://user:pass@localhost:5432/db2":
+					return db2, nil
+				default:
+					return nil, fmt.Errorf("unexpected DSN: %s", dsn)
+				}
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		initialConnectionMock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"datname"}).
+					AddRow("db1").
+					AddRow("db2"),
+			)
+
+		db1Mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		db1Mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("users"))
+		db1Mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+					AddRow("id", "integer", true, nil, "", true),
+			)
+		db1Mock.ExpectQuery(selectIndexes).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		db1Mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}))
+
+		db2Mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		db2Mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("metrics"))
+		db2Mock.ExpectQuery(selectColumnNames).WithArgs("public", "metrics").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+					AddRow("id", "bigint", true, nil, "", true),
+			)
+		db2Mock.ExpectQuery(selectIndexes).WithArgs("public", "metrics").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		db2Mock.ExpectQuery(selectForeignKeys).WithArgs("public", "metrics").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}))
+
+		err = collector.Start(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 6
+		}, 2*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.NoError(t, initialConnectionMock.ExpectationsWereMet())
+		require.NoError(t, db1Mock.ExpectationsWereMet())
+		require.NoError(t, db2Mock.ExpectationsWereMet())
+
+		lokiEntries := lokiClient.Received()
+		assert.Len(t, lokiEntries, 6)
+
+		assert.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" datname="db1" schema="public"`, lokiEntries[0].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
+		assert.Equal(t, `level="info" datname="db1" schema="public" table="users"`, lokiEntries[1].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Equal(t, fmt.Sprintf(`level="info" datname="db1" schema="public" table="users" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))), lokiEntries[2].Line)
+
+		assert.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[3].Labels)
+		assert.Equal(t, `level="info" datname="db2" schema="public"`, lokiEntries[3].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[4].Labels)
+		assert.Equal(t, `level="info" datname="db2" schema="public" table="metrics"`, lokiEntries[4].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
+		assert.Equal(t, fmt.Sprintf(`level="info" datname="db2" schema="public" table="metrics" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"bigint","not_null":true,"primary_key":true}]}`))), lokiEntries[5].Line)
+	})
+
 	t.Run("collector handles multiple indexes on single table", func(t *testing.T) {
 		t.Parallel()
 
@@ -327,19 +446,23 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -362,7 +485,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("users"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -435,20 +558,24 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -488,19 +615,23 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -523,7 +654,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("test_table"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -595,19 +726,23 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -630,7 +765,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 				}).AddRow("users"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -697,19 +832,23 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -732,7 +871,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 				}).AddRow("products"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.products").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "products").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -800,18 +939,23 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -834,7 +978,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 				}).AddRow("books"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.books").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "books").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -900,22 +1044,26 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/cache_test_db",
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    true,
 			CacheSize:       256,
 			CacheTTL:        10 * time.Minute,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
 		// first run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -937,7 +1085,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 			)
 
 		// selectColumnNames, selectIndexes, selectForeignKeys called only first run
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -979,7 +1127,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// second run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1026,21 +1174,25 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/no_cache_test_db",
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    false,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
 		// declare mocks for two runs
 		for i := 0; i < 2; i++ {
-			mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"datname",
@@ -1063,7 +1215,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 					}).AddRow("test_table"),
 				)
 
-			mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"column_name",
@@ -1116,4 +1268,450 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		lokiClient.Stop()
 	})
+}
+
+func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
+	t.Run("getAllDatabases returns error when there is an error iterating database rows", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectAllDatabases).
+			WillReturnRows(
+				sqlmock.NewRows([]string{"datname"}).
+					AddRow("testdb").
+					RowError(0, fmt.Errorf("row iteration error")))
+
+		collector := &SchemaDetails{
+			logger:            log.NewNopLogger(),
+			initialConnection: db,
+		}
+		_, err = collector.getAllDatabases(context.Background())
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("extractSchemas returns error when there is an error iterating over pg_namespace result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectSchemaNames).
+			WillReturnRows(
+				sqlmock.NewRows([]string{"nspname"}).
+					AddRow("public").
+					RowError(0, fmt.Errorf("schema iteration error")))
+
+		collector := &SchemaDetails{
+			logger: log.NewNopLogger(),
+		}
+
+		err = collector.extractSchemas(context.Background(), "testdb", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchTableDefinitions returns error when selectColumnNames query fails", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
+			WillReturnError(fmt.Errorf("column query error"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchTableDefinitions(context.Background(), &tableInfo{
+			database:  "testdb",
+			schema:    "public",
+			tableName: "test_table",
+		}, db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectColumnNames query fails", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		collector := &SchemaDetails{
+			logger: log.NewNopLogger(),
+		}
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
+			WillReturnError(fmt.Errorf("column query error"))
+
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectColumnNames rows fail to scan", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		collector := &SchemaDetails{
+			logger: log.NewNopLogger(),
+		}
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation"}).
+				AddRow("id", "integer", true, nil, ""))
+
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when there is an error iterating selectColumnNames result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+					AddRow("id", "integer", true, nil, "", true).
+					RowError(0, fmt.Errorf("result set error")))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectIndexes returns an error", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
+			WillReturnError(fmt.Errorf("index query error"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectIndexes rows fail to scan", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions"}).
+				AddRow("idx_test", "btree", true, pq.StringArray{"id"}, pq.StringArray{}))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when there is an error iterating selectIndexes result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}).
+					AddRow("idx_test", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false).
+					RowError(0, fmt.Errorf("result set error")))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectForeignKeys query fails", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").
+			WillReturnError(fmt.Errorf("foreign key query error"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectForeignKeys rows fail to scan", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name"}).
+				AddRow("fk_test", "author_id", "authors"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when there is an error iterating selectForeignKeys result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}).
+					AddRow("fk_test", "author_id", "authors", "id").
+					RowError(0, fmt.Errorf("result set error")))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func Test_TableRegistry_IsValid(t *testing.T) {
+	t.Run("returns true when table exists in registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "public", tableName: "orders"},
+		})
+
+		assert.True(t, tr.IsValid("mydb", "users"))
+		assert.True(t, tr.IsValid("mydb", "orders"))
+	})
+
+	t.Run("returns false when table does not exist in registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.False(t, tr.IsValid("mydb", "nonexistent"))
+	})
+
+	t.Run("returns false given nonexistent database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.False(t, tr.IsValid("otherdb", "users"))
+	})
+
+	t.Run("returns false for empty registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+
+		assert.False(t, tr.IsValid("mydb", "users"))
+	})
+
+	t.Run("returns true when table exists in multiple schemas", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "private", tableName: "users"},
+		})
+
+		assert.True(t, tr.IsValid("mydb", "users"))
+	})
+
+	t.Run("returns true when schema-qualified table exists", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "private", tableName: "users"},
+		})
+
+		assert.True(t, tr.IsValid("mydb", "private.users"))
+	})
+}
+
+func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	t.Run("extractSchemas populates TableRegistry", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow("testdb"),
+			)
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("users").AddRow("orders"),
+			)
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true),
+			)
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}),
+			)
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "orders").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true),
+			)
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "orders").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}),
+			)
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "orders").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
+		require.NoError(t, collector.extractNames(context.Background()))
+
+		require.NoError(t, mock.ExpectationsWereMet())
+		collector.tableRegistry.mu.RLock()
+		actual := collector.tableRegistry.tables
+		collector.tableRegistry.mu.RUnlock()
+		assert.Equal(t, map[database]map[schema]map[table]struct{}{
+			"testdb": {
+				"public": {
+					"users":  struct{}{},
+					"orders": struct{}{},
+				},
+			},
+		}, actual)
+	})
+}
+
+func Test_Postgres_SchemaDetails_query_excludes_databases(t *testing.T) {
+	assert.Equal(t, `
+		SELECT datname
+		FROM pg_database
+		WHERE datistemplate = false
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ('azure_maintenance')`, selectAllDatabases)
 }

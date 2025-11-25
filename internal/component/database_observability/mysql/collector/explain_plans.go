@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -456,7 +457,7 @@ func (c *ExplainPlans) Name() string {
 }
 
 func (c *ExplainPlans) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", "collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -506,11 +507,6 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 
 	// Populate cache
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
-			return err
-		}
-
 		var schemaName, digest, queryText string
 		var ls time.Time
 		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
@@ -532,9 +528,15 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 			c.lastSeen = ls
 		}
 	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to iterate digest rows for explain plans", "err", err)
+		return err
+	}
+
 	// Calculate batch size based on current cache size
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
-	level.Info(c.logger).Log("msg", "fetched digests", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
+	level.Debug(c.logger).Log("msg", "populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	return nil
 }
 
@@ -557,7 +559,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			if *nonRecoverableFailureOccurred {
 				qi.failureCount++
 				c.queryDenylist[qi.uniqueKey] = qi
-				level.Info(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
+				level.Debug(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++
@@ -568,7 +570,14 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		if !strings.HasPrefix(strings.ToLower(qi.queryText), "select") {
+		containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to check for reserved keywords", "err", err)
+			continue
+		}
+
+		if containsReservedWord {
+			level.Debug(logger).Log("msg", "skipping query containing reserved word")
 			continue
 		}
 
@@ -576,7 +585,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			for _, code := range unrecoverableSQLCodes {
 				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
 					nonRecoverableFailureOccurred = true

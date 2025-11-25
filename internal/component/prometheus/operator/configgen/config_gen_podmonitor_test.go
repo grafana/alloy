@@ -28,8 +28,10 @@ import (
 )
 
 func TestGeneratePodMonitorConfig(t *testing.T) {
-	var falseVal = false
-	var proxyURL = "https://proxy:8080"
+	var (
+		falsePtr = ptr.To(false)
+		proxyURL = "https://proxy:8080"
+	)
 	suite := []struct {
 		name                   string
 		m                      *promopv1.PodMonitor
@@ -89,9 +91,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "legacy",
-				MetricNameEscapingScheme:       "underscores",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -151,9 +154,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "legacy",
-				MetricNameEscapingScheme:       "underscores",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -213,9 +217,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "legacy",
-				MetricNameEscapingScheme:       "underscores",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -273,9 +278,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "legacy",
-				MetricNameEscapingScheme:       "underscores",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -335,9 +341,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "legacy",
-				MetricNameEscapingScheme:       "underscores",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -385,25 +392,29 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 			},
 			ep: promopv1.PodMetricsEndpoint{
 				Port:            stringPtr("metrics"),
-				EnableHttp2:     &falseVal,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: &falseVal,
-				ProxyURL:        &proxyURL,
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
-				HonorTimestamps: &falseVal,
-				FilterRunning:   &falseVal,
-				TLSConfig: &promopv1.SafeTLSConfig{
-					ServerName:         stringPtr("foo.com"),
-					InsecureSkipVerify: boolPtr(true),
-				},
+				HonorTimestamps: falsePtr,
+				FilterRunning:   falsePtr,
 				RelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",
+					},
+				},
+				HTTPConfig: promopv1.HTTPConfig{
+					EnableHTTP2:     falsePtr,
+					FollowRedirects: falsePtr,
+					ProxyConfig: promopv1.ProxyConfig{
+						ProxyURL: &proxyURL,
+					},
+					TLSConfig: &promopv1.SafeTLSConfig{
+						ServerName:         stringPtr("foo.com"),
+						InsecureSkipVerify: boolPtr(true),
 					},
 				},
 			},
@@ -478,7 +489,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 					"a": []string{"b"},
 				},
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
-					FollowRedirects: falseVal,
+					FollowRedirects: false,
 					EnableHTTP2:     false,
 					TLSConfig: commonConfig.TLSConfig{
 						ServerName:         "foo.com",
@@ -503,9 +514,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "legacy",
-				MetricNameEscapingScheme:       "underscores",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 	}

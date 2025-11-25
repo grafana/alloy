@@ -62,6 +62,9 @@ type Arguments struct {
 	// The default value is {"db.name"}.
 	DatabaseNameAttributes []string `alloy:"database_name_attributes,attr,optional"`
 
+	// ExponentialHistogramMaxSize is the maximum number of buckets per positive or negative number range.
+	ExponentialHistogramMaxSize int32 `alloy:"exponential_histogram_max_size,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -165,10 +168,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			MaxItems: args.Store.MaxItems,
 			TTL:      args.Store.TTL,
 		},
-		CacheLoop:              args.CacheLoop,
-		StoreExpirationLoop:    args.StoreExpirationLoop,
-		MetricsFlushInterval:   &args.MetricsFlushInterval,
-		DatabaseNameAttributes: args.DatabaseNameAttributes,
+		CacheLoop:                   args.CacheLoop,
+		StoreExpirationLoop:         args.StoreExpirationLoop,
+		MetricsFlushInterval:        &args.MetricsFlushInterval,
+		DatabaseNameAttributes:      args.DatabaseNameAttributes,
+		ExponentialHistogramMaxSize: args.ExponentialHistogramMaxSize,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,

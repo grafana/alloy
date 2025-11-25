@@ -21,7 +21,7 @@ You can configure the component to collect telemetry data from a specific port o
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
 {{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW` `CAP_CHECKPOINT_RESTORENET_RAW`, `DAC_READ_SEARCH`, and `PERFMON`.
+To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW`, `CAP_CHECKPOINT_RESTORE`, `DAC_READ_SEARCH`, and `PERFMON`.
 The number of required capabilities depends on the specific use case.
 Refer to the [Beyla capabilities](https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla) for more information.
 
@@ -146,6 +146,7 @@ This `kubernetes` block configures the decorating of the metrics and traces with
 | `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `autodetect` | no       |
 | `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
 | `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
+| `meta_cache_address`       | `string`       | Address of the Kubernetes metadata cache service.      | `""`    | no       |
 | `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
@@ -534,6 +535,8 @@ The `metrics` block configures which metrics Beyla collects.
 | `allow_service_graph_self_references` | `bool`         | Allow service graph metrics to reference the same service. | `false`           | no       |
 | `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
 | `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
+| `extra_resource_labels`               | `list(string)` | List of OTEL resource labels to include on `target_info`.  | `[]`              | no       |
+| `extra_span_resource_labels`          | `list(string)` | List of OTEL resource labels to include on span metrics.   | `["k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"]`           | no       |
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
@@ -557,6 +560,20 @@ The `metrics` block configures which metrics Beyla collects.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
+
+`extra_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
+on the service, that you want to include on the `target_info` metric.
+
+`extra_span_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
+on the service, that you want to include on the span metrics. The default list includes:
+
+* `k8s.cluster.name`
+* `k8s.namespace.name` 
+* `service.version`
+* `deployment.environment`
+
+The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in 
+Grafana Cloud.
 
 #### `network` metrics
 

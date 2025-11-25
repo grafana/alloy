@@ -1,0 +1,33 @@
+template_files:
+    default_template: |-
+        {{ define "__alertmanager" }}AlertManager{{ end }}
+        {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}
+alertmanager_config: |
+    global:
+      resolve_timeout: 5m
+      http_config:
+        follow_redirects: true
+        enable_http2: true
+      smtp_hello: localhost
+      smtp_require_tls: true
+    route:
+      receiver: "null"
+      routes:
+      - receiver: testing/alertmgr-config1/null
+        matchers:
+        - namespace="testing"
+        continue: true
+        routes:
+        - receiver: testing/alertmgr-config1/myamc
+          continue: true
+    receivers:
+    - name: "null"
+    - name: alloy-namespace/global-config/myreceiver
+    - name: testing/alertmgr-config1/null
+    - name: testing/alertmgr-config1/myamc
+      webhook_configs:
+      - url: http://test.url
+        http_config:
+          follow_redirects: true
+    templates:
+    - default_template

@@ -181,7 +181,7 @@ func TestRedisCases(t *testing.T) {
 				foundMetricNames[name] = false
 			}
 
-			p := textparse.NewPromParser(body, nil)
+			p := textparse.NewPromParser(body, nil, false)
 			for {
 				entry, err := p.Next()
 				if err == io.EOF {

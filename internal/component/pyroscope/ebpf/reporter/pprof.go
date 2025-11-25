@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.opentelemetry.io/ebpf-profiler/host"
 
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
@@ -46,7 +45,7 @@ type Config struct {
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
 
-	ExtraNativeSymbolResolver samples.NativeSymbolResolver
+	ExtraNativeSymbolResolver irsymcache.NativeSymbolResolver
 	Consumer                  PPROFConsumer
 }
 type PPROFReporter struct {
@@ -94,7 +93,6 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 		ProcessName:    meta.ProcessName,
 		ExecutablePath: meta.ExecutablePath,
 		ApmServiceName: meta.APMServiceName,
-		ContainerID:    containerID,
 		Pid:            int64(meta.PID),
 		Tid:            int64(meta.TID),
 	}
@@ -164,9 +162,9 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
-	for _, ts := range reportedEvents {
+	for containerID, ts := range reportedEvents {
 		for origin, events := range ts {
-			pp := p.createProfile(origin, events)
+			pp := p.createProfile(containerID, origin, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -179,7 +177,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
+func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.cfg.ExtraNativeSymbolResolver != nil {
 			p.cfg.ExtraNativeSymbolResolver.Cleanup()
@@ -193,7 +191,7 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 	})
 
 	for traceKey, traceInfo := range events {
-		target := p.sd.FindTarget(uint32(traceKey.Pid), traceKey.ContainerID)
+		target := p.sd.FindTarget(uint32(traceKey.Pid), string(containerID))
 		if target == nil {
 			continue
 		}
@@ -211,6 +209,8 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				sum += t
 			}
 			b.AddValue(sum, s)
+		case support.TraceOriginUProbe:
+			b.AddValue(int64(len(traceInfo.Timestamps)), s)
 		}
 
 		for i := range traceInfo.Frames {
@@ -256,10 +256,15 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 					}
 
 				case libpf.AbortFrame:
-					// Next step: Figure out how the OTLP protocol
-					// could handle artificial frames, like AbortFrame,
-					// that are not originated from a native or interpreted
-					// program.
+					// Be explicit about unknown frames so that we do introduce unknown unknowns.
+					location.Line = []profile.Line{{
+						Line: 0,
+						Function: b.Function(
+							libpf.Intern("[unknown]"),
+							libpf.Intern("[unknown]"),
+						)},
+					}
+					location.Mapping.HasFunctions = true
 				default:
 					if fr.FunctionName != libpf.NullString {
 						location.Line = []profile.Line{{
@@ -325,14 +330,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	if p.cfg.ExtraNativeSymbolResolver == nil {
 		return
 	}
-	addr := fr.AddressOrLineno
-	hostFrame := host.Frame{
-		File:          host.FileIDFromLibpf(mappingFile.FileID),
-		Lineno:        addr,
-		Type:          fr.Type,
-		ReturnAddress: false,
-	}
-	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, hostFrame, func(si samples.SourceInfo) {
+	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, fr.AddressOrLineno, mappingFile.FileID, func(si irsymcache.SourceInfo) {
 		name := si.FunctionName
 		if name == libpf.NullString && si.FilePath == libpf.NullString {
 			return

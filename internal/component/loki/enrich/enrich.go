@@ -6,13 +6,13 @@ import (
 	"sync"
 
 	"github.com/go-kit/log/level"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func init() {

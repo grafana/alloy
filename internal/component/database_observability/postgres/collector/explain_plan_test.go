@@ -10,13 +10,14 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
-	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"golang.org/x/tools/txtar"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func stringPtr(s string) *string {
@@ -2228,89 +2229,13 @@ func TestExplainPlanOutput(t *testing.T) {
 	}
 }
 
-func TestReplaceDatabaseNameInDSN(t *testing.T) {
-	tests := []struct {
-		name        string
-		dsn         string
-		newDBName   string
-		expected    string
-		expectError bool
-	}{
-		{
-			name:      "basic postgres DSN",
-			dsn:       "postgres://user:pass@localhost:5432/mydb",
-			newDBName: "newdb",
-			expected:  "postgres://user:pass@localhost:5432/newdb",
-		},
-		{
-			name:      "postgres DSN with query parameters",
-			dsn:       "postgres://user:pass@localhost:5432/mydb?sslmode=disable",
-			newDBName: "newdb",
-			expected:  "postgres://user:pass@localhost:5432/newdb?sslmode=disable",
-		},
-		{
-			name:      "postgres DSN with multiple query parameters",
-			dsn:       "postgres://user:pass@localhost:5432/mydb?sslmode=disable&connect_timeout=10",
-			newDBName: "newdb",
-			expected:  "postgres://user:pass@localhost:5432/newdb?sslmode=disable&connect_timeout=10",
-		},
-		{
-			name:      "problematic case - database name is 'postgres'",
-			dsn:       "postgres://postgres:password@localhost:5432/postgres",
-			newDBName: "testdb",
-			expected:  "postgres://postgres:password@localhost:5432/testdb",
-		},
-		{
-			name:      "database name appears in password",
-			dsn:       "postgres://user:mydb123@localhost:5432/mydb",
-			newDBName: "newdb",
-			expected:  "postgres://user:mydb123@localhost:5432/newdb",
-		},
-		{
-			name:      "database name with special characters",
-			dsn:       "postgres://user:pass@localhost:5432/my-db_test$1",
-			newDBName: "new_db",
-			expected:  "postgres://user:pass@localhost:5432/new_db",
-		},
-		{
-			name:        "invalid DSN format",
-			dsn:         "invalid-dsn-format",
-			newDBName:   "newdb",
-			expectError: true,
-		},
-		{
-			name:        "DSN without database name",
-			dsn:         "postgres://user:pass@localhost:5432/",
-			newDBName:   "newdb",
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a minimal ExplainPlan instance for testing
-			ep := &ExplainPlan{}
-
-			result, err := ep.replaceDatabaseNameInDSN(tt.dsn, tt.newDBName)
-
-			if tt.expectError {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestNewExplainPlan(t *testing.T) {
 	db, _, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
 	logger := log.NewNopLogger()
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
@@ -2803,7 +2728,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	})
 
 	t.Run("query validation", func(t *testing.T) {
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
@@ -2889,6 +2814,10 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		})
 
 		t.Run("passes queries beginning in select", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
 			lokiClient.Clear()
 			logBuffer.Reset()
 			dbConnFactory := &mockDbConnectionFactory{
@@ -2930,6 +2859,140 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err = explainPlan.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Equal(t, 1, dbConnFactory.InstantiationCount)
+
+			require.Eventually(
+				t,
+				func() bool {
+					return len(lokiClient.Received()) == 1
+				},
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+
+			require.NotContains(t, logBuffer.String(), "error")
+		})
+
+		t.Run("passes queries beginning in with", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlan{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "with cte as (select * from some_table where id = $1) select * from cte",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeSchemas:     []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+			jsonFile := archive.Files[0]
+			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
+			jsonData := jsonFile.Data
+
+			mock.ExpectExec("PREPARE explain_plan_123456 AS with cte as (select * from some_table where id = $1) select * from cte").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err = explainPlan.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Equal(t, 1, dbConnFactory.InstantiationCount)
+
+			require.Eventually(
+				t,
+				func() bool {
+					return len(lokiClient.Received()) == 1
+				},
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+
+			require.NotContains(t, logBuffer.String(), "error")
+		})
+
+		t.Run("explain prepared statement for queries without params executed without parens", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlan{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "select * from some_table",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeSchemas:     []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+			jsonFile := archive.Files[0]
+			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
+			jsonData := jsonFile.Data
+
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
 
 			err = explainPlan.fetchExplainPlans(t.Context())
