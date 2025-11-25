@@ -33,8 +33,6 @@ Main (unreleased)
 - (_Public Preview_) Additions to `database_observability.postgres` component:
     - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
 
-- fix panic in `loki.source.podlogs` caused by unset validation scheme. (@kalleep)
-
 v1.12.0-rc.0
 -----------------
 
