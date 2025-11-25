@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.connector.count/
-aliases:
-  - ../otelcol.connector.count/ # /docs/alloy/latest/reference/components/otelcol.connector.count/
 description: Learn about otelcol.connector.count
 labels:
   stage: experimental
@@ -33,26 +31,26 @@ otelcol.connector.count "<LABEL>" {
 
 ## Arguments
 
-`otelcol.connector.count` doesn't support any arguments and can be configured using blocks only.
+The `otelcol.connector.count` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
 You can use the following blocks with `otelcol.connector.count`:
 
-| Block                            | Description                                                                              | Required |
-| -------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
-| [`spans`][spans]                 | Configures custom metrics for counting spans.                                            | no       |
-| [`spans` > `attributes`][attributes] | Groups span counts by attribute values.                                              | no       |
-| [`spanevents`][spanevents]       | Configures custom metrics for counting span events.                                      | no       |
-| [`spanevents` > `attributes`][attributes] | Groups span event counts by attribute values.                                   | no       |
-| [`metrics`][metrics]             | Configures custom metrics for counting metrics.                                          | no       |
-| [`metrics` > `attributes`][attributes] | Groups metric counts by attribute values.                                          | no       |
-| [`datapoints`][datapoints]       | Configures custom metrics for counting data points.                                      | no       |
-| [`datapoints` > `attributes`][attributes] | Groups data point counts by attribute values.                                     | no       |
-| [`logs`][logs]                   | Configures custom metrics for counting log records.                                      | no       |
-| [`logs` > `attributes`][attributes] | Groups log counts by attribute values.                                                | no       |
-| [`output`][output]               | Configures where to send received telemetry data.                                        | yes      |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state.               | no       |
+| Block                                     | Description                                                                | Required |
+| ----------------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]                        | Configures where to send received telemetry data.                          | yes      |
+| [`datapoints`][datapoints]                | Configures custom metrics for counting data points.                        | no       |
+| `datapoints` > [`attributes`][attributes] | Groups data point counts by attribute values.                              | no       |
+| [`debug_metrics`][debug_metrics]          | Configures the metrics that this component generates to monitor its state. | no       |
+| [`logs`][logs]                            | Configures custom metrics for counting log records.                        | no       |
+| `logs` > [`attributes`][attributes]       | Groups log counts by attribute values.                                     | no       |
+| [`metrics`][metrics]                      | Configures custom metrics for counting metrics.                            | no       |
+| `metrics` > [`attributes`][attributes]    | Groups metric counts by attribute values.                                  | no       |
+| [`spanevents`][spanevents]                | Configures custom metrics for counting span events.                        | no       |
+| `spanevents` > [`attributes`][attributes] | Groups span event counts by attribute values.                              | no       |
+| [`spans`][spans]                          | Configures custom metrics for counting spans.                              | no       |
+| `spans` > [`attributes`][attributes]      | Groups span counts by attribute values.                                    | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `spans` > `attributes` refers to an `attributes` block defined inside a `spans` block.
@@ -74,15 +72,15 @@ You can specify multiple `spans` blocks to define different metrics.
 
 If no `spans` blocks are defined, the connector emits a default metric named `trace.span.count`.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`name` | `string` | Metric name. | Uses default name based on telemetry type. | no
-`description` | `string` | Metric description. | `""` | no
-`conditions` | `list(string)` | OTTL expressions for filtering spans. | `[]` | no
+| Name          | Type           | Description                           | Default                                    | Required |
+| ------------- | -------------- | ------------------------------------- | ------------------------------------------ | -------- |
+| `conditions`  | `list(string)` | OTTL expressions for filtering spans. | `[]`                                       | no       |
+| `description` | `string`       | Metric description.                   | `""`                                       | no       |
+| `name`        | `string`       | Metric name.                          | Uses default name based on telemetry type. | no       |
 
 The `conditions` argument accepts a list of [OTTL][] expressions that filter which spans to count.
-If any condition matches, the span is counted.
-If no conditions are specified, all spans are counted.
+If any condition matches, the connector counts the span.
+If you don't specify conditions, the connector counts all spans.
 
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl
 
@@ -92,7 +90,7 @@ The `spanevents` block configures a custom metric for counting span events.
 
 You can specify multiple `spanevents` blocks to define different metrics.
 
-If no `spanevents` blocks are defined, the connector emits a default metric named `trace.span.event.count`.
+If you don't define any `spanevents` blocks, the connector emits a default metric named `trace.span.event.count`.
 
 This block shares the same configuration structure as [`spans`][spans].
 Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
@@ -103,7 +101,7 @@ The `metrics` block configures a custom metric for counting metrics.
 
 You can specify multiple `metrics` blocks to define different metrics.
 
-If no `metrics` blocks are defined, the connector emits a default metric named `metric.count`.
+If you don't define any `metrics` blocks, the connector emits a default metric named `metric.count`.
 
 This block shares the same configuration structure as [`spans`][spans].
 Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
@@ -114,7 +112,7 @@ The `datapoints` block configures a custom metric for counting data points.
 
 You can specify multiple `datapoints` blocks to define different metrics.
 
-If no `datapoints` blocks are defined, the connector emits a default metric named `metric.datapoint.count`.
+If you don't define any `datapoints` blocks, the connector emits a default metric named `metric.datapoint.count`.
 
 This block shares the same configuration structure as [`spans`][spans].
 Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
@@ -125,7 +123,7 @@ The `logs` block configures a custom metric for counting log records.
 
 You can specify multiple `logs` blocks to define different metrics.
 
-If no `logs` blocks are defined, the connector emits a default metric named `log.record.count`.
+If you don't define any `logs` blocks, the connector emits a default metric named `log.record.count`.
 
 This block shares the same configuration structure as [`spans`][spans].
 Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
@@ -140,14 +138,16 @@ You can specify multiple `attributes` blocks within `spans`, `spanevents`, `metr
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`key` | `string` | Attribute key name. | | yes
-`default_value` | `any` | Default value if the attribute doesn't exist. | | no
+| Name            | Type     | Description                                   | Default | Required |
+| --------------- | -------- | --------------------------------------------- | ------- | -------- |
+| `key`           | `string` | Attribute key name.                           |         | yes      |
+| `default_value` | `any`    | Default value if the attribute doesn't exist. |         | no       |
 
 Attribute precedence: span/log/metric attributes > scope attributes > resource attributes.
 
 ### `output`
+
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -165,7 +165,7 @@ The following fields are exported and can be referenced by other components:
 
 `input` accepts `otelcol.Consumer` data for traces, metrics, and logs.
 
-All telemetry received through `input` is counted according to the configured blocks and emitted as metrics to the components specified in `output`.
+he component counts all telemetry received through `input` according to the configured blocks and emits metrics to the components specified in `output`.
 
 ## Component health
 
