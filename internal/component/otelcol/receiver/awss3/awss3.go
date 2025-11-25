@@ -60,9 +60,41 @@ type Arguments struct {
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
+// ArgumentsFromConfig constructs component arguments from awss3receiver config.
+func ArgumentsFromConfig(cfg *awss3receiver.Config) Arguments {
+	// TODO(x1unix): map Encodings
+	args := Arguments{
+		StartTime: cfg.StartTime,
+		EndTime:   cfg.EndTime,
+		S3Downloader: S3DownloaderConfig{
+			Region:              cfg.S3Downloader.Region,
+			S3Bucket:            cfg.S3Downloader.S3Bucket,
+			S3Prefix:            cfg.S3Downloader.S3Prefix,
+			S3Partition:         cfg.S3Downloader.S3Partition,
+			FilePrefix:          cfg.S3Downloader.FilePrefix,
+			Endpoint:            cfg.S3Downloader.Endpoint,
+			EndpointPartitionID: cfg.S3Downloader.EndpointPartitionID,
+			S3ForcePathStyle:    cfg.S3Downloader.S3ForcePathStyle,
+		},
+	}
+
+	if cfg.SQS != nil {
+		args.SQS = &SQSConfig{
+			QueueURL:            cfg.SQS.QueueURL,
+			Region:              cfg.SQS.Region,
+			Endpoint:            cfg.SQS.Endpoint,
+			WaitTimeSeconds:     cfg.SQS.WaitTimeSeconds,
+			MaxNumberOfMessages: cfg.SQS.MaxNumberOfMessages,
+		}
+	}
+
+	return args
+}
+
 // SetToDefault implements syntax.Defaulter.
-func (*Arguments) SetToDefault() {
-	// Defaults filled by upstream OTel receiver in a factory.
+func (args *Arguments) SetToDefault() {
+	defaultCfg := awss3receiver.NewFactory().CreateDefaultConfig().(*awss3receiver.Config)
+	*args = ArgumentsFromConfig(defaultCfg)
 }
 
 func (args Arguments) receiverConfig() *awss3receiver.Config {
@@ -123,7 +155,7 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	// TODO(x1unix): expose components after Encodings will be exposed
+	// TODO(x1unix): expose components after Encodings will be exposed (See: #4938 and #4934)
 	return nil
 }
 

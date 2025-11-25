@@ -45,7 +45,7 @@ func toAWSS3Receiver(state *State, id componentstatus.InstanceID, cfg *awss3rece
 	var diags diag.Diagnostics
 	nextTraces := state.Next(id, pipeline.SignalTraces)
 
-	// TODO(x1unix): map Encodings
+	// TODO(x1unix): remove warning when Encodings support will be implemented (#4938).
 	if len(cfg.Encodings) > 0 {
 		diags.Add(
 			diag.SeverityLevelWarn,
@@ -60,33 +60,10 @@ func toAWSS3Receiver(state *State, id componentstatus.InstanceID, cfg *awss3rece
 		)
 	}
 
-	args := &awss3.Arguments{
-		StartTime: cfg.StartTime,
-		EndTime:   cfg.EndTime,
-		S3Downloader: awss3.S3DownloaderConfig{
-			Region:              cfg.S3Downloader.Region,
-			S3Bucket:            cfg.S3Downloader.S3Bucket,
-			S3Prefix:            cfg.S3Downloader.S3Prefix,
-			S3Partition:         cfg.S3Downloader.S3Partition,
-			FilePrefix:          cfg.S3Downloader.FilePrefix,
-			Endpoint:            cfg.S3Downloader.Endpoint,
-			EndpointPartitionID: cfg.S3Downloader.EndpointPartitionID,
-			S3ForcePathStyle:    cfg.S3Downloader.S3ForcePathStyle,
-		},
-		Output: &otelcol.ConsumerArguments{
-			Traces: ToTokenizedConsumers(nextTraces),
-		},
+	args := awss3.ArgumentsFromConfig(cfg)
+	args.Output = &otelcol.ConsumerArguments{
+		Traces: ToTokenizedConsumers(nextTraces),
 	}
 
-	if cfg.SQS != nil {
-		args.SQS = &awss3.SQSConfig{
-			QueueURL:            cfg.SQS.QueueURL,
-			Region:              cfg.SQS.Region,
-			Endpoint:            cfg.SQS.Endpoint,
-			WaitTimeSeconds:     cfg.SQS.WaitTimeSeconds,
-			MaxNumberOfMessages: cfg.SQS.MaxNumberOfMessages,
-		}
-	}
-
-	return args, diags
+	return &args, diags
 }
