@@ -1,5 +1,9 @@
 package wal
 
+// KEEP IN SYNC WITH:
+// https://github.com/grafana/loki/blob/main/pkg/util/wal/reader.go
+// Local modifications should be minimized.
+
 import (
 	"errors"
 	"io"
@@ -7,9 +11,6 @@ import (
 	"github.com/prometheus/prometheus/tsdb/wlog"
 )
 
-// KEEP IN SYNC WITH:
-// https://github.com/grafana/loki/blob/main/pkg/util/wal/reader.go
-// Local modifications should be minimized.
 func newWalReader(dir string, startSegment int) (*wlog.Reader, io.Closer, error) {
 	var (
 		segmentReader io.ReadCloser
