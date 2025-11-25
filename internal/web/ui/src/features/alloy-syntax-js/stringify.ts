@@ -1,4 +1,4 @@
-import { ObjectField, Value, ValueType } from './types';
+import { type ObjectField, type Value, ValueType } from './types';
 
 /**
  * Returns a native Alloy config representation of the given Value.

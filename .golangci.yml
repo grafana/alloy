@@ -1,7 +1,4 @@
 version: "2"
-run:
-  build-tags:
-    - slicelabels
 linters:
   enable:
     - depguard    # Allow/denylist specific imports
@@ -63,6 +60,7 @@ linters:
       - component/otelcol/extension/jaeger_remote_sampling/internal # Copied with attribution from OTel Collector
       - component/otelcol/receiver/prometheus/internal # Copied with attribution from OTel Collector
       - internal/cmd/integration-tests # Exclude all integration tests
+      - internal/component/loki/source/file/internal/tail/ # The tail code was copied from https://github.com/grafana/tail. It can be cleaned of linting issues later.
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

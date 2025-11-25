@@ -310,14 +310,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
-	var metadataStore prometheus.UpdateableMetadataStore
-	if args.HonorMetadata {
-		metadataStore = prometheus.NewMetadataStore()
-	} else {
-		metadataStore = prometheus.NoopMetadataStore{}
-	}
-
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
@@ -327,6 +320,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// NOTE: This is not Update()-able.
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
 		AppendMetadata:                  args.HonorMetadata,
+		// otelcol.receiver.prometheus gets metadata from context
+		PassMetadataInContext: args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)

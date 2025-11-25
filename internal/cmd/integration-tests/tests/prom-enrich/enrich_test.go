@@ -2,9 +2,10 @@ package prom_enrich
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestEnrichPromMetrics(t *testing.T) {
@@ -12,7 +13,7 @@ func TestEnrichPromMetrics(t *testing.T) {
 	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, testName)
 
 	var resp MetricsResponse
-	err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
+	_, err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
 	assert.NoError(t, err)
 
 	expectedLabels := map[string]string{
@@ -33,7 +34,7 @@ func TestEnrichMismatched(t *testing.T) {
 	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, testName)
 
 	var resp MetricsResponse
-	err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
+	_, err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
 	assert.NoError(t, err)
 
 	missingLabels := []string{

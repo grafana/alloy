@@ -125,7 +125,7 @@ metrics:
   global:
     external_labels:
       foo: ${1}`
-	expect := labels.Labels{{Name: "foo", Value: "${1}"}}
+	expect := labels.FromStrings("foo", "${1}")
 
 	fs := flag.NewFlagSet("test", flag.ExitOnError)
 	c, err := LoadFromFunc(fs, []string{"-config.file", "test"}, func(_, _ string, _ bool, c *Config) error {

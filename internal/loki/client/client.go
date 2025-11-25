@@ -61,7 +61,7 @@ func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec
 	if err != nil {
 		return nil, err
 	}
-	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, useragent.ProductName, config.WithHTTP2Disabled())
+	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, useragent.ProductName)
 	if err != nil {
 		return nil, err
 	}

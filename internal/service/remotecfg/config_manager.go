@@ -27,6 +27,10 @@ const disablePollingFrequency = math.MaxInt64 - baseJitter
 
 var errNotModified = errors.New("config not modified since last fetch")
 
+// effectiveConfigContentType is the MIME type used when sending the effective
+// Alloy configuration to the remote config service.
+const effectiveConfigContentType = "text/plain"
+
 // configManager is responsible for managing the configuration of the remotecfg service.
 type configManager struct {
 	// Mutex to protect internal state
@@ -79,14 +83,19 @@ type configManager struct {
 
 	// lastSentConfigStatus tracks the last status sent to the server to avoid redundant updates
 	lastSentConfigStatus *collectorv1.RemoteConfigStatus
+
+	// effectiveConfig tracks the current effective configuration running in Alloy
+	effectiveConfig *collectorv1.EffectiveConfig
+
+	// lastSentEffectiveConfig tracks the last effective config sent to the server to avoid redundant updates
+	lastSentEffectiveConfig *collectorv1.EffectiveConfig
 }
 
-func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, ctrl service.Controller, configPath string) *configManager {
+func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, configPath string) *configManager {
 	return &configManager{
 		metrics:          metrics,
 		logger:           logger,
 		remotecfgPath:    remotecfgPath,
-		ctrl:             ctrl,
 		configPath:       configPath,
 		updateTickerChan: make(chan struct{}, 1),
 		pollFrequency:    disablePollingFrequency,
@@ -177,6 +186,10 @@ func (cm *configManager) parseAndLoad(b []byte) error {
 	cm.mut.Lock()
 	cm.astFile = file
 	cm.mut.Unlock()
+
+	// Update effective config after successful load
+	cm.setEffectiveConfig(b)
+
 	return nil
 }
 
@@ -205,18 +218,25 @@ func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetCo
 			level.Error(cm.logger).Log("msg", "failed to fetch remote config, continuing with current config", "err", err)
 		}
 	}
+
+	cm.notifyStatusUpdate(getAPIConfig)
 }
 
 // notifyStatusUpdate makes an immediate GetConfig call to notify the server of status changes.
 // This is used when we want to immediately report status changes without waiting for the next poll cycle.
 func (cm *configManager) notifyStatusUpdate(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) {
-	level.Debug(cm.logger).Log("msg", "making immediate GetConfig call to report status update")
+	// Avoid unnecessary immediate calls if there's nothing new to report.
+	if !cm.hasPendingUpdates() {
+		level.Debug(cm.logger).Log("msg", "no pending status/effective-config updates; skipping notify")
+		return
+	}
 
 	// Make the API call but ignore the response and any errors
 	// This is not a critical operation since the GetConfig call will
 	// be made again on the polling frequency
+	level.Debug(cm.logger).Log("msg", "making immediate GetConfig call to report status update")
 	_, err := getAPIConfig()
-	if err != nil {
+	if err != nil && err != errNotModified {
 		level.Error(cm.logger).Log("msg", "status notification call failed, will retry on next poll", "err", err)
 	} else {
 		level.Debug(cm.logger).Log("msg", "successfully notified server of status update")
@@ -233,6 +253,18 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	if err == errNotModified {
 		level.Debug(cm.logger).Log("msg", "skipping over API response since it has not been modified since last fetch")
 		cm.metrics.lastFetchNotModified.Set(1)
+
+		// Only mark APPLIED if the last received remote config matches the currently
+		// loaded config. This prevents flipping to APPLIED when the server continues
+		// to serve a bad config that failed to load previously.
+		loaded := cm.getLastLoadedCfgHash()
+		received := cm.getLastReceivedCfgHash()
+		if loaded != "" && received != "" && loaded == received {
+			cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
+		} else {
+			level.Debug(cm.logger).Log("msg", "not modified but loaded config does not match last received; retaining status", "loaded_hash", loaded, "received_hash", received)
+		}
+
 		return nil
 	}
 
@@ -242,10 +274,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		cm.metrics.totalFailures.Add(1)
 		cm.metrics.lastLoadSuccess.Set(0)
 
-		// Set remote config status and notify server of failure immediately
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
-		cm.notifyStatusUpdate(getAPIConfig)
-
 		return err
 	}
 
@@ -254,9 +283,8 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 
 	// Store the remote hash from the API response
 	if gcr.Hash != "" {
-		cm.mut.Lock()
-		cm.remoteHash = gcr.Hash
-		cm.mut.Unlock()
+		level.Debug(cm.logger).Log("msg", "setting remote hash", "hash", gcr.Hash)
+		cm.setRemoteHash(gcr.Hash)
 	}
 
 	b := []byte(gcr.GetContent())
@@ -281,7 +309,6 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
 		// Set status to APPLIED since the new remote config was previously loaded.
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
-		cm.notifyStatusUpdate(getAPIConfig)
 		return nil
 	}
 
@@ -298,7 +325,6 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 
 		// Make immediate GetConfig call to notify server of parse/load failure
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
-		cm.notifyStatusUpdate(getAPIConfig)
 
 		// If we have a cached config, attempt to reload it to restore component health.
 		// Otherwise a partial working config will be left in the controller.
@@ -328,8 +354,8 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	cm.setLastLoadedCfgHash(newConfigHash)
 	cm.metrics.lastLoadSuccess.Set(1)
 
-	// Set status to APPLIED for successful remote config load. The server will be notified of this status change
-	// on the next poll cycle.
+	// Set status to APPLIED for successful remote config load and notify immediately
+	// so the server knows about both the status change and the effective config update
 	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 
 	level.Info(cm.logger).Log("msg", "successfully loaded remote configuration",
@@ -373,7 +399,6 @@ func (cm *configManager) cleanup() {
 }
 
 // Getters for safe access to configManager fields
-
 func (cm *configManager) getController() service.Controller {
 	cm.mut.RLock()
 	defer cm.mut.RUnlock()
@@ -437,6 +462,12 @@ func (cm *configManager) getRemoteHash() string {
 	return cm.remoteHash
 }
 
+func (cm *configManager) setRemoteHash(hash string) {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+	cm.remoteHash = hash
+}
+
 // setRemoteConfigStatus updates the remote config status.
 func (cm *configManager) setRemoteConfigStatus(status collectorv1.RemoteConfigStatuses, errorMessage string) {
 	cm.mut.Lock()
@@ -494,6 +525,163 @@ func (cm *configManager) copyRemoteConfigStatus() *collectorv1.RemoteConfigStatu
 		Status:       cm.remoteConfigStatus.Status,
 		ErrorMessage: cm.remoteConfigStatus.ErrorMessage,
 	}
+}
+
+// setEffectiveConfig updates the effective configuration that is currently running.
+func (cm *configManager) setEffectiveConfig(config []byte) {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+
+	// Create the effective config structure
+	cm.effectiveConfig = &collectorv1.EffectiveConfig{
+		ConfigMap: &collectorv1.AgentConfigMap{
+			ConfigMap: map[string]*collectorv1.AgentConfigFile{
+				"": { // Single config file with empty string key
+					Body:        config,
+					ContentType: effectiveConfigContentType, // Alloy config format
+				},
+			},
+		},
+	}
+}
+
+// getEffectiveConfigForRequest returns the effective config if it has changed
+// since the last time it was sent.
+func (cm *configManager) getEffectiveConfigForRequest() *collectorv1.EffectiveConfig {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+
+	// Don't send if we haven't set effective config yet
+	if cm.effectiveConfig == nil {
+		return nil
+	}
+
+	// Send if config has changed (effectiveConfigsEqual handles nil lastSentEffectiveConfig)
+	if !effectiveConfigsEqual(cm.effectiveConfig, cm.lastSentEffectiveConfig) {
+		// Update the last sent config to current config
+		cm.lastSentEffectiveConfig = copyEffectiveConfig(cm.effectiveConfig)
+
+		// Return a copy of the current config
+		return copyEffectiveConfig(cm.effectiveConfig)
+	}
+
+	// Config hasn't changed, don't send it
+	return nil
+}
+
+// hasPendingUpdates returns true if there is either a remote config status change
+// or an effective config change that has not yet been sent to the server.
+func (cm *configManager) hasPendingUpdates() bool {
+	cm.mut.RLock()
+	defer cm.mut.RUnlock()
+
+	// Pending status if never sent, or fields differ
+	statusPending := cm.lastSentConfigStatus == nil ||
+		cm.remoteConfigStatus.Status != cm.lastSentConfigStatus.Status ||
+		cm.remoteConfigStatus.ErrorMessage != cm.lastSentConfigStatus.ErrorMessage
+
+	// Pending effective config if we have one and it differs from last sent
+	effPending := false
+	if cm.effectiveConfig != nil {
+		effPending = !effectiveConfigsEqual(cm.effectiveConfig, cm.lastSentEffectiveConfig)
+	}
+
+	return statusPending || effPending
+}
+
+// resetLastSentEffectiveConfig resets the lastSentEffectiveConfig to nil so the config will be sent on next request.
+// This should be called when an API request fails to ensure the config is retried.
+func (cm *configManager) resetLastSentEffectiveConfig() {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+	cm.lastSentEffectiveConfig = nil
+}
+
+// effectiveConfigsEqual checks if two EffectiveConfig objects are equal.
+func effectiveConfigsEqual(a, b *collectorv1.EffectiveConfig) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Compare config maps
+	if a.ConfigMap == nil && b.ConfigMap == nil {
+		return true
+	}
+	if a.ConfigMap == nil || b.ConfigMap == nil {
+		return false
+	}
+
+	aMap := a.ConfigMap.ConfigMap
+	bMap := b.ConfigMap.ConfigMap
+
+	if len(aMap) != len(bMap) {
+		return false
+	}
+
+	for key, aFile := range aMap {
+		bFile, exists := bMap[key]
+		if !exists {
+			return false
+		}
+
+		// Compare the file contents
+		if !agentConfigFilesEqual(aFile, bFile) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// agentConfigFilesEqual checks if two AgentConfigFile objects are equal.
+func agentConfigFilesEqual(a, b *collectorv1.AgentConfigFile) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Compare body (config content)
+	if string(a.Body) != string(b.Body) {
+		return false
+	}
+
+	// Compare content type
+	if a.ContentType != b.ContentType {
+		return false
+	}
+
+	return true
+}
+
+// copyEffectiveConfig creates a deep copy of an EffectiveConfig.
+func copyEffectiveConfig(config *collectorv1.EffectiveConfig) *collectorv1.EffectiveConfig {
+	if config == nil {
+		return nil
+	}
+
+	result := &collectorv1.EffectiveConfig{}
+
+	if config.ConfigMap != nil {
+		result.ConfigMap = &collectorv1.AgentConfigMap{
+			ConfigMap: make(map[string]*collectorv1.AgentConfigFile),
+		}
+
+		for key, file := range config.ConfigMap.ConfigMap {
+			if file != nil {
+				result.ConfigMap.ConfigMap[key] = &collectorv1.AgentConfigFile{
+					Body:        append([]byte(nil), file.Body...),
+					ContentType: file.ContentType,
+				}
+			}
+		}
+	}
+
+	return result
 }
 
 // getErrorMessage extracts the best error message from an error,
