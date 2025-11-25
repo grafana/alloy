@@ -12,7 +12,7 @@ title: otelcol.receiver.awss3
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.awss3` receives traces stored in S3 by the [AWS S3 Exporter](./otelcol.exporter.awss3.md).
+`otelcol.receiver.awss3` receives telemetry stored in S3 by the [AWS S3 Exporter](./otelcol.exporter.awss3.md).
 
 {{< admonition type="warning" >}}
 `otelcol.receiver.awss3` is a wrapper over the upstream OpenTelemetry Collector [`awss3`][] receiver.
@@ -28,7 +28,6 @@ The receiver has two modes of operation:
 
 The receiver supports the following encodings:
 
-- otlp_json (OpenTelemetry Protocol format represented as json) with a suffix of `.json`
 - `otlp_json` (OpenTelemetry Protocol format represented as JSON) with a suffix of `.json`
 - `otlp_proto` (OpenTelemetry Protocol format represented as Protocol Buffers) with a suffix of `.binpb`
 
@@ -106,7 +105,7 @@ The following arguments are supported:
 | `s3_prefix`             | `string` | Prefix for the S3 key (root directory inside bucket).                                                 |               | yes      |
 | `endpoint_partition_id` | `string` | Partition id to use if `endpoint` is specified.                                                       | `"aws"`       | no       |
 | `endpoint`              | `string` | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |               | no       |
-| `file_prefix`           | `string` | File prefix defined by user.                                                                          |               | no       |
+| `file_prefix`           | `string` | Prefix used to filter files for download.                                                             |               | no       |
 | `region`                | `string` | AWS region.                                                                                           | `"us-east-1"` | no       |
 | `s3_force_path_style`   | `bool`   | When enabled, forces the request to use [path-style addressing][s3-force-path-style-ref].             | `false`       | no       |
 | `s3_partition`          | `string` | Time granularity of S3 key: hour or minute.                                                           | `"minute"`    | no       |
@@ -212,7 +211,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.awss3` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

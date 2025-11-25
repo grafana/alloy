@@ -44,6 +44,8 @@ func (awss3ReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 func toAWSS3Receiver(state *State, id componentstatus.InstanceID, cfg *awss3receiver.Config) (*awss3.Arguments, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	nextTraces := state.Next(id, pipeline.SignalTraces)
+	nextLogs := state.Next(id, pipeline.SignalLogs)
+	nextMetrics := state.Next(id, pipeline.SignalMetrics)
 
 	// TODO(x1unix): remove warning when Encodings support will be implemented (#4938).
 	if len(cfg.Encodings) > 0 {
@@ -62,7 +64,9 @@ func toAWSS3Receiver(state *State, id componentstatus.InstanceID, cfg *awss3rece
 
 	args := awss3.ArgumentsFromConfig(cfg)
 	args.Output = &otelcol.ConsumerArguments{
-		Traces: ToTokenizedConsumers(nextTraces),
+		Traces:  ToTokenizedConsumers(nextTraces),
+		Metrics: ToTokenizedConsumers(nextMetrics),
+		Logs:    ToTokenizedConsumers(nextLogs),
 	}
 
 	return &args, diags
