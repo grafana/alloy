@@ -70,7 +70,7 @@ The `spans` block configures a custom metric for counting spans.
 
 You can specify multiple `spans` blocks to define different metrics.
 
-If no `spans` blocks are defined, the connector emits a default metric named `trace.span.count`.
+If you don't define any `spans` blocks, the connector emits a default metric named `trace.span.count`.
 
 | Name          | Type           | Description                           | Default                                    | Required |
 | ------------- | -------------- | ------------------------------------- | ------------------------------------------ | -------- |
