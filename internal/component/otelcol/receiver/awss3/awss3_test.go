@@ -68,6 +68,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			name: "sqs notifications",
 			cfg: `
 				s3downloader {
+					region = "us-west-2"
 					s3_bucket = "grafana-bucket"
 					s3_prefix = "ingest/"
 					s3_partition = "minute"
@@ -83,9 +84,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: awss3receiver.Config{
 				S3Downloader: awss3receiver.S3DownloaderConfig{
-					S3Bucket:    "grafana-bucket",
-					S3Prefix:    "ingest/",
-					S3Partition: "minute",
+					Region:              "us-west-2",
+					S3Bucket:            "grafana-bucket",
+					S3Prefix:            "ingest/",
+					S3Partition:         awss3receiver.S3PartitionMinute,
+					EndpointPartitionID: "aws",
 				},
 				SQS: &awss3receiver.SQSConfig{
 					QueueURL:            "https://sqs.us-east-1.amazonaws.com/123456789012/alloy",
