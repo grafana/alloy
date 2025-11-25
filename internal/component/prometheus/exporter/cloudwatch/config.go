@@ -60,6 +60,7 @@ type DiscoveryJob struct {
 	DimensionNameRequirements []string       `alloy:"dimension_name_requirements,attr,optional"`
 	RecentlyActiveOnly        bool           `alloy:"recently_active_only,attr,optional"`
 	Metrics                   []Metric       `alloy:"metric,block"`
+	Delay                     time.Duration  `alloy:"delay,attr,optional"`
 	//TODO: Remove NilToZero, because it is deprecated upstream.
 	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
 }
@@ -76,6 +77,7 @@ type StaticJob struct {
 	Namespace  string         `alloy:"namespace,attr"`
 	Dimensions Dimensions     `alloy:"dimensions,attr"`
 	Metrics    []Metric       `alloy:"metric,block"`
+	Delay      time.Duration  `alloy:"delay,attr,optional"`
 	//TODO: Remove NilToZero, because it is deprecated upstream.
 	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
 }
@@ -88,6 +90,7 @@ type CustomNamespaceJob struct {
 	Namespace                 string         `alloy:"namespace,attr"`
 	RecentlyActiveOnly        bool           `alloy:"recently_active_only,attr,optional"`
 	Metrics                   []Metric       `alloy:"metric,block"`
+	Delay                     time.Duration  `alloy:"delay,attr,optional"`
 	//TODO: Remove NilToZero, because it is deprecated upstream.
 	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
 }
@@ -215,7 +218,6 @@ func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 	if err != nil {
 		return yaceModel.JobsConfig{}, err
 	}
-	cloudwatch_exporter.PatchYACEDefaults(&modelConf)
 
 	return modelConf, nil
 }
@@ -246,7 +248,7 @@ func toYACEMetrics(ms []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 	for _, m := range ms {
 		periodSeconds := int64(m.Period.Seconds())
 		lengthSeconds := periodSeconds
-		// If length is other than zero, that is, is configured, override the default period vaue
+		// If length is other than zero, that is, it is configured, override the default period value
 		if m.Length != 0 {
 			lengthSeconds = int64(m.Length.Seconds())
 		}
@@ -265,10 +267,6 @@ func toYACEMetrics(ms []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 			// data to fill the whole aggregation bucket. Therefore, Period == Length.
 			Period: periodSeconds,
 			Length: lengthSeconds,
-
-			// Delay moves back the time window for whom CloudWatch is requested data. Since we are already adjusting
-			// this with RoundingPeriod (see toYACEDiscoveryJob), we should omit this setting.
-			Delay: 0,
 
 			NilToZero:              nilToZero,
 			AddCloudwatchTimestamp: m.AddCloudwatchTimestamp,
@@ -314,9 +312,12 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		DimensionNameRequirements: rj.DimensionNameRequirements,
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
-		RoundingPeriod:     nil,
+		RoundingPeriod: nil,
 		RecentlyActiveOnly: rj.RecentlyActiveOnly,
-		Metrics:            toYACEMetrics(rj.Metrics, nilToZero),
+		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
+			Delay: int64(rj.Delay.Seconds()),
+		},
+		Metrics: toYACEMetrics(rj.Metrics, nilToZero),
 	}
 	return job
 }
@@ -335,9 +336,12 @@ func toYACECustomNamespaceJob(cn CustomNamespaceJob) *yaceConf.CustomNamespace {
 		DimensionNameRequirements: cn.DimensionNameRequirements,
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
-		RoundingPeriod:     nil,
+		RoundingPeriod: nil,
 		RecentlyActiveOnly: cn.RecentlyActiveOnly,
-		Metrics:            toYACEMetrics(cn.Metrics, nilToZero),
+		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
+			Delay: int64(cn.Delay.Seconds()),
+		},
+		Metrics: toYACEMetrics(cn.Metrics, nilToZero),
 	}
 }
 

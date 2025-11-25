@@ -75,6 +75,7 @@ type DiscoveryJob struct {
 	DimensionNameRequirements []string `yaml:"dimension_name_requirements"`
 	Metrics                   []Metric `yaml:"metrics"`
 	NilToZero                 *bool    `yaml:"nil_to_zero,omitempty"`
+	Delay                     time.Duration `yaml:"delay,omitempty"`
 }
 
 // StaticJob will scrape metrics that match all defined dimensions.
@@ -86,6 +87,7 @@ type StaticJob struct {
 	Dimensions           []Dimension `yaml:"dimensions"`
 	Metrics              []Metric    `yaml:"metrics"`
 	NilToZero            *bool       `yaml:"nil_to_zero,omitempty"`
+	Delay                time.Duration `yaml:"delay,omitempty"`
 }
 
 // InlineRegionAndRoles exposes for each supported job, the AWS regions and IAM roles in which the agent should perform the
@@ -205,12 +207,16 @@ func getServiceByAlias(alias string) string {
 
 func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 	discoveryJobs := []*yaceConf.Job{}
+	discoveryDelays := []time.Duration{}
 	for _, job := range c.Discovery.Jobs {
 		discoveryJobs = append(discoveryJobs, toYACEDiscoveryJob(job))
+		discoveryDelays = append(discoveryDelays, job.Delay)
 	}
 	staticJobs := []*yaceConf.Static{}
+	staticDelays := []time.Duration{}
 	for _, stat := range c.Static {
 		staticJobs = append(staticJobs, toYACEStaticJob(stat))
+		staticDelays = append(staticDelays, stat.Delay)
 	}
 	conf := yaceConf.ScrapeConf{
 		APIVersion: "v1alpha1",
@@ -231,27 +237,24 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 	if err != nil {
 		return yaceModel.JobsConfig{}, fipsEnabled, err
 	}
-	PatchYACEDefaults(&modelConf)
+
+	// YACE validation may override the delay, so restore it from the job configuration
+	for i, job := range modelConf.DiscoveryJobs {
+		delay := discoveryDelays[i]
+		for _, metric := range job.Metrics {
+			metric.Delay = int64(delay.Seconds())
+		}
+	}
+	for i, job := range modelConf.StaticJobs {
+		delay := staticDelays[i]
+		for _, metric := range job.Metrics {
+			metric.Delay = int64(delay.Seconds())
+		}
+	}
 
 	return modelConf, fipsEnabled, nil
 }
 
-// PatchYACEDefaults overrides some default values YACE applies after validation.
-func PatchYACEDefaults(yc *yaceModel.JobsConfig) {
-	// YACE doesn't allow during validation a zero-delay in each metrics scrape. Override this behaviour since it's taken
-	// into account by the rounding period.
-	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/7e5949124bb5f26353eeff298724a5897de2a2a4/pkg/config/config.go#L320
-	for _, job := range yc.DiscoveryJobs {
-		for _, metric := range job.Metrics {
-			metric.Delay = 0
-		}
-	}
-	for _, staticConf := range yc.StaticJobs {
-		for _, metric := range staticConf.Metrics {
-			metric.Delay = 0
-		}
-	}
-}
 
 func toYACEStaticJob(job StaticJob) *yaceConf.Static {
 	nilToZero := job.NilToZero
@@ -265,7 +268,7 @@ func toYACEStaticJob(job StaticJob) *yaceConf.Static {
 		Namespace:  job.Namespace,
 		CustomTags: toYACETags(job.CustomTags),
 		Dimensions: toYACEDimensions(job.Dimensions),
-		Metrics:    toYACEMetrics(job.Metrics, nilToZero),
+		Metrics:    toYACEMetrics(job.Metrics, nilToZero, job.Delay),
 	}
 }
 
@@ -291,7 +294,7 @@ func toYACEDiscoveryJob(job *DiscoveryJob) *yaceConf.Job {
 		Roles:                     roles,
 		CustomTags:                toYACETags(job.CustomTags),
 		Type:                      job.Type,
-		Metrics:                   toYACEMetrics(job.Metrics, nilToZero),
+		Metrics:                   toYACEMetrics(job.Metrics, nilToZero, job.Delay),
 		SearchTags:                toYACETags(job.SearchTags),
 		DimensionNameRequirements: job.DimensionNameRequirements,
 
@@ -302,7 +305,7 @@ func toYACEDiscoveryJob(job *DiscoveryJob) *yaceConf.Job {
 	return &yaceJob
 }
 
-func toYACEMetrics(metrics []Metric, jobNilToZero *bool) []*yaceConf.Metric {
+func toYACEMetrics(metrics []Metric, jobNilToZero *bool, jobDelay time.Duration) []*yaceConf.Metric {
 	yaceMetrics := []*yaceConf.Metric{}
 	for _, metric := range metrics {
 		periodSeconds := int64(metric.Period.Seconds())
@@ -328,9 +331,8 @@ func toYACEMetrics(metrics []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 			Period: periodSeconds,
 			Length: lengthSeconds,
 
-			// Delay moves back the time window for whom CloudWatch is requested data. Since we are already adjusting
-			// this with RoundingPeriod (see toYACEDiscoveryJob), we should omit this setting.
-			Delay: 0,
+			// Delay moves back the time window for whom CloudWatch is requested data.
+			Delay: int64(jobDelay.Seconds()),
 
 			NilToZero:              nilToZero,
 			AddCloudwatchTimestamp: &addCloudwatchTimestamp,

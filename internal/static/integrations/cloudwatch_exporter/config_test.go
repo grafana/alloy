@@ -3,6 +3,7 @@ package cloudwatch_exporter
 import (
 	"io"
 	"testing"
+	"time"
 
 	"github.com/grafana/regexp"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
@@ -186,6 +187,51 @@ static:
           - Average
 `
 
+// for testing delay at the job level
+const configString4 = `
+sts_region: us-east-2
+discovery:
+  exported_tags:
+    AWS/EC2:
+      - name
+      - type
+  jobs:
+    - type: AWS/EC2
+      search_tags:
+        - key: instance_type
+          value: spot
+      regions:
+        - us-east-2
+      roles:
+        - role_arn: arn:aws:iam::878167871295:role/yace_testing
+      custom_tags:
+        - key: alias
+          value: tesis
+      delay: 1m
+      metrics:
+        - name: CPUUtilization
+          period: 5m
+          statistics:
+            - Maximum
+            - Average
+static:
+  - regions:
+      - us-east-2
+    name: custom_tesis_metrics
+    namespace: CoolApp
+    dimensions:
+      - name: PURCHASES_SERVICE
+        value: CoolService
+      - name: APP_VERSION
+        value: 1.0
+    delay: 2m
+    metrics:
+      - name: KPIs
+        period: 5m
+        statistics:
+          - Average
+`
+
 var (
 	falsePtr = false
 	truePtr  = true
@@ -353,6 +399,60 @@ var expectedConfig3 = model.JobsConfig{
 	CustomNamespaceJobs: []model.CustomNamespaceJob(nil),
 }
 
+var expectedConfig4 = model.JobsConfig{
+	StsRegion: "us-east-2",
+	DiscoveryJobs: []model.DiscoveryJob{{
+		Regions:                   []string{"us-east-2"},
+		Type:                      "AWS/EC2",
+		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
+		SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
+		CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},
+		DimensionNameRequirements: []string(nil),
+		Metrics: []*model.MetricConfig{
+			{
+				Name:                   "CPUUtilization",
+				Statistics:             []string{"Maximum", "Average"},
+				Period:                 300,
+				Length:                 300,
+				Delay:                  60,
+				NilToZero:              true,
+				AddCloudwatchTimestamp: false,
+			},
+		},
+		RoundingPeriod:              (*int64)(nil),
+		RecentlyActiveOnly:          false,
+		ExportedTagsOnMetrics:       []string{"name", "type"},
+		IncludeContextOnInfoMetrics: false,
+		DimensionsRegexps: []model.DimensionsRegexp{{
+			Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
+			DimensionsNames: []string{"InstanceId"},
+		}},
+	}},
+	StaticJobs: []model.StaticJob{{
+		Name:       "custom_tesis_metrics",
+		Regions:    []string{"us-east-2"},
+		Roles:      []model.Role{{RoleArn: "", ExternalID: ""}},
+		Namespace:  "CoolApp",
+		CustomTags: []model.Tag{},
+		Dimensions: []model.Dimension{
+			{Name: "PURCHASES_SERVICE", Value: "CoolService"},
+			{Name: "APP_VERSION", Value: "1.0"},
+		},
+		Metrics: []*model.MetricConfig{
+			{
+				Name:                   "KPIs",
+				Statistics:             []string{"Average"},
+				Period:                 300,
+				Length:                 300,
+				Delay:                  120,
+				NilToZero:              true,
+				AddCloudwatchTimestamp: false,
+			},
+		},
+	}},
+	CustomNamespaceJobs: []model.CustomNamespaceJob(nil),
+}
+
 func TestTranslateConfigToYACEConfig(t *testing.T) {
 	c := Config{}
 	err := yaml.Unmarshal([]byte(configString), &c)
@@ -389,6 +489,24 @@ func TestTranslateNilToZeroConfigToYACEConfig(t *testing.T) {
 	require.NoError(t, err, "failed to translate to YACE configuration")
 
 	require.EqualValues(t, expectedConfig3.DiscoveryJobs, yaceConf.DiscoveryJobs)
+	require.EqualValues(t, truePtr, fipsEnabled)
+}
+
+func TestTranslateDelayConfigToYACEConfig(t *testing.T) {
+	c := Config{}
+	err := yaml.Unmarshal([]byte(configString4), &c)
+	require.NoError(t, err, "failed to unmarshal config")
+
+	require.Equal(t, time.Minute, c.Discovery.Jobs[0].Delay)
+	require.Equal(t, 2*time.Minute, c.Static[0].Delay)
+
+	logger, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	yaceConf, fipsEnabled, err := ToYACEConfig(&c, logger)
+	require.NoError(t, err, "failed to translate to YACE configuration")
+
+	require.EqualValues(t, expectedConfig4, yaceConf)
 	require.EqualValues(t, truePtr, fipsEnabled)
 }
 
