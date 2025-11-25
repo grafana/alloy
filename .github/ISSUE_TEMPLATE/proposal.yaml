@@ -121,6 +121,7 @@ body:
       - otelcol.processor.transform
       - otelcol.receiver.awscloudwatch
       - otelcol.receiver.awsecscontainermetrics
+      - otelcol.receiver.awss3
       - otelcol.receiver.cloudflare
       - otelcol.receiver.datadog
       - otelcol.receiver.faro
