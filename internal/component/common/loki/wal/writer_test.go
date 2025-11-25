@@ -251,7 +251,7 @@ func eventuallyReadWAL(t *testing.T, expectedEntries int, dir string) []loki.Ent
 	var readEntries []loki.Entry
 	require.Eventually(t, func() bool {
 		// read WAL and assert over read entries
-		readEntries, err = ReadWAL(dir)
+		readEntries, err = readWAL(dir)
 		if err != nil {
 			return false
 		}

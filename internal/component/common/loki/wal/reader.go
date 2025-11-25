@@ -1,19 +1,22 @@
 package wal
 
 import (
+	"errors"
 	"fmt"
+	"io"
 
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/tsdb/wlog"
 
 	"github.com/grafana/alloy/internal/loki/util"
-	walUtils "github.com/grafana/loki/v3/pkg/util/wal"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-// ReadWAL will read all entries in the WAL located under dir. Mainly used for testing
-func ReadWAL(dir string) ([]loki.Entry, error) {
-	reader, closeFn, err := walUtils.NewWalReader(dir, -1)
+// readWAL will read all entries in the WAL located under dir.
+// Used in tests.
+func readWAL(dir string) ([]loki.Entry, error) {
+	reader, closeFn, err := newWalReader(dir, -1)
 	if err != nil {
 		return nil, err
 	}
@@ -56,4 +59,37 @@ func ReadWAL(dir string) ([]loki.Entry, error) {
 	}
 
 	return seenEntries, nil
+}
+
+func newWalReader(dir string, startSegment int) (*wlog.Reader, io.Closer, error) {
+	var (
+		segmentReader io.ReadCloser
+		err           error
+	)
+	if startSegment < 0 {
+		segmentReader, err = wlog.NewSegmentsReader(dir)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		first, last, err := wlog.Segments(dir)
+		if err != nil {
+			return nil, nil, err
+		}
+		if startSegment > last {
+			return nil, nil, errors.New("start segment is beyond the last WAL segment")
+		}
+		if first > startSegment {
+			startSegment = first
+		}
+		segmentReader, err = wlog.NewSegmentsRangeReader(wlog.SegmentRange{
+			Dir:   dir,
+			First: startSegment,
+			Last:  -1, // Till the end.
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return wlog.NewReader(segmentReader), segmentReader, nil
 }
