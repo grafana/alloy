@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	promdiscovery "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -60,6 +61,16 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 	relabelConfigs := map[string][]*relabel.Config{}
 	managerConfig := map[string]promdiscovery.Configs{}
 	for _, v := range scrapeConfigs {
+		for _, rule := range v.RelabelConfigs {
+			if rule == nil {
+				continue
+			}
+			// The relabel package expects a concrete validation scheme. Explicitly
+			// set legacy validation until we expose this as a user-facing option.
+			if rule.NameValidationScheme == model.UnsetValidation {
+				rule.NameValidationScheme = model.LegacyValidation
+			}
+		}
 		managerConfig[v.JobName] = v.ServiceDiscoveryConfigs
 		relabelConfigs[v.JobName] = v.RelabelConfigs
 	}
