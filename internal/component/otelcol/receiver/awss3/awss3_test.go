@@ -10,6 +10,22 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
+func TestArguments_Defaults(t *testing.T) {
+	// Test to detect if upstream defaults are changed or any other breaking changes introduced.
+	expect := awss3.Arguments{
+		S3Downloader: awss3.S3DownloaderConfig{
+			Region:              "us-east-1",
+			S3Partition:         awss3receiver.S3PartitionMinute,
+			EndpointPartitionID: "aws",
+		},
+	}
+
+	var args awss3.Arguments
+	args.SetToDefault()
+
+	require.Equal(t, expect, args)
+}
+
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	cases := []struct {
 		name     string
