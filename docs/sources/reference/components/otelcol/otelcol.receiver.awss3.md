@@ -68,7 +68,7 @@ You can use the following arguments with `otelcol.receiver.awss3`:
 
 The `start_time` and `end_time` fields time format is either RFC3339, `YYYY-MM-DD HH:MM` or simply `YYYY-MM-DD`, in which case the time is assumed to be `00:00`.
 
-{{< admonition type="warning" >}}
+{{< admonition type="note" >}}
 Time-based configuration (`start_time` and `end_time` arguments) cannot be combined together with [`sqs`][] block.
 
 [`sqs`]: #sqs
