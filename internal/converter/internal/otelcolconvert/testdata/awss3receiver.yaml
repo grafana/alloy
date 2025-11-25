@@ -16,7 +16,6 @@ exporters:
 
 service:
   pipelines:
-    logs:
+    traces:
       receivers: [awss3]
-      processors: []
       exporters: [otlp]

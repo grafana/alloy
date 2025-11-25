@@ -13,7 +13,7 @@ otelcol.receiver.awss3 "default" {
 	}
 
 	output {
-		logs = [otelcol.exporter.otlp.default.input]
+		traces = [otelcol.exporter.otlp.default.input]
 	}
 }
 
