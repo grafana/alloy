@@ -560,6 +560,8 @@ github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.12 h1:Rw32TILqdeSIfK
 github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.12/go.mod h1:A6p6Pb5x8Xwl69rskqHOr3fGBENGNBFHCvAjGIvkqOw=
 github.com/aws/aws-sdk-go-v2/service/shield v1.29.8 h1:H5urm641txrisNK7AOXVVR3FdG/dGg+CpekseU5BgZk=
 github.com/aws/aws-sdk-go-v2/service/shield v1.29.8/go.mod h1:fl0FdAKddek5SfmZAINtCgq0IQohtrQMpAIszgQIVjs=
+github.com/aws/aws-sdk-go-v2/service/sqs v1.42.11 h1:tt34G790giMoWqpqJOfvc5BD25hHRSjgvx1x1jtwi9w=
+github.com/aws/aws-sdk-go-v2/service/sqs v1.42.11/go.mod h1:tj8YTswoacIeRGjkYuHOkUd4ioQ4Of0m+gy09kuns9o=
 github.com/aws/aws-sdk-go-v2/service/sso v1.4.2/go.mod h1:NBvT9R1MEF+Ud6ApJKM0G+IkPchKS7p7c2YPKwHmBOk=
 github.com/aws/aws-sdk-go-v2/service/sso v1.29.8 h1:M5nimZmugcZUO9wG7iVtROxPhiqyZX6ejS1lxlDPbTU=
 github.com/aws/aws-sdk-go-v2/service/sso v1.29.8/go.mod h1:mbef/pgKhtKRwrigPPs7SSSKZgytzP8PQ6P6JAAdqyM=
@@ -1755,6 +1757,8 @@ github.com/onsi/ginkgo/v2 v2.23.4 h1:ktYTpKJAVZnDT4VjxSbiBenUjmlL/5QkBEocaWXiQus
 github.com/onsi/ginkgo/v2 v2.23.4/go.mod h1:Bt66ApGPBFzHyR+JO10Zbt0Gsp4uWxu5mIOTusL46e8=
 github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
 github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
+github.com/open-telemetry/opamp-go v0.22.0 h1:7UnsQgFFS7ffM09JQk+9aGVBAAlsLfcooZ9xvSYwxWM=
+github.com/open-telemetry/opamp-go v0.22.0/go.mod h1:339N71soCPrhHywbAcKUZJDODod581ZOxCpTkrl3zYQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.139.0 h1:wsylHna5nuu6Jl+ow9uv3WJ0qKGJxg2aRORFUDa8SAs=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.139.0/go.mod h1:LIR7KA0MIoHFQN/mO3zLEeK7piZL3cR6Ig10GfpS5UU=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.139.0 h1:USQU4VEL4Vi1rDm1am6LFjIvRGSOWhb+huw1OLIo3Eo=
@@ -1793,6 +1797,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremote
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.139.0/go.mod h1:70ZwjOdBJd/vphyHnow3SJg1CU5ZDPRkxwAoKQerjgU=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.139.0 h1:lGhsaspNdzFupSKKYij88cfca5T1D4IR18n70hyBXJ8=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.139.0/go.mod h1:M28yXdZYNKe/OG8O9pk4/+ZJU/2lch6RliXrDVJLLkE=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.139.0 h1:tRWaYl3gYJEAMa9AwdRqnh8aT09derEg5KAQfKAvY/I=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.139.0/go.mod h1:fd4BmG/alnGTP5jbYwyRAegWFkvqYjgXU4EXYUXPUyA=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.139.0 h1:1X2OrH3LPowYMPIqoQL3JxAi4DZ8qeW2yiPTztNStt4=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.139.0/go.mod h1:Jcvh4kIf/LZZh4fvPVVbUgstcMELMgKIncZLJk7bEIA=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.139.0 h1:3Hhr2s+h3nNiEkvv1G7/ETbvx+BU6z02IBB2ZbrmbNA=
@@ -1891,6 +1897,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatch
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.139.0/go.mod h1:RKHgTIuRIYeAXG+PfGGYeuNNHJmL568rhHAZT1F7ulI=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.139.0 h1:6qdUPpYUyv9a7j6Onm8FQbJ+WzigJaZtHmPLTkuXkHg=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.139.0/go.mod h1:WRXQ6QPLWLy2yvv83W0k+BK1jIQ45M++k3YAmt6Xy8A=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.139.0 h1:hb89RphDnSdgCh1o9ETaDDGCtwvqDtmroGWtjKuMDss=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.139.0/go.mod h1:Dj4yPqiqDiOjJwCu9lRnHk/QBgTNs9Zyj0LwRHdlOw8=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.139.0 h1:RQj1FWnNvAkUi3+ZpznQ8AwEjv+ctZDWR0tQwen2yjU=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.139.0/go.mod h1:IdhQZGwKVhG/+OcMj0SWNLILHT3mx2IOOKh9uru4zhU=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.139.0 h1:O/rzzvZUa+06SGyVWjOgYchprf5pFwLhDjTK33T3sCU=
