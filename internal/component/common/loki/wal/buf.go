@@ -16,7 +16,7 @@ func encWith(b []byte) (res encbuf) {
 	return res
 }
 
-// encbuf extends encoding.encbuf with support for multi byte encoding
+// encbuf extends encoding.Encbuf with support for multi byte encoding
 type encbuf struct {
 	encoding.Encbuf
 }
@@ -32,7 +32,7 @@ func decWith(b []byte) (res decbuf) {
 	return res
 }
 
-// decbuf extends encoding.decbuf with support for multi byte decoding
+// decbuf extends encoding.Decbuf with support for multi byte decoding
 type decbuf struct {
 	encoding.Decbuf
 }
