@@ -60,7 +60,7 @@ To wire components together, use the exports of one as the arguments to another 
 References can only appear in components.
 
 For example, here's a component that scrapes Prometheus metrics.
-The `targets` field contains two scrape targets, a constant target `localhost:9001` and an expression that ties the target to the value of `local.file.targets.content`.
+The `targets` field is configured with two scrape targets: a constant target `localhost:9001` and an expression that references the value of `local.file.targets.content`.
 
 ```alloy
 prometheus.scrape "default" {
