@@ -33,7 +33,7 @@ Create reusable components, share pipelines with your team, and adapt quickly to
 
 ### Unified telemetry collection
 
-* **All signals, one platform:** {{< param "PRODUCT_NAME" >}} provides native support for metrics, logs, traces, and profiles without requiring you to learn about, configure, and manage multiple collectors.
+* **All signals, one platform:** {{< param "PRODUCT_NAME" >}} provides native support for metrics, logs, traces, and profiles without having to learn, configure, and manage multiple collectors.
   This unified approach simplifies your observability stack and reduces operational complexity.
 * **Components covering popular technologies:** You can collect telemetry data from applications, databases, cloud services, and infrastructure using the built-in components.
   These components cover popular technologies and services across your entire technology stack.
