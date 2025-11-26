@@ -10,23 +10,27 @@ weight: 60
 
 # Component controller
 
-The _component controller_ is the core part of {{< param "PRODUCT_NAME" >}} that manages components at runtime.
+You learned how to build pipelines by connecting components through their exports and references in the previous section.
+Now you'll learn how the _component controller_ manages these components at runtime to make your pipelines work.
 
-The component controller:
+The component controller is the core part of {{< param "PRODUCT_NAME" >}} responsible for:
 
-- Reads and validates the configuration file.
-- Manages the lifecycle of defined components.
-- Evaluates the arguments used to configure components.
-- Reports the health of defined components.
+1. Reading and validating the configuration file.
+1. Managing the lifecycle of defined components.
+1. Evaluating the arguments used to configure components.
+1. Reporting the health of defined components.
 
 ## Component graph
 
-A relationship between [components][Components] forms when an expression sets one component's argument to an exported field of another component.
+When you create pipelines, you establish relationships between components by referencing one component's exports in another component's arguments.
+The component controller uses these relationships to build a [Directed Acyclic Graph][DAG] (DAG) that represents all components and their dependencies.
 
-The set of all components and their relationships defines a [Directed Acyclic Graph][DAG] (DAG).
-This graph tells the component controller which references are valid and the order in which to evaluate components.
+This graph serves two critical purposes:
 
-For a configuration file to be valid, components can't reference themselves or create cyclic references.
+1. **Validation**: Ensures that component references are valid and don't create circular dependencies.
+1. **Evaluation order**: Determines the correct sequence for evaluating components so that dependencies are resolved before dependent components run.
+
+For a configuration file to be valid, components can't reference themselves or create circular dependencies.
 
 ```alloy
 // INVALID: local.file.some_file can't reference itself:
@@ -47,60 +51,81 @@ local.file "b" {
 
 ## Component evaluation
 
-Component evaluation is the process of computing expressions into concrete values.
+Component evaluation is the process of computing expressions in a component's arguments into concrete values.
 These values configure the component's runtime behavior.
-The component controller is fully loaded once it evaluates, configures, and starts all components.
 
-The component controller evaluates a component only after evaluating all its dependencies.
-The controller can evaluate components without dependencies at any time during the process.
+The component controller follows a strict evaluation order:
+
+1. **Dependency resolution**: The controller evaluates a component only after evaluating all its dependencies.
+1. **Parallel evaluation**: Components without dependencies can be evaluated in parallel during the initial startup.
+1. **Component creation**: After successful evaluation, the controller creates and starts the component instance.
+
+The component controller is fully loaded once it evaluates, configures, and starts all components.
 
 ## Component reevaluation
 
-A [component][Components] is dynamic and can update its exports multiple times during its lifetime.
+Components are dynamic and can update their exports multiple times during their lifetime.
+For example, a `local.file` component updates its exports whenever the file content changes.
 
-A _controller reevaluation_ occurs when a component updates its exports.
-The component controller reevaluates any component that references the changed component, along with their dependents, until it reevaluates all affected components.
+When a component updates its exports, the component controller triggers a _reevaluation_ process:
+
+1. **Identify dependents**: The controller finds all components that reference the changed component's exports.
+1. **Cascade evaluation**: The controller reevaluates those dependent components with the new export values.
+1. **Propagate changes**: If any dependent component also updates its exports, the process continues until all affected components are reevaluated.
+
+This automatic reevaluation ensures that your pipelines stay current with changing data and conditions.
 
 ## Component health
 
-At any time, a component can have one of these health states:
+Every component has a health state that indicates whether it's working properly.
+The component controller tracks health to help you monitor and troubleshoot your pipelines.
 
-1. Unknown: The default state. The component isn't running yet.
-1. Healthy: The component is working as expected.
-1. Unhealthy: The component isn't working as expected.
-1. Exited: The component has stopped and is no longer running.
+Components can be in one of these health states:
 
-By default, the component controller determines a component's health.
-The controller marks a component as healthy if it's running and its most recent evaluation succeeded.
+1. **Unknown**: The default state when a component is created but not yet started.
+1. **Healthy**: The component is working as expected.
+1. **Unhealthy**: The component encountered an error or isn't working as expected.
+1. **Exited**: The component has stopped and is no longer running.
 
-Some components can report their own health information.
-For example, the `local.file` component reports itself as unhealthy if the file it's watching gets deleted.
+The component controller determines health by combining multiple factors:
 
-The system determines the overall health of a component by combining the controller-reported health of the component with the component-specific health information.
+- **Evaluation health**: Whether the component's arguments evaluated successfully.
+- **Runtime health**: Whether the component is running without errors.
+- **Component-specific health**: Some components report their own health status (for example, `local.file` reports unhealthy if its target file is deleted).
 
-A component's health is independent of the health of any components it references.
-A component can be healthy even if it references an exported field of an unhealthy component.
+A component's health is independent of the health of components it references.
+A component can be healthy even if it references exports from an unhealthy component.
 
 ## Evaluation failures
 
-When a component fails to evaluate, it's marked as unhealthy with the reason for the failure.
+When a component fails to evaluate its arguments (for example, due to invalid configuration or missing dependencies), the component controller marks it as unhealthy and logs the failure reason.
 
-Despite the failure, the component continues operating normally.
-It uses its last valid set of evaluated arguments and can keep exporting updated values.
+Critically, the component continues operating with its last valid configuration.
+This prevents failures from cascading through your entire pipeline.
 
-This behavior prevents failure propagation.
-For example, if your `local.file` component, which watches API keys, stops working, other components continue using the last valid API key until the component recovers.
+For example:
+
+- If a `local.file` component watching an API key file encounters a temporary file access error, dependent components continue using the last successfully read API key.
+- If a `discovery.kubernetes` component temporarily loses connection to the API server, scrapers continue monitoring the last discovered targets.
+
+This graceful degradation keeps your monitoring operational even when individual components encounter temporary issues.
 
 ## In-memory traffic
 
-Components that expose HTTP endpoints, such as [`prometheus.exporter.unix`][prometheus.exporter.unix], can use an internal address to bypass the network and communicate in-memory.
-Components in the same process can communicate without needing network-level protections like authentication or mutual TLS.
+Some components that expose HTTP endpoints (such as [`prometheus.exporter.unix`][prometheus.exporter.unix]) support in-memory communication for improved performance.
+When components within the same {{< param "PRODUCT_NAME" >}} process communicate, they can bypass the network stack entirely.
+
+Benefits of in-memory traffic:
+
+- **Performance**: Eliminates network overhead for local component communication.
+- **Security**: No need for network-level authentication or TLS since communication stays within the process.
+- **Reliability**: Avoids potential network-related failures between components.
 
 The internal address defaults to `alloy.internal:12345`.
-If this address conflicts with a real target on your network, change it using the `--server.http.memory-addr` flag in the [run][] command.
+If this conflicts with a real network address, you can change it using the `--server.http.memory-addr` flag when running {{< param "PRODUCT_NAME" >}}.
 
-Components must opt in to using in-memory traffic.
-Refer to the individual component documentation to learn if a component supports in-memory traffic.
+Components must explicitly support in-memory traffic to use this feature.
+Check individual component documentation to see if it's available.
 
 ## Configuration file updates
 
@@ -111,15 +136,19 @@ After reloading, the controller reevaluates all managed components.
 
 ## Next steps
 
-Learn more about working with the component controller:
+Now that you understand how the component controller works, explore advanced component topics and monitoring:
 
-- [Configure components][] to understand how to write components the controller can manage
-- [Monitor the component controller][] to track component health and performance
-- [{{< param "PRODUCT_NAME" >}} run command][run] for configuration options that affect the controller
+- [Configure components][] - Learn how to write components the controller can manage
+- [Expressions][] - Create dynamic configurations using functions and component references
+
+For monitoring and troubleshooting:
+
+- [Monitor the component controller][] - Track component health and performance
+- [{{< param "PRODUCT_NAME" >}} run command][run] - Configuration options that affect the controller
 
 [DAG]: https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [prometheus.exporter.unix]: ../../reference/components/prometheus/prometheus.exporter.unix
 [run]: ../../reference/cli/run/
-[Components]: ../components/
 [Configure components]: ./configure-components/
+[Expressions]: ../expressions/
 [Monitor the component controller]: ../../../troubleshoot/controller_metrics/
