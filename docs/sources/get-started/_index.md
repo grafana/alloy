@@ -254,7 +254,7 @@ To continue learning about {{< param "PRODUCT_NAME" >}} configuration:
 
 [components]: ./components/
 [expressions]: ./expressions/
-[configuration syntax]: ./configuration-syntax/
+[configuration syntax]: ./syntax/
 [tutorials]: ../tutorials/
 [component reference]: ../reference/components/
 
