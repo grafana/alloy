@@ -33,4 +33,4 @@ Learn more about components:
 [backward-compatibility]: ../introduction/backward-compatibility/
 [Component reference]: ../../../reference/components/
 [Configure components]: ./configure-components/
-[Choose a component]: ../../../collect/choose-component/
+[Choose a component]: ../../collect/choose-component/
