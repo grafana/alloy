@@ -3,6 +3,7 @@ package stages
 import (
 	"errors"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -14,26 +15,27 @@ import (
 
 // Config Errors
 var (
-	ErrMappingRequired        = errors.New("logfmt mapping is required")
+	ErrMappingOrRegexRequired = errors.New("logfmt mapping or regex is required")
 	ErrEmptyLogfmtStageConfig = errors.New("empty logfmt stage configuration")
 )
 
 // LogfmtConfig represents a logfmt Stage configuration
 type LogfmtConfig struct {
-	Mapping map[string]string `alloy:"mapping,attr"`
+	Mapping map[string]string `alloy:"mapping,attr,optional"`
 	Source  string            `alloy:"source,attr,optional"`
+	Regex   string            `alloy:"regex,attr,optional"`
 }
 
 // validateLogfmtConfig validates a logfmt stage config and returns an inverse mapping of configured mapping.
 // Mapping inverse is done to make lookup easier. The key would be the key from parsed logfmt and
 // value would be the key with which the data in extracted map would be set.
-func validateLogfmtConfig(c *LogfmtConfig) (map[string]string, error) {
+func validateLogfmtConfig(c *LogfmtConfig) (map[string]string, *regexp.Regexp, error) {
 	if c == nil {
-		return nil, ErrEmptyLogfmtStageConfig
+		return nil, nil, ErrEmptyLogfmtStageConfig
 	}
 
-	if len(c.Mapping) == 0 {
-		return nil, ErrMappingRequired
+	if len(c.Mapping) == 0 && len(c.Regex) == 0 {
+		return nil, nil, ErrMappingOrRegexRequired
 	}
 
 	inverseMapping := make(map[string]string)
@@ -45,13 +47,19 @@ func validateLogfmtConfig(c *LogfmtConfig) (map[string]string, error) {
 		inverseMapping[v] = k
 	}
 
-	return inverseMapping, nil
+	re, err := regexp.Compile(c.Regex)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return inverseMapping, re, nil
 }
 
 // logfmtStage sets extracted data using logfmt parser
 type logfmtStage struct {
 	cfg            *LogfmtConfig
 	inverseMapping map[string]string
+	regex          regexp.Regexp
 	logger         log.Logger
 }
 
@@ -59,7 +67,7 @@ type logfmtStage struct {
 func newLogfmtStage(logger log.Logger, config LogfmtConfig) (Stage, error) {
 	// inverseMapping would hold the mapping in inverse which would make lookup easier.
 	// To explain it simply, the key would be the key from parsed logfmt and value would be the key with which the data in extracted map would be set.
-	inverseMapping, err := validateLogfmtConfig(&config)
+	inverseMapping, regex, err := validateLogfmtConfig(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +75,7 @@ func newLogfmtStage(logger log.Logger, config LogfmtConfig) (Stage, error) {
 	return toStage(&logfmtStage{
 		cfg:            &config,
 		inverseMapping: inverseMapping,
+		regex:          *regex,
 		logger:         log.With(logger, "component", "stage", "type", "logfmt"),
 	}), nil
 }
@@ -97,13 +106,22 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t
 		return
 	}
 	decoder := logfmt.NewDecoder(strings.NewReader(*input))
-	extractedEntriesCount := 0
+	mappingExtractedEntriesCount := 0
+	regexExtractedEntriesCount := 0
 	for decoder.ScanRecord() {
 		for decoder.ScanKeyval() {
+			// handle "mapping"
 			mapKey, ok := j.inverseMapping[string(decoder.Key())]
 			if ok {
 				extracted[mapKey] = string(decoder.Value())
-				extractedEntriesCount++
+				mappingExtractedEntriesCount++
+			} else if j.regex.String() != "" {
+				// handle "regex"
+				fmt.Println(j.regex.String(), string(decoder.Key()))
+				if j.regex.MatchString(string(decoder.Key())) {
+					extracted[string(decoder.Key())] = string(decoder.Value())
+					regexExtractedEntriesCount++
+				}
 			}
 		}
 	}
@@ -114,8 +132,11 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t
 	}
 
 	if Debug {
-		if extractedEntriesCount != len(j.inverseMapping) {
-			level.Debug(j.logger).Log("msg", "found only some configured mappings in logfmt stage", "found", extractedEntriesCount, "configured", len(j.inverseMapping))
+		if mappingExtractedEntriesCount != len(j.inverseMapping) {
+			level.Debug(j.logger).Log("msg", "found only some configured mappings in logfmt stage", "found", mappingExtractedEntriesCount, "configured", len(j.inverseMapping))
+		}
+		if regexExtractedEntriesCount > 0 {
+			level.Debug(j.logger).Log("msg", "found some mappings via regex in logfmt stage", "found", regexExtractedEntriesCount)
 		}
 		level.Debug(j.logger).Log("msg", "extracted data debug in logfmt stage", "extracted data", extracted)
 	}
