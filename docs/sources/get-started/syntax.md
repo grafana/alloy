@@ -4,8 +4,8 @@ aliases:
   - ../configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
 description: Learn about the Alloy configuration language syntax
 title: Alloy syntax
-menuTitle: Syntax
-weight: 20
+menuTitle: Alloy syntax
+weight: 60
 ---
 
 # {{% param "PRODUCT_NAME" %}} syntax
@@ -161,16 +161,19 @@ The formatter:
 
 ## Next steps
 
-To continue learning about {{< param "PRODUCT_NAME" >}} configuration syntax:
+Now that you understand the syntax fundamentals, learn how to use these elements to build working configurations:
 
-- Learn about [expressions][expression] to create dynamic configurations and computations
-- Explore [components][] to understand how to configure data collection and processing
-- Read the [configuration language reference][reference] for comprehensive syntax documentation
-- Use the [`alloy fmt` command][fmt] to automatically format your configuration files
+- [Components][] - Learn about the building blocks that collect, transform, and send data
+- [Expressions][] - Create dynamic configurations using functions and component references
 
-[identifier]: #identifiers
-[expression]: ../expressions/
-[type]: ../expressions/types_and_values/
-[fmt]: ../../reference/cli/fmt/
-[components]: ../components/
+For detailed reference:
+
+- [Configuration language reference][reference] - Comprehensive syntax documentation and advanced features
+
+[Expressions]: ../expressions/
+[Components]: ../components/
 [reference]: ../../reference/config-language/
+[fmt]: ../../reference/cli/fmt/
+[identifier]: #identifiers
+[type]: ../expressions/types_and_values/
+[expression]: ../expressions/

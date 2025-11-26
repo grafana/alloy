@@ -5,7 +5,7 @@ aliases:
   - ./concepts/configuration-syntax/expressions/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/
 description: Learn about expressions and functions in Alloy
 title: Expressions
-weight: 30
+weight: 50
 ---
 
 # Expressions

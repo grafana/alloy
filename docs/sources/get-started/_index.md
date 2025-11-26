@@ -120,9 +120,9 @@ You can use these tools to write {{< param "PRODUCT_NAME" >}} configuration file
 
 Now that you understand the basic syntax, learn how to use these elements to build working configurations:
 
+- [Alloy syntax][] - Explore advanced syntax features and patterns
 - [Components][] - Learn about the building blocks that collect, transform, and send data
 - [Expressions][] - Create dynamic configurations using functions and component references
-- [Configuration syntax][] - Explore advanced syntax features and patterns
 
 For hands-on learning:
 
@@ -130,10 +130,8 @@ For hands-on learning:
 - [Component reference][] - Browse all available components and their options
 
 [fmt]: ../../reference/cli/fmt/
-[components]: ./components/
-[expressions]: ./expressions/
-[Configuration syntax]: ./syntax/
+[Alloy syntax]: ./syntax/
+[Components]: ./components/
+[Expressions]: ./expressions/
 [tutorials]: ../tutorials/
 [Component reference]: ../reference/components/
-
-{{< section >}}
