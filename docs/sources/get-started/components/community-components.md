@@ -18,7 +18,7 @@ To use these community components, pass the `--feature.community-components.enab
 **Community components** don't have a defined stability level and aren't covered by the [backward compatibility strategy][backward-compatibility].
 
 {{< admonition type="warning" >}}
-**Community components** without a maintainer may be disabled or removed if they block or prevent the development of {{< param "PRODUCT_NAME" >}}.
+Grafana Labs may disable or remove **community components** without a maintainer if they block or prevent the development of {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 ## Next steps

@@ -109,7 +109,7 @@ Hello,
 "world"!
 ```
 
-## Bools
+## Boolean values
 
 The symbols `true` and `false` represent boolean values.
 
