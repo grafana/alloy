@@ -47,8 +47,8 @@ The operands in ordering operators `<`, `<=`, `>`, and `>=` must be _orderable_ 
 The results of these comparisons are:
 
 - Boolean values are equal if both are either `true` or `false`.
-- Numerical (integer and floating-point) values are ordered in the usual way.
-- String values are ordered lexically, byte-wise.
+- Numerical (integer and floating-point) values follow the usual ordering.
+- String values follow lexical ordering, byte-wise.
 - Objects are equal if all their fields are equal.
 - Arrays are equal if their corresponding elements are equal.
 
