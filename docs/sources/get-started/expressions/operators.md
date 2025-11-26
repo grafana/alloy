@@ -118,7 +118,7 @@ If you use the `.` operator to access a non-existent named member of an object, 
 Learn how to apply operators in expressions:
 
 - [Types and values][] to understand what data types work with different operators
-- [Function calls][] to use operators in function arguments and calculations  
+- [Function calls][] to use operators in function arguments and calculations
 - [Reference component exports][] to build expressions that connect components
 
 [Types and values]: ./types_and_values/
