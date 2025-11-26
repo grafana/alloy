@@ -16,13 +16,12 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type testWriteTo struct {
-	ReadEntries         *utils.SyncSlice[loki.Entry]
+	ReadEntries         *util.SyncSlice[loki.Entry]
 	series              map[uint64]model.LabelSet
 	logger              log.Logger
 	ReceivedSeriesReset []int
@@ -338,7 +337,7 @@ func TestWatcher(t *testing.T) {
 			writeTo := &testWriteTo{
 				series:      map[uint64]model.LabelSet{},
 				logger:      logger,
-				ReadEntries: utils.NewSyncSlice[loki.Entry](),
+				ReadEntries: util.NewSyncSlice[loki.Entry](),
 			}
 			// create new watcher, and defer stop
 			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noMarker{})
@@ -411,7 +410,7 @@ func TestWatcher_Replay(t *testing.T) {
 		writeTo := &testWriteTo{
 			series:      map[uint64]model.LabelSet{},
 			logger:      logger,
-			ReadEntries: utils.NewSyncSlice[loki.Entry](),
+			ReadEntries: util.NewSyncSlice[loki.Entry](),
 		}
 		// create new watcher, and defer stop
 		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockMarker{
@@ -493,7 +492,7 @@ func TestWatcher_Replay(t *testing.T) {
 		writeTo := &testWriteTo{
 			series:      map[uint64]model.LabelSet{},
 			logger:      logger,
-			ReadEntries: utils.NewSyncSlice[loki.Entry](),
+			ReadEntries: util.NewSyncSlice[loki.Entry](),
 		}
 		// create new watcher, and defer stop
 		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockMarker{
@@ -650,7 +649,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// helper to add context to each written line
 		var lineCounter atomic.Int64
 		writeNLines := func(t *testing.T, n int) {
-			for i := 0; i < n; i++ {
+			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
 				err := ew.WriteEntry(loki.Entry{
 					Labels: labels,
@@ -702,7 +701,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// helper to add context to each written line
 		var lineCounter atomic.Int64
 		writeNLines := func(t *testing.T, n int) {
-			for i := 0; i < n; i++ {
+			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
 				err := ew.WriteEntry(loki.Entry{
 					Labels: labels,
@@ -755,7 +754,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// helper to add context to each written line
 		var lineCounter atomic.Int64
 		writeNLines := func(t *testing.T, n int) {
-			for i := 0; i < n; i++ {
+			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
 				err := ew.WriteEntry(loki.Entry{
 					Labels: labels,

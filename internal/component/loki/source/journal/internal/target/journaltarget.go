@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/go-systemd/sdjournal"
+	"github.com/coreos/go-systemd/v22/sdjournal"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/loki/pkg/push"
@@ -24,7 +24,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 

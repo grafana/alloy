@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
 // mockPositions is a no-op implementation of positions.Positions for testing.

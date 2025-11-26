@@ -7,16 +7,16 @@ discovery.file "fun_2" {
 	refresh_interval = "30m0s"
 }
 
-local.file_match "fun" {
-	path_targets = array.concat(
+loki.source.file "fun" {
+	targets = array.concat(
 		discovery.file.fun.targets,
 		discovery.file.fun_2.targets,
 	)
-}
+	forward_to = []
 
-loki.source.file "fun" {
-	targets               = local.file_match.fun.targets
-	forward_to            = []
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/good/positions.yml"
 }
 
@@ -29,15 +29,15 @@ discovery.file "fun2_2" {
 	refresh_interval = "30m0s"
 }
 
-local.file_match "fun2" {
-	path_targets = array.concat(
+loki.source.file "fun2" {
+	targets = array.concat(
 		discovery.file.fun2.targets,
 		discovery.file.fun2_2.targets,
 	)
-}
+	forward_to = []
 
-loki.source.file "fun2" {
-	targets               = local.file_match.fun2.targets
-	forward_to            = []
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/good/positions.yml"
 }

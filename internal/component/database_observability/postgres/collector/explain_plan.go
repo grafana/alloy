@@ -44,8 +44,9 @@ const selectQueriesForExplainPlanTemplate = `
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
 var unrecoverablePostgresSQLErrors = []string{
-	"pq: permission denied for table",
+	"pq: permission denied",
 	"pq: pg_hba.conf rejects connection for host",
+	"pq: syntax error",
 }
 
 var paramCountRegex = regexp.MustCompile(`\$\d+`)
@@ -270,7 +271,7 @@ func (c *ExplainPlan) Name() string {
 }
 
 func (c *ExplainPlan) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", "collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -423,7 +424,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			for _, code := range unrecoverablePostgresSQLErrors {
 				if strings.Contains(err.Error(), code) {
 					nonRecoverableFailureOccurred = true
@@ -518,14 +519,16 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 		return nil, fmt.Errorf("failed to set plan cache mode: %w", err)
 	}
 
+	explainQuery := fmt.Sprintf("%s%s", selectExplainPlanPrefix, preparedStatementName)
 	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
-
-	nullParams := strings.Repeat("null,", paramCount)
 	if paramCount > 0 {
-		nullParams = nullParams[:len(nullParams)-1]
-	}
+		nullParams := strings.Repeat("null,", paramCount)
+		if paramCount > 0 {
+			nullParams = nullParams[:len(nullParams)-1]
+		}
 
-	explainQuery := fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
+		explainQuery = fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
+	}
 	rsExplain := conn.QueryRowContext(ctx, explainQuery)
 	if err := rsExplain.Err(); err != nil {
 		return nil, fmt.Errorf("failed to run explain plan: %w", err)

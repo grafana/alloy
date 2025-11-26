@@ -3,10 +3,6 @@ discovery.kubernetes "example" {
 	kubeconfig_file = "/home/toby/.kube/config"
 }
 
-local.file_match "example" {
-	path_targets = discovery.kubernetes.example.targets
-}
-
 loki.process "example" {
 	forward_to = [loki.write.default.receiver]
 
@@ -30,8 +26,12 @@ loki.process "example" {
 }
 
 loki.source.file "example" {
-	targets               = local.file_match.example.targets
-	forward_to            = [loki.process.example.receiver]
+	targets    = discovery.kubernetes.example.targets
+	forward_to = [loki.process.example.receiver]
+
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/var/log/positions.yaml"
 }
 

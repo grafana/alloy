@@ -27,7 +27,7 @@ func TestBatch_MaxStreams(t *testing.T) {
 
 	errCount := 0
 	for _, entry := range inputEntries {
-		err := b.add(entry)
+		err := b.add(entry, 0)
 		if err != nil {
 			errCount++
 			assert.ErrorIs(t, err, errMaxStreamsLimitExceeded)
@@ -72,13 +72,11 @@ func TestBatch_add(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			b := newBatch(0)
 
 			for _, entry := range testData.inputEntries {
-				err := b.add(entry)
+				err := b.add(entry, 0)
 				assert.NoError(t, err)
 			}
 
@@ -122,8 +120,6 @@ func TestBatch_encode(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -146,9 +142,9 @@ func TestHashCollisions(t *testing.T) {
 	const entriesPerLabel = 10
 
 	for i := 0; i < entriesPerLabel; i++ {
-		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 
-		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 	}
 
 	// make sure that colliding labels are stored properly as independent streams

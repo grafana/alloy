@@ -457,7 +457,7 @@ func (c *ExplainPlans) Name() string {
 }
 
 func (c *ExplainPlans) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", "collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -585,7 +585,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			for _, code := range unrecoverableSQLCodes {
 				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
 					nonRecoverableFailureOccurred = true

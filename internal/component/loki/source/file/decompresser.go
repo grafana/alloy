@@ -20,14 +20,14 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -49,6 +49,8 @@ type decompressor struct {
 	labels model.LabelSet
 
 	posAndSizeMtx sync.RWMutex
+
+	onPositionsFileError OnPositionsFileError
 
 	running *atomic.Bool
 
@@ -76,7 +78,19 @@ func newDecompressor(
 
 	position, err := pos.Get(opts.path, labelsStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get positions: %w", err)
+		switch opts.onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `restart_from_beginning`")
+			fallthrough
+		default:
+			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", opts.onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
+			position = 0
+			level.Info(logger).Log("msg", "reset position to start of file after positions error", "original_error", err)
+		}
 	}
 
 	decoder, err := getDecoder(opts.encoding)
@@ -85,17 +99,18 @@ func newDecompressor(
 	}
 
 	decompressor := &decompressor{
-		metrics:           metrics,
-		logger:            logger,
-		receiver:          receiver,
-		positions:         pos,
-		key:               positions.Entry{Path: opts.path, Labels: labelsStr},
-		labels:            opts.labels,
-		running:           atomic.NewBool(false),
-		position:          position,
-		decoder:           decoder,
-		cfg:               opts.decompressionConfig,
-		componentStopping: componentStopping,
+		metrics:              metrics,
+		logger:               logger,
+		receiver:             receiver,
+		positions:            pos,
+		key:                  positions.Entry{Path: opts.path, Labels: labelsStr},
+		labels:               opts.labels,
+		running:              atomic.NewBool(false),
+		position:             position,
+		decoder:              decoder,
+		cfg:                  opts.decompressionConfig,
+		onPositionsFileError: opts.onPositionsFileError,
+		componentStopping:    componentStopping,
 	}
 
 	return decompressor, nil
