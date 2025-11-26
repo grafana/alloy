@@ -28,8 +28,27 @@ stage.json {
 
 stage.json {
     expressions = { "user" = "" }
-	source      = "extra"
+    source      = "extra"
 }`
+
+var testJSONAlloyRegex = `
+stage.json {
+  regex = "pod_.*"
+}
+`
+
+var testJSONAlloyRegexAll = `
+stage.json {
+  regex = ".*"
+}
+`
+
+var testJSONAlloyExpressionsAndRegex = `
+stage.json {
+  expressions = {"out" = "message", "app" = ""}
+  regex = "(app|duration)"
+}
+`
 
 var testJSONLogLine = `
 {
@@ -38,7 +57,7 @@ var testJSONLogLine = `
 	"component": ["parser","type"],
 	"level" : "WARN",
 	"nested" : {"child":"value"},
-    "duration" : 125,
+	"duration" : 125,
 	"message" : "this is a log line",
 	"extra": "{\"user\":\"marco\"}"
 }
@@ -72,6 +91,37 @@ func TestPipeline_JSON(t *testing.T) {
 				"user":  "marco",
 			},
 		},
+		"successfully extract regex values from json": {
+			testJSONAlloyRegex,
+      `{"time":"2012-11-01T22:08:41+00:00", "pod_name": "my-pod-123", "pod_label": "my-label"}`,
+			map[string]interface{}{
+        "pod_name": "my-pod-123",
+        "pod_label": "my-label",
+			},
+		},
+		"successfully extract all values from json via regex": {
+			testJSONAlloyRegexAll,
+			testJSONLogLine,
+			map[string]interface{}{
+        "time": "2012-11-01T22:08:41+00:00",
+        "app": "loki",
+        "component": `["parser","type"]`,
+        "level": "WARN",
+        "nested": `{"child":"value"}`,
+        "duration": float64(125),
+        "message": "this is a log line",
+				"extra": "{\"user\":\"marco\"}",
+			},
+		},
+    "successfully extract values with expressions and regex from json": {
+      testJSONAlloyExpressionsAndRegex,
+      testJSONLogLine,
+      map[string]interface{}{
+        "out": "this is a log line",
+        "app": "loki",
+        "duration": float64(125),
+      },
+    },
 	}
 
 	for testName, testData := range tests {
@@ -132,7 +182,7 @@ func TestJSONConfig_validate(t *testing.T) {
 		"no expressions": {
 			&JSONConfig{},
 			0,
-			errors.New(ErrExpressionsRequired),
+			errors.New(ErrExpressionsOrRegexRequired),
 		},
 		"invalid expression": {
 			&JSONConfig{
@@ -180,7 +230,7 @@ func TestJSONConfig_validate(t *testing.T) {
 	for tName, tt := range tests {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
-			got, err := validateJSONConfig(tt.config)
+			got, _, err := validateJSONConfig(tt.config)
 			if tt.err != nil {
 				assert.NotNil(t, err, "JSONConfig.validate() expected error = %v, but got nil", tt.err)
 			}
