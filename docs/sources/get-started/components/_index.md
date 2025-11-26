@@ -51,9 +51,9 @@ log_level = "debug"
 You use _expressions_ to compute an argument's value dynamically at runtime.
 Expressions can retrieve environment variable values (`log_level = sys.env("LOG_LEVEL")`) or reference an exported field of another component (`log_level = local.file.log_level.content`).
 
-A dependent relationship is created when a component's argument references an exported field of another component.
+A dependent relationship forms when a component's argument references an exported field of another component.
 The component's arguments depend on the other component's exports.
-The input of the component is re-evaluated whenever the referenced component's exports are updated.
+The input of the component is re-evaluated whenever the referenced component updates its exports.
 
 The flow of data through these references forms a _pipeline_.
 
@@ -61,7 +61,7 @@ An example pipeline might look like this:
 
 1. A `local.file` component watches a file containing an API key
 1. A `prometheus.remote_write` component receives metrics and forwards them to an external database using the API key from the `local.file` for authentication
-1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where metrics can be collected
+1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where you can collect metrics
 1. A `prometheus.scrape` component references the exports of the previous component and sends collected metrics to the `prometheus.remote_write` component
 
 {{< figure src="/media/docs/alloy/diagram-concepts-example-pipeline.png" width="600" alt="Example of a pipeline" >}}

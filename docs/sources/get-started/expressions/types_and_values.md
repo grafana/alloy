@@ -95,14 +95,14 @@ Raw strings don't support escape sequences.
 Within backticks, any character can appear except a backtick.
 Include a backtick by concatenating a double-quoted string containing a backtick using `+`.
 
-A multiline raw string is interpreted exactly as written.
+{{< param "PRODUCT_NAME" >}} interprets a multiline raw string exactly as written.
 
 ```alloy
 `Hello,
 "world"!`
 ```
 
-The preceding multiline raw string is interpreted as a string with the following value.
+{{< param "PRODUCT_NAME" >}} interprets the preceding multiline raw string as a string with the following value.
 
 ```string
 Hello,
@@ -111,7 +111,7 @@ Hello,
 
 ## Bools
 
-Bools are represented by the symbols `true` and `false`.
+The symbols `true` and `false` represent boolean values.
 
 ## Arrays
 
@@ -177,7 +177,7 @@ You can call functions from the standard library or export them from a component
 
 ## Null
 
-The null value is represented by the symbol `null`.
+The symbol `null` represents the null value.
 
 ## Special types
 
@@ -191,13 +191,13 @@ You can't assign a secret to an attribute expecting a string.
 ### Capsules
 
 A `capsule` is a special type that represents a category of _internal_ types used by {{< param "PRODUCT_NAME" >}}.
-Each capsule type has a unique name and is represented as `capsule("<SOME_INTERNAL_NAME>")`.
+Each capsule type has a unique name and appears as `capsule("<SOME_INTERNAL_NAME>")`.
 You can't construct capsule values.
 Use capsules in expressions like any other type.
 Capsules aren't inter-compatible.
 An attribute expecting a capsule can only accept a capsule of the same internal type.
 If an attribute expects a `capsule("prometheus.Receiver")`, you can only assign a `capsule("prometheus.Receiver")` type.
-The specific capsule type expected is documented for any component that uses or exports them.
+Components that use or export capsules document the specific capsule type they expect.
 
 In the following example, the `prometheus.remote_write` component exports a `receiver`, which is a `capsule("prometheus.Receiver")` type.
 You can use this capsule in the `forward_to` attribute of `prometheus.scrape`, which expects an array of `capsule("prometheus.Receiver")`.

@@ -49,7 +49,7 @@ local.file "b" {
 
 Component evaluation is the process of computing expressions into concrete values.
 These values configure the component's runtime behavior.
-The component controller is fully loaded once all components are evaluated, configured, and running.
+The component controller is fully loaded once it evaluates, configures, and starts all components.
 
 The component controller evaluates a component only after evaluating all its dependencies.
 The controller can evaluate components without dependencies at any time during the process.
