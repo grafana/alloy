@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/grafana/jsonparser"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // PushRequest models a log stream push but is unmarshalled to proto push format.
@@ -18,7 +17,7 @@ type PushRequest struct {
 }
 
 // Stream helps with unmarshalling of each log stream for push request.
-type Stream logproto.Stream
+type Stream push.Stream
 
 func (s *Stream) UnmarshalJSON(data []byte) error {
 	err := jsonparser.ObjectEach(data, func(key, val []byte, ty jsonparser.ValueType, _ int) error {
@@ -44,9 +43,9 @@ func (s *Stream) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-func unmarshalHTTPToLogProtoEntries(data []byte) ([]logproto.Entry, error) {
+func unmarshalHTTPToLogProtoEntries(data []byte) ([]push.Entry, error) {
 	var (
-		entries    []logproto.Entry
+		entries    []push.Entry
 		parseError error
 	)
 	if _, err := jsonparser.ArrayEach(data, func(value []byte, ty jsonparser.ValueType, _ int, err error) {
@@ -73,11 +72,11 @@ func unmarshalHTTPToLogProtoEntries(data []byte) ([]logproto.Entry, error) {
 	return entries, nil
 }
 
-func unmarshalHTTPToLogProtoEntry(data []byte) (logproto.Entry, error) {
+func unmarshalHTTPToLogProtoEntry(data []byte) (push.Entry, error) {
 	var (
 		i          int
 		parseError error
-		e          logproto.Entry
+		e          push.Entry
 	)
 	_, err := jsonparser.ArrayEach(data, func(value []byte, t jsonparser.ValueType, _ int, _ error) {
 		// assert that both items in array are of type string
@@ -104,7 +103,7 @@ func unmarshalHTTPToLogProtoEntry(data []byte) (logproto.Entry, error) {
 			}
 			e.Line = v
 		case 2: // structuredMetadata
-			var structuredMetadata []logproto.LabelAdapter
+			var structuredMetadata []push.LabelAdapter
 			err := jsonparser.ObjectEach(value, func(key, val []byte, dataType jsonparser.ValueType, _ int) error {
 				if dataType != jsonparser.String {
 					return jsonparser.MalformedStringError
@@ -114,7 +113,7 @@ func unmarshalHTTPToLogProtoEntry(data []byte) (logproto.Entry, error) {
 				if err != nil {
 					return err
 				}
-				structuredMetadata = append(structuredMetadata, logproto.LabelAdapter{
+				structuredMetadata = append(structuredMetadata, push.LabelAdapter{
 					Name:  string(key),
 					Value: parsedVal,
 				})
