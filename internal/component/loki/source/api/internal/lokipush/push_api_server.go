@@ -13,9 +13,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/user"
 	lokipush "github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/loghttp/push"
-	"github.com/grafana/loki/v3/pkg/util/constants"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -26,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
+	loghttp2 "github.com/grafana/alloy/internal/component/loki/source/api/internal/loghttp"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -189,24 +187,8 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 	return newRules
 }
 
-// NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
-// Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
-	logger := util_log.WithContext(r.Context(), util_log.Logger)
-	tenantID, _ := tenant.TenantID(r.Context())
-	req, _, err := push.ParseRequest(
-		logger,
-		tenantID,
-		int(s.maxSendMessageSize),
-		r,
-		push.EmptyLimits{},
-		nil,
-		push.ParseLokiRequest,
-		nil, // usage tracker
-		nil,
-		"",
-		constants.Loki,
-	)
+	req, err := loghttp2.ParsePushRequest(r, int(s.maxSendMessageSize))
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -221,6 +203,8 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	var (
 		entries []loki.Entry
 		lastErr error
+
+		tenantID, _ = tenant.TenantID(r.Context())
 	)
 	for _, stream := range req.Streams {
 		ls, err := promql_parser.ParseMetric(stream.Labels)
@@ -299,8 +283,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
-// Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	body := bufio.NewReader(r.Body)
