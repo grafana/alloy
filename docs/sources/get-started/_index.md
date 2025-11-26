@@ -211,7 +211,7 @@ To create a reference, combine three parts with periods:
 - Export name: `content`
 - Result: `local.file.password_file.content`
 
-While a label is an arbitrary designation you can choose yourself, {{< param "PRODUCT_NAME" >}} includes the component's name and its exports in a predefined format. Refer to the list of [components](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components) for more information about the available components, their descriptions, and the exported fields.
+While you can choose any valid identifier as a label, the component name and export names are predefined. Refer to the [component reference][components] for information about available components and their exports.
 
 ## Configuration syntax design goals
 
