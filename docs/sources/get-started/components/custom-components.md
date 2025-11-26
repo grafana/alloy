@@ -66,5 +66,5 @@ Learn more about custom components and related topics:
 [argument]: ../../reference/config-blocks/argument/
 [export]: ../../reference/config-blocks/export/
 [Modules]: ../modules/
-[Configuration blocks reference]: ../../../reference/config-blocks/
+[Configuration blocks reference]: ../../reference/config-blocks/
 [Configure components]: ./configure-components/
