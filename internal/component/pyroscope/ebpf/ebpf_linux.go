@@ -22,10 +22,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 func init() {
@@ -40,6 +42,8 @@ func init() {
 		},
 	})
 	python.NoContinueWithNextUnwinder.Store(true)
+	// Disable ebpf profiler metrics
+	ebpfmetrics.Start(metricnoop.Meter{})
 }
 
 func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {

@@ -18,7 +18,7 @@ import (
 var moduleRoot = "../../../"
 
 // Run the below generate command to automatically update the Markdown docs with generated content
-//go:generate go test -tags slicelabels -fix-tests -v
+//go:generate go test -fix-tests -v
 
 var fixTestsFlag = flag.Bool("fix-tests", false, "update the test files with the current generated content")
 
