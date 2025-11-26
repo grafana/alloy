@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	ConnectorTracesToTraces = iota
+	ConnectorTracesToTraces = iota + 1
 	ConnectorTracesToMetrics
 	ConnectorTracesToLogs
 	ConnectorMetricsToTraces
@@ -197,13 +197,17 @@ func (p *Connector) Update(args component.Arguments) error {
 
 	connectorType := p.args.ConnectorType()
 
-	// Check if connector outputs to metrics
-	outputsToMetrics := (connectorType&ConnectorTracesToMetrics) != 0 ||
-		(connectorType&ConnectorMetricsToMetrics) != 0 ||
-		(connectorType&ConnectorLogsToMetrics) != 0
+	// Validate that the connector supports the requested output types
+	if !outputsToMetrics(connectorType) && len(next.Metrics) > 0 {
+		return errors.New("this connector cannot output metrics")
+	}
 
-	if outputsToMetrics && (len(next.Traces) > 0 || len(next.Logs) > 0) {
-		return errors.New("this connector can only output metrics")
+	if !outputsToLogs(connectorType) && len(next.Logs) > 0 {
+		return errors.New("logs output is not supported yet")
+	}
+
+	if !outputsToTraces(connectorType) && len(next.Traces) > 0 {
+		return errors.New("traces output is not supported yet")
 	}
 
 	if len(next.Metrics) > 0 {
@@ -265,3 +269,69 @@ func (p *Connector) CurrentHealth() component.Health {
 }
 
 func (p *Connector) LiveDebugging() {}
+
+// outputsToMetrics checks if the connector can output metrics by testing if any of the
+// *ToMetrics flags are set in the connector type using bitwise AND operations.
+//
+// The connectorType parameter comes from the Arguments.ConnectorType() method, which returns
+// a combination of connector type flags using bitwise OR (|).
+//
+// Examples:
+//
+//   - spanmetrics connector: connectorType = ConnectorTracesToMetrics (value 2)
+//     Test: (2 & ConnectorTracesToMetrics) = (2 & 2) = 2 != 0 ✓ outputs metrics
+//
+//   - count connector: connectorType = ConnectorTracesToMetrics | ConnectorLogsToMetrics (values 2 | 8)
+//     Test: (10 & ConnectorTracesToMetrics) = (10 & 2) = 2 != 0 ✓ outputs metrics
+//
+//   - traces-only connector: connectorType = ConnectorTracesToTraces (value 1)
+//     Test: (1 & ConnectorTracesToMetrics) = (1 & 2) = 0 ✗ does NOT output metrics
+func outputsToMetrics(connectorType int) bool {
+	return (connectorType&ConnectorTracesToMetrics) != 0 ||
+		(connectorType&ConnectorMetricsToMetrics) != 0 ||
+		(connectorType&ConnectorLogsToMetrics) != 0
+}
+
+// outputsToLogs checks if the connector can output logs by testing if any of the
+// *ToLogs flags are set in the connector type using bitwise AND operations.
+//
+// The connectorType parameter comes from the Arguments.ConnectorType() method, which returns
+// a combination of connector type flags using bitwise OR (|).
+//
+// Examples:
+//
+//   - logs connector: connectorType = ConnectorTracesToLogs (value 3)
+//     Test: (3 & ConnectorTracesToLogs) = (3 & 3) = 3 != 0 ✓ outputs logs
+//
+//   - multi-signal: connectorType = ConnectorTracesToLogs | ConnectorLogsToLogs (values 3 | 9)
+//     Test: (11 & ConnectorTracesToLogs) = (11 & 3) = 3 != 0 ✓ outputs logs
+//
+//   - metrics-only connector: connectorType = ConnectorTracesToMetrics (value 2)
+//     Test: (2 & ConnectorTracesToLogs) = (2 & 3) = 2 ✗ does NOT output logs
+func outputsToLogs(connectorType int) bool {
+	return (connectorType&ConnectorTracesToLogs) != 0 ||
+		(connectorType&ConnectorMetricsToLogs) != 0 ||
+		(connectorType&ConnectorLogsToLogs) != 0
+}
+
+// outputsToTraces checks if the connector can output traces by testing if any of the
+// *ToTraces flags are set in the connector type using bitwise AND operations.
+//
+// The connectorType parameter comes from the Arguments.ConnectorType() method, which returns
+// a combination of connector type flags using bitwise OR (|).
+//
+// Examples:
+//
+//   - traces passthrough: connectorType = ConnectorTracesToTraces (value 1)
+//     Test: (1 & ConnectorTracesToTraces) = (1 & 1) = 1 != 0 ✓ outputs traces
+//
+//   - multi-signal: connectorType = ConnectorTracesToTraces | ConnectorLogsToTraces (values 1 | 7)
+//     Test: (7 & ConnectorTracesToTraces) = (7 & 1) = 1 != 0 ✓ outputs traces
+//
+//   - metrics-only connector: connectorType = ConnectorTracesToMetrics (value 2)
+//     Test: (2 & ConnectorTracesToTraces) = (2 & 1) = 0 ✗ does NOT output traces
+func outputsToTraces(connectorType int) bool {
+	return (connectorType&ConnectorTracesToTraces) != 0 ||
+		(connectorType&ConnectorMetricsToTraces) != 0 ||
+		(connectorType&ConnectorLogsToTraces) != 0
+}
