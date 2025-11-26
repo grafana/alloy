@@ -102,7 +102,7 @@ func convertStructuredMetadata(cfg interface{}, diags *diag.Diagnostics) (stages
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{StructuredMetadata: &stages.LabelsConfig{
+	return stages.StageConfig{StructuredMetadata: &stages.StructuredMetadataConfig{
 		Values: *pLabels,
 	}}, true
 }
@@ -204,9 +204,10 @@ func convertMultiline(cfg interface{}, diags *diag.Diagnostics) (stages.StageCon
 
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:  defaultEmpty(pMulti.Expression),
-			MaxLines:    defaultZero(pMulti.MaxLines),
-			MaxWaitTime: maxWaitTime,
+			Expression:   defaultEmpty(pMulti.Expression),
+			MaxLines:     defaultZero(pMulti.MaxLines),
+			MaxWaitTime:  maxWaitTime,
+			TrimNewlines: true,
 		},
 	}, true
 }

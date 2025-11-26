@@ -5,7 +5,6 @@ package connector
 import (
 	"context"
 	"errors"
-	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -15,7 +14,6 @@ import (
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 
-	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -25,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 )
@@ -167,18 +166,19 @@ func (p *Connector) Update(args component.Arguments) error {
 	settings := otelconnector.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(p.opts.Logger),
-
+			Logger:         zapadapter.New(p.opts.Logger),
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
 		},
 
-		BuildInfo: otelcomponent.BuildInfo{
-			Command:     os.Args[0],
-			Description: "Grafana Alloy",
-			Version:     build.Version,
-		},
+		BuildInfo: otelcolutil.GetBuildInfo(),
 	}
+
+	resource, err := otelcolutil.GetTelemetrySettingsResource()
+	if err != nil {
+		return err
+	}
+	settings.TelemetrySettings.Resource = resource
 
 	connectorConfig, err := p.args.Convert()
 	if err != nil {
@@ -214,6 +214,26 @@ func (p *Connector) Update(args component.Arguments) error {
 				return err
 			} else if tracesConnector != nil {
 				components = append(components, tracesConnector)
+			}
+		}
+	case ConnectorLogsToMetrics:
+		if len(next.Traces) > 0 || len(next.Logs) > 0 {
+			return errors.New("this connector can only output metrics")
+		}
+
+		if len(next.Metrics) > 0 {
+			fanout := fanoutconsumer.Metrics(next.Metrics)
+			metricsInterceptor := interceptconsumer.Metrics(fanout,
+				func(ctx context.Context, md pmetric.Metrics) error {
+					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+					return fanout.ConsumeMetrics(ctx, md)
+				},
+			)
+			logsConnector, err = p.factory.CreateLogsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+				return err
+			} else if logsConnector != nil {
+				components = append(components, logsConnector)
 			}
 		}
 	default:

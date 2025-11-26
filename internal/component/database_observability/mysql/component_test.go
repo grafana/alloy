@@ -16,7 +16,6 @@ import (
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -258,7 +257,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-server-uuid")
 
