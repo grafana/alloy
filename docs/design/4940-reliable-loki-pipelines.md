@@ -2,7 +2,7 @@
 
 * Author: Karl Persson (@kalleep)
 * Last updated: 2025-11-26
-* Discussion link: TODO
+* Discussion link: https://github.com/grafana/alloy/pull/4940
 
 ## Abstract
 
