@@ -80,7 +80,7 @@ When this condition isn't met, the instances stop processing traffic in cluster-
 For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, set the `--cluster.wait-for-size` flag to a value well below what your HPA and PDB minimums allow.
 This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like Pod termination or rolling updates.
 
-It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. You can base the timeout duration on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when the timeout passes ,the cluster may be too small to handle traffic and can run into further issues.
+It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. You can base the timeout duration on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when the timeout passes, the cluster may be too small to handle traffic and can run into further issues.
 
 ### Don't enable clustering if you don't need it
 
