@@ -35,7 +35,11 @@ Main (unreleased)
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
-    - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
+  - `schema_details`
+    - fixes collection of schema details for mixed case table names (@fridgepoet)
+
+- (_Public Preview_) Additions to `database_observability.mysql` component:
+  - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
 
 v1.12.0-rc.0
 -----------------
