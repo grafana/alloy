@@ -71,6 +71,6 @@ Learn more about:
 - [Types and values][] to understand function inputs and outputs
 - [Referencing exports][] to use functions from components
 
-[standard library]: ../../../../reference/stdlib/
+[standard library]: ../../../reference/stdlib/
 [Types and values]: ./types_and_values/
 [Referencing exports]: ./referencing_exports/

@@ -73,7 +73,7 @@ This approach ensures more consistent resource utilization across your deploymen
 
 ### Use `--cluster.wait-for-size`, but with caution
 
-When using clustering in a deployment where a single instance can't handle the entire load, it's recommended to use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
+When you use clustering in a deployment where a single instance can't handle the entire load, use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
 However, leave a significant safety margin when you configure this value by setting it significantly smaller than your typical expected operational number of instances.
 When this condition isn't met, the instances stop processing traffic in cluster-enabled components so it's important to leave room for any unexpected events.
 
@@ -87,7 +87,7 @@ It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable ti
 While clustering scales to very large numbers of instances, it introduces additional overhead in the form of logs, metrics, potential alerts, and processing requirements.
 If you're not using components that specifically support and benefit from clustering, it's best to not enable clustering at all.
 A particularly common mistake is enabling clustering on logs collecting DaemonSets.
-Collecting logs from mounted node's Pod logs doesn't benefit from having clustering enabled since each instance typically collects logs only from its own node.
+Collecting logs from Pods on the mounted node doesn't benefit from having clustering enabled since each instance typically collects logs only from Pods on its own node.
 In such cases, enabling clustering only adds unnecessary complexity and resource usage without providing functional benefits.
 
 ## Cluster monitoring and troubleshooting

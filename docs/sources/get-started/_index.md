@@ -80,8 +80,8 @@ loki.write "grafana_cloud" {
 
 This pipeline has two steps:
 
-1. `loki.source.file` reads log files from a directory
-1. `loki.write` sends the logs to Grafana Cloud
+1. `loki.source.file` reads log files from a directory.
+1. `loki.write` sends the logs to Grafana Cloud.
 
 The `forward_to` attribute connects the components together.
 
@@ -133,10 +133,10 @@ loki.write "local_loki" {
 
 This pipeline shows how components work together:
 
-1. **Collection**: `local.file_match` finds log files to read
-1. **Processing**: `loki.source.file` reads the files and forwards logs to the next component
-1. **Transformation**: `loki.process` extracts data from log messages and adds labels
-1. **Output**: `loki.write` sends the processed logs to a Loki server
+1. **Collection**: `local.file_match` finds log files to read.
+1. **Processing**: `loki.source.file` reads the files and forwards logs to the next component.
+1. **Transformation**: `loki.process` extracts data from log messages and adds labels.
+1. **Output**: `loki.write` sends the processed logs to a Loki server.
 
 ## Why use {{< param "PRODUCT_NAME" >}}?
 
@@ -171,8 +171,8 @@ prometheus.remote_write "default" {
 
 This example contains two blocks:
 
-- `prometheus.remote_write "default"`: Creates a `prometheus.remote_write` component with the label `"default"`
-- `endpoint`: Configures where to send metrics and sets the `url` attribute
+- `prometheus.remote_write "default"`: Creates a `prometheus.remote_write` component with the label `"default"`.
+- `endpoint`: Configures where to send metrics and sets the `url` attribute.
 
 ## Attributes
 
@@ -192,10 +192,10 @@ You can use constants like `"debug"`, `32`, or `[1, 2, 3, 4]`.
 
 {{< param "PRODUCT_NAME" >}} also supports complex expressions:
 
-- Reference component exports: `local.file.password_file.content`
-- Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
-- Equality checks: `local.file.file_a.content == local.file.file_b.content`
-- Function calls: `sys.env("HOME")` retrieves the `HOME` environment variable
+- Reference component exports: `local.file.password_file.content`.
+- Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`.
+- Equality checks: `local.file.file_a.content == local.file.file_b.content`.
+- Function calls: `sys.env("HOME")` retrieves the `HOME` environment variable.
 
 You can use expressions for any attribute in a component definition.
 
@@ -211,15 +211,16 @@ To create a reference, combine three parts with periods:
 - Export name: `content`
 - Result: `local.file.password_file.content`
 
-While you can choose any valid identifier as a label, the component name and export names are predefined. Refer to the [component reference][components] for information about available components and their exports.
+While you can choose any valid identifier as a label, the component name and export names are predefined.
 
+Refer to the [component reference][components] for information about available components and their exports.
 ## Configuration syntax design goals
 
 {{< param "PRODUCT_NAME" >}} has these design goals:
 
-- **Fast**: The configuration language is fast and the controller evaluates changes quickly
-- **Readable**: The configuration language is straightforward to read and write, reducing the learning curve
-- **Easy to debug**: The configuration language provides detailed error information
+- **Fast**: The configuration language is fast and the controller evaluates changes quickly.
+- **Readable**: The configuration language is straightforward to read and write, reducing the learning curve.
+- **Easy to debug**: The configuration language provides detailed error information.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
