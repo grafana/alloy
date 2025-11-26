@@ -21,7 +21,6 @@ var (
 const applicationJSON = "application/json"
 
 // ParsePushRequest returns push.PushRequest from http.Request body, deserialized according to specified content type.
-// It also modifies pushStats.
 func ParsePushRequest(r *http.Request, maxRecvMsgSize int) (*push.PushRequest, error) {
 	// Body
 	var body io.Reader
