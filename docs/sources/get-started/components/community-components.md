@@ -30,7 +30,7 @@ Learn more about components:
 - [Choose a component][] for guidance on selecting the right component for your needs
 
 [Components]: ../components/
-[backward-compatibility]: ../../introduction/backward-compatibility/
+[backward-compatibility]: ../introduction/backward-compatibility/
 [Component reference]: ../../../reference/components/
 [Configure components]: ./configure-components/
 [Choose a component]: ../../../collect/choose-component/
