@@ -188,7 +188,6 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 }
 
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
-
 	req, err := loghttp2.ParsePushRequest(r, int(s.maxSendMessageSize))
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
