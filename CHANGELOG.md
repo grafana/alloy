@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
 
+- Add a `regex` argument to the `logfmt` and `json` stages in `loki.process` to extract log fields matching a regular expression. (@timonegk)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
