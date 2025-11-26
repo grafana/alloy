@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/syntax/
 aliases:
-  - ./configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
+  - ../configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
 description: Learn about the Alloy configuration language syntax
 title: Alloy syntax
 menuTitle: Syntax
@@ -35,7 +35,7 @@ that can span multiple lines
 
 ## Identifiers
 
-An identifier in {{< param "PRODUCT_NAME" >}} syntax is valid if it contains one or more UTF-8 letters from A through Z, upper- or lowercase, digits, or underscores.
+An identifier in {{< param "PRODUCT_NAME" >}} syntax is valid if it contains one or more UTF-8 letters, digits, or underscores.
 It can't start with a digit.
 
 Valid identifiers:

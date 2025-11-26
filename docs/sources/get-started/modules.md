@@ -81,7 +81,7 @@ declare "log_filter" {
 }
 ```
 
-Save this module to a file called `helpers.alloy` and import it:
+Save this module to a file called `helpers.alloy`. Then, import it:
 
 ```alloy
 // Import our helpers.alloy module, exposing its custom components as

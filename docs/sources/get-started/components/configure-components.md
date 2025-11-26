@@ -13,158 +13,211 @@ Components are the defining feature of {{< param "PRODUCT_NAME" >}}.
 They're reusable pieces of business logic that perform a single task, such as retrieving secrets or collecting Prometheus metrics.
 You can wire them together to form programmable pipelines of telemetry data.
 
-To build effective configurations, you need to understand how to define components, set their arguments, and connect them using exports.
-
-## Basic component syntax
-
-You create [components][] by defining a top-level block with a component name and a user-specified label.
-
-```alloy
-COMPONENT_NAME "LABEL" {
-  // Component configuration goes here
-}
-```
-
-For example, this creates a `local.file` component with the label "config":
-
-```alloy
-local.file "config" {
-  filename = "/etc/app/settings.yaml"
-}
-```
-
 The [_component controller_][controller] schedules components, reports their health and debug status, re-evaluates their arguments, and provides their exports.
+
+## Create components
+
+You create [components][] by defining a top-level block.
+Each component has a name, which describes its responsibility, and a user-specified _label_.
 
 ## Arguments and exports
 
-Most user interactions with components center around two basic concepts: _arguments_ and _exports_.
+Most user interactions with components center around two basic concepts, _arguments_ and _exports_.
 
-### Arguments
+- _Arguments_ are settings that modify a component's behavior.
+  They can include attributes or nested unlabeled blocks, some of which you must provide and others that are optional.
+  Optional arguments that aren't set use their default values.
 
-_Arguments_ are settings that modify a component's behavior.
-They can include attributes or nested unlabeled blocks, some of which you must provide and others that are optional.
-Optional arguments that aren't set use their default values.
+- _Exports_ are zero or more output values that other components can refer to.
+  They can be of any {{< param "PRODUCT_NAME" >}} type.
+
+The following block defines a `local.file` component labeled "targets".
+The `local.file.targets` component exposes the file `content` as a string in its exports.
+
+The `filename` attribute is a _required_ argument.
+You can also define several _optional_ arguments, such as `detector`, `poll_frequency`, and `is_secret`.
+These arguments configure how and how often {{< param "PRODUCT_NAME" >}} polls the file and whether its contents are sensitive.
 
 ```alloy
 local.file "targets" {
-  filename = "/etc/alloy/targets"  // Required argument
+  // Required argument
+  filename = "/etc/alloy/targets"
 
-  // Optional arguments
-  poll_frequency = "1m"
-  is_secret = false
+  // Optional arguments: Components may have some optional arguments that
+  // do not need to be defined.
+  //
+  // The optional arguments for local.file are is_secret, detector, and
+  // poll_frequency.
+
+  // Exports: a single field named `content`
+  // It can be referred to as `local.file.targets.content`
 }
 ```
 
-### Exports
-
-_Exports_ are zero or more output values that other components can refer to.
-They can be of any {{< param "PRODUCT_NAME" >}} type.
-
-The `local.file.targets` component from the previous example exposes the file content as a string in its exports.
-You can reference this export as `local.file.targets.content`.
-
-## Configuration blocks
-
-Some components use nested blocks to organize related settings.
-
-```alloy
-prometheus.remote_write "production" {
-  endpoint {
-    url = "https://prometheus.example.com/api/v1/write"
-
-    basic_auth {
-      username = "metrics"
-      password_file = "/etc/secrets/password"
-    }
-  }
-
-  queue_config {
-    capacity = 10000
-    batch_send_deadline = "5s"
-  }
-}
-```
-
-In this example:
-
-- `endpoint` is a block that configures the remote endpoint
-- `basic_auth` is a nested block within `endpoint`
-- `queue_config` is another top-level block within the component
-
-## Component references
+## Reference components
 
 To wire components together, use the exports of one as the arguments to another by using references.
-References can only appear in component arguments.
+References can only appear in components.
+
+For example, here's a component that scrapes Prometheus metrics.
+The `targets` field is configured with two scrape targets: a constant target `localhost:9001` and an expression that references the value of `local.file.targets.content`.
 
 ```alloy
-local.file "api_key" {
-  filename = "/etc/secrets/api.key"
-}
+prometheus.scrape "default" {
+  targets = [
+    { "__address__" = local.file.targets.content }, // tada!
+    { "__address__" = "localhost:9001" },
+  ]
 
-prometheus.remote_write "production" {
-  endpoint {
-    url = "https://prometheus.example.com/api/v1/write"
-
-    basic_auth {
-      username = "metrics"
-      password = local.file.api_key.content  // Reference to component export
-    }
+  forward_to = [prometheus.remote_write.default.receiver]
+  scrape_config {
+    job_name = "default"
   }
 }
 ```
 
 Each time the file contents change, the `local.file` component updates its exports.
-The component sends the updated value to the `prometheus.remote_write` component's `password` field.
-
-### Reference syntax
-
-To reference a component export, combine three parts with periods:
-
-- Component name: `local.file`
-- Component label: `api_key`
-- Export name: `content`
-- Result: `local.file.api_key.content`
+The component sends the updated value to the `prometheus.scrape` targets field.
 
 Each argument and exported field has an underlying [type][].
 {{< param "PRODUCT_NAME" >}} checks the expression type before assigning a value to an attribute.
+Refer to the documentation of each [component][components] for more information about wiring components together.
 
-## Multiple component instances
+In the previous example, {{< param "PRODUCT_NAME" >}} evaluates the contents of the `local.file.targets.content` expression to a concrete value.
+The system type-checks the value and substitutes it into `prometheus.scrape.default`, where you can configure it.
 
-You can create multiple instances of the same component type by using different labels:
+## Pipelines
+
+Most arguments for a component in a configuration file are constant values, such as setting a `log_level` attribute to `"debug"`.
 
 ```alloy
-prometheus.scrape "api" {
-  targets = [{"__address__" = "api.example.com:8080"}]
-  forward_to = [prometheus.remote_write.production.receiver]
+log_level = "debug"
+```
+
+You use _expressions_ to compute an argument's value dynamically at runtime.
+Expressions can retrieve environment variable values like `log_level = sys.env("LOG_LEVEL")` or reference an exported field of another component like `log_level = local.file.log_level.content`.
+
+A component creates a dependent relationship when its argument references an exported field of another component.
+The component's arguments depend on the other component's exports.
+{{< param "PRODUCT_NAME" >}} re-evaluates the component's input whenever the referenced component updates its exports.
+
+The flow of data through these references forms a _pipeline_.
+
+An example pipeline might look like this:
+
+1. A `local.file` component watches a file containing an API key.
+1. A `prometheus.remote_write` component receives metrics and forwards them to an external database using the API key from the `local.file` for authentication.
+1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where you can collect metrics.
+1. A `prometheus.scrape` component references the exports of the previous component and sends collected metrics to the `prometheus.remote_write` component.
+
+{{< figure src="/media/docs/alloy/diagram-concepts-example-pipeline.png" width="600" alt="Example of a pipeline" >}}
+
+The following configuration file represents the pipeline.
+
+```alloy
+// Get our API key from disk.
+//
+// This component has an exported field called "content", holding the content
+// of the file.
+//
+// local.file will watch the file and update its exports any time the
+// file changes.
+local.file "api_key" {
+  filename  = "/var/data/secrets/api-key"
+
+  // Mark this file as sensitive to prevent its value from being shown in the
+  // UI.
+  is_secret = true
 }
 
-prometheus.scrape "database" {
-  targets = [{"__address__" = "db.example.com:9090"}]
-  forward_to = [prometheus.remote_write.production.receiver]
+// Create a prometheus.remote_write component, which other components can send
+// metrics to.
+//
+// This component exports a "receiver" value, which can be used by other
+// components to send metrics.
+prometheus.remote_write "prod" {
+  endpoint {
+    url = "https://prod:9090/api/v1/write"
+
+    basic_auth {
+      username = "admin"
+
+      // Use the password file to authenticate with the production database.
+      password = local.file.api_key.content
+    }
+  }
+}
+
+// Find Kubernetes pods where we can collect metrics.
+//
+// This component exports a "targets" value, which contains the list of
+// discovered pods.
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+// Collect metrics from Kubernetes pods and send them to prod.
+prometheus.scrape "default" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [prometheus.remote_write.prod.receiver]
 }
 ```
 
-Both scrape configurations send metrics to the same `prometheus.remote_write` component.
+## Practical example: Your first pipeline
+
+This example creates a pipeline that collects metrics from the host and sends them to Prometheus:
+
+```alloy
+local.file "example" {
+    filename = sys.env("HOME") + "/file.txt"
+}
+
+prometheus.remote_write "local_prom" {
+    endpoint {
+        url = "http://localhost:9090/api/v1/write"
+
+        basic_auth {
+            username = "admin"
+            password = local.file.example.content
+        }
+    }
+}
+```
+
+This pipeline has two components: `local.file` and `prometheus.remote_write`.
+The `local.file` component uses a single argument, `filename`, which calls the [sys.env][] standard library function to retrieve the value of the `HOME` environment variable and concatenates it with the string `"file.txt"`.
+The `local.file` component has a single export, `content`, which contains the contents of the file.
+
+The `prometheus.remote_write` component uses an `endpoint` block, containing the `url` attribute and a `basic_auth` block.
+The `url` attribute specifies the URL of the Prometheus remote write endpoint.
+The `basic_auth` block contains the `username` and `password` attributes, which specify the string `"admin"` and the `content` export of the `local.file` component, respectively.
+The `content` export uses the syntax `local.file.example.content`, where `local.file.example` is the fully qualified name of the component—the component's type plus its label—and `content` is the name of the export.
+
+{{< figure src="/media/docs/alloy/diagram-example-basic-alloy.png" width="600" alt="Example pipeline with local.file and prometheus.remote_write components" >}}
+
+{{< admonition type="note" >}}
+The `local.file` component's label uses `"example"`, so the fully qualified name of the component is `local.file.example`.
+The `prometheus.remote_write` component's label uses `"local_prom"`, so the fully qualified name of the component is `prometheus.remote_write.local_prom`.
+{{< /admonition >}}
 
 ## Component rules
 
-Components can't form cycles.
+One rule is that components can't form a cycle.
 This means that a component can't reference itself directly or indirectly.
-This prevents infinite loops from forming in your configuration.
+This prevents infinite loops from forming in the pipeline.
 
 ```alloy
-// INVALID: Component can't reference itself
+// INVALID: local.file.some_file can't reference itself:
 local.file "self_reference" {
   filename = local.file.self_reference.content
 }
 ```
 
 ```alloy
-// INVALID: Cyclic reference between components
+// INVALID: cyclic reference between local.file.a and local.file.b:
 local.file "a" {
   filename = local.file.b.content
 }
-
 local.file "b" {
   filename = local.file.a.content
 }
@@ -172,20 +225,15 @@ local.file "b" {
 
 ## Next steps
 
-Now that you understand how to configure components, learn about more advanced topics:
+Learn more about working with components:
 
-- [Build data pipelines][] - Connect components together to create data processing workflows
-- [Component controller][] - Understand how {{< param "PRODUCT_NAME" >}} manages components at runtime
-- [Expressions][] - Write dynamic configuration using component references and functions
-- [Component reference][] - Explore all available components and their arguments and exports
-
-For practical examples, try the [tutorials][] to build complete data collection pipelines.
+- [Component controller][] to understand how {{< param "PRODUCT_NAME" >}} manages components at runtime
+- [Component reference][components] to explore all available components and their arguments and exports
+- [Expressions][] to write dynamic configuration using component references and functions
 
 [components]: ../../reference/components/
 [controller]: ./component-controller/
 [type]: ../expressions/types_and_values/
-[Build data pipelines]: ./build-pipelines/
+[sys.env]: ../../reference/stdlib/sys/
 [Component controller]: ./component-controller/
 [Expressions]: ../expressions/
-[Component reference]: ../../reference/components/
-[tutorials]: ../../tutorials/
