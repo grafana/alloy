@@ -9,7 +9,7 @@ aliases:
 description: Get started with Grafana Alloy
 title: Get started with Grafana Alloy
 menuTitle: Get started
-weight: 10
+weight: 20
 ---
 
 # Get started with {{% param "FULL_PRODUCT_NAME" %}}
