@@ -13,7 +13,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
+	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -24,9 +24,18 @@ var defaultBackOff = backoff.Config{
 	MaxRetries: 20,
 }
 
+type Target interface {
+	// DiscoveredLabels returns labels discovered before any relabeling.
+	DiscoveredLabels() model.LabelSet
+	// Labels returns labels that are added to this target and its stream.
+	Labels() model.LabelSet
+	// Details is additional information about this target specific to its type
+	Details() interface{}
+}
+
 type RunnableTarget interface {
-	target.Target
 	run()
+	Target
 }
 
 type TargetDiscoverer interface {
@@ -45,8 +54,8 @@ type consumer struct {
 	wg     sync.WaitGroup
 
 	mutex          sync.Mutex // used during rebalancing setup and tear down
-	activeTargets  []target.Target
-	droppedTargets []target.Target
+	activeTargets  []Target
+	droppedTargets []Target
 }
 
 // start starts the consumer for a given list of topics.
@@ -130,25 +139,25 @@ func (c *consumer) resetTargets() {
 	c.droppedTargets = nil
 }
 
-func (c *consumer) getActiveTargets() []target.Target {
+func (c *consumer) getActiveTargets() []Target {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return c.activeTargets
 }
 
-func (c *consumer) getDroppedTargets() []target.Target {
+func (c *consumer) getDroppedTargets() []Target {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return c.droppedTargets
 }
 
-func (c *consumer) addTarget(t target.Target) {
+func (c *consumer) addTarget(t Target) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.activeTargets = append(c.activeTargets, t)
 }
 
-func (c *consumer) addDroppedTarget(t target.Target) {
+func (c *consumer) addDroppedTarget(t Target) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.droppedTargets = append(c.droppedTargets, t)

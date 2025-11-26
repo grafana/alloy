@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.2.1](https://img.shields.io/badge/Version-1.2.1-informational?style=flat-square) ![AppVersion: v1.10.1](https://img.shields.io/badge/AppVersion-v1.10.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.4.0](https://img.shields.io/badge/Version-1.4.0-informational?style=flat-square) ![AppVersion: v1.11.3](https://img.shields.io/badge/AppVersion-v1.11.3-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -159,7 +159,21 @@ useful if just using the default DaemonSet isn't sufficient.
 | networkPolicy.ingress[0] | object | `{}` |  |
 | networkPolicy.policyTypes[0] | string | `"Ingress"` |  |
 | networkPolicy.policyTypes[1] | string | `"Egress"` |  |
+| rbac.clusterRules | list | `[{"apiGroups":[""],"resources":["nodes","nodes/proxy","nodes/metrics"],"verbs":["get","list","watch"]},{"nonResourceURLs":["/metrics"],"verbs":["get"]}]` | The rules to create for the ClusterRole objects. |
+| rbac.clusterRules[0] | object | `{"apiGroups":[""],"resources":["nodes","nodes/proxy","nodes/metrics"],"verbs":["get","list","watch"]}` | Rules required for the `discovery.kubernetes` component. |
+| rbac.clusterRules[1] | object | `{"nonResourceURLs":["/metrics"],"verbs":["get"]}` | Rules required for accessing metrics endpoint. |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
+| rbac.namespaces | list | `[]` | If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and ClusterRoleBindings. If not using ClusterRoles, bear in mind that Alloy will not be able to discover cluster-scoped resources such as Nodes. |
+| rbac.rules | list | `[{"apiGroups":["","discovery.k8s.io","networking.k8s.io"],"resources":["endpoints","endpointslices","ingresses","pods","services"],"verbs":["get","list","watch"]},{"apiGroups":[""],"resources":["pods","pods/log","namespaces"],"verbs":["get","list","watch"]},{"apiGroups":["monitoring.grafana.com"],"resources":["podlogs"],"verbs":["get","list","watch"]},{"apiGroups":["monitoring.coreos.com"],"resources":["prometheusrules"],"verbs":["get","list","watch"]},{"apiGroups":["monitoring.coreos.com"],"resources":["alertmanagerconfigs"],"verbs":["get","list","watch"]},{"apiGroups":["monitoring.coreos.com"],"resources":["podmonitors","servicemonitors","probes","scrapeconfigs"],"verbs":["get","list","watch"]},{"apiGroups":[""],"resources":["events"],"verbs":["get","list","watch"]},{"apiGroups":[""],"resources":["configmaps","secrets"],"verbs":["get","list","watch"]},{"apiGroups":["apps","extensions"],"resources":["replicasets"],"verbs":["get","list","watch"]}]` | The rules to create for the ClusterRole or Role objects. |
+| rbac.rules[0] | object | `{"apiGroups":["","discovery.k8s.io","networking.k8s.io"],"resources":["endpoints","endpointslices","ingresses","pods","services"],"verbs":["get","list","watch"]}` | Rules required for the `discovery.kubernetes` component. |
+| rbac.rules[1] | object | `{"apiGroups":[""],"resources":["pods","pods/log","namespaces"],"verbs":["get","list","watch"]}` | Rules required for the `loki.source.kubernetes` component. |
+| rbac.rules[2] | object | `{"apiGroups":["monitoring.grafana.com"],"resources":["podlogs"],"verbs":["get","list","watch"]}` | Rules required for the `loki.source.podlogs` component. |
+| rbac.rules[3] | object | `{"apiGroups":["monitoring.coreos.com"],"resources":["prometheusrules"],"verbs":["get","list","watch"]}` | Rules required for the `mimir.rules.kubernetes` component. |
+| rbac.rules[4] | object | `{"apiGroups":["monitoring.coreos.com"],"resources":["alertmanagerconfigs"],"verbs":["get","list","watch"]}` | Rules required for the `mimir.alerts.kubernetes` component. |
+| rbac.rules[5] | object | `{"apiGroups":["monitoring.coreos.com"],"resources":["podmonitors","servicemonitors","probes","scrapeconfigs"],"verbs":["get","list","watch"]}` | Rules required for the `prometheus.operator.*` components. |
+| rbac.rules[6] | object | `{"apiGroups":[""],"resources":["events"],"verbs":["get","list","watch"]}` | Rules required for the `loki.source.kubernetes_events` component. |
+| rbac.rules[7] | object | `{"apiGroups":[""],"resources":["configmaps","secrets"],"verbs":["get","list","watch"]}` | Rules required for the `remote.kubernetes.*` components. |
+| rbac.rules[8] | object | `{"apiGroups":["apps","extensions"],"resources":["replicasets"],"verbs":["get","list","watch"]}` | Rules required for the `otelcol.processor.k8sattributes` component. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // Rename the kubernetes_(.*) labels without the suffix and remove them,
@@ -76,7 +76,7 @@ func TestRelabeling(t *testing.T) {
 	// Send a log entry to the component's receiver.
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": "agent", "foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},
@@ -146,7 +146,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		c.receiver.Chan() <- loki.Entry{
 			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/%d.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": model.LabelValue(fmt.Sprintf("agent-%d", i)), "foo": "bar"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: now,
 				Line:      "very important log",
 			},
@@ -225,7 +225,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(t, 3, receivedMessages.Load())
+		require.EqualValues(c, 3, receivedMessages.Load())
 	}, 3*time.Second, 25*time.Millisecond)
 
 	// Let's look into the cache's structure now!
@@ -250,7 +250,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(t, 4, receivedMessages.Load())
+		require.EqualValues(c, 4, receivedMessages.Load())
 	}, 3*time.Second, 25*time.Millisecond)
 
 	require.Equal(t, c.cache.Len(), 3)
@@ -275,7 +275,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(t, 6, receivedMessages.Load())
+		require.EqualValues(c, 6, receivedMessages.Load())
 	}, 3*time.Second, 25*time.Millisecond)
 
 	// Both of these should be under a single, new cache key which will contain
@@ -299,7 +299,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(t, 8, receivedMessages.Load())
+		require.EqualValues(c, 8, receivedMessages.Load())
 	}, 3*time.Second, 25*time.Millisecond)
 
 	require.Equal(t, c.cache.Len(), 4)
@@ -371,6 +371,10 @@ rule {
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
+			},
+			FileMatch: lsf.FileMatch{
+				Enabled:    false,
+				SyncPeriod: 10 * time.Second,
 			},
 		})
 		require.NoError(t, err)
@@ -453,7 +457,7 @@ func TestRuleGetter(t *testing.T) {
 func getEntry() loki.Entry {
 	return loki.Entry{
 		Labels: model.LabelSet{},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},

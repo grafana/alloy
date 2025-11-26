@@ -49,14 +49,15 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 | Block                                                      | Description                                                                    | Required |
 |------------------------------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`splunk`][splunk]                                         | Configures the Splunk HEC exporter.                                            | yes      |
-| `splunk` > [`batcher`][batcher]                            | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `splunk` > [`batcher`][batcher]                            | (Deprecated) Configures batching requests based on a timeout and a minimum number of items. | no       |
 | `splunk` > [`heartbeat`][heartbeat]                        | Configures the exporters heartbeat settings.                                   | no       |
 | `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields]      | Configures mapping of OpenTelemetry to HEC Fields.                             | no       |
 | `splunk` > [`telemetry`][telemetry]                        | Configures the exporters telemetry.                                            | no       |
 | [`client`][client]                                         | Configures the HTTP client used to send data to Splunk HEC.                    | yes      |
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`otel_attrs_to_hec_metadata`][otel_attrs_to_hec_metadata] | Configures mapping of resource attributes to HEC metadata fields.              | no       |
-| [`queue`][queue]                                           | Configures batching of data before sending.                                    | no       |
+| [`sending_queue`][sending_queue]                           | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                         | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`retry_on_failure`][retry_on_failure]                     | Configures retry mechanism for failed requests.                                | no       |
 
 The > symbol indicates deeper levels of nesting.
@@ -70,7 +71,8 @@ For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `
 [client]: #client
 [otel_attrs_to_hec_metadata]: #otel_attrs_to_hec_metadata
 [retry_on_failure]: #retry_on_failure
-[queue]: #queue
+[sending_queue]: #sending_queue
+[batch]: #batch
 [debug_metrics]: #debug_metrics
 
 ### `splunk`
@@ -95,13 +97,17 @@ The following arguments are supported:
 | `max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                                             | `2097152`                      | no       |
 | `max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                                             | `5242880`                      | no       |
 | `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`. | `true`                         | no       |
-| `source_type`                | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
+| `sourcetype`                 | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
 | `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).                                                             | `""`                           | no       |
 | `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `"Alloy"`                      | no       |
 | `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                           | no       |
 | `use_multi_metrics_format`   | `bool`   | Use multi-metrics format to save space during ingestion.                                                               | `false`                        | no       |
 
 #### `batcher`
+
+{{< admonition type="warning" >}}
+The `batcher` block is deprecated and will be removed in a future release. Use the `sending_queue` > `batch` block instead.
+{{< /admonition >}}
 
 | Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
 |-----------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------|
@@ -171,11 +177,17 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `queue`
+### `sending_queue`
 
-The `queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `retry_on_failure`
 

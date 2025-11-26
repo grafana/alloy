@@ -9,26 +9,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func TestBatch_MaxStreams(t *testing.T) {
 	maxStream := 2
 
 	var inputEntries = []loki.Entry{
-		{Labels: model.LabelSet{"app": "app-1"}, Entry: logproto.Entry{Timestamp: time.Unix(4, 0).UTC(), Line: "line4"}},
-		{Labels: model.LabelSet{"app": "app-2"}, Entry: logproto.Entry{Timestamp: time.Unix(5, 0).UTC(), Line: "line5"}},
-		{Labels: model.LabelSet{"app": "app-3"}, Entry: logproto.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
-		{Labels: model.LabelSet{"app": "app-4"}, Entry: logproto.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
+		{Labels: model.LabelSet{"app": "app-1"}, Entry: push.Entry{Timestamp: time.Unix(4, 0).UTC(), Line: "line4"}},
+		{Labels: model.LabelSet{"app": "app-2"}, Entry: push.Entry{Timestamp: time.Unix(5, 0).UTC(), Line: "line5"}},
+		{Labels: model.LabelSet{"app": "app-3"}, Entry: push.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
+		{Labels: model.LabelSet{"app": "app-4"}, Entry: push.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
 	}
 
 	b := newBatch(maxStream)
 
 	errCount := 0
 	for _, entry := range inputEntries {
-		err := b.add(entry)
+		err := b.add(entry, 0)
 		if err != nil {
 			errCount++
 			assert.ErrorIs(t, err, errMaxStreamsLimitExceeded)
@@ -73,13 +72,11 @@ func TestBatch_add(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			b := newBatch(0)
 
 			for _, entry := range testData.inputEntries {
-				err := b.add(entry)
+				err := b.add(entry, 0)
 				assert.NoError(t, err)
 			}
 
@@ -123,8 +120,6 @@ func TestBatch_encode(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -147,9 +142,9 @@ func TestHashCollisions(t *testing.T) {
 	const entriesPerLabel = 10
 
 	for i := 0; i < entriesPerLabel; i++ {
-		_ = b.add(loki.Entry{Labels: ls1, Entry: logproto.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 
-		_ = b.add(loki.Entry{Labels: ls2, Entry: logproto.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 	}
 
 	// make sure that colliding labels are stored properly as independent streams
@@ -181,7 +176,48 @@ func BenchmarkLabelsMapToString(b *testing.B) {
 	var r string
 	for i := 0; i < b.N; i++ {
 		// store in r prevent the compiler eliminating the function call.
-		r = labelsMapToString(labelSet, ReservedLabelTenantID)
+		r = labelsMapToString(labelSet)
 	}
 	result = r
+}
+
+func TestLabelsMapToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    model.LabelSet
+		expected string
+	}{
+		{
+			name:     "empty label set",
+			input:    model.LabelSet{},
+			expected: "{}",
+		},
+		{
+			name:     "single label",
+			input:    model.LabelSet{"app": "my-app"},
+			expected: `{app="my-app"}`,
+		},
+		{
+			name:     "multiple labels",
+			input:    model.LabelSet{"app": "my-app", "env": "prod"},
+			expected: `{app="my-app", env="prod"}`,
+		},
+		{
+			name:     "labels with reserved labels",
+			input:    model.LabelSet{"app": "my-app", "__meta_label_abc": "meta-abc", "__meta_label_def": "meta-def", "abc": "123"},
+			expected: `{abc="123", app="my-app"}`,
+		},
+		{
+			name:     "only reserved labels",
+			input:    model.LabelSet{"__meta_label_abc": "meta-abc", "__meta_label_def": "meta-def"},
+			expected: "{}",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := labelsMapToString(tc.input)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
 }

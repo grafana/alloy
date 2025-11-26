@@ -2,6 +2,7 @@ package runtime_test
 
 import (
 	"context"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,17 +11,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
+	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/module/string"
+	"github.com/grafana/alloy/internal/runtime/internal/testservices"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // use const to avoid lint error
@@ -317,6 +319,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		ctrl.Run(ctx)
 	}()
 
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
+
 	// Check for initial condition
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -341,6 +347,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		// Reload the controller with the new config.
 		err = ctrl.LoadSource(f, nil, "")
 		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return ctrl.LoadComplete()
+		}, 3*time.Second, 10*time.Millisecond)
 
 		// Export should be -10 after update
 		require.Eventually(t, func() bool {
@@ -370,14 +380,16 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 }
 
 func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
 		MinStability: stability,
 		Reg:          reg,
-		Services:     []service.Service{},
+		Services: []service.Service{
+			&testservices.Fake{},
+		},
 	})
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)

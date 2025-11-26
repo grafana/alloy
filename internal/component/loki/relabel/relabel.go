@@ -74,6 +74,8 @@ type Component struct {
 	maxCacheSize int
 
 	debugDataPublisher livedebugging.DebugDataPublisher
+
+	builder labels.ScratchBuilder
 }
 
 var (
@@ -99,11 +101,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cache:              cache,
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+		builder:            labels.NewScratchBuilder(0),
 	}
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver()
+	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	o.OnStateChange(Exports{Receiver: c.receiver, Rules: args.RelabelConfigs})
 
 	// Call to Update() to set the relabelling rules once at the start.
@@ -239,19 +242,18 @@ func (c *Component) relabel(e loki.Entry) model.LabelSet {
 }
 
 func (c *Component) process(e loki.Entry) model.LabelSet {
-	var lbls labels.Labels
+	c.builder.Reset()
 	for k, v := range e.Labels {
-		lbls = append(lbls, labels.Label{
-			Name:  string(k),
-			Value: string(v),
-		})
+		c.builder.Add(string(k), string(v))
 	}
+	c.builder.Sort()
+	lbls := c.builder.Labels()
 	lbls, _ = relabel.Process(lbls, c.rcs...)
 
-	relabeled := make(model.LabelSet, len(lbls))
-	for i := range lbls {
-		relabeled[model.LabelName(lbls[i].Name)] = model.LabelValue(lbls[i].Value)
-	}
+	relabeled := make(model.LabelSet, lbls.Len())
+	lbls.Range(func(lbl labels.Label) {
+		relabeled[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
+	})
 	return relabeled
 }
 

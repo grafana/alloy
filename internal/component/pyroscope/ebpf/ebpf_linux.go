@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package ebpf
 
@@ -11,20 +11,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/table"
-	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 func init() {
@@ -35,44 +38,38 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			arguments := args.(Arguments)
-			return New(opts, arguments)
+			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
 	python.NoContinueWithNextUnwinder.Store(true)
+	// Disable ebpf profiler metrics
+	ebpfmetrics.Start(metricnoop.Meter{})
 }
 
-func New(opts component.Options, args Arguments) (component.Component, error) {
+func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
 	cfg, err := args.Convert()
 	if err != nil {
 		return nil, err
 	}
-	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize)
+	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
+	discovery := discovery2.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
+	ms := newMetrics(reg)
+
+	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
+
+	nfs, err := irsymcache.NewFSCache(irsymcache.TableTableFactory{
+		Options: []lidia.Option{
+			lidia.WithFiles(),
+			lidia.WithLines(),
+		},
+	}, irsymcache.Options{
+		SizeEntries: uint32(args.SymbCacheSizeEntries),
+		Path:        args.SymbCachePath,
+	})
 	if err != nil {
 		return nil, err
 	}
-	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
-	discovery := discovery2.NewTargetProducer(cgroups, args.targetsOptions(dynamicProfilingPolicy))
-	ms := newMetrics(opts.Registerer)
-
-	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
-
-	var nfs samples.NativeSymbolResolver
-	if cfg.SymbolizeNativeFrames {
-		tf := irsymcache.TableTableFactory{
-			Options: []table.Option{
-				table.WithFiles(),
-				table.WithLines(),
-			},
-		}
-		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
-			SizeEntries: uint32(cfg.SymbCacheSizeEntries),
-			Path:        cfg.SymbCachePath,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	cfg.FileObserver = nfs
+	cfg.ExecutableReporter = nfs
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -82,7 +79,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 
 	res := &Component{
 		cfg:                    cfg,
-		options:                opts,
+		logger:                 logger,
 		metrics:                ms,
 		appendable:             appendable,
 		args:                   args,
@@ -91,12 +88,16 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		argsUpdate:             make(chan Arguments, 4),
 	}
 
-	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
-		res.sendProfiles(ctx, ps)
-	}))
-	if err != nil {
-		return nil, err
-	}
+	cfg.Reporter = reporter.NewPPROF(logger, &reporter.Config{
+		ReportInterval:            cfg.ReporterInterval,
+		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
+		Demangle:                  args.Demangle,
+		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
+		ExtraNativeSymbolResolver: nfs,
+		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
+			res.sendProfiles(ctx, ps)
+		}),
+	}, discovery)
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -105,7 +106,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 }
 
 type Component struct {
-	options                component.Options
+	logger                 log.Logger
 	args                   Arguments
 	dynamicProfilingPolicy bool
 	argsUpdate             chan Arguments
@@ -120,7 +121,6 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-
 	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
@@ -142,8 +142,10 @@ func (c *Component) Run(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
-		if c.cfg.FileObserver != nil {
-			c.cfg.FileObserver.Cleanup()
+		if c.cfg.ExecutableReporter != nil {
+			if nfs, ok := c.cfg.ExecutableReporter.(*irsymcache.Resolver); ok {
+				nfs.Cleanup()
+			}
 		}
 	}()
 
@@ -169,13 +171,13 @@ func (c *Component) Update(args component.Arguments) error {
 	select {
 	case c.argsUpdate <- newArgs:
 	default:
-		_ = level.Debug(c.options.Logger).Log("msg", "dropped args update")
+		_ = level.Debug(c.logger).Log("msg", "dropped args update")
 	}
 	return nil
 }
 
 func (c *Component) reportUnhealthy(err error) {
-	_ = level.Error(c.options.Logger).
+	_ = level.Error(c.logger).
 		Log("msg", "unhealthy", "err", err)
 
 	c.healthMut.Lock()
@@ -212,33 +214,41 @@ func (c *Component) checkTraceFS() {
 		if err != nil {
 			continue
 		}
-		level.Debug(c.options.Logger).Log("msg", "found tracefs at "+p)
+		level.Debug(c.logger).Log("msg", "found tracefs at "+p)
 		return
 	}
 	mountPath := candidates[0]
 	err := syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
 	if err != nil {
-		level.Error(c.options.Logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
+		level.Error(c.logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
 	} else {
-		level.Debug(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
+		level.Debug(c.logger).Log("msg", "mounted tracefs at "+mountPath)
 	}
 }
 
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		ContainerIDCacheSize: 1024,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		GoEnabled:            false,
+		CollectInterval: 15 * time.Second,
+		SampleRate:      19,
+		Demangle:        "none",
+		PythonEnabled:   true,
+		PerlEnabled:     true,
+		PHPEnabled:      true,
+		HotspotEnabled:  true,
+		RubyEnabled:     true,
+		V8Enabled:       true,
+		DotNetEnabled:   true,
+		OffCPUThreshold: 0,
+		GoEnabled:       true,
+		LoadProbe:       false,
+		UProbeLinks:     []string{},
+		VerboseMode:     false,
+
+		// undocumented
+		PyroscopeDynamicProfilingPolicy: true,
+		SymbCachePath:                   "/tmp/symb-cache",
+		SymbCacheSizeEntries:            2048,
 	}
 }
 
@@ -257,11 +267,15 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 		return nil, err
 	}
 
-	cfg := new(controller.Config)
-	*cfg = *cfgProtoType
+	cfg := &controller.Config{Config: cfgProtoType}
+	cfg.SendErrorFrames = true
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
+	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.LoadProbe = args.LoadProbe
+	cfg.UProbeLinks = args.UProbeLinks
+	cfg.VerboseMode = args.VerboseMode
 	return cfg, nil
 }
 

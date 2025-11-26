@@ -70,16 +70,6 @@ receivers:
 			expectedError: true,
 		},
 		{
-			name: "empty receiver config",
-			cfg: `
-receivers:
-  jaeger: {}
-remote_write:
-  - endpoint: example.com:12345
-`,
-			expectedError: true,
-		},
-		{
 			name: "nil jaeger config",
 			cfg: `
 receivers:
@@ -92,11 +82,6 @@ remote_write:
 receivers:
   push_receiver: {}
   jaeger:
-    protocols:
-      grpc:
-      thrift_http:
-      thrift_binary:
-      thrift_compact:
 exporters:
   otlp/0:
     endpoint: example.com:12345

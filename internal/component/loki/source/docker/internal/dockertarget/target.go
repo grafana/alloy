@@ -18,14 +18,14 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -40,8 +40,6 @@ const (
 type Target struct {
 	logger        log.Logger
 	handler       loki.EntryHandler
-	since         int64
-	last          int64
 	positions     positions.Positions
 	containerName string
 	labels        model.LabelSet
@@ -49,11 +47,17 @@ type Target struct {
 	relabelConfig []*relabel.Config
 	metrics       *Metrics
 
-	cancel  context.CancelFunc
-	client  client.APIClient
-	wg      sync.WaitGroup
-	running *atomic.Bool
+	client client.APIClient
+
+	mu      sync.Mutex // protects cancel, running and err fields
 	err     error
+	running bool
+	cancel  context.CancelFunc
+
+	wg sync.WaitGroup
+
+	last  *atomic.Int64
+	since *atomic.Int64
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
@@ -64,7 +68,6 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		return nil, err
 	}
 	var since int64
-	var last int64
 	if pos != 0 {
 		since = pos
 	}
@@ -72,17 +75,15 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 	t := &Target{
 		logger:        logger,
 		handler:       handler,
-		since:         since,
-		last:          last,
+		since:         atomic.NewInt64(since),
+		last:          atomic.NewInt64(0),
 		positions:     position,
 		containerName: containerID,
 		labels:        labels,
 		labelsStr:     labelsStr,
 		relabelConfig: relabelConfig,
 		metrics:       metrics,
-
-		client:  client,
-		running: atomic.NewBool(false),
+		client:        client,
 	}
 
 	// NOTE (@tpaschalis) The original Promtail implementation would call
@@ -91,37 +92,12 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 	return t, nil
 }
 
-func (t *Target) processLoop(ctx context.Context) {
-	t.running.Store(true)
-	defer t.running.Store(false)
-
-	t.wg.Add(1)
-	defer t.wg.Done()
-
-	opts := container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-		Timestamps: true,
-		Since:      strconv.FormatInt(t.since, 10),
-	}
-	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
-	if err != nil {
-		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
-		t.err = err
-		return
-	}
-	logs, err := t.client.ContainerLogs(ctx, t.containerName, opts)
-	if err != nil {
-		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
-		t.err = err
-		return
-	}
+func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
+	defer reader.Close()
 
 	// Start transferring
 	rstdout, wstdout := io.Pipe()
 	rstderr, wstderr := io.Pipe()
-	t.wg.Add(1)
 	go func() {
 		defer func() {
 			t.wg.Done()
@@ -131,10 +107,10 @@ func (t *Target) processLoop(ctx context.Context) {
 		}()
 		var written int64
 		var err error
-		if inspectInfo.Config.Tty {
-			written, err = io.Copy(wstdout, logs)
+		if tty {
+			written, err = io.Copy(wstdout, reader)
 		} else {
-			written, err = stdcopy.StdCopy(wstdout, wstderr, logs)
+			written, err = stdcopy.StdCopy(wstdout, wstderr, reader)
 		}
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerName, "err", err)
@@ -144,13 +120,11 @@ func (t *Target) processLoop(ctx context.Context) {
 	}()
 
 	// Start processing
-	t.wg.Add(2)
 	go t.process(rstdout, t.getStreamLabels("stdout"))
 	go t.process(rstderr, t.getStreamLabels("stderr"))
 
 	// Wait until done
 	<-ctx.Done()
-	logs.Close()
 	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerName)
 }
 
@@ -209,7 +183,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		t.handler.Chan() <- loki.Entry{
 			Labels: logStreamLset,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: ts,
 				Line:      line,
 			},
@@ -223,25 +197,57 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
-		t.since = ts.Unix()
-		t.last = time.Now().Unix()
+		t.since.Store(ts.Unix())
+		t.last.Store(time.Now().Unix())
 	}
 }
 
 // StartIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
 func (t *Target) StartIfNotRunning() {
-	if t.running.CompareAndSwap(false, true) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerName)
-		ctx, cancel := context.WithCancel(context.Background())
+
+		ctx := context.Background()
+		info, err := t.client.ContainerInspect(ctx, t.containerName)
+		if err != nil {
+			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
+			t.err = err
+			return
+		}
+
+		reader, err := t.client.ContainerLogs(ctx, t.containerName, container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+			Timestamps: true,
+			Since:      strconv.FormatInt(t.since.Load(), 10),
+		})
+		if err != nil {
+			level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
+			t.err = err
+			return
+		}
+
+		ctx, cancel := context.WithCancel(ctx)
 		t.cancel = cancel
-		go t.processLoop(ctx)
+		t.running = true
+		// proccessLoop will start 3 goroutines that we need to wait for if Stop is called.
+		t.wg.Add(3)
+		go t.processLoop(ctx, info.Config.Tty, reader)
 	}
 }
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	if t.Ready() {
-		t.cancel()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.running {
+		t.running = false
+		if t.cancel != nil {
+			t.cancel()
+		}
 		t.wg.Wait()
 		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
 	}
@@ -249,7 +255,9 @@ func (t *Target) Stop() {
 
 // Ready reports whether the target is running.
 func (t *Target) Ready() bool {
-	return t.running.Load()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.running
 }
 
 // LabelsStr returns the target's original labels string representation.
@@ -273,25 +281,30 @@ func (t *Target) Path() string {
 }
 
 // Last returns the unix timestamp of the target's last processing loop.
-func (t *Target) Last() int64 { return t.last }
+func (t *Target) Last() int64 { return t.last.Load() }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
+	t.mu.Lock()
+	running := t.running
+
 	var errMsg string
 	if t.err != nil {
 		errMsg = t.err.Error()
 	}
+	t.mu.Unlock()
+
 	return map[string]string{
 		"id":       t.containerName,
 		"error":    errMsg,
 		"position": t.positions.GetString(positions.CursorKey(t.containerName), t.labelsStr),
-		"running":  strconv.FormatBool(t.running.Load()),
+		"running":  strconv.FormatBool(running),
 	}
 }
 
 func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
@@ -299,12 +312,12 @@ func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return filtered
 }

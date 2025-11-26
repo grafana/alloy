@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"context"
-	"os"
+	"io"
 	"testing"
 	"time"
 
@@ -252,7 +252,7 @@ func TestDuplicateIDList(t *testing.T) {
 func testModuleControllerOptions(t *testing.T) *moduleControllerOptions {
 	t.Helper()
 
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	services := []service.Service{

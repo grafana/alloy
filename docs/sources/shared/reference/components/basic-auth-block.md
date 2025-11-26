@@ -11,3 +11,8 @@ headless: true
 | `username`      | `string` | Basic auth username.                     |         | no       |
 
 `password` and `password_file` are mutually exclusive, and only one can be provided inside a `basic_auth` block.
+
+{{< admonition type="warning" >}}
+Using `password_file` causes the file to be read on every outgoing request.
+Use the `local.file` component with the `password` attribute instead to avoid unnecessary reads.
+{{< /admonition >}}

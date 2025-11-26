@@ -13,14 +13,15 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/config"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
+	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/obi/pkg/export/attributes"
+	"go.opentelemetry.io/obi/pkg/export/debug"
+	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/filter"
+	"go.opentelemetry.io/obi/pkg/kubeflags"
+	"go.opentelemetry.io/obi/pkg/services"
+	"go.opentelemetry.io/obi/pkg/transform"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -47,6 +48,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				cluster_name = "test"
 				disable_informers = ["node"]
 				meta_restrict_local_node = true
+				meta_cache_address = "localhost:9090"
 			}
 			select {
 				attr = "sql_client_duration"
@@ -158,6 +160,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Attributes.Kubernetes.ClusterName)
 	require.Equal(t, []string{"node"}, cfg.Attributes.Kubernetes.DisableInformers)
 	require.True(t, cfg.Attributes.Kubernetes.MetaRestrictLocalNode)
+	require.Equal(t, "localhost:9090", cfg.Attributes.Kubernetes.MetaCacheAddress)
 	require.Len(t, cfg.Attributes.Select, 1)
 	sel, ok := cfg.Attributes.Select["sql_client_duration"]
 	require.True(t, ok)
@@ -183,12 +186,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "default", cfg.Discovery.Instrument[0].Namespace)
 	require.True(t, cfg.Discovery.Instrument[0].Path.IsSet())
 	require.True(t, cfg.Discovery.Instrument[0].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExport(services.ExportMetrics))
-	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExport(services.ExportTraces))
+	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportMetrics())
+	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportTraces())
 	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Instrument[0].SamplerConfig)
 	require.True(t, cfg.Discovery.Instrument[1].PodLabels["test"].IsSet())
-	require.True(t, cfg.Discovery.Instrument[1].ExportModes.CanExport(services.ExportMetrics))
-	require.False(t, cfg.Discovery.Instrument[1].ExportModes.CanExport(services.ExportTraces))
+	require.True(t, cfg.Discovery.Instrument[1].ExportModes.CanExportMetrics())
+	require.False(t, cfg.Discovery.Instrument[1].ExportModes.CanExportTraces())
 
 	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
 	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
@@ -197,8 +200,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Len(t, cfg.Discovery.Survey, 1)
 	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
 	require.Equal(t, "microservice", cfg.Discovery.Survey[0].Name)
-	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExport(services.ExportMetrics))
-	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExport(services.ExportTraces))
+	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportMetrics())
+	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
 
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
 	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
@@ -390,7 +393,9 @@ func TestArguments_InvalidExportModes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var args Arguments
-			require.Error(t, syntax.Unmarshal([]byte(tt.config), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
+			_, err := convertExportModes(args.Discovery.Services[0].ExportModes)
+			require.Error(t, err)
 		})
 	}
 }
@@ -698,6 +703,7 @@ func TestConvert_Attributes(t *testing.T) {
 		Kubernetes: KubernetesDecorator{
 			Enable:               "true",
 			InformersSyncTimeout: 15 * time.Second,
+			MetaCacheAddress:     "localhost:9090",
 		},
 		Select: Selections{
 			{
@@ -717,6 +723,7 @@ func TestConvert_Attributes(t *testing.T) {
 			InformersSyncTimeout:  15 * time.Second,
 			InformersResyncPeriod: 30 * time.Minute,
 			ResourceLabels:        beyla.DefaultConfig.Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:      "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,
@@ -727,6 +734,10 @@ func TestConvert_Attributes(t *testing.T) {
 				Exclude: []string{"db_statement"},
 			},
 		},
+		RenameUnresolvedHosts:          "unresolved",
+		RenameUnresolvedHostsOutgoing:  "outgoing",
+		RenameUnresolvedHostsIncoming:  "incoming",
+		MetricSpanNameAggregationLimit: 100,
 	}
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
@@ -744,7 +755,7 @@ func TestConvert_Discovery(t *testing.T) {
 				Namespace:      "default",
 				OpenPorts:      "80",
 				ContainersOnly: true,
-				ExportModes:    services.ExportModes{services.ExportMetrics},
+				ExportModes:    []string{"metrics"},
 				Sampler: SamplerConfig{
 					Arg:  "0.5",
 					Name: "traceidratio",
@@ -786,8 +797,8 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Equal(t, "default", config.Instrument[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
 	require.True(t, config.Instrument[0].ContainersOnly)
-	require.True(t, config.Instrument[0].ExportModes.CanExport(services.ExportMetrics))
-	require.False(t, config.Instrument[0].ExportModes.CanExport(services.ExportTraces))
+	require.True(t, config.Instrument[0].ExportModes.CanExportMetrics())
+	require.False(t, config.Instrument[0].ExportModes.CanExportTraces())
 	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Instrument[0].SamplerConfig)
 	require.True(t, config.Instrument[1].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, config.Instrument[1].Metadata[services.AttrDeploymentName].IsSet())
@@ -814,14 +825,35 @@ func TestConvert_Prometheus(t *testing.T) {
 		Features:                        []string{"application", "network"},
 		Instrumentations:                []string{"redis", "sql"},
 		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             nil,
+		ExtraSpanResourceLabels:         []string{"service.version"},
 	}
 
 	expectedConfig := beyla.DefaultConfig.Prometheus
 	expectedConfig.Features = args.Features
 	expectedConfig.Instrumentations = args.Instrumentations
 	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 
 	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
+
+	args = Metrics{
+		Features:                        []string{"application", "network"},
+		Instrumentations:                []string{"redis", "sql"},
+		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             []string{"service.version"},
+	}
+
+	expectedConfig = beyla.DefaultConfig.Prometheus
+	expectedConfig.Features = args.Features
+	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
+	expectedConfig.ExtraSpanResourceLabels = []string{"k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"}
+
+	config = args.Convert()
 
 	require.Equal(t, expectedConfig, config)
 }
@@ -1484,4 +1516,57 @@ func TestServices_Convert_SamplerConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEnvVars(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+		},
+	}
+
+	t.Setenv("BEYLA_TRACE_PRINTER", "json")
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
+}
+
+func TestSurveyDisabled(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+		},
+	}
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.False(t, cfg.Discovery.SurveyEnabled())
+	require.NotEqual(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
+	require.NotEqual(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
+}
+
+func TestSurveyEnabled(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+			Discovery: Discovery{
+				Survey: Services{
+					{
+						Name: "foo",
+					},
+				},
+			},
+		},
+	}
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.Len(t, cfg.Discovery.Survey, 1)
+	require.True(t, cfg.Discovery.SurveyEnabled())
+	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
+	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
 }

@@ -31,7 +31,7 @@ func AssertLogsPresent(t *testing.T, testName string, expectedLabels map[string]
 
 	var logResponse LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := FetchDataFromURL(LogQuery(testName), &logResponse)
+		_, err := FetchDataFromURL(LogQuery(testName), &logResponse)
 		assert.NoError(c, err)
 		if len(logResponse.Data.Result) == 0 {
 			return
@@ -45,7 +45,7 @@ func AssertLogsPresent(t *testing.T, testName string, expectedLabels map[string]
 		for k, v := range expectedLabels {
 			assert.Equal(c, v, result.Stream[k], "label %s should be %s", k, v)
 		}
-	}, DefaultTimeout, DefaultRetryInterval)
+	}, TestTimeoutEnv(t), DefaultRetryInterval)
 }
 
 // AssertLogsMissing checks that logs with specific labels are not present in Loki
@@ -54,7 +54,7 @@ func AssertLogsMissing(t *testing.T, testName string, labels ...string) {
 
 	var logResponse LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := FetchDataFromURL(LogQuery(testName), &logResponse)
+		_, err := FetchDataFromURL(LogQuery(testName), &logResponse)
 		assert.NoError(c, err)
 		if len(logResponse.Data.Result) == 0 {
 			return
@@ -64,5 +64,5 @@ func AssertLogsMissing(t *testing.T, testName string, labels ...string) {
 		for _, label := range labels {
 			assert.NotContains(c, result.Stream, label, "label %s should not be present", label)
 		}
-	}, DefaultTimeout, DefaultRetryInterval)
+	}, TestTimeoutEnv(t), DefaultRetryInterval)
 }

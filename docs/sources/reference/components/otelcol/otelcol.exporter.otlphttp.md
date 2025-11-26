@@ -51,16 +51,17 @@ If set, these arguments override the `client.endpoint` field for the correspondi
 
 You can use the following blocks with `otelcol.exporter.otlphttp`:
 
-| Block                                                 | Description                                                                | Required |
-|-------------------------------------------------------|----------------------------------------------------------------------------|----------|
-| [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                      | yes      |
-| `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
-| `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
-| `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                        | no       |
-| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                              | no       |
-| [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state. | no       |
-| [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                            | no       |
-| [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                | no       |
+| Block                                                 | Description                                                                    | Required |
+|-------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
+| `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                        | no       |
+| `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests.     | no       |
+| `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                            | no       |
+| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                                  | no       |
+| [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
+| [`sending_queue`][sending_queue]                      | Configures queueing and batching for the exporter.                             | no       |
+| `sending_queue` > [`batch`][batch]                    | Configures batching requests based on a timeout and a minimum number of items. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `tls` refers to a `tls` block defined inside a `client` block.
@@ -71,6 +72,7 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [cookies]: #cookies
 [compression_params]: #compression_params
 [sending_queue]: #sending_queue
+[batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 
@@ -120,9 +122,15 @@ The `retry_on_failure` block configures how failed requests to the HTTP server a
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

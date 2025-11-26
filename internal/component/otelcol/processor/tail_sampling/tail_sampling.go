@@ -34,6 +34,7 @@ type Arguments struct {
 	PolicyCfgs              []PolicyConfig      `alloy:"policy,block"`
 	DecisionWait            time.Duration       `alloy:"decision_wait,attr,optional"`
 	NumTraces               uint64              `alloy:"num_traces,attr,optional"`
+	BlockOnOverflow         bool                `alloy:"block_on_overflow,attr,optional"`
 	ExpectedNewTracesPerSec uint64              `alloy:"expected_new_traces_per_sec,attr,optional"`
 	DecisionCache           DecisionCacheConfig `alloy:"decision_cache,attr,optional"`
 	// Output configures where to send processed data. Required.
@@ -82,6 +83,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &tsp.Config{
 		DecisionWait:            args.DecisionWait,
 		NumTraces:               args.NumTraces,
+		BlockOnOverflow:         args.BlockOnOverflow,
 		ExpectedNewTracesPerSec: args.ExpectedNewTracesPerSec,
 		PolicyCfgs:              otelPolicyCfgs,
 		DecisionCache:           args.DecisionCache.Convert(),

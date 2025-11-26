@@ -80,6 +80,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					cache_loop = "55m"
 					store_expiration_loop = "77s"
 					metrics_flush_interval = "5s"
+					exponential_histogram_max_size = 160
 					output {}
 				`,
 			expected: servicegraphconnector.Config{
@@ -93,10 +94,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 333,
 					TTL:      12 * time.Hour,
 				},
-				CacheLoop:              55 * time.Minute,
-				StoreExpirationLoop:    77 * time.Second,
-				DatabaseNameAttributes: []string{"db.name"},
-				MetricsFlushInterval:   ptr(5 * time.Second),
+				CacheLoop:                   55 * time.Minute,
+				StoreExpirationLoop:         77 * time.Second,
+				DatabaseNameAttributes:      []string{"db.name"},
+				MetricsFlushInterval:        ptr(5 * time.Second),
+				ExponentialHistogramMaxSize: 160,
 				//TODO: Ad VirtualNodePeerAttributes when it's no longer controlled by
 				// the "processor.servicegraph.virtualNode" feature gate.
 				// VirtualNodePeerAttributes: []string{"attr1", "attr2"},

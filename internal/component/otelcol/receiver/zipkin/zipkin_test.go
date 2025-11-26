@@ -57,6 +57,7 @@ func TestArguments_UnmarshalDefaults(t *testing.T) {
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint:              "0.0.0.0:9411",
 			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
+			KeepAlivesEnabled:     true,
 		},
 	}
 
@@ -93,9 +94,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 		// Check the arguments
 		require.Equal(t, otelArgs.ServerConfig.Endpoint, httpAddr)
-		require.Equal(t, len(otelArgs.ServerConfig.CORS.AllowedOrigins), 2)
-		require.Equal(t, otelArgs.ServerConfig.CORS.AllowedOrigins[0], "https://*.test.com")
-		require.Equal(t, otelArgs.ServerConfig.CORS.AllowedOrigins[1], "https://test.com")
+		require.Equal(t, len(otelArgs.ServerConfig.CORS.Get().AllowedOrigins), 2)
+		require.Equal(t, otelArgs.ServerConfig.CORS.Get().AllowedOrigins[0], "https://*.test.com")
+		require.Equal(t, otelArgs.ServerConfig.CORS.Get().AllowedOrigins[1], "https://test.com")
 		require.Equal(t, otelArgs.ParseStringTags, true)
 	})
 }

@@ -127,11 +127,7 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 ### `queue_config`
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> The `stability.level` flag must be set to `experimental` to use the feature.
-
-[experimental]: https://grafana.com/docs/release-life-cycle/
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The optional `queue_config` block configures, when WAL is enabled, how the underlying client queues batches of logs sent to Loki.
 Refer to [Write-Ahead block](#wal) for more information.
@@ -149,9 +145,7 @@ The following arguments are supported:
 
 ### `wal`
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> The `stability.level` flag must be set to `experimental` to use the feature.
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The optional `wal` block configures the Write-Ahead Log (WAL) used in the Loki remote-write client.
 To enable the WAL, you must include the `wal` block in your configuration.

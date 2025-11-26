@@ -2,8 +2,6 @@ package stages
 
 import (
 	"fmt"
-	"os"
-	"runtime"
 	"time"
 
 	"github.com/go-kit/log"
@@ -11,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v2"
 )
 
 // TODO(@tpaschalis) Let's use this as the list of stages we need to port over.
@@ -21,37 +18,34 @@ const (
 	StageTypeDocker     = "docker"
 	StageTypeDrop       = "drop"
 	//TODO(thampiotr): Add support for eventlogmessage stage
-	StageTypeEventLogMessage    = "eventlogmessage"
-	StageTypeGeoIP              = "geoip"
-	StageTypeJSON               = "json"
-	StageTypeLabel              = "labels"
-	StageTypeLabelAllow         = "labelallow"
-	StageTypeLabelDrop          = "labeldrop"
-	StageTypeLimit              = "limit"
-	StageTypeLogfmt             = "logfmt"
-	StageTypeLuhn               = "luhn"
-	StageTypeMatch              = "match"
-	StageTypeMetric             = "metrics"
-	StageTypeMultiline          = "multiline"
-	StageTypeOutput             = "output"
-	StageTypePack               = "pack"
-	StageTypePattern            = "pattern"
-	StageTypePipeline           = "pipeline"
-	StageTypeRegex              = "regex"
-	StageTypeReplace            = "replace"
-	StageTypeSampling           = "sampling"
-	StageTypeStaticLabels       = "static_labels"
-	StageTypeStructuredMetadata = "structured_metadata"
-	StageTypeTemplate           = "template"
-	StageTypeTenant             = "tenant"
-	StageTypeTimestamp          = "timestamp"
-	StageTypeWindowsEvent       = "windowsevent"
+	StageTypeEventLogMessage        = "eventlogmessage"
+	StageTypeGeoIP                  = "geoip"
+	StageTypeJSON                   = "json"
+	StageTypeLabel                  = "labels"
+	StageTypeLabelAllow             = "labelallow"
+	StageTypeLabelDrop              = "labeldrop"
+	StageTypeLimit                  = "limit"
+	StageTypeLogfmt                 = "logfmt"
+	StageTypeLuhn                   = "luhn"
+	StageTypeMatch                  = "match"
+	StageTypeMetric                 = "metrics"
+	StageTypeMultiline              = "multiline"
+	StageTypeOutput                 = "output"
+	StageTypePack                   = "pack"
+	StageTypePattern                = "pattern"
+	StageTypePipeline               = "pipeline"
+	StageTypeRegex                  = "regex"
+	StageTypeReplace                = "replace"
+	StageTypeSampling               = "sampling"
+	StageTypeStaticLabels           = "static_labels"
+	StageTypeStructuredMetadata     = "structured_metadata"
+	StageTypeStructuredMetadataDrop = "structured_metadata_drop"
+	StageTypeTemplate               = "template"
+	StageTypeTenant                 = "tenant"
+	StageTypeTimestamp              = "timestamp"
+	StageTypeTruncate               = "truncate"
+	StageTypeWindowsEvent           = "windowsevent"
 )
-
-// Add stages that are not GA. Stages that are not specified here are considered GA.
-var stagesUnstable = map[string]featuregate.Stability{
-	StageTypeWindowsEvent: featuregate.StabilityExperimental,
-}
 
 // Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
 // timestamp and log entry
@@ -72,42 +66,14 @@ type Stage interface {
 	Cleanup()
 }
 
-func (entry *Entry) copy() *Entry {
-	out, err := yaml.Marshal(entry)
-	if err != nil {
-		return nil
-	}
-
-	var n *Entry
-	err = yaml.Unmarshal(out, &n)
-	if err != nil {
-		return nil
-	}
-
-	return n
-}
-
 // stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
 type stageProcessor struct {
 	Processor
-
-	inspector *inspector
 }
 
 func (s stageProcessor) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
-		var before *Entry
-
-		if Inspect {
-			before = e.copy()
-		}
-
 		s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-
-		if Inspect {
-			s.inspector.inspect(s.Processor.Name(), before, e)
-		}
-
 		return e
 	})
 }
@@ -115,16 +81,7 @@ func (s stageProcessor) Run(in chan Entry) chan Entry {
 func toStage(p Processor) Stage {
 	return &stageProcessor{
 		Processor: p,
-		inspector: newInspector(os.Stderr, runtime.GOOS == "windows"),
 	}
-}
-
-func checkFeatureStability(stageName string, minStability featuregate.Stability) error {
-	blockStability, exist := stagesUnstable[stageName]
-	if exist {
-		return featuregate.CheckAllowed(blockStability, minStability, fmt.Sprintf("stage %q", stageName))
-	}
-	return nil
 }
 
 // New creates a new stage for the given type and configuration.
@@ -171,6 +128,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		}
 	case cfg.StructuredMetadata != nil:
 		s, err = newStructuredMetadataStage(logger, *cfg.StructuredMetadata)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.StructuredMetadataDropConfig != nil:
+		s, err = newStructuredMetadataDropStage(logger, *cfg.StructuredMetadataDropConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -262,12 +224,13 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		if err != nil {
 			return nil, err
 		}
+	case cfg.TruncateConfig != nil:
+		s, err = newTruncateStage(logger, *cfg.TruncateConfig, registerer)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
-	}
-
-	if err := checkFeatureStability(s.Name(), minStability); err != nil {
-		return nil, err
 	}
 
 	return s, nil

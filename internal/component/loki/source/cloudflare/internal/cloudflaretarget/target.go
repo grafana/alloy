@@ -18,12 +18,12 @@ import (
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/jsonparser"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -182,7 +182,7 @@ func (t *Target) pull(ctx context.Context, start, end time.Time) error {
 				}
 				t.handler.Chan() <- loki.Entry{
 					Labels: t.config.Labels.Clone(),
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(0, ts),
 						Line:      string(line),
 					},

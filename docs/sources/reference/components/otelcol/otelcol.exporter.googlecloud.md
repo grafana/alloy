@@ -52,15 +52,16 @@ You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 You can use the following blocks with `otelcol.exporter.googlecloud`:
 
-| Block                                             | Description                                                                | Required |
-|---------------------------------------------------|----------------------------------------------------------------------------|----------|
-| [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
-| [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
-| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                           | no       |
-| [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                     | no       |
-| [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                | no       |
-| [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                | no       |
-| [`trace`][trace]                                  | Configuration for sending traces to Cloud Trace.                           | no       |
+| Block                                             | Description                                                                    | Required |
+|---------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`impersonate`][impersonate]                      | Configuration for service account impersonation                                | no       |
+| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                               | no       |
+| [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                         | no       |
+| [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                    | no       |
+| [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| [`trace`][trace]                                  | Configuration for sending traces to Cloud Trace.                               | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `metric` > `experimental_wal` refers to a `experimental_wal` block defined inside a `metric` block.
@@ -71,6 +72,7 @@ For example, `metric` > `experimental_wal` refers to a `experimental_wal` block 
 [metric]: #metric
 [experimental_wal]: #experimental_wal
 [sending_queue]: #sending_queue
+[batch]: #batch
 [trace]: #trace
 
 ### `debug_metrics`
@@ -138,9 +140,15 @@ The following arguments are supported:
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `trace`
 

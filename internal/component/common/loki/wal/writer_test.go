@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,7 @@ func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
 		writer.Stop()
 	}()
 	// write entries to wal and sync
+	writer.Start(time.Minute)
 
 	var testLabels = model.LabelSet{
 		"testing": "log",
@@ -44,7 +46,7 @@ func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
 	for _, line := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -84,15 +86,21 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 		MaxSegmentAge: maxSegmentAge,
 	}, logger, prometheus.NewRegistry())
 	require.NoError(t, err)
+	writer.Start(maxSegmentAge)
 	defer func() {
 		writer.Stop()
 	}()
 
+	notificationMutex := sync.Mutex{}
 	// add writer events subscriber. Add multiple to test fanout
 	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		notificationMutex.Lock()
+		defer notificationMutex.Unlock()
 		subscriber1 = append(subscriber1, num)
 	}))
 	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		notificationMutex.Lock()
+		defer notificationMutex.Unlock()
 		subscriber2 = append(subscriber2, num)
 	}))
 
@@ -109,7 +117,7 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	for _, line := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -144,12 +152,14 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, os.ErrNotExist, "expected file not exists error")
 
+	notificationMutex.Lock()
 	// assert all subscribers were notified
 	require.Len(t, subscriber1, 1, "expected one segment reclaimed notification in subscriber1")
 	require.Equal(t, 0, subscriber1[0])
 
 	require.Len(t, subscriber2, 1, "expected one segment reclaimed notification in subscriber2")
 	require.Equal(t, 0, subscriber2[0])
+	notificationMutex.Unlock()
 
 	// Expect last, or "head" segment to still be alive
 	_, err = os.Stat(filepath.Join(dir, "00000001"))
@@ -170,6 +180,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		MaxSegmentAge: maxSegmentAge,
 	}, logger, prometheus.NewRegistry())
 	require.NoError(t, err)
+	writer.Start(maxSegmentAge)
 	defer func() {
 		writer.Stop()
 	}()
@@ -190,7 +201,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	for _, line := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -299,6 +310,7 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 		MaxSegmentAge: time.Minute,
 	}, logger, prometheus.NewRegistry())
 	require.NoError(b, err)
+	writer.Start(time.Minute)
 	defer func() {
 		writer.Stop()
 	}()
@@ -308,7 +320,7 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 			Labels: model.LabelSet{
 				"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
 			},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("some line being written %d", i),
 			},

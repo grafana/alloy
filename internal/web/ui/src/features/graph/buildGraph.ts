@@ -1,14 +1,12 @@
 import dagre from '@dagrejs/dagre';
-import { Edge, Node, Position } from '@xyflow/react';
+import { type Edge, type Node, Position } from '@xyflow/react';
 
-import { ComponentInfo } from '../component/types';
-
+import type { ComponentInfo } from '../component/types';
 import { DebugDataType } from './debugDataType';
+import { estimatedWidthOfNode } from './nodeUtils';
 
 const dagreGraph = new dagre.graphlib.Graph({ multigraph: true }).setDefaultEdgeLabel(() => ({}));
 
-// Arbitrary values chosen to fit an average config in the graph.
-const NODE_WIDTH = 155;
 const NODE_HEIGHT = 72;
 
 const position = { x: 0, y: 0 };
@@ -21,7 +19,7 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   const nodes = components.map((component) => {
     const node: Node = {
       id: component.localID,
-      width: NODE_WIDTH,
+      width: estimatedWidthOfNode(component),
       data: {
         label: component.name + ' "' + (component.label ?? '') + '"',
         localID: component.localID,
@@ -50,7 +48,7 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   dagreGraph.setGraph({ rankdir: 'LR' });
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    dagreGraph.setNode(node.id, { width: node.width, height: NODE_HEIGHT });
   });
 
   edges.forEach((edge) => {
@@ -66,7 +64,7 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
       position: {
-        x: nodeWithPosition.x - NODE_WIDTH / 2,
+        x: nodeWithPosition.x - nodeWithPosition.width / 2,
         y: nodeWithPosition.y - NODE_HEIGHT / 2,
       },
     };

@@ -267,7 +267,7 @@ func TestTargetBuilder(t *testing.T) {
 					assert.Equal(t, expected, actual)
 				}
 
-				assert.Equal(t, actual.PromLabels().Hash(), actual.HashLabelsWithPredicate(func(key string) bool {
+				assert.Equal(t, modellabels.StableHash(actual.PromLabels()), actual.HashLabelsWithPredicate(func(key string) bool {
 					return true
 				}), "prometheus and alloy target hash codes should match")
 			}

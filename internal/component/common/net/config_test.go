@@ -5,6 +5,7 @@ import (
 	"time"
 
 	dskit "github.com/grafana/dskit/server"
+	promCfg "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/syntax"
@@ -144,6 +145,112 @@ func TestConfig(t *testing.T) {
 				require.Equal(t, 5, config.GRPCServerMaxRecvMsgSize)
 				require.Equal(t, 6, config.GRPCServerMaxSendMsgSize)
 				require.Equal(t, uint(7), config.GRPCServerMaxConcurrentStreams)
+			},
+		},
+		"http with tls config": {
+			raw: `
+			http {
+				listen_port = 8443
+				tls {
+					cert_pem = "-----BEGIN CERTIFICATE-----\ntest cert\n-----END CERTIFICATE-----"
+					key_pem = "-----BEGIN PRIVATE KEY-----\ntest key\n-----END PRIVATE KEY-----"
+					cert_file = "/path/to/cert.pem"
+					key_file = "/path/to/key.pem"
+					client_auth_type = "RequireAndVerifyClientCert"
+					client_ca_file = "/path/to/ca.pem"
+					client_ca = "-----BEGIN CERTIFICATE-----\nCA cert\n-----END CERTIFICATE-----"
+				}
+			}`,
+			assert: func(t *testing.T, config dskit.Config) {
+				require.Equal(t, 8443, config.HTTPListenPort)
+
+				// TLS Config assertions
+				require.Equal(t, "-----BEGIN CERTIFICATE-----\ntest cert\n-----END CERTIFICATE-----", config.HTTPTLSConfig.TLSCert)
+				require.Equal(t, promCfg.Secret("-----BEGIN PRIVATE KEY-----\ntest key\n-----END PRIVATE KEY-----"), config.HTTPTLSConfig.TLSKey)
+				require.Equal(t, "/path/to/cert.pem", config.HTTPTLSConfig.TLSCertPath)
+				require.Equal(t, "/path/to/key.pem", config.HTTPTLSConfig.TLSKeyPath)
+				require.Equal(t, "RequireAndVerifyClientCert", config.HTTPTLSConfig.ClientAuth)
+				require.Equal(t, "/path/to/ca.pem", config.HTTPTLSConfig.ClientCAs)
+				require.Equal(t, "-----BEGIN CERTIFICATE-----\nCA cert\n-----END CERTIFICATE-----", config.HTTPTLSConfig.ClientCAsText)
+			},
+		},
+		"grpc with tls config": {
+			raw: `
+			grpc {
+				listen_port = 9443
+				tls {
+					cert_pem = "-----BEGIN CERTIFICATE-----\ngrpc cert\n-----END CERTIFICATE-----"
+					key_pem = "-----BEGIN PRIVATE KEY-----\ngrpc key\n-----END PRIVATE KEY-----"
+					cert_file = "/path/to/grpc-cert.pem"
+					key_file = "/path/to/grpc-key.pem"
+					client_auth_type = "RequestClientCert"
+					client_ca_file = "/path/to/grpc-ca.pem"
+					client_ca = "-----BEGIN CERTIFICATE-----\ngRPC CA cert\n-----END CERTIFICATE-----"
+				}
+			}`,
+			assert: func(t *testing.T, config dskit.Config) {
+				require.Equal(t, 9443, config.GRPCListenPort)
+
+				// gRPC TLS Config assertions
+				require.Equal(t, "-----BEGIN CERTIFICATE-----\ngrpc cert\n-----END CERTIFICATE-----", config.GRPCTLSConfig.TLSCert)
+				require.Equal(t, promCfg.Secret("-----BEGIN PRIVATE KEY-----\ngrpc key\n-----END PRIVATE KEY-----"), config.GRPCTLSConfig.TLSKey)
+				require.Equal(t, "/path/to/grpc-cert.pem", config.GRPCTLSConfig.TLSCertPath)
+				require.Equal(t, "/path/to/grpc-key.pem", config.GRPCTLSConfig.TLSKeyPath)
+				require.Equal(t, "RequestClientCert", config.GRPCTLSConfig.ClientAuth)
+				require.Equal(t, "/path/to/grpc-ca.pem", config.GRPCTLSConfig.ClientCAs)
+				require.Equal(t, "-----BEGIN CERTIFICATE-----\ngRPC CA cert\n-----END CERTIFICATE-----", config.GRPCTLSConfig.ClientCAsText)
+			},
+		},
+		"both http and grpc with tls config": {
+			raw: `
+			http {
+				listen_port = 8443
+				tls {
+					cert_file = "/path/to/http-cert.pem"
+					key_file = "/path/to/http-key.pem"
+					client_auth_type = "NoClientCert"
+				}
+			}
+			grpc {
+				listen_port = 9443
+				tls {
+					cert_file = "/path/to/grpc-cert.pem"
+					key_file = "/path/to/grpc-key.pem"
+					client_auth_type = "RequireAndVerifyClientCert"
+					client_ca_file = "/path/to/grpc-ca.pem"
+				}
+			}`,
+			assert: func(t *testing.T, config dskit.Config) {
+				// HTTP TLS
+				require.Equal(t, 8443, config.HTTPListenPort)
+				require.Equal(t, "/path/to/http-cert.pem", config.HTTPTLSConfig.TLSCertPath)
+				require.Equal(t, "/path/to/http-key.pem", config.HTTPTLSConfig.TLSKeyPath)
+				require.Equal(t, "NoClientCert", config.HTTPTLSConfig.ClientAuth)
+
+				// gRPC TLS
+				require.Equal(t, 9443, config.GRPCListenPort)
+				require.Equal(t, "/path/to/grpc-cert.pem", config.GRPCTLSConfig.TLSCertPath)
+				require.Equal(t, "/path/to/grpc-key.pem", config.GRPCTLSConfig.TLSKeyPath)
+				require.Equal(t, "RequireAndVerifyClientCert", config.GRPCTLSConfig.ClientAuth)
+				require.Equal(t, "/path/to/grpc-ca.pem", config.GRPCTLSConfig.ClientCAs)
+			},
+		},
+		"tls config with minimal settings": {
+			raw: `
+			http {
+				tls {
+					cert_file = "/minimal/cert.pem"
+					key_file = "/minimal/key.pem"
+				}
+			}`,
+			assert: func(t *testing.T, config dskit.Config) {
+				require.Equal(t, "/minimal/cert.pem", config.HTTPTLSConfig.TLSCertPath)
+				require.Equal(t, "/minimal/key.pem", config.HTTPTLSConfig.TLSKeyPath)
+				// Other fields should be empty/default
+				require.Equal(t, "", config.HTTPTLSConfig.TLSCert)
+				require.Equal(t, "", config.HTTPTLSConfig.ClientAuth)
+				require.Equal(t, "", config.HTTPTLSConfig.ClientCAs)
+				require.Equal(t, "", config.HTTPTLSConfig.ClientCAsText)
 			},
 		},
 	}

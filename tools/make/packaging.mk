@@ -32,13 +32,13 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-windows-amd64.exe              \
                      dist/alloy-freebsd-amd64
 
-dist/alloy-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled pyroscope_ebpf
+dist/alloy-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
 dist/alloy-linux-amd64: GOARCH  := amd64
 dist/alloy-linux-amd64: generate-ui
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
-dist/alloy-linux-arm64: GO_TAGS += netgo builtinassets promtail_journal_enabled pyroscope_ebpf
+dist/alloy-linux-arm64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/alloy-linux-arm64: GOOS    := linux
 dist/alloy-linux-arm64: GOARCH  := arm64
 dist/alloy-linux-arm64: generate-ui
@@ -97,14 +97,14 @@ dist/alloy-freebsd-amd64: generate-ui
 dist-alloy-boringcrypto-binaries: dist/alloy-boringcrypto-linux-amd64 \
                                   dist/alloy-boringcrypto-linux-arm64
 
-dist/alloy-boringcrypto-linux-amd64: GO_TAGS      += netgo builtinassets promtail_journal_enabled pyroscope_ebpf
+dist/alloy-boringcrypto-linux-amd64: GO_TAGS      += netgo builtinassets promtail_journal_enabled
 dist/alloy-boringcrypto-linux-amd64: GOEXPERIMENT := boringcrypto
 dist/alloy-boringcrypto-linux-amd64: GOOS         := linux
 dist/alloy-boringcrypto-linux-amd64: GOARCH       := amd64
 dist/alloy-boringcrypto-linux-amd64: generate-ui
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
-dist/alloy-boringcrypto-linux-arm64: GO_TAGS      += netgo builtinassets promtail_journal_enabled pyroscope_ebpf
+dist/alloy-boringcrypto-linux-arm64: GO_TAGS      += netgo builtinassets promtail_journal_enabled
 dist/alloy-boringcrypto-linux-arm64: GOEXPERIMENT := boringcrypto
 dist/alloy-boringcrypto-linux-arm64: GOOS         := linux
 dist/alloy-boringcrypto-linux-arm64: GOARCH       := arm64

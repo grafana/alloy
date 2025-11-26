@@ -1,7 +1,7 @@
 name: alloy-integration-tests
 services:
   mimir:
-    image: grafana/mimir:2.10.4
+    image: grafana/mimir:2.17.0
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:
@@ -64,7 +64,7 @@ services:
       - integration-tests
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.5.8
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"

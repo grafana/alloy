@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/akamai"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ec2"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ecs"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/eks"
@@ -13,14 +14,21 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/digitalocean"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/dynatrace"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/hetzner"
 	kubernetes_node "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/kubeadm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openshift"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openstacknova"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/oraclecloud"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/scaleway"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/upcloud"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/vultr"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
@@ -64,11 +72,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "all_detectors_with_defaults",
 			cfg: `
-			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node", "dynatrace", "kubeadm"]
+			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "akamai", "consul", "digitalocean", "docker", "gcp", "heroku", "hetzner", "system", "openshift", "nova", "oraclecloud", "kubernetes_node", "dynatrace", "kubeadm", "scaleway", "upcloud", "vultr"]
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "k8snode", "dynatrace", "kubeadm"},
+				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "akamai", "consul", "digitalocean", "docker", "gcp", "heroku", "hetzner", "system", "openshift", "nova", "oraclecloud", "k8snode", "dynatrace", "kubeadm", "scaleway", "upcloud", "vultr"},
 				"timeout":          5 * time.Second,
 				"override":         true,
 				"ec2":              ec2.DefaultArguments.Convert(),
@@ -78,15 +86,23 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"lambda":           lambda.DefaultArguments.Convert(),
 				"azure":            azure.DefaultArguments.Convert(),
 				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
 				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
 				"docker":           docker.DefaultArguments.Convert(),
 				"gcp":              gcp.DefaultArguments.Convert(),
 				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -105,15 +121,23 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"lambda":           lambda.DefaultArguments.Convert(),
 				"azure":            azure.DefaultArguments.Convert(),
 				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
 				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
 				"docker":           docker.DefaultArguments.Convert(),
 				"gcp":              gcp.DefaultArguments.Convert(),
 				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -151,15 +175,23 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"lambda":           lambda.DefaultArguments.Convert(),
 				"azure":            azure.DefaultArguments.Convert(),
 				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
 				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
 				"docker":           docker.DefaultArguments.Convert(),
 				"gcp":              gcp.DefaultArguments.Convert(),
 				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -198,15 +230,23 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"lambda":           lambda.DefaultArguments.Convert(),
 				"azure":            azure.DefaultArguments.Convert(),
 				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
 				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
 				"docker":           docker.DefaultArguments.Convert(),
 				"gcp":              gcp.DefaultArguments.Convert(),
 				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -268,6 +308,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -318,6 +366,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -384,6 +440,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -423,6 +487,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -471,6 +543,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -534,6 +614,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -606,6 +694,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -645,6 +741,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -689,6 +793,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -718,6 +830,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -820,6 +940,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -849,6 +977,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -893,6 +1029,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -922,6 +1066,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -989,6 +1141,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1018,6 +1178,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1057,21 +1225,29 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
-				"ec2":       ec2.DefaultArguments.Convert(),
-				"ecs":       ecs.DefaultArguments.Convert(),
-				"eks":       eks.DefaultArguments.Convert(),
-				"lambda":    lambda.DefaultArguments.Convert(),
-				"azure":     azure.DefaultArguments.Convert(),
-				"aks":       aks.DefaultArguments.Convert(),
-				"consul":    consul.DefaultArguments.Convert(),
-				"docker":    docker.DefaultArguments.Convert(),
-				"gcp":       gcp.DefaultArguments.Convert(),
-				"heroku":    heroku.DefaultArguments.Convert(),
-				"system":    defaultArgs.Convert(),
-				"openshift": openshift.DefaultArguments.Convert(),
-				"k8snode":   kubernetes_node.DefaultArguments.Convert(),
-				"kubeadm":   kubeadm.DefaultArguments.Convert(),
-				"dynatrace": dynatrace.DefaultArguments.Convert(),
+				"ec2":          ec2.DefaultArguments.Convert(),
+				"ecs":          ecs.DefaultArguments.Convert(),
+				"eks":          eks.DefaultArguments.Convert(),
+				"lambda":       lambda.DefaultArguments.Convert(),
+				"azure":        azure.DefaultArguments.Convert(),
+				"aks":          aks.DefaultArguments.Convert(),
+				"consul":       consul.DefaultArguments.Convert(),
+				"docker":       docker.DefaultArguments.Convert(),
+				"gcp":          gcp.DefaultArguments.Convert(),
+				"heroku":       heroku.DefaultArguments.Convert(),
+				"system":       defaultArgs.Convert(),
+				"openshift":    openshift.DefaultArguments.Convert(),
+				"k8snode":      kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":      kubeadm.DefaultArguments.Convert(),
+				"dynatrace":    dynatrace.DefaultArguments.Convert(),
+				"akamai":       akamai.DefaultArguments.Convert(),
+				"digitalocean": digitalocean.DefaultArguments.Convert(),
+				"hetzner":      hetzner.DefaultArguments.Convert(),
+				"nova":         openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":  oraclecloud.DefaultArguments.Convert(),
+				"scaleway":     scaleway.DefaultArguments.Convert(),
+				"upcloud":      upcloud.DefaultArguments.Convert(),
+				"vultr":        vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1101,6 +1277,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1157,6 +1341,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1186,6 +1378,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1251,6 +1451,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1280,6 +1488,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1329,6 +1545,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		}, {
 			testName: "kubeadm_defaults",
@@ -1356,6 +1580,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1403,6 +1635,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1444,6 +1684,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1538,6 +1786,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1567,6 +1823,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1638,6 +1902,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1668,6 +1940,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1717,6 +1997,846 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
 				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "akamai_defaults",
+			cfg: `
+			detectors = ["akamai"]
+			akamai {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"akamai"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "akamai_explicit",
+			cfg: `
+			detectors = ["akamai"]
+			akamai {
+				fail_on_missing_metadata = true
+				resource_attributes {
+					cloud.provider { enabled = false }
+					cloud.region { enabled = true }
+					host.id { enabled = true }
+					host.name { enabled = false }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"akamai"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"akamai": map[string]interface{}{
+					"fail_on_missing_metadata": true,
+					"resource_attributes": map[string]interface{}{
+						"cloud.provider": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": false,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "digitalocean_defaults",
+			cfg: `
+			detectors = ["digitalocean"]
+			digitalocean {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"digitalocean"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "digitalocean_explicit",
+			cfg: `
+			detectors = ["digitalocean"]
+			digitalocean {
+				resource_attributes {
+					cloud.provider { enabled = true }
+					cloud.region { enabled = false }
+					host.id { enabled = false }
+					host.name { enabled = true }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"digitalocean"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"digitalocean": map[string]interface{}{
+					"resource_attributes": map[string]interface{}{
+						"cloud.provider": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "hetzner_defaults",
+			cfg: `
+			detectors = ["hetzner"]
+			hetzner {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"hetzner"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "hetzner_explicit",
+			cfg: `
+			detectors = ["hetzner"]
+			hetzner {
+				resource_attributes {
+					cloud.availability_zone { enabled = false }
+					cloud.provider { enabled = true }
+					cloud.region { enabled = false }
+					host.id { enabled = true }
+					host.name { enabled = true }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"hetzner"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"hetzner": map[string]interface{}{
+					"resource_attributes": map[string]interface{}{
+						"cloud.availability_zone": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.provider": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "scaleway_defaults",
+			cfg: `
+			detectors = ["scaleway"]
+			scaleway {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"scaleway"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "scaleway_explicit",
+			cfg: `
+			detectors = ["scaleway"]
+			scaleway {
+				resource_attributes {
+					cloud.account.id { enabled = false }
+					cloud.availability_zone { enabled = true }
+					cloud.platform { enabled = false }
+					cloud.provider { enabled = true }
+					cloud.region { enabled = true }
+					host.id { enabled = false }
+					host.image.id { enabled = true }
+					host.image.name { enabled = false }
+					host.name { enabled = true }
+					host.type { enabled = false }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"scaleway"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"scaleway": map[string]interface{}{
+					"resource_attributes": map[string]interface{}{
+						"cloud.account.id": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.availability_zone": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.platform": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.provider": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.image.id": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.image.name": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.type": map[string]interface{}{
+							"enabled": false,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "upcloud_defaults",
+			cfg: `
+			detectors = ["upcloud"]
+			upcloud {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"upcloud"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "upcloud_explicit",
+			cfg: `
+			detectors = ["upcloud"]
+			upcloud {
+				fail_on_missing_metadata = true
+				resource_attributes {
+					cloud.provider { enabled = false }
+					cloud.region { enabled = true }
+					host.id { enabled = true }
+					host.name { enabled = false }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"upcloud"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"upcloud": map[string]interface{}{
+					"fail_on_missing_metadata": true,
+					"resource_attributes": map[string]interface{}{
+						"cloud.provider": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": false,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "vultr_defaults",
+			cfg: `
+			detectors = ["vultr"]
+			vultr {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"vultr"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "vultr_explicit",
+			cfg: `
+			detectors = ["vultr"]
+			vultr {
+				fail_on_missing_metadata = true
+				resource_attributes {
+					cloud.provider { enabled = true }
+					cloud.region { enabled = false }
+					host.id { enabled = false }
+					host.name { enabled = true }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"vultr"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"vultr": map[string]interface{}{
+					"fail_on_missing_metadata": true,
+					"resource_attributes": map[string]interface{}{
+						"cloud.provider": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "nova_defaults",
+			cfg: `
+			detectors = ["nova"]
+			nova {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"nova"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "oraclecloud_defaults",
+			cfg: `
+			detectors = ["oraclecloud"]
+			oraclecloud {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"oraclecloud"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "nova_explicit",
+			cfg: `
+			detectors = ["nova"]
+			nova {
+				resource_attributes {
+					cloud.platform { enabled = false }
+					cloud.provider { enabled = true }
+					cloud.region { enabled = false }
+					cloud.availability_zone { enabled = true }
+					host.id { enabled = false }
+					host.name { enabled = true }
+					host.type { enabled = false }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"nova"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"nova": map[string]interface{}{
+					"fail_on_missing_metadata": false,
+					"labels":                   nil,
+					"resource_attributes": map[string]interface{}{
+						"cloud.platform": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.provider": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.availability_zone": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.type": map[string]interface{}{
+							"enabled": false,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "oraclecloud_explicit",
+			cfg: `
+			detectors = ["oraclecloud"]
+			oraclecloud {
+				resource_attributes {
+					cloud.platform { enabled = false }
+					cloud.provider { enabled = true }
+					cloud.region { enabled = false }
+					cloud.availability_zone { enabled = true }
+					host.id { enabled = false }
+					host.name { enabled = true }
+					host.type { enabled = false }
+					k8s.cluster.name { enabled = true }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"oraclecloud"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"oraclecloud": map[string]interface{}{
+					"resource_attributes": map[string]interface{}{
+						"cloud.platform": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.provider": map[string]interface{}{
+							"enabled": true,
+						},
+						"cloud.region": map[string]interface{}{
+							"enabled": false,
+						},
+						"cloud.availability_zone": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.id": map[string]interface{}{
+							"enabled": false,
+						},
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"host.type": map[string]interface{}{
+							"enabled": false,
+						},
+						"k8s.cluster.name": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
 			},
 		},
 	}

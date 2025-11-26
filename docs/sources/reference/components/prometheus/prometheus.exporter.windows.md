@@ -24,6 +24,8 @@ The `include` and `exclude` arguments are preferred going forward.
 
 [windows_exporter]: https://github.com/prometheus-community/windows_exporter/tree/{{< param "PROM_WIN_EXP_VERSION" >}}
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy

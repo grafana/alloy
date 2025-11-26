@@ -35,6 +35,9 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+// Upstream prometheus implementation https://github.com/prometheus/prometheus/blob/main/tsdb/agent/db.go
+// 	based on the prometheus tsdb head wal https://github.com/prometheus/prometheus/blob/main/tsdb/head_wal.go
+
 // ErrWALClosed is an error returned when a WAL operation can't run because the
 // storage has already been closed.
 var ErrWALClosed = fmt.Errorf("WAL storage closed")
@@ -148,6 +151,13 @@ type Storage struct {
 	notifier wlog.WriteNotified
 }
 
+// stripeSeriesSize is the number of stripes to use for series locking. A larger number allows for more concurrent writes without
+// concerns for lock contention, but allocates a static amount of memory for each remote write component in use. This value is
+// 4x smaller than the current default for prometheus TSDB. There are discussions about dropping it even further in,
+// https://github.com/prometheus/prometheus/issues/17100. This value is likely still too high for our use case, but we
+// cannot easily test for lock contention we will play it safe and keep it higher for now.
+var stripeSeriesSize = 4096
+
 // NewStorage makes a new Storage.
 func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
 	// Convert go-kit logger to slog logger
@@ -163,7 +173,7 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 		wal:     w,
 		logger:  logger,
 		deleted: map[chunks.HeadSeriesRef]int{},
-		series:  newStripeSeries(tsdb.DefaultStripeSize),
+		series:  newStripeSeries(stripeSeriesSize),
 		metrics: newStorageMetrics(registerer),
 		nextRef: atomic.NewUint64(0),
 	}
@@ -276,7 +286,7 @@ func (w *Storage) replayWAL() error {
 // but has not been fully removed from the WAL via a wlog.Checkpoint yet.
 func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
-		dec     record.Decoder
+		dec     = record.NewDecoder(nil, slog.New(logging.NewSlogGoKitHandler(w.logger)))
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
 		decoded    = make(chan interface{}, 10)
@@ -399,6 +409,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 		case []record.RefSample:
 			for _, s := range v {
 				if ref, ok := duplicateRefToValidRef[s.Ref]; ok {
+					// Make sure we keep the duplicate SeriesRef in checkpoints until we get past the current segment.
+					w.deleted[s.Ref] = currentSegmentOrCheckpoint
 					s.Ref = ref
 				}
 				series := w.series.GetByID(s.Ref)
@@ -537,7 +549,7 @@ func (w *Storage) Truncate(mint int64) error {
 		return nil
 	}
 
-	keep := func(id chunks.HeadSeriesRef, _ int) bool {
+	keep := func(id chunks.HeadSeriesRef) bool {
 		if w.series.GetByID(id) != nil {
 			return true
 		}
@@ -703,7 +715,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		// Ensure no empty or duplicate labels have gotten through. This mirrors the
 		// equivalent validation code in the TSDB's headAppender.
 		l = l.WithoutEmpty()
-		if len(l) == 0 {
+		if l.Len() == 0 {
 			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 		}
 
@@ -827,7 +839,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 		// Ensure no empty or duplicate labels have gotten through. This mirrors the
 		// equivalent validation code in the TSDB's headAppender.
 		l = l.WithoutEmpty()
-		if len(l) == 0 {
+		if l.Len() == 0 {
 			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 		}
 
@@ -942,19 +954,35 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingHistograms) > 0 {
-		buf, _ = encoder.HistogramSamples(a.pendingHistograms, buf)
+		var customBucketsHistograms []record.RefHistogramSample
+		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
 		buf = buf[:0]
+		if len(customBucketsHistograms) > 0 {
+			buf = encoder.CustomBucketsHistogramSamples(customBucketsHistograms, buf)
+			if err := a.w.wal.Log(buf); err != nil {
+				return fmt.Errorf("log custom buckets histograms: %w", err)
+			}
+			buf = buf[:0]
+		}
 	}
 
 	if len(a.pendingFloatHistograms) > 0 {
-		buf, _ = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+		var customBucketsFloatHistograms []record.RefFloatHistogramSample
+		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
 		buf = buf[:0]
+		if len(customBucketsFloatHistograms) > 0 {
+			buf = encoder.CustomBucketsFloatHistogramSamples(customBucketsFloatHistograms, buf)
+			if err := a.w.wal.Log(buf); err != nil {
+				return fmt.Errorf("log custom buckets histograms: %w", err)
+			}
+			buf = buf[:0]
+		}
 	}
 
 	// Exemplars should be logged after samples (float/native histogram/etc),

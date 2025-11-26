@@ -30,7 +30,7 @@ spec:
         - name: local-cred
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.10.1
+          image: docker.io/grafana/alloy:v1.11.3
           imagePullPolicy: IfNotPresent
           args:
             - run
