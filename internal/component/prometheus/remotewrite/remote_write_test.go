@@ -7,14 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/storage/remote"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Test is an integration-level test which ensures that metrics can get sent to
@@ -40,7 +41,9 @@ func Test(t *testing.T) {
 			remote_timeout = "100ms"
 
 			queue_config {
-				batch_send_deadline = "100ms"
+                // This will guarantee that we get both samples we expect or the test times out
+				max_samples_per_send = 2
+				batch_send_deadline = "1m"
 			}
 		}
 	`, srv.URL))
@@ -221,6 +224,7 @@ func sendMetric(
 }
 
 func testArgsForConfig(t *testing.T, cfg string) remotewrite.Arguments {
+	t.Helper()
 	var args remotewrite.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	return args

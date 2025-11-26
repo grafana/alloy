@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
+- Remove labelstore interactions from the prometheus interceptor simplifying prometheus pipelines. (@kgeckhart)
+
 ### Bugfixes
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
@@ -103,7 +105,6 @@ v1.12.0-rc.0
   - The `otelcol.exporter.s3` component has new configuration options `s3_base_prefix` and `s3_partition_timezone`.
   - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
   - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
-
 
 ### Enhancements
 
