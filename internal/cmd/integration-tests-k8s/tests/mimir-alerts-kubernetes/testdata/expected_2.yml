@@ -12,7 +12,6 @@ alertmanager_config: |
       smtp_require_tls: true
     route:
       receiver: "null"
-      continue: false
       routes:
       - receiver: testing/alertmgr-config1/null
         matchers:
@@ -27,13 +26,8 @@ alertmanager_config: |
     - name: testing/alertmgr-config1/null
     - name: testing/alertmgr-config1/myamc
       webhook_configs:
-      - send_resolved: false
+      - url: http://test.url
         http_config:
           follow_redirects: true
-          enable_http2: true
-        url: http://test.url
-        url_file: ""
-        max_alerts: 0
-        timeout: 0s
     templates:
     - default_template
