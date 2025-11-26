@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/modules/
 aliases:
-  - ./concepts/modules/ # /docs/alloy/latest/concepts/modules/
+  - ../concepts/modules/ # /docs/alloy/latest/concepts/modules/
 description: Learn about modules
 title: Modules
 weight: 90
