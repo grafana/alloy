@@ -120,9 +120,9 @@ You can use these tools to write {{< param "PRODUCT_NAME" >}} configuration file
 
 Now that you understand the basic syntax, learn how to use these elements to build working configurations:
 
-- [Alloy syntax][] - Explore advanced syntax features and patterns
 - [Components][] - Learn about the building blocks that collect, transform, and send data
 - [Expressions][] - Create dynamic configurations using functions and component references
+- [Alloy syntax][] - Explore advanced syntax features and patterns
 
 For hands-on learning:
 

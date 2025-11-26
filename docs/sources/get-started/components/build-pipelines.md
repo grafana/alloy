@@ -7,33 +7,28 @@ weight: 60
 
 # Build data pipelines
 
-{{< param "PRODUCT_NAME" >}} components work together to create _pipelines_ that collect, transform, and send telemetry data.
-By connecting components through their exports and arguments, you can build powerful data processing workflows that automatically respond to changes and handle complex data transformations.
-
-Before you begin, make sure you understand:
-
-- [Basic component configuration](../configure-components/)
-- [Component arguments and exports](../configure-components/#arguments-and-exports)
-- [Component references](../configure-components/#component-references)
+You learned about components in the previous section. They're building blocks that perform tasks such as reading files, collecting metrics, or processing data.
+Now you'll learn how to connect components to create _pipelines_ that collect, transform, and send telemetry data.
 
 ## What are pipelines?
 
 A pipeline forms when components reference each other's exports.
-Most arguments in components are constant values, but when you use expressions that reference component exports, you create dependencies between components.
+You learned about component exports in the previous section. These are the values that running components make available to other components.
 
 ```alloy
 // Simple constant value
 log_level = "debug"
 
-// Expression that creates a dependency
+// Expression that references a component export
 api_key = local.file.secret.content
 ```
 
-When a component's argument references another component's export, {{< param "PRODUCT_NAME" >}} re-evaluates the dependent component whenever the referenced component updates its exports.
+When you use an expression like `local.file.secret.content` in a component's arguments, you create a dependency.
+{{< param "PRODUCT_NAME" >}} automatically re-evaluates the dependent component whenever the referenced component updates its exports.
 
 ## Your first pipeline
 
-This simple pipeline reads a password from a file and uses it to authenticate with a remote system:
+This pipeline reads a password from a file and uses it to authenticate with a remote system:
 
 ```alloy
 local.file "api_key" {
@@ -54,10 +49,14 @@ prometheus.remote_write "production" {
 
 This pipeline has two components:
 
-1. `local.file` reads a file and exports its content
-2. `prometheus.remote_write` uses that content as a password
+1. `local.file` reads a file and exports its content.
+1. `prometheus.remote_write` uses that content as a password.
 
-When the file changes, {{< param "PRODUCT_NAME" >}} automatically updates the password used by the remote write component.
+The key configuration elements are:
+
+- **Component exports**: `local.file.api_key.content` exports the file's content.
+- **Component references**: The `password` attribute references the export from another component.
+- **Automatic updates**: When the file changes, {{< param "PRODUCT_NAME" >}} automatically updates the password used by the remote write component.
 
 {{< figure src="/media/docs/alloy/diagram-example-basic-alloy.png" width="600" alt="Example pipeline with local.file and prometheus.remote_write components" >}}
 
@@ -101,10 +100,13 @@ local.file "api_key" {
 
 This pipeline demonstrates several key concepts:
 
-1. **Service discovery**: `discovery.kubernetes` finds targets to monitor
-2. **Data collection**: `prometheus.scrape` collects metrics from those targets
-3. **Data forwarding**: The scraper forwards metrics to the remote write component
-4. **Authentication**: The remote write component uses credentials from a file
+1. **Service discovery**: `discovery.kubernetes` finds targets to monitor.
+1. **Data collection**: `prometheus.scrape` collects metrics from those targets.
+1. **Data forwarding**: The `forward_to` attribute connects components by sending data from one to another.
+1. **Authentication**: The remote write component uses credentials from a file.
+
+The `forward_to` attribute is a special configuration element that creates data flow connections between components.
+It accepts a list of component receivers that process the data.
 
 ## Log processing pipeline
 
@@ -162,17 +164,20 @@ local.file "api_key" {
 
 This pipeline shows how data flows through multiple processing stages:
 
-1. **Discovery**: Find log files to monitor
-2. **Collection**: Read log entries from files
-3. **Transformation**: Parse log messages and extract metadata
-4. **Enrichment**: Add structured labels to log entries
-5. **Output**: Send processed logs to remote storage
+1. **Discovery**: Find log files to monitor.
+1. **Collection**: Read log entries from files.
+1. **Transformation**: Parse log messages and extract metadata.
+1. **Enrichment**: Add structured labels to log entries.
+1. **Output**: Send processed logs to remote storage.
 
 ## Pipeline patterns
 
+Use these common patterns to build effective data processing workflows.
+
 ### Fan-out pattern
 
-Send data from one component to multiple destinations:
+Send data from one component to multiple destinations.
+This uses the `forward_to` attribute with multiple receivers:
 
 ```alloy
 prometheus.scrape "app_metrics" {
@@ -196,7 +201,13 @@ prometheus.remote_write "staging" {
 }
 ```
 
-### Processing chain
+This pattern is useful for:
+
+- Testing changes in staging before production.
+- Sending different datasets to different systems.
+- Creating redundant data storage for reliability.
+
+### Chain processing pattern
 
 Transform data through multiple stages:
 
@@ -231,9 +242,17 @@ loki.write "alerts" {
 }
 ```
 
+This pattern demonstrates progressive data refinement:
+
+1. **Parse**: Extract structured data from raw logs.
+1. **Filter**: Keep only relevant log entries (error level).
+1. **Output**: Send filtered logs to alerting system.
+
 ## Best practices
 
-### Keep pipelines simple
+Follow these guidelines to build maintainable and efficient pipelines.
+
+### Keep pipelines focused
 
 Break complex pipelines into logical stages.
 Each component should have a clear, single responsibility.
@@ -268,21 +287,27 @@ local.file "database_password" {
 Build pipelines step by step.
 Start with basic data collection, then add processing and forwarding components.
 
-## Debugging pipelines
+## Debug pipelines
 
 When pipelines don't work as expected:
 
-1. **Check component health** in the {{< param "PRODUCT_NAME" >}} UI
-2. **Verify component exports** contain expected data
-3. **Review component dependencies** to ensure proper data flow
-4. **Check for cycles** - components can't reference themselves directly or indirectly
+1. **Check component health** in the {{< param "PRODUCT_NAME" >}} UI. Unhealthy components appear in red.
+1. **Verify component exports** contain expected data. Use the UI to inspect export values.
+1. **Review component dependencies** to ensure proper data flow. Check that `forward_to` references match receiver exports.
+1. **Check for reference cycles** - components can't reference themselves directly or indirectly.
+1. **Validate configuration syntax** - ensure component and export names are spelled correctly.
+
+The {{< param "PRODUCT_NAME" >}} UI provides detailed information about component state, exports, and health status to help troubleshoot pipeline issues.
 
 ## Next steps
 
-Now that you understand how to build pipelines:
+Now that you understand how to build pipelines, learn more about component management and dynamic configurations:
 
 - [Component controller][] - Learn how {{< param "PRODUCT_NAME" >}} manages component execution
 - [Expressions][] - Create dynamic configurations using functions and references
+
+For hands-on learning:
+
 - [Tutorials][] - Follow step-by-step guides to build complete monitoring solutions
 
 [Component controller]: ./component-controller/
