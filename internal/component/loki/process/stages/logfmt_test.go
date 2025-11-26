@@ -26,6 +26,25 @@ stage.logfmt {
 		source  = "extra"
 }`
 
+var testLogfmtAlloyRegex = `
+stage.logfmt {
+    regex = "pod_.*"
+}
+`
+
+var testLogfmtAlloyRegexAll = `
+stage.logfmt {
+    regex = ".*"
+}
+`
+
+var testLogfmtAlloyRegexAndMapping = `
+stage.logfmt {
+    mapping = { "out" = "message", "app" = ""}
+    regex = "(app|duration)"
+}
+`
+
 func TestLogfmt(t *testing.T) {
 	var testLogfmtLogLine = `
 		time=2012-11-01T22:08:41+00:00 app=loki	level=WARN duration=125 message="this is a log line" extra="user=foo""
@@ -54,6 +73,35 @@ func TestLogfmt(t *testing.T) {
 				"user":  "foo",
 			},
 		},
+		"successfully extract regex values from logfmt": {
+			testLogfmtAlloyRegex,
+			`time=2012-11-01T22:08:41+00:00 pod_name=my-pod-123 pod_label=my-label`,
+			map[string]interface{}{
+				"pod_name":  "my-pod-123",
+				"pod_label": "my-label",
+			},
+		},
+		"successfully extract all values via regex from logfmt": {
+			testLogfmtAlloyRegexAll,
+			testLogfmtLogLine,
+			map[string]interface{}{
+				"time":     "2012-11-01T22:08:41+00:00",
+				"app":      "loki",
+				"level":    "WARN",
+				"duration": "125",
+				"message":  "this is a log line",
+				"extra":    "user=foo",
+			},
+		},
+    "successfully extract values with expressions and regex from logfmt": {
+      testLogfmtAlloyRegexAndMapping,
+      testLogfmtLogLine,
+      map[string]interface{}{
+        "out": "this is a log line",
+        "app": "loki",
+        "duration": "125",
+      },
+    },
 	}
 
 	for testName, testData := range tests {
@@ -81,7 +129,7 @@ func TestLogfmtConfigValidation(t *testing.T) {
 		"no mapping": {
 			LogfmtConfig{},
 			0,
-			ErrMappingRequired,
+			ErrMappingOrRegexRequired,
 		},
 		"valid without source": {
 			LogfmtConfig{
@@ -108,7 +156,7 @@ func TestLogfmtConfigValidation(t *testing.T) {
 	for tName, tt := range tests {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
-			got, err := validateLogfmtConfig(&tt.config)
+			got, _, err := validateLogfmtConfig(&tt.config)
 			if tt.err != nil {
 				assert.EqualError(t, err, tt.err.Error())
 			} else {
