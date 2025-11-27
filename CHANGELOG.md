@@ -26,6 +26,10 @@ Main (unreleased)
 
 - Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
+- Add `delay` option to `prometheus.exporter.cloudwatch` component to delay scraping of metrics to account for CloudWatch ingestion latency. (@tmeijn)
+
+- Export `yace_.*` metrics from the underlying YACE Exporter to `prometheus.exporter.cloudwatch`. (@tmeijn)
+
 ### Bugfixes
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)

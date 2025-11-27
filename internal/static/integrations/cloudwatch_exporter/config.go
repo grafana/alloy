@@ -70,11 +70,11 @@ type TagsPerNamespace map[string][]string
 type DiscoveryJob struct {
 	InlineRegionAndRoles      `yaml:",inline"`
 	InlineCustomTags          `yaml:",inline"`
-	SearchTags                []Tag    `yaml:"search_tags"`
-	Type                      string   `yaml:"type"`
-	DimensionNameRequirements []string `yaml:"dimension_name_requirements"`
-	Metrics                   []Metric `yaml:"metrics"`
-	NilToZero                 *bool    `yaml:"nil_to_zero,omitempty"`
+	SearchTags                []Tag         `yaml:"search_tags"`
+	Type                      string        `yaml:"type"`
+	DimensionNameRequirements []string      `yaml:"dimension_name_requirements"`
+	Metrics                   []Metric      `yaml:"metrics"`
+	NilToZero                 *bool         `yaml:"nil_to_zero,omitempty"`
 	Delay                     time.Duration `yaml:"delay,omitempty"`
 }
 
@@ -82,11 +82,11 @@ type DiscoveryJob struct {
 type StaticJob struct {
 	InlineRegionAndRoles `yaml:",inline"`
 	InlineCustomTags     `yaml:",inline"`
-	Name                 string      `yaml:"name"`
-	Namespace            string      `yaml:"namespace"`
-	Dimensions           []Dimension `yaml:"dimensions"`
-	Metrics              []Metric    `yaml:"metrics"`
-	NilToZero            *bool       `yaml:"nil_to_zero,omitempty"`
+	Name                 string        `yaml:"name"`
+	Namespace            string        `yaml:"namespace"`
+	Dimensions           []Dimension   `yaml:"dimensions"`
+	Metrics              []Metric      `yaml:"metrics"`
+	NilToZero            *bool         `yaml:"nil_to_zero,omitempty"`
 	Delay                time.Duration `yaml:"delay,omitempty"`
 }
 
@@ -254,7 +254,6 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 
 	return modelConf, fipsEnabled, nil
 }
-
 
 func toYACEStaticJob(job StaticJob) *yaceConf.Static {
 	nilToZero := job.NilToZero

@@ -168,7 +168,6 @@ static "super_ec2_instance_id" {
 }
 `
 
-
 const discoveryJobNilToZeroConfig = `
 sts_region = "us-east-2"
 debug = true
@@ -626,9 +625,9 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 				StsRegion: "us-east-2",
 				DiscoveryJobs: []yaceModel.DiscoveryJob{
 					{
-						Regions: []string{"us-east-2"},
-						Roles:   []yaceModel.Role{{}},
-						Type:    "AWS/EC2",
+						Regions:    []string{"us-east-2"},
+						Roles:      []yaceModel.Role{{}},
+						Type:       "AWS/EC2",
 						SearchTags: []yaceModel.SearchTag{},
 						CustomTags: []yaceModel.Tag{},
 						Metrics: []*yaceModel.MetricConfig{
@@ -696,11 +695,11 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 				StsRegion: "eu-west-1",
 				CustomNamespaceJobs: []yaceModel.CustomNamespaceJob{
 					{
-						Name:      "testMetrics",
-						Regions:   []string{"us-east-1"},
-						Roles:     []yaceModel.Role{{}},
+						Name:       "testMetrics",
+						Regions:    []string{"us-east-1"},
+						Roles:      []yaceModel.Role{{}},
 						CustomTags: []yaceModel.Tag{},
-						Namespace: "TestMetrics",
+						Namespace:  "TestMetrics",
 						Metrics: []*yaceModel.MetricConfig{
 							{
 								Name:       "metric1",

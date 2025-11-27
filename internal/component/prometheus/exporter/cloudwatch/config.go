@@ -312,7 +312,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		DimensionNameRequirements: rj.DimensionNameRequirements,
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
-		RoundingPeriod: nil,
+		RoundingPeriod:     nil,
 		RecentlyActiveOnly: rj.RecentlyActiveOnly,
 		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
 			Delay: int64(rj.Delay.Seconds()),
@@ -336,7 +336,7 @@ func toYACECustomNamespaceJob(cn CustomNamespaceJob) *yaceConf.CustomNamespace {
 		DimensionNameRequirements: cn.DimensionNameRequirements,
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
-		RoundingPeriod: nil,
+		RoundingPeriod:     nil,
 		RecentlyActiveOnly: cn.RecentlyActiveOnly,
 		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
 			Delay: int64(cn.Delay.Seconds()),
