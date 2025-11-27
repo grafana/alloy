@@ -24,21 +24,6 @@ Mastering these building blocks lets you create powerful data collection and pro
 
 All {{< param "PRODUCT_NAME" >}} configurations use three main elements: blocks, attributes, and expressions.
 
-This configuration sets up logging for {{< param "PRODUCT_NAME" >}}:
-
-```alloy
-logging {
-    level  = "info"
-    format = "json"
-}
-```
-
-This example shows the basic elements:
-
-- **Block**: `logging` defines a configuration section
-- **Attributes**: `level` and `format` are settings within the block
-- **Values**: `"info"` and `"json"` are the assigned values
-
 ## Blocks
 
 Blocks group related settings and configure different parts of {{< param "PRODUCT_NAME" >}}.
