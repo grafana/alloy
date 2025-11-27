@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/get-started/components/build-pipelines/
 description: Learn how to build data pipelines with components
 title: Build data pipelines
-weight: 60
+weight: 20
 ---
 
 # Build data pipelines

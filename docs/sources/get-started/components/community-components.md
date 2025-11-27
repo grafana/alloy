@@ -1,10 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/components/community-components/
 aliases:
-  - ./community_components/ # /docs/alloy/latest/get-started/community_components/
+  - ../concepts/community-components/ # /docs/alloy/latest/concepts/community-components/
 description: Learn about community components
 title: Community components
-weight: 80
+weight: 50
 ---
 
 # Community components

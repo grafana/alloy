@@ -5,7 +5,7 @@ aliases:
   - ./concepts/custom_components/ # /docs/alloy/latest/concepts/custom_components/
 description: Learn about custom components
 title: Custom components
-weight: 70
+weight: 40
 ---
 
 # Custom components

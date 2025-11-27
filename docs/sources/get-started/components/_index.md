@@ -6,7 +6,7 @@ aliases:
   - ./concepts/configuration-syntax/components/ # /docs/alloy/latest/concepts/configuration-syntax/components/
 description: Learn about components
 title: Components
-weight: 40
+weight: 30
 ---
 
 # Components
@@ -100,6 +100,7 @@ prometheus.scrape "database" {
 
 Components can share data through exports.
 When one component references another component's export, it creates a connection between them.
+You'll learn more about these component references in [Expressions][].
 
 ```alloy
 local.file "api_key" {
@@ -124,6 +125,8 @@ In this example:
 1. The `prometheus.remote_write` component uses that content as a password.
 1. When the file changes, {{< param "PRODUCT_NAME" >}} automatically updates the `local.file` component's exports.
 1. This causes {{< param "PRODUCT_NAME" >}} to re-evaluate the `prometheus.remote_write` component with the new password.
+
+You'll learn the details of how to write these references in [Expressions][].
 
 ## Next steps
 

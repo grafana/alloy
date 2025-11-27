@@ -4,7 +4,7 @@ aliases:
   - ../concepts/clustering/ # /docs/alloy/latest/concepts/clustering/
 description: Learn about Grafana Alloy clustering concepts
 title: Clustering
-weight: 100
+weight: 70
 ---
 
 # Clustering

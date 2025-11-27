@@ -4,7 +4,7 @@ aliases:
   - ./configuration-syntax/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
 description: Learn how to declare and configure components
 title: Configure components
-weight: 50
+weight: 10
 ---
 
 # Configure components
@@ -61,7 +61,7 @@ _Exports_ are zero or more output values that other components can refer to.
 They can be of any {{< param "PRODUCT_NAME" >}} type.
 
 The `local.file.targets` component from the previous example exposes the file content as a string in its exports.
-You can reference this export as `local.file.targets.content`.
+You'll learn how to reference these exports in [Expressions][].
 
 ## Configuration blocks
 

@@ -5,7 +5,7 @@ aliases:
   - ./concepts/component_controller/ # /docs/alloy/latest/concepts/component_controller/
 description: Learn about the component controller
 title: Component controller
-weight: 60
+weight: 30
 ---
 
 # Component controller

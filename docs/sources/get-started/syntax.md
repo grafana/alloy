@@ -5,7 +5,7 @@ aliases:
 description: Learn about the Alloy configuration language syntax
 title: Alloy syntax
 menuTitle: Alloy syntax
-weight: 60
+weight: 50
 ---
 
 # {{% param "PRODUCT_NAME" %}} syntax
@@ -88,7 +88,7 @@ log_level = "debug"
 prometheus.scrape "app" {
   targets    = [{ "__address__" = "localhost:9090" }]
   scrape_interval = "15s"
-  
+
   // Nested block with attributes
   basic_auth {
     username = "admin"
@@ -134,13 +134,13 @@ Nested blocks provide structured configuration:
 prometheus.remote_write "production" {
   endpoint {
     url = "https://prometheus.example.com/api/v1/write"
-    
+
     basic_auth {
       username = "metrics"
       password = local.file.credentials.content
     }
   }
-  
+
   queue {
     capacity = 10000
     max_samples_per_send = 2000
@@ -234,8 +234,8 @@ local.file "example" {
 
 
   is_secret = true
-  
-  
+
+
   // Comments can also have extra spacing
 }
 

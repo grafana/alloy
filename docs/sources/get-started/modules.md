@@ -4,7 +4,7 @@ aliases:
   - ../concepts/modules/ # /docs/alloy/latest/concepts/modules/
 description: Learn about modules
 title: Modules
-weight: 90
+weight: 60
 ---
 
 # Modules

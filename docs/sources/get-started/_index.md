@@ -71,7 +71,7 @@ enabled = true
 ## Expressions
 
 Expressions compute values for attributes.
-You can use simple constants or complex calculations.
+You can use simple constants or more complex calculations.
 
 **Constants:**
 
@@ -81,7 +81,19 @@ port = 9090
 tags = ["web", "api"]
 ```
 
+**Simple calculations:**
+
+You can use arithmetic operations to compute values from other variables.
+This lets you build dynamic configurations where values depend on other settings.
+
+```alloy
+total_timeout = base_timeout + retry_timeout
+```
+
 **Function calls:**
+
+Function calls let you access system information and transform data.
+Built-in functions like `sys.env()` retrieve environment variables, while others can manipulate strings, decode JSON, and perform other operations.
 
 ```alloy
 home_dir = sys.env("HOME")
@@ -90,10 +102,6 @@ config_path = home_dir + "/config.yaml"
 
 **Component references:**
 
-```alloy
-password = local.file.secret.content
-```
-
 Component references let you use data from other parts of your configuration.
 To reference a component's data, combine three parts with periods:
 
@@ -101,6 +109,12 @@ To reference a component's data, combine three parts with periods:
 - Label: `secret`
 - Export name: `content`
 - Result: `local.file.secret.content`
+
+```alloy
+password = local.file.secret.content
+```
+
+You'll learn about more powerful expressions in the dedicated [Expressions][] section, including how to reference data from other components and use more built-in functions.
 
 ## Configuration files
 
