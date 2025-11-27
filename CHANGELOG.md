@@ -24,14 +24,11 @@ Main (unreleased)
 
 - Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
 
-- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
-
 - Add `delay` option to `prometheus.exporter.cloudwatch` component to delay scraping of metrics to account for CloudWatch ingestion latency. (@tmeijn)
 
 - Export `yace_.*` metrics from the underlying YACE Exporter to `prometheus.exporter.cloudwatch`. (@tmeijn)
 
 ### Bugfixes
-
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
     - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
