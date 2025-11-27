@@ -9,17 +9,20 @@ weight: 100
 
 # Clustering
 
-Clustering allows multiple {{< param "PRODUCT_NAME" >}} deployments to work together.
-This provides workload distribution and high availability.
+You learned about components, expressions, syntax, and modules in the previous sections.
+Now you'll learn about clustering, which allows multiple {{< param "PRODUCT_NAME" >}} deployments to work together for distributed data collection.
+
+Clustering provides workload distribution and high availability.
 It enables horizontally scalable deployments with minimal resource and operational overhead.
 
-{{< param "PRODUCT_NAME" >}} uses an eventually consistent model to achieve clustering.
-This model assumes all participating {{< param "PRODUCT_NAME" >}} deployments are interchangeable.
-All deployments must converge on the same configuration file.
+{{< param "PRODUCT_NAME" >}} uses an eventually consistent model with a gossip protocol to achieve clustering.
+This model assumes all participating {{< param "PRODUCT_NAME" >}} deployments are interchangeable and use identical configurations.
+The cluster uses a consistent hashing algorithm to distribute work among nodes.
 
 A standalone, non-clustered {{< param "PRODUCT_NAME" >}} behaves the same as a single-node cluster.
 
-You configure clustering by passing `cluster` command-line flags to the [run][] command.
+You configure clustering by passing `--cluster.*` command-line flags to the [`alloy run`][run] command.
+Cluster-enabled components must explicitly enable clustering through a `clustering` block in their configuration.
 
 ## Use cases
 
@@ -30,29 +33,39 @@ It lets scraping components running on all peers distribute the scrape load amon
 
 For target auto-distribution to work:
 
-- All {{< param "PRODUCT_NAME" >}} deployments in the same cluster must access the same service discovery APIs
-- All deployments must scrape the same targets
+1. All {{< param "PRODUCT_NAME" >}} deployments in the same cluster must access the same service discovery APIs.
+1. All deployments must scrape the same targets.
 
 You must explicitly enable target auto-distribution on components by defining a `clustering` block.
+This integrates with the component system you learned about in previous sections:
 
 ```alloy
 prometheus.scrape "default" {
+    targets = discovery.kubernetes.pods.targets
+
     clustering {
         enabled = true
     }
 
-    ...
+    forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+    endpoint {
+        url = "https://prometheus.example.com/api/v1/write"
+    }
 }
 ```
 
-When a cluster detects state changes (when a node joins or leaves), all participating components locally recalculate target ownership.
-They re-balance the number of targets they're scraping without explicitly communicating ownership over the network.
+When a cluster detects state changes (when a node joins or leaves), all participating components locally recalculate target ownership using a consistent hashing algorithm.
+Components re-balance the targets they're scraping without explicitly communicating ownership over the network.
+Each node uses 512 tokens in the hash ring for optimal load distribution.
 
 Target auto-distribution lets you dynamically scale the number of {{< param "PRODUCT_NAME" >}} deployments to handle workload peaks.
-It also provides resiliency because one of the node peers automatically picks up targets if a node leaves.
+It also provides resiliency because remaining node peers automatically pick up targets if a node leaves the cluster.
 
 {{< param "PRODUCT_NAME" >}} uses a local consistent hashing algorithm to distribute targets.
-On average, this algorithm redistributes only approximately 1/N of the targets.
+When the cluster size changes, this algorithm redistributes only approximately 1/N of the targets, minimizing disruption.
 
 Refer to the component reference documentation to check if a component supports clustering, such as:
 
@@ -75,12 +88,14 @@ This approach ensures more consistent resource utilization across your deploymen
 
 When you use clustering in a deployment where a single instance can't handle the entire load, use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
 However, leave a significant safety margin when you configure this value by setting it significantly smaller than your typical expected operational number of instances.
-When this condition isn't met, the instances stop processing traffic in cluster-enabled components so it's important to leave room for any unexpected events.
+When this condition isn't met, the instances stop processing traffic in cluster-enabled components, so it's important to leave room for any unexpected events.
 
 For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, set the `--cluster.wait-for-size` flag to a value well below what your HPA and PDB minimums allow.
 This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like Pod termination or rolling updates.
 
-It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. You can base the timeout duration on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when the timeout passes, the cluster may be too small to handle traffic and can run into further issues.
+It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration.
+You can base the timeout duration on how quickly you expect your orchestration or incident response team to provision the required number of instances.
+Be aware that when the timeout passes, the cluster may be too small to handle traffic and can run into further issues.
 
 ### Don't enable clustering if you don't need it
 
@@ -97,13 +112,16 @@ Refer to [Debug clustering issues][debugging] for additional troubleshooting inf
 
 ## Next steps
 
-To learn more about clustering with {{< param "PRODUCT_NAME" >}}:
+Now that you understand how clustering works with {{< param "PRODUCT_NAME" >}} components, explore these topics:
 
-- Configure clustering using the [`alloy run` command reference][run] to set up cluster flags
-- Explore clustering-enabled components in the [component reference][components] like `prometheus.scrape` and `pyroscope.scrape`
-- Monitor cluster health using the [clustering troubleshooting guide][debugging]
-- Learn about [high availability deployment patterns][deploy] for production environments
-- Review [scaling best practices][monitor] for large-scale monitoring deployments
+- [Deploy {{< param "PRODUCT_NAME" >}}][deploy] - Set up clustered deployments in production environments.
+- [Monitor {{< param "PRODUCT_NAME" >}}][monitor] - Learn about monitoring cluster health and performance.
+- [Troubleshooting][debugging] - Debug clustering issues and interpret cluster metrics.
+
+For detailed configuration:
+
+- [`alloy run` command reference][run] - Configure clustering using command-line flags.
+- [Component reference][components] - Explore clustering-enabled components like `prometheus.scrape` and `pyroscope.scrape`.
 
 [run]: ../../reference/cli/run/#clustering
 [prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/#clustering

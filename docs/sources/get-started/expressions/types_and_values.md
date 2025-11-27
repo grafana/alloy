@@ -10,6 +10,13 @@ weight: 10
 
 # Types and values
 
+You learned about the main types of expressions in the previous section. These are literals, component references, functions, and arithmetic operations.
+Now you'll learn about the _types and values_ that these expressions work with and how {{< param "PRODUCT_NAME" >}} uses them to ensure your configurations work correctly.
+
+Understanding types helps you write expressions that work reliably and helps you understand why certain combinations of components and values are compatible while others aren't.
+
+## Value types
+
 The {{< param "PRODUCT_NAME" >}} syntax supports the following value types:
 
 - `number`: Any numeric value, such as `3` or `3.14`.
@@ -217,15 +224,18 @@ prometheus.scrape "default" {
 
 ## Next steps
 
-Apply your understanding of types and values:
+Now that you understand types and values, learn how to use them in expressions:
 
-- [Operators][] to learn how different operators work with specific value types
-- [Function calls][] to use standard library functions that work with these types
-- [Reference component exports][] to understand how component exports use these types
+- [Component exports][] - Reference data from other components and understand how types ensure compatibility
+- [Operators][] - Learn how operators work with different value types and handle type compatibility
+
+For advanced expression features:
+
+- [Function calls][] - Transform data using standard library functions that work with these types
 
 [component reference]: ../../../../reference/components/
 [valid]: ../../syntax#identifiers
 [nonsensitive]: ../../../../reference/stdlib/convert/
+[Component exports]: ./referencing_exports/
 [Operators]: ./operators/
 [Function calls]: ./function_calls/
-[Reference component exports]: ./referencing_exports/

@@ -10,37 +10,48 @@ weight: 50
 
 # Expressions
 
-Expressions compute values you can assign to component attributes in an {{< param "PRODUCT_NAME" >}} configuration.
-You can use them to make your configuration dynamic and connect different components together.
+You learned about components and how they work together in pipelines in the previous sections.
+Now you'll learn about _expressions_. These are the mechanism that makes your configurations dynamic by computing values and connecting components together.
 
-This section covers how to write expressions, from basic literal values to complex computations that reference other components.
+Expressions are the key to {{< param "PRODUCT_NAME" >}}'s flexibility.
+They let you reference data from other components, transform values using functions, and create dynamic configurations that respond to changing conditions.
 
-## What are expressions
+## How expressions work
 
-Basic expressions are literal values, like `"Hello, world!"` or `true`.
-Expressions can also [refer to values][] exported by components, perform arithmetic, or [call functions][].
+Expressions compute values that you assign to component arguments.
+The component controller evaluates expressions when components start and whenever their dependencies change.
 
-You use expressions to configure any component.
+Basic expressions are literal values like `"Hello, world!"` or `true`.
+More powerful expressions can reference component exports, call functions, or perform calculations.
+
 All component arguments have an underlying [type][].
-{{< param "PRODUCT_NAME" >}} checks the expression type before assigning the result to an attribute.
+{{< param "PRODUCT_NAME" >}} checks the expression type during evaluation to ensure compatibility before assigning the result to an attribute.
+This type checking prevents configuration errors and ensures your pipelines work correctly.
 
-## Common expression types
+## Expression types
 
-The most common expressions you'll use are:
+The four main types of expressions you'll use are:
 
-- **Literal values**: Simple constants like `"debug"`, `8080`, or `true`
-- **Component references**: Values from other components like `local.file.config.content`
-- **Function calls**: Built-in functions like `sys.env("HOME")` or `json_decode(local.file.data.content)`
-- **Arithmetic**: Mathematical operations like `1 + 2` or `port_base + offset`
+1. **Literal values**: Constants like `"debug"`, `8080`, or `true`.
+1. **Component references**: Values from other components like `local.file.config.content`.
+1. **Function calls**: Built-in functions like `sys.env("HOME")` or `json_decode(local.file.data.content)`.
+1. **Arithmetic operations**: Mathematical calculations like `1 + 2` or `port_base + offset`.
+
+You can combine these types to create complex expressions that transform data and connect components in sophisticated ways.
 
 ## Next steps
 
-Learn how to write different types of expressions:
+Now that you understand how expressions work, learn to write different types of expressions:
 
-- [Reference component exports][refer to values] to connect components together
-- [Call functions][call functions] to transform and compute values
-- [Understand types and values][type] to work with different data types
+- [Component exports][refer to values] - Reference data from other components to connect your pipeline
+- [Types and values][type] - Understand data types and how they work with expressions
+
+For advanced expression features:
+
+- [Function calls][call functions] - Transform and compute values using built-in functions
+- [Operators][] - Combine and manipulate values using mathematical and logical operators
 
 [refer to values]: ./referencing_exports/
 [call functions]: ./function_calls/
 [type]: ./types_and_values/
+[Operators]: ./operators/
