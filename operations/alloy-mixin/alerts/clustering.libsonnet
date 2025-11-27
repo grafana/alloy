@@ -80,11 +80,11 @@ local alert = import './utils/alert.jsonnet';
           'ClusterConfigurationDrift',
           if enableK8sCluster then |||
             count without (sha256) (
-                max by (cluster, namespace, sha256, job, cluster_name) (alloy_config_hash and on(cluster, namespace, job, cluster_name) cluster_node_info)
+                max by (cluster, namespace, sha256, job, cluster_name, app) (alloy_config_hash and on(cluster, namespace, job, cluster_name) cluster_node_info)
             ) > 1
           ||| else |||
             count without (sha256) (
-                max by (sha256, job) (alloy_config_hash and on(job) cluster_node_info)
+                max by (sha256, job, app) (alloy_config_hash and on(job) cluster_node_info)
             ) > 1
           |||
           ,
