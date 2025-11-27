@@ -253,7 +253,6 @@ You can configure the `static` block one or multiple times to scrape metrics wit
 | `namespace`   | `string`       | CloudWatch metric namespace.                                                                                                                                 |         | yes      |
 | `regions`     | `list(string)` | List of AWS regions.                                                                                                                                         |         | yes      |
 | `custom_tags` | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`. | `{}`    | no       |
-| `delay`       | `duration`     | Delay the start time of the CloudWatch metrics query by this duration. Not supported for static jobs.                                                      | `0`     | no       |
 | `nil_to_zero` | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                     | `true`  | no       |
 
 All dimensions must be specified when scraping single metrics like the example above.

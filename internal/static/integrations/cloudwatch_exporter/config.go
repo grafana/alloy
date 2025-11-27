@@ -74,20 +74,19 @@ type DiscoveryJob struct {
 	Type                      string        `yaml:"type"`
 	DimensionNameRequirements []string      `yaml:"dimension_name_requirements"`
 	Metrics                   []Metric      `yaml:"metrics"`
-	NilToZero                 *bool         `yaml:"nil_to_zero,omitempty"`
 	Delay                     time.Duration `yaml:"delay,omitempty"`
+	NilToZero                 *bool         `yaml:"nil_to_zero,omitempty"`
 }
 
 // StaticJob will scrape metrics that match all defined dimensions.
 type StaticJob struct {
 	InlineRegionAndRoles `yaml:",inline"`
 	InlineCustomTags     `yaml:",inline"`
-	Name                 string        `yaml:"name"`
-	Namespace            string        `yaml:"namespace"`
-	Dimensions           []Dimension   `yaml:"dimensions"`
-	Metrics              []Metric      `yaml:"metrics"`
-	NilToZero            *bool         `yaml:"nil_to_zero,omitempty"`
-	Delay                time.Duration `yaml:"delay,omitempty"`
+	Name                 string      `yaml:"name"`
+	Namespace            string      `yaml:"namespace"`
+	Dimensions           []Dimension `yaml:"dimensions"`
+	Metrics              []Metric    `yaml:"metrics"`
+	NilToZero            *bool       `yaml:"nil_to_zero,omitempty"`
 }
 
 // InlineRegionAndRoles exposes for each supported job, the AWS regions and IAM roles in which the agent should perform the
@@ -207,16 +206,12 @@ func getServiceByAlias(alias string) string {
 
 func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 	discoveryJobs := []*yaceConf.Job{}
-	discoveryDelays := []time.Duration{}
 	for _, job := range c.Discovery.Jobs {
 		discoveryJobs = append(discoveryJobs, toYACEDiscoveryJob(job))
-		discoveryDelays = append(discoveryDelays, job.Delay)
 	}
 	staticJobs := []*yaceConf.Static{}
-	staticDelays := []time.Duration{}
 	for _, stat := range c.Static {
 		staticJobs = append(staticJobs, toYACEStaticJob(stat))
-		staticDelays = append(staticDelays, stat.Delay)
 	}
 	conf := yaceConf.ScrapeConf{
 		APIVersion: "v1alpha1",
@@ -238,20 +233,6 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 		return yaceModel.JobsConfig{}, fipsEnabled, err
 	}
 
-	// YACE validation may override the delay, so restore it from the job configuration
-	for i, job := range modelConf.DiscoveryJobs {
-		delay := discoveryDelays[i]
-		for _, metric := range job.Metrics {
-			metric.Delay = int64(delay.Seconds())
-		}
-	}
-	for i, job := range modelConf.StaticJobs {
-		delay := staticDelays[i]
-		for _, metric := range job.Metrics {
-			metric.Delay = int64(delay.Seconds())
-		}
-	}
-
 	return modelConf, fipsEnabled, nil
 }
 
@@ -267,7 +248,7 @@ func toYACEStaticJob(job StaticJob) *yaceConf.Static {
 		Namespace:  job.Namespace,
 		CustomTags: toYACETags(job.CustomTags),
 		Dimensions: toYACEDimensions(job.Dimensions),
-		Metrics:    toYACEMetrics(job.Metrics, nilToZero, job.Delay),
+		Metrics:    toYACEMetrics(job.Metrics, nilToZero),
 	}
 }
 
@@ -293,18 +274,21 @@ func toYACEDiscoveryJob(job *DiscoveryJob) *yaceConf.Job {
 		Roles:                     roles,
 		CustomTags:                toYACETags(job.CustomTags),
 		Type:                      job.Type,
-		Metrics:                   toYACEMetrics(job.Metrics, nilToZero, job.Delay),
+		Metrics:                   toYACEMetrics(job.Metrics, nilToZero),
 		SearchTags:                toYACETags(job.SearchTags),
 		DimensionNameRequirements: job.DimensionNameRequirements,
 
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod: nil,
+		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
+			Delay: int64(job.Delay.Seconds()),
+		},
 	}
 	return &yaceJob
 }
 
-func toYACEMetrics(metrics []Metric, jobNilToZero *bool, jobDelay time.Duration) []*yaceConf.Metric {
+func toYACEMetrics(metrics []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 	yaceMetrics := []*yaceConf.Metric{}
 	for _, metric := range metrics {
 		periodSeconds := int64(metric.Period.Seconds())
@@ -329,9 +313,6 @@ func toYACEMetrics(metrics []Metric, jobNilToZero *bool, jobDelay time.Duration)
 			// data to fill the whole aggregation bucket. Therefore, Period == Length.
 			Period: periodSeconds,
 			Length: lengthSeconds,
-
-			// Delay moves back the time window for whom CloudWatch is requested data.
-			Delay: int64(jobDelay.Seconds()),
 
 			NilToZero:              nilToZero,
 			AddCloudwatchTimestamp: &addCloudwatchTimestamp,

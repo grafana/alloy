@@ -3,7 +3,6 @@ package cloudwatch_exporter
 import (
 	"io"
 	"testing"
-	"time"
 
 	"github.com/grafana/regexp"
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
@@ -187,7 +186,7 @@ static:
           - Average
 `
 
-// for testing delay at the job level
+// for testing configuration with both discovery and static jobs
 const configString4 = `
 sts_region: us-east-2
 discovery:
@@ -224,7 +223,6 @@ static:
         value: CoolService
       - name: APP_VERSION
         value: 1.0
-    delay: 2m
     metrics:
       - name: KPIs
         period: 5m
@@ -414,7 +412,7 @@ var expectedConfig4 = model.JobsConfig{
 				Statistics:             []string{"Maximum", "Average"},
 				Period:                 300,
 				Length:                 300,
-				Delay:                  60,
+				Delay:                  60, // Delay applied from job level
 				NilToZero:              true,
 				AddCloudwatchTimestamp: false,
 			},
@@ -444,7 +442,7 @@ var expectedConfig4 = model.JobsConfig{
 				Statistics:             []string{"Average"},
 				Period:                 300,
 				Length:                 300,
-				Delay:                  120,
+				Delay:                  0,
 				NilToZero:              true,
 				AddCloudwatchTimestamp: false,
 			},
@@ -492,13 +490,10 @@ func TestTranslateNilToZeroConfigToYACEConfig(t *testing.T) {
 	require.EqualValues(t, truePtr, fipsEnabled)
 }
 
-func TestTranslateDelayConfigToYACEConfig(t *testing.T) {
+func TestTranslateMixedJobsConfigToYACEConfig(t *testing.T) {
 	c := Config{}
 	err := yaml.Unmarshal([]byte(configString4), &c)
 	require.NoError(t, err, "failed to unmarshal config")
-
-	require.Equal(t, time.Minute, c.Discovery.Jobs[0].Delay)
-	require.Equal(t, 2*time.Minute, c.Static[0].Delay)
 
 	logger, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
@@ -508,6 +503,18 @@ func TestTranslateDelayConfigToYACEConfig(t *testing.T) {
 
 	require.EqualValues(t, expectedConfig4, yaceConf)
 	require.EqualValues(t, truePtr, fipsEnabled)
+
+	// Verify that delay is applied to discovery job metrics but remains 0 for static job metrics
+	for _, job := range yaceConf.DiscoveryJobs {
+		for _, metric := range job.Metrics {
+			require.Equal(t, int64(60), metric.Delay, "delay should be applied to discovery job metrics")
+		}
+	}
+	for _, job := range yaceConf.StaticJobs {
+		for _, metric := range job.Metrics {
+			require.Equal(t, int64(0), metric.Delay, "delay should remain 0 for static job metrics")
+		}
+	}
 }
 
 func TestCloudwatchExporterConfigInstanceKey(t *testing.T) {
