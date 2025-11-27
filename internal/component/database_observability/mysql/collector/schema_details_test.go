@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestSchemaDetails(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -172,7 +172,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -319,7 +319,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -486,7 +486,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -633,7 +633,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -800,7 +800,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		// Enable caching. This will exercise the code path
 		// that writes to cache (but we don't explicitly assert it in this test)
@@ -948,7 +948,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		// first loop, table info will be written to cache
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -1116,7 +1116,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1252,7 +1252,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1301,7 +1301,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1369,7 +1369,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,

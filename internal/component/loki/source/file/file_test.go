@@ -513,10 +513,9 @@ func TestDeleteRecreateFile(t *testing.T) {
 		defer cancel()
 
 		// Create file to log to.
-		f, err := os.Create("example")
+		dir := t.TempDir()
+		f, err := os.Create(filepath.Join(dir, "example"))
 		require.NoError(t, err)
-		defer os.Remove(f.Name())
-		defer f.Close()
 
 		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
 		require.NoError(t, err)
@@ -542,9 +541,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 		filename := model.LabelValue(f.Name())
 		if match.Enabled {
-			dir, err := os.Getwd()
-			require.NoError(t, err)
-			filename = model.LabelValue(filepath.Join(dir, f.Name()))
+			filename = model.LabelValue(filepath.Join(dir, "example"))
 		}
 
 		wantLabelSet := model.LabelSet{
@@ -559,9 +556,12 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 		// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
-			f, err = os.Create("example")
+			f, err = os.Create(filepath.Join(dir, "example"))
 			assert.NoError(collect, err)
 		}, 30*time.Second, 100*time.Millisecond)
+
+		defer os.Remove(f.Name())
+		defer f.Close()
 
 		_, err = f.Write([]byte("writing some new text\n"))
 		require.NoError(t, err)

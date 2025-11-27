@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
 func Test_CloudflareTarget(t *testing.T) {
@@ -37,7 +37,7 @@ func Test_CloudflareTarget(t *testing.T) {
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, time.Hour.Nanoseconds()-int64(cfg.PullRange))
-		client   = fake.NewClient(func() {})
+		handler  = loki.NewCollectingHandler()
 		cfClient = newFakeCloudflareClient()
 	)
 	ps, err := positions.New(logger, positions.Config{
@@ -74,15 +74,15 @@ func Test_CloudflareTarget(t *testing.T) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg)
+	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, cfg)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
 	require.Eventually(t, func() bool {
-		return len(client.Received()) == 4
+		return len(handler.Received()) == 4
 	}, 5*time.Second, 100*time.Millisecond)
 
-	received := client.Received()
+	received := handler.Received()
 	sort.Slice(received, func(i, j int) bool {
 		return received[i].Timestamp.After(received[j].Timestamp)
 	})
@@ -112,7 +112,7 @@ func Test_RetryErrorLogpullReceived(t *testing.T) {
 		logger   = log.NewLogfmtLogger(w)
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
-		client   = fake.NewClient(func() {})
+		handler  = loki.NewCollectingHandler()
 		cfClient = newFakeCloudflareClient()
 	)
 	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
@@ -126,7 +126,7 @@ func Test_RetryErrorLogpullReceived(t *testing.T) {
 	defaultBackoff.MaxBackoff = 5
 	ta := &Target{
 		logger:  logger,
-		handler: client,
+		handler: handler,
 		client:  cfClient,
 		config: &Config{
 			Labels: make(model.LabelSet),
@@ -143,7 +143,7 @@ func Test_RetryErrorIterating(t *testing.T) {
 		logger   = log.NewLogfmtLogger(w)
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
-		client   = fake.NewClient(func() {})
+		handler  = loki.NewCollectingHandler()
 		cfClient = newFakeCloudflareClient()
 	)
 	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
@@ -173,7 +173,7 @@ func Test_RetryErrorIterating(t *testing.T) {
 	metrics := NewMetrics(prometheus.NewRegistry())
 	ta := &Target{
 		logger:  logger,
-		handler: client,
+		handler: handler,
 		client:  cfClient,
 		config: &Config{
 			Labels: make(model.LabelSet),
@@ -183,7 +183,7 @@ func Test_RetryErrorIterating(t *testing.T) {
 
 	require.NoError(t, ta.pull(t.Context(), start, end))
 	require.Eventually(t, func() bool {
-		return len(client.Received()) == 4
+		return len(handler.Received()) == 4
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
@@ -200,7 +200,7 @@ func Test_CloudflareTargetError(t *testing.T) {
 			Workers:    3,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
-		client   = fake.NewClient(func() {})
+		handler  = loki.NewCollectingHandler()
 		cfClient = newFakeCloudflareClient()
 	)
 	ps, err := positions.New(logger, positions.Config{
@@ -222,7 +222,7 @@ func Test_CloudflareTargetError(t *testing.T) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg)
+	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, cfg)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -231,7 +231,7 @@ func Test_CloudflareTargetError(t *testing.T) {
 		return !ta.Ready()
 	}, 5*time.Second, 100*time.Millisecond)
 
-	require.Len(t, client.Received(), 0)
+	require.Len(t, handler.Received(), 0)
 	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
 	require.NotEmpty(t, ta.Details()["error"])
 	ta.Stop()
@@ -255,7 +255,7 @@ func Test_CloudflareTargetError168h(t *testing.T) {
 			Workers:    3,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
-		client   = fake.NewClient(func() {})
+		handler  = loki.NewCollectingHandler()
 		cfClient = newFakeCloudflareClient()
 	)
 	ps, err := positions.New(logger, positions.Config{
@@ -277,7 +277,7 @@ func Test_CloudflareTargetError168h(t *testing.T) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg)
+	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, cfg)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -286,7 +286,7 @@ func Test_CloudflareTargetError168h(t *testing.T) {
 		return cfClient.CallCount() >= 5
 	}, 5*time.Second, 100*time.Millisecond)
 
-	require.Len(t, client.Received(), 0)
+	require.Len(t, handler.Received(), 0)
 	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
 	ta.Stop()
 	ps.Stop()

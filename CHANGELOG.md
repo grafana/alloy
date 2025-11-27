@@ -12,21 +12,25 @@ Main (unreleased)
 
 ### Features
 
-- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
-- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+- (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
+
+- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
+
+- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
 
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
+- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
 ### Bugfixes
 
-- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
     - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
 
-v1.12.0-rc.0
+v1.12.0-rc.3
 -----------------
 
 ### Breaking changes
@@ -93,6 +97,10 @@ v1.12.0-rc.0
   - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
   - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
 
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
@@ -107,7 +115,7 @@ v1.12.0-rc.0
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Update Beyla component to 2.7.4. (@grcevski)
+- Update Beyla component to 2.7.8. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
@@ -127,6 +135,8 @@ v1.12.0-rc.0
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
 - `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
+
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
 ### Bugfixes
 
@@ -159,6 +169,8 @@ v1.12.0-rc.0
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
 
 - Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
+
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
 v1.11.3
 -----------------

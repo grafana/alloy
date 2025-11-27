@@ -11,19 +11,20 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 const targetRestartInterval = 20 * time.Millisecond
@@ -153,6 +154,7 @@ func TestTargetNeverStarted(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
+
 	ctx, cancel := context.WithCancel(t.Context())
 	go tailer.Run(ctx)
 
@@ -166,10 +168,10 @@ func TestTargetNeverStarted(t *testing.T) {
 	require.NotPanics(t, func() { cancel() })
 }
 
-func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *fake.Client) {
+func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *loki.CollectingHandler) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	entryHandler = fake.NewClient(func() {})
+	entryHandler = loki.NewCollectingHandler()
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,

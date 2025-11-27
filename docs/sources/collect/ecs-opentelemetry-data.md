@@ -107,7 +107,7 @@ prometheus.remote_write "default" {
 }
 ```
 
-This configuration sets up a scrape job for the container metrics and export them to a Prometheus endpoint.
+This configuration sets up a scrape job for the container metrics and exports them to a Prometheus endpoint.
 
 Complete the following steps to create a sample task.
 

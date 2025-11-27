@@ -48,6 +48,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				cluster_name = "test"
 				disable_informers = ["node"]
 				meta_restrict_local_node = true
+				meta_cache_address = "localhost:9090"
 			}
 			select {
 				attr = "sql_client_duration"
@@ -159,6 +160,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Attributes.Kubernetes.ClusterName)
 	require.Equal(t, []string{"node"}, cfg.Attributes.Kubernetes.DisableInformers)
 	require.True(t, cfg.Attributes.Kubernetes.MetaRestrictLocalNode)
+	require.Equal(t, "localhost:9090", cfg.Attributes.Kubernetes.MetaCacheAddress)
 	require.Len(t, cfg.Attributes.Select, 1)
 	sel, ok := cfg.Attributes.Select["sql_client_duration"]
 	require.True(t, ok)
@@ -701,6 +703,7 @@ func TestConvert_Attributes(t *testing.T) {
 		Kubernetes: KubernetesDecorator{
 			Enable:               "true",
 			InformersSyncTimeout: 15 * time.Second,
+			MetaCacheAddress:     "localhost:9090",
 		},
 		Select: Selections{
 			{
@@ -720,6 +723,7 @@ func TestConvert_Attributes(t *testing.T) {
 			InformersSyncTimeout:  15 * time.Second,
 			InformersResyncPeriod: 30 * time.Minute,
 			ResourceLabels:        beyla.DefaultConfig.Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:      "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,
@@ -821,14 +825,35 @@ func TestConvert_Prometheus(t *testing.T) {
 		Features:                        []string{"application", "network"},
 		Instrumentations:                []string{"redis", "sql"},
 		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             nil,
+		ExtraSpanResourceLabels:         []string{"service.version"},
 	}
 
 	expectedConfig := beyla.DefaultConfig.Prometheus
 	expectedConfig.Features = args.Features
 	expectedConfig.Instrumentations = args.Instrumentations
 	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 
 	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
+
+	args = Metrics{
+		Features:                        []string{"application", "network"},
+		Instrumentations:                []string{"redis", "sql"},
+		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             []string{"service.version"},
+	}
+
+	expectedConfig = beyla.DefaultConfig.Prometheus
+	expectedConfig.Features = args.Features
+	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
+	expectedConfig.ExtraSpanResourceLabels = []string{"k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"}
+
+	config = args.Convert()
 
 	require.Equal(t, expectedConfig, config)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -31,6 +33,7 @@ func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
 		writer.Stop()
 	}()
 	// write entries to wal and sync
+	writer.Start(time.Minute)
 
 	var testLabels = model.LabelSet{
 		"testing": "log",
@@ -84,15 +87,21 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 		MaxSegmentAge: maxSegmentAge,
 	}, logger, prometheus.NewRegistry())
 	require.NoError(t, err)
+	writer.Start(maxSegmentAge)
 	defer func() {
 		writer.Stop()
 	}()
 
+	notificationMutex := sync.Mutex{}
 	// add writer events subscriber. Add multiple to test fanout
 	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		notificationMutex.Lock()
+		defer notificationMutex.Unlock()
 		subscriber1 = append(subscriber1, num)
 	}))
 	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		notificationMutex.Lock()
+		defer notificationMutex.Unlock()
 		subscriber2 = append(subscriber2, num)
 	}))
 
@@ -144,12 +153,14 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, os.ErrNotExist, "expected file not exists error")
 
+	notificationMutex.Lock()
 	// assert all subscribers were notified
 	require.Len(t, subscriber1, 1, "expected one segment reclaimed notification in subscriber1")
 	require.Equal(t, 0, subscriber1[0])
 
 	require.Len(t, subscriber2, 1, "expected one segment reclaimed notification in subscriber2")
 	require.Equal(t, 0, subscriber2[0])
+	notificationMutex.Unlock()
 
 	// Expect last, or "head" segment to still be alive
 	_, err = os.Stat(filepath.Join(dir, "00000001"))
@@ -170,6 +181,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		MaxSegmentAge: maxSegmentAge,
 	}, logger, prometheus.NewRegistry())
 	require.NoError(t, err)
+	writer.Start(maxSegmentAge)
 	defer func() {
 		writer.Stop()
 	}()
@@ -240,13 +252,56 @@ func eventuallyReadWAL(t *testing.T, expectedEntries int, dir string) []loki.Ent
 	var readEntries []loki.Entry
 	require.Eventually(t, func() bool {
 		// read WAL and assert over read entries
-		readEntries, err = ReadWAL(dir)
+		readEntries, err = readWAL(dir)
 		if err != nil {
 			return false
 		}
 		return len(readEntries) == expectedEntries
 	}, time.Second*5, time.Second, "timed out waiting for WAL")
 	return readEntries
+}
+
+// readWAL will read all entries in the WAL located under dir.
+func readWAL(dir string) ([]loki.Entry, error) {
+	reader, closeFn, err := newWalReader(dir, -1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { closeFn.Close() }()
+
+	seenSeries := make(map[uint64]model.LabelSet)
+	seenEntries := []loki.Entry{}
+
+	for reader.Next() {
+		var walRec = Record{}
+		bytes := reader.Record()
+		err = DecodeRecord(bytes, &walRec)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding wal record: %w", err)
+		}
+
+		// first read series
+		for _, series := range walRec.Series {
+			if _, ok := seenSeries[uint64(series.Ref)]; !ok {
+				seenSeries[uint64(series.Ref)] = util.MapToModelLabelSet(series.Labels.Map())
+			}
+		}
+
+		for _, entries := range walRec.RefEntries {
+			for _, entry := range entries.Entries {
+				labels, ok := seenSeries[uint64(entries.Ref)]
+				if !ok {
+					return nil, fmt.Errorf("found entry without matching series")
+				}
+				seenEntries = append(seenEntries, loki.Entry{
+					Labels: labels,
+					Entry:  entry,
+				})
+			}
+		}
+	}
+
+	return seenEntries, nil
 }
 
 func BenchmarkWriter_WriteEntries(b *testing.B) {
@@ -299,6 +354,7 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 		MaxSegmentAge: time.Minute,
 	}, logger, prometheus.NewRegistry())
 	require.NoError(b, err)
+	writer.Start(time.Minute)
 	defer func() {
 		writer.Stop()
 	}()

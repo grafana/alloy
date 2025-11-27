@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestQueryDetails(t *testing.T) {
@@ -419,7 +419,7 @@ func TestQueryDetails(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
@@ -481,7 +481,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -544,7 +544,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -603,7 +603,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,

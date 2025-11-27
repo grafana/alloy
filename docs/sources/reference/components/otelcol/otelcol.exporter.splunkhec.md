@@ -97,7 +97,7 @@ The following arguments are supported:
 | `max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                                             | `2097152`                      | no       |
 | `max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                                             | `5242880`                      | no       |
 | `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`. | `true`                         | no       |
-| `source_type`                | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
+| `sourcetype`                 | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
 | `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).                                                             | `""`                           | no       |
 | `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `"Alloy"`                      | no       |
 | `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                           | no       |

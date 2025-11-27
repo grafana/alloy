@@ -1,7 +1,4 @@
 version: "2"
-run:
-  build-tags:
-    - slicelabels
 linters:
   enable:
     - depguard    # Allow/denylist specific imports
