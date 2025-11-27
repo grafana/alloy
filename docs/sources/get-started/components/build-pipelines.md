@@ -295,7 +295,7 @@ When pipelines don't work as expected:
 1. **Verify component exports** contain expected data. Use the UI to inspect export values.
 1. **Review component dependencies** to ensure proper data flow. Check that `forward_to` references match receiver exports.
 1. **Check for reference cycles** - components can't reference themselves directly or indirectly.
-1. **Validate configuration syntax** - ensure component and export names are spelled correctly.
+1. **Validate configuration syntax** - ensure you spell component and export names correctly.
 
 The {{< param "PRODUCT_NAME" >}} UI provides detailed information about component state, exports, and health status to help troubleshoot pipeline issues.
 

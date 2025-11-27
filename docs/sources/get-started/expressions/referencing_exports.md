@@ -45,7 +45,7 @@ prometheus.remote_write "onprem" {
 }
 ```
 
-In the preceding example, you created a simple pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions:
+In the preceding example, you created a pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions:
 
 1. The `local.file` component reads a file and exports its `content`.
 1. The `prometheus.scrape` component references that content in its `targets` field.

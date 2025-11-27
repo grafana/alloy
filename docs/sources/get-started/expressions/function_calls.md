@@ -16,7 +16,7 @@ Now you'll learn how to use function calls to transform data, interact with the 
 Functions are essential building blocks that extend what you can accomplish with expressions:
 
 1. **Transform data**: Parse JSON, decode Base64, format strings, and convert between data types.
-1. **Access system information**: Read environment variables, file paths, and system properties.
+1. **Access system information**: Read environment variables, paths, and system properties.
 1. **Process collections**: Combine arrays, group data, and extract specific elements.
 1. **Enhance component logic**: Use functions within component arguments alongside operators and references.
 
@@ -70,7 +70,7 @@ metrics_config = encoding.from_yaml(local.file.metrics.content)
 service_name = config_data["service"]["name"]
 full_address = config_data["host"] + ":" + string.format("%d", config_data["port"])
 
-// String functions - format dynamic values  
+// String functions - format dynamic values
 job_name = string.format("%s-%s", service_name, sys.env("ENVIRONMENT"))
 log_file = string.join(["/var/log", service_name, "app.log"], "/")
 
@@ -123,7 +123,7 @@ Now that you understand function calls, continue learning about expressions:
 
 For building complete configurations:
 
-- [Component exports][refer to values] - Use function calls with component references to create sophisticated pipelines  
+- [Component exports][refer to values] - Use function calls with component references to create sophisticated pipelines
 - [Operators][operators] - Combine function results with operators for complex expressions
 
 For detailed function reference:

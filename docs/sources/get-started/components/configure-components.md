@@ -25,7 +25,7 @@ COMPONENT_NAME "LABEL" {
 }
 ```
 
-For example, this creates a `local.file` component with the label "config":
+For example, this creates a `local.file` component with the label "`config`":
 
 ```alloy
 local.file "config" {

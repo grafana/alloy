@@ -28,7 +28,7 @@ The {{< param "PRODUCT_NAME" >}} syntax supports the following value types:
   Functions take zero or more arguments as input and always return a single value as output.
 - `null`: A type that represents no value.
 
-## Naming convention
+## Names and naming conventions
 
 In addition to the preceding types, the [component reference][] documentation uses the following conventions for referring to types:
 
