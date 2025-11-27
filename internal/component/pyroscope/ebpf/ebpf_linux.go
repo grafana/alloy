@@ -11,13 +11,17 @@ import (
 	"syscall"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	parcareporter "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
+	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/pyroscope/lidia"
+
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -28,6 +32,7 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	"google.golang.org/grpc"
 )
 
 func init() {
@@ -57,26 +62,30 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	nfs, err := irsymcache.NewFSCache(irsymcache.TableTableFactory{
-		Options: []lidia.Option{
-			lidia.WithFiles(),
-			lidia.WithLines(),
-		},
-	}, irsymcache.Options{
-		SizeEntries: uint32(args.SymbCacheSizeEntries),
-		Path:        args.SymbCachePath,
-	})
-	if err != nil {
-		return nil, err
-	}
-	cfg.ExecutableReporter = nfs
-
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
 	} else {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
 	}
-
+	var symbolsUploader *parcareporter.ParcaSymbolUploader
+	if args.DebugInfo.Enabled {
+		cc, err := grpc.NewClient(args.DebugInfo.URL)
+		if err != nil {
+			return nil, err
+		}
+		symbolsUploader, err = parcareporter.NewParcaSymbolUploader(
+			debuginfogrpc.NewDebuginfoServiceClient(cc),
+			1024, //todo arg
+			true, //todo arg
+			1024, //todo arg
+			8,    //todo arg
+			filepath.Join(args.SymbCachePath, "parca-symbols-uploader-cache"),
+			nil, //todo
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
 	res := &Component{
 		cfg:                    cfg,
 		logger:                 logger,
@@ -86,18 +95,20 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		targetFinder:           discovery,
 		dynamicProfilingPolicy: dynamicProfilingPolicy,
 		argsUpdate:             make(chan Arguments, 4),
+		symbolsUploader:        symbolsUploader,
 	}
 
-	cfg.Reporter = reporter.NewPPROF(logger, &reporter.Config{
+	r := reporter.NewPPROF(logger, symbolsUploader, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
-		ExtraNativeSymbolResolver: nfs,
 		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
 			res.sendProfiles(ctx, ps)
 		}),
 	}, discovery)
+	cfg.Reporter = r
+	cfg.ExecutableReporter = r
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -113,8 +124,9 @@ type Component struct {
 	appendable             *pyroscope.Fanout
 	targetFinder           discovery2.TargetProducer
 
-	metrics *metrics
-	cfg     *controller.Config
+	metrics         *metrics
+	cfg             *controller.Config
+	symbolsUploader *reporter2.ParcaSymbolUploader
 
 	healthMut sync.RWMutex
 	health    component.Health
@@ -150,6 +162,9 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var g run.Group
+	g.Add(func() error {
+		return c.symbolsUploader.Run(ctx)
+	}, func(err error) {})
 	g.Add(func() error {
 		for {
 			select {
@@ -244,7 +259,12 @@ func NewDefaultArguments() Arguments {
 		LoadProbe:       false,
 		UProbeLinks:     []string{},
 		VerboseMode:     false,
-
+		Client: otelcol.GRPCClientArguments{
+			Headers:         map[string]string{},
+			Compression:     otelcol.CompressionTypeGzip,
+			WriteBufferSize: 512 * 1024,
+			BalancerName:    otelcol.DefaultBalancerName,
+		},
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
@@ -255,6 +275,7 @@ func NewDefaultArguments() Arguments {
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = NewDefaultArguments()
+	args.DebugInfo.EndpointOptions = write.GetDefaultEndpointOptions()
 }
 
 func (args *Arguments) Convert() (*controller.Config, error) {

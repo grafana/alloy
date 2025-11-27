@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write"
 )
 
 type Arguments struct {
@@ -27,6 +28,8 @@ type Arguments struct {
 	VerboseMode         bool                   `alloy:"verbose_mode,attr,optional"`
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
+	DebugInfo DebugInfoArguments `alloy:"debug_info,block,optional"`
+
 	// undocumented
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
@@ -34,6 +37,11 @@ type Arguments struct {
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 }
 
+type DebugInfoArguments struct {
+	Enabled               bool              `alloy:"enabled,attr,optional"`
+	write.EndpointOptions `alloy:",squash"` //todo
+	//Client otelcol.GRPCClientArguments `alloy:"client,block"` //todo
+}
 type DeprecatedArguments struct {
 	// deprecated
 	PidCacheSize int `alloy:"pid_cache_size,attr,optional"`
