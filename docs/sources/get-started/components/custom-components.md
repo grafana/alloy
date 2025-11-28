@@ -92,6 +92,8 @@ For sharing and organizing:
 - [Modules][] - Share custom components across multiple configuration files
 
 [declare]: ../../reference/config-blocks/declare/
+[argument]: ../../reference/config-blocks/argument/
+[export]: ../../reference/config-blocks/export/
 [Modules]: ../modules/
 [Configuration blocks reference]: ../../reference/config-blocks/
 [Configure components]: ./configure-components/

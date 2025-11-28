@@ -34,7 +34,7 @@ The four main types of expressions you'll use are:
 
 1. **Literal values**: Constants like `"debug"`, `8080`, or `true`.
 1. **Component references**: Values from other components like `local.file.config.content`.
-1. **Function calls**: Built-in functions like `sys.env("HOME")` or `json_decode(local.file.data.content)`.
+1. **Function calls**: Built-in functions like `sys.env("HOME")` or `encoding.from_json(local.file.data.content)`.
 1. **Arithmetic operations**: Mathematical calculations like `1 + 2` or `port_base + offset`.
 
 You can combine these types to create complex expressions that transform data and connect components in sophisticated ways.

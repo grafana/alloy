@@ -10,7 +10,7 @@ weight: 60
 # Modules
 
 You learned about components, expressions, and the configuration syntax in the previous sections.
-Now you'll learn about module, the organizational structure that lets you package and reuse {{< param "PRODUCT_NAME" >}} configurations.
+Now you'll learn about modules, the organizational structure that lets you package and reuse {{< param "PRODUCT_NAME" >}} configurations.
 
 Modules enable powerful configuration management capabilities:
 
@@ -165,13 +165,11 @@ Now that you understand modules, explore advanced {{< param "PRODUCT_NAME" >}} f
 For hands-on module development:
 
 - [Import configuration blocks][imports] - Detailed reference for different module import methods
-- [Security best practices][security] - Guidelines for safely using modules from remote sources
 - [Run command reference][run] - Module configuration and execution options
 
 [custom components]: ./components/custom-components/
 [components]: ./components/
 [imports]: ../reference/config-blocks/
-[security]: ../set-up/secure/
 [run]: ../reference/cli/run/
 [import.file]: ../reference/config-blocks/import.file/
 [import.git]: ../reference/config-blocks/import.git/

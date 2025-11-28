@@ -26,6 +26,8 @@ Cluster-enabled components must explicitly enable clustering through a `clusteri
 
 ## Use cases
 
+Clustering serves several purposes in {{< param "PRODUCT_NAME" >}} deployments, with the primary focus being workload distribution and scalability.
+
 ### Target auto-distribution
 
 Target auto-distribution is the most common use case of clustering.
@@ -75,6 +77,8 @@ Refer to the component reference documentation to check if a component supports 
 - [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
 
 ## Best practices
+
+Follow these guidelines to ensure effective clustering in your {{< param "PRODUCT_NAME" >}} deployments.
 
 ### Avoid issues with disproportionately large targets
 

@@ -44,7 +44,7 @@ String concatenation is particularly useful for building dynamic values from com
 ```alloy
 prometheus.scrape "app" {
   targets = [{ "__address__" = local.file.host.content + ":" + local.file.port.content }]
-  job_name = "app-" + sys.env("ENVIRONMENT") 
+  job_name = "app-" + sys.env("ENVIRONMENT")
 }
 ```
 
@@ -73,9 +73,6 @@ The results of these comparisons are:
 Comparison operators are commonly used for conditional configuration:
 
 ```alloy
-// Only scrape if the port number is valid
-targets = sys.env("PORT") > "0" ? [{ "__address__" = "localhost:" + sys.env("PORT") }] : []
-
 // Check if environment matches
 remote_write_enabled = sys.env("ENVIRONMENT") == "production"
 ```

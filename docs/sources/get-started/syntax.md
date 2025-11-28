@@ -141,7 +141,7 @@ prometheus.remote_write "production" {
     }
   }
 
-  queue {
+  queue_config {
     capacity = 10000
     max_samples_per_send = 2000
   }
@@ -268,11 +268,9 @@ Now that you understand the syntax fundamentals, learn how to use these elements
 
 For advanced configuration techniques:
 
-- [Configuration language reference][reference] - Comprehensive syntax documentation and advanced features
 - [Formatting][fmt] - Use `alloy fmt` to automatically format your configuration files
 
 [Expressions]: ./expressions/
 [Components]: ./components/
-[reference]: ../reference/config-language/
 [fmt]: ../reference/cli/fmt/
 [identifier]: #identifiers

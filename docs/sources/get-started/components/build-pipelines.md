@@ -113,15 +113,15 @@ It accepts a list of component receivers that process the data.
 Here's a more complex example that processes log data through multiple transformation stages:
 
 ```alloy
-// Find log files to read
-local.file_match "app_logs" {
-    path_targets = [{"__path__" = "/var/log/app/*.log"}]
-}
-
-// Read the log files
+// Read log files using glob patterns
 loki.source.file "local_files" {
-    targets    = local.file_match.app_logs.targets
+    targets    = [{"__path__" = "/var/log/app/*.log"}]
     forward_to = [loki.process.add_labels.receiver]
+
+    file_match {
+        enabled = true
+        sync_period = "10s"
+    }
 }
 
 // Extract data from log messages and add labels

@@ -78,7 +78,7 @@ total_timeout = base_timeout + retry_timeout
 **Function calls:**
 
 Function calls let you access system information and transform data.
-Built-in functions like `sys.env()` retrieve environment variables, while others can manipulate strings, decode JSON, and perform other operations.
+[Built-in][] functions like `sys.env()` retrieve environment variables, while others can manipulate strings, decode JSON, and perform other operations.
 
 ```alloy
 home_dir = sys.env("HOME")
@@ -129,6 +129,7 @@ For hands-on learning:
 - [Component reference][] - Browse all available components and their options
 
 [fmt]: ../../reference/cli/fmt/
+[Built-in]: ../reference/stdlib/
 [Alloy syntax]: ./syntax/
 [Components]: ./components/
 [Expressions]: ./expressions/
