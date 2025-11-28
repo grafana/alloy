@@ -11,8 +11,6 @@ A small utility to keep Go module replace directives consistent across the repos
 - Runs `go mod tidy` for affected modules.
 - Cleans up temporary files created during generation.
 
-<img src="resources/flow_diagram.png" alt="flow diagram" width="200">
-
 Generated blocks are wrapped with:
 ```
 BEGIN GENERATED REPLACES - DO NOT EDIT ...  END GENERATED REPLACES

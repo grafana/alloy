@@ -10,23 +10,18 @@ import (
 	"github.com/grafana/replace-generator/internal/types"
 )
 
-func ApplyReplaces(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces) {
+func ApplyReplaces(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces, modByReplaceStr map[string]*string) {
 	for _, module := range projectReplaces.Modules {
-		if err := applyReplacesToModule(fileHelper, module); err != nil {
+		replacesStr := modByReplaceStr[module.Name]
+		if err := applyReplacesToModule(fileHelper, module, replacesStr); err != nil {
 			log.Fatalf("Failed to apply replaces to module %q: %v", module.Name, err)
 		}
 		log.Printf("Updated %s", module.Path)
 	}
 }
 
-func applyReplacesToModule(dirs *helpers.FileHelper, module types.Module) error {
+func applyReplacesToModule(dirs *helpers.FileHelper, module types.Module, replacesStr *string) error {
 	targetPath := dirs.ModuleTargetPath(module.Path)
-	replacesPath := dirs.OutputPath(module.FileType)
-
-	replacesContent, err := os.ReadFile(replacesPath)
-	if err != nil {
-		return fmt.Errorf("read replaces file %s: %w", replacesPath, err)
-	}
 
 	targetContent, err := os.ReadFile(targetPath)
 	if err != nil {
@@ -38,13 +33,11 @@ func applyReplacesToModule(dirs *helpers.FileHelper, module types.Module) error 
 		return fmt.Errorf("get markers for file type %q: %w", module.FileType, err)
 	}
 
-	newContent, err := upsertGeneratedBlock(string(targetContent), string(replacesContent), startMarker, endMarker)
+	newContent, err := upsertGeneratedBlock(string(targetContent), *replacesStr, startMarker, endMarker)
 	if err != nil {
 		return fmt.Errorf("update generated block: %w", err)
 	}
 
-	// Use 0644 permissions (read/write for owner, read for others)
-	// On Windows, these permissions are ignored but the file will still be created correctly
 	if err := os.WriteFile(targetPath, []byte(newContent), 0644); err != nil {
 		return fmt.Errorf("write target file %s: %w", targetPath, err)
 	}
@@ -52,13 +45,24 @@ func applyReplacesToModule(dirs *helpers.FileHelper, module types.Module) error 
 	return nil
 }
 
-func getMarkers(fileType types.FileType) (startMarker, endMarker string, err error) {
+func getCommentMarker(fileType types.FileType) (string, error) {
 	switch fileType {
 	case types.FileTypeMod:
-		return "// BEGIN GENERATED REPLACES - DO NOT EDIT", "// END GENERATED REPLACES", nil
+		return "//", nil
 	default:
-		return "", "", fmt.Errorf("unknown file_type %q", fileType)
+		return "", fmt.Errorf("unknown file_type %q", fileType)
 	}
+}
+
+func getMarkers(fileType types.FileType) (startMarker, endMarker string, err error) {
+	commentSymbol, err := getCommentMarker(fileType)
+	if err != nil {
+		return "", "", err
+	}
+
+	return fmt.Sprintf("%s BEGIN GENERATED REPLACES - DO NOT EDIT", commentSymbol),
+		fmt.Sprintf("%s END GENERATED REPLACES", commentSymbol),
+		nil
 }
 
 // Upserts the generated block using the markers, or lack thereof, as a guide
@@ -77,7 +81,6 @@ func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker str
 		return targetContent + "\n" + replacement, nil
 	}
 
-	// Start found: search end marker after the start
 	searchFrom := startIdx + len(startMarker)
 	endRel := strings.Index(targetContent[searchFrom:], endMarker)
 	if endRel == -1 {
@@ -86,18 +89,7 @@ func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker str
 	}
 
 	endIdx := searchFrom + endRel
-
-	// Compute the end of the line containing the end marker (include trailing newline if present).
-	// Handle both \n and \r\n line endings
 	endOfMarker := endIdx + len(endMarker)
-	remaining := targetContent[endOfMarker:]
-
-	// Check for \r\n first (Windows), then \n (Unix)
-	if strings.HasPrefix(remaining, "\r\n") {
-		endOfMarker += 2
-	} else if strings.HasPrefix(remaining, "\n") {
-		endOfMarker += 1
-	}
 
 	// Replace [startIdx, endOfMarker) with replacement.
 	return targetContent[:startIdx] + replacement + targetContent[endOfMarker:], nil

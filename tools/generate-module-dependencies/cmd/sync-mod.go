@@ -20,16 +20,16 @@ var generateAndApplyReplaces = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		pathToYaml := cmd.Flag("dependency-yaml").Value.String()
 		pathToRoot := cmd.Flag("project-root").Value.String()
-		fileHelper := helpers.GetFileHelper(pathToYaml, pathToRoot)
+
+		fileHelper := helpers.NewFileHelper(pathToYaml, pathToRoot)
 		projectReplaces, err := fileHelper.LoadProjectReplaces()
 		if err != nil {
 			log.Fatalf("Failed to load project replaces: %v", err)
 		}
 
-		internal.GenerateReplaces(fileHelper, projectReplaces)
-		internal.ApplyReplaces(fileHelper, projectReplaces)
+		modByReplaceStr := internal.GenerateReplaces(fileHelper, projectReplaces)
+		internal.ApplyReplaces(fileHelper, projectReplaces, modByReplaceStr)
 		internal.TidyModules(fileHelper, projectReplaces)
-		internal.Cleanup(fileHelper)
 	},
 }
 
