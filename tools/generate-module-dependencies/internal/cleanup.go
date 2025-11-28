@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -10,9 +10,7 @@ import (
 	"github.com/grafana/replace-generator/internal/helpers"
 )
 
-func main() {
-	fileHelper := helpers.GetFileHelper()
-
+func Cleanup(fileHelper *helpers.FileHelper) {
 	if err := cleanupOutputFiles(fileHelper.ScriptDir); err != nil {
 		log.Fatalf("Failed to cleanup output files: %v", err)
 	}

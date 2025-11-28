@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -12,14 +12,7 @@ import (
 	"github.com/grafana/replace-generator/internal/types"
 )
 
-func main() {
-	fileHelper := helpers.GetFileHelper()
-
-	projectReplaces, err := fileHelper.LoadProjectReplaces()
-	if err != nil {
-		log.Fatalf("Failed to load project replaces: %v", err)
-	}
-
+func GenerateReplaces(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces) {
 	normalizeComments(projectReplaces.Replaces)
 
 	// Group modules by file type and generate one output file per file type
