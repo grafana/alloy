@@ -1,7 +1,7 @@
 # Proposal: Reliable Loki pipelines
 
 * Author: Karl Persson (@kalleep)
-* Last updated: 2025-11-26
+* Last updated: 2025-11-30
 * Discussion link: https://github.com/grafana/alloy/pull/4940
 
 ## Abstract
