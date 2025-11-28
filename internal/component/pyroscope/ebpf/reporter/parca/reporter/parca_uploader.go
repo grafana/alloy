@@ -15,6 +15,7 @@ import (
 	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 	lru "github.com/elastic/go-freelru"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
@@ -22,8 +23,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/parca-dev/parca-agent/reporter/elfwriter"
 )
 
 type uploadRequest struct {

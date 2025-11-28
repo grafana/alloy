@@ -969,14 +969,7 @@ require (
 )
 
 require (
-	github.com/apache/arrow/go/v16 v16.1.0
-	github.com/containerd/containerd v1.7.27
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.139.0
-	github.com/parca-dev/oomprof v0.1.5
-	github.com/parca-dev/parca-agent v0.44.0
-	github.com/xyproto/ainur v1.3.3
-	k8s.io/cri-api v0.34.2
-	k8s.io/cri-client v0.34.2
 )
 
 require (

@@ -15,12 +15,12 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	parcareporter "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,7 +69,9 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	}
 	var symbolsUploader *parcareporter.ParcaSymbolUploader
 	if args.DebugInfo.Enabled {
-		cc, err := grpc.NewClient(args.DebugInfo.URL)
+		cc, err := grpc.NewClient(args.DebugInfo.URL,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +128,7 @@ type Component struct {
 
 	metrics         *metrics
 	cfg             *controller.Config
-	symbolsUploader *reporter2.ParcaSymbolUploader
+	symbolsUploader *parcareporter.ParcaSymbolUploader
 
 	healthMut sync.RWMutex
 	health    component.Health
@@ -162,9 +164,11 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var g run.Group
-	g.Add(func() error {
-		return c.symbolsUploader.Run(ctx)
-	}, func(err error) {})
+	if c.symbolsUploader != nil {
+		g.Add(func() error {
+			return c.symbolsUploader.Run(ctx)
+		}, func(err error) {})
+	}
 	g.Add(func() error {
 		for {
 			select {
@@ -259,12 +263,12 @@ func NewDefaultArguments() Arguments {
 		LoadProbe:       false,
 		UProbeLinks:     []string{},
 		VerboseMode:     false,
-		Client: otelcol.GRPCClientArguments{
-			Headers:         map[string]string{},
-			Compression:     otelcol.CompressionTypeGzip,
-			WriteBufferSize: 512 * 1024,
-			BalancerName:    otelcol.DefaultBalancerName,
-		},
+		//Client: otelcol.GRPCClientArguments{
+		//	Headers:         map[string]string{},
+		//	Compression:     otelcol.CompressionTypeGzip,
+		//	WriteBufferSize: 512 * 1024,
+		//	BalancerName:    otelcol.DefaultBalancerName,
+		//},
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
