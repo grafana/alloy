@@ -17,6 +17,26 @@ It watches cluster state, and ensures targets are continually synced with what's
 
 If you supply no connection information, this component defaults to an in-cluster configuration.
 A kubeconfig file or manual connection settings can be used to override the defaults.
+{{< admonition type="caution" >}}
+**Kubernetes API Saturation Risk**
+
+When running Alloy as a DaemonSet with the default configuration, **each Alloy pod will watch logs for all pods in the cluster**.  
+This means if you have 20 nodes, each Alloy pod will watch every pod's logs, resulting in substantial load on the Kubernetes API and cluster resources.  
+On large or resource-constrained clusters, this can cause excessive API requests, memory usage, and may even prevent new objects from being created.
+
+#### Recommended Solutions
+
+- **Restrict Alloy pods to only collect logs for pods on their local node.**  
+  See the example in the [Limit to only Pods on the same node](#limit-to-only-pods-on-the-same-node) section below for a configuration snippet that uses label selectors and environment variables to achieve this.
+- **Clustering mode:** For larger deployments, consider setting up Alloy in clustering mode.
+- **Monitor resource consumption:** Regularly check API server throttling, memory usage, and inflight requests, especially on cloud-managed clusters (e.g., Azure AKS).
+
+Failure to properly configure Alloy can result in degraded cluster performance, increased cloud costs, and operational risk.  
+Please review your configuration carefully and consult the examples below.
+{{< /admonition >}}
+
+If you supply no connection information, this component defaults to an in-cluster configuration.
+A kubeconfig file or manual connection settings can be used to override the defaults.
 
 ## Usage
 
