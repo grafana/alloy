@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -10,13 +10,7 @@ import (
 	"github.com/grafana/replace-generator/internal/types"
 )
 
-func main() {
-	fileHelper := helpers.GetFileHelper()
-	projectReplaces, err := fileHelper.LoadProjectReplaces()
-	if err != nil {
-		log.Fatalf("Failed to load project replaces: %v", err)
-	}
-
+func ApplyReplaces(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces) {
 	for _, module := range projectReplaces.Modules {
 		if err := applyReplacesToModule(fileHelper, module); err != nil {
 			log.Fatalf("Failed to apply replaces to module %q: %v", module.Name, err)
