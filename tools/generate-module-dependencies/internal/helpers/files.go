@@ -21,16 +21,7 @@ type FileHelper struct {
 	ProjectReplacesPath string
 }
 
-var fileHelper *FileHelper
-
-func GetFileHelper(pathToDependencyReplacements string, projectRoot string) *FileHelper {
-	if fileHelper == nil {
-		fileHelper = newFileHelper(pathToDependencyReplacements, projectRoot)
-	}
-	return fileHelper
-}
-
-func newFileHelper(pathToDependencyReplacements string, projectRoot string) *FileHelper {
+func NewFileHelper(pathToDependencyReplacements string, projectRoot string) *FileHelper {
 	scriptDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to resolve working directory: %v", err)
@@ -64,11 +55,6 @@ func (d *FileHelper) TemplatePath(fileType types.FileType) string {
 	return filepath.Join(d.ScriptDir, templateName)
 }
 
-// OutputPath returns the full path to the output file for a given file type.
-func (d *FileHelper) OutputPath(fileType types.FileType) string {
-	return filepath.Join(d.ScriptDir, d.outputFileName(fileType))
-}
-
 func (d *FileHelper) ModuleTargetPath(modulePath string) string {
 	return filepath.Join(d.ProjectRoot, modulePath)
 }
@@ -94,15 +80,4 @@ func (d *FileHelper) LoadProjectReplaces() (*types.ProjectReplaces, error) {
 	}
 
 	return &projectReplaces, nil
-}
-
-// outputFileName returns the output filename for a given file type.
-func (d *FileHelper) outputFileName(fileType types.FileType) string {
-	switch fileType {
-	case types.FileTypeMod:
-		return "mod-replaces.txt"
-	default:
-		log.Fatalf("Unknown file_type %q (expected %q)", fileType, types.FileTypeMod)
-		return ""
-	}
 }

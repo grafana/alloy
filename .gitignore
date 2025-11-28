@@ -20,8 +20,6 @@ data-alloy/
 /packaging/windows/agent-windows-amd64.exe
 internal/web/ui/dist
 
-/tools/generate-module-dependencies/*.txt
-
 .DS_Store
 buildx-v*
 cover*.out

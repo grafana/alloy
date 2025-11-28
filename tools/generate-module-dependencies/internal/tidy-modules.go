@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 
 	"github.com/grafana/replace-generator/internal/helpers"
@@ -23,8 +22,6 @@ func runGoModTidy(dirs *helpers.FileHelper, module types.Module) error {
 
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = moduleDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
 	log.Printf("Running go mod tidy in %s (module: %s)", moduleDir, module.Name)
 	if err := cmd.Run(); err != nil {
