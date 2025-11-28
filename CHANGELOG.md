@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
 
+- A new `otelcol.receiver.github` component which collects data from Github. (@matt-gp) 
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
