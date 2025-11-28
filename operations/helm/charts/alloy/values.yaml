@@ -123,7 +123,12 @@ alloy:
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
-
+#    limits:
+#      cpu: "1"
+#      memory: "1Gi"
+#    requests:
+#      cpu: "1"
+#      memory: "1Gi"
   # -- Set lifecycle hooks for the Grafana Alloy container.
   lifecycle: {}
     # preStop:
