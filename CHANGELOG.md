@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
 
+- `prometheus.exporter.azure` now supports `concurrency_subscription` and `concurrency_subscription_resource` arguments to control the number of concurrent API requests. (@akselleirv)
+
 ### Bugfixes
 
 
