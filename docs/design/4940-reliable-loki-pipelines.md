@@ -102,8 +102,7 @@ Pros:
 * Increase throughput of log pipelines.
 * A way to signal back to the source
 * Iterator-like pipeline - one entry at a time
-* Transaction semantics provide better error handling
-* Aligns with Prometheus patterns already in use
+* Transaction semantics, sources have better control on when a batch should be aborted.
 Cons:
 * We need to rewrite all loki components with this new pattern and make them safe to call in parallel.
 * More complex API
