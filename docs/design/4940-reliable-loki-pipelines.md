@@ -119,6 +119,17 @@ Two options to handle this:
     * When using `loki.source.file`, we would retry the same batch again.
 * Configuration option `min_success` - Only retry if we don't succeed on at least the configured number of destinations.
 
+### Transition from current pipeline to either Proposal 1 or Proposal 2
+Changing the way loki pipeline works is a big effort and will affect all loki components.
+
+We have a couple of options how to do this:
+1. Build tag
+    * We build out the new pipeline under a build tag. This way we could build custom Alloy image using this new pipeline and test it out internally before we commit it to an official release.
+2. New argument
+    * We could add additional argument to components in addition to `forward_to`. This new argument would be using the new pipeline code. This argument would be protected by experimental flag and we would remove it once we are confident in the new code and remove the current pipeline.
+3. Replace pipeline directly
+    * We could replace the pipeline directly without any fallback mechanism. This should be doable over several PRs where we first only replace the communication between components, e.g. in loki.source.file we would still have the [main loop](https://github.com/grafana/alloy/blob/main/internal/component/loki/source/file/file.go#L229-L247) reading from channel and send one entry at a time with this new pipeline between components. Then we could work component by component and remove most of channel usage.
+
 ### Affected components
 
 The following components need to be updated with this new interface and we need to make sure they are concurrency safe:
@@ -140,6 +151,9 @@ The following components need to be updated with this new interface and we need 
 - `loki.source.azure_event_hubs`
 - `loki.source.aws_firehose`
 - `loki.source.windowsevent`
+- `database_observability.mysql`
+- `database_observability.postgres`
+- `faro.receiver`
 
 **Processing components** (need to implement `Consumer` and forward to next):
 - `loki.process`
