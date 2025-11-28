@@ -70,7 +70,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	var symbolsUploader *parcareporter.ParcaSymbolUploader
 	if args.DebugInfo.Enabled {
 		cc, err := grpc.NewClient(args.DebugInfo.URL,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithTransportCredentials(insecure.NewCredentials()), //todo proper full configuration. reuse otelcol?
 		)
 		if err != nil {
 			return nil, err
@@ -82,7 +82,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 			1024, //todo arg
 			8,    //todo arg
 			filepath.Join(args.SymbCachePath, "parca-symbols-uploader-cache"),
-			nil, //todo
+			ms.debugInfoUploadBytes,
 		)
 		if err != nil {
 			return nil, err
@@ -110,7 +110,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		}),
 	}, discovery)
 	cfg.Reporter = r
-	cfg.ExecutableReporter = r
+	cfg.ExecutableReporter = r // todo, should we keep the ontarget lidia symbolizer for a while?
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
