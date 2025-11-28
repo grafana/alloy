@@ -11,11 +11,10 @@ import (
 )
 
 type FileHelper struct {
-	// ScriptDir is the directory where the generate-module-dependencies tools are located.
-	// This is where templates and output files are stored.
+	// ScriptDir is the directory where the generate-module-dependencies code is located
 	ScriptDir string
 
-	// ProjectRoot is the root directory of the Alloy project.
+	// ProjectRoot is the root directory of the Alloy project
 	ProjectRoot string
 
 	// ProjectReplacesPath is the absolute path to dependency-replacements.yaml.
@@ -24,14 +23,14 @@ type FileHelper struct {
 
 var fileHelper *FileHelper
 
-func GetFileHelper() *FileHelper {
+func GetFileHelper(pathToDependencyReplacements string, projectRoot string) *FileHelper {
 	if fileHelper == nil {
-		fileHelper = newFileHelper()
+		fileHelper = newFileHelper(pathToDependencyReplacements, projectRoot)
 	}
 	return fileHelper
 }
 
-func newFileHelper() *FileHelper {
+func newFileHelper(pathToDependencyReplacements string, projectRoot string) *FileHelper {
 	scriptDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to resolve working directory: %v", err)
@@ -42,14 +41,7 @@ func newFileHelper() *FileHelper {
 		log.Fatalf("Failed to resolve script directory: %v", err)
 	}
 
-	projectRoot, err := filepath.Abs(filepath.Join(scriptDir, "..", ".."))
-	if err != nil {
-		log.Fatalf("Failed to resolve project root: %v", err)
-	}
-
-	projectReplacesPath := filepath.Join(projectRoot, "dependency-replacements.yaml")
-
-	absReplacesPath, err := filepath.Abs(projectReplacesPath)
+	absReplacesPath, err := filepath.Abs(pathToDependencyReplacements)
 	if err != nil {
 		log.Fatalf("Failed to resolve dependency-replacements.yaml: %v", err)
 	}
