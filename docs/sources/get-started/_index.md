@@ -100,11 +100,21 @@ password = local.file.secret.content
 ```
 
 You'll learn about more powerful expressions in the dedicated [Expressions][] section, including how to reference data from other components and use more built-in functions.
+You can find the available exports for each component in the [Components][components] documentation.
+
+## Configuration syntax
+
+{{< param "PRODUCT_NAME" >}} uses a declarative configuration language, which means you describe what you want your system to do rather than how to do it.
+This design makes configurations flexible and easy to understand.
+
+You can organize blocks and attributes in any order that makes sense for your use case.
+{{< param "PRODUCT_NAME" >}} automatically determines the dependencies between components and evaluates them in the correct order.
 
 ## Configuration files
 
-{{< param "PRODUCT_NAME" >}} configuration files use a `.alloy` file extension and must be UTF-8 encoded.
-The syntax is declarative, which means the order of blocks and attributes doesn't matter.
+{{< param "PRODUCT_NAME" >}} configuration files conventionally use a `.alloy` file extension, though you can name single files anything you want.
+If you specify a directory path, {{< param "PRODUCT_NAME" >}} processes only files with the `.alloy` extension.
+You must save your configuration files as UTF-8 encoded text - {{< param "PRODUCT_NAME" >}} can't parse files with invalid UTF-8 encoding.
 
 ## Tooling
 
@@ -126,7 +136,7 @@ Now that you understand the basic syntax, learn how to use these elements to bui
 For hands-on learning:
 
 - [Tutorials][] - Build complete data collection pipelines step by step
-- [Component reference][] - Browse all available components and their options
+- [Components][components] - Browse all available components and their options
 
 [fmt]: ../../reference/cli/fmt/
 [Built-in]: ../reference/stdlib/
@@ -134,4 +144,4 @@ For hands-on learning:
 [Components]: ./components/
 [Expressions]: ./expressions/
 [tutorials]: ../tutorials/
-[Component reference]: ../reference/components/
+[components]: ../reference/components/
