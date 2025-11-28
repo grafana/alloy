@@ -15,8 +15,6 @@ title: discovery.kubernetes
 `discovery.kubernetes` allows you to find scrape targets from Kubernetes resources.
 It watches cluster state, and ensures targets are continually synced with what's currently running in your cluster.
 
-If you supply no connection information, this component defaults to an in-cluster configuration.
-A kubeconfig file or manual connection settings can be used to override the defaults.
 {{< admonition type="caution" >}}
 **Kubernetes API Saturation Risk**
 
