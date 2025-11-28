@@ -7,19 +7,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
+	reporter2 "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"go.opentelemetry.io/ebpf-profiler/process"
+	"go.opentelemetry.io/ebpf-profiler/reporter"
 
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
-	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 )
@@ -45,8 +47,7 @@ type Config struct {
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
 
-	ExtraNativeSymbolResolver irsymcache.NativeSymbolResolver
-	Consumer                  PPROFConsumer
+	Consumer PPROFConsumer
 }
 type PPROFReporter struct {
 	cfg *Config
@@ -55,22 +56,53 @@ type PPROFReporter struct {
 	traceEvents xsync.RWMutex[samples.TraceEventsTree]
 
 	sd              discovery.TargetProducer
+	symbolsUploader *reporter2.ParcaSymbolUploader
 	wg              sync.WaitGroup
 	cancelReporting context.CancelFunc
 }
 
-func NewPPROF(
-	log log.Logger,
-	cfg *Config,
-	sd discovery.TargetProducer,
-) *PPROFReporter {
+func (p *PPROFReporter) ReportExecutable(args *reporter.ExecutableMetadata) {
+	if p.symbolsUploader == nil {
+		return
+	}
+	if !args.MappingFile.Valid() {
+		return
+	}
+	mf := args.MappingFile.Value()
+
+	p.symbolsUploader.Upload(context.TODO(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
+		fallback := func() (process.ReadAtCloser, error) {
+			return args.Process.OpenMappingFile(args.Mapping)
+		}
+		if args.DebuglinkFileName == "" {
+			return fallback()
+		}
+		panic("TODO debug")
+		if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+			return fallback()
+		} else {
+			if f, err := os.Open(file); err != nil {
+				return fallback()
+			} else {
+				return f, nil
+			}
+		}
+
+		return fallback()
+	})
+	//}
+}
+
+func NewPPROF(log log.Logger, symbolsUploader *reporter2.ParcaSymbolUploader,
+	cfg *Config, sd discovery.TargetProducer) *PPROFReporter {
 
 	tree := make(samples.TraceEventsTree)
 	return &PPROFReporter{
-		cfg:         cfg,
-		log:         log,
-		traceEvents: xsync.NewRWMutex(tree),
-		sd:          sd,
+		cfg:             cfg,
+		log:             log,
+		traceEvents:     xsync.NewRWMutex(tree),
+		sd:              sd,
+		symbolsUploader: symbolsUploader,
 	}
 }
 
@@ -178,12 +210,6 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 }
 
 func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
-	defer func() {
-		if p.cfg.ExtraNativeSymbolResolver != nil {
-			p.cfg.ExtraNativeSymbolResolver.Cleanup()
-		}
-	}()
-
 	bs := NewProfileBuilders(BuildersOptions{
 		SampleRate:    p.cfg.SamplesPerSecond,
 		PerPIDProfile: true,
@@ -241,7 +267,6 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 				switch fr.Type {
 				case libpf.NativeFrame:
 					if fr.FunctionName == libpf.NullString {
-						p.symbolizeNativeFrame(b, location, fr)
 						if location.Line == nil && p.cfg.ReporterUnsymbolizedStubs {
 							p.symbolizeStub(b, location, fr)
 						}
@@ -312,34 +337,6 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 		})
 	}
 	return res
-}
-
-func (p *PPROFReporter) symbolizeNativeFrame(
-	b *ProfileBuilder,
-	loc *profile.Location,
-	fr libpf.Frame,
-) {
-
-	if !fr.MappingFile.Valid() {
-		return
-	}
-	mappingFile := fr.MappingFile.Value()
-	if mappingFile.FileName == process.VdsoPathName {
-		return
-	}
-	if p.cfg.ExtraNativeSymbolResolver == nil {
-		return
-	}
-	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, fr.AddressOrLineno, mappingFile.FileID, func(si irsymcache.SourceInfo) {
-		name := si.FunctionName
-		if name == libpf.NullString && si.FilePath == libpf.NullString {
-			return
-		}
-		name = p.demangle(name)
-		loc.Mapping.HasFunctions = true
-		line := profile.Line{Function: b.Function(name, si.FilePath)}
-		loc.Line = append(loc.Line, line)
-	})
 }
 
 func (p *PPROFReporter) symbolizeStub(b *ProfileBuilder, location *profile.Location, fr libpf.Frame) {
