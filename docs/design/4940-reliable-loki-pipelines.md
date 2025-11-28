@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Alloy's Loki pipelines currently use channels, which limits throughput due to head-of-line blocking and can causes silent log drops during config reloads or shutdowns.
+Alloy's Loki pipelines currently use channels, which limits throughput due to head-of-line blocking and can cause silent log drops during config reloads or shutdowns.
 
 This proposal introduces a function-based pipeline using a `Consumer` interface, replacing the channel-based design. Source components will call `Consume()` directly on downstream components, enabling parallel processing and returning errors that sources can use for retry logic or proper HTTP error responses.
 
@@ -16,7 +16,7 @@ Loki pipelines in Alloy are built using (unbuffered) channels, a design inherite
 
 This comes with two big limitations:
 1. Throughput of each component is limited due to head-of-line blocking, where pushing to the next channel may not be possible in the presence of a slow component. An example of this is usage of [secretfilter](https://github.com/grafana/alloy/issues/3694).
-2. Because there is no way to signal back to the source, components can silently drop logs during config reload or shutdown and there is no to detect that.
+2. Because there is no way to signal back to the source, components can silently drop logs during config reload or shutdown and there is no way to detect that.
 
 Consider the following simplified config:
 ```
@@ -60,6 +60,58 @@ Solving the issues listed above.
 
 A batch of entries should be considered successfully consumed when they are queued up for sending. We could try to extend this to when it was successfully sent over the wire, but that could be considered an improvement at a later stage.
 
+Pros:
+* Increase throughput of log pipelines.
+* A way to signal back to the source
+Cons:
+* We need to rewrite all loki components with this new pattern and make them safe to call in parallel.
+* We go from an iterator like pipeline to passing slices around. Every component would have to iterate over this slice and we need to make sure it's safe to mutate because of fanout.
+
+## Proposal 2: Appendable
+
+The prometheus pipeline uses [Appendable](https://github.com/prometheus/prometheus/blob/main/storage/interface.go#L62).
+Appendable only has one method `Appender` that will return an implementation of [Appender](https://github.com/prometheus/prometheus/blob/main/storage/interface.go#L270).
+
+We could adopt this pattern for loki pipelines by having:
+```go
+type Appendable interface {
+    Appender(ctx context.Context) Appender
+}
+
+type Appender interface {
+    Append(entry Entry) error
+    Commit() error
+    Rollback() error
+}
+```
+
+This approach would, like Proposal 1, solve the issues listed above with a function-based pipeline, but the pipeline would still be iterator-like (one entry at a time).
+
+### How it works
+
+Sources would obtain an `Appender` from the next component in the pipeline, then:
+1. Call `Append(entry)` for each entry in a batch
+2. Call `Commit()` to finalize the batch, or `Rollback()` to discard it
+3. Handle errors at any step
+
+Processing components would:
+Implement `Appendable` to return an `Appender` that runs processing for each entry and forwards it to next component.
+
+Sink components would:
+Implement `Appendable` to return an `Appender` that buffers entries until either `Commit` or `Rollback` is called.
+
+Pros:
+* Increase throughput of log pipelines.
+* A way to signal back to the source
+* Iterator-like pipeline - one entry at a time
+* Transaction semantics provide better error handling
+* Aligns with Prometheus patterns already in use
+Cons:
+* We need to rewrite all loki components with this new pattern and make them safe to call in parallel.
+* More complex API
+
+## Considerations for implementation
+
 ### Handling fan-out failures
 
 Because a pipeline can "fan-out" to multiple paths, it can also partially succeed. We need to determine how to handle this.
@@ -102,8 +154,4 @@ The following components need to be updated with this new interface and we need 
 - `loki.write`
 - `loki.echo`
 
-Pros:
-* Increase throughput of log pipelines.
-* A way to signal back to the source
-Cons:
-* We need to rewrite all loki components with this new pattern and make them safe to call in parallel.
+
