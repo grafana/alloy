@@ -32,7 +32,7 @@ loki.process "logs" {
 loki.write "loki" {}
 ```
 
-`loki.source.file` will tail all files from targets and compete to send on the channel exposed by `loki.process`. Only one entry will be processed by each stage configured in `loki.process`. If a reload happens or if alloy is shutting down logs could be silently dropped.
+`loki.source.file` will tail all files from targets and compete to send on the channel exposed by `loki.process`. Only one entry will be processed by each stage configured in `loki.process`. If a reload happens or if Alloy is shutting down, logs could be silently dropped.
 
 ## Proposal 0: Do nothing
 This architecture works in most cases, it will be hard to use slow components such as `secretfilter` because a lot of the time it's too slow.
@@ -40,7 +40,7 @@ It's also hard to use Alloy as a gateway for loki pipelines with e.g. `loki.sour
 
 ## Proposal 1: Chain function calls
 
-Loki pipelines are the only one using channels for passing data between components. Prometheus, Pyroscope and otelcol are all using this pattern where each component just calls functions on the next.
+Loki pipelines are the only ones using channels for passing data between components. Prometheus, Pyroscope and otelcol are all using this pattern where each component just calls functions on the next.
 
 They all have slightly different interfaces but basically work the same. Each component exports its own interface like Appender for Prometheus or Consumer for Otel.
 
@@ -52,7 +52,7 @@ type Consumer interface {
 }
 ```
 
-Adopting this pattern for loki pipelines would change it from a channel based pipeline to a function based pipeline. This would give us two things:
+Adopting this pattern for loki pipelines would change it from a channel-based pipeline to a function-based pipeline. This would give us two things:
 1. Increased throughput because several sources such as many files or http requests can now call the next component in the pipeline at the same time.
 2. A way to return signals back to the source so we can handle things like giving a proper error response or determine if the position file should be updated. 
 
@@ -65,7 +65,7 @@ Pros:
 * A way to signal back to the source
 Cons:
 * We need to rewrite all loki components with this new pattern and make them safe to call in parallel.
-* We go from an iterator like pipeline to passing slices around. Every component would have to iterate over this slice and we need to make sure it's safe to mutate because of fanout.
+* We go from an iterator-like pipeline to passing slices around. Every component would have to iterate over this slice and we need to make sure it's safe to mutate because of fan-out.
 
 ## Proposal 2: Appendable
 
@@ -88,14 +88,12 @@ type Appender interface {
 This approach would, like Proposal 1, solve the issues listed above with a function-based pipeline, but the pipeline would still be iterator-like (one entry at a time).
 
 ### How it works
-
-Sources would obtain an `Appender` from the next component in the pipeline, then:
-1. Call `Append(entry)` for each entry in a batch
-2. Call `Commit()` to finalize the batch, or `Rollback()` to discard it
-3. Handle errors at any step
+Source components would: 
+Obtain an `Appender` that can fan-out to all downstream components, then call `Append` for each entry.
+If every call to `Append` is successful, `Commit` should be called; otherwise `Rollback`.
 
 Processing components would:
-Implement `Appendable` to return an `Appender` that runs processing for each entry and forwards it to next component.
+Implement `Appendable` to return an `Appender` that runs processing for each entry and fan-out to all downstream components.
 
 Sink components would:
 Implement `Appendable` to return an `Appender` that buffers entries until either `Commit` or `Rollback` is called.
@@ -153,5 +151,3 @@ The following components need to be updated with this new interface and we need 
 **Sink components** (need to implement `Consumer`):
 - `loki.write`
 - `loki.echo`
-
-
