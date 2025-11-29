@@ -1,32 +1,6 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
-> to update the changelog._
-
-This document contains a historical list of changes between releases. Only
-changes that impact end-user behavior are listed; changes to documentation or
-internal API changes are not present.
-
-Main (unreleased)
------------------
-
-### Features
-
-- (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
-
-- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
-
-- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
-
-### Enhancements
-
-- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
-
-- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
-
-- `prometheus.exporter.azure` now supports `concurrency_subscription` and `concurrency_subscription_resource` arguments to control the number of concurrent API requests. (@akselleirv)
-
-### Bugfixes
+## [1.13.2](https://github.com/grafana/alloy/compare/v1.13.1...v1.13.2) (2026-02-23)
 
 
 ### Bug Fixes 🐛
