@@ -9,11 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:               "sync-mod",
-	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
-}
-
 var generateAndApplyReplaces = &cobra.Command{
 	Use:   "generate",
 	Short: "Generates replace directives as specified in the input dependency-replacements.yaml",
@@ -34,13 +29,20 @@ var generateAndApplyReplaces = &cobra.Command{
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := NewRootCommand().Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
-func init() {
+func NewRootCommand() *cobra.Command {
+	var rootCmd = &cobra.Command{
+		Use:               "sync-mod",
+		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+	}
+
 	rootCmd.AddCommand(generateAndApplyReplaces)
 	generateAndApplyReplaces.Flags().String("dependency-yaml", "", "Relative path to the dependency-replacements.yaml file")
 	generateAndApplyReplaces.Flags().String("project-root", "", "Relative path to the project root")
+
+	return rootCmd
 }
