@@ -10,7 +10,7 @@ internal API changes are not present.
 Unreleased
 ----------
 
-1.4.1 (2025-12-01)
+1.5.0 (2025-12-01)
 ----------
 
 ### Enhancements
