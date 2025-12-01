@@ -18,6 +18,19 @@ It watches cluster state, and ensures targets are continually synced with what's
 If you supply no connection information, this component defaults to an in-cluster configuration.
 A kubeconfig file or manual connection settings can be used to override the defaults.
 
+## Performance considerations
+
+By default, `discovery.kubernetes` discovers resources across all namespaces in your cluster.
+In DaemonSet deployments, this means every {{< param "PRODUCT_NAME" >}} Pod watches all resources, which can increase API server load.
+
+For better performance and reduced API load:
+
+- Use the [`namespaces`](#namespaces) block to limit discovery to specific namespaces.
+- Use [`selectors`](#selectors) to filter resources by labels or fields.  
+- Consider the node-local example in [Limit to only Pods on the same node](#limit-to-only-pods-on-the-same-node).
+- Use clustering mode for larger deployments to distribute the discovery load.
+- Monitor API server metrics like request rate, throttling, and memory usage, especially on managed clusters.
+
 ## Usage
 
 ```alloy
