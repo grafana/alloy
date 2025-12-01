@@ -23,7 +23,102 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
+
+func Test_UnmarshalConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   string
+		expected Arguments
+	}{
+		{
+			name: "default",
+			config: `
+				forward_to = []
+				targets = []`,
+			expected: Arguments{
+				FileWatch: FileWatch{
+					MinPollFrequency: 250 * time.Millisecond,
+					MaxPollFrequency: 250 * time.Millisecond,
+				},
+				FileMatch: FileMatch{
+					Enabled:    false,
+					SyncPeriod: 10 * time.Second,
+				},
+				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				ForwardTo:            []loki.LogsReceiver{},
+				Targets:              []discovery.Target{},
+			},
+		},
+		{
+			name: "file_match",
+			config: `
+				forward_to = []
+				targets = [
+					{__path__ = "/tmp/*.log"},
+				]
+				file_match {
+					enabled = true
+					sync_period = "14s"
+				}`,
+			expected: Arguments{
+				FileWatch: FileWatch{
+					MinPollFrequency: 250 * time.Millisecond,
+					MaxPollFrequency: 250 * time.Millisecond,
+				},
+				FileMatch: FileMatch{
+					Enabled:    true,
+					SyncPeriod: 14 * time.Second,
+				},
+				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				ForwardTo:            []loki.LogsReceiver{},
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__path__": "/tmp/*.log",
+					}),
+				},
+			},
+		},
+		{
+			name: "file_match quoted path",
+			config: `
+				forward_to = []
+				targets = [
+					{"__path__" = "/tmp/*.log"},
+				]
+				file_match {
+					enabled = true
+					sync_period = "14s"
+				}`,
+			expected: Arguments{
+				FileWatch: FileWatch{
+					MinPollFrequency: 250 * time.Millisecond,
+					MaxPollFrequency: 250 * time.Millisecond,
+				},
+				FileMatch: FileMatch{
+					Enabled:    true,
+					SyncPeriod: 14 * time.Second,
+				},
+				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				ForwardTo:            []loki.LogsReceiver{},
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__path__": "/tmp/*.log",
+					}),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.config), &args)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, args)
+		})
+	}
+}
 
 func TestComponent(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
