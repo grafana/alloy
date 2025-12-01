@@ -15,7 +15,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/tools/txtar"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
@@ -2255,7 +2255,7 @@ func TestNewExplainPlan(t *testing.T) {
 	defer db.Close()
 
 	logger := log.NewNopLogger()
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki_fake.NewClient(func() {})
 	defer entryHandler.Stop()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
@@ -2483,7 +2483,7 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 }
 
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
-	lokiClient := fake.NewClient(func() {})
+	lokiClient := loki_fake.NewClient(func() {})
 	defer lokiClient.Stop()
 
 	logger := log.NewNopLogger()
@@ -2757,7 +2757,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	})
 
 	t.Run("query validation", func(t *testing.T) {
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki_fake.NewClient(func() {})
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
