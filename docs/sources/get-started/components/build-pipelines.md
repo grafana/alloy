@@ -115,7 +115,7 @@ Here's a more complex example that processes log data through multiple transform
 ```alloy
 // Read log files using glob patterns
 loki.source.file "local_files" {
-    targets    = [{"__path__" = "/var/log/app/*.log"}]
+    targets    = [{__path__ = "/var/log/app/*.log"}]
     forward_to = [loki.process.add_labels.receiver]
 
     file_match {
