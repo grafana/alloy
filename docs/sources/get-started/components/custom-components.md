@@ -29,8 +29,8 @@ The block's label becomes the custom component's name, which you can then use li
 
 Inside a `declare` block, you can use these configuration blocks:
 
-- [`argument`][]: Defines a named input parameter that users must provide when using your custom component. Access the value with `argument.NAME.value`.
-- [`export`][]: Defines a named output value that your custom component exposes to other components.
+- [`argument`][argument]: Defines a named input parameter that users must provide when using your custom component. Access the value with `argument.NAME.value`.
+- [`export`][export]: Defines a named output value that your custom component exposes to other components.
 - Built-in and custom components: The actual pipeline logic that processes data.
 
 The component controller treats custom components the same as built-in components:
@@ -78,7 +78,7 @@ This custom component:
 1. **Can be instantiated**: Create an instance labeled `example` by providing values for `a` and `b`.
 1. **Exposes computed results**: Other components can reference `add.example.sum` to use the result.
 
-For more complex examples that combine multiple built-in components, refer to the [declare block reference][declare].
+For more complex examples that combine multiple built-in components, refer to the [`declare` block reference][declare].
 
 ## Next steps
 
@@ -91,9 +91,9 @@ For sharing and organizing:
 
 - [Modules][] - Share custom components across multiple configuration files
 
-[declare]: ../../reference/config-blocks/declare/
-[argument]: ../../reference/config-blocks/argument/
-[export]: ../../reference/config-blocks/export/
-[Modules]: ../modules/
-[Configuration blocks reference]: ../../reference/config-blocks/
-[Configure components]: ./configure-components/
+[declare]: ../../../reference/config-blocks/declare/
+[argument]: ../../../reference/config-blocks/argument/
+[export]: ../../../reference/config-blocks/export/
+[Modules]: ../../modules/
+[Configuration blocks reference]: ../../../reference/config-blocks/
+[Configure components]: ../configure-components/
