@@ -138,7 +138,7 @@ For hands-on learning:
 - [Tutorials][] - Build complete data collection pipelines step by step
 - [Components][components] - Browse all available components and their options
 
-[fmt]: ../../reference/cli/fmt/
+[fmt]: ../reference/cli/fmt/
 [Built-in]: ../reference/stdlib/
 [Alloy syntax]: ./syntax/
 [Components]: ./components/

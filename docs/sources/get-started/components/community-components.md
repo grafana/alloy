@@ -58,7 +58,7 @@ For component selection guidance:
 
 - [Choose a component][] - Get guidance on selecting the right component for your needs
 
-[backward-compatibility]: ../../introduction/backward-compatibility/
-[Component reference]: ../../reference/components/
-[Configure components]: ./configure-components/
-[Choose a component]: ../../collect/choose-component/
+[backward-compatibility]: ../../../introduction/backward-compatibility/
+[Component reference]: ../../../reference/components/
+[Configure components]: ../configure-components/
+[Choose a component]: ../../../collect/choose-component/

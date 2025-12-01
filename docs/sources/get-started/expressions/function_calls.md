@@ -130,7 +130,7 @@ For detailed function reference:
 
 - [Standard library reference][standard library] - Complete documentation of all available functions and their usage
 
-[type]: ./types_and_values/
-[refer to values]: ./referencing_exports/
-[operators]: ./operators/
+[type]: ../types_and_values/
+[refer to values]: ../referencing_exports/
+[operators]: ../operators/
 [standard library]: ../../../reference/stdlib/

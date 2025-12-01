@@ -233,9 +233,9 @@ For advanced expression features:
 
 - [Function calls][] - Transform data using standard library functions that work with these types
 
-[component reference]: ../../../../reference/components/
+[component reference]: ../../../reference/components/
 [valid]: ../../syntax#identifiers
-[nonsensitive]: ../../../../reference/stdlib/convert/
-[Component exports]: ./referencing_exports/
-[Operators]: ./operators/
-[Function calls]: ./function_calls/
+[nonsensitive]: ../../../reference/stdlib/convert/
+[Component exports]: ../referencing_exports/
+[Operators]: ../operators/
+[Function calls]: ../function_calls/

@@ -270,7 +270,7 @@ For advanced configuration techniques:
 
 - [Formatting][fmt] - Use `alloy fmt` to automatically format your configuration files
 
-[Expressions]: ./expressions/
-[Components]: ./components/
-[fmt]: ../reference/cli/fmt/
+[Expressions]: ../expressions/
+[Components]: ../components/
+[fmt]: ../../reference/cli/fmt/
 [identifier]: #identifiers

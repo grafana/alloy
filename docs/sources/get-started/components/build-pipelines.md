@@ -310,6 +310,6 @@ For hands-on learning:
 
 - [Tutorials][] - Follow step-by-step guides to build complete monitoring solutions
 
-[Component controller]: ./component-controller/
-[Expressions]: ../expressions/
-[Tutorials]: ../../tutorials/
+[Component controller]: ../component-controller/
+[Expressions]: ../../expressions/
+[Tutorials]: ../../../tutorials/

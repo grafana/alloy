@@ -80,6 +80,6 @@ Now that you understand component references, continue learning about expression
 - [Function calls][functions] - Use built-in functions to transform values from referenced exports
 - [Operators][operators] - Combine referenced values with other expressions using mathematical and logical operators
 
-[type]: ./types_and_values/
-[functions]: ./function_calls/
-[operators]: ./operators/
+[type]: ../types_and_values/
+[functions]: ../function_calls/
+[operators]: ../operators/
