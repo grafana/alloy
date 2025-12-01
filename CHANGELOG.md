@@ -10,7 +10,7 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-v1.12.0-rc.3
+v1.12.0
 -----------------
 
 ### Breaking changes
