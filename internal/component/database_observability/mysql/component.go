@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -34,7 +35,7 @@ import (
 
 const name = "database_observability.mysql"
 
-const selectServerInfo = `SELECT @@server_uuid, VERSION()`
+const selectServerInfo = `SELECT @@server_uuid, @@hostname, VERSION()`
 
 func init() {
 	component.Register(component.Registration{
@@ -314,11 +315,14 @@ func (c *Component) Update(args component.Arguments) error {
 		return nil
 	}
 
-	var serverUUID, engineVersion string
-	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
+	var serverUUID, hostname, engineVersion string
+	if err := rs.Scan(&serverUUID, &hostname, &engineVersion); err != nil {
 		c.reportError("failed to scan engine version", err)
 		return nil
 	}
+
+	// Generate server_id hash from server_uuid and hostname, similar to Postgres collector
+	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverUUID, hostname))))
 
 	var parsedEngineVersion semver.Version
 	matches := versionRegex.FindStringSubmatch(engineVersion)
@@ -334,7 +338,7 @@ func (c *Component) Update(args component.Arguments) error {
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -348,7 +352,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(serverUUID, engineVersion, parsedEngineVersion); err != nil {
+	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion); err != nil {
 		c.reportError("failed to start collectors", err)
 		return nil
 	}
@@ -383,7 +387,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version) error {
+func (c *Component) startCollectors(serverID string, engineVersion string, parsedEngineVersion semver.Version) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -405,7 +409,7 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 		}
 	}
 
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverUUID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverID)
 
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -616,11 +620,11 @@ func formatDSN(dsn string, params ...string) string {
 	return dsn + strings.Join(params, "&")
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverUUID string) loki.EntryHandler {
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string) loki.EntryHandler {
 	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
-		"server_id": model.LabelValue(serverUUID),
+		"server_id": model.LabelValue(serverID),
 	}).Wrap(entryHandler)
 
 	return entryHandler
