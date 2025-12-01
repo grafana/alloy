@@ -34,7 +34,7 @@ Main (unreleased)
 - (_Public Preview_) Additions to `database_observability.mysql` component:
   - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
 
-v1.12.0-rc.3
+v1.12.0
 -----------------
 
 ### Breaking changes
