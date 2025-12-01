@@ -1,21 +1,16 @@
 package collector
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
-	"github.com/go-logfmt/logfmt"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 
@@ -36,31 +31,6 @@ func explainPlanAccessTypePtr(s database_observability.ExplainPlanAccessType) *d
 
 func explainPlanJoinAlgorithmPtr(s database_observability.ExplainPlanJoinAlgorithm) *database_observability.ExplainPlanJoinAlgorithm {
 	return &s
-}
-
-func extractExplainPlanOutputFromLogMsg(lokiEntry loki.Entry) (database_observability.ExplainPlanOutput, error) {
-	var explainPlanOutput database_observability.ExplainPlanOutput
-	var explainPlanOutputString string
-	decoder := logfmt.NewDecoder(strings.NewReader(lokiEntry.Line))
-	for decoder.ScanRecord() {
-		for decoder.ScanKeyval() {
-			if string(decoder.Key()) == "explain_plan_output" {
-				explainPlanOutputString = string(decoder.Value())
-				break
-			}
-		}
-	}
-	if decoder.Err() != nil {
-		return explainPlanOutput, fmt.Errorf("failed to decode logfmt: %v", decoder.Err())
-	}
-	base64Decoded, err := base64.StdEncoding.DecodeString(explainPlanOutputString)
-	if err != nil {
-		return explainPlanOutput, fmt.Errorf("failed to decode base64 explain plan output: %v", err)
-	}
-	if err := json.Unmarshal(base64Decoded, &explainPlanOutput); err != nil {
-		return explainPlanOutput, fmt.Errorf("failed to unmarshal explain plan output: %v", err)
-	}
-	return explainPlanOutput, nil
 }
 
 func TestExplainPlansRedactor(t *testing.T) {
@@ -1646,7 +1616,7 @@ func TestExplainPlans(t *testing.T) {
 			require.NotContains(t, logBuffer.String(), "error")
 			lokiEntries := lokiClient.Received()
 			require.Equal(t, 1, len(lokiEntries))
-			epo, err := extractExplainPlanOutputFromLogMsg(lokiEntries[0])
+			epo, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntries[0])
 			require.NoError(t, err)
 			require.Equal(t, database_observability.ExplainProcessingResultSkipped, epo.Metadata.ProcessingResult)
 			require.Equal(t, "query is truncated", epo.Metadata.ProcessingResultReason)
@@ -1693,7 +1663,7 @@ func TestExplainPlans(t *testing.T) {
 			require.Equal(t, 3, len(lokiEntries))
 
 			for _, lokiEntry := range lokiEntries {
-				ep, err := extractExplainPlanOutputFromLogMsg(lokiEntry)
+				ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntry)
 				require.NoError(t, err)
 				require.Equal(t, database_observability.ExplainProcessingResultSkipped, ep.Metadata.ProcessingResult)
 				require.Equal(t, "query contains reserved word", ep.Metadata.ProcessingResultReason)
