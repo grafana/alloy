@@ -167,11 +167,11 @@ For hands-on module development:
 - [Import configuration blocks][imports] - Detailed reference for different module import methods
 - [Run command reference][run] - Module configuration and execution options
 
-[custom components]: ./components/custom-components/
-[components]: ./components/
-[imports]: ../reference/config-blocks/
-[run]: ../reference/cli/run/
-[import.file]: ../reference/config-blocks/import.file/
-[import.git]: ../reference/config-blocks/import.git/
-[import.http]: ../reference/config-blocks/import.http/
-[import.string]: ../reference/config-blocks/import.string/
+[custom components]: ../components/custom-components/
+[components]: ../components/
+[imports]: ../../reference/config-blocks/
+[run]: ../../reference/cli/run/
+[import.file]: ../../reference/config-blocks/import.file/
+[import.git]: ../../reference/config-blocks/import.git/
+[import.http]: ../../reference/config-blocks/import.http/
+[import.string]: ../../reference/config-blocks/import.string/
