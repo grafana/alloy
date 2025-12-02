@@ -71,6 +71,17 @@ type Arguments struct {
 	PartialMask    uint                `alloy:"partial_mask,attr,optional"`    // Show the first N characters of the secret (default: 0)
 	OriginLabel    string              `alloy:"origin_label,attr,optional"`    // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
 	EnableEntropy  bool                `alloy:"enable_entropy,attr,optional"`  // Enable entropy calculation for secrets (default: false)
+
+	// MaxForwardQueueSize controls the maximum number of log entries buffered
+	// per downstream component. This prevents a slow destination from blocking
+	// other destinations. Default is 100000.
+	MaxForwardQueueSize int `alloy:"max_forward_queue_size,attr,optional"`
+
+	// BlockOnFull controls behavior when a destination queue is full.
+	// If false (default), log entries are dropped when the queue is full.
+	// If true, the component will retry with exponential backoff, which may
+	// slow down the entire pipeline but prevents data loss.
+	BlockOnFull bool `alloy:"block_on_full,attr,optional"`
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -79,7 +90,10 @@ type Exports struct {
 }
 
 // DefaultArguments defines the default settings for log scraping.
-var DefaultArguments = Arguments{}
+var DefaultArguments = Arguments{
+	MaxForwardQueueSize: 100_000,
+	BlockOnFull:         false,
+}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
@@ -95,15 +109,117 @@ var (
 type Component struct {
 	opts component.Options
 
-	mut       sync.RWMutex
-	args      Arguments
-	receiver  loki.LogsReceiver
-	fanout    []loki.LogsReceiver
-	Rules     []Rule
-	AllowList []AllowRule
+	mut                 sync.RWMutex
+	args                Arguments
+	receiver            loki.LogsReceiver
+	fanout              []loki.LogsReceiver
+	queues              []*destinationQueue
+	maxForwardQueueSize int
+	blockOnFull         bool
+	Rules               []Rule
+	AllowList           []AllowRule
 
 	metrics            *metrics
 	debugDataPublisher livedebugging.DebugDataPublisher
+}
+
+// Backoff constants for blocking mode, similar to Prometheus remote write.
+const (
+	minBackoff = 5 * time.Millisecond
+	maxBackoff = 5 * time.Second
+)
+
+// destinationQueue manages a buffered queue for a single destination to ensure
+// FIFO ordering while preventing a slow destination from blocking others.
+type destinationQueue struct {
+	receiver loki.LogsReceiver
+	buffer   chan loki.Entry
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
+}
+
+func newDestinationQueue(receiver loki.LogsReceiver, size int) *destinationQueue {
+	dq := &destinationQueue{
+		receiver: receiver,
+		buffer:   make(chan loki.Entry, size),
+		stopCh:   make(chan struct{}),
+	}
+	dq.wg.Add(1)
+	go dq.run()
+	return dq
+}
+
+func (dq *destinationQueue) run() {
+	defer dq.wg.Done()
+	for {
+		select {
+		case <-dq.stopCh:
+			return
+		case entry := <-dq.buffer:
+			select {
+			case <-dq.stopCh:
+				return
+			case dq.receiver.Chan() <- entry:
+			}
+		}
+	}
+}
+
+// send attempts to queue an entry for sending without blocking.
+// Returns true if queued, false if buffer is full.
+func (dq *destinationQueue) send(entry loki.Entry) bool {
+	select {
+	case dq.buffer <- entry:
+		return true
+	default:
+		return false
+	}
+}
+
+// sendWithBackoff attempts to queue an entry, retrying with exponential backoff
+// if the buffer is full. Returns true if queued, false if stopped during retry.
+// The metrics parameter is used to track retry attempts.
+func (dq *destinationQueue) sendWithBackoff(entry loki.Entry, m *metrics) bool {
+	// First try without blocking
+	select {
+	case dq.buffer <- entry:
+		return true
+	default:
+	}
+
+	// Buffer is full, retry with backoff
+	backoff := minBackoff
+	for {
+		select {
+		case <-dq.stopCh:
+			return false
+		default:
+		}
+
+		m.enqueueRetriesTotal.Inc()
+
+		select {
+		case <-dq.stopCh:
+			return false
+		case <-time.After(backoff):
+		}
+
+		select {
+		case dq.buffer <- entry:
+			return true
+		default:
+			// Still full, increase backoff
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+}
+
+func (dq *destinationQueue) stop() {
+	close(dq.stopCh)
+	dq.wg.Wait()
 }
 
 // This struct is used to parse the gitleaks.toml file
@@ -152,6 +268,10 @@ type metrics struct {
 
 	// Summary of time taken for redaction log processing
 	processingDuration prometheus.Summary
+
+	// Forward queue metrics
+	droppedEntriesTotal prometheus.Counter
+	enqueueRetriesTotal prometheus.Counter
 }
 
 // newMetrics creates a new set of metrics for the secretfilter component.
@@ -201,6 +321,18 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		},
 	})
 
+	m.droppedEntriesTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "dropped_entries_total",
+		Help:      "Total number of log entries dropped because the destination queue was full.",
+	})
+
+	m.enqueueRetriesTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "enqueue_retries_total",
+		Help:      "Total number of times enqueueing was retried when block_on_full is enabled.",
+	})
+
 	if reg != nil {
 		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
 		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
@@ -210,6 +342,8 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		}
 		m.secretsAllowlistedTotal = util.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
 		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
+		m.droppedEntriesTotal = util.MustRegisterOrGet(reg, m.droppedEntriesTotal).(prometheus.Counter)
+		m.enqueueRetriesTotal = util.MustRegisterOrGet(reg, m.enqueueRetriesTotal).(prometheus.Counter)
 	}
 
 	return &m
@@ -243,6 +377,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		// Stop all destination queues
+		c.mut.Lock()
+		for _, q := range c.queues {
+			q.stop()
+		}
+		c.queues = nil
+		c.mut.Unlock()
+	}()
+
 	componentID := livedebugging.ComponentID(c.opts.ID)
 
 	for {
@@ -263,15 +407,26 @@ func (c *Component) Run(ctx context.Context) error {
 				},
 			))
 
-			for _, f := range c.fanout {
-				select {
-				case <-ctx.Done():
-					c.mut.RUnlock()
-					return nil
-				case f.Chan() <- newEntry:
+			// Send to each destination's queue. Each destination has its own
+			// buffered queue with a dedicated worker goroutine, ensuring FIFO
+			// ordering while preventing a slow destination from blocking others.
+			// See https://github.com/grafana/alloy/issues/2194
+			queues := c.queues
+			blockOnFull := c.blockOnFull
+			metrics := c.metrics
+			c.mut.RUnlock()
+			for _, q := range queues {
+				var sent bool
+				if blockOnFull {
+					sent = q.sendWithBackoff(newEntry, metrics)
+				} else {
+					sent = q.send(newEntry)
+				}
+				if !sent {
+					metrics.droppedEntriesTotal.Inc()
+					level.Warn(c.opts.Logger).Log("msg", "dropping log entry because destination queue is full", "labels", entry.Labels.String())
 				}
 			}
-			c.mut.RUnlock()
 		}
 	}
 }
@@ -406,11 +561,24 @@ func hashSecret(secret string) string {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
+	// Update fanout and queues. Each destination gets its own queue to ensure
+	// FIFO ordering while preventing a slow destination from blocking others.
+	// See https://github.com/grafana/alloy/issues/2194
+	queueSize := newArgs.MaxForwardQueueSize
+	if queueSize <= 0 {
+		queueSize = DefaultArguments.MaxForwardQueueSize
+	}
 	c.mut.Lock()
-	defer c.mut.Unlock()
+	oldQueues := c.queues
 	c.args = newArgs
 
 	c.fanout = newArgs.ForwardTo
+	c.maxForwardQueueSize = queueSize
+	c.blockOnFull = newArgs.BlockOnFull
+	c.queues = make([]*destinationQueue, len(newArgs.ForwardTo))
+	for i, receiver := range newArgs.ForwardTo {
+		c.queues[i] = newDestinationQueue(receiver, queueSize)
+	}
 
 	c.metrics = newMetrics(c.opts.Registerer, newArgs.OriginLabel)
 
@@ -420,12 +588,14 @@ func (c *Component) Update(args component.Arguments) error {
 		// If no config file is explicitly provided, use the embedded one
 		_, err := toml.DecodeFS(embedFs, "gitleaks.toml", &gitleaksCfg)
 		if err != nil {
+			c.mut.Unlock()
 			return err
 		}
 	} else {
 		// If a config file is provided, use that
 		_, err := toml.DecodeFile(c.args.GitleaksConfig, &gitleaksCfg)
 		if err != nil {
+			c.mut.Unlock()
 			return err
 		}
 	}
@@ -455,6 +625,7 @@ func (c *Component) Update(args component.Arguments) error {
 		re, err := regexp.Compile(rule.Regex)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error compiling regex", "error", err)
+			c.mut.Unlock()
 			return err
 		}
 		// If the rule regex matches the empty string, skip this rule
@@ -479,6 +650,7 @@ func (c *Component) Update(args component.Arguments) error {
 			re, err := regexp.Compile(r)
 			if err != nil {
 				level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
+				c.mut.Unlock()
 				return err
 			}
 			allowlist = append(allowlist, AllowRule{Regex: re, Source: fmt.Sprintf("rule %s", rule.ID)})
@@ -488,6 +660,7 @@ func (c *Component) Update(args component.Arguments) error {
 				re, err := regexp.Compile(r)
 				if err != nil {
 					level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
+					c.mut.Unlock()
 					return err
 				}
 				allowlist = append(allowlist, AllowRule{Regex: re, Source: fmt.Sprintf("rule %s", rule.ID)})
@@ -519,6 +692,7 @@ func (c *Component) Update(args component.Arguments) error {
 		re, err := regexp.Compile(r)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
+			c.mut.Unlock()
 			return err
 		}
 		c.AllowList = append(c.AllowList, AllowRule{Regex: re, Source: "alloy config"})
@@ -528,6 +702,7 @@ func (c *Component) Update(args component.Arguments) error {
 		re, err := regexp.Compile(r)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
+			c.mut.Unlock()
 			return err
 		}
 		c.AllowList = append(c.AllowList, AllowRule{Regex: re, Source: "gitleaks config"})
@@ -539,6 +714,12 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	level.Info(c.opts.Logger).Log("Compiled regexes for secret detection", len(c.Rules))
+	c.mut.Unlock()
+
+	// Stop old queues after releasing the lock to avoid blocking
+	for _, q := range oldQueues {
+		q.stop()
+	}
 
 	return nil
 }

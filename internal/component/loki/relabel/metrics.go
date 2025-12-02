@@ -11,6 +11,10 @@ type metrics struct {
 	cacheHits        prometheus_client.Counter
 	cacheMisses      prometheus_client.Counter
 	cacheSize        prometheus_client.Gauge
+
+	// Forward queue metrics
+	droppedEntriesTotal prometheus_client.Counter
+	enqueueRetriesTotal prometheus_client.Counter
 }
 
 // newMetrics creates a new set of metrics. If reg is non-nil, the metrics
@@ -38,6 +42,14 @@ func newMetrics(reg prometheus_client.Registerer) *metrics {
 		Name: "loki_relabel_cache_size",
 		Help: "Total size of relabel cache",
 	})
+	m.droppedEntriesTotal = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "loki_relabel_dropped_entries_total",
+		Help: "Total number of log entries dropped because the destination queue was full",
+	})
+	m.enqueueRetriesTotal = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "loki_relabel_enqueue_retries_total",
+		Help: "Total number of times enqueueing was retried when block_on_full is enabled",
+	})
 
 	if reg != nil {
 		m.entriesProcessed = util.MustRegisterOrGet(reg, m.entriesProcessed).(prometheus_client.Counter)
@@ -45,6 +57,8 @@ func newMetrics(reg prometheus_client.Registerer) *metrics {
 		m.cacheMisses = util.MustRegisterOrGet(reg, m.cacheMisses).(prometheus_client.Counter)
 		m.cacheHits = util.MustRegisterOrGet(reg, m.cacheHits).(prometheus_client.Counter)
 		m.cacheSize = util.MustRegisterOrGet(reg, m.cacheSize).(prometheus_client.Gauge)
+		m.droppedEntriesTotal = util.MustRegisterOrGet(reg, m.droppedEntriesTotal).(prometheus_client.Counter)
+		m.enqueueRetriesTotal = util.MustRegisterOrGet(reg, m.enqueueRetriesTotal).(prometheus_client.Counter)
 	}
 
 	return &m

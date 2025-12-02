@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -41,12 +42,25 @@ type Arguments struct {
 
 	// The maximum number of items to hold in the component's LRU cache.
 	MaxCacheSize int `alloy:"max_cache_size,attr,optional"`
+
+	// MaxForwardQueueSize controls the maximum number of log entries buffered
+	// per downstream component. This prevents a slow destination from blocking
+	// other destinations. Default is 100000.
+	MaxForwardQueueSize int `alloy:"max_forward_queue_size,attr,optional"`
+
+	// BlockOnFull controls behavior when a destination queue is full.
+	// If false (default), log entries are dropped when the queue is full.
+	// If true, the component will retry with exponential backoff, which may
+	// slow down the entire pipeline but prevents data loss.
+	BlockOnFull bool `alloy:"block_on_full,attr,optional"`
 }
 
 // DefaultArguments provides the default arguments for the loki.relabel
 // component.
 var DefaultArguments = Arguments{
-	MaxCacheSize: 10_000,
+	MaxCacheSize:        10_000,
+	MaxForwardQueueSize: 100_000,
+	BlockOnFull:         false,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -65,10 +79,13 @@ type Component struct {
 	opts    component.Options
 	metrics *metrics
 
-	mut      sync.RWMutex
-	rcs      []*relabel.Config
-	receiver loki.LogsReceiver
-	fanout   []loki.LogsReceiver
+	mut                 sync.RWMutex
+	rcs                 []*relabel.Config
+	receiver            loki.LogsReceiver
+	fanout              []loki.LogsReceiver
+	queues              []*destinationQueue
+	maxForwardQueueSize int
+	blockOnFull         bool
 
 	cache        *lru.Cache
 	maxCacheSize int
@@ -76,6 +93,105 @@ type Component struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 
 	builder labels.ScratchBuilder
+}
+
+// Backoff constants for blocking mode, similar to Prometheus remote write.
+const (
+	minBackoff = 5 * time.Millisecond
+	maxBackoff = 5 * time.Second
+)
+
+// destinationQueue manages a buffered queue for a single destination to ensure
+// FIFO ordering while preventing a slow destination from blocking others.
+type destinationQueue struct {
+	receiver loki.LogsReceiver
+	buffer   chan loki.Entry
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
+}
+
+func newDestinationQueue(receiver loki.LogsReceiver, size int) *destinationQueue {
+	dq := &destinationQueue{
+		receiver: receiver,
+		buffer:   make(chan loki.Entry, size),
+		stopCh:   make(chan struct{}),
+	}
+	dq.wg.Add(1)
+	go dq.run()
+	return dq
+}
+
+func (dq *destinationQueue) run() {
+	defer dq.wg.Done()
+	for {
+		select {
+		case <-dq.stopCh:
+			return
+		case entry := <-dq.buffer:
+			select {
+			case <-dq.stopCh:
+				return
+			case dq.receiver.Chan() <- entry:
+			}
+		}
+	}
+}
+
+// send attempts to queue an entry for sending without blocking.
+// Returns true if queued, false if buffer is full.
+func (dq *destinationQueue) send(entry loki.Entry) bool {
+	select {
+	case dq.buffer <- entry:
+		return true
+	default:
+		return false
+	}
+}
+
+// sendWithBackoff attempts to queue an entry, retrying with exponential backoff
+// if the buffer is full. Returns true if queued, false if stopped during retry.
+// The metrics parameter is used to track retry attempts.
+func (dq *destinationQueue) sendWithBackoff(entry loki.Entry, m *metrics) bool {
+	// First try without blocking
+	select {
+	case dq.buffer <- entry:
+		return true
+	default:
+	}
+
+	// Buffer is full, retry with backoff
+	backoff := minBackoff
+	for {
+		select {
+		case <-dq.stopCh:
+			return false
+		default:
+		}
+
+		m.enqueueRetriesTotal.Inc()
+
+		select {
+		case <-dq.stopCh:
+			return false
+		case <-time.After(backoff):
+		}
+
+		select {
+		case dq.buffer <- entry:
+			return true
+		default:
+			// Still full, increase backoff
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+}
+
+func (dq *destinationQueue) stop() {
+	close(dq.stopCh)
+	dq.wg.Wait()
 }
 
 var (
@@ -119,6 +235,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		// Stop all destination queues
+		c.mut.Lock()
+		for _, q := range c.queues {
+			q.stop()
+		}
+		c.queues = nil
+		c.mut.Unlock()
+	}()
+
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
@@ -148,11 +274,25 @@ func (c *Component) Run(ctx context.Context) error {
 
 			c.metrics.entriesOutgoing.Inc()
 			entry.Labels = lbls
-			for _, f := range c.fanout {
-				select {
-				case <-ctx.Done():
-					return nil
-				case f.Chan() <- entry:
+
+			// Send to each destination's queue. Each destination has its own
+			// buffered queue with a dedicated worker goroutine, ensuring FIFO
+			// ordering while preventing a slow destination from blocking others.
+			// See https://github.com/grafana/alloy/issues/2194
+			c.mut.RLock()
+			queues := c.queues
+			blockOnFull := c.blockOnFull
+			c.mut.RUnlock()
+			for _, q := range queues {
+				var sent bool
+				if blockOnFull {
+					sent = q.sendWithBackoff(entry, c.metrics)
+				} else {
+					sent = q.send(entry)
+				}
+				if !sent {
+					c.metrics.droppedEntriesTotal.Inc()
+					level.Warn(c.opts.Logger).Log("msg", "dropping log entry because destination queue is full", "labels", entry.Labels.String())
 				}
 			}
 		}
@@ -161,11 +301,18 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
 	newArgs := args.(Arguments)
 	newRCS := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+
+	// Update fanout and queues. Each destination gets its own queue to ensure
+	// FIFO ordering while preventing a slow destination from blocking others.
+	// See https://github.com/grafana/alloy/issues/2194
+	queueSize := newArgs.MaxForwardQueueSize
+	if queueSize <= 0 {
+		queueSize = DefaultArguments.MaxForwardQueueSize
+	}
+	c.mut.Lock()
+	oldQueues := c.queues
 	if relabelingChanged(c.rcs, newRCS) {
 		level.Debug(c.opts.Logger).Log("msg", "received new relabel configs, purging cache")
 		c.cache.Purge()
@@ -179,6 +326,18 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.rcs = newRCS
 	c.fanout = newArgs.ForwardTo
+	c.maxForwardQueueSize = queueSize
+	c.blockOnFull = newArgs.BlockOnFull
+	c.queues = make([]*destinationQueue, len(newArgs.ForwardTo))
+	for i, receiver := range newArgs.ForwardTo {
+		c.queues[i] = newDestinationQueue(receiver, queueSize)
+	}
+	c.mut.Unlock()
+
+	// Stop old queues after releasing the lock to avoid blocking
+	for _, q := range oldQueues {
+		q.stop()
+	}
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.RelabelConfigs})
 
