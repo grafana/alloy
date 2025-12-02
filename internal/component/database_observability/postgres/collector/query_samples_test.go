@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -260,7 +260,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 			defer lokiClient.Stop()
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
@@ -346,7 +346,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -395,7 +395,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -453,7 +453,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -512,7 +512,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -571,7 +571,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -651,7 +651,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -695,7 +695,6 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
-		// Ensure all expected queries were executed before stopping
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -710,7 +709,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -753,6 +752,8 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
@@ -766,7 +767,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -809,6 +810,8 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
@@ -822,7 +825,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
@@ -893,6 +896,8 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			}
 			require.True(t, seen22002 && seen23002)
 		}, 5*time.Second, 50*time.Millisecond)
+
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)

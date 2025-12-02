@@ -3,6 +3,19 @@ discovery.kubernetes "example" {
 	kubeconfig_file = "/home/toby/.kube/config"
 }
 
+loki.process "example" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
 discovery.relabel "example" {
 	targets = array.concat(
 		discovery.kubernetes.example.targets,
@@ -52,25 +65,8 @@ discovery.relabel "example" {
 	}
 }
 
-local.file_match "example" {
-	path_targets = discovery.relabel.example.output
-}
-
-loki.process "example" {
-	forward_to = [loki.write.default.receiver]
-
-	stage.json {
-		expressions = {
-			face = "smiley",
-			hand = "thumbs-up",
-		}
-		source         = "video"
-		drop_malformed = true
-	}
-}
-
 loki.source.file "example" {
-	targets    = local.file_match.example.targets
+	targets    = discovery.relabel.example.output
 	forward_to = [loki.process.example.receiver]
 	encoding   = "UTF-16"
 
@@ -78,6 +74,10 @@ loki.source.file "example" {
 		enabled       = true
 		initial_delay = "30s"
 		format        = "z"
+	}
+
+	file_match {
+		enabled = true
 	}
 	legacy_positions_file = "/var/log/positions.yaml"
 }

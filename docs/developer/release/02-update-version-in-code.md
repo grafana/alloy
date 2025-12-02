@@ -24,9 +24,19 @@ Example PRs:
 
 ### 1.1. Add the new version to the CHANGELOG
 
-For a First Release Candidate (`rc.0`), replace the `Main (unreleased)` header with a new one for  `VERSION`.
+For a First Release Candidate (`rc.0`), add a new header below the `Main (unreleased)` for `VERSION`. For example:
+```
+Main (unreleased)
+-----------------
 
-For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_CANDIDATE_VERSION` to `VERSION`.
+v1.12.0-rc.0
+-----------------
+
+(Release notes that were previously under Main (unreleased))
+```
+
+For an Additional Release Candidate or SRV, increment the number in the release candidate header to match your new
+`VERSION`. For example, `v1.12.0-rc.0` becomes `v1.12.0-rc.1`.
 
 For a patch release, add a new header for `VERSION`.
 
@@ -70,12 +80,12 @@ For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_
 
 ### 2.2. Update the VERSION file
 
-The [VERSION file][VERSION-file] on the "main" branch should point to the next major version.
+The [VERSION file][VERSION-file] on the "main" branch should point to the next minor version.
 For example:
 * If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.3.0`.
 * If you are going to release `v1.5.1`, then the VERSION file should contain `v1.6.0`.
 
-The reasoning behind this is that any builds of the main branch should contain the next major version they are meant to go to.
+The reasoning behind this is that any builds of the main branch should contain the next minor version they are meant to go to.
 If the latest release branch that was cut is `release/1.3`, then `main` is preparing for `1.4.0`.
 Any builds of the main branch will therefore be labeled `devel-1.4.0`.
 

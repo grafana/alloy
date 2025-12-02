@@ -21,11 +21,11 @@ import (
 	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type tailer struct {
@@ -38,8 +38,9 @@ type tailer struct {
 	labels             model.LabelSet
 	legacyPositionUsed bool
 
-	tailFromEnd bool
-	pollOptions watch.PollingFileWatcherOptions
+	tailFromEnd          bool
+	onPositionsFileError OnPositionsFileError
+	pollOptions          watch.PollingFileWatcherOptions
 
 	posAndSizeMtx sync.Mutex
 
@@ -68,15 +69,16 @@ func newTailer(
 	}
 
 	tailer := &tailer{
-		metrics:            metrics,
-		logger:             log.With(logger, "component", "tailer"),
-		receiver:           receiver,
-		positions:          pos,
-		key:                positions.Entry{Path: opts.path, Labels: opts.labels.String()},
-		labels:             opts.labels,
-		running:            atomic.NewBool(false),
-		tailFromEnd:        opts.tailFromEnd,
-		legacyPositionUsed: opts.legacyPositionUsed,
+		metrics:              metrics,
+		logger:               log.With(logger, "component", "tailer"),
+		receiver:             receiver,
+		positions:            pos,
+		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
+		labels:               opts.labels,
+		running:              atomic.NewBool(false),
+		tailFromEnd:          opts.tailFromEnd,
+		legacyPositionUsed:   opts.legacyPositionUsed,
+		onPositionsFileError: opts.onPositionsFileError,
 		pollOptions: watch.PollingFileWatcherOptions{
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
@@ -194,7 +196,22 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 
 	pos, err := t.positions.Get(t.key.Path, t.key.Labels)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file position: %w", err)
+		switch t.onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			pos, err = getLastLinePosition(t.key.Path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get last line position after positions error: %w", err)
+			}
+			level.Info(t.logger).Log("msg", "retrieved the position of the last line after positions error")
+		default:
+			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
+			pos = 0
+			level.Info(t.logger).Log("msg", "reset position to start of file after positions error")
+		}
 	}
 
 	// If we translated legacy positions we should try to get position offset without labels
@@ -371,7 +388,7 @@ func (t *tailer) stop(done chan struct{}) {
 		level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.key.Path, "error", err)
 	}
 	if err := t.tail.Stop(); err != nil {
-		if utils.IsEphemeralOrFileClosed(err) {
+		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
 			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "path", t.key.Path, "error", err)

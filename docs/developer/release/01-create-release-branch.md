@@ -23,7 +23,7 @@ Patch Releases for that version of Alloy.
     - If the consensus commit is not the latest commit from main, branch from that instead.
 
     > **NOTE**: Don't create any other branches that are prefixed with `release` when creating PRs or
-    those branches will collide with our automated release build publish rules.
+    > those branches will collide with our automated release build publish rules.
 
 3. Open a PR against `main` to update the VERSION file at the root of the
    repository to the next minor release planned. For example, if you have just

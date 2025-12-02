@@ -392,25 +392,29 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 			},
 			ep: promopv1.PodMetricsEndpoint{
 				Port:            stringPtr("metrics"),
-				EnableHttp2:     falsePtr,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: falsePtr,
-				ProxyURL:        &proxyURL,
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
 				HonorTimestamps: falsePtr,
 				FilterRunning:   falsePtr,
-				TLSConfig: &promopv1.SafeTLSConfig{
-					ServerName:         stringPtr("foo.com"),
-					InsecureSkipVerify: boolPtr(true),
-				},
 				RelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",
+					},
+				},
+				HTTPConfig: promopv1.HTTPConfig{
+					EnableHTTP2:     falsePtr,
+					FollowRedirects: falsePtr,
+					ProxyConfig: promopv1.ProxyConfig{
+						ProxyURL: &proxyURL,
+					},
+					TLSConfig: &promopv1.SafeTLSConfig{
+						ServerName:         stringPtr("foo.com"),
+						InsecureSkipVerify: boolPtr(true),
 					},
 				},
 			},

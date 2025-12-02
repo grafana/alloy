@@ -8,22 +8,6 @@ discovery.kubernetes "funny_one_2" {
 	kubeconfig_file = "/home/toby/.kube/config"
 }
 
-discovery.relabel "funny_one" {
-	targets = array.concat(
-		discovery.kubernetes.funny_one.targets,
-		discovery.kubernetes.funny_one_2.targets,
-	)
-
-	rule {
-		source_labels = ["__trail__"]
-		target_label  = "__path__"
-	}
-}
-
-local.file_match "funny_one" {
-	path_targets = discovery.relabel.funny_one.output
-}
-
 loki.process "funny_one" {
 	forward_to = [loki.write.default.receiver]
 
@@ -37,9 +21,25 @@ loki.process "funny_one" {
 	}
 }
 
+discovery.relabel "funny_one" {
+	targets = array.concat(
+		discovery.kubernetes.funny_one.targets,
+		discovery.kubernetes.funny_one_2.targets,
+	)
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
 loki.source.file "funny_one" {
-	targets               = local.file_match.funny_one.targets
-	forward_to            = [loki.process.funny_one.receiver]
+	targets    = discovery.relabel.funny_one.output
+	forward_to = [loki.process.funny_one.receiver]
+
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/var/log/positions.yaml"
 }
 

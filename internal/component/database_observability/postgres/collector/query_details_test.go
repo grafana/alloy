@@ -13,11 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestQueryDetails(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	testcases := []struct {
 		name                string
@@ -360,6 +362,53 @@ func TestQueryDetails(t *testing.T) {
 				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
 			},
 		},
+		{
+			name: "correctly escape quoted queries",
+			eventStatementsRows: [][]driver.Value{
+				{
+					"3871016669222913500",
+					`SELECT "pizza_to_ingredients"."pizza_id", "i"."id", "i"."name", "i"."calories_per_slice", "i"."vegetarian", "i"."type" FROM "ingredients" AS "i" JOIN "pizza_to_ingredients" AS "pizza_to_ingredients" ON ("pizza_to_ingredients"."pizza_id") IN ($1 /*, ... */) WHERE ("i"."id" = "pizza_to_ingredients"."ingredient_id")`,
+					"quickpizza",
+				},
+				{
+					"7865322458849960000",
+					`SELECT "quote"."name" FROM "quotes" AS "quote"`,
+					"quickpizza",
+				},
+				{
+					"5775615007769463000",
+					`SELECT "classical_name"."name" FROM "classical_names" AS "classical_name"`,
+					"quickpizza",
+				},
+				{
+					"7007034463187741000",
+					`SELECT "dough"."id", "dough"."name", "dough"."calories_per_slice" FROM "doughs" AS "dough"`,
+					"quickpizza",
+				},
+			},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="3871016669222913500" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1 /*, ... */) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")" datname="quickpizza" engine="postgres"`,
+				`level="info" queryid="3871016669222913500" datname="quickpizza" table="ingredients" engine="postgres" validated="false"`,
+				`level="info" queryid="3871016669222913500" datname="quickpizza" table="pizza_to_ingredients" engine="postgres" validated="false"`,
+				`level="info" queryid="7865322458849960000" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\"" datname="quickpizza" engine="postgres"`,
+				`level="info" queryid="7865322458849960000" datname="quickpizza" table="quotes" engine="postgres" validated="false"`,
+				`level="info" queryid="5775615007769463000" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\"" datname="quickpizza" engine="postgres"`,
+				`level="info" queryid="5775615007769463000" datname="quickpizza" table="classical_names" engine="postgres" validated="false"`,
+				`level="info" queryid="7007034463187741000" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\"" datname="quickpizza" engine="postgres"`,
+				`level="info" queryid="7007034463187741000" datname="quickpizza" table="doughs" engine="postgres" validated="false"`,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -370,7 +419,7 @@ func TestQueryDetails(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
@@ -421,7 +470,9 @@ func TestQueryDetails(t *testing.T) {
 }
 
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		t.Parallel()
@@ -430,7 +481,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -493,7 +544,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -552,7 +603,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,

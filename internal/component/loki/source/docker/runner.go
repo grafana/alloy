@@ -9,9 +9,10 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
