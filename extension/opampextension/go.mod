@@ -1,4 +1,4 @@
-module github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension
+module github.com/grafana/alloy/otelcol/opampextension
 
 go 1.24.0
 
@@ -132,7 +132,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
-
-replace github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages => ../opampcustommessages
-
-replace github.com/open-telemetry/opentelemetry-collector-contrib/pkg/status => ../../pkg/status

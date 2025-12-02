@@ -3,4 +3,4 @@
 
 //go:generate mdatagen metadata.yaml
 
-package opampextension // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension"
+package opampextension // import "github.com/grafana/alloy/otelcol/opampextension"
