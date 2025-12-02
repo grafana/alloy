@@ -1,4 +1,4 @@
-package tailv2
+package tail
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2/fileext"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 

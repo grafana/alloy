@@ -1,4 +1,4 @@
-package tailv2
+package tail
 
 import (
 	"time"
