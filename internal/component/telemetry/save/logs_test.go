@@ -73,7 +73,7 @@ func TestLogsReceiver(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	
 	// Force flush the batch immediately for testing
-	c.flushLogBatch()
+	c.logsHandler.flushLogBatch()
 	
 	// Verify the log file was created and contains our entry
 	logFilePath := filepath.Join(c.lokiLogsFolder, "logs.json")
@@ -180,7 +180,7 @@ func TestLogsBatching(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	
 	// Force flush the batch
-	c.flushLogBatch()
+	c.logsHandler.flushLogBatch()
 	
 	// Verify the log file was created and contains all entries
 	logFilePath := filepath.Join(c.lokiLogsFolder, "logs.json")
