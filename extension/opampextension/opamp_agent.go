@@ -11,6 +11,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -463,6 +464,45 @@ func (o *opampAgent) onMessage(_ context.Context, msg *types.MessageData) {
 
 	if msg.CustomMessage != nil {
 		o.customCapabilityRegistry.ProcessMessage(msg.CustomMessage)
+	}
+
+	if msg.RemoteConfig != nil {
+		o.handleRemoteConfig(msg.RemoteConfig)
+	} else {
+		o.logger.Debug("No remote config received")
+	}
+}
+
+// Writes the received remote config to the RemoteConfigDir directory, this should in theory
+// get picked up by the fsnotify implementation in the OpAMP provider’s watcher
+func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfig) {
+	if remoteConfig.Config == nil || remoteConfig.Config.ConfigMap == nil {
+		o.logger.Warn("Received empty remote config")
+		return
+	}
+
+	configDir := o.cfg.RemoteConfigDir
+
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		o.logger.Error("Failed to create remote config directory",
+			zap.String("dir", configDir),
+			zap.Error(err))
+		return
+	}
+
+	for name, file := range remoteConfig.Config.ConfigMap {
+		fmt.Printf("Writing remote config file %s \n %s", name, file)
+		filename := "config.yaml"
+		filePath := filepath.Join(configDir, filename)
+
+		// TODO: make this atomic/safe
+		err := os.WriteFile(filePath, file.Body, 0644)
+		if err != nil {
+			o.logger.Error("Failed to write remote config file",
+				zap.String("file", filePath),
+				zap.Error(err))
+			continue
+		}
 	}
 }
 

@@ -29,8 +29,11 @@ func createDefaultConfig() component.Config {
 			ReportsEffectiveConfig:     true,
 			ReportsHealth:              true,
 			ReportsAvailableComponents: true,
+			ReportsRemoteConfig:        false,
+			AcceptsRemoteConfig:        false,
 		},
 		PPIDPollInterval: 5 * time.Second,
+		RemoteConfigDir:  "/tmp/alloy-opamp-config",
 	}
 }
 

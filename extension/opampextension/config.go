@@ -28,6 +28,8 @@ const httpPollingIntervalDefault = 30 * time.Second
 type Config struct {
 	Server *OpAMPServer `mapstructure:"server"`
 
+	RemoteConfigDir string `mapstructure:"remote_config_dir"`
+
 	// InstanceUID is a UUID formatted as a 36 character string in canonical
 	// representation. Auto-generated on start if missing.
 	InstanceUID string `mapstructure:"instance_uid"`
@@ -64,6 +66,10 @@ type Capabilities struct {
 	ReportsHealth bool `mapstructure:"reports_health"`
 	// ReportsAvailableComponents enables the OpAMP ReportsAvailableComponents Capability (default: true)
 	ReportsAvailableComponents bool `mapstructure:"reports_available_components"`
+
+	AcceptsRemoteConfig bool `mapstructure:"accepts_remote_config"`
+
+	ReportsRemoteConfig bool `mapstructure:"reports_remote_config"`
 }
 
 func (caps Capabilities) toAgentCapabilities() protobufs.AgentCapabilities {
@@ -79,6 +85,14 @@ func (caps Capabilities) toAgentCapabilities() protobufs.AgentCapabilities {
 
 	if caps.ReportsAvailableComponents {
 		agentCapabilities |= protobufs.AgentCapabilities_AgentCapabilities_ReportsAvailableComponents
+	}
+
+	if caps.AcceptsRemoteConfig {
+		agentCapabilities |= protobufs.AgentCapabilities_AgentCapabilities_AcceptsRemoteConfig
+	}
+
+	if caps.ReportsRemoteConfig {
+		agentCapabilities |= protobufs.AgentCapabilities_AgentCapabilities_ReportsRemoteConfig
 	}
 
 	return agentCapabilities
