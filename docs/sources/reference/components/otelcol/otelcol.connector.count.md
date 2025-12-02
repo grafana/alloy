@@ -10,6 +10,8 @@ title: otelcol.connector.count
 
 # `otelcol.connector.count`
 
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 `otelcol.connector.count` accepts spans, span events, metrics, data points, and log records from other `otelcol` components and generates metrics that count the received telemetry data.
 
 {{< admonition type="note" >}}
