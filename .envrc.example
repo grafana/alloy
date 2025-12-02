@@ -1,0 +1,11 @@
+set -a
+
+export GCLOUD_FM_URL="https://fleet-management-prod-001.grafana.net"
+export GCLOUD_OTLP_URL="https://otlp-gateway-prod-us-central-0.grafana.net/otlp"
+
+export GCLOUD_INSTANCE_ID="491286"
+export GCLOUD_RW_API_KEY=""
+
+export GCLOUD_BASIC_AUTH=`echo "${GCLOUD_INSTANCE_ID}:${GCLOUD_RW_API_KEY}" | openssl base64 -A`
+
+export INSTANCE_UID=""

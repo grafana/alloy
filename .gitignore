@@ -38,3 +38,6 @@ node_modules
 # local testing files
 /targets.yaml
 /config.alloy
+
+# env vars
+.envrc
