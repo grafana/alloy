@@ -6,9 +6,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2/fileext"
 	"github.com/grafana/dskit/backoff"
+
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2/fileext"
 )
 
 // watcher polls the file for changes.
@@ -94,9 +94,7 @@ func (fw *watcher) blockUntilEvent(ctx context.Context, f *os.File, pos int64) (
 				// File does not exist (has been deleted).
 				return eventDeleted, nil
 			}
-
-			// XXX: report this error back to the user
-			util.Fatal("Failed to stat file %v: %v", fw.filename, err)
+			return eventNone, err
 		}
 
 		// File got moved/renamed?

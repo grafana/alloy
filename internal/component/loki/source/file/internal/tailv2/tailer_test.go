@@ -2,7 +2,6 @@ package tailv2
 
 import (
 	"context"
-	"io"
 	"os"
 	"strings"
 	"testing"
@@ -51,12 +50,12 @@ func TestTailTailer(t *testing.T) {
 			Filename: name,
 		})
 		require.NoError(t, err)
+		defer tailer.Stop()
 
 		verify(t, tailer, &Line{Text: "test", Offset: 5}, nil)
 		verify(t, tailer, &Line{Text: testString, Offset: 4104}, nil)
 		verify(t, tailer, &Line{Text: "hello", Offset: 4110}, nil)
 		verify(t, tailer, &Line{Text: "world", Offset: 4116}, nil)
-		verify(t, tailer, nil, io.EOF)
 	})
 
 	t.Run("read", func(t *testing.T) {
@@ -75,11 +74,11 @@ func TestTailTailer(t *testing.T) {
 				Offset:   0,
 			})
 			require.NoError(t, err)
+			defer tailer.Stop()
 
 			verify(t, tailer, &Line{Text: "hello", Offset: first}, nil)
 			verify(t, tailer, &Line{Text: "world", Offset: middle}, nil)
 			verify(t, tailer, &Line{Text: "test", Offset: end}, nil)
-			verify(t, tailer, nil, io.EOF)
 		})
 
 		t.Run("skip first", func(t *testing.T) {
@@ -88,19 +87,21 @@ func TestTailTailer(t *testing.T) {
 				Offset:   first,
 			})
 			require.NoError(t, err)
+			defer tailer.Stop()
 
 			verify(t, tailer, &Line{Text: "world", Offset: middle}, nil)
 			verify(t, tailer, &Line{Text: "test", Offset: end}, nil)
-			verify(t, tailer, nil, io.EOF)
 		})
 
-		t.Run("end", func(t *testing.T) {
+		t.Run("last", func(t *testing.T) {
 			tailer, err := NewTailer(log.NewNopLogger(), &Config{
 				Filename: name,
-				Offset:   end,
+				Offset:   middle,
 			})
 			require.NoError(t, err)
-			verify(t, tailer, nil, io.EOF)
+			defer tailer.Stop()
+
+			verify(t, tailer, &Line{Text: "test", Offset: end}, nil)
 		})
 	})
 
@@ -113,38 +114,14 @@ func TestTailTailer(t *testing.T) {
 			Filename: name,
 		})
 		require.NoError(t, err)
+		defer tailer.Stop()
 
 		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
-		verify(t, tailer, nil, io.EOF)
-
-		go appendToFile(t, name, "rld\n")
-
-		require.NoError(t, tailer.Wait())
-		verify(t, tailer, &Line{Text: "world", Offset: 12}, nil)
-
-		verify(t, tailer, nil, io.EOF)
-	})
-
-	t.Run("wait", func(t *testing.T) {
-		name := createFile(t, "wait", "hello\nwo")
-		defer removeFile(t, name)
-
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
-			Offset:   0,
-			Filename: name,
-		})
-		require.NoError(t, err)
-
-		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
-		verify(t, tailer, nil, io.EOF)
-
 		go func() {
-			<-time.After(200 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			appendToFile(t, name, "rld\n")
 		}()
-		require.NoError(t, tailer.Wait())
 		verify(t, tailer, &Line{Text: "world", Offset: 12}, nil)
-		verify(t, tailer, nil, io.EOF)
 	})
 
 	t.Run("truncate", func(t *testing.T) {
@@ -159,11 +136,11 @@ func TestTailTailer(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+		defer tailer.Stop()
 
 		verify(t, tailer, &Line{Text: "a really long string goes here", Offset: 31}, nil)
 		verify(t, tailer, &Line{Text: "hello", Offset: 37}, nil)
 		verify(t, tailer, &Line{Text: "world", Offset: 43}, nil)
-		verify(t, tailer, nil, io.EOF)
 
 		go func() {
 			// truncate now
@@ -171,11 +148,10 @@ func TestTailTailer(t *testing.T) {
 			truncateFile(t, name, "h311o\nw0r1d\nendofworld\n")
 		}()
 
-		tailer.Wait()
 		verify(t, tailer, &Line{Text: "h311o", Offset: 6}, nil)
 		verify(t, tailer, &Line{Text: "w0r1d", Offset: 12}, nil)
 		verify(t, tailer, &Line{Text: "endofworld", Offset: 23}, nil)
-		verify(t, tailer, nil, io.EOF)
+
 	})
 
 	t.Run("stopped during wait", func(t *testing.T) {
@@ -189,14 +165,14 @@ func TestTailTailer(t *testing.T) {
 		require.NoError(t, err)
 
 		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
-		verify(t, tailer, nil, io.EOF)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			require.NoError(t, tailer.Stop())
 		}()
 
-		require.ErrorIs(t, tailer.Wait(), context.Canceled)
+		_, err = tailer.Next()
+		require.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("removed and created during wait", func(t *testing.T) {
@@ -212,21 +188,18 @@ func TestTailTailer(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+		defer tailer.Stop()
 
 		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
-		verify(t, tailer, nil, io.EOF)
 
 		go func() {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			removeFile(t, name)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			recreateFile(t, name, "new\n")
 		}()
 
-		require.NoError(t, tailer.Wait())
-
 		verify(t, tailer, &Line{Text: "new", Offset: 4}, nil)
-		verify(t, tailer, nil, io.EOF)
 	})
 
 	t.Run("stopped while waiting for file to be created", func(t *testing.T) {
@@ -243,16 +216,14 @@ func TestTailTailer(t *testing.T) {
 		require.NoError(t, err)
 
 		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
-		verify(t, tailer, nil, io.EOF)
-
 		removeFile(t, name)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			tailer.Stop()
 		}()
-
-		require.ErrorIs(t, tailer.Wait(), context.Canceled)
+		_, err = tailer.Next()
+		require.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("UTF-16LE", func(t *testing.T) {
@@ -261,6 +232,7 @@ func TestTailTailer(t *testing.T) {
 			Decoder:  unicode.UTF16(unicode.LittleEndian, unicode.ExpectBOM).NewDecoder(),
 		})
 		require.NoError(t, err)
+		defer tailer.Stop()
 
 		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 528}, nil)
 		verify(t, tailer, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 552}, nil)
@@ -270,9 +242,7 @@ func TestTailTailer(t *testing.T) {
 		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 756}, nil)
 		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 819}, nil)
 		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
-		verify(t, tailer, nil, io.EOF)
 	})
-
 }
 
 func createFile(t *testing.T, name, content string) string {

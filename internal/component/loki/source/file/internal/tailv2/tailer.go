@@ -12,9 +12,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
+
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/dskit/backoff"
 )
 
 func NewTailer(logger log.Logger, cfg *Config) (*Tailer, error) {
@@ -52,9 +53,10 @@ type Tailer struct {
 	cfg    *Config
 	logger log.Logger
 
-	mu         sync.Mutex
-	file       *os.File
-	reader     *bufio.Reader
+	mu     sync.Mutex
+	file   *os.File
+	reader *bufio.Reader
+
 	lastOffset int64
 
 	watcher *watcher
@@ -63,14 +65,19 @@ type Tailer struct {
 	cancel context.CancelFunc
 }
 
+// FIXME: need clear exit signal
 func (t *Tailer) Next() (*Line, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+read:
 	text, err := t.readLine()
 
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			return nil, err
+			if err := t.wait(text != ""); err != nil {
+				return nil, err
+			}
+			goto read
 		}
 		return nil, err
 	}
@@ -89,10 +96,14 @@ func (t *Tailer) Next() (*Line, error) {
 	}, nil
 }
 
-func (t *Tailer) Wait() error {
+func (t *Tailer) Stop() error {
+	t.cancel()
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	return t.file.Close()
+}
 
+func (t *Tailer) wait(partial bool) error {
 	offset, err := t.offset()
 	if err != nil {
 		return err
@@ -101,9 +112,11 @@ func (t *Tailer) Wait() error {
 	event, err := t.watcher.blockUntilEvent(t.ctx, t.file, offset)
 	switch event {
 	case eventModified:
-		// We need to reset to last succeful offset because we could have consumed a partial line.
-		t.file.Seek(t.lastOffset, io.SeekStart)
-		t.reader.Reset(t.file)
+		if partial {
+			// We need to reset to last succeful offset because we could have consumed a partial line.
+			t.file.Seek(t.lastOffset, io.SeekStart)
+			t.reader.Reset(t.file)
+		}
 		return nil
 	case eventTruncated:
 		// We need to reopen the file when it was truncated.
@@ -111,13 +124,11 @@ func (t *Tailer) Wait() error {
 	case eventDeleted:
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
-		if err := t.reopen(false); err != nil {
-			return err
-		}
-		return nil
+		return t.reopen(false)
 	default:
 		return err
 	}
+
 }
 
 func (t *Tailer) readLine() (string, error) {
@@ -148,9 +159,9 @@ func (t *Tailer) reopen(truncated bool) error {
 	// start tailing a different file.
 	cf, err := t.file.Stat()
 	if !truncated && err != nil {
-		level.Debug(t.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
 		// need to action on it, cf is checked for nil later on to accommodate this
+		level.Debug(t.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 	}
 
 	t.file.Close()
@@ -165,9 +176,9 @@ func (t *Tailer) reopen(truncated bool) error {
 		file, err := fileext.OpenFile(t.cfg.Filename)
 		if err != nil {
 			if os.IsNotExist(err) {
-				level.Debug(t.logger).Log("msg", fmt.Sprintf("Waiting for %s to appear...", t.cfg.Filename))
+				level.Debug(t.logger).Log("msg", fmt.Sprintf("waiting for %s to appear...", t.cfg.Filename))
 				if err := t.watcher.blockUntilExists(t.ctx); err != nil {
-					return fmt.Errorf("Failed to detect creation of %s: %w", t.cfg.Filename, err)
+					return fmt.Errorf("failed to detect creation of %s: %w", t.cfg.Filename, err)
 				}
 				backoff.Wait()
 				continue
@@ -178,7 +189,7 @@ func (t *Tailer) reopen(truncated bool) error {
 		// File exists and is opened, get information about it.
 		nf, err := file.Stat()
 		if err != nil {
-			level.Debug(t.logger).Log("msg", "Failed to stat new file to be tailed, will try to open it again")
+			level.Debug(t.logger).Log("msg", "failed to stat new file to be tailed, will try to open it again")
 			file.Close()
 			backoff.Wait()
 			continue
@@ -197,13 +208,6 @@ func (t *Tailer) reopen(truncated bool) error {
 	}
 
 	return backoff.Err()
-}
-
-func (t *Tailer) Stop() error {
-	t.cancel()
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.file.Close()
 }
 
 func newReader(f *os.File, cfg *Config) *bufio.Reader {
