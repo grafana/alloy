@@ -3,6 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/components/custom-c
 aliases:
   - ./custom_components/ # /docs/alloy/latest/get-started/custom_components/
   - ./concepts/custom_components/ # /docs/alloy/latest/concepts/custom_components/
+  - ./get-started/custom_components/ # /docs/alloy/latest/get-started/custom_components/
 description: Learn about custom components
 title: Custom components
 weight: 40
