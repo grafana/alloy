@@ -10,8 +10,6 @@ weight: 50
 
 # {{% param "PRODUCT_NAME" %}} syntax
 
-{{< docs/alias from="/docs/grafana/latest/get-started/configuration-syntax/" to="/docs/grafana/latest/get-started/" >}}
-
 You learned about components, expressions, and basic configuration elements in the previous sections.
 Now you'll learn the detailed syntax rules that govern how to write {{< param "PRODUCT_NAME" >}} configuration files.
 
