@@ -45,6 +45,7 @@ providers:
   - gomod: go.opentelemetry.io/collector/confmap/provider/httpprovider v1.45.0
   - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.45.0
   - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.45.0
+  - gomod: github.com/grafana/alloy/otelcol/provider/opampprovider v0.1.0
 
 replaces:
   # Local modules.
@@ -52,6 +53,7 @@ replaces:
   - github.com/grafana/alloy/syntax => ../syntax
   - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
   - github.com/grafana/alloy/otelcol/opampextension => ../extension/opampextension
+  - github.com/grafana/alloy/otelcol/provider/opampprovider => ../provider/opampprovider
 
   # Replace directives copied from main go.mod of Alloy
   - go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
