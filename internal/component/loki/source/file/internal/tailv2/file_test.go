@@ -12,10 +12,10 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
-func TestTailTailer(t *testing.T) {
-	verify := func(t *testing.T, tailer *Tailer, expectedLine *Line, expectedErr error) {
+func TestFile(t *testing.T) {
+	verify := func(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
 		t.Helper()
-		line, err := tailer.Next()
+		line, err := f.Next()
 		require.ErrorIs(t, err, expectedErr)
 		if expectedLine == nil {
 			require.Nil(t, line)
@@ -26,7 +26,7 @@ func TestTailTailer(t *testing.T) {
 	}
 
 	t.Run("file must exist", func(t *testing.T) {
-		_, err := NewTailer(log.NewNopLogger(), &Config{
+		_, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: "/no/such/file",
 		})
 		require.ErrorIs(t, err, os.ErrNotExist)
@@ -34,7 +34,7 @@ func TestTailTailer(t *testing.T) {
 		name := createFile(t, "exists", "")
 		defer removeFile(t, name)
 
-		_, err = NewTailer(log.NewNopLogger(), &Config{
+		_, err = NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
 		})
 		require.NoError(t, err)
@@ -46,16 +46,16 @@ func TestTailTailer(t *testing.T) {
 		name := createFile(t, "over4096", "test\n"+testString+"\nhello\nworld\n")
 		defer removeFile(t, name)
 
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
 		})
 		require.NoError(t, err)
-		defer tailer.Stop()
+		defer file.Stop()
 
-		verify(t, tailer, &Line{Text: "test", Offset: 5}, nil)
-		verify(t, tailer, &Line{Text: testString, Offset: 4104}, nil)
-		verify(t, tailer, &Line{Text: "hello", Offset: 4110}, nil)
-		verify(t, tailer, &Line{Text: "world", Offset: 4116}, nil)
+		verify(t, file, &Line{Text: "test", Offset: 5}, nil)
+		verify(t, file, &Line{Text: testString, Offset: 4104}, nil)
+		verify(t, file, &Line{Text: "hello", Offset: 4110}, nil)
+		verify(t, file, &Line{Text: "world", Offset: 4116}, nil)
 	})
 
 	t.Run("read", func(t *testing.T) {
@@ -69,39 +69,39 @@ func TestTailTailer(t *testing.T) {
 		)
 
 		t.Run("start", func(t *testing.T) {
-			tailer, err := NewTailer(log.NewNopLogger(), &Config{
+			file, err := NewFile(log.NewNopLogger(), &Config{
 				Filename: name,
 				Offset:   0,
 			})
 			require.NoError(t, err)
-			defer tailer.Stop()
+			defer file.Stop()
 
-			verify(t, tailer, &Line{Text: "hello", Offset: first}, nil)
-			verify(t, tailer, &Line{Text: "world", Offset: middle}, nil)
-			verify(t, tailer, &Line{Text: "test", Offset: end}, nil)
+			verify(t, file, &Line{Text: "hello", Offset: first}, nil)
+			verify(t, file, &Line{Text: "world", Offset: middle}, nil)
+			verify(t, file, &Line{Text: "test", Offset: end}, nil)
 		})
 
 		t.Run("skip first", func(t *testing.T) {
-			tailer, err := NewTailer(log.NewNopLogger(), &Config{
+			file, err := NewFile(log.NewNopLogger(), &Config{
 				Filename: name,
 				Offset:   first,
 			})
 			require.NoError(t, err)
-			defer tailer.Stop()
+			defer file.Stop()
 
-			verify(t, tailer, &Line{Text: "world", Offset: middle}, nil)
-			verify(t, tailer, &Line{Text: "test", Offset: end}, nil)
+			verify(t, file, &Line{Text: "world", Offset: middle}, nil)
+			verify(t, file, &Line{Text: "test", Offset: end}, nil)
 		})
 
 		t.Run("last", func(t *testing.T) {
-			tailer, err := NewTailer(log.NewNopLogger(), &Config{
+			file, err := NewFile(log.NewNopLogger(), &Config{
 				Filename: name,
 				Offset:   middle,
 			})
 			require.NoError(t, err)
-			defer tailer.Stop()
+			defer file.Stop()
 
-			verify(t, tailer, &Line{Text: "test", Offset: end}, nil)
+			verify(t, file, &Line{Text: "test", Offset: end}, nil)
 		})
 	})
 
@@ -109,26 +109,26 @@ func TestTailTailer(t *testing.T) {
 		name := createFile(t, "partial", "hello\nwo")
 		defer removeFile(t, name)
 
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Offset:   0,
 			Filename: name,
 		})
 		require.NoError(t, err)
-		defer tailer.Stop()
+		defer file.Stop()
 
-		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
 		go func() {
 			time.Sleep(50 * time.Millisecond)
 			appendToFile(t, name, "rld\n")
 		}()
-		verify(t, tailer, &Line{Text: "world", Offset: 12}, nil)
+		verify(t, file, &Line{Text: "world", Offset: 12}, nil)
 	})
 
 	t.Run("truncate", func(t *testing.T) {
 		name := createFile(t, "truncate", "a really long string goes here\nhello\nworld\n")
 		defer removeFile(t, name)
 
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 5 * time.Millisecond,
@@ -136,11 +136,11 @@ func TestTailTailer(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer tailer.Stop()
+		defer file.Stop()
 
-		verify(t, tailer, &Line{Text: "a really long string goes here", Offset: 31}, nil)
-		verify(t, tailer, &Line{Text: "hello", Offset: 37}, nil)
-		verify(t, tailer, &Line{Text: "world", Offset: 43}, nil)
+		verify(t, file, &Line{Text: "a really long string goes here", Offset: 31}, nil)
+		verify(t, file, &Line{Text: "hello", Offset: 37}, nil)
+		verify(t, file, &Line{Text: "world", Offset: 43}, nil)
 
 		go func() {
 			// truncate now
@@ -148,9 +148,9 @@ func TestTailTailer(t *testing.T) {
 			truncateFile(t, name, "h311o\nw0r1d\nendofworld\n")
 		}()
 
-		verify(t, tailer, &Line{Text: "h311o", Offset: 6}, nil)
-		verify(t, tailer, &Line{Text: "w0r1d", Offset: 12}, nil)
-		verify(t, tailer, &Line{Text: "endofworld", Offset: 23}, nil)
+		verify(t, file, &Line{Text: "h311o", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "w0r1d", Offset: 12}, nil)
+		verify(t, file, &Line{Text: "endofworld", Offset: 23}, nil)
 
 	})
 
@@ -158,20 +158,20 @@ func TestTailTailer(t *testing.T) {
 		name := createFile(t, "stopped", "hello\n")
 		defer removeFile(t, name)
 
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Offset:   0,
 			Filename: name,
 		})
 		require.NoError(t, err)
 
-		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			require.NoError(t, tailer.Stop())
+			require.NoError(t, file.Stop())
 		}()
 
-		_, err = tailer.Next()
+		_, err = file.Next()
 		require.ErrorIs(t, err, context.Canceled)
 	})
 
@@ -179,7 +179,7 @@ func TestTailTailer(t *testing.T) {
 		name := createFile(t, "removed", "hello\n")
 		defer removeFile(t, name)
 
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Offset:   0,
 			Filename: name,
 			WatcherConfig: WatcherConfig{
@@ -188,9 +188,9 @@ func TestTailTailer(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer tailer.Stop()
+		defer file.Stop()
 
-		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
 
 		go func() {
 			time.Sleep(50 * time.Millisecond)
@@ -199,13 +199,13 @@ func TestTailTailer(t *testing.T) {
 			recreateFile(t, name, "new\n")
 		}()
 
-		verify(t, tailer, &Line{Text: "new", Offset: 4}, nil)
+		verify(t, file, &Line{Text: "new", Offset: 4}, nil)
 	})
 
 	t.Run("stopped while waiting for file to be created", func(t *testing.T) {
 		name := createFile(t, "removed", "hello\n")
 
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Offset:   0,
 			Filename: name,
 			WatcherConfig: WatcherConfig{
@@ -215,33 +215,33 @@ func TestTailTailer(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		verify(t, tailer, &Line{Text: "hello", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
 		removeFile(t, name)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			tailer.Stop()
+			file.Stop()
 		}()
-		_, err = tailer.Next()
+		_, err = file.Next()
 		require.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("UTF-16LE", func(t *testing.T) {
-		tailer, err := NewTailer(log.NewNopLogger(), &Config{
+		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: "testdata/mssql.log",
 			Decoder:  unicode.UTF16(unicode.LittleEndian, unicode.ExpectBOM).NewDecoder(),
 		})
 		require.NoError(t, err)
-		defer tailer.Stop()
+		defer file.Stop()
 
-		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 528}, nil)
-		verify(t, tailer, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 552}, nil)
-		verify(t, tailer, &Line{Text: "	Copyright (C) 2019 Microsoft Corporation", Offset: 595}, nil)
-		verify(t, tailer, &Line{Text: "	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)", Offset: 697}, nil)
-		verify(t, tailer, &Line{Text: "", Offset: 699}, nil)
-		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 756}, nil)
-		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 819}, nil)
-		verify(t, tailer, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 528}, nil)
+		verify(t, file, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 552}, nil)
+		verify(t, file, &Line{Text: "	Copyright (C) 2019 Microsoft Corporation", Offset: 595}, nil)
+		verify(t, file, &Line{Text: "	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)", Offset: 697}, nil)
+		verify(t, file, &Line{Text: "", Offset: 699}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 756}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 819}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
 	})
 }
 

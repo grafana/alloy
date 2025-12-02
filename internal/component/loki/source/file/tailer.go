@@ -49,7 +49,7 @@ type tailer struct {
 
 	report sync.Once
 
-	tail    *tailv2.Tailer
+	file    *tailv2.File
 	decoder *encoding.Decoder
 }
 
@@ -242,7 +242,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 		}
 	}
 
-	tail, err := tailv2.NewTailer(t.logger, &tailv2.Config{
+	tail, err := tailv2.NewFile(t.logger, &tailv2.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
 		Decoder:       t.decoder,
@@ -253,7 +253,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 		return nil, fmt.Errorf("failed to tail the file: %w", err)
 	}
 
-	t.tail = tail
+	t.file = tail
 
 	labelsMiddleware := t.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(t.key.Path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
@@ -290,13 +290,13 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 
 	defer func() {
 		level.Info(t.logger).Log("msg", "tail routine: exited", "path", t.key.Path)
-		size, _ := t.tail.Size()
+		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
 		close(done)
 	}()
 
 	for {
-		line, err := t.tail.Next()
+		line, err := t.file.Next()
 		if err != nil {
 			// Maybe we should use a better signal than context canceled to indicate normal stop...
 			if !errors.Is(err, context.Canceled) {
@@ -319,7 +319,7 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 		lastOffset = line.Offset
 		if time.Since(lastUpdatedPosition) >= positionInterval {
 			lastUpdatedPosition = time.Now()
-			size, _ := t.tail.Size()
+			size, _ := t.file.Size()
 			t.updateStats(lastOffset, size)
 		}
 	}
@@ -334,7 +334,7 @@ func (t *tailer) updateStats(offset int64, size int64) {
 }
 
 func (t *tailer) stop(done chan struct{}) {
-	if err := t.tail.Stop(); err != nil {
+	if err := t.file.Stop(); err != nil {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
