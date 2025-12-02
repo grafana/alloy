@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -100,6 +101,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	Registry              *prometheus.Registry
 }
 
 type QuerySamples struct {
@@ -107,6 +109,8 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	registry              *prometheus.Registry
+	latencyHistogram      *prometheus.HistogramVec
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -204,14 +208,26 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	const emittedCacheSize = 1000 //pg_stat_statements default max number of statements to track
+	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
 	const emittedCacheTTL = 10 * time.Minute
+
+	latencyHistogram := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "database_observability",
+		Name:      "wait_event_latency_postgres_seconds",
+		Help:      "Latency of wait events in seconds",
+		Buckets:   prometheus.DefBuckets,
+		// NativeHistogramBucketFactor: 1.1,
+	}, []string{"queryid", "datname", "event_name"})
+
+	args.Registry.MustRegister(latencyHistogram)
 
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
+		registry:              args.Registry,
+		latencyHistogram:      latencyHistogram,
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
@@ -267,6 +283,7 @@ func (c *QuerySamples) Stopped() bool {
 // Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
 	c.cancel()
+	c.registry.Unregister(c.latencyHistogram)
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
@@ -468,6 +485,17 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			waitEventLabels,
 			we.LastTimestamp.UnixNano(),
 		)
+
+		dur, _ := time.ParseDuration(we.LastWaitTime)
+		fmt.Printf("wait event latency: %+v\n", dur.Seconds())
+		fmt.Printf("wait event        : %s\n", fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent))
+		fmt.Printf("wait event queryid: %d\n", state.LastRow.QueryID.Int64)
+		c.latencyHistogram.WithLabelValues(
+			fmt.Sprintf("%d", state.LastRow.QueryID.Int64),
+			state.LastRow.DatabaseName.String,
+			fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent), // todo: compute only once
+		).
+			Observe(dur.Seconds()) // todo: no need to re-parse
 	}
 
 	delete(c.samples, key)

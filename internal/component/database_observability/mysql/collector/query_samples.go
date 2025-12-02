@@ -8,6 +8,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -83,6 +84,7 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
 	SetupConsumersCheckInterval time.Duration
+	Registry                    *prometheus.Registry
 
 	Logger log.Logger
 }
@@ -95,6 +97,8 @@ type QuerySamples struct {
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
 	setupConsumersCheckInterval time.Duration
+	registry                    *prometheus.Registry
+	latencyHistogram            *prometheus.HistogramVec
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -106,6 +110,16 @@ type QuerySamples struct {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	latencyHistogram := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "database_observability",
+		Name:      "wait_event_latency_mysql_seconds",
+		Help:      "Latency of wait events in seconds",
+		Buckets:   prometheus.DefBuckets,
+		// NativeHistogramBucketFactor: 1.1,
+	}, []string{"digest", "schema", "event_name"})
+
+	args.Registry.MustRegister(latencyHistogram)
+
 	c := &QuerySamples{
 		dbConnection:                args.DB,
 		engineVersion:               args.EngineVersion,
@@ -114,6 +128,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		registry:                    args.Registry,
+		latencyHistogram:            latencyHistogram,
 		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
@@ -178,6 +194,7 @@ func (c *QuerySamples) Stopped() bool {
 // Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
 	c.cancel()
+	c.registry.Unregister(c.latencyHistogram)
 }
 
 func (c *QuerySamples) runSetupConsumersCheck() {
@@ -396,6 +413,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
+
+			c.latencyHistogram.WithLabelValues(row.Digest.String, row.Schema.String, row.WaitEventName.String).Observe(picosecondsToSeconds(row.WaitTime.Float64))
 		}
 	}
 
