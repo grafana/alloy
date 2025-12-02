@@ -13,6 +13,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter v0.139.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.139.0
@@ -617,7 +618,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.139.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.139.0 // indirect
