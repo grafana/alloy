@@ -160,7 +160,7 @@ For building complete configurations:
 
 - [Component exports][refer to values] - Combine operators with component references to create dynamic pipelines
 
-[type]: ./types_and_values/
-[functions]: ./function_calls/
-[refer to values]: ./referencing_exports/
+[type]: ../types_and_values/
+[functions]: ../function_calls/
+[refer to values]: ../referencing_exports/
 [PEMDAS]: https://en.wikipedia.org/wiki/Order_of_operations

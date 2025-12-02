@@ -112,7 +112,7 @@ This graceful degradation keeps your monitoring operational even when individual
 
 ## In-memory traffic
 
-Some components that expose HTTP endpoints (such as [`prometheus.exporter.unix`][prometheus.exporter.unix]) support in-memory communication for improved performance.
+Some components that expose HTTP endpoints, such as [`prometheus.exporter.unix`][prometheus.exporter.unix], support in-memory communication for improved performance.
 When components within the same {{< param "PRODUCT_NAME" >}} process communicate, they can bypass the network stack entirely.
 
 Benefits of in-memory traffic:
@@ -147,8 +147,8 @@ For monitoring and troubleshooting:
 - [{{< param "PRODUCT_NAME" >}} run command][run] - Configuration options that affect the controller
 
 [DAG]: https://en.wikipedia.org/wiki/Directed_acyclic_graph
-[prometheus.exporter.unix]: ../../reference/components/prometheus/prometheus.exporter.unix
-[run]: ../../reference/cli/run/
-[Configure components]: ./configure-components/
-[Expressions]: ../expressions/
+[prometheus.exporter.unix]: ../../../reference/components/prometheus/prometheus.exporter.unix
+[run]: ../../../reference/cli/run/
+[Configure components]: ../configure-components/
+[Expressions]: ../../expressions/
 [Monitor the component controller]: ../../../troubleshoot/controller_metrics/

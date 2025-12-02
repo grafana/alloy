@@ -175,17 +175,16 @@ local.file "b" {
 Now that you understand how to configure components, learn about more advanced topics:
 
 - [Build data pipelines][] - Connect components together to create data processing workflows
-- [Component controller][] - Understand how {{< param "PRODUCT_NAME" >}} manages components at runtime
+- [Component controller][controller] - Understand how {{< param "PRODUCT_NAME" >}} manages components at runtime
 - [Expressions][] - Write dynamic configuration using component references and functions
 - [Component reference][] - Explore all available components and their arguments and exports
 
 For practical examples, try the [tutorials][] to build complete data collection pipelines.
 
-[components]: ../../reference/components/
-[controller]: ./component-controller/
-[type]: ../expressions/types_and_values/
-[Build data pipelines]: ./build-pipelines/
-[Component controller]: ./component-controller/
-[Expressions]: ../expressions/
-[Component reference]: ../../reference/components/
-[tutorials]: ../../tutorials/
+[components]: ../../../reference/components/
+[type]: ../../expressions/types_and_values/
+[Build data pipelines]: ../build-pipelines/
+[controller]: ../component-controller/
+[Expressions]: ../../expressions/
+[Component reference]: ../../../reference/components/
+[tutorials]: ../../../tutorials/
