@@ -2,7 +2,6 @@ package tail
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"runtime"
 
@@ -11,41 +10,15 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 )
 
-// watcher polls the file for changes.
-type watcher struct {
-	filename string
-	cfg      WatcherConfig
-
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func newWatcher(filename string, cfg WatcherConfig) (*watcher, error) {
-	if cfg == (WatcherConfig{}) {
-		cfg = DefaultWatcherConfig
-	}
-
-	if cfg.MinPollFrequency == 0 || cfg.MaxPollFrequency == 0 {
-		return nil, fmt.Errorf("MinPollFrequency and MaxPollFrequency must be greater than 0")
-	} else if cfg.MaxPollFrequency < cfg.MinPollFrequency {
-		return nil, fmt.Errorf("MaxPollFrequency must be larger than MinPollFrequency")
-	}
-
-	return &watcher{
-		filename: filename,
-		cfg:      cfg,
-	}, nil
-}
-
 // blockUntilExists will block until either file exists or context is canceled.
-func (fw *watcher) blockUntilExists(ctx context.Context) error {
+func blockUntilExists(ctx context.Context, cfg *Config) error {
 	backoff := backoff.New(ctx, backoff.Config{
-		MinBackoff: fw.cfg.MinPollFrequency,
-		MaxBackoff: fw.cfg.MaxPollFrequency,
+		MinBackoff: cfg.WatcherConfig.MinPollFrequency,
+		MaxBackoff: cfg.WatcherConfig.MaxPollFrequency,
 	})
 
 	for backoff.Ongoing() {
-		if _, err := os.Stat(fw.filename); err == nil {
+		if _, err := os.Stat(cfg.Filename); err == nil {
 			return nil
 		} else if !os.IsNotExist(err) {
 			return err
@@ -57,16 +30,25 @@ func (fw *watcher) blockUntilExists(ctx context.Context) error {
 	return backoff.Err()
 }
 
+type event int
+
+const (
+	eventNone event = iota
+	eventTruncated
+	eventModified
+	eventDeleted
+)
+
 // blockUntilEvent will block until it detects a new event for file or context is canceled.
-func (fw *watcher) blockUntilEvent(ctx context.Context, f *os.File, pos int64) (event, error) {
+func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (event, error) {
 	origFi, err := f.Stat()
 	if err != nil {
 		return eventNone, err
 	}
 
 	backoff := backoff.New(ctx, backoff.Config{
-		MinBackoff: fw.cfg.MinPollFrequency,
-		MaxBackoff: fw.cfg.MaxPollFrequency,
+		MinBackoff: cfg.WatcherConfig.MinPollFrequency,
+		MaxBackoff: cfg.WatcherConfig.MaxPollFrequency,
 	})
 
 	var (
@@ -86,7 +68,7 @@ func (fw *watcher) blockUntilEvent(ctx context.Context, f *os.File, pos int64) (
 			return eventDeleted, nil
 		}
 
-		fi, err := os.Stat(fw.filename)
+		fi, err := os.Stat(cfg.Filename)
 		if err != nil {
 			// Windows cannot delete a file if a handle is still open (tail keeps one open)
 			// so it gives access denied to anything trying to read it until all handles are released.
@@ -127,12 +109,3 @@ func (fw *watcher) blockUntilEvent(ctx context.Context, f *os.File, pos int64) (
 
 	return eventNone, backoff.Err()
 }
-
-type event int
-
-const (
-	eventNone event = iota
-	eventTruncated
-	eventModified
-	eventDeleted
-)

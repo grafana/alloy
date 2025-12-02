@@ -31,21 +31,21 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		}
 	}
 
-	watcher, err := newWatcher(cfg.Filename, cfg.WatcherConfig)
-	if err != nil {
-		return nil, err
+	if cfg.WatcherConfig == (WatcherConfig{}) {
+		cfg.WatcherConfig = defaultWatcherConfig
 	}
+
+	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:     cfg,
-		logger:  logger,
-		file:    f,
-		reader:  newReader(f, cfg),
-		watcher: watcher,
-		ctx:     ctx,
-		cancel:  cancel,
+		cfg:    cfg,
+		logger: logger,
+		file:   f,
+		reader: newReader(f, cfg),
+		ctx:    ctx,
+		cancel: cancel,
 	}, nil
 }
 
@@ -58,8 +58,6 @@ type File struct {
 	reader *bufio.Reader
 
 	lastOffset int64
-
-	watcher *watcher
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -120,7 +118,7 @@ func (f *File) wait(partial bool) error {
 		return err
 	}
 
-	event, err := f.watcher.blockUntilEvent(f.ctx, f.file, offset)
+	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
 	switch event {
 	case eventModified:
 		if partial {
@@ -139,7 +137,6 @@ func (f *File) wait(partial bool) error {
 	default:
 		return err
 	}
-
 }
 
 func (f *File) readLine() (string, error) {
@@ -178,8 +175,8 @@ func (f *File) reopen(truncated bool) error {
 	f.file.Close()
 
 	backoff := backoff.New(f.ctx, backoff.Config{
-		MinBackoff: DefaultWatcherConfig.MaxPollFrequency,
-		MaxBackoff: DefaultWatcherConfig.MaxPollFrequency,
+		MinBackoff: defaultWatcherConfig.MaxPollFrequency,
+		MaxBackoff: defaultWatcherConfig.MaxPollFrequency,
 		MaxRetries: 20,
 	})
 
@@ -188,7 +185,7 @@ func (f *File) reopen(truncated bool) error {
 		if err != nil {
 			if os.IsNotExist(err) {
 				level.Debug(f.logger).Log("msg", fmt.Sprintf("waiting for %s to appear...", f.cfg.Filename))
-				if err := f.watcher.blockUntilExists(f.ctx); err != nil {
+				if err := blockUntilExists(f.ctx, f.cfg); err != nil {
 					return fmt.Errorf("failed to detect creation of %s: %w", f.cfg.Filename, err)
 				}
 				backoff.Wait()
