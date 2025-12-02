@@ -21,7 +21,7 @@ import (
 	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
@@ -39,7 +39,8 @@ type tailer struct {
 
 	tailFromEnd          bool
 	onPositionsFileError OnPositionsFileError
-	pollOptions          tailv2.WatcherConfig
+	tailConfig           *tail.Config
+	watcherConfig        tail.WatcherConfig
 
 	posAndSizeMtx sync.Mutex
 
@@ -49,7 +50,7 @@ type tailer struct {
 
 	report sync.Once
 
-	file    *tailv2.File
+	file    *tail.File
 	decoder *encoding.Decoder
 }
 
@@ -78,7 +79,7 @@ func newTailer(
 		tailFromEnd:          opts.tailFromEnd,
 		legacyPositionUsed:   opts.legacyPositionUsed,
 		onPositionsFileError: opts.onPositionsFileError,
-		pollOptions: tailv2.WatcherConfig{
+		watcherConfig: tail.WatcherConfig{
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		},
@@ -242,11 +243,11 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 		}
 	}
 
-	tail, err := tailv2.NewFile(t.logger, &tailv2.Config{
+	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
 		Decoder:       t.decoder,
-		WatcherConfig: t.pollOptions,
+		WatcherConfig: t.watcherConfig,
 	})
 
 	if err != nil {

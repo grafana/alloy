@@ -1,4 +1,4 @@
-package tailv2
+package tail
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2/fileext"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 )
 
 // watcher polls the file for changes.
