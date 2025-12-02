@@ -21,8 +21,7 @@ import (
 	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tailv2"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
@@ -40,7 +39,7 @@ type tailer struct {
 
 	tailFromEnd          bool
 	onPositionsFileError OnPositionsFileError
-	pollOptions          watch.PollingFileWatcherOptions
+	pollOptions          tailv2.WatcherConfig
 
 	posAndSizeMtx sync.Mutex
 
@@ -50,7 +49,7 @@ type tailer struct {
 
 	report sync.Once
 
-	tail    *tail.Tail
+	tail    *tailv2.Tailer
 	decoder *encoding.Decoder
 }
 
@@ -79,7 +78,7 @@ func newTailer(
 		tailFromEnd:          opts.tailFromEnd,
 		legacyPositionUsed:   opts.legacyPositionUsed,
 		onPositionsFileError: opts.onPositionsFileError,
-		pollOptions: watch.PollingFileWatcherOptions{
+		pollOptions: tailv2.WatcherConfig{
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		},
@@ -243,11 +242,11 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 		}
 	}
 
-	tail, err := tail.TailFile(t.key.Path, tail.Config{
-		Location:    &tail.SeekInfo{Offset: pos, Whence: 0},
-		Logger:      t.logger,
-		PollOptions: t.pollOptions,
-		Decoder:     t.decoder,
+	tail, err := tailv2.NewTailer(t.logger, &tailv2.Config{
+		Filename:      t.key.Path,
+		Offset:        pos,
+		Decoder:       t.decoder,
+		WatcherConfig: t.pollOptions,
 	})
 
 	if err != nil {
@@ -274,39 +273,6 @@ func getDecoder(encoding string) (*encoding.Decoder, error) {
 	return encoder.NewDecoder(), nil
 }
 
-// updatePosition is run in a goroutine and checks the current size of the file
-// and saves it to the positions file at a regular interval. If there is ever
-// an error it stops the tailer and exits, the tailer will be re-opened by the
-// backoff retry method if it still exists and will start reading from the
-// last successful entry in the positions file.
-func (t *tailer) updatePosition(posquit chan struct{}) {
-	positionSyncPeriod := t.positions.SyncPeriod()
-	positionWait := time.NewTicker(positionSyncPeriod)
-	defer func() {
-		positionWait.Stop()
-		level.Info(t.logger).Log("msg", "position timer: exited", "path", t.key.Path)
-		// NOTE: metrics must be cleaned up after the position timer exits, as markPositionAndSize() updates metrics.
-		t.cleanupMetrics()
-	}()
-
-	for {
-		select {
-		case <-positionWait.C:
-			err := t.markPositionAndSize()
-			if err != nil {
-				level.Error(t.logger).Log("msg", "position timer: error getting tail position and/or size, stopping tailer", "path", t.key.Path, "error", err)
-				err := t.tail.Stop()
-				if err != nil {
-					level.Error(t.logger).Log("msg", "position timer: error stopping tailer", "path", t.key.Path, "error", err)
-				}
-				return
-			}
-		case <-posquit:
-			return
-		}
-	}
-}
-
 // readLines consumes the t.tail.Lines channel from the
 // underlying tailer. It will only exit when that channel is closed. This is
 // important to avoid a deadlock in the underlying tailer which can happen if
@@ -315,28 +281,27 @@ func (t *tailer) updatePosition(posquit chan struct{}) {
 // the t.tail.Lines channel
 func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 	level.Info(t.logger).Log("msg", "tail routine: started", "path", t.key.Path)
+	var (
+		entries             = handler.Chan()
+		lastOffset          = int64(0)
+		positionInterval    = t.positions.SyncPeriod()
+		lastUpdatedPosition = time.Time{}
+	)
 
-	posquit, posdone := make(chan struct{}), make(chan struct{})
-	go func() {
-		t.updatePosition(posquit)
-		close(posdone)
-	}()
-
-	// This function runs in a goroutine, if it exits this tailer will never do any more tailing.
-	// Clean everything up.
 	defer func() {
 		level.Info(t.logger).Log("msg", "tail routine: exited", "path", t.key.Path)
-		// Shut down the position marker thread
-		close(posquit)
-		<-posdone
+		size, _ := t.tail.Size()
+		t.updateStats(lastOffset, size)
 		close(done)
 	}()
 
-	entries := handler.Chan()
 	for {
-		line, ok := <-t.tail.Lines
-		if !ok {
-			level.Info(t.logger).Log("msg", "tail routine: tail channel closed, stopping tailer", "path", t.key.Path, "reason", t.tail.Tomb.Err())
+		line, err := t.tail.Next()
+		if err != nil {
+			// Maybe we should use a better signal than context canceled to indicate normal stop...
+			if !errors.Is(err, context.Canceled) {
+				level.Info(t.logger).Log("msg", "tail routine: stopping tailer", "path", t.key.Path, "err", err)
+			}
 			return
 		}
 
@@ -350,43 +315,25 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 				Line:      line.Text,
 			},
 		}
+
+		lastOffset = line.Offset
+		if time.Since(lastUpdatedPosition) >= positionInterval {
+			lastUpdatedPosition = time.Now()
+			size, _ := t.tail.Size()
+			t.updateStats(lastOffset, size)
+		}
 	}
 }
 
-func (t *tailer) markPositionAndSize() error {
-	// Lock this update because it can be called in two different goroutines
-	t.posAndSizeMtx.Lock()
-	defer t.posAndSizeMtx.Unlock()
-
-	size, err := t.tail.Size()
-	if err != nil {
-		// If the file no longer exists, no need to save position information
-		if err == os.ErrNotExist {
-			level.Info(t.logger).Log("msg", "skipping update of position for a file which does not currently exist", "path", t.key.Path)
-			return nil
-		}
-		return err
-	}
-
-	pos, err := t.tail.Tell()
-	if err != nil {
-		return err
-	}
-
+func (t *tailer) updateStats(offset int64, size int64) {
 	// Update metrics and positions file all together to avoid race conditions when `t.tail` is stopped.
 	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
-	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(pos))
-	t.positions.Put(t.key.Path, t.key.Labels, pos)
+	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
+	t.positions.Put(t.key.Path, t.key.Labels, offset)
 
-	return nil
 }
 
 func (t *tailer) stop(done chan struct{}) {
-	// Save the current position before shutting down tailer to ensure that if the file is tailed again
-	// it start where it left off.
-	if err := t.markPositionAndSize(); err != nil {
-		level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.key.Path, "error", err)
-	}
 	if err := t.tail.Stop(); err != nil {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case

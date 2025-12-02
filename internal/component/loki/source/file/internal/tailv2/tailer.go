@@ -96,6 +96,17 @@ read:
 	}, nil
 }
 
+func (t *Tailer) Size() (int64, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	fi, err := t.file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return fi.Size(), nil
+}
+
 func (t *Tailer) Stop() error {
 	t.cancel()
 	t.mu.Lock()
@@ -203,7 +214,7 @@ func (t *Tailer) reopen(truncated bool) error {
 		}
 
 		t.file = file
-		t.reader = newReader(t.file, t.cfg)
+		t.reader.Reset(t.file)
 		break
 	}
 
