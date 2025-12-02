@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -17,6 +18,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
@@ -44,7 +46,8 @@ func (args *Arguments) SetToDefault() {
 
 // Exports are the set of fields exposed by the telemetry.save component.
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver     storage.Appendable `alloy:"receiver,attr"`
+	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr"`
 }
 
 // Component is the telemetry.save component.
@@ -53,6 +56,13 @@ type Component struct {
 	args              Arguments
 	logger            log.Logger
 	promMetricsFolder string
+	lokiLogsFolder    string
+	logsReceiver      loki.LogsReceiver
+	logsBatch         []loki.Entry
+	batchMut          sync.Mutex
+	flushTimer        *time.Timer
+	ctx               context.Context
+	cancel            context.CancelFunc
 }
 
 var _ component.Component = (*Component)(nil)
@@ -74,12 +84,33 @@ func NewComponent(opts component.Options, args Arguments) (*Component, error) {
 
 	promMetricsFolder := filepath.Join(dir, "prometheus")
 	if err := os.MkdirAll(promMetricsFolder, 0755); err != nil {
-		return nil, fmt.Errorf("failed to prometheus metrics directory: %w", err)
+		return nil, fmt.Errorf("failed to create prometheus metrics directory: %w", err)
 	}
 	c.promMetricsFolder = promMetricsFolder
 
-	// Export the receiver interface
-	opts.OnStateChange(Exports{Receiver: c})
+	lokiLogsFolder := filepath.Join(dir, "loki")
+	if err := os.MkdirAll(lokiLogsFolder, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create loki logs directory: %w", err)
+	}
+	c.lokiLogsFolder = lokiLogsFolder
+
+	// Create logs receiver
+	c.logsReceiver = loki.NewLogsReceiver(loki.WithComponentID("telemetry.save"))
+	
+	// Initialize batching state
+	c.logsBatch = make([]loki.Entry, 0, 100) // Pre-allocate for 100 entries
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	c.flushTimer = time.NewTimer(5 * time.Second) // Flush every 5 seconds
+	c.flushTimer.Stop() // Don't start the timer yet
+
+	// Start the log entry handler goroutine
+	go c.handleLogEntries()
+
+	// Export the receiver interfaces
+	opts.OnStateChange(Exports{
+		Receiver:     c,
+		LogsReceiver: c.logsReceiver,
+	})
 
 	return c, nil
 }
@@ -89,6 +120,13 @@ func (c *Component) Run(ctx context.Context) error {
 	_ = level.Info(c.logger).Log("msg", "telemetry.save component started", "output_location", c.args.OutputLocation)
 
 	<-ctx.Done()
+	
+	// Clean shutdown: flush any pending logs and stop timer
+	c.cancel()
+	c.flushLogBatch()
+	if c.flushTimer != nil {
+		c.flushTimer.Stop()
+	}
 
 	_ = level.Info(c.logger).Log("msg", "telemetry.save component stopped")
 	return nil
@@ -112,13 +150,26 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// Update prometheus and loki folders
+	promMetricsFolder := filepath.Join(dir, "prometheus")
+	if err := os.MkdirAll(promMetricsFolder, 0755); err != nil {
+		return fmt.Errorf("failed to create prometheus metrics directory: %w", err)
+	}
+	c.promMetricsFolder = promMetricsFolder
+
+	lokiLogsFolder := filepath.Join(dir, "loki")
+	if err := os.MkdirAll(lokiLogsFolder, 0755); err != nil {
+		return fmt.Errorf("failed to create loki logs directory: %w", err)
+	}
+	c.lokiLogsFolder = lokiLogsFolder
+
 	// Cleanup the old directory
 	oldDir := filepath.Dir(c.args.OutputLocation)
 	if err := os.RemoveAll(oldDir); err != nil {
 		level.Warn(c.logger).Log("msg", "failed to remove old output directory", "dir", oldDir, "err", err)
 	}
 
-	c.args.OutputLocation = newArgs.OutputLocation
+	c.args = newArgs
 	level.Info(c.logger).Log("msg", "telemetry.save component updated", "output_location", c.args.OutputLocation)
 	return nil
 }
@@ -276,4 +327,137 @@ func (a *appender) SetOptions(_ *storage.AppendOptions) {
 func (a *appender) UpdateMetadata(_ storage.SeriesRef, _ labels.Labels, _ metadata.Metadata) (storage.SeriesRef, error) {
 	// Not implemented for this component
 	return 0, nil
+}
+
+// LogEntry represents a log entry with its metadata for JSON serialization.
+type LogEntry struct {
+	Timestamp          time.Time         `json:"timestamp"`
+	Line               string            `json:"line"`
+	Labels             map[string]string `json:"labels"`
+	StructuredMetadata []LabelPair       `json:"structured_metadata,omitempty"`
+	Parsed             []LabelPair       `json:"parsed,omitempty"`
+}
+
+// LabelPair represents a key-value pair for labels.
+type LabelPair struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// handleLogEntries processes incoming log entries and batches them for efficient writing.
+func (c *Component) handleLogEntries() {
+	const maxBatchSize = 50 // Max entries per batch
+	const flushInterval = 5 * time.Second
+	
+	for {
+		select {
+		case entry := <-c.logsReceiver.Chan():
+			c.addLogToBatch(entry)
+			
+			c.batchMut.Lock()
+			batchSize := len(c.logsBatch)
+			c.batchMut.Unlock()
+			
+			// Flush if batch is full
+			if batchSize >= maxBatchSize {
+				c.flushLogBatch()
+			}
+			
+		case <-c.flushTimer.C:
+			// Periodic flush
+			c.flushLogBatch()
+			
+		case <-c.ctx.Done():
+			// Component is shutting down
+			c.flushLogBatch()
+			return
+		}
+	}
+}
+
+// addLogToBatch adds a log entry to the current batch.
+func (c *Component) addLogToBatch(entry loki.Entry) {
+	c.batchMut.Lock()
+	defer c.batchMut.Unlock()
+	
+	c.logsBatch = append(c.logsBatch, entry)
+	
+	// Start flush timer if this is the first entry in the batch
+	if len(c.logsBatch) == 1 {
+		c.flushTimer.Reset(5 * time.Second)
+	}
+}
+
+// flushLogBatch writes all batched log entries to disk and clears the batch.
+func (c *Component) flushLogBatch() {
+	c.batchMut.Lock()
+	defer c.batchMut.Unlock()
+	
+	if len(c.logsBatch) == 0 {
+		return
+	}
+	
+	c.mut.RLock()
+	lokiLogsFolder := c.lokiLogsFolder
+	c.mut.RUnlock()
+	
+	// Write all entries in the batch
+	filePath := filepath.Join(lokiLogsFolder, "logs.json")
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		_ = level.Error(c.logger).Log("msg", "failed to open logs file", "err", err)
+		return
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			_ = level.Error(c.logger).Log("msg", "failed to close logs file", "err", closeErr)
+		}
+	}()
+	
+	for _, entry := range c.logsBatch {
+		// Convert loki.Entry to our JSON-serializable format
+		logEntry := LogEntry{
+			Timestamp: entry.Timestamp,
+			Line:      entry.Line,
+			Labels:    make(map[string]string),
+		}
+
+		// Convert model.LabelSet to map[string]string
+		for k, v := range entry.Labels {
+			logEntry.Labels[string(k)] = string(v)
+		}
+
+		// Convert structured metadata
+		for _, label := range entry.StructuredMetadata {
+			logEntry.StructuredMetadata = append(logEntry.StructuredMetadata, LabelPair{
+				Name:  label.Name,
+				Value: label.Value,
+			})
+		}
+
+		// Convert parsed labels
+		for _, label := range entry.Parsed {
+			logEntry.Parsed = append(logEntry.Parsed, LabelPair{
+				Name:  label.Name,
+				Value: label.Value,
+			})
+		}
+
+		jsonData, err := json.Marshal(logEntry)
+		if err != nil {
+			_ = level.Error(c.logger).Log("msg", "failed to marshal log entry to JSON", "err", err)
+			continue
+		}
+
+		if _, err := file.WriteString(string(jsonData) + "\n"); err != nil {
+			_ = level.Error(c.logger).Log("msg", "failed to write log entry to file", "err", err)
+			break
+		}
+	}
+	
+	// Clear the batch
+	c.logsBatch = c.logsBatch[:0]
+	
+	// Stop the flush timer
+	c.flushTimer.Stop()
 }
