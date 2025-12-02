@@ -77,7 +77,6 @@ func (p *PPROFReporter) ReportExecutable(args *reporter.ExecutableMetadata) {
 		if args.DebuglinkFileName == "" {
 			return fallback()
 		}
-		panic("TODO debug")
 		if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
 			return fallback()
 		} else {
