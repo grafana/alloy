@@ -7,17 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
-	reporter2 "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.opentelemetry.io/ebpf-profiler/process"
-	"go.opentelemetry.io/ebpf-profiler/reporter"
-
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
@@ -31,77 +27,41 @@ type PPROF struct {
 	Labels labels.Labels
 	Origin libpf.Origin
 }
-type PPROFConsumer interface {
-	ConsumePprofProfiles(ctx context.Context, p []PPROF)
-}
 
-type PPROFConsumerFunc func(ctx context.Context, p []PPROF)
-
-func (f PPROFConsumerFunc) ConsumePprofProfiles(ctx context.Context, p []PPROF) {
-	f(ctx, p)
-}
+type PPROFConsumer func(ctx context.Context, p []PPROF)
 
 type Config struct {
 	ReportInterval            time.Duration
 	SamplesPerSecond          int64
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
-
-	Consumer PPROFConsumer
 }
 type PPROFReporter struct {
 	cfg *Config
 	log log.Logger
 
+	consumer PPROFConsumer
+
 	traceEvents xsync.RWMutex[samples.TraceEventsTree]
 
-	sd              discovery.TargetProducer
-	symbolsUploader *reporter2.ParcaSymbolUploader
+	sd discovery.TargetProducer
+
+	forwardTo pyroscope.Appendable
+
 	wg              sync.WaitGroup
 	cancelReporting context.CancelFunc
 }
 
-func (p *PPROFReporter) ReportExecutable(args *reporter.ExecutableMetadata) {
-	if p.symbolsUploader == nil {
-		return
-	}
-	if !args.MappingFile.Valid() {
-		return
-	}
-	mf := args.MappingFile.Value()
-
-	p.symbolsUploader.Upload(context.TODO(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
-		fallback := func() (process.ReadAtCloser, error) {
-			return args.Process.OpenMappingFile(args.Mapping)
-		}
-		if args.DebuglinkFileName == "" {
-			return fallback()
-		}
-		if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
-			return fallback()
-		} else {
-			if f, err := os.Open(file); err != nil {
-				return fallback()
-			} else {
-				return f, nil
-			}
-		}
-
-		return fallback()
-	})
-	//}
-}
-
-func NewPPROF(log log.Logger, symbolsUploader *reporter2.ParcaSymbolUploader,
-	cfg *Config, sd discovery.TargetProducer) *PPROFReporter {
+func NewPPROF(log log.Logger,
+	cfg *Config, sd discovery.TargetProducer, consumer PPROFConsumer) *PPROFReporter {
 
 	tree := make(samples.TraceEventsTree)
 	return &PPROFReporter{
-		cfg:             cfg,
-		log:             log,
-		traceEvents:     xsync.NewRWMutex(tree),
-		sd:              sd,
-		symbolsUploader: symbolsUploader,
+		cfg:         cfg,
+		log:         log,
+		traceEvents: xsync.NewRWMutex(tree),
+		sd:          sd,
+		consumer:    consumer,
 	}
 }
 
@@ -200,7 +160,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 		}
 	}
 
-	p.cfg.Consumer.ConsumePprofProfiles(ctx, profiles)
+	p.consumer(ctx, profiles)
 	sz := 0
 	for _, it := range profiles {
 		sz += len(it.Raw)

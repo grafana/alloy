@@ -11,28 +11,25 @@ import (
 	"syscall"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
-	parcareporter "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
-	"google.golang.org/grpc/credentials/insecure"
-
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
+	"go.opentelemetry.io/ebpf-profiler/process"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	reporter2 "go.opentelemetry.io/ebpf-profiler/reporter"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
-	"google.golang.org/grpc"
 )
 
 func init() {
@@ -67,27 +64,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	} else {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
 	}
-	var symbolsUploader *parcareporter.ParcaSymbolUploader
-	if args.DebugInfo.Enabled {
-		cc, err := grpc.NewClient(args.DebugInfo.URL,
-			grpc.WithTransportCredentials(insecure.NewCredentials()), //todo proper full configuration. reuse otelcol?
-		)
-		if err != nil {
-			return nil, err
-		}
-		symbolsUploader, err = parcareporter.NewParcaSymbolUploader(
-			debuginfogrpc.NewDebuginfoServiceClient(cc),
-			1024, //todo arg
-			true, //todo arg
-			1024, //todo arg
-			8,    //todo arg
-			filepath.Join(args.SymbCachePath, "parca-symbols-uploader-cache"),
-			ms.debugInfoUploadBytes,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	res := &Component{
 		cfg:                    cfg,
 		logger:                 logger,
@@ -97,25 +74,54 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		targetFinder:           discovery,
 		dynamicProfilingPolicy: dynamicProfilingPolicy,
 		argsUpdate:             make(chan Arguments, 4),
-		symbolsUploader:        symbolsUploader,
 	}
 
-	r := reporter.NewPPROF(logger, symbolsUploader, &reporter.Config{
+	r := reporter.NewPPROF(logger, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
-		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
-			res.sendProfiles(ctx, ps)
-		}),
-	}, discovery)
+	}, discovery, func(ctx context.Context, ps []reporter.PPROF) {
+		res.sendProfiles(ctx, ps)
+	})
 	cfg.Reporter = r
-	cfg.ExecutableReporter = r // todo, should we keep the ontarget lidia symbolizer for a while?
+	if args.DebugInfo.Enabled {
+		cfg.ExecutableReporter = ExecutableReporterFunc(func(args *reporter2.ExecutableMetadata) {
+			if !args.MappingFile.Valid() {
+				return
+			}
+			mf := args.MappingFile.Value()
+			res.appendable.Appender().UploadDebugInfo(context.Background(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
+				fallback := func() (process.ReadAtCloser, error) {
+					return args.Process.OpenMappingFile(args.Mapping)
+				}
+				if args.DebuglinkFileName == "" {
+					return fallback()
+				}
+				if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+					return fallback()
+				} else {
+					if f, err := os.Open(file); err != nil {
+						return fallback()
+					} else {
+						return f, nil
+					}
+				}
+			})
+		})
+	}
+	// todo, should we keep the ontarget lidia symbolizer for a while?
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	return res, nil
+}
+
+type ExecutableReporterFunc func(md *reporter2.ExecutableMetadata)
+
+func (e ExecutableReporterFunc) ReportExecutable(md *reporter2.ExecutableMetadata) {
+	e(md)
 }
 
 type Component struct {
@@ -126,9 +132,8 @@ type Component struct {
 	appendable             *pyroscope.Fanout
 	targetFinder           discovery2.TargetProducer
 
-	metrics         *metrics
-	cfg             *controller.Config
-	symbolsUploader *parcareporter.ParcaSymbolUploader
+	metrics *metrics
+	cfg     *controller.Config
 
 	healthMut sync.RWMutex
 	health    component.Health
@@ -164,11 +169,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var g run.Group
-	if c.symbolsUploader != nil {
-		g.Add(func() error {
-			return c.symbolsUploader.Run(ctx)
-		}, func(err error) {})
-	}
+
 	g.Add(func() error {
 		for {
 			select {

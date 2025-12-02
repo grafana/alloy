@@ -255,7 +255,8 @@ Mappings
 
 func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 	rep := newReporter()
-	rep.cfg.ReporterUnsymbolizedStubs = true
+	rep.cfg.
+		ReporterUnsymbolizedStubs = true
 
 	frames := make(libpf.Frames, 0, 1)
 	frames.Append(&libpf.Frame{

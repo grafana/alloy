@@ -9,15 +9,18 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -30,8 +33,12 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/propagators/jaeger"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -112,6 +119,7 @@ type Component struct {
 	metrics       *metrics
 	userAgent     string
 	uid           string
+	receiver      *fanOutClient
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -145,6 +153,7 @@ func New(
 		metrics:       m,
 		userAgent:     userAgent,
 		uid:           uid,
+		receiver:      receiver,
 	}, nil
 }
 
@@ -162,22 +171,28 @@ func (c *Component) Update(newConfig Arguments) error {
 		return err
 	}
 	c.onStateChange(Exports{Receiver: receiver})
+	c.receiver = receiver
+	c.receiver.cancel()
 	return nil
 }
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
 	pushClients   []pushv1connect.PusherServiceClient
+	debugInfo     []*reporter.ParcaSymbolUploader
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
 	metrics       *metrics
 	tracer        trace.Tracer
 	logger        log.Logger
+	cancel        context.CancelFunc
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
 func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
+	debugInfoClients := make([]*reporter.ParcaSymbolUploader, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for _, endpoint := range config.Endpoints {
@@ -196,14 +211,45 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
 		)
 		ingestClients[endpoint] = httpClient
+		// todo enabled/disabled knob
+
+		u, err := url.Parse(endpoint.URL)
+		if err != nil {
+			return nil, err
+		}
+		cc, err := grpc.NewClient(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()),
+			grpc.WithTransportCredentials(insecure.NewCredentials()), //todo proper full configuration. reuse otelcol?
+		)
+		if err != nil {
+			return nil, err
+		}
+		const symbCachePath = "/tmp/symb-cache" // todo arg
+		symbolsUploader, err := reporter.NewParcaSymbolUploader(
+			debuginfogrpc.NewDebuginfoServiceClient(cc),
+			1024, //todo arg
+			true, //todo arg
+			1024, //todo arg
+			8,    //todo arg
+			filepath.Join(symbCachePath, "parca-symbols-uploader-cache"),
+			metrics.debugInfoUploadBytes,
+		)
+		if err != nil {
+			return nil, err
+		}
+		go func() {
+			_ = symbolsUploader.Run(ctx)
+		}()
+		debugInfoClients = append(debugInfoClients, symbolsUploader)
 	}
 	return &fanOutClient{
 		logger:        logger,
 		tracer:        tracer,
 		pushClients:   pushClients,
+		debugInfo:     debugInfoClients,
 		ingestClients: ingestClients,
 		config:        config,
 		metrics:       metrics,
+		cancel:        cancel,
 	}, nil
 }
 
@@ -673,5 +719,11 @@ func configureTracing(config Arguments, httpClient *http.Client) {
 				propagation.NewCompositeTextMapPropagator(propagators...),
 			),
 		)
+	}
+}
+
+func (f *fanOutClient) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+	for _, u := range f.debugInfo {
+		u.Upload(context.TODO(), fileID, fileName, buildID, open)
 	}
 }

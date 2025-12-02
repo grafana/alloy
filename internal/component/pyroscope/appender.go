@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 const (
@@ -19,7 +21,7 @@ const (
 	HeaderContentType = "Content-Type"
 )
 
-var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
+//var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
 
 type Appendable interface {
 	Appender() Appender
@@ -28,6 +30,9 @@ type Appendable interface {
 type Appender interface {
 	Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 	AppendIngest(ctx context.Context, profile *IncomingProfile) error
+
+	UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string,
+		open func() (process.ReadAtCloser, error))
 }
 
 type RawSample struct {
@@ -116,6 +121,12 @@ type appender struct {
 	writeLatency prometheus.Histogram
 }
 
+func (a *appender) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+	for _, c := range a.children {
+		c.UploadDebugInfo(ctx, fileID, fileName, buildID, open)
+	}
+}
+
 // Append satisfies the Appender interface.
 func (a *appender) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
 	now := time.Now()
@@ -156,33 +167,34 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 	return multiErr
 }
 
-type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-
-func (f AppendableFunc) Appender() Appender {
-	return f
-}
-
-func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
-	return f(ctx, labels, samples)
-}
-
-func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
-	// This is a no-op implementation
-	return nil
-}
-
-// For testing AppendIngest operations
-type AppendableIngestFunc func(ctx context.Context, profile *IncomingProfile) error
-
-func (f AppendableIngestFunc) Appender() Appender {
-	return f
-}
-
-func (f AppendableIngestFunc) AppendIngest(ctx context.Context, p *IncomingProfile) error {
-	return f(ctx, p)
-}
-
-func (f AppendableIngestFunc) Append(_ context.Context, _ labels.Labels, _ []*RawSample) error {
-	// This is a no-op implementation
-	return nil
-}
+//todo
+//type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+//
+//func (f AppendableFunc) Appender() Appender {
+//	return f
+//}
+//
+//func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
+//	return f(ctx, labels, samples)
+//}
+//
+//func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
+//	// This is a no-op implementation
+//	return nil
+//}
+//
+//// For testing AppendIngest operations
+//type AppendableIngestFunc func(ctx context.Context, profile *IncomingProfile) error
+//
+//func (f AppendableIngestFunc) Appender() Appender {
+//	return f
+//}
+//
+//func (f AppendableIngestFunc) AppendIngest(ctx context.Context, p *IncomingProfile) error {
+//	return f(ctx, p)
+//}
+//
+//func (f AppendableIngestFunc) Append(_ context.Context, _ labels.Labels, _ []*RawSample) error {
+//	// This is a no-op implementation
+//	return nil
+//}
