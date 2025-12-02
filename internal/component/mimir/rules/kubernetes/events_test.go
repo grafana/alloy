@@ -31,7 +31,7 @@ type fakeMimirClient struct {
 	rules    map[string][]client.MimirRuleGroup
 }
 
-var _ client.Interface = &fakeMimirClient{}
+var _ client.RulerInterface = &fakeMimirClient{}
 
 func newFakeMimirClient() *fakeMimirClient {
 	return &fakeMimirClient{

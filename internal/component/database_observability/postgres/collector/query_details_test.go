@@ -13,11 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestQueryDetails(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	testcases := []struct {
 		name                string
@@ -417,7 +419,7 @@ func TestQueryDetails(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
@@ -468,7 +470,9 @@ func TestQueryDetails(t *testing.T) {
 }
 
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		t.Parallel()
@@ -477,7 +481,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -540,7 +544,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -599,7 +603,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,

@@ -15,9 +15,10 @@
 ##
 ## Targets for running tests:
 ##
-##   test              Run tests
-##   lint              Lint code
-##   integration-test  Run integration tests
+##   test                  Run tests
+##   lint                  Lint code
+##   integration-test      Run integration tests
+##   integration-test-k8s  Run Kubernetes integration tests
 ##
 ## Targets for building binaries:
 ##
@@ -88,7 +89,6 @@ GOARM                ?= $(shell go env GOARM)
 CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
-GO_TAGS              ?= slicelabels
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -158,7 +158,7 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v -E '/integration-tests/|/integration-tests-k8s/')
 	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
 	$(GO_ENV) cd ./syntax && go test -race ./...
 
@@ -179,6 +179,11 @@ test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
 	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
 		$(GO_ENV) go build .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	cd ./internal/cmd/integration-tests-k8s/ && \
+		$(GO_ENV) go test -timeout 10m ./...
 
 #
 # Targets for building binaries

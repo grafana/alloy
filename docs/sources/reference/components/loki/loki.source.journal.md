@@ -67,8 +67,8 @@ The final internal label name would be `__journal__systemd_unit`, with _two_ und
 
 Additionally, the `PRIORITY` field receives special handling and creates two labels:
 
-* `__journal__priority` - The numeric priority value between 0 and 7
-* `__journal__priority_keyword` - The priority keyword, for example `emerg`, `alert`, `crit`, `error`, `warning`, `notice`, `info`, or `debug`
+* `__journal_priority` - The numeric priority value between 0 and 7
+* `__journal_priority_keyword` - The priority keyword, for example `emerg`, `alert`, `crit`, `error`, `warning`, `notice`, `info`, or `debug`
 {{< /admonition >}}
 
 ### Journal matches

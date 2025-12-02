@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
-
-	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/util/encoding"
 )
 
 // RecordType represents the type of the WAL/Checkpoint record.
@@ -82,7 +80,7 @@ type RefEntries struct {
 }
 
 func (r *Record) EncodeSeries(b []byte) []byte {
-	buf := encoding.EncWith(b)
+	buf := encWith(b)
 	buf.PutByte(byte(WALRecordSeries))
 	buf.PutUvarintStr(r.UserID)
 
@@ -96,7 +94,7 @@ func (r *Record) EncodeSeries(b []byte) []byte {
 }
 
 func (r *Record) EncodeEntries(version RecordType, b []byte) []byte {
-	buf := encoding.EncWith(b)
+	buf := encWith(b)
 	buf.PutByte(byte(version))
 	buf.PutUvarintStr(r.UserID)
 
@@ -152,7 +150,7 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 		return nil
 	}
 
-	dec := encoding.DecWith(b)
+	dec := decWith(b)
 	baseTime := dec.Be64int64()
 
 	for len(dec.B) > 0 && dec.Err() == nil {
@@ -220,7 +218,7 @@ func DecodeRecord(b []byte, walRec *Record) (err error) {
 		dec     record.Decoder
 		rSeries []record.RefSeries
 
-		decbuf = encoding.DecWith(b)
+		decbuf = decWith(b)
 		t      = RecordType(decbuf.Byte())
 	)
 

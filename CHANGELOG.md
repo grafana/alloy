@@ -10,17 +10,33 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
+
+- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
+
+- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+
+- Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
 
 - Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
 
 ### Bugfixes
 
-- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
-v1.12.0-rc.0
+- (_Public Preview_) Additions to `database_observability.postgres` component:
+  - `schema_details`
+    - fixes collection of schema details for mixed case table names (@fridgepoet)
+
+- (_Public Preview_) Additions to `database_observability.mysql` component:
+  - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
+
+v1.12.0
 -----------------
 
 ### Breaking changes
@@ -76,6 +92,8 @@ v1.12.0-rc.0
 
 - Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
 
+- Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile. (@luweglarz)
+
 - OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
   - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.
   - All `otelcol.exporter.*` components providing the `sending_queue` > `batch` block have default `batch` values.
@@ -86,6 +104,10 @@ v1.12.0-rc.0
   - The `otelcol.exporter.s3` component has new configuration options `s3_base_prefix` and `s3_partition_timezone`.
   - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
   - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
+
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
 
 ### Enhancements
 
@@ -101,7 +123,7 @@ v1.12.0-rc.0
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Update Beyla component to 2.7.4. (@grcevski)
+- Update Beyla component to 2.7.8. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
@@ -121,6 +143,8 @@ v1.12.0-rc.0
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
 - `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
+
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
 ### Bugfixes
 
@@ -153,6 +177,8 @@ v1.12.0-rc.0
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
 
 - Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
+
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
 v1.11.3
 -----------------

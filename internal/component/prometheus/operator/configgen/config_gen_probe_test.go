@@ -121,10 +121,12 @@ func TestGenerateProbeConfig(t *testing.T) {
 				},
 				Spec: promopv1.ProbeSpec{
 					ProberSpec: promopv1.ProberSpec{
-						Scheme:   "http",
-						URL:      "blackbox.exporter.io",
-						Path:     "/probe",
-						ProxyURL: "socks://myproxy:9095",
+						Scheme: "http",
+						URL:    "blackbox.exporter.io",
+						Path:   "/probe",
+						ProxyConfig: promopv1.ProxyConfig{
+							ProxyURL: stringPtr("socks://myproxy:9095"),
+						},
 					},
 					Module: "http_2xx",
 					Targets: promopv1.ProbeTargets{
@@ -215,10 +217,12 @@ func TestGenerateProbeConfig(t *testing.T) {
 				},
 				Spec: promopv1.ProbeSpec{
 					ProberSpec: promopv1.ProberSpec{
-						Scheme:   "http",
-						URL:      "blackbox.exporter.io",
-						Path:     "/probe",
-						ProxyURL: "socks://myproxy:9095",
+						Scheme: "http",
+						URL:    "blackbox.exporter.io",
+						Path:   "/probe",
+						ProxyConfig: promopv1.ProxyConfig{
+							ProxyURL: stringPtr("socks://myproxy:9095"),
+						},
 					},
 					Interval:      promopv1.Duration("30s"),
 					ScrapeTimeout: promopv1.Duration("15s"),
