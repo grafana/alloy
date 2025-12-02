@@ -21,17 +21,12 @@ type Config struct {
 
 type WatcherConfig struct {
 	// MinPollFrequency and MaxPollFrequency specify how frequently a
-	// PollingFileWatcher should poll the file.
-	//
-	// Watcher starts polling at MinPollFrequency, and will
-	// exponentially increase the polling frequency up to MaxPollFrequency if no
-	// new entries are found. The polling frequency is reset to MinPollFrequency
-	// whenever the file changes.
+	// files are polled for events.
 	MinPollFrequency, MaxPollFrequency time.Duration
 }
 
-// DefaultWatcherConfig holds default values for WatcherConfig
-var DefaultWatcherConfig = WatcherConfig{
+// defaultWatcherConfig holds default values for WatcherConfig
+var defaultWatcherConfig = WatcherConfig{
 	MinPollFrequency: 250 * time.Millisecond,
 	MaxPollFrequency: 250 * time.Millisecond,
 }

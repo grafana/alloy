@@ -39,7 +39,6 @@ type tailer struct {
 
 	tailFromEnd          bool
 	onPositionsFileError OnPositionsFileError
-	tailConfig           *tail.Config
 	watcherConfig        tail.WatcherConfig
 
 	posAndSizeMtx sync.Mutex
