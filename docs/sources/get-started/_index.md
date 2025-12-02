@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/
 aliases:
-  - ./configuration-syntax/ # /docs/alloy/latest/get-started/configuration-syntax/
-  - ./configuration-syntax/files/ # /docs/alloy/latest/get-started/configuration-syntax/files/
+  - ./get-started/configuration-syntax/ # /docs/alloy/latest/get-started/configuration-syntax/
+  - ./get-started/configuration-syntax/files/ # /docs/alloy/latest/get-started/configuration-syntax/files/
   - ./concepts/ # /docs/alloy/latest/concepts/
   - ./concepts/configuration-syntax/ # /docs/alloy/latest/concepts/configuration-syntax/
   - ./concepts/configuration-syntax/files/ # /docs/alloy/latest/concepts/configuration-syntax/files/
@@ -13,6 +13,8 @@ weight: 20
 ---
 
 # Get started with {{% param "FULL_PRODUCT_NAME" %}}
+
+{{< docs/alias from="/docs/alloy/latest/get-started/configuration-syntax/" to="/docs/alloy/latest/get-started/" >}}
 
 {{< param "FULL_PRODUCT_NAME" >}} uses a configuration language to define how components collect, transform, and send data.
 Components are building blocks that perform specific tasks, such as reading files, collecting metrics, or sending data to external systems.
