@@ -126,6 +126,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
+			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
@@ -136,7 +137,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		data_source_name = ""
 		forward_to = []
 		targets = []
-		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -150,6 +151,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
+			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
 		}, actualCollectors)
@@ -160,7 +162,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		data_source_name = ""
 		forward_to = []
 		targets = []
-		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans"]
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans"]
 	`
 
 		var args Arguments
@@ -174,6 +176,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  false,
 			collector.QuerySamplesCollector:   false,
 			collector.SetupConsumersCollector: false,
+			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
@@ -184,8 +187,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		data_source_name = ""
 		forward_to = []
 		targets = []
-		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
-		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -199,6 +202,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
+			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
 		}, actualCollectors)
@@ -209,7 +213,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		data_source_name = ""
 		forward_to = []
 		targets = []
-		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 		enable_collectors = ["query_details"]
 	`
 
@@ -224,6 +228,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  false,
 			collector.QuerySamplesCollector:   false,
 			collector.SetupConsumersCollector: false,
+			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
@@ -249,6 +254,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
+			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
@@ -308,7 +314,7 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	args := Arguments{
 		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
-		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "explain_plans"},
+		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "setup_actors", "explain_plans"},
 		EnableCollectors:  []string{"query_samples", "locks"},
 		QuerySamplesArguments: QuerySamplesArguments{
 			CollectInterval:       time.Second,

@@ -65,6 +65,7 @@ type Arguments struct {
 
 	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
+	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
 	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
 	SchemaTablesArguments   SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
@@ -93,6 +94,11 @@ type SchemaDetailsArguments struct {
 
 type SetupConsumersArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type SetupActorsArguments struct {
+	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
+	AutoUpdateSetupActors bool          `alloy:"auto_update_setup_actors,attr,optional"`
 }
 
 type ExplainPlansArguments struct {
@@ -130,6 +136,11 @@ var DefaultArguments = Arguments{
 
 	SetupConsumersArguments: SetupConsumersArguments{
 		CollectInterval: 1 * time.Hour,
+	},
+
+	SetupActorsArguments: SetupActorsArguments{
+		CollectInterval:       1 * time.Hour,
+		AutoUpdateSetupActors: false,
 	},
 
 	ExplainPlansArguments: ExplainPlansArguments{
@@ -367,6 +378,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryDetailsCollector:   true,
 		collector.SchemaDetailsCollector:  true,
 		collector.SetupConsumersCollector: true,
+		collector.SetupActorsCollector:    true,
 		collector.QuerySamplesCollector:   true,
 		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
@@ -485,6 +497,23 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 				logStartError(collector.SetupConsumersCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, scCollector)
+		}
+	}
+
+	if collectors[collector.SetupActorsCollector] {
+		saCollector, err := collector.NewSetupActors(collector.SetupActorsArguments{
+			DB:                    c.dbConnection,
+			Logger:                c.opts.Logger,
+			CollectInterval:       c.args.SetupActorsArguments.CollectInterval,
+			AutoUpdateSetupActors: c.args.AllowUpdatePerfSchemaSettings && c.args.SetupActorsArguments.AutoUpdateSetupActors,
+		})
+		if err != nil {
+			logStartError(collector.SetupActorsCollector, "create", err)
+		} else {
+			if err := saCollector.Start(context.Background()); err != nil {
+				logStartError(collector.SetupActorsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, saCollector)
 		}
 	}
 
