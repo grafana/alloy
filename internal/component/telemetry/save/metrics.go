@@ -137,17 +137,16 @@ func (a *metricsAppender) Commit() error {
 		}
 	}()
 
-	for _, sample := range a.samples {
-		jsonData, err := json.Marshal(sample)
-		if err != nil {
-			return fmt.Errorf("failed to marshal sample to JSON: %w", err)
-		}
-		if _, err := file.WriteString(string(jsonData) + "\n"); err != nil {
-			return fmt.Errorf("failed to write sample to file: %w", err)
-		}
+	jsonData, err := json.Marshal(a.samples)
+	if err != nil {
+		return fmt.Errorf("failed to marshal sample to JSON: %w", err)
+	}
+	if _, err := file.WriteString(string(jsonData) + "\n"); err != nil {
+		return fmt.Errorf("failed to write samples to file: %w", err)
 	}
 
-	a.samples = nil // Clear the buffer
+	// Clear samples after successful write
+	a.samples = a.samples[:0]
 	return nil
 }
 

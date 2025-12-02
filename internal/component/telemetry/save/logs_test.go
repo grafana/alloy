@@ -22,34 +22,34 @@ import (
 func TestLogsReceiver(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	// Create component with temporary output location
 	args := Arguments{
 		OutputLocation: filepath.Join(tempDir, "telemetry/save/"),
 	}
-	
+
 	opts := component.Options{
 		Logger: log.NewNopLogger(),
 		OnStateChange: func(exports component.Exports) {
 			// No-op for testing
 		},
 	}
-	
+
 	// Create the component
 	c, err := NewComponent(opts, args)
 	require.NoError(t, err)
-	
+
 	// Start the component
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	go func() {
 		_ = c.Run(ctx)
 	}()
-	
+
 	// Give component a moment to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Create a test log entry
 	testEntry := loki.Entry{
 		Labels: model.LabelSet{
@@ -65,28 +65,28 @@ func TestLogsReceiver(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Send the log entry
 	c.logsReceiver.Chan() <- testEntry
-	
+
 	// Give some time for the entry to be added to batch
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Force flush the batch immediately for testing
 	c.logsHandler.flushLogBatch()
-	
+
 	// Verify the log file was created and contains our entry
 	logFilePath := filepath.Join(c.lokiLogsFolder, "logs.json")
 	require.FileExists(t, logFilePath)
-	
+
 	// Read and verify the content
 	content, err := os.ReadFile(logFilePath)
 	require.NoError(t, err)
-	
+
 	var logEntry LogEntry
 	err = json.Unmarshal(content[:len(content)-1], &logEntry) // Remove trailing newline
 	require.NoError(t, err)
-	
+
 	// Verify the log entry fields
 	require.Equal(t, "This is a test log message", logEntry.Line)
 	require.Equal(t, "test-service", logEntry.Labels["service"])
@@ -101,12 +101,12 @@ func TestLogsReceiver(t *testing.T) {
 func TestComponentExports(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	// Create component with temporary output location
 	args := Arguments{
 		OutputLocation: filepath.Join(tempDir, "telemetry/save/"),
 	}
-	
+
 	var exports Exports
 	opts := component.Options{
 		Logger: log.NewNopLogger(),
@@ -114,18 +114,18 @@ func TestComponentExports(t *testing.T) {
 			exports = e.(Exports)
 		},
 	}
-	
+
 	// Create the component
 	c, err := NewComponent(opts, args)
 	require.NoError(t, err)
-	
+
 	// Verify exports are set correctly
-	require.NotNil(t, exports.Receiver)
+	require.NotNil(t, exports.MetricsReceiver)
 	require.NotNil(t, exports.LogsReceiver)
-	
+
 	// Verify the metrics receiver is the component itself
-	require.Equal(t, c, exports.Receiver)
-	
+	require.Equal(t, c, exports.MetricsReceiver)
+
 	// Verify the logs receiver has a channel
 	require.NotNil(t, exports.LogsReceiver.Chan())
 }
@@ -133,34 +133,34 @@ func TestComponentExports(t *testing.T) {
 func TestLogsBatching(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	// Create component with temporary output location
 	args := Arguments{
 		OutputLocation: filepath.Join(tempDir, "telemetry/save/"),
 	}
-	
+
 	opts := component.Options{
 		Logger: log.NewNopLogger(),
 		OnStateChange: func(exports component.Exports) {
 			// No-op for testing
 		},
 	}
-	
+
 	// Create the component
 	c, err := NewComponent(opts, args)
 	require.NoError(t, err)
-	
+
 	// Start the component
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	go func() {
 		_ = c.Run(ctx)
 	}()
-	
+
 	// Give component a moment to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Send multiple log entries
 	for i := 0; i < 5; i++ {
 		testEntry := loki.Entry{
@@ -175,25 +175,25 @@ func TestLogsBatching(t *testing.T) {
 		}
 		c.logsReceiver.Chan() <- testEntry
 	}
-	
+
 	// Give some time for entries to be batched
 	time.Sleep(200 * time.Millisecond)
-	
+
 	// Force flush the batch
 	c.logsHandler.flushLogBatch()
-	
+
 	// Verify the log file was created and contains all entries
 	logFilePath := filepath.Join(c.lokiLogsFolder, "logs.json")
 	require.FileExists(t, logFilePath)
-	
+
 	// Read and verify the content
 	content, err := os.ReadFile(logFilePath)
 	require.NoError(t, err)
-	
+
 	// Split by lines and verify we have 5 entries
 	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
 	require.Len(t, lines, 5)
-	
+
 	// Verify each line is valid JSON
 	for i, line := range lines {
 		var logEntry LogEntry

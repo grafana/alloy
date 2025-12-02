@@ -40,8 +40,8 @@ func (args *Arguments) SetToDefault() {
 
 // Exports are the set of fields exposed by the telemetry.save component.
 type Exports struct {
-	Receiver     storage.Appendable `alloy:"receiver,attr"`
-	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr"`
+	MetricsReceiver storage.Appendable `alloy:"metrics_receiver,attr"`
+	LogsReceiver    loki.LogsReceiver  `alloy:"logs_receiver,attr"`
 }
 
 // Component is the telemetry.save component.
@@ -66,8 +66,14 @@ func NewComponent(opts component.Options, args Arguments) (*Component, error) {
 
 	level.Info(c.logger).Log("msg", "initializing telemetry.save component", "output_location", args.OutputLocation)
 
-	// Ensure the output directory exists
+	// Ensure the output directory exists and is clean
 	dir := filepath.Dir(args.OutputLocation)
+	if _, err := os.Stat(dir); err == nil {
+		// Directory exists, clear it
+		if err := os.RemoveAll(dir); err != nil {
+			return nil, fmt.Errorf("failed to clear existing output directory: %w", err)
+		}
+	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -88,17 +94,17 @@ func NewComponent(opts component.Options, args Arguments) (*Component, error) {
 
 	// Create logs receiver
 	c.logsReceiver = loki.NewLogsReceiver(loki.WithComponentID("telemetry.save"))
-	
+
 	// Initialize logs handler
 	c.logsHandler = NewLogsHandler(c)
-	
+
 	// Start the log entry handler goroutine
 	c.logsHandler.Start(c.logsReceiver)
 
 	// Export the receiver interfaces
 	opts.OnStateChange(Exports{
-		Receiver:     c,
-		LogsReceiver: c.logsReceiver,
+		MetricsReceiver: c,
+		LogsReceiver:    c.logsReceiver,
 	})
 
 	return c, nil
@@ -109,7 +115,7 @@ func (c *Component) Run(ctx context.Context) error {
 	_ = level.Info(c.logger).Log("msg", "telemetry.save component started", "output_location", c.args.OutputLocation)
 
 	<-ctx.Done()
-	
+
 	// Clean shutdown: stop logs handler
 	c.logsHandler.Stop()
 
@@ -129,8 +135,14 @@ func (c *Component) Update(args component.Arguments) error {
 		return nil
 	}
 
-	// Ensure the new output directory exists
+	// Ensure the new output directory exists and is clean
 	dir := filepath.Dir(newArgs.OutputLocation)
+	if _, err := os.Stat(dir); err == nil {
+		// Directory exists, clear it
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("failed to clear existing output directory: %w", err)
+		}
+	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
