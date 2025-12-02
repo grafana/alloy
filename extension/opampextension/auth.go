@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package opampextension // import "github.com/grafana/alloy/otelcol/opampextension"
+package opampextension // import "github.com/grafana/alloy/otelcol/extension/opampextension"
 
 import (
 	"bytes"

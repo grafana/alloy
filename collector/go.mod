@@ -7,7 +7,7 @@ go 1.25.1
 require (
 	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
 	github.com/grafana/alloy/extension/alloyengine v0.1.0
-	github.com/grafana/alloy/otelcol/opampextension v0.1.0
+	github.com/grafana/alloy/otelcol/extension/opampextension v0.1.0
 	github.com/grafana/alloy/otelcol/provider/opampprovider v0.1.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0
@@ -1003,7 +1003,7 @@ replace github.com/grafana/alloy/syntax => ../syntax
 
 replace github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
 
-replace github.com/grafana/alloy/otelcol/opampextension => ../extension/opampextension
+replace github.com/grafana/alloy/otelcol/extension/opampextension => ../extension/opampextension
 
 replace github.com/grafana/alloy/otelcol/provider/opampprovider => ../provider/opampprovider
 

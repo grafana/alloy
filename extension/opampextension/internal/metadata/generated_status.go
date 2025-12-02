@@ -8,7 +8,7 @@ import (
 
 var (
 	Type      = component.MustNewType("opamp")
-	ScopeName = "github.com/grafana/alloy/otelcol/opampextension"
+	ScopeName = "github.com/grafana/alloy/otelcol/extension/opampextension"
 )
 
 const (

@@ -3,4 +3,4 @@
 
 //go:generate mdatagen metadata.yaml
 
-package opampextension // import "github.com/grafana/alloy/otelcol/opampextension"
+package opampextension // import "github.com/grafana/alloy/otelcol/extension/opampextension"

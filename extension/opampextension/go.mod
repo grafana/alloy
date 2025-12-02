@@ -1,4 +1,4 @@
-module github.com/grafana/alloy/otelcol/opampextension
+module github.com/grafana/alloy/otelcol/extension/opampextension
 
 go 1.24.0
 
