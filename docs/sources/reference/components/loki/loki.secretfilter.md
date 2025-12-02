@@ -40,18 +40,22 @@ loki.secretfilter "<LABEL>" {
 
 You can use the following arguments with `loki.secretfilter`:
 
-| Name              | Type                 | Description                                                    | Default                            | Required |
-| ----------------- | -------------------- | -------------------------------------------------------------- | ---------------------------------- | -------- |
-| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                      |                                    | yes      |
-| `allowlist`       | `list(string)`       | List of regular expressions to allowlist matching secrets.     | `[]`                               | no       |
-| `enable_entropy`  | `bool`               | Enable entropy-based filtering.                                | `false`                            | no       |
-| `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                       | Embedded Gitleaks file             | no       |
-| `include_generic` | `bool`               | Include the generic API key rule.                              | `false`                            | no       |
-| `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. | `""`                               | no       |
-| `partial_mask`    | `int`                | Show the first N characters of the secret.                     | `0`                                | no       |
-| `redact_with`     | `string`             | String to use to redact secrets.                               | `"<REDACTED-SECRET:$SECRET_NAME>"` | no       |
-| `types`           | `list(string)`       | List of secret types to look for.                              | All types                          | no       |
+| Name                     | Type                 | Description                                                                 | Default                            | Required |
+| ------------------------ | -------------------- | --------------------------------------------------------------------------- | ---------------------------------- | -------- |
+| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                                   |                                    | yes      |
+| `allowlist`              | `list(string)`       | List of regular expressions to allowlist matching secrets.                  | `[]`                               | no       |
+| `block_on_full`          | `bool`               | Block instead of dropping when the queue is full, retrying with backoff.    | `false`                            | no       |
+| `enable_entropy`         | `bool`               | Enable entropy-based filtering.                                             | `false`                            | no       |
+| `gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.                                    | Embedded Gitleaks file             | no       |
+| `include_generic`        | `bool`               | Include the generic API key rule.                                           | `false`                            | no       |
+| `max_forward_queue_size` | `int`                | Maximum number of log entries to buffer per destination before dropping.    | `100000`                           | no       |
+| `origin_label`           | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric.              | `""`                               | no       |
+| `partial_mask`           | `int`                | Show the first N characters of the secret.                                  | `0`                                | no       |
+| `redact_with`            | `string`             | String to use to redact secrets.                                            | `"<REDACTED-SECRET:$SECRET_NAME>"` | no       |
+| `types`                  | `list(string)`       | List of secret types to look for.                                           | All types                          | no       |
 
+When `block_on_full` is `false` (default), log entries are dropped if a destination's queue is full.
+When `block_on_full` is `true`, the component retries with exponential backoff (5ms to 5s), which may slow the pipeline but prevents data loss.
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 If you don't provide the path to a custom configuration file, the Gitleaks configuration file [embedded in the component][embedded-config] is used.

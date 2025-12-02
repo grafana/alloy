@@ -35,11 +35,16 @@ loki.process "<LABEL>" {
 
 ## Arguments
 
-You can use the following argument with `loki.process`:
+You can use the following arguments with `loki.process`:
 
-| Name         | Type                 | Description                                    | Default | Required |
-| ------------ | -------------------- | ---------------------------------------------- | ------- | -------- |
-| `forward_to` | `list(LogsReceiver)` | Where to forward log entries after processing. |         | yes      |
+| Name                     | Type                 | Description                                                                 | Default  | Required |
+| ------------------------ | -------------------- | --------------------------------------------------------------------------- | -------- | -------- |
+| `forward_to`             | `list(LogsReceiver)` | Where to forward log entries after processing.                              |          | yes      |
+| `max_forward_queue_size` | `int`                | Maximum number of log entries to buffer per destination before dropping.    | `100000` | no       |
+| `block_on_full`          | `bool`               | Block instead of dropping when the queue is full, retrying with backoff.    | `false`  | no       |
+
+When `block_on_full` is `false` (default), log entries are dropped if a destination's queue is full.
+When `block_on_full` is `true`, the component retries with exponential backoff (5ms to 5s), which may slow the pipeline but prevents data loss.
 
 ## Blocks
 
