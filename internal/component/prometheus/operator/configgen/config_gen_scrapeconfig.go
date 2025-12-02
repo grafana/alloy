@@ -68,7 +68,7 @@ func (cg *ConfigGenerator) generateStaticScrapeConfigConfig(m *promopv1alpha1.Sc
 		},
 	}
 	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, discoveryCfg)
-	return cg.finalizeScrapeConfig(cfg, m, &relabels, &metricRelabels)
+	return cg.finalizeScrapeConfig(cfg, &relabels, &metricRelabels)
 }
 
 func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, httpSD promopv1alpha1.HTTPSDConfig, i int) (cfg *config.ScrapeConfig, err error) {
@@ -118,7 +118,7 @@ func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.Scra
 	}
 
 	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, httpSDConfig)
-	return cg.finalizeScrapeConfig(cfg, m, &relabels, &metricRelabels)
+	return cg.finalizeScrapeConfig(cfg, &relabels, &metricRelabels)
 }
 
 func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, _ int, relabels *relabeler, metricRelabels *relabeler) (cfg *config.ScrapeConfig, err error) {
@@ -198,7 +198,7 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 }
 
 // finalizeScrapeConfig applies common finalization steps to a scrape config
-func (cg *ConfigGenerator) finalizeScrapeConfig(cfg *config.ScrapeConfig, m *promopv1alpha1.ScrapeConfig, relabels *relabeler, metricRelabels *relabeler) (*config.ScrapeConfig, error) {
+func (cg *ConfigGenerator) finalizeScrapeConfig(cfg *config.ScrapeConfig, relabels *relabeler, metricRelabels *relabeler) (*config.ScrapeConfig, error) {
 	cfg.RelabelConfigs = relabels.configs
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
