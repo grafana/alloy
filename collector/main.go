@@ -14,6 +14,7 @@ import (
 	httpsprovider "go.opentelemetry.io/collector/confmap/provider/httpsprovider"
 	yamlprovider "go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	opampprovider "github.com/grafana/alloy/otelcol/provider/opampprovider"
+	dirwatcherprovider "github.com/grafana/alloy/otelcol/provider/dirwatcherprovider"
 	"go.opentelemetry.io/collector/otelcol"
 )
 
@@ -36,6 +37,7 @@ func main() {
 					httpsprovider.NewFactory(),
 					yamlprovider.NewFactory(),
 					opampprovider.NewFactory(),
+					dirwatcherprovider.NewFactory(),
 				},
 			},
 		},
@@ -46,6 +48,7 @@ func main() {
 			httpsprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.45.0",
 			yamlprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.45.0",
 			opampprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "github.com/grafana/alloy/otelcol/provider/opampprovider v0.1.0",
+			dirwatcherprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "github.com/grafana/alloy/otelcol/provider/dirwatcherprovider v0.1.0",
     	},
 		ConverterModules: []string{
 		},

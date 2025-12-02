@@ -12,7 +12,7 @@ extensions:
     capabilities:
       accepts_remote_config: true
       reports_remote_config: true
-
+    remote_config_dir: "./dirwatch-test"
 
 service:
   telemetry:

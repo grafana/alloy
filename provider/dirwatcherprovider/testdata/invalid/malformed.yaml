@@ -1,0 +1,7 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+  this is not valid yaml because it's missing a colon
+    and has bad indentation
+
