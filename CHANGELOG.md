@@ -40,7 +40,7 @@ Main (unreleased)
 - (_Public Preview_) Additions to `database_observability.mysql` component:
   - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
 
-v1.12.0-rc.3
+v1.12.0
 -----------------
 
 ### Breaking changes
@@ -95,6 +95,8 @@ v1.12.0-rc.3
 - Add `file_match` block to `loki.source.file` for built-in file discovery using glob patterns. (@kalleep)
 
 - Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
+
+- Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile. (@luweglarz)
 
 - OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
   - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.
