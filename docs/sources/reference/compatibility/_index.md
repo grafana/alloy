@@ -309,6 +309,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 <!-- START GENERATED SECTION: EXPORTERS OF OpenTelemetry `otelcol.Consumer` -->
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
@@ -363,6 +364,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 {{< /collapse >}}
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
