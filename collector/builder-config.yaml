@@ -10,6 +10,7 @@ extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.139.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.139.0
   - gomod: github.com/grafana/alloy/extension/alloyengine v0.1.0
+  - gomod: github.com/grafana/alloy/otelcol/opampextension v0.1.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.139.0
@@ -49,6 +50,7 @@ replaces:
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
   - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
+  - github.com/grafana/alloy/otelcol/opampextension => ../extension/opampextension
 
   # Replace directives copied from main go.mod of Alloy
   - go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
