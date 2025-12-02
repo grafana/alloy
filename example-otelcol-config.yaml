@@ -9,29 +9,14 @@ extensions:
       http:
         endpoint: "${env:GCLOUD_FM_URL}/v1/opamp"
         auth: basicauth/grafana_cloud
+    capabilities:
+      accepts_remote_config: true
+      reports_remote_config: true
+
 
 service:
-  extensions: [basicauth/grafana_cloud, opamp]
   telemetry:
-    metrics:
-      readers:
-        - periodic:
-            exporter:
-              otlp:
-                protocol: http/protobuf
-                endpoint: "${env:GCLOUD_OTLP_URL}/v1/metrics"
-                headers:
-                  - name: Authorization
-                    value: "Basic ${env:GCLOUD_BASIC_AUTH}"
     logs:
-      processors:
-        - batch:
-            exporter:
-              otlp:
-                protocol: http/protobuf
-                endpoint: "${env:GCLOUD_OTLP_URL}/v1/logs"
-                headers:
-                  - name: Authorization
-                    value: "Basic ${env:GCLOUD_BASIC_AUTH}"
-    resource:
-      service.instance.id: "${env:INSTANCE_UID}"
+      level: "debug"
+      encoding: "console"
+  extensions: [basicauth/grafana_cloud, opamp]
