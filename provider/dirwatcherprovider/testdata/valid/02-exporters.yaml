@@ -1,0 +1,4 @@
+exporters:
+  debug:
+    verbosity: detailed
+
