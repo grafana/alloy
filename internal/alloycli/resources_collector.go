@@ -34,7 +34,7 @@ func newResourcesCollector(l log.Logger) *resourcesCollector {
 
 		processStartTime: prometheus.NewDesc(
 			"alloy_resources_process_start_time_seconds",
-			"Start time of the process since Unix epoch in seconds.",
+			"Start time of the process since unix epoch in seconds.",
 			nil, nil,
 		),
 
@@ -46,13 +46,13 @@ func newResourcesCollector(l log.Logger) *resourcesCollector {
 
 		rssMemory: prometheus.NewDesc(
 			"alloy_resources_process_resident_memory_bytes",
-			"Current resident memory size in bytes.",
+			"Resident memory size in bytes.",
 			nil, nil,
 		),
 
 		virtMemory: prometheus.NewDesc(
 			"alloy_resources_process_virtual_memory_bytes",
-			"Current virtual memory size in bytes.",
+			"Virtual memory size in bytes.",
 			nil, nil,
 		),
 

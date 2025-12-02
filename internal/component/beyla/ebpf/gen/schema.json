@@ -1,0 +1,2541 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/grafana/beyla/v3/pkg/beyla/config",
+  "$defs": {
+    "AWSConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_AWS_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "AgentTypeIface": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "external",
+            "local"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^name:.+$"
+        }
+      ],
+      "title": "Agent Type Interface",
+      "description": "Specifies which interface should the agent pick the IP address from in order to report it in the AgentIP field on each flow. Accepted values are: external, local, or name:<interface name> (e.g. name:eth0)."
+    },
+    "AnthropicConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_ANTHROPIC_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "AttributeFamilyConfig": {
+      "additionalProperties": {
+        "$ref": "#/$defs/MatchDefinition"
+      },
+      "type": "object"
+    },
+    "Attributes": {
+      "properties": {
+        "extra_group_attributes": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "host_id": {
+          "$ref": "#/$defs/HostIDConfig"
+        },
+        "instance_id": {
+          "$ref": "#/$defs/InstanceIDConfig"
+        },
+        "kubernetes": {
+          "$ref": "#/$defs/KubernetesDecorator"
+        },
+        "metadata_retry": {
+          "$ref": "#/$defs/RetryConfig"
+        },
+        "metric_span_names_limit": {
+          "type": "integer",
+          "description": "MetricSpanNameAggregationLimit works PER SERVICE and only relates to span_metrics. When the span_name cardinality surpasses this limit, the span_name will be reported as AGGREGATED. If the value <= 0, it is disabled.",
+          "x-env-var": "BEYLA_METRIC_SPAN_NAMES_LIMIT"
+        },
+        "rename_unresolved_hosts": {
+          "type": "string",
+          "description": "RenameUnresolvedHosts will replace HostName and PeerName attributes when they are empty or contain unresolved IP addresses to reduce cardinality. Set this value to the empty string to disable this feature.",
+          "x-env-var": "BEYLA_RENAME_UNRESOLVED_HOSTS"
+        },
+        "rename_unresolved_hosts_incoming": {
+          "type": "string",
+          "x-env-var": "BEYLA_RENAME_UNRESOLVED_HOSTS_INCOMING"
+        },
+        "rename_unresolved_hosts_outgoing": {
+          "type": "string",
+          "x-env-var": "BEYLA_RENAME_UNRESOLVED_HOSTS_OUTGOING"
+        },
+        "select": {
+          "$ref": "#/$defs/Selection"
+        }
+      },
+      "type": "object",
+      "description": "Attributes configures the decoration of some extra attributes that will be added to each span"
+    },
+    "AttributesConfig": {
+      "properties": {
+        "application": {
+          "$ref": "#/$defs/AttributeFamilyConfig"
+        },
+        "network": {
+          "$ref": "#/$defs/AttributeFamilyConfig"
+        },
+        "stats": {
+          "$ref": "#/$defs/AttributeFamilyConfig"
+        }
+      },
+      "type": "object"
+    },
+    "BedrockConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_BEDROCK_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "BeylaDiscoveryConfig": {
+      "properties": {
+        "bpf_pid_filter_off": {
+          "type": "boolean",
+          "description": "Debugging only option. Make sure the kernel side doesn't filter any PIDs, force user space filtering.",
+          "x-env-var": "BEYLA_BPF_PID_FILTER_OFF"
+        },
+        "default_exclude_instrument": {
+          "$ref": "#/$defs/GlobDefinitionCriteria",
+          "description": "DefaultExcludeInstrument by default prevents self-instrumentation of OBI as well as related services (Beyla, Alloy and OpenTelemetry collector) It must be set to an empty string or a different value if self-instrumentation is desired."
+        },
+        "default_exclude_services": {
+          "$ref": "#/$defs/RegexDefinitionCriteria",
+          "description": "DefaultExcludeServices by default prevents self-instrumentation of Beyla as well as related services (Alloy and OpenTelemetry collector) It must be set to an empty string or a different value if self-instrumentation is desired. Use DefaultExcludeInstrument instead",
+          "deprecated": true
+        },
+        "default_otlp_grpc_port": {
+          "type": "integer",
+          "description": "DefaultOtlpGRPCPort specifies the default OTLP gRPC port (4317) to fallback on when missing environment variables on service, for checking for grpc export requests, defaults to 4317",
+          "x-env-var": "BEYLA_DEFAULT_OTLP_GRPC_PORT"
+        },
+        "disabled_route_harvesters": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "go",
+              "java",
+              "nodejs"
+            ]
+          },
+          "type": "array"
+        },
+        "exclude_instrument": {
+          "$ref": "#/$defs/GlobDefinitionCriteria",
+          "description": "ExcludeInstrument works analogously to Instrument, but the applications matching this section won't be instrumented even if they match the Instrument selection."
+        },
+        "exclude_otel_instrumented_services": {
+          "type": "boolean",
+          "description": "Disables instrumentation of services which are already instrumented",
+          "x-env-var": "BEYLA_EXCLUDE_OTEL_INSTRUMENTED_SERVICES"
+        },
+        "exclude_otel_instrumented_services_span_metrics": {
+          "type": "boolean",
+          "description": "Disables generation of span metrics of services which are already instrumented",
+          "x-env-var": "BEYLA_EXCLUDE_OTEL_INSTRUMENTED_SERVICES_SPAN_METRICS"
+        },
+        "exclude_services": {
+          "$ref": "#/$defs/RegexDefinitionCriteria",
+          "description": "ExcludeServices works analogously to Services, but the applications matching this section won't be instrumented even if they match the Services selection. Use ExcludeInstrument instead",
+          "deprecated": true
+        },
+        "excluded_linux_system_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Executable paths for which we don't run language detection and cannot be selected using the path or language selection criteria"
+        },
+        "instrument": {
+          "$ref": "#/$defs/GlobDefinitionCriteria",
+          "description": "Instrument selects the services to instrument via Globs. If this section is set, both the Services and ExcludeServices section is ignored. If the user defined the BEYLA_AUTO_TARGET_EXE or BEYLA_OPEN_PORT variables, they will be automatically added to the instrument criteria, with the lowest preference."
+        },
+        "min_process_age": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "description": "Min process age to be considered for discovery.",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_MIN_PROCESS_AGE"
+        },
+        "poll_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "description": "PollInterval specifies, for the poll service watcher, the interval time between process inspections",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_DISCOVERY_POLL_INTERVAL"
+        },
+        "route_harvester_advanced": {
+          "$ref": "#/$defs/RouteHarvestingConfig"
+        },
+        "route_harvester_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_ROUTE_HARVESTER_TIMEOUT"
+        },
+        "services": {
+          "$ref": "#/$defs/RegexDefinitionCriteria",
+          "description": "Services selection. If the user defined the BEYLA_EXECUTABLE_NAME or BEYLA_OPEN_PORT variables, they will be automatically added to the services definition criteria, with the lowest preference. Use Instrument instead",
+          "deprecated": true
+        },
+        "skip_go_specific_tracers": {
+          "type": "boolean",
+          "description": "This can be enabled to use generic HTTP tracers only, no Go-specifics will be used:",
+          "x-env-var": "BEYLA_SKIP_GO_SPECIFIC_TRACERS"
+        },
+        "survey": {
+          "$ref": "#/$defs/GlobDefinitionCriteria",
+          "description": "Survey selection. Same as services selection, however, it generates only the target info (survey_info) instead of instrumenting the services"
+        }
+      },
+      "type": "object",
+      "description": "DiscoveryConfig for the discover.ProcessFinder pipeline"
+    },
+    "Buckets": {
+      "properties": {
+        "duration_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "gen_ai_client_operation_duration_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "gen_ai_client_token_usage_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "request_size_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "response_size_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "CollectConfig": {
+      "properties": {
+        "RunMode": {
+          "type": "string",
+          "description": "RunMode defaults to \"privileged\". A non-privileged harvester will omit some information like open FDs. TODO: move to an upper layer"
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "description": "Interval between harvests",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_PROCESSES_INTERVAL"
+        }
+      },
+      "type": "object"
+    },
+    "ContextPropagationMode": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "",
+            "all",
+            "disabled"
+          ],
+          "description": "Enable all propagation methods, disable propagation, or use empty string for disabled"
+        },
+        {
+          "type": "string",
+          "pattern": "^(headers|http|tcp)(,(headers|http|tcp))*$",
+          "description": "List of propagation methods to enable (headers/http for HTTP headers, tcp for TCP options), separated by commas",
+          "examples": [
+            "headers",
+            "tcp",
+            "headers,tcp"
+          ]
+        }
+      ],
+      "title": "Context Propagation Mode",
+      "description": "Configures distributed context propagation. Can be 'all' to enable all methods, 'disabled'/'' to disable, or a list of specific methods: 'headers' (or 'http') for HTTP headers, 'tcp' for TCP options."
+    },
+    "CustomRoutesConfig": {
+      "properties": {
+        "incoming": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "outgoing": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Definitions": {
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "A CIDR range (e.g. \"10.0.0.0/8\"). The CIDR string is used as the attribute value."
+          },
+          {
+            "properties": {
+              "cidr": {
+                "type": "string",
+                "description": "A CIDR range (e.g. \"10.0.0.0/8\")."
+              },
+              "name": {
+                "type": "string",
+                "description": "A human-readable name for this CIDR. Used as the attribute value instead of the CIDR string."
+              }
+            },
+            "type": "object",
+            "required": [
+              "cidr"
+            ],
+            "description": "A named CIDR entry."
+          }
+        ]
+      },
+      "type": "array",
+      "description": "A list of CIDRs to be set as the \"src.cidr\" and \"dst.cidr\" attribute as a function of the source and destination IP addresses. Each entry can be a plain CIDR string or an object with \"cidr\" and \"name\" fields."
+    },
+    "EBPFBufferSizes": {
+      "properties": {
+        "http": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_HTTP"
+        },
+        "kafka": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_KAFKA"
+        },
+        "mssql": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_MSSQL"
+        },
+        "mysql": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_MYSQL"
+        },
+        "postgres": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_POSTGRES"
+        }
+      },
+      "type": "object"
+    },
+    "EBPFTracer": {
+      "properties": {
+        "batch_length": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BATCH_LENGTH"
+        },
+        "batch_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_BATCH_TIMEOUT"
+        },
+        "bpf_debug": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_DEBUG"
+        },
+        "bpf_fs_path": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_BPF_FS_PATH"
+        },
+        "buffer_sizes": {
+          "$ref": "#/$defs/EBPFBufferSizes"
+        },
+        "context_propagation": {
+          "$ref": "#/$defs/ContextPropagationMode",
+          "x-env-var": "OTEL_EBPF_BPF_CONTEXT_PROPAGATION"
+        },
+        "couchbase_db_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_COUCHBASE_DB_CACHE_SIZE"
+        },
+        "disable_black_box_cp": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_DISABLE_BLACK_BOX_CP"
+        },
+        "dns_request_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_DNS_REQUEST_TIMEOUT"
+        },
+        "force_bpf_map_reader": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "batch",
+            "legacy"
+          ],
+          "x-env-var": "OTEL_EBPF_FORCE_BPF_MAP_READER"
+        },
+        "heuristic_sql_detect": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HEURISTIC_SQL_DETECT"
+        },
+        "high_request_volume": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_HIGH_REQUEST_VOLUME"
+        },
+        "http_request_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_HTTP_REQUEST_TIMEOUT"
+        },
+        "instrument_cuda": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_INSTRUMENT_CUDA"
+        },
+        "kafka_topic_uuid_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_KAFKA_TOPIC_UUID_CACHE_SIZE"
+        },
+        "log_enricher": {
+          "$ref": "#/$defs/LogEnricherConfig"
+        },
+        "maps_config": {
+          "$ref": "#/$defs/MapsConfig"
+        },
+        "max_transaction_time": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_MAX_TRANSACTION_TIME"
+        },
+        "mongo_requests_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_MONGO_REQUESTS_CACHE_SIZE"
+        },
+        "mssql_prepared_statements_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_MSSQL_PREPARED_STATEMENTS_CACHE_SIZE"
+        },
+        "mysql_prepared_statements_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_MYSQL_PREPARED_STATEMENTS_CACHE_SIZE"
+        },
+        "override_bpfloop_enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_OVERRIDE_BPF_LOOP_ENABLED"
+        },
+        "payload_extraction": {
+          "$ref": "#/$defs/PayloadExtraction"
+        },
+        "postgres_prepared_statements_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_POSTGRES_PREPARED_STATEMENTS_CACHE_SIZE"
+        },
+        "protocol_debug_print": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_PROTOCOL_DEBUG_PRINT"
+        },
+        "redis_db_cache": {
+          "$ref": "#/$defs/RedisDBCacheConfig"
+        },
+        "track_request_headers": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_TRACK_REQUEST_HEADERS"
+        },
+        "traffic_control_backend": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "tc",
+            "tcx"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_TC_BACKEND"
+        },
+        "wakeup_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_WAKEUP_LEN"
+        }
+      },
+      "type": "object"
+    },
+    "ElasticsearchConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_ELASTICSEARCH_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "EmbeddingProviderConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_GENAI_EMBEDDING_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "EnrichmentConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_ENRICHMENT_ENABLED"
+        },
+        "policy": {
+          "$ref": "#/$defs/HTTPParsingPolicy"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/HTTPParsingRule"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "ExponentialHistogramConfig": {
+      "properties": {
+        "max_scale": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_METRICS_EXPONENTIAL_HISTOGRAM_MAX_SCALE"
+        },
+        "max_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_METRICS_EXPONENTIAL_HISTOGRAM_MAX_SIZE"
+        }
+      },
+      "type": "object"
+    },
+    "ExportModes": {
+      "items": {
+        "type": "string",
+        "enum": [
+          "logs",
+          "metrics",
+          "traces"
+        ]
+      },
+      "type": "array",
+      "description": "List of signals to export. If undefined or null, all signals are exported. If an empty list, no signals are exported."
+    },
+    "Features": {
+      "items": {
+        "type": "string",
+        "enum": [
+          "*",
+          "all",
+          "application",
+          "application_host",
+          "application_process",
+          "application_service_graph",
+          "application_span",
+          "application_span_otel",
+          "application_span_sizes",
+          "ebpf",
+          "network",
+          "network_inter_zone",
+          "stats",
+          "stats_tcp_failed_connections",
+          "stats_tcp_rtt"
+        ]
+      },
+      "type": "array",
+      "description": "List of metric features to enable."
+    },
+    "GeminiConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_GEMINI_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "GenAIConfig": {
+      "properties": {
+        "anthropic": {
+          "$ref": "#/$defs/AnthropicConfig"
+        },
+        "bedrock": {
+          "$ref": "#/$defs/BedrockConfig"
+        },
+        "embedding": {
+          "$ref": "#/$defs/EmbeddingProviderConfig"
+        },
+        "gemini": {
+          "$ref": "#/$defs/GeminiConfig"
+        },
+        "mcp": {
+          "$ref": "#/$defs/MCPConfig"
+        },
+        "openai": {
+          "$ref": "#/$defs/OpenAIConfig"
+        },
+        "qwen": {
+          "$ref": "#/$defs/QwenConfig"
+        }
+      },
+      "type": "object"
+    },
+    "GeoIP": {
+      "properties": {
+        "cache_expiry": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_GEOIP_CACHE_TTL"
+        },
+        "cache_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_GEOIP_CACHE_LEN"
+        },
+        "ipinfo": {
+          "$ref": "#/$defs/IPInfoConfig"
+        },
+        "maxmind": {
+          "$ref": "#/$defs/MaxMindConfig"
+        }
+      },
+      "type": "object"
+    },
+    "GlobAttr": {
+      "type": "string",
+      "format": "glob",
+      "description": "Glob pattern to match against the attribute value",
+      "examples": [
+        "app-*",
+        "service-??",
+        "prod-*-db"
+      ]
+    },
+    "GlobAttributes": {
+      "properties": {
+        "cmd_args": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "container_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "containers_only": {
+          "type": "boolean"
+        },
+        "exe_path": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "exports": {
+          "$ref": "#/$defs/ExportModes"
+        },
+        "k8s_container_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_cronjob_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_daemonset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_deployment_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_job_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_namespace": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_owner_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_pod_annotations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GlobAttr"
+          },
+          "type": "object"
+        },
+        "k8s_pod_labels": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GlobAttr"
+          },
+          "type": "object"
+        },
+        "k8s_pod_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_replicaset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_statefulset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "languages": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "metrics": {
+          "$ref": "#/$defs/SvcMetricsConfig",
+          "x-env-var": "-"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "open_ports": {
+          "$ref": "#/$defs/IntEnum"
+        },
+        "routes": {
+          "$ref": "#/$defs/CustomRoutesConfig"
+        },
+        "sampler": {
+          "$ref": "#/$defs/SamplerConfig"
+        },
+        "target_pids": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array",
+          "x-env-var": "BEYLA_TARGET_PID"
+        }
+      },
+      "type": "object"
+    },
+    "GlobDefinitionCriteria": {
+      "items": {
+        "$ref": "#/$defs/GlobAttributes"
+      },
+      "type": "array"
+    },
+    "GrafanaConfig": {
+      "properties": {
+        "otlp": {
+          "$ref": "#/$defs/GrafanaOTLP",
+          "description": "OTLP endpoint from Grafana Cloud."
+        }
+      },
+      "type": "object",
+      "description": "GrafanaConfig simplifies the submission of information to Grafana Cloud, but it can be actually used for any OTEL endpoint, as it uses the standard OTEL authentication under the hood"
+    },
+    "GrafanaOTLP": {
+      "properties": {
+        "cloud_api_key": {
+          "type": "string",
+          "description": "APIKey of your Grafana Cloud account.",
+          "x-env-var": "GRAFANA_CLOUD_API_KEY"
+        },
+        "cloud_instance_id": {
+          "type": "string",
+          "description": "InstanceID is your Grafana user name. It is usually a number but it must be set as a string inside the YAML file.",
+          "x-env-var": "GRAFANA_CLOUD_INSTANCE_ID"
+        },
+        "cloud_submit": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Submit accepts a comma-separated list of the kind of data that will be submitted to the OTLP endpoint. It accepts `metrics` and/or `traces` as values.",
+          "x-env-var": "GRAFANA_CLOUD_SUBMIT"
+        },
+        "cloud_zone": {
+          "type": "string",
+          "description": "CloudZone of your Grafana Endpoint. For example: prod-eu-west-0.",
+          "x-env-var": "GRAFANA_CLOUD_ZONE"
+        }
+      },
+      "type": "object"
+    },
+    "GraphQLConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_GRAPHQL_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "HTTPConfig": {
+      "properties": {
+        "aws": {
+          "$ref": "#/$defs/AWSConfig"
+        },
+        "elasticsearch": {
+          "$ref": "#/$defs/ElasticsearchConfig"
+        },
+        "enrichment": {
+          "$ref": "#/$defs/EnrichmentConfig"
+        },
+        "genai": {
+          "$ref": "#/$defs/GenAIConfig"
+        },
+        "graphql": {
+          "$ref": "#/$defs/GraphQLConfig"
+        },
+        "jsonrpc": {
+          "$ref": "#/$defs/JSONRPCConfig"
+        },
+        "sqlpp": {
+          "$ref": "#/$defs/SQLPPConfig"
+        }
+      },
+      "type": "object"
+    },
+    "HTTPMethod": {
+      "type": "string",
+      "enum": [
+        "DELETE",
+        "GET",
+        "HEAD",
+        "OPTIONS",
+        "PATCH",
+        "POST",
+        "PUT"
+      ]
+    },
+    "HTTPParsingAction": {
+      "type": "string",
+      "enum": [
+        "exclude",
+        "include",
+        "obfuscate"
+      ]
+    },
+    "HTTPParsingDefaultAction": {
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/HTTPParsingAction"
+        },
+        "headers": {
+          "$ref": "#/$defs/HTTPParsingAction"
+        }
+      },
+      "type": "object"
+    },
+    "HTTPParsingMatch": {
+      "properties": {
+        "case_sensitive": {
+          "type": "boolean"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/$defs/HTTPMethod"
+          },
+          "type": "array"
+        },
+        "obfuscation_json_paths": {
+          "items": {
+            "$ref": "#/$defs/JSONPathExpr"
+          },
+          "type": "array"
+        },
+        "patterns": {
+          "items": {
+            "$ref": "#/$defs/GlobAttr"
+          },
+          "type": "array"
+        },
+        "url_path_patterns": {
+          "items": {
+            "$ref": "#/$defs/GlobAttr"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "HTTPParsingPolicy": {
+      "properties": {
+        "default_action": {
+          "$ref": "#/$defs/HTTPParsingDefaultAction"
+        },
+        "obfuscation_string": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_HTTP_ENRICHMENT_OBFUSCATION_STRING"
+        }
+      },
+      "type": "object"
+    },
+    "HTTPParsingRule": {
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/HTTPParsingAction"
+        },
+        "match": {
+          "$ref": "#/$defs/HTTPParsingMatch"
+        },
+        "scope": {
+          "$ref": "#/$defs/HTTPParsingScope"
+        },
+        "type": {
+          "$ref": "#/$defs/HTTPParsingRuleType"
+        }
+      },
+      "type": "object"
+    },
+    "HTTPParsingRuleType": {
+      "type": "string",
+      "enum": [
+        "body",
+        "headers"
+      ]
+    },
+    "HTTPParsingScope": {
+      "type": "string",
+      "enum": [
+        "all",
+        "request",
+        "response"
+      ]
+    },
+    "HostIDConfig": {
+      "properties": {
+        "override": {
+          "type": "string",
+          "description": "Override allows overriding the reported host.id in Beyla",
+          "x-env-var": "BEYLA_HOST_ID"
+        }
+      },
+      "type": "object"
+    },
+    "IPInfoConfig": {
+      "properties": {
+        "path": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_GEOIP_IPINFO_PATH"
+        }
+      },
+      "type": "object"
+    },
+    "InclusionLists": {
+      "properties": {
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "InstanceIDConfig": {
+      "properties": {
+        "dns": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HOSTNAME_DNS_RESOLUTION"
+        },
+        "override_hostname": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_HOSTNAME"
+        }
+      },
+      "type": "object"
+    },
+    "InstrumentableType": {
+      "properties": {
+        "InstrumentableType": {
+          "$ref": "#/$defs/InstrumentableType"
+        }
+      },
+      "type": "object",
+      "description": "InstrumentableType is a wrapper around svc.InstrumentableType that adds unmarshaling capabilities for configuration parsing. Once we add this functionality in OBI, we can remove this wrapper type."
+    },
+    "IntEnum": {
+      "properties": {
+        "Ranges": {
+          "items": {
+            "$ref": "#/$defs/IntRange"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "IntRange": {
+      "type": "string",
+      "pattern": "^\\s*\\d+\\s*(-\\s*\\d+\\s*)?(,\\s*\\d+\\s*(-\\s*\\d+\\s*)?)*$",
+      "description": "A comma-separated list of numerics or numeric ranges",
+      "examples": [
+        "1",
+        "1000",
+        "8080-8090",
+        "80,443,8000-8999"
+      ]
+    },
+    "InternalMetricsConfig": {
+      "properties": {
+        "bpf_metric_scrape_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_METRIC_SCRAPE_INTERVAL"
+        },
+        "exporter": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "otel",
+            "prometheus"
+          ],
+          "x-env-var": "OTEL_EBPF_INTERNAL_METRICS_EXPORTER"
+        },
+        "prometheus": {
+          "$ref": "#/$defs/PrometheusConfig"
+        }
+      },
+      "type": "object"
+    },
+    "JSONPathExpr": {
+      "type": "string",
+      "description": "A JSONPath expression string.",
+      "examples": [
+        "$.password",
+        "$.user.name",
+        "$.items[0].id"
+      ]
+    },
+    "JSONRPCConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_JSONRPC_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "JavaConfig": {
+      "properties": {
+        "attach_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_JAVAAGENT_ATTACH_TIMEOUT"
+        },
+        "debug": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_JAVAAGENT_DEBUG"
+        },
+        "debug_instrumentation": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_JAVAAGENT_DEBUG_INSTRUMENTATION"
+        },
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_JAVAAGENT_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "KubernetesDecorator": {
+      "properties": {
+        "cluster_name": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_KUBE_CLUSTER_NAME"
+        },
+        "disable_informers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_KUBE_DISABLE_INFORMERS"
+        },
+        "drop_external": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_NETWORK_DROP_EXTERNAL"
+        },
+        "enable": {
+          "type": "string",
+          "enum": [
+            "autodetect",
+            "false",
+            "true"
+          ],
+          "x-env-var": "OTEL_EBPF_KUBE_METADATA_ENABLE"
+        },
+        "informers_resync_period": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_KUBE_INFORMERS_RESYNC_PERIOD"
+        },
+        "informers_sync_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_KUBE_INFORMERS_SYNC_TIMEOUT"
+        },
+        "kubeconfig_path": {
+          "type": "string",
+          "x-env-var": "KUBECONFIG"
+        },
+        "meta_cache_address": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_KUBE_META_CACHE_ADDRESS"
+        },
+        "meta_restrict_local_node": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_KUBE_META_RESTRICT_LOCAL_NODE"
+        },
+        "meta_source_labels": {
+          "$ref": "#/$defs/MetaSourceLabels"
+        },
+        "reconnect_initial_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_KUBE_RECONNECT_INITIAL_INTERVAL"
+        },
+        "resource_labels": {
+          "$ref": "#/$defs/ResourceLabels"
+        },
+        "service_name_template": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_SERVICE_NAME_TEMPLATE"
+        }
+      },
+      "type": "object"
+    },
+    "LogEnricherConfig": {
+      "properties": {
+        "async_writer_channel_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_LOG_ENRICHER_ASYNC_WRITER_CHANNEL_LEN"
+        },
+        "async_writer_workers": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_LOG_ENRICHER_ASYNC_WRITER_WORKERS"
+        },
+        "cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_LOG_ENRICHER_CACHE_SIZE"
+        },
+        "cache_ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_LOG_ENRICHER_CACHE_TTL"
+        },
+        "services": {
+          "items": {
+            "$ref": "#/$defs/LogEnricherServiceConfig"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "LogEnricherServiceConfig": {
+      "properties": {
+        "service": {
+          "$ref": "#/$defs/GlobDefinitionCriteria"
+        }
+      },
+      "type": "object"
+    },
+    "MCPConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_MCP_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "MapsConfig": {
+      "properties": {
+        "global_scale_factor": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "MatchDefinition": {
+      "properties": {
+        "equals": {
+          "type": "integer"
+        },
+        "greater_equals": {
+          "type": "integer"
+        },
+        "greater_than": {
+          "type": "integer"
+        },
+        "less_equals": {
+          "type": "integer"
+        },
+        "less_than": {
+          "type": "integer"
+        },
+        "match": {
+          "type": "string"
+        },
+        "not_equals": {
+          "type": "integer"
+        },
+        "not_match": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "MaxMindConfig": {
+      "properties": {
+        "asn_path": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_GEOIP_MAXMIND_ASN_PATH"
+        },
+        "country_path": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_GEOIP_MAXMIND_COUNTRY_PATH"
+        }
+      },
+      "type": "object"
+    },
+    "MetaSourceLabels": {
+      "properties": {
+        "service_name": {
+          "type": "string",
+          "x-env-var": "OTEL_SERVICE_NAME"
+        },
+        "service_namespace": {
+          "type": "string",
+          "x-env-var": "BEYLA_SERVICE_NAMESPACE"
+        }
+      },
+      "type": "object"
+    },
+    "MetricsConfig": {
+      "properties": {
+        "OTELIntervalMS": {
+          "type": "integer"
+        },
+        "allow_service_graph_self_references": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_ALLOW_SERVICE_GRAPH_SELF_REFERENCES"
+        },
+        "buckets": {
+          "$ref": "#/$defs/Buckets"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-env-var": "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+        },
+        "exponential_histogram": {
+          "$ref": "#/$defs/ExponentialHistogramConfig"
+        },
+        "extra_span_resource_attributes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_EXTRA_SPAN_RESOURCE_ATTRIBUTES"
+        },
+        "features": {
+          "$ref": "#/$defs/Features",
+          "x-env-var": "OTEL_EBPF_METRICS_FEATURES"
+        },
+        "histogram_aggregation": {
+          "type": "string",
+          "enum": [
+            "base2_exponential_bucket_histogram",
+            "explicit_bucket_histogram"
+          ],
+          "x-env-var": "OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION"
+        },
+        "insecure_skip_verify": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_INSECURE_SKIP_VERIFY"
+        },
+        "instrumentations": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "*",
+              "amqp",
+              "couchbase",
+              "dns",
+              "genai",
+              "gpu",
+              "grpc",
+              "http",
+              "kafka",
+              "memcached",
+              "mongo",
+              "mqtt",
+              "nats",
+              "redis",
+              "sql"
+            ]
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-env-var": "OTEL_EBPF_METRICS_INSTRUMENTATIONS"
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_METRICS_INTERVAL"
+        },
+        "otel_sdk_log_level": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_SDK_LOG_LEVEL"
+        },
+        "protocol": {
+          "type": "string",
+          "enum": [
+            "",
+            "debug",
+            "grpc",
+            "http/json",
+            "http/protobuf"
+          ],
+          "x-env-var": "OTEL_EXPORTER_OTLP_PROTOCOL"
+        },
+        "reporters_cache_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_METRICS_REPORT_CACHE_LEN"
+        },
+        "ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_METRICS_TTL"
+        }
+      },
+      "type": "object"
+    },
+    "NameResolverConfig": {
+      "properties": {
+        "cache_expiry": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_NAME_RESOLVER_CACHE_TTL"
+        },
+        "cache_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_NAME_RESOLVER_CACHE_LEN"
+        },
+        "sources": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "dns",
+              "k8s",
+              "kube",
+              "kubernetes",
+              "rdns"
+            ]
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_NAME_RESOLVER_SOURCES"
+        }
+      },
+      "type": "object"
+    },
+    "NativeHistogramConfig": {
+      "properties": {
+        "bucket_factor": {
+          "type": "number",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_NATIVE_HISTOGRAM_BUCKET_FACTOR"
+        },
+        "max_bucket_number": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_NATIVE_HISTOGRAM_MAX_BUCKET_NUMBER"
+        },
+        "min_reset_duration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_NATIVE_HISTOGRAM_MIN_RESET_DURATION"
+        }
+      },
+      "type": "object"
+    },
+    "NetworkConfig": {
+      "properties": {
+        "agent_ip": {
+          "type": "string",
+          "format": "ip",
+          "x-env-var": "OTEL_EBPF_NETWORK_AGENT_IP"
+        },
+        "agent_ip_iface": {
+          "$ref": "#/$defs/AgentTypeIface",
+          "x-env-var": "OTEL_EBPF_NETWORK_AGENT_IP_IFACE"
+        },
+        "agent_ip_type": {
+          "type": "string",
+          "enum": [
+            "any",
+            "ipv4",
+            "ipv6"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_AGENT_IP_TYPE"
+        },
+        "cache_active_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_CACHE_ACTIVE_TIMEOUT"
+        },
+        "cache_max_flows": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_NETWORK_CACHE_MAX_FLOWS"
+        },
+        "cidrs": {
+          "$ref": "#/$defs/Definitions",
+          "x-env-var": "OTEL_EBPF_NETWORK_CIDRS"
+        },
+        "deduper": {
+          "type": "string",
+          "enum": [
+            "first_come",
+            "none"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_DEDUPER"
+        },
+        "deduper_fc_ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_DEDUPER_FC_TTL"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "both",
+            "egress",
+            "ingress"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_DIRECTION"
+        },
+        "enable": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_NETWORK_METRICS"
+        },
+        "exclude_interfaces": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_NETWORK_EXCLUDE_INTERFACES"
+        },
+        "exclude_protocols": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_NETWORK_EXCLUDE_PROTOCOLS"
+        },
+        "geo_ip": {
+          "$ref": "#/$defs/GeoIP"
+        },
+        "guess_ports": {
+          "type": "string",
+          "enum": [
+            "disable",
+            "ordinal"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_GUESS_PORTS"
+        },
+        "interfaces": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_NETWORK_INTERFACES"
+        },
+        "listen_interfaces": {
+          "type": "string",
+          "enum": [
+            "poll",
+            "watch"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_LISTEN_INTERFACES"
+        },
+        "listen_poll_period": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_LISTEN_POLL_PERIOD"
+        },
+        "print_flows": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_NETWORK_PRINT_FLOWS"
+        },
+        "protocols": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_NETWORK_PROTOCOLS"
+        },
+        "reverse_dns": {
+          "$ref": "#/$defs/ReverseDNS"
+        },
+        "sampling": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_NETWORK_SAMPLING"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "socket_filter",
+            "tc"
+          ],
+          "x-env-var": "OTEL_EBPF_NETWORK_SOURCE"
+        }
+      },
+      "type": "object"
+    },
+    "NodeJSConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_NODEJS_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "OpenAIConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_OPENAI_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "PayloadExtraction": {
+      "properties": {
+        "http": {
+          "$ref": "#/$defs/HTTPConfig"
+        }
+      },
+      "type": "object"
+    },
+    "PrometheusConfig": {
+      "properties": {
+        "allow_service_graph_self_references": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_ALLOW_SERVICE_GRAPH_SELF_REFERENCES"
+        },
+        "buckets": {
+          "$ref": "#/$defs/Buckets"
+        },
+        "disable_build_info": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_DISABLE_BUILD_INFO"
+        },
+        "exemplar_filter": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_EXEMPLAR_FILTER"
+        },
+        "extra_resource_attributes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_EXTRA_RESOURCE_ATTRIBUTES"
+        },
+        "extra_span_resource_attributes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_EXTRA_SPAN_RESOURCE_ATTRIBUTES"
+        },
+        "features": {
+          "$ref": "#/$defs/Features",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_FEATURES"
+        },
+        "instrumentations": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "*",
+              "amqp",
+              "couchbase",
+              "dns",
+              "genai",
+              "gpu",
+              "grpc",
+              "http",
+              "kafka",
+              "memcached",
+              "mongo",
+              "mqtt",
+              "nats",
+              "redis",
+              "sql"
+            ]
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_INSTRUMENTATIONS"
+        },
+        "native_histogram": {
+          "$ref": "#/$defs/NativeHistogramConfig"
+        },
+        "path": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_PATH"
+        },
+        "port": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_PORT"
+        },
+        "service_cache_size": {
+          "type": "integer"
+        },
+        "ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_PROMETHEUS_TTL"
+        }
+      },
+      "type": "object"
+    },
+    "QwenConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_QWEN_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "RedisDBCacheConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_REDIS_DB_CACHE_ENABLED"
+        },
+        "max_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_REDIS_DB_CACHE_MAX_SIZE"
+        }
+      },
+      "type": "object"
+    },
+    "RegexDefinitionCriteria": {
+      "items": {
+        "$ref": "#/$defs/RegexSelector"
+      },
+      "type": "array"
+    },
+    "RegexSelector": {
+      "properties": {
+        "cmd_args": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "container_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "containers_only": {
+          "type": "boolean"
+        },
+        "exe_path": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "exe_path_regexp": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "exports": {
+          "$ref": "#/$defs/ExportModes"
+        },
+        "k8s_container_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_cronjob_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_daemonset_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_deployment_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_job_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_namespace": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_owner_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_pod_annotations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RegexpAttr"
+          },
+          "type": "object"
+        },
+        "k8s_pod_labels": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RegexpAttr"
+          },
+          "type": "object"
+        },
+        "k8s_pod_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_replicaset_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_statefulset_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "languages": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "metrics": {
+          "$ref": "#/$defs/SvcMetricsConfig"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "open_ports": {
+          "$ref": "#/$defs/IntEnum"
+        },
+        "routes": {
+          "$ref": "#/$defs/CustomRoutesConfig"
+        },
+        "sampler": {
+          "$ref": "#/$defs/SamplerConfig"
+        },
+        "target_pids": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array",
+          "x-env-var": "BEYLA_TARGET_PID"
+        }
+      },
+      "type": "object"
+    },
+    "RegexpAttr": {
+      "type": "string",
+      "format": "regex",
+      "description": "Regular expression to match against the executable file path",
+      "examples": [
+        "^app-.*",
+        "^service-..$",
+        "^prod-.*-db$"
+      ]
+    },
+    "ResourceLabels": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "type": "object"
+    },
+    "RetryConfig": {
+      "properties": {
+        "max_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_METADATA_RETRY_MAX_INTERVAL"
+        },
+        "start_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_METADATA_RETRY_START_INTERVAL"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_METADATA_RETRY_TIMEOUT"
+        }
+      },
+      "type": "object"
+    },
+    "ReverseDNS": {
+      "properties": {
+        "cache_expiry": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_REVERSE_DNS_CACHE_TTL"
+        },
+        "cache_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_REVERSE_DNS_CACHE_LEN"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "ebpf",
+            "local",
+            "none"
+          ],
+          "x-env-var": "OTEL_EBPF_REVERSE_DNS_TYPE"
+        }
+      },
+      "type": "object"
+    },
+    "RouteHarvestingConfig": {
+      "properties": {
+        "java_harvest_delay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_JAVA_ROUTE_HARVEST_DELAY"
+        }
+      },
+      "type": "object"
+    },
+    "RoutesConfig": {
+      "properties": {
+        "ignore_mode": {
+          "type": "string",
+          "enum": [
+            "all",
+            "metrics",
+            "traces"
+          ]
+        },
+        "ignored_patterns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_path_segment_cardinality": {
+          "type": "integer"
+        },
+        "patterns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "unmatched": {
+          "type": "string",
+          "enum": [
+            "heuristic",
+            "low-cardinality",
+            "path",
+            "unset",
+            "wildcard"
+          ]
+        },
+        "wildcard_char": {
+          "type": "string",
+          "maxLength": 1
+        }
+      },
+      "type": "object"
+    },
+    "SDKExport": {
+      "properties": {
+        "logs": {
+          "type": "boolean",
+          "description": "Logs enables log export from injected SDKs via OTLP Defaults to false (disabled) when not explicitly set",
+          "x-env-var": "BEYLA_SDK_EXPORT_LOGS"
+        },
+        "metrics": {
+          "type": "boolean",
+          "description": "Metrics enables metric export from injected SDKs via OTLP Defaults to true (enabled) when not explicitly set Note: SDKs can only export via OTLP, not Prometheus scraping",
+          "x-env-var": "BEYLA_SDK_EXPORT_METRICS"
+        },
+        "traces": {
+          "type": "boolean",
+          "description": "Traces enables trace export from injected SDKs via OTLP Defaults to true (enabled) when not explicitly set",
+          "x-env-var": "BEYLA_SDK_EXPORT_TRACES"
+        }
+      },
+      "type": "object",
+      "description": "SDKExport defines which telemetry signals should be exported from injected SDKs. These settings are independent from the global export configuration and allow the injector to export metrics/traces/logs even when Beyla uses Prometheus for metrics."
+    },
+    "SDKInject": {
+      "properties": {
+        "debug": {
+          "type": "boolean",
+          "description": "Enables injection debugging"
+        },
+        "disable_auto_restart": {
+          "type": "boolean",
+          "description": "Option to disable automatic bouncing of pods, it will be a responsibility of the end-user to bounce the pods to be instrumented"
+        },
+        "enabled_sdks": {
+          "items": {
+            "$ref": "#/$defs/InstrumentableType"
+          },
+          "type": "array",
+          "description": "List of enabled SDK auto-instrumentations. Can be used to disable specific language instrumentations."
+        },
+        "export": {
+          "$ref": "#/$defs/SDKExport",
+          "description": "Export configuration for SDK instrumentation Controls which signals (traces, metrics, logs) should be exported from injected SDKs"
+        },
+        "host_mount_path": {
+          "type": "string",
+          "description": "The host mount path where the SDK copy init container copies the files. This is the root path, sdk_version is appended on top"
+        },
+        "host_path_volume": {
+          "type": "string",
+          "description": "The host path volume directory which gets mounted into pods"
+        },
+        "image_volume_path": {
+          "type": "string",
+          "description": "OCI image mount instead of host volume, supported on k8s 1.31+"
+        },
+        "instrument": {
+          "$ref": "#/$defs/GlobDefinitionCriteria",
+          "description": "OTel SDK instrumentation criteria"
+        },
+        "manage_sdk_versions": {
+          "type": "boolean",
+          "description": "Tells Beyla that it should delete old SDK versions on the host mount volume. Default true."
+        },
+        "propagators": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Propagators configuration for SDK instrumentation Common values: tracecontext, baggage, b3, b3multi, jaeger, xray"
+        },
+        "resources": {
+          "$ref": "#/$defs/SDKResource",
+          "description": "Resource attributes related settings"
+        },
+        "sampler": {
+          "$ref": "#/$defs/SamplerConfig",
+          "description": "Default sampler configuration for SDK instrumentation This is used when no sampler is specified in the selector"
+        },
+        "sdk_package_version": {
+          "type": "string",
+          "description": "The mutator will set the version on pods if this value is set This is used to let Beyla upgrade already instrumented services If the version doesn't match we still bounce existing pods"
+        },
+        "webhook": {
+          "$ref": "#/$defs/WebhookConfig",
+          "description": "Webhook configuration for a mutating admission controller"
+        }
+      },
+      "type": "object",
+      "description": "OpenTelemetry SDK injection for Kubernetes WARNING: This option is experimental, undocumented and might be removed in the future without warning. For SDK instrumentation on Kubernetes, use the OpenTelemetry Operator instead."
+    },
+    "SDKResource": {
+      "properties": {
+        "addK8sIPAttribute": {
+          "type": "boolean",
+          "description": "AddK8sIPAttribute defines whether the k8s.pod.ip resource attribute should be set from the Kubernetes downward API (status.podIP). Useful for environments where the OTel k8sattributesprocessor cannot infer the pod IP from the connection source (e.g. clusters behind a NAT gateway). +optional",
+          "x-env-var": "BEYLA_RESOURCE_ADD_K8S_IP_ATTRIBUTE"
+        },
+        "addK8sUIDAttributes": {
+          "type": "boolean",
+          "description": "AddK8sUIDAttributes defines whether K8s UID attributes should be collected (e.g. k8s.deployment.uid). +optional",
+          "x-env-var": "BEYLA_RESOURCE_ADD_K8S_UID_ATTRIBUTES"
+        },
+        "resourceAttributes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Attributes defines attributes that are added to the resource. For example environment: dev +optional",
+          "x-env-var": "BEYLA_RESOURCE_ATTRIBUTES"
+        },
+        "useLabelsForResourceAttributes": {
+          "type": "boolean",
+          "description": "UseLabelsForResourceAttributes defines whether to use common labels for resource attributes: Note: first entry wins:   - `app.kubernetes.io/instance` becomes `service.name`   - `app.kubernetes.io/name` becomes `service.name`   - `app.kubernetes.io/version` becomes `service.version`",
+          "x-env-var": "BEYLA_RESOURCE_USE_LABELS_FOR_RESOURCE_ATTRIBUTES"
+        }
+      },
+      "type": "object",
+      "description": "Resource defines the configuration for the resource attributes, as defined by the OpenTelemetry specification. See also: https://github.com/open-telemetry/opentelemetry-specification/blob/v1.8.0/specification/overview.md#resources"
+    },
+    "SQLPPConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_SQLPP_ENABLED"
+        },
+        "endpoint_patterns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_HTTP_SQLPP_ENDPOINT_PATTERNS"
+        }
+      },
+      "type": "object"
+    },
+    "SamplerConfig": {
+      "properties": {
+        "arg": {
+          "type": "string",
+          "x-env-var": "OTEL_TRACES_SAMPLER_ARG"
+        },
+        "name": {
+          "type": "string",
+          "enum": [
+            "always_off",
+            "always_on",
+            "parentbased_always_off",
+            "parentbased_always_on",
+            "parentbased_traceidratio",
+            "traceidratio"
+          ],
+          "x-env-var": "OTEL_TRACES_SAMPLER"
+        }
+      },
+      "type": "object"
+    },
+    "Selection": {
+      "additionalProperties": {
+        "$ref": "#/$defs/InclusionLists"
+      },
+      "type": "object"
+    },
+    "StatsConfig": {
+      "properties": {
+        "agent_ip": {
+          "type": "string",
+          "format": "ip",
+          "x-env-var": "OTEL_EBPF_STATS_AGENT_IP"
+        },
+        "agent_ip_iface": {
+          "$ref": "#/$defs/AgentTypeIface",
+          "x-env-var": "OTEL_EBPF_STATS_AGENT_IP_IFACE"
+        },
+        "agent_ip_type": {
+          "type": "string",
+          "enum": [
+            "any",
+            "ipv4",
+            "ipv6"
+          ],
+          "x-env-var": "OTEL_EBPF_STATS_AGENT_IP_TYPE"
+        },
+        "cidrs": {
+          "$ref": "#/$defs/Definitions",
+          "x-env-var": "OTEL_EBPF_STATS_CIDRS"
+        },
+        "geo_ip": {
+          "$ref": "#/$defs/GeoIP"
+        },
+        "print_stats": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_STATS_PRINT_STATS"
+        },
+        "reverse_dns": {
+          "$ref": "#/$defs/ReverseDNS"
+        }
+      },
+      "type": "object"
+    },
+    "SvcMetricsConfig": {
+      "properties": {
+        "features": {
+          "$ref": "#/$defs/Features"
+        }
+      },
+      "type": "object"
+    },
+    "Topology": {
+      "properties": {
+        "spans": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "inter_cluster"
+            ]
+          },
+          "type": "array",
+          "x-env-var": "BEYLA_TOPOLOGY_SPANS"
+        }
+      },
+      "type": "object"
+    },
+    "TracesConfig": {
+      "properties": {
+        "backoff_initial_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BACKOFF_INITIAL_INTERVAL"
+        },
+        "backoff_max_elapsed_time": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BACKOFF_MAX_ELAPSED_TIME"
+        },
+        "backoff_max_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BACKOFF_MAX_INTERVAL"
+        },
+        "batch_max_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_OTLP_TRACES_BATCH_MAX_SIZE"
+        },
+        "batch_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_OTLP_TRACES_BATCH_TIMEOUT"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-env-var": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
+        },
+        "insecure_skip_verify": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_INSECURE_SKIP_VERIFY"
+        },
+        "instrumentations": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "*",
+              "amqp",
+              "couchbase",
+              "dns",
+              "genai",
+              "gpu",
+              "grpc",
+              "http",
+              "kafka",
+              "memcached",
+              "mongo",
+              "mqtt",
+              "nats",
+              "redis",
+              "sql"
+            ]
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-env-var": "OTEL_EBPF_TRACES_INSTRUMENTATIONS"
+        },
+        "otel_sdk_log_level": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_SDK_LOG_LEVEL"
+        },
+        "protocol": {
+          "type": "string",
+          "enum": [
+            "",
+            "debug",
+            "grpc",
+            "http/json",
+            "http/protobuf"
+          ],
+          "x-env-var": "OTEL_EXPORTER_OTLP_PROTOCOL"
+        },
+        "queue_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_OTLP_TRACES_QUEUE_SIZE"
+        },
+        "reporters_cache_len": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_TRACES_REPORT_CACHE_LEN"
+        },
+        "sampler": {
+          "$ref": "#/$defs/SamplerConfig"
+        }
+      },
+      "type": "object"
+    },
+    "WebhookConfig": {
+      "properties": {
+        "cert_path": {
+          "type": "string",
+          "description": "CertPath is the path to the TLS certificate file",
+          "x-env-var": "BEYLA_WEBHOOK_CERT_PATH"
+        },
+        "enable": {
+          "type": "boolean",
+          "description": "Enable enables the mutating webhook server",
+          "x-env-var": "BEYLA_WEBHOOK_ENABLE"
+        },
+        "key_path": {
+          "type": "string",
+          "description": "KeyPath is the path to the TLS key file",
+          "x-env-var": "BEYLA_WEBHOOK_KEY_PATH"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port is the port the webhook server listens on",
+          "x-env-var": "BEYLA_WEBHOOK_LISTEN_PORT"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "description": "Timeout is the time we wait for the TLS webhook to get initialized",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_WEBHOOK_TIMEOUT"
+        }
+      },
+      "type": "object",
+      "description": "WebhookConfig contains the configuration for the mutating webhook"
+    }
+  },
+  "properties": {
+    "AutoTargetExe": {
+      "$ref": "#/$defs/GlobAttr",
+      "description": "AutoTargetExe selects the executable to instrument matching a Glob against the executable path. To set this value via YAML, use discovery > instrument. It also accepts BEYLA_AUTO_TARGET_EXE for compatibility with opentelemetry-go-instrumentation"
+    },
+    "AutoTargetLanguage": {
+      "$ref": "#/$defs/GlobAttr",
+      "description": "AutoTargetLanguage selects the executable to instrument matching a Glob of chosen languages. To set this value via YAML, use discovery > instrument."
+    },
+    "attributes": {
+      "$ref": "#/$defs/Attributes"
+    },
+    "channel_buffer_len": {
+      "type": "integer",
+      "x-env-var": "BEYLA_CHANNEL_BUFFER_LEN"
+    },
+    "channel_send_timeout": {
+      "type": "string",
+      "pattern": "^[0-9]+(ms|s|m)$",
+      "examples": [
+        "30s",
+        "5m",
+        "1ms"
+      ],
+      "x-env-var": "BEYLA_CHANNEL_SEND_TIMEOUT"
+    },
+    "channel_send_timeout_panic": {
+      "type": "boolean",
+      "x-env-var": "BEYLA_CHANNEL_SEND_TIMEOUT_PANIC"
+    },
+    "discovery": {
+      "$ref": "#/$defs/BeylaDiscoveryConfig",
+      "description": "Discovery configuration"
+    },
+    "ebpf": {
+      "$ref": "#/$defs/EBPFTracer"
+    },
+    "enforce_sys_caps": {
+      "type": "boolean",
+      "description": "Check for required system capabilities and bail if they are not present. If set to 'false', Beyla will still print a list of missing capabilities, but the execution will continue",
+      "x-env-var": "BEYLA_ENFORCE_SYS_CAPS"
+    },
+    "executable_name": {
+      "$ref": "#/$defs/RegexpAttr",
+      "description": "Exec allows selecting the instrumented executable whose complete path contains the Exec value. Use BEYLA_AUTO_TARGET_EXE",
+      "deprecated": true,
+      "x-env-var": "BEYLA_EXECUTABLE_NAME"
+    },
+    "filter": {
+      "$ref": "#/$defs/AttributesConfig"
+    },
+    "grafana": {
+      "$ref": "#/$defs/GrafanaConfig",
+      "description": "Grafana overrides some values of the otel.MetricsConfig and otel.TracesConfig below for a simpler submission of OTEL metrics to Grafana Cloud"
+    },
+    "injector": {
+      "$ref": "#/$defs/SDKInject",
+      "description": "Experimental support for OpenTelemetry SDK injection, by using the OpenTelemetry Injector WARNING: This is purely experimental and undocumented feature and can be removed in the future without warning."
+    },
+    "internal_metrics": {
+      "$ref": "#/$defs/InternalMetricsConfig"
+    },
+    "javaagent": {
+      "$ref": "#/$defs/JavaConfig"
+    },
+    "log_config": {
+      "type": "string",
+      "enum": [
+        "json",
+        "yaml"
+      ],
+      "description": "LogConfig enables the logging of the configuration on startup.",
+      "x-env-var": "BEYLA_LOG_CONFIG"
+    },
+    "log_format": {
+      "type": "string",
+      "enum": [
+        "json",
+        "text"
+      ],
+      "x-env-var": "BEYLA_LOG_FORMAT"
+    },
+    "log_level": {
+      "type": "string",
+      "x-env-var": "BEYLA_LOG_LEVEL"
+    },
+    "metrics": {
+      "$ref": "#/$defs/MetricsConfig"
+    },
+    "name_resolver": {
+      "$ref": "#/$defs/NameResolverConfig"
+    },
+    "network": {
+      "$ref": "#/$defs/NetworkConfig",
+      "description": "NetworkFlows configuration for Network Observability feature"
+    },
+    "nodejs": {
+      "$ref": "#/$defs/NodeJSConfig"
+    },
+    "open_port": {
+      "$ref": "#/$defs/IntEnum",
+      "description": "Port allows selecting the instrumented executable that owns the Port value. If this value is set (and different to zero), the value of the Exec property won't take effect. It's important to emphasize that if your process opens multiple HTTP/GRPC ports, the auto-instrumenter will instrument all the service calls in all the ports, not only the port specified here.",
+      "x-env-var": "BEYLA_OPEN_PORT"
+    },
+    "otel_metrics_export": {
+      "$ref": "#/$defs/MetricsConfig"
+    },
+    "otel_traces_export": {
+      "$ref": "#/$defs/TracesConfig"
+    },
+    "processes": {
+      "$ref": "#/$defs/CollectConfig",
+      "description": "Processes metrics for application. They will be only enabled if there is a metrics exporter enabled, \"application_process\" features are enabled"
+    },
+    "profile_port": {
+      "type": "integer",
+      "x-env-var": "BEYLA_PROFILE_PORT"
+    },
+    "prometheus_export": {
+      "$ref": "#/$defs/PrometheusConfig"
+    },
+    "routes": {
+      "$ref": "#/$defs/RoutesConfig",
+      "description": "Routes is an optional node. If not set, data will be directly forwarded to exporters."
+    },
+    "service_name": {
+      "type": "string",
+      "description": "ServiceName is taken from either BEYLA_SERVICE_NAME env var or OTEL_SERVICE_NAME (for OTEL spec compatibility) Using env and envDefault is a trick to get the value either from one of either variables. Service name should be set in the instrumentation target (env vars, kube metadata...) as this is a reminiscence of past times when we only supported one executable per instance.",
+      "deprecated": true,
+      "x-env-var": "OTEL_SERVICE_NAME"
+    },
+    "service_namespace": {
+      "type": "string",
+      "description": "Service namespace should be set in the instrumentation target (env vars, kube metadata...) as this is a reminiscence of past times when we only supported one executable per instance.",
+      "deprecated": true,
+      "x-env-var": "BEYLA_SERVICE_NAMESPACE"
+    },
+    "shutdown_timeout": {
+      "type": "string",
+      "pattern": "^[0-9]+(ms|s|m)$",
+      "description": "Timeout for a graceful shutdown",
+      "examples": [
+        "30s",
+        "5m",
+        "1ms"
+      ],
+      "x-env-var": "BEYLA_SHUTDOWN_TIMEOUT"
+    },
+    "stats": {
+      "$ref": "#/$defs/StatsConfig",
+      "description": "Stats configuration for Stats Observability feature"
+    },
+    "target_pids": {
+      "$ref": "#/$defs/IntEnum",
+      "description": "TargetPIDs selects processes by PID for instrumentation. When non-empty, only these PIDs are instrumented. Accepts YAML list (target_pids: [1234, 5678]), single number, or env BEYLA_TARGET_PID=1234,5678. Alternative to Exec or AutoTargetExe when PIDs are known.",
+      "x-env-var": "BEYLA_TARGET_PID"
+    },
+    "topology": {
+      "$ref": "#/$defs/Topology",
+      "description": "Topology enables extra topology-related features, such as inter-cluster connection spans."
+    },
+    "trace_printer": {
+      "type": "string",
+      "enum": [
+        "counter",
+        "disabled",
+        "json",
+        "json_indent",
+        "text"
+      ],
+      "x-env-var": "BEYLA_TRACE_PRINTER"
+    }
+  },
+  "type": "object",
+  "title": "Beyla Configuration Schema",
+  "description": "JSON Schema for Beyla eBPF auto-instrumentation configuration"
+}

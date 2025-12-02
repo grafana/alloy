@@ -43,3 +43,8 @@ collector/otel_engine.exe
 
 # claude
 CLAUDE.local.md
+
+# Beyla embedded binaries (downloaded at build time)
+internal/component/beyla/ebpf/beyla_binary_amd64
+internal/component/beyla/ebpf/beyla_binary_arm64
+internal/component/beyla/ebpf/.beyla-binary-version

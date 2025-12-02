@@ -1,0 +1,83 @@
+{
+  "name_overrides": {
+    "RoutesConfig":         "Routes",
+    "EBPFTracer":           "EBPF",
+    "MapsConfig":           "EBPFMapsConfig",
+    "PayloadExtraction":    "PayloadExtraction",
+    "HTTPConfig":           "HTTPPayloadExtraction",
+    "StatsConfig":          "Stats",
+    "SDKInject":            "Injector",
+    "WebhookConfig":        "InjectorWebhook",
+    "SDKExport":            "InjectorSDKExport",
+    "SDKResource":          "InjectorSDKResource",
+    "BeylaDiscoveryConfig":   "Discovery",
+    "InternalMetricsConfig": "InternalMetrics"
+  },
+
+  "skip": [
+    "injector.resources.addK8sUIDAttributes",
+    "injector.resources.resourceAttributes",
+    "injector.resources.useLabelsForResourceAttributes",
+    "internal_metrics.prometheus"
+  ],
+
+  "aliases": {
+    "prometheus_export.extra_resource_attributes": {
+      "alloy_key": "extra_resource_labels",
+      "warn": true
+    },
+    "prometheus_export.extra_span_resource_attributes": {
+      "alloy_key": "extra_span_resource_labels",
+      "warn": true
+    },
+    "filter": {
+      "alloy_key": "filters",
+      "warn": false
+    }
+  },
+
+  "multi_section": [
+    {
+      "alloy_path": "metrics",
+      "yaml_section": "prometheus_export",
+      "alloy_fields": [
+        "features",
+        "instrumentations",
+        "allow_service_graph_self_references",
+        "extra_resource_labels",
+        "extra_span_resource_labels",
+        "native_histograms",
+        "exemplar_filter"
+      ]
+    },
+    {
+      "alloy_path": "metrics.network",
+      "yaml_section": "network"
+    }
+  ],
+
+"flatten_transforms": [
+    {
+      "schema_type": "GlobAttributes",
+      "prefix": "k8s_",
+      "alloy_block": "kubernetes",
+      "go_slice_type": "Services",
+      "go_item_type": "Service"
+    }
+  ],
+
+  "map_keyed_by": {
+    "AttributeFamilies": "attr",
+    "Selections": "attr"
+  },
+
+  "inject_wrappers": [
+    {
+      "schema_path": "ebpf.payload_extraction.http",
+      "schema_key": "genai",
+      "alloy_fields": ["openai", "anthropic", "gemini", "bedrock"]
+    }
+  ],
+
+  "manual_sections": ["traces", "attributes", "filter"]
+}

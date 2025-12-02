@@ -22,9 +22,10 @@
 ##
 ## Targets for building binaries:
 ##
-##   binaries       Compiles all binaries.
-##   alloy          Compiles Alloy to $(ALLOY_BINARY)
-##   alloy-service  Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
+##   binaries        Compiles all binaries.
+##   alloy           Compiles Alloy to $(ALLOY_BINARY) (auto-downloads Beyla if needed)
+##   alloy-service   Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
+##   download-beyla  Download Beyla binaries for embedding
 ##
 ## Targets for building Docker images:
 ##
@@ -81,6 +82,7 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+##   BEYLA_VERSION        Version of Beyla to download and embed (default v3.9.3).
 
 include tools/make/*.mk
 
@@ -101,6 +103,17 @@ GOARM                		?= $(shell go env GOARM)
 CGO_ENABLED          		?= 1
 RELEASE_BUILD        		?= 0
 GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
+
+# Beyla embedding configuration
+BEYLA_VERSION        ?= v3.14.0
+BEYLA_BINARY_DIR     := internal/component/beyla/ebpf
+BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/beyla_binary_amd64
+BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/beyla_binary_arm64
+BEYLA_BINARY_STAMP   := $(BEYLA_BINARY_DIR)/.beyla-binary-version
+BEYLA_SCHEMA_DIR     := $(BEYLA_BINARY_DIR)/gen
+BEYLA_SCHEMA         := $(BEYLA_SCHEMA_DIR)/schema.json
+BEYLA_SCHEMA_STAMP   := $(BEYLA_SCHEMA_DIR)/.schema-version
+BEYLA_CONFIG_GEN     := $(BEYLA_BINARY_DIR)/beyla_config_gen.go
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -138,9 +151,6 @@ GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOA
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
-BEYLA_MODULE  := $(shell go list -m all | grep "^github.com/grafana/beyla" | head -1)
-BEYLA_VERSION := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f2)
-BEYLA_PKG     := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f1)/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
 VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
 ifdef SOURCE_DATE_EPOCH
@@ -151,8 +161,7 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
-                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ") \
-                -X $(BEYLA_PKG).Version=$(BEYLA_VERSION)
+                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ")
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
 DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
@@ -227,7 +236,49 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+.PHONY: beyla
+beyla: download-beyla download-beyla-schema $(BEYLA_CONFIG_GEN)
+
+.PHONY: download-beyla
+download-beyla:
+	@go run ./$(BEYLA_SCHEMA_DIR)/download.go \
+	    $(BEYLA_VERSION) \
+	    $(BEYLA_BINARY_AMD64) \
+	    $(BEYLA_BINARY_ARM64) \
+	    $(BEYLA_BINARY_STAMP)
+
+.PHONY: download-beyla-schema
+download-beyla-schema:
+	@echo "  Downloading schema for Beyla $(BEYLA_VERSION)..."
+	@mkdir -p $(BEYLA_SCHEMA_DIR)
+	@curl -fsSL -o $(BEYLA_SCHEMA) \
+	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
+	@echo $(BEYLA_VERSION) > $(BEYLA_SCHEMA_STAMP)
+	@echo "  ✓ Done"
+
+# Auto-download Beyla binaries if missing on a clean checkout.
+$(BEYLA_BINARY_AMD64) $(BEYLA_BINARY_ARM64):
+	@$(MAKE) download-beyla
+
+# Single codegen trigger: runs go generate when schema or mappings change.
+# In serial make (default), prerequisites of beyla run left-to-right so
+# download-beyla-schema writes the stamp before this rule is evaluated.
+$(BEYLA_CONFIG_GEN): $(BEYLA_SCHEMA_STAMP) $(BEYLA_SCHEMA_DIR)/mappings.json
+	@echo "  Regenerating beyla_config_gen.go..."
+	@cd $(BEYLA_BINARY_DIR) && go generate .
+
+# Fallback: create stamp from an already-present schema.json (clean checkout, no
+# explicit make beyla run).
+$(BEYLA_SCHEMA_STAMP): $(BEYLA_SCHEMA)
+	@echo $(BEYLA_VERSION) > $@
+
+# Fallback: download schema.json when absent (clean checkout, no make beyla run).
+$(BEYLA_SCHEMA):
+	@mkdir -p $(BEYLA_SCHEMA_DIR)
+	curl -fsSL -o $@ \
+	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
+
+alloy: generate-ui beyla
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -409,8 +460,13 @@ update-go-version-pr-2:
 	cd ./tools && go run ./go-version pr-2 $(VERSION)
 
 .PHONY: clean
-clean: clean-dist clean-build-container-cache
+clean: clean-dist clean-build-container-cache clean-beyla
 	rm -rf ./build/*
+
+.PHONY: clean-beyla
+clean-beyla:
+	@echo "Cleaning Beyla binaries..."
+	@rm -f $(BEYLA_BINARY_AMD64) $(BEYLA_BINARY_ARM64)
 
 .PHONY: info
 info:
@@ -427,6 +483,7 @@ info:
 	@printf "VERSION             = $(VERSION)\n"
 	@printf "GO_TAGS             = $(GO_TAGS)\n"
 	@printf "GOEXPERIMENT        = $(GOEXPERIMENT)\n"
+	@printf "BEYLA_VERSION       = $(BEYLA_VERSION)\n"
 
 # awk magic to print out the comment block at the top of this file.
 .PHONY: help

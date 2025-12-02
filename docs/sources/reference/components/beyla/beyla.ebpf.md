@@ -20,14 +20,99 @@ The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
-{{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW`, `CAP_CHECKPOINT_RESTORE`, `DAC_READ_SEARCH`, and `PERFMON`.
-The number of required capabilities depends on the specific use case.
-Refer to the [Beyla capabilities](https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla) for more information.
+## Permissions
 
-In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
-You must also set the `hostPID` flag to `true` in the Pod spec so that in can access all the processes running on the host.
+`beyla.ebpf` uses eBPF, which requires elevated privileges.
+{{< param "PRODUCT_NAME" >}} spawns Beyla as a subprocess and transfers the required capabilities to it via the kernel's inheritable and ambient capability sets — no `SETPCAP` is required.
+
+The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, and `SYS_RESOURCE` (kernels earlier than 5.11).
+The exact set needed depends on your use case; refer to [Beyla capabilities][] for more information.
+
+In Kubernetes, you must also set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
+
+### Standalone: root
+
+Run {{< param "PRODUCT_NAME" >}} as root. On a standard Linux system, root processes inherit all capabilities from the bounding set, so no additional configuration is required.
+If the bounding set is restricted (for example, by a systemd unit), grant the required capabilities explicitly:
+
+```bash
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ep' /path/to/alloy
+```
+
+### Standalone: non-root
+
+Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary using the `+ip` flag.
+This seeds the permitted set without granting the capabilities to {{< param "PRODUCT_NAME" >}}'s own effective set, so {{< param "PRODUCT_NAME" >}} holds them only to transfer to Beyla:
+
+```bash
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /path/to/alloy
+```
+
+{{< admonition type="note" >}}
+File capabilities are not scoped to a container boundary and travel with the binary. Treat this as a deliberate security decision.
 {{< /admonition >}}
+
+### Kubernetes: privileged
+
+Set `privileged: true` in the container's `securityContext`. This grants all capabilities and disables seccomp and AppArmor profiles. This approach is **not recommended** for production environments.
+
+### Kubernetes: unprivileged, root user
+
+This is the recommended approach for Kubernetes. Run the container as root with `privileged: false` and grant only the required capabilities:
+
+```yaml
+spec:
+  hostPID: true
+  containers:
+    - name: alloy
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: true  # optional: true is the default for root containers
+        capabilities:
+          add:
+            - BPF
+            - NET_ADMIN
+            - NET_RAW
+            - PERFMON
+            - DAC_READ_SEARCH
+            - SYS_PTRACE
+            - CHECKPOINT_RESTORE
+            - SYS_RESOURCE  # kernels < 5.11
+```
+
+Unlike `privileged: true`, this keeps seccomp and AppArmor profiles active.
+
+### Kubernetes: unprivileged, non-root user
+
+For the most restrictive posture, run as a non-root UID. Add `setcap +ip` to your container image (the official {{< param "PRODUCT_NAME" >}} image already includes this):
+
+```dockerfile
+RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /bin/alloy
+```
+
+Then configure the Pod security context:
+
+```yaml
+spec:
+  hostPID: true
+  containers:
+    - name: alloy
+      securityContext:
+        privileged: false
+        runAsUser: 473
+        runAsNonRoot: true
+        allowPrivilegeEscalation: true  # required: no_new_privs blocks PR_CAP_AMBIENT_RAISE
+        capabilities:
+          add:
+            - BPF
+            - NET_ADMIN
+            - NET_RAW
+            - PERFMON
+            - DAC_READ_SEARCH
+            - SYS_PTRACE
+            - CHECKPOINT_RESTORE
+            - SYS_RESOURCE  # kernels < 5.11
+```
 
 ## Usage
 
@@ -968,6 +1053,8 @@ Replace the following:
 [scrape]: ../../prometheus/prometheus.scrape/
 [Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
+[Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
+[Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

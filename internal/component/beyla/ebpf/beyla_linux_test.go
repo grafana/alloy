@@ -5,32 +5,20 @@ package beyla
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/grafana/beyla/v3/pkg/beyla"
-	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/obi/pkg/appolly/services"
-	"go.opentelemetry.io/obi/pkg/export"
-	"go.opentelemetry.io/obi/pkg/export/attributes"
-	"go.opentelemetry.io/obi/pkg/export/debug"
-	"go.opentelemetry.io/obi/pkg/export/instrumentations"
-	"go.opentelemetry.io/obi/pkg/filter"
-	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
-	"go.opentelemetry.io/obi/pkg/obi"
-	"go.opentelemetry.io/obi/pkg/transform"
+	"gopkg.in/yaml.v3"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
-	obiCfg "go.opentelemetry.io/obi/pkg/config"
 )
 
 func TestArguments_UnmarshalSyntax(t *testing.T) {
@@ -65,7 +53,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				namespace = "default"
 				open_ports = "80,443"
 				exe_path = "/usr/bin/app*"
-				cmd_args = "--config=*"
 				kubernetes {
 					namespace = "default"
 				}
@@ -89,12 +76,10 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			}
 			exclude_instrument {
 				exe_path = "/usr/bin/test*"
-				cmd_args = "--skip-*"
 				namespace = "default"
 			}
 			survey {
 				exe_path = "/app/microservice-*"
-				cmd_args = "--mode=survey*"
 				name = "microservice"
 				exports = ["metrics", "traces"]
 			}
@@ -128,19 +113,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 		ebpf {
 			wakeup_len = 10
 			track_request_headers = true
-			context_propagation = "tcp"
+			context_propagation = "ip"
 			http_request_timeout = "10s"
 			high_request_volume = true
 			heuristic_sql_detect = true
 			bpf_debug = false
 			protocol_debug_print = false
-			payload_extraction {
-				http {
-					openai {
-						enabled = true
-					}
-				}
-			}
 		}
 		filters {
 			application {
@@ -158,413 +136,582 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	`
 	var args Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
-	cfg, err := args.Convert()
-	require.NoError(t, err)
 
-	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
-	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
-	//nolint:staticcheck // OBI does not expose a replacement API for ignored route patterns yet.
-	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
-	//nolint:staticcheck // OBI does not expose a replacement API for ignored route modes yet.
-	require.Equal(t, transform.IgnoreMode("all"), cfg.Routes.IgnoredEvents)
-	require.Equal(t, "*", cfg.Routes.WildcardChar)
+	// Verify routes
+	require.Equal(t, "wildcard", args.Routes.Unmatch)
+	require.Equal(t, []string{"/api/v1/*"}, args.Routes.Patterns)
+	require.Equal(t, []string{"/api/v1/health"}, args.Routes.IgnorePatterns)
+	require.Equal(t, "all", args.Routes.IgnoredEvents)
+	require.Equal(t, "*", args.Routes.WildcardChar)
 
-	require.Equal(t, kubeflags.EnabledTrue, cfg.Attributes.Kubernetes.Enable)
-	require.Equal(t, 15*time.Second, cfg.Attributes.Kubernetes.InformersSyncTimeout)
-	require.Equal(t, 30*time.Minute, cfg.Attributes.Kubernetes.InformersResyncPeriod)
-	require.Equal(t, "test", cfg.Attributes.Kubernetes.ClusterName)
-	require.Equal(t, []string{"node"}, cfg.Attributes.Kubernetes.DisableInformers)
-	require.True(t, cfg.Attributes.Kubernetes.MetaRestrictLocalNode)
-	require.Equal(t, "localhost:9090", cfg.Attributes.Kubernetes.MetaCacheAddress)
-	require.Len(t, cfg.Attributes.Select, 1)
-	sel, ok := cfg.Attributes.Select["sql_client_duration"]
-	require.True(t, ok)
-	require.Equal(t, []string{"*"}, sel.Include)
-	require.Equal(t, []string{"db_statement"}, sel.Exclude)
+	// Verify kubernetes attributes
+	require.Equal(t, "true", args.Attributes.Kubernetes.Enable)
+	require.Equal(t, 15*time.Second, args.Attributes.Kubernetes.InformersSyncTimeout)
+	require.Equal(t, 30*time.Minute, args.Attributes.Kubernetes.InformersResyncPeriod)
+	require.Equal(t, "test", args.Attributes.Kubernetes.ClusterName)
+	require.Equal(t, []string{"node"}, args.Attributes.Kubernetes.DisableInformers)
+	require.True(t, args.Attributes.Kubernetes.MetaRestrictLocalNode)
+	require.Equal(t, "localhost:9090", args.Attributes.Kubernetes.MetaCacheAddress)
 
-	require.Equal(t, "0.0.0.0", cfg.NetworkFlows.AgentIP)
-	require.Equal(t, []string{"eth0"}, cfg.NetworkFlows.Interfaces)
-	require.Equal(t, []string{"TCP", "UDP"}, cfg.NetworkFlows.Protocols)
-	require.Equal(t, []string{"ICMP"}, cfg.NetworkFlows.ExcludeProtocols)
-	require.Equal(t, 1, cfg.NetworkFlows.Sampling)
-	require.Equal(t, "10.0.0.0/8", cfg.NetworkFlows.CIDRs[0])
-	require.Equal(t, 8000, cfg.NetworkFlows.CacheMaxFlows)
-	require.Equal(t, 10*time.Second, cfg.NetworkFlows.CacheActiveTimeout)
-	require.Equal(t, "ingress", cfg.NetworkFlows.Direction)
-	require.Equal(t, "local", string(cfg.NetworkFlows.AgentIPIface))
-	require.Equal(t, "ipv4", cfg.NetworkFlows.AgentIPType)
-	require.Empty(t, cfg.NetworkFlows.ExcludeInterfaces)
+	// Verify select attributes
+	require.Len(t, args.Attributes.Select, 1)
+	require.Equal(t, "sql_client_duration", args.Attributes.Select[0].Section)
+	require.Equal(t, []string{"*"}, args.Attributes.Select[0].Include)
+	require.Equal(t, []string{"db_statement"}, args.Attributes.Select[0].Exclude)
 
-	require.Len(t, cfg.Discovery.Instrument, 2)
-	require.True(t, cfg.Discovery.Instrument[0].Path.IsSet())
-	require.True(t, cfg.Discovery.Instrument[0].CmdArgs.IsSet())
-	require.True(t, cfg.Discovery.Instrument[0].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportMetrics())
-	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportTraces())
-	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Instrument[0].SamplerConfig)
-	require.True(t, cfg.Discovery.Instrument[1].PodLabels["test"].IsSet())
-	require.True(t, cfg.Discovery.Instrument[1].ExportModes.CanExportMetrics())
-	require.False(t, cfg.Discovery.Instrument[1].ExportModes.CanExportTraces())
+	// Verify network
+	require.Equal(t, "0.0.0.0", args.Metrics.Network.AgentIP)
+	require.Equal(t, []string{"eth0"}, args.Metrics.Network.Interfaces)
+	require.Equal(t, []string{"TCP", "UDP"}, args.Metrics.Network.Protocols)
+	require.Equal(t, []string{"ICMP"}, args.Metrics.Network.ExcludeProtocols)
+	require.Equal(t, 1, args.Metrics.Network.Sampling)
+	require.Equal(t, "10.0.0.0/8", args.Metrics.Network.CIDRs[0])
+	require.Equal(t, 8000, args.Metrics.Network.CacheMaxFlows)
+	require.Equal(t, 10*time.Second, args.Metrics.Network.CacheActiveTimeout)
+	require.Equal(t, "ingress", args.Metrics.Network.Direction)
+	require.Equal(t, "local", args.Metrics.Network.AgentIPIface)
+	require.Equal(t, "ipv4", args.Metrics.Network.AgentIPType)
+	require.Empty(t, args.Metrics.Network.ExcludeInterfaces)
 
-	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
-	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
-	require.True(t, cfg.Discovery.ExcludeInstrument[0].CmdArgs.IsSet())
+	// Verify discovery
+	require.Len(t, args.Discovery.Instrument, 2)
+	require.Equal(t, "test", args.Discovery.Instrument[0].Name)
+	require.Equal(t, "default", args.Discovery.Instrument[0].Namespace)
+	require.Equal(t, "80,443", args.Discovery.Instrument[0].OpenPorts)
+	require.Equal(t, "/usr/bin/app*", args.Discovery.Instrument[0].Path)
+	require.Equal(t, []string{"metrics", "traces"}, args.Discovery.Instrument[0].ExportModes)
+	require.Equal(t, "traceidratio", args.Discovery.Instrument[0].Sampler.Name)
+	require.Equal(t, "0.5", args.Discovery.Instrument[0].Sampler.Arg)
 
-	require.Len(t, cfg.Discovery.Survey, 1)
-	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
-	require.True(t, cfg.Discovery.Survey[0].CmdArgs.IsSet())
-	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportMetrics())
-	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
+	require.Len(t, args.Discovery.ExcludeInstrument, 1)
+	require.Equal(t, "/usr/bin/test*", args.Discovery.ExcludeInstrument[0].Path)
+	require.Equal(t, "default", args.Discovery.ExcludeInstrument[0].Namespace)
 
-	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Metrics.Features)
-	require.True(t, cfg.Metrics.Features.AnyAppO11yMetric())
-	require.True(t, cfg.Metrics.Features.AnyNetwork())
-	require.Equal(t, stringsToInstrumentations([]string{"redis", "sql", "gpu", "mongo"}), cfg.Prometheus.Instrumentations)
+	require.Len(t, args.Discovery.Survey, 1)
+	require.Equal(t, "/app/microservice-*", args.Discovery.Survey[0].Path)
+	require.Equal(t, "microservice", args.Discovery.Survey[0].Name)
 
-	require.True(t, cfg.EnforceSysCaps)
-	require.Equal(t, 10, cfg.EBPF.WakeupLen)
-	require.True(t, cfg.EBPF.TrackRequestHeaders)
-	require.Equal(t, cfg.EBPF.ContextPropagation, obiCfg.ContextPropagationTCP)
-	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
-	require.True(t, cfg.EBPF.HighRequestVolume)
-	require.True(t, cfg.EBPF.HeuristicSQLDetect)
-	require.False(t, cfg.EBPF.BpfDebug)
-	require.False(t, cfg.EBPF.ProtocolDebug)
-	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
-	require.Len(t, cfg.Filters.Application, 1)
-	require.Len(t, cfg.Filters.Network, 1)
-	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
-	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
-	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
-	require.Equal(t, stringsToInstrumentations([]string{"http", "grpc", "kafka"}), cfg.TracesReceiver.Instrumentations)
-	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
-	require.Len(t, cfg.TracesReceiver.Traces, 0)
+	// Verify metrics
+	require.Equal(t, []string{"application", "network"}, args.Metrics.Features)
+	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, args.Metrics.Instrumentations)
 
-	instrumentConverted, err := args.Discovery.Instrument.ConvertGlob()
-	require.NoError(t, err)
-	require.Len(t, instrumentConverted, 2)
+	// Verify eBPF
+	require.True(t, args.EnforceSysCaps)
+	require.Equal(t, 10, args.EBPF.WakeupLen)
+	require.True(t, args.EBPF.TrackRequestHeaders)
+	require.Equal(t, "ip", args.EBPF.ContextPropagation)
+	require.Equal(t, 10*time.Second, args.EBPF.HTTPRequestTimeout)
+	require.True(t, args.EBPF.HighRequestVolume)
+	require.True(t, args.EBPF.HeuristicSQLDetect)
+	require.False(t, args.EBPF.BpfDebug)
+	require.False(t, args.EBPF.ProtocolDebug)
 
-	surveyConverted, err := args.Discovery.Survey.ConvertGlob()
-	require.NoError(t, err)
-	require.Len(t, surveyConverted, 1)
+	// Verify filters
+	require.Len(t, args.Filters.Application, 1)
+	require.Len(t, args.Filters.Network, 1)
+	require.Equal(t, "transport", args.Filters.Application[0].Attr)
+	require.Equal(t, "UDP", args.Filters.Application[0].NotMatch)
+	require.Equal(t, "dst_port", args.Filters.Network[0].Attr)
+	require.Equal(t, "53", args.Filters.Network[0].Match)
 
+	// Verify trace printer
+	require.Equal(t, "json", args.TracePrinter)
+
+	// Verify traces
+	require.Equal(t, []string{"http", "grpc", "kafka"}, args.Traces.Instrumentations)
+	require.Equal(t, "traceidratio", args.Traces.Sampler.Name)
+	require.Equal(t, "0.1", args.Traces.Sampler.Arg)
+
+	// Verify validation passes
 	require.NoError(t, args.Discovery.Instrument.Validate())
 	require.NoError(t, args.Discovery.Survey.Validate())
-
-	require.True(t, len(cfg.Discovery.Instrument) > 0 || len(cfg.Discovery.Survey) > 0)
 }
 
-func TestArguments_TracePrinterDebug(t *testing.T) {
-	test := func(debugEnabled bool, printer string, expected string) {
-		const format = `
-		debug = %t
-		discovery {
-			services {
-				open_ports = "80,443"
-			}
-		}
-		metrics {
-			features = ["application", "network"]
-		}
-		trace_printer = "%s"
-		output { /* no-op */ }
-		`
-
-		in := fmt.Sprintf(format, debugEnabled, printer)
-
-		var args Arguments
-
-		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
-		cfg, err := args.Convert()
-
-		require.NoError(t, err)
-
-		require.Equal(t, debug.TracePrinter(expected), cfg.TracePrinter)
+func TestYAMLGeneration(t *testing.T) {
+	opts := component.Options{
+		Logger: log.NewNopLogger(),
 	}
 
-	// when debug is enabled, the printer will always be overridden to "text"
-	// regardless of what is specified
-	test(true, "json", "text")
-	test(true, "text", "text")
+	args := Arguments{
+		Discovery: Discovery{
+			Survey: Services{
+				{
+					Path: ".*testserver.*",
+				},
+			},
+		},
+		Metrics: Metrics{
+			Features:         []string{"application"},
+			Instrumentations: []string{"*"},
+		},
+		Traces: Traces{
+			Instrumentations: []string{"*"},
+		},
+		EBPF: EBPF{
+			ContextPropagation: "disabled",
+		},
+	}
 
-	test(false, "text", "text")
-	test(false, "json", "json")
-}
+	comp := &Component{
+		opts:           opts,
+		args:           args,
+		subprocessPort: 12345,
+	}
 
-func TestArguments_ConvertDefaultConfig(t *testing.T) {
-	args := Arguments{}
-	cfg, err := args.Convert()
+	configPath, cleanup, err := comp.writeConfigFile()
 	require.NoError(t, err)
-	require.Equal(t, cfg.ChannelBufferLen, beyla.DefaultConfig().ChannelBufferLen)
-	require.Equal(t, cfg.LogLevel, beyla.DefaultConfig().LogLevel)
-	require.Equal(t, cfg.EBPF, beyla.DefaultConfig().EBPF)
-	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig().NetworkFlows)
-	require.Equal(t, cfg.Grafana, beyla.DefaultConfig().Grafana)
-	require.Equal(t, cfg.Attributes, beyla.DefaultConfig().Attributes)
-	require.Equal(t, cfg.Routes, beyla.DefaultConfig().Routes)
-	require.Equal(t, cfg.Metrics, beyla.DefaultConfig().Metrics)
-	require.Equal(t, cfg.Traces, beyla.DefaultConfig().Traces)
-	require.Equal(t, cfg.Prometheus, beyla.DefaultConfig().Prometheus)
-	require.Equal(t, cfg.InternalMetrics, beyla.DefaultConfig().InternalMetrics)
-	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig().NetworkFlows)
-	require.Equal(t, cfg.Discovery, beyla.DefaultConfig().Discovery)
-	require.Equal(t, cfg.EnforceSysCaps, beyla.DefaultConfig().EnforceSysCaps)
-	require.Equal(t, cfg.Stats, beyla.DefaultConfig().Stats)
+	defer cleanup()
+
+	// Read generated YAML
+	data, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	// Parse YAML
+	var config map[string]interface{}
+	err = yaml.Unmarshal(data, &config)
+	require.NoError(t, err)
+
+	// Verify prometheus_export
+	prometheus, ok := config["prometheus_export"].(map[string]interface{})
+	require.True(t, ok)
+	require.Equal(t, 12345, prometheus["port"])
+	require.Equal(t, []interface{}{"application"}, prometheus["features"])
+	require.Equal(t, []interface{}{"*"}, prometheus["instrumentations"])
+
+	// Verify discovery
+	discovery, ok := config["discovery"].(map[string]interface{})
+	require.True(t, ok)
+	survey, ok := discovery["survey"].([]interface{})
+	require.True(t, ok)
+	require.Len(t, survey, 1)
+	surveyItem := survey[0].(map[string]interface{})
+	require.Equal(t, ".*testserver.*", surveyItem["exe_path"])
+
+	// Verify ebpf
+	ebpf, ok := config["ebpf"].(map[string]interface{})
+	require.True(t, ok)
+	require.Equal(t, "disabled", ebpf["context_propagation"])
+
+	// Verify traces
+	traces, ok := config["traces"].(map[string]interface{})
+	require.True(t, ok)
+	require.Equal(t, []interface{}{"*"}, traces["instrumentations"])
 }
 
-func TestArguments_ValidationErrors(t *testing.T) {
+func TestYAMLGeneration_NewSchemaFields(t *testing.T) {
+	opts := component.Options{Logger: log.NewNopLogger()}
+
+	args := Arguments{
+		EBPF: EBPF{
+			BatchLength:          64,
+			BatchTimeout:         5 * time.Second,
+			CouchbaseDbCacheSize: 128,
+			BufferSizes: EBPFBufferSizes{
+				Http: 1024,
+			},
+			PayloadExtraction: PayloadExtraction{
+				HTTP: HTTPPayloadExtraction{
+					Graphql: GraphQLConfig{Enabled: true},
+					Gemini:  GeminiConfig{Enabled: true},
+				},
+			},
+		},
+		Stats: Stats{
+			ReverseDns: ReverseDNS{
+				CacheLen: 512,
+				Type:     "local",
+			},
+		},
+		Discovery: Discovery{
+			BpfPidFilterOff:          true,
+			ExcludedLinuxSystemPaths: []string{"/usr/lib"},
+			MinProcessAge:            30 * time.Second,
+		},
+		Metrics: Metrics{Features: []string{"network"}},
+	}
+
+	comp := &Component{opts: opts, args: args, subprocessPort: 9090}
+	configPath, cleanup, err := comp.writeConfigFile()
+	require.NoError(t, err)
+	defer cleanup()
+
+	data, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	var config map[string]interface{}
+	require.NoError(t, yaml.Unmarshal(data, &config))
+
+	// Verify newly generated EBPF fields round-trip correctly.
+	ebpf := config["ebpf"].(map[string]interface{})
+	require.Equal(t, 64, ebpf["batch_length"])
+	require.Equal(t, "5s", ebpf["batch_timeout"])
+	require.Equal(t, 128, ebpf["couchbase_db_cache_size"])
+
+	bufSizes := ebpf["buffer_sizes"].(map[string]interface{})
+	require.Equal(t, 1024, bufSizes["http"])
+
+	// Verify inject_wrapper: openai/anthropic/gemini/bedrock nested under genai.
+	http := ebpf["payload_extraction"].(map[string]interface{})["http"].(map[string]interface{})
+	genai := http["genai"].(map[string]interface{})
+	require.Equal(t, true, genai["gemini"].(map[string]interface{})["enabled"])
+	// Direct http field (not wrapped).
+	require.Equal(t, true, http["graphql"].(map[string]interface{})["enabled"])
+
+	// Verify new Stats fields.
+	stats := config["stats"].(map[string]interface{})
+	reverseDNS := stats["reverse_dns"].(map[string]interface{})
+	require.Equal(t, 512, reverseDNS["cache_len"])
+	require.Equal(t, "local", reverseDNS["type"])
+
+	// Verify new Discovery fields.
+	disc := config["discovery"].(map[string]interface{})
+	require.Equal(t, true, disc["bpf_pid_filter_off"])
+	require.Equal(t, []interface{}{"/usr/lib"}, disc["excluded_linux_system_paths"])
+	require.Equal(t, "30s", disc["min_process_age"])
+}
+
+func TestYAMLGeneration_NetworkFlows(t *testing.T) {
+	opts := component.Options{
+		Logger: log.NewNopLogger(),
+	}
+
+	args := Arguments{
+		Metrics: Metrics{
+			Features: []string{"network"},
+			Network: Network{
+				Enable:      true,
+				AgentIP:     "0.0.0.0",
+				Interfaces:  []string{"eth0"},
+				Protocols:   []string{"TCP", "UDP"},
+				Sampling:    1,
+				CIDRs:       []string{"10.0.0.0/8"},
+				Direction:   "ingress",
+				AgentIPType: "ipv4",
+			},
+		},
+	}
+
+	comp := &Component{
+		opts:           opts,
+		args:           args,
+		subprocessPort: 12345,
+	}
+
+	configPath, cleanup, err := comp.writeConfigFile()
+	require.NoError(t, err)
+	defer cleanup()
+
+	// Read and parse YAML
+	data, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	var config map[string]interface{}
+	err = yaml.Unmarshal(data, &config)
+	require.NoError(t, err)
+
+	// Verify network
+	networkFlows, ok := config["network"].(map[string]interface{})
+	require.True(t, ok)
+	require.Equal(t, true, networkFlows["enable"])
+	require.Equal(t, "0.0.0.0", networkFlows["agent_ip"])
+	require.Equal(t, []interface{}{"eth0"}, networkFlows["interfaces"])
+	require.Equal(t, []interface{}{"TCP", "UDP"}, networkFlows["protocols"])
+	require.Equal(t, 1, networkFlows["sampling"])
+	require.Equal(t, []interface{}{"10.0.0.0/8"}, networkFlows["cidrs"])
+	require.Equal(t, "ingress", networkFlows["direction"])
+	require.Equal(t, "ipv4", networkFlows["agent_ip_type"])
+}
+
+func TestServices_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  string
+		args    Services
 		wantErr string
 	}{
 		{
-			name: "invalid regex",
-			config: `
-				discovery {
-					services {
-						exe_path = "["
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
-			wantErr: "invalid regular expression \"[\": error parsing regexp: missing closing ]: `[`",
+			name: "valid service with open_ports",
+			args: Services{
+				{
+					OpenPorts: "80",
+				},
+			},
 		},
 		{
-			name: "invalid port range",
-			config: `
-				discovery {
-					services {
-						open_ports = "-8000"
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
-			wantErr: `invalid int enum "-8000". Must be a comma-separated list of integers or ranges (e.g. 8000-8999)`,
+			name: "valid service with exe_path",
+			args: Services{
+				{
+					Path: "/usr/bin/app",
+				},
+			},
+		},
+		{
+			name: "valid service with kubernetes config",
+			args: Services{
+				{
+					Kubernetes: KubernetesService{
+						Namespace: "default",
+					},
+				},
+			},
+		},
+		{
+			name: "valid service with kubernetes pod labels",
+			args: Services{
+				{
+					Kubernetes: KubernetesService{
+						PodLabels: map[string]string{"app": "myapp"},
+					},
+				},
+			},
+		},
+		{
+			name: "invalid service - no criteria",
+			args: Services{
+				{
+					Name: "test",
+				},
+			},
+			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, or kubernetes configuration",
+		},
+		{
+			name: "multiple valid services",
+			args: Services{
+				{
+					OpenPorts: "80",
+				},
+				{
+					Path: "/usr/bin/app",
+				},
+				{
+					Kubernetes: KubernetesService{
+						Namespace: "default",
+					},
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var args Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
-			_, err := args.Convert()
-			require.EqualError(t, err, tt.wantErr)
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
 
-func TestArguments_InvalidExportModes(t *testing.T) {
+func TestMetrics_Validate(t *testing.T) {
 	tests := []struct {
-		name   string
-		config string
+		name    string
+		args    Metrics
+		wantErr string
 	}{
 		{
-			name: "invalid selector",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = ["foo"]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "valid empty metrics",
+			args: Metrics{},
 		},
 		{
-			name: "empty selector",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = [""]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "valid instrumentations",
+			args: Metrics{
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+			},
 		},
 		{
-			name: "one invalid selector",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = ["metrics", "not traces"]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "invalid instrumentation",
+			args: Metrics{
+				Instrumentations: []string{"invalid"},
+			},
+			wantErr: `metrics.instrumentations: invalid value "invalid"`,
+		},
+		{
+			name: "valid application features",
+			args: Metrics{
+				Features: []string{"application", "application_span", "application_service_graph", "application_process", "application_host"},
+			},
+		},
+		{
+			name: "valid network features",
+			args: Metrics{
+				Features: []string{"network", "network_inter_zone"},
+			},
+		},
+		{
+			name: "invalid feature",
+			args: Metrics{
+				Features: []string{"invalid"},
+			},
+			wantErr: `metrics.features: invalid value "invalid"`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var args Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
-			_, err := convertExportModes(args.Discovery.Services[0].ExportModes)
-			require.Error(t, err)
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
 
-func TestArguments_ValidExportModes(t *testing.T) {
+func TestArguments_Validate(t *testing.T) {
 	tests := []struct {
-		name   string
-		config string
+		name    string
+		args    Arguments
+		wantErr string
 	}{
 		{
-			name: "empty selector",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = []
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "empty arguments",
+			args: Arguments{},
 		},
 		{
-			name: "traces",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = ["traces"]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "valid network-only configuration",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
 		},
 		{
-			name: "metrics",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = ["metrics"]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "application feature with empty services",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+				Discovery: Discovery{
+					Instrument: Services{},
+					Survey:     Services{},
+				},
+			},
+			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
 		},
 		{
-			name: "metrics and traces",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = ["metrics", "traces"]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "valid application configuration",
+			args: Arguments{
+				Discovery: Discovery{
+					Instrument: Services{
+						{
+							OpenPorts: "80",
+						},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
 		},
 		{
-			name: "traces and metrics",
-			config: `
-				discovery {
-					services {
-						open_ports = "8000"
-						exports = ["traces", "metrics"]
-					}
-				}
-				metrics {
-					features = ["application"]
-				}
-			`,
+			name: "invalid service configuration with application feature",
+			args: Arguments{
+				Discovery: Discovery{
+					Services: Services{
+						{},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
+			wantErr: "must define at least one of: open_ports, exe_path, or kubernetes configuration",
+		},
+		{
+			name: "invalid metrics configuration",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"invalid"},
+				},
+			},
+			wantErr: "metrics.features: invalid value \"invalid\"",
+		},
+		{
+			name: "valid trace printer",
+			args: Arguments{
+				TracePrinter: "json",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "empty trace printer is valid",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "invalid trace printer",
+			args: Arguments{
+				TracePrinter: "invalid",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+			wantErr: `trace_printer: invalid value "invalid". Valid values are: disabled, counter, text, json, json_indent`,
+		},
+		{
+			name: "valid tracing-only configuration with trace_printer",
+			args: Arguments{
+				TracePrinter: "json",
+			},
+		},
+		{
+			name: "valid tracing-only configuration with output section",
+			args: Arguments{
+				Output: &otelcol.ConsumerArguments{
+					Traces: []otelcol.Consumer{},
+				},
+			},
+		},
+		{
+			name: "invalid global sampler configuration",
+			args: Arguments{
+				Traces: Traces{
+					Sampler: SamplerConfig{
+						Name: "invalid_sampler",
+					},
+				},
+			},
+			wantErr: "invalid global sampler configuration: invalid sampler name",
+		},
+		{
+			name: "invalid service sampler configuration",
+			args: Arguments{
+				Discovery: Discovery{
+					Services: Services{
+						{
+							OpenPorts: "80",
+							Sampler: SamplerConfig{
+								Name: "traceidratio",
+								// Missing required Arg
+							},
+						},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
+			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var args Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
-		})
-	}
-}
-
-func TestConvert_Routes(t *testing.T) {
-	args := Routes{
-		Unmatch:        "wildcard",
-		Patterns:       []string{"/api/v1/*"},
-		IgnorePatterns: []string{"/api/v1/health"},
-		IgnoredEvents:  "all",
-	}
-
-	expectedConfig := &transform.RoutesConfig{
-		Unmatch:                   transform.UnmatchType(args.Unmatch),
-		Patterns:                  args.Patterns,
-		IgnorePatterns:            args.IgnorePatterns,
-		IgnoredEvents:             transform.IgnoreMode(args.IgnoredEvents),
-		WildcardChar:              "*",
-		MaxPathSegmentCardinality: 10,
-	}
-
-	config := args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_SamplerConfig(t *testing.T) {
-	tests := []struct {
-		name     string
-		args     SamplerConfig
-		expected services.SamplerConfig
-	}{
-		{
-			name: "with name and arg",
-			args: SamplerConfig{
-				Name: "traceidratio",
-				Arg:  "0.5",
-			},
-			expected: services.SamplerConfig{
-				Name: "traceidratio",
-				Arg:  "0.5",
-			},
-		},
-		{
-			name: "empty config",
-			args: SamplerConfig{},
-			expected: services.SamplerConfig{
-				Name: "",
-				Arg:  "",
-			},
-		},
-		{
-			name: "only name",
-			args: SamplerConfig{
-				Name: "always_on",
-			},
-			expected: services.SamplerConfig{
-				Name: "always_on",
-				Arg:  "",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config := tt.args.Convert()
-			require.Equal(t, tt.expected, config)
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -716,897 +863,6 @@ func TestSamplerConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestConvert_Attributes(t *testing.T) {
-	args := Attributes{
-		Kubernetes: KubernetesDecorator{
-			Enable:               "true",
-			InformersSyncTimeout: 15 * time.Second,
-			MetaCacheAddress:     "localhost:9090",
-		},
-		Select: Selections{
-			{
-				Section: "sql_client_duration",
-				Include: []string{"*"},
-				Exclude: []string{"db_statement"},
-			},
-		},
-		InstanceID: InstanceIDConfig{
-			OverrideHostname: "test",
-		},
-	}
-
-	expectedConfig := beyla.Attributes{
-		Kubernetes: transform.KubernetesDecorator{
-			Enable:                   kubeflags.EnableFlag(args.Kubernetes.Enable),
-			InformersSyncTimeout:     15 * time.Second,
-			InformersResyncPeriod:    30 * time.Minute,
-			ReconnectInitialInterval: beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval,
-			ResourceLabels:           beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
-			MetaCacheAddress:         "localhost:9090",
-		},
-		HostID: beyla.HostIDConfig{},
-		Select: attributes.Selection{
-			"sql_client_duration": {
-				Include: []string{"*"},
-				Exclude: []string{"db_statement"},
-			},
-		},
-		RenameUnresolvedHosts:          "unresolved",
-		RenameUnresolvedHostsOutgoing:  "outgoing",
-		RenameUnresolvedHostsIncoming:  "incoming",
-		MetricSpanNameAggregationLimit: 100,
-	}
-	expectedConfig.InstanceID.OverrideHostname = "test"
-	expectedConfig.InstanceID.HostnameDNSResolution = true
-	expectedConfig.MetadataRetry = beyla.DefaultConfig().Attributes.MetadataRetry
-	expectedConfig.Kubernetes.ReconnectInitialInterval = beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval
-
-	config := args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_Discovery(t *testing.T) {
-	args := Discovery{
-		Instrument: []Service{
-			{
-				Name:           "test",
-				Namespace:      "default",
-				OpenPorts:      "80",
-				CmdArgs:        "--serve*",
-				ContainersOnly: true,
-				ExportModes:    []string{"metrics"},
-				Sampler: SamplerConfig{
-					Arg:  "0.5",
-					Name: "traceidratio",
-				},
-			},
-			{
-				Kubernetes: KubernetesService{
-					Namespace:      "default",
-					DeploymentName: "test",
-				},
-			},
-			{
-				Kubernetes: KubernetesService{
-					Namespace:       "default",
-					PodName:         "test",
-					DeploymentName:  "test",
-					ReplicaSetName:  "test",
-					StatefulSetName: "test",
-					DaemonSetName:   "test",
-					OwnerName:       "test",
-					PodLabels:       map[string]string{"test": "test"},
-					PodAnnotations:  map[string]string{"test": "test"},
-				},
-			},
-		},
-		ExcludeInstrument: []Service{
-			{
-				Name:      "test",
-				Namespace: "default",
-			},
-		},
-		DefaultExcludeInstrument: []Service{},
-	}
-	config, err := args.Convert()
-
-	require.NoError(t, err)
-	require.Len(t, config.Instrument, 3)
-	require.Equal(t, services.IntEnum{Ranges: []services.IntRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
-	require.True(t, config.Instrument[0].CmdArgs.IsSet())
-	require.True(t, config.Instrument[0].ContainersOnly)
-	require.True(t, config.Instrument[0].ExportModes.CanExportMetrics())
-	require.False(t, config.Instrument[0].ExportModes.CanExportTraces())
-	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Instrument[0].SamplerConfig)
-	require.True(t, config.Instrument[1].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Instrument[1].Metadata[services.AttrDeploymentName].IsSet())
-	_, exists := config.Instrument[1].Metadata[services.AttrDaemonSetName]
-	require.False(t, exists)
-	require.True(t, config.Instrument[2].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Instrument[2].Metadata[services.AttrPodName].IsSet())
-	require.True(t, config.Instrument[2].Metadata[services.AttrDeploymentName].IsSet())
-	require.True(t, config.Instrument[2].Metadata[services.AttrReplicaSetName].IsSet())
-	require.True(t, config.Instrument[2].Metadata[services.AttrStatefulSetName].IsSet())
-	require.True(t, config.Instrument[2].Metadata[services.AttrDaemonSetName].IsSet())
-	require.True(t, config.Instrument[2].Metadata[services.AttrOwnerName].IsSet())
-	require.True(t, config.Instrument[2].PodLabels["test"].IsSet())
-	require.True(t, config.Instrument[2].PodAnnotations["test"].IsSet())
-	require.NoError(t, config.Instrument.Validate())
-	require.Len(t, config.ExcludeInstrument, 1)
-	require.Equal(t, true, config.ExcludeOTelInstrumentedServices)
-}
-
-func TestConvert_Prometheus(t *testing.T) {
-	args := Metrics{
-		Features:                        []string{"application", "network"},
-		Instrumentations:                []string{"redis", "sql"},
-		AllowServiceGraphSelfReferences: true,
-		ExtraResourceLabels:             nil,
-		ExtraSpanResourceLabels:         []string{"service.version"},
-	}
-
-	expectedConfig := beyla.DefaultConfig().Prometheus
-	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
-	expectedConfig.AllowServiceGraphSelfReferences = true
-	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
-
-	config := args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-
-	args = Metrics{
-		Features:                        []string{"application", "network"},
-		Instrumentations:                []string{"redis", "sql"},
-		AllowServiceGraphSelfReferences: true,
-		ExtraResourceLabels:             []string{"service.version"},
-	}
-
-	expectedConfig = beyla.DefaultConfig().Prometheus
-	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
-	expectedConfig.AllowServiceGraphSelfReferences = true
-	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
-
-	config = args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_Network(t *testing.T) {
-	args := Network{
-		AgentIP:          "0.0.0.0",
-		Interfaces:       []string{"eth0"},
-		Protocols:        []string{"TCP", "UDP"},
-		ExcludeProtocols: []string{"ICMP"},
-		Sampling:         1,
-		CIDRs:            []string{"10.0.0.0/8"},
-	}
-
-	expectedConfig := beyla.DefaultConfig().NetworkFlows
-	expectedConfig.AgentIP = "0.0.0.0"
-	expectedConfig.Interfaces = args.Interfaces
-	expectedConfig.Protocols = args.Protocols
-	expectedConfig.ExcludeProtocols = args.ExcludeProtocols
-	expectedConfig.Sampling = 1
-	expectedConfig.Print = false
-	expectedConfig.CIDRs = args.CIDRs
-
-	config := args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_Stats(t *testing.T) {
-	args := Stats{
-		AgentIP:      "0.0.0.0",
-		AgentIPIface: "local",
-		AgentIPType:  "ipv4",
-		CIDRs:        []string{"10.0.0.0/8"},
-		Print:        true,
-	}
-
-	expectedConfig := beyla.DefaultConfig().Stats
-	expectedConfig.AgentIP = args.AgentIP
-	expectedConfig.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
-	expectedConfig.AgentIPType = args.AgentIPType
-	expectedConfig.CIDRs = args.CIDRs
-	expectedConfig.Print = args.Print
-
-	config := args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_EBPF(t *testing.T) {
-	args := EBPF{
-		WakeupLen:           10,
-		TrackRequestHeaders: true,
-		HighRequestVolume:   true,
-		HeuristicSQLDetect:  true,
-		ContextPropagation:  "tcp",
-		BpfDebug:            true,
-		ProtocolDebug:       true,
-		PayloadExtraction: PayloadExtraction{
-			HTTP: HTTPPayloadExtraction{
-				OpenAI: OpenAIPayloadExtraction{
-					Enabled: true,
-				},
-			},
-		},
-	}
-
-	expectedConfig := beyla.DefaultConfig().EBPF
-	expectedConfig.WakeupLen = 10
-	expectedConfig.TrackRequestHeaders = true
-	expectedConfig.HighRequestVolume = true
-	expectedConfig.HeuristicSQLDetect = true
-	expectedConfig.ContextPropagation = obiCfg.ContextPropagationTCP
-	expectedConfig.BpfDebug = true
-	expectedConfig.ProtocolDebug = true
-	expectedConfig.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = true
-
-	config, err := args.Convert()
-	require.NoError(t, err)
-
-	require.Equal(t, expectedConfig, *config)
-}
-
-func TestConvert_EBPF_ContextPropagationIPCompatibility(t *testing.T) {
-	args := EBPF{
-		ContextPropagation: "ip",
-	}
-
-	expectedConfig := beyla.DefaultConfig().EBPF
-
-	config, err := args.Convert()
-	require.NoError(t, err)
-
-	require.Equal(t, expectedConfig, *config)
-}
-
-func TestConvert_Filters(t *testing.T) {
-	args := Filters{
-		Application: AttributeFamilies{
-			{
-				Attr:     "transport",
-				NotMatch: "UDP",
-			},
-		},
-		Network: AttributeFamilies{
-			{
-				Attr:  "dst_port",
-				Match: "53",
-			},
-		},
-	}
-	expectedConfig := filter.AttributesConfig{
-		Application: filter.AttributeFamilyConfig{
-			"transport": filter.MatchDefinition{
-				NotMatch: "UDP",
-			},
-		},
-		Network: filter.AttributeFamilyConfig{
-			"dst_port": filter.MatchDefinition{
-				Match: "53",
-			},
-		},
-	}
-	config := args.Convert()
-
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_InjectorWebhook(t *testing.T) {
-	port := 8443
-	timeout := 30 * time.Second
-	args := InjectorWebhook{
-		Enable:   true,
-		Port:     &port,
-		CertPath: "/etc/certs/tls.crt",
-		KeyPath:  "/etc/certs/tls.key",
-		Timeout:  &timeout,
-	}
-
-	expectedConfig := beyla.DefaultConfig().Injector.Webhook
-	expectedConfig.Enable = true
-	expectedConfig.Port = 8443
-	expectedConfig.CertPath = "/etc/certs/tls.crt"
-	expectedConfig.KeyPath = "/etc/certs/tls.key"
-	expectedConfig.Timeout = 30 * time.Second
-
-	config := args.Convert()
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_InjectorSDKExport(t *testing.T) {
-	traces := true
-	metrics := false
-	logs := true
-	args := InjectorSDKExport{
-		Traces:  &traces,
-		Metrics: &metrics,
-		Logs:    &logs,
-	}
-
-	expectedConfig := beyla.DefaultConfig().Injector.Export
-	expectedConfig.Traces = &traces
-	expectedConfig.Metrics = &metrics
-	expectedConfig.Logs = &logs
-
-	config := args.Convert()
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_InjectorSDKResource(t *testing.T) {
-	addK8s := true
-	useLabels := false
-	args := InjectorSDKResource{
-		Attributes:                     map[string]string{"environment": "dev"},
-		AddK8sUIDAttributes:            &addK8s,
-		UseLabelsForResourceAttributes: &useLabels,
-	}
-
-	expectedConfig := beyla.DefaultConfig().Injector.Resources
-	expectedConfig.Attributes = map[string]string{"environment": "dev"}
-	expectedConfig.AddK8sUIDAttributes = true
-	expectedConfig.UseLabelsForResourceAttributes = false
-
-	config := args.Convert()
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestConvert_Injector(t *testing.T) {
-	noAutoRestart := true
-	manageSDKVersions := false
-	debug := true
-	args := Injector{
-		OTELEndpoint:      "http://otel-collector:4318",
-		NoAutoRestart:     &noAutoRestart,
-		HostPathVolumeDir: "/var/beyla",
-		SDKPkgVersion:     "1.0.0",
-		HostMountPath:     "/host",
-		ManageSDKVersions: &manageSDKVersions,
-		Propagators:       []string{"tracecontext", "baggage"},
-		EnabledSDKs:       []string{"java", "dotnet"},
-		Debug:             &debug,
-		DefaultSampler:    SamplerConfig{Name: "always_on"},
-	}
-
-	javaSDK := beylaSvc.InstrumentableType{}
-	require.NoError(t, javaSDK.UnmarshalText([]byte("java")))
-	dotnetSDK := beylaSvc.InstrumentableType{}
-	require.NoError(t, dotnetSDK.UnmarshalText([]byte("dotnet")))
-
-	expectedConfig := beyla.DefaultConfig().Injector
-	expectedConfig.Webhook = InjectorWebhook{}.Convert()
-	expectedConfig.Export = InjectorSDKExport{}.Convert()
-	expectedConfig.Resources = InjectorSDKResource{}.Convert()
-	expectedConfig.NoAutoRestart = true
-	expectedConfig.HostPathVolumeDir = "/var/beyla"
-	expectedConfig.SDKPkgVersion = "1.0.0"
-	expectedConfig.HostMountPath = "/host"
-	expectedConfig.ManageSDKVersions = false
-	expectedConfig.Propagators = []string{"tracecontext", "baggage"}
-	expectedConfig.EnabledSDKs = []beylaSvc.InstrumentableType{javaSDK, dotnetSDK}
-	expectedConfig.Debug = true
-	s := SamplerConfig{Name: "always_on"}.Convert()
-	expectedConfig.DefaultSampler = &s
-
-	config, err := args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, expectedConfig, config)
-}
-
-func TestInjector_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Injector
-		wantErr string
-	}{
-		{
-			name: "valid injector config",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:   true,
-					CertPath: "/etc/certs/tls.crt",
-					KeyPath:  "/etc/certs/tls.key",
-				},
-				EnabledSDKs:  []string{"java", "dotnet"},
-				OTELEndpoint: "http://otel-collector:4318",
-			},
-		},
-		{
-			name: "missing webhook cert path",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:  true,
-					KeyPath: "/etc/certs/tls.key",
-				},
-			},
-			wantErr: "injector.webhook.cert_path must be set",
-		},
-		{
-			name: "missing webhook key path",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:   true,
-					CertPath: "/etc/certs/tls.crt",
-				},
-			},
-			wantErr: "injector.webhook.key_path must be set",
-		},
-		{
-			name: "invalid enabled sdk",
-			args: Injector{
-				EnabledSDKs: []string{"invalid-sdk"},
-			},
-			wantErr: "injector.enabled_sdks:",
-		},
-		{
-			name: "invalid otel endpoint",
-			args: Injector{
-				OTELEndpoint: "not-a-url",
-			},
-			wantErr: fmt.Sprintf("injector.otel_endpoint: URL %q must have a scheme and a host", "not-a-url"),
-		},
-		{
-			name: "malformed otel endpoint",
-			args: Injector{
-				OTELEndpoint: "http://[::1",
-			},
-			wantErr: "injector.otel_endpoint:",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestServices_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Services
-		wantErr string
-	}{
-		{
-			name: "valid service with open_ports",
-			args: Services{
-				{
-					OpenPorts: "80",
-				},
-			},
-		},
-		{
-			name: "valid service with exe_path",
-			args: Services{
-				{
-					Path: "/usr/bin/app",
-				},
-			},
-		},
-		{
-			name: "valid service with cmd_args",
-			args: Services{
-				{
-					CmdArgs: "--serve*",
-				},
-			},
-		},
-		{
-			name: "valid service with kubernetes config",
-			args: Services{
-				{
-					Kubernetes: KubernetesService{
-						Namespace: "default",
-					},
-				},
-			},
-		},
-		{
-			name: "valid service with kubernetes pod labels",
-			args: Services{
-				{
-					Kubernetes: KubernetesService{
-						PodLabels: map[string]string{"app": "myapp"},
-					},
-				},
-			},
-		},
-		{
-			name: "invalid service - no criteria",
-			args: Services{
-				{
-					Name: "test",
-				},
-			},
-			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration",
-		},
-		{
-			name: "multiple valid services",
-			args: Services{
-				{
-					OpenPorts: "80",
-				},
-				{
-					Path: "/usr/bin/app",
-				},
-				{
-					Kubernetes: KubernetesService{
-						Namespace: "default",
-					},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestMetrics_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Metrics
-		wantErr string
-	}{
-		{
-			name: "valid empty metrics",
-			args: Metrics{},
-		},
-		{
-			name: "valid instrumentations",
-			args: Metrics{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
-			},
-		},
-		{
-			name: "invalid instrumentation",
-			args: Metrics{
-				Instrumentations: []string{"invalid"},
-			},
-			wantErr: `metrics.instrumentations: invalid value "invalid"`,
-		},
-		{
-			name: "valid application features",
-			args: Metrics{
-				Features: []string{"application", "application_span", "application_service_graph", "application_process", "application_host"},
-			},
-		},
-		{
-			name: "valid network features",
-			args: Metrics{
-				Features: []string{"network", "network_inter_zone"},
-			},
-		},
-		{
-			name: "invalid feature",
-			args: Metrics{
-				Features: []string{"invalid"},
-			},
-			wantErr: `metrics.features: invalid value "invalid"`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestArguments_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Arguments
-		wantErr string
-	}{
-		{
-			name: "empty arguments",
-			args: Arguments{},
-		},
-		{
-			name: "valid network-only configuration",
-			args: Arguments{
-				Metrics: Metrics{
-					Features: []string{"network"},
-				},
-			},
-		},
-		{
-			name: "application feature with empty services",
-			args: Arguments{
-				Metrics: Metrics{
-					Features: []string{"application"},
-				},
-				Discovery: Discovery{
-					Instrument: Services{},
-					Survey:     Services{},
-				},
-			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
-		},
-		{
-			name: "valid application configuration",
-			args: Arguments{
-				Discovery: Discovery{
-					Instrument: Services{
-						{
-							OpenPorts: "80",
-						},
-					},
-				},
-				Metrics: Metrics{
-					Features: []string{"application"},
-				},
-			},
-		},
-		{
-			name: "invalid service configuration with application feature",
-			args: Arguments{
-				Discovery: Discovery{
-					Services: Services{
-						{},
-					},
-				},
-				Metrics: Metrics{
-					Features: []string{"application"},
-				},
-			},
-			wantErr: "must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration",
-		},
-		{
-			name: "valid cmd_args-only configuration with application feature",
-			args: Arguments{
-				Discovery: Discovery{
-					Instrument: Services{
-						{
-							CmdArgs: "--serve*",
-						},
-					},
-				},
-				Metrics: Metrics{
-					Features: []string{"application"},
-				},
-			},
-		},
-		{
-			name: "invalid metrics configuration",
-			args: Arguments{
-				Metrics: Metrics{
-					Features: []string{"invalid"},
-				},
-			},
-			wantErr: "metrics.features: invalid value \"invalid\"",
-		},
-		{
-			name: "valid trace printer",
-			args: Arguments{
-				TracePrinter: "json",
-				Metrics: Metrics{
-					Features: []string{"network"},
-				},
-			},
-		},
-		{
-			name: "empty trace printer is valid",
-			args: Arguments{
-				Metrics: Metrics{
-					Features: []string{"network"},
-				},
-			},
-		},
-		{
-			name: "invalid trace printer",
-			args: Arguments{
-				TracePrinter: "invalid",
-				Metrics: Metrics{
-					Features: []string{"network"},
-				},
-			},
-			wantErr: `trace_printer: invalid value "invalid". Valid values are: disabled, counter, text, json, json_indent`,
-		},
-		{
-			name: "valid tracing-only configuration with trace_printer",
-			args: Arguments{
-				TracePrinter: "json",
-				// No metrics features defined
-			},
-		},
-		{
-			name: "valid tracing-only configuration with output section",
-			args: Arguments{
-				Output: &otelcol.ConsumerArguments{
-					Traces: []otelcol.Consumer{},
-				},
-				// No metrics features defined
-			},
-		},
-		{
-			name: "invalid global sampler configuration",
-			args: Arguments{
-				Traces: Traces{
-					Sampler: SamplerConfig{
-						Name: "invalid_sampler",
-					},
-				},
-			},
-			wantErr: "invalid global sampler configuration: invalid sampler name",
-		},
-		{
-			name: "invalid service sampler configuration",
-			args: Arguments{
-				Discovery: Discovery{
-					Services: Services{
-						{
-							OpenPorts: "80",
-							Sampler: SamplerConfig{
-								Name: "traceidratio",
-								// Missing required Arg
-							},
-						},
-					},
-				},
-				Metrics: Metrics{
-					Features: []string{"application"},
-				},
-			},
-			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
-		},
-		{
-			name: "invalid injector webhook configuration",
-			args: Arguments{
-				Injector: Injector{
-					Webhook: InjectorWebhook{
-						Enable: true,
-					},
-				},
-			},
-			wantErr: "injector.webhook.cert_path must be set when injector.webhook.enable is true",
-		},
-		{
-			name: "invalid injector otel endpoint configuration",
-			args: Arguments{
-				Injector: Injector{
-					OTELEndpoint: (&url.URL{Path: "missing-host"}).String(),
-				},
-			},
-			wantErr: `injector.otel_endpoint: URL "missing-host" must have a scheme and a host`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestDeprecatedFields(t *testing.T) {
-	var buf bytes.Buffer
-	var mu sync.Mutex
-
-	// Create a synchronized logger that protects both writing and reading
-	syncLogger := log.LoggerFunc(func(keyvals ...any) error {
-		mu.Lock()
-		defer mu.Unlock()
-		return log.NewLogfmtLogger(&buf).Log(keyvals...)
-	})
-
-	logger := level.NewFilter(syncLogger, level.AllowAll())
-
-	comp := &Component{
-		opts: component.Options{
-			Logger: logger,
-		},
-		args: Arguments{
-			Port:           "8080",
-			ExecutableName: "test-app",
-			Metrics: Metrics{
-				Features: []string{"network"},
-			},
-		},
-	}
-
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
-	// Start component which should trigger warnings
-	go comp.Run(ctx)
-
-	// Verify warnings were logged
-	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		output := buf.String()
-		return strings.Contains(output, "level=warn") &&
-			strings.Contains(output, "open_port' field is deprecated") &&
-			strings.Contains(output, "executable_name' field is deprecated")
-	}, time.Second, time.Millisecond*10)
-}
-
-func TestTraces_Convert(t *testing.T) {
-	tests := []struct {
-		name      string
-		args      Traces
-		consumers []otelcol.Consumer
-		expected  beyla.TracesReceiverConfig
-	}{
-		{
-			name:      "empty config uses default instrumentations",
-			args:      Traces{},
-			consumers: nil,
-			expected: beyla.TracesReceiverConfig{
-				Traces: []beyla.Consumer{},
-				Instrumentations: []instrumentations.Instrumentation{
-					instrumentations.InstrumentationALL,
-				},
-			},
-		},
-		{
-			name: "custom instrumentations",
-			args: Traces{
-				Instrumentations: []string{"http", "grpc"},
-			},
-			consumers: nil,
-			expected: beyla.TracesReceiverConfig{
-				Traces:           []beyla.Consumer{},
-				Instrumentations: []instrumentations.Instrumentation{"http", "grpc"},
-			},
-		},
-		{
-			name: "with consumers",
-			args: Traces{
-				Instrumentations: []string{"kafka"},
-			},
-			consumers: []otelcol.Consumer{
-				// Mock consumer would go here in real test
-			},
-			expected: beyla.TracesReceiverConfig{
-				Traces:           []beyla.Consumer{},
-				Instrumentations: []instrumentations.Instrumentation{"kafka"},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.args.Convert(tt.consumers)
-			require.Equal(t, tt.expected.Instrumentations, result.Instrumentations)
-			require.Len(t, result.Traces, len(tt.expected.Traces))
-		})
-	}
-}
-
 func TestTraces_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -1620,7 +876,7 @@ func TestTraces_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Traces{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
 			},
 		},
 		{
@@ -1729,286 +985,45 @@ func TestArguments_Validate_TracesOutputRequired(t *testing.T) {
 	}
 }
 
-func TestServices_Convert_SamplerConfig(t *testing.T) {
-	tests := []struct {
-		name                string
-		services            Services
-		expectSamplerConfig bool
-		expectedSamplerName string
-	}{
-		{
-			name: "service with empty sampler config",
-			services: Services{
-				{
-					OpenPorts: "80",
-					Sampler:   SamplerConfig{}, // Empty sampler
-				},
-			},
-			expectSamplerConfig: false,
-		},
-		{
-			name: "service with sampler config",
-			services: Services{
-				{
-					OpenPorts: "80",
-					Sampler: SamplerConfig{
-						Name: "traceidratio",
-						Arg:  "0.5",
-					},
-				},
-			},
-			expectSamplerConfig: true,
-			expectedSamplerName: "traceidratio",
-		},
-		{
-			name: "service with only sampler name",
-			services: Services{
-				{
-					OpenPorts: "80",
-					Sampler: SamplerConfig{
-						Name: "always_on",
-					},
-				},
-			},
-			expectSamplerConfig: true,
-			expectedSamplerName: "always_on",
-		},
-	}
+func TestDeprecatedFields(t *testing.T) {
+	var buf bytes.Buffer
+	var mu sync.Mutex
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := tt.services.Convert()
-			require.NoError(t, err)
-			require.Len(t, result, 1)
+	// Create a synchronized logger that protects both writing and reading
+	syncLogger := log.LoggerFunc(func(keyvals ...interface{}) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return log.NewLogfmtLogger(&buf).Log(keyvals...)
+	})
 
-			if tt.expectSamplerConfig {
-				require.NotNil(t, result[0].SamplerConfig)
-				require.Equal(t, services.SamplerName(tt.expectedSamplerName), result[0].SamplerConfig.Name)
-			} else {
-				require.Nil(t, result[0].SamplerConfig)
-			}
-		})
-	}
-}
+	logger := level.NewFilter(syncLogger, level.AllowAll())
 
-func TestEnvVars(t *testing.T) {
 	comp := &Component{
+		opts: component.Options{
+			Logger: logger,
+		},
 		args: Arguments{
-			TracePrinter: "text",
-		},
-	}
-
-	t.Setenv("BEYLA_TRACE_PRINTER", "json")
-
-	cfg, err := comp.loadConfig()
-
-	require.NoError(t, err)
-	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
-}
-
-func TestMetrics_Validate_ExemplarFilter(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Metrics
-		wantErr string
-	}{
-		{
-			name: "empty exemplar_filter is valid",
-			args: Metrics{},
-		},
-		{
-			name: "always_on is valid",
-			args: Metrics{ExemplarFilter: "always_on"},
-		},
-		{
-			name: "always_off is valid",
-			args: Metrics{ExemplarFilter: "always_off"},
-		},
-		{
-			name: "trace_based is valid",
-			args: Metrics{ExemplarFilter: "trace_based"},
-		},
-		{
-			name:    "invalid value",
-			args:    Metrics{ExemplarFilter: "invalid"},
-			wantErr: `metrics.exemplar_filter: invalid value "invalid"`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestMetrics_Convert_ExemplarFilter(t *testing.T) {
-	args := Metrics{ExemplarFilter: "always_on"}
-	cfg := args.Convert()
-	require.Equal(t, "always_on", cfg.ExemplarFilter)
-
-	args = Metrics{ExemplarFilter: ""}
-	cfg = args.Convert()
-	require.Equal(t, beyla.DefaultConfig().Prometheus.ExemplarFilter, cfg.ExemplarFilter)
-}
-
-func TestMetrics_Validate_FeatureWildcard(t *testing.T) {
-	tests := []struct {
-		name string
-		args Metrics
-	}{
-		{name: "wildcard star", args: Metrics{Features: []string{"*"}}},
-		{name: "wildcard all", args: Metrics{Features: []string{"all"}}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, tt.args.Validate())
-			require.True(t, tt.args.hasAppFeature())
-		})
-	}
-}
-
-func TestEBPF_Convert_MapsConfig(t *testing.T) {
-	args := EBPF{MapsConfig: EBPFMapsConfig{GlobalScaleFactor: 2}}
-	cfg, err := args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, 2, cfg.MapsConfig.GlobalScaleFactor)
-
-	args = EBPF{}
-	cfg, err = args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, 0, cfg.MapsConfig.GlobalScaleFactor)
-}
-
-func TestInjector_Validate_ImageVolumePath(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Injector
-		wantErr string
-	}{
-		{
-			name: "image_volume_path alone is valid",
-			args: Injector{ImageVolumePath: "/var/oci"},
-		},
-		{
-			name: "image_volume_path with host_mount_path is invalid",
-			args: Injector{
-				ImageVolumePath: "/var/oci",
-				HostMountPath:   "/host",
-			},
-			wantErr: "injector.image_volume_path and injector.host_mount_path are mutually exclusive",
-		},
-		{
-			name: "image_volume_path with sdk_package_version is invalid",
-			args: Injector{
-				ImageVolumePath: "/var/oci",
-				SDKPkgVersion:   "1.0.0",
-			},
-			wantErr: "injector.image_volume_path and injector.sdk_package_version are mutually exclusive",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestInjector_Convert_ImageVolumePath(t *testing.T) {
-	args := Injector{ImageVolumePath: "/var/oci"}
-	cfg, err := args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, "/var/oci", cfg.ImageVolumePath)
-
-	args = Injector{}
-	cfg, err = args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, "", cfg.ImageVolumePath)
-}
-
-func TestSurveyDisabled(t *testing.T) {
-	comp := &Component{
-		args: Arguments{
-			TracePrinter: "text",
-		},
-	}
-
-	cfg, err := comp.loadConfig()
-
-	require.NoError(t, err)
-	require.False(t, cfg.Discovery.SurveyEnabled())
-	require.NotEqual(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
-	require.NotEqual(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
-}
-
-func TestSurveyEnabled(t *testing.T) {
-	comp := &Component{
-		args: Arguments{
-			TracePrinter: "text",
-			Discovery: Discovery{
-				Survey: Services{
-					{
-						Name: "foo",
-					},
-				},
+			Port:           "8080",
+			ExecutableName: "test-app",
+			Metrics: Metrics{
+				Features: []string{"network"},
 			},
 		},
 	}
 
-	cfg, err := comp.loadConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	require.NoError(t, err)
-	require.Len(t, cfg.Discovery.Survey, 1)
-	require.True(t, cfg.Discovery.SurveyEnabled())
-	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
-	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
-}
+	// Start component which should trigger warnings
+	go comp.Run(ctx)
 
-func TestAnthropicPayloadExtraction(t *testing.T) {
-	in := `
-		ebpf {
-			payload_extraction {
-				http {
-					anthropic {
-						enabled = true
-					}
-				}
-			}
-		}
-	`
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
-	cfg, err := args.Convert()
-	require.NoError(t, err)
-	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled)
-	require.False(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
-}
-
-func TestKubernetesReconnectInitialInterval(t *testing.T) {
-	in := `
-		attributes {
-			kubernetes {
-				enable = "true"
-				reconnect_initial_interval = "5s"
-			}
-		}
-	`
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
-	cfg, err := args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, 5*time.Second, cfg.Attributes.Kubernetes.ReconnectInitialInterval)
+	// Verify warnings were logged
+	require.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		output := buf.String()
+		return strings.Contains(output, "level=warn") &&
+			strings.Contains(output, "open_port' field is deprecated") &&
+			strings.Contains(output, "executable_name' field is deprecated")
+	}, time.Second, time.Millisecond*10)
 }

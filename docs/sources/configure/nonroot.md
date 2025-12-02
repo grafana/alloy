@@ -15,16 +15,17 @@ The [{{< param "PRODUCT_NAME" >}} Docker image][image] contains two users:
 * A `root` user.
 * A non-root user named `alloy` with UID `473` and gid `473`.
 
-By default, the `alloy` binary runs as `root`. This is because some {{< param "PRODUCT_NAME" >}} components like [beyla.ebpf][] require root permissions.
+By default, the `alloy` binary runs as `root`. This is because some {{< param "PRODUCT_NAME" >}} components like [beyla.ebpf][] require elevated privileges.
 
 You can configure a non-root user when you deploy {{< param "PRODUCT_NAME" >}} in Kubernetes.
 
 ## Configure {{% param "PRODUCT_NAME" %}} to run as a non-root user in Kubernetes
 
 {{< admonition type="note" >}}
-Running {{< param "PRODUCT_NAME" >}} as a non-root user won't work if you are using components like [beyla.ebpf][] that require root rights.
+Some components like [beyla.ebpf][] require elevated privileges. Running {{< param "PRODUCT_NAME" >}} as a non-root user with `beyla.ebpf` requires setting file capabilities on the {{< param "PRODUCT_NAME" >}} binary. See [beyla.ebpf permissions][] for details.
 
 [beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
+[beyla.ebpf permissions]: ../../reference/components/beyla/beyla.ebpf/#permissions
 {{< /admonition >}}
 
 To run {{< param "PRODUCT_NAME" >}} as a non-root user, configure a [security context][] for the {{< param "PRODUCT_NAME" >}} container. If you are using the [Grafana Helm chart][] you can add the following snippet to `values.yaml`:
