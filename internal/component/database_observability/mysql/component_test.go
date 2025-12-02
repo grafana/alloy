@@ -16,7 +16,6 @@ import (
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -258,9 +257,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
-		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-server-uuid")
+		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-server-id-hash")
 
 		go func() {
 			ts := time.Now().UnixNano()
@@ -280,7 +279,7 @@ func Test_addLokiLabels(t *testing.T) {
 		assert.Equal(t, model.LabelSet{
 			"job":       database_observability.JobName,
 			"instance":  model.LabelValue("some-instance-key"),
-			"server_id": model.LabelValue("some-server-uuid"),
+			"server_id": model.LabelValue("some-server-id-hash"),
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})
@@ -337,7 +336,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	// First ping to the database succeeds, so we can start collectors
 	mock.ExpectPing()
 	// Engine info succeeds (if reached)
-	mock.ExpectQuery(`SELECT @@server_uuid, VERSION\(\)`).WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "version"}).AddRow("uuid-1", "8.0.0"))
+	mock.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).AddRow("uuid-1", "test-hostname", "8.0.0"))
 	// QuerySample constructor queries uptime and fails
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'")).
 		WillReturnRows(sqlmock.NewRows([]string{"variable_value"}).AddRow(1))

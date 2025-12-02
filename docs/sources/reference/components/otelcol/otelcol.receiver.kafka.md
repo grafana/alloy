@@ -66,6 +66,10 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 
 {{< admonition type="warning" >}}
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 {{< /admonition >}}
 
 For `max_fetch_size`, the value `0` means no limit.

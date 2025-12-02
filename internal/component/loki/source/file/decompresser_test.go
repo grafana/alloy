@@ -19,8 +19,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -110,7 +109,7 @@ func BenchmarkReadlines(b *testing.B) {
 
 func TestGigantiqueGunzipFile(t *testing.T) {
 	file := "testdata/long-access.gz"
-	handler := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	d := &decompressor{
@@ -140,7 +139,7 @@ func TestOnelineFiles(t *testing.T) {
 	require.NoError(t, err)
 	t.Run("gunzip file", func(t *testing.T) {
 		file := "testdata/onelinelog.log.gz"
-		handler := fake.NewClient(func() {})
+		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
 
 		d := &decompressor{
@@ -165,7 +164,7 @@ func TestOnelineFiles(t *testing.T) {
 
 	t.Run("bzip2 file", func(t *testing.T) {
 		file := "testdata/onelinelog.log.bz2"
-		handler := fake.NewClient(func() {})
+		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
 
 		d := &decompressor{
@@ -191,7 +190,7 @@ func TestOnelineFiles(t *testing.T) {
 
 	t.Run("tar.gz file", func(t *testing.T) {
 		file := "testdata/onelinelog.tar.gz"
-		handler := fake.NewClient(func() {})
+		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
 
 		d := &decompressor{

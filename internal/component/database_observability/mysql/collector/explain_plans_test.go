@@ -11,10 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/util/syncbuffer"
-
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func stringPtr(s string) *string {
@@ -1507,7 +1506,7 @@ func TestExplainPlans(t *testing.T) {
 		defer db.Close()
 
 		lastSeen := time.Now().Add(-time.Hour)
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
@@ -1573,7 +1572,7 @@ func TestExplainPlans(t *testing.T) {
 		defer db.Close()
 
 		lastSeen := time.Now().Add(-time.Hour)
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
@@ -1758,7 +1757,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 	defer db.Close()
 
 	lastSeen := time.Now().Add(-time.Hour)
-	lokiClient := loki_fake.NewClient(func() {})
+	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}
@@ -1849,7 +1848,7 @@ func TestSchemaDenylist(t *testing.T) {
 	defer db.Close()
 
 	lastSeen := time.Now().Add(-time.Hour)
-	lokiClient := loki_fake.NewClient(func() {})
+	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}

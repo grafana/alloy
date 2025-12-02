@@ -22,7 +22,7 @@ jobs:
         arch: [amd64, arm64, ppc64le, s390x]
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set ownership
@@ -37,7 +37,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets promtail_journal_enabled slicelabels" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
+    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
 
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
@@ -49,7 +49,7 @@ jobs:
         arch: [amd64, arm64]
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set ownership
@@ -64,14 +64,14 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets promtail_journal_enabled slicelabels" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
+    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
   build_mac_intel:
     name: Build on MacOS (Intel)
     runs-on: macos-14-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set up Go
@@ -81,14 +81,14 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets slicelabels" GOOS=darwin GOARCH=amd64 GOARM= make alloy
+    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
 
   build_mac_arm:
     name: Build on MacOS (ARM)
     runs-on: macos-14-xlarge
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set up Go
@@ -98,14 +98,14 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="builtinassets slicelabels" GOOS=darwin GOARCH=arm64 GOARM= make alloy
+    - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
   build_windows:
     name: Build on Windows (AMD64)
     runs-on: windows-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set up Go
@@ -115,7 +115,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: echo "GO_TAGS=builtinassets slicelabels" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: echo "GO_TAGS=builtinassets" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: make alloy
@@ -126,7 +126,7 @@ jobs:
     container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
           persist-credentials: false
     - name: Set ownership
@@ -141,4 +141,4 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets slicelabels" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
+    - run: GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
