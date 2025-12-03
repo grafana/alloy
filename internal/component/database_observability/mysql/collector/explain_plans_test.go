@@ -301,14 +301,14 @@ func TestExplainPlansOutput(t *testing.T) {
 	t.Run("invalid json", func(t *testing.T) {
 		notJsonData := []byte("not json data")
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-		_, err := newExplainPlansOutput(logger, "", "", notJsonData, "")
+		_, err := newExplainPlansOutput(logger, notJsonData)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-		explainPlanOutput, err := newExplainPlansOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
+		explainPlanOutput, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"))
 		require.NoError(t, err)
 		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
 	})
@@ -1490,7 +1490,7 @@ func TestExplainPlansOutput(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
 			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-			output, err := newExplainPlansOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
+			output, err := newExplainPlansOutput(logger, jsonData)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
 			require.Equal(t, test.result.Plan, *output)
 		})

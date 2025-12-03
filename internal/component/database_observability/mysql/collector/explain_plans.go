@@ -46,7 +46,7 @@ const selectDigestsForExplainPlan = `
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
-func newExplainPlansOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanNode, error) {
+func newExplainPlansOutput(logger log.Logger, explainJson []byte) (*database_observability.ExplainPlanNode, error) {
 	qblock, _, _, err := jsonparser.Get(explainJson, "query_block")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get query block: %w", err)
@@ -699,7 +699,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		level.Debug(logger).Log("msg", "db native explain plan",
 			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
-		explainPlanOutput, genErr := newExplainPlansOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, genErr := newExplainPlansOutput(logger, byteExplainPlanJSON)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
@@ -717,14 +717,16 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		c.sendExplainPlansOutput(
+		if err := c.sendExplainPlansOutput(
 			qi.schemaName,
 			qi.digest,
 			generatedAt,
 			database_observability.ExplainProcessingResultSuccess,
 			"",
 			explainPlanOutput,
-		)
+		); err != nil {
+			level.Error(c.logger).Log("msg", "failed to send explain plan output", "err", err)
+		}
 	}
 
 	return nil

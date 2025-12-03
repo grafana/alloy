@@ -2239,7 +2239,7 @@ func TestExplainPlanOutput(t *testing.T) {
 			jsonFile := archive.Files[0]
 			require.Equal(t, fmt.Sprintf("%s.json", tt.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
-			output, err := newExplainPlanOutput(tt.engineVersion, tt.queryid, jsonData, currentTime)
+			output, err := newExplainPlanOutput(jsonData)
 			require.NoError(t, err, "Failed generate explain plan output: %s", tt.fname)
 			validatePlan(t, tt.result.Plan, *output)
 		})
@@ -2449,13 +2449,9 @@ func TestPlanNode_ExplainPlanNodeOperation(t *testing.T) {
 }
 
 func TestNewExplainPlanOutput(t *testing.T) {
-	dbVersion := "14.1"
-	queryId := "123456789"
-	generatedAt := time.Now().Format(time.RFC3339)
-
 	explainJSON := []byte(`[{"Plan": {"Node Type": "Seq Scan", "Total Cost": 100.5, "Plan Rows": 1000, "Plan Width": 50}}]`)
 
-	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
+	output, err := newExplainPlanOutput(explainJSON)
 
 	require.NoError(t, err)
 	require.NotNil(t, output)
@@ -2463,13 +2459,9 @@ func TestNewExplainPlanOutput(t *testing.T) {
 }
 
 func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
-	dbVersion := "14.1"
-	queryId := "123456789"
-	generatedAt := time.Now().Format(time.RFC3339)
-
 	explainJSON := []byte(`invalid json`)
 
-	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
+	output, err := newExplainPlanOutput(explainJSON)
 
 	require.Error(t, err)
 	assert.Nil(t, output)

@@ -80,7 +80,7 @@ type PlanNode struct {
 	IndexName          string     `json:"Index Name"`
 }
 
-func newExplainPlanOutput(dbVersion string, queryId string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanNode, error) {
+func newExplainPlanOutput(explainJson []byte) (*database_observability.ExplainPlanNode, error) {
 	var planNodes []PgSQLExplainplan
 	if err := json.Unmarshal(explainJson, &planNodes); err != nil {
 		return nil, err
@@ -532,7 +532,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		level.Debug(logger).Log("msg", "db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
 
-		explainPlanOutput, genErr := newExplainPlanOutput(c.dbVersion.String(), qi.queryId, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
