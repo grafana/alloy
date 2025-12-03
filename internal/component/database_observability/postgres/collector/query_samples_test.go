@@ -41,7 +41,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "active query without wait event",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -56,7 +56,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 123, Valid: true},
 					))
 				// Second scrape: empty to trigger finalization
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -76,7 +76,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "parallel query with leader PID",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -91,7 +91,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						sql.NullString{}, nil, now, sql.NullInt64{Int64: 123, Valid: true},
 					))
 				// Second scrape: empty to trigger finalization
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -111,7 +111,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "query with wait event",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -126,7 +126,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
 					))
 				// Second scrape: empty to trigger finalization
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -148,7 +148,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "insufficient privilege query - no loki entries expected",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -165,7 +165,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"<insufficient privilege>",
 					))
 				// Second scrape: empty to complete cycle
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -183,7 +183,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "null database name - no loki entries expected",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -198,7 +198,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						sql.NullString{}, nil, now, sql.NullInt64{Int64: 126, Valid: true},
 					))
 				// Second scrape: empty to complete cycle
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -214,7 +214,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "query with redaction disabled",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -231,7 +231,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'",
 					))
 				// Second scrape: empty to trigger finalization
-				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -269,7 +269,6 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				EntryHandler:          lokiClient,
 				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				DisableQueryRedaction: tc.disableQueryRedaction,
-				ExcludeCurrentUser:    true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
@@ -355,12 +354,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// First scrape: active row
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 1000, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -370,7 +368,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"SELECT * FROM t",
 			))
 		// Second scrape: no rows -> finalize
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
@@ -405,12 +403,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 
 		require.NoError(t, err)
 		// Scrape 1: wait event with unordered/dup PIDs
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 300, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -420,7 +417,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"UPDATE users SET status = 'active'",
 			))
 		// Scrape 2: same wait event with normalized PIDs
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 300, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -430,7 +427,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"UPDATE users SET status = 'active'",
 			))
 		// Scrape 3: disappear
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
@@ -464,12 +461,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: wait event
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 301, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -479,7 +475,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"UPDATE users SET status = 'active'",
 			))
 		// Scrape 2: active with no wait -> close occurrence
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 301, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -489,7 +485,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"UPDATE users SET status = 'active'",
 			))
 		// Scrape 3: disappear
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
@@ -524,12 +520,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: active CPU snapshot (10s)
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 402, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -539,7 +534,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"SELECT * FROM t",
 			))
 		// Scrape 2: waiting with wait_event; state_change 7s ago
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 402, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -549,7 +544,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"SELECT * FROM t",
 			))
 		// Scrape 3: disappear -> finalize
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
@@ -584,12 +579,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: wait event set A
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 403, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -599,7 +593,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"UPDATE t SET c=1",
 			))
 		// Scrape 2: same event, set changes -> new occurrence
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 403, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -609,7 +603,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"UPDATE t SET c=1",
 			))
 		// Scrape 3: disappear -> finalize
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
@@ -665,12 +659,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: active row
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2000, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -680,7 +673,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"SELECT * FROM t",
 			))
 		// Scrape 2: same key turns idle; state_change denotes end
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2000, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -724,12 +717,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: only idle row
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2001, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -739,7 +731,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"SELECT * FROM users",
 			))
 		// Scrape 2: same idle row again -> should not re-emit
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2001, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -783,12 +775,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: idle in transaction (aborted)
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2100, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -798,7 +789,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"SELECT 1",
 			))
 		// Scrape 2: same idle row again -> should not re-emit
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2100, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -842,12 +833,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: two idle-only rows with different keys (PID/QueryID)
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).
 				AddRow(
 					now, "testdb", 2200, sql.NullInt64{},
@@ -866,7 +856,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 					"SELECT * FROM b",
 				))
 		// Scrape 2: same idle rows again -> should not re-emit
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).
 				AddRow(
 					now, "testdb", 2200, sql.NullInt64{},

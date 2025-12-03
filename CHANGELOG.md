@@ -30,13 +30,13 @@ Main (unreleased)
 
 ### Bugfixes
 
-
 - (_Public Preview_) Additions to `database_observability.postgres` component:
   - `schema_details`
     - fixes collection of schema details for mixed case table names (@fridgepoet)
 
 - (_Public Preview_) Additions to `database_observability.mysql` component:
   - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
+  - add `setup_actors` collector that checks and optionally updates settings to avoid tracking queries for the currently connected user (@cristiangreco)
 
 v1.12.0
 -----------------

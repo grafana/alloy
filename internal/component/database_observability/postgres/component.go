@@ -86,7 +86,6 @@ type AWSCloudProviderInfo struct {
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
 }
 
 type QueryTablesArguments struct {
@@ -104,7 +103,6 @@ var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
-		ExcludeCurrentUser:    true,
 	},
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
@@ -416,7 +414,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
