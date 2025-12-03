@@ -229,11 +229,38 @@ func (o *opampAgent) Dependencies() []component.ID {
 	return []component.ID{authID}
 }
 
+// Called from Collector service after config has been reloaded and applied
 func (o *opampAgent) NotifyConfig(ctx context.Context, conf *confmap.Conf) error {
+	currentHash, err := o.readRemoteConfigHash()
+	if err != nil {
+		o.logger.Debug("Could not read remote config hash, skipping status update", zap.Error(err))
+		return nil
+	}
+
 	if o.capabilities.ReportsEffectiveConfig {
 		o.updateEffectiveConfig(conf)
-		return o.opampClient.UpdateEffectiveConfig(ctx)
+
+		// Update effective config on OpAMP server
+		err := o.opampClient.UpdateEffectiveConfig(ctx)
+		if err != nil {
+			o.logger.Error("Failed to update effective config on OpAMP server", zap.Error(err))
+			return o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+				LastRemoteConfigHash: currentHash,
+				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+			})
+		}
+
+		err = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+			LastRemoteConfigHash: currentHash,
+			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+		})
+
+		if err != nil {
+			o.logger.Error("Failed to set remote config status to APPLIED", zap.Error(err))
+			return err
+		}
 	}
+
 	return nil
 }
 
@@ -468,17 +495,25 @@ func (o *opampAgent) onMessage(_ context.Context, msg *types.MessageData) {
 
 	if msg.RemoteConfig != nil {
 		o.handleRemoteConfig(msg.RemoteConfig)
-	} else {
-		o.logger.Debug("No remote config received")
 	}
 }
 
 // Writes the received remote config to the RemoteConfigDir directory, this should in theory
-// get picked up by the fsnotify implementation in the OpAMP provider’s watcher
+// get picked up by the fsnotify implementation in the OpAMP provider's watcher
 func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfig) {
 	if remoteConfig.Config == nil || remoteConfig.Config.ConfigMap == nil {
 		o.logger.Warn("Received empty remote config")
 		return
+	}
+
+	// Set status to APPLYING - we're starting to process the remote config
+	err := o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+		LastRemoteConfigHash: remoteConfig.ConfigHash,
+		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING,
+	})
+	if err != nil {
+		o.logger.Error("Failed to set remote config status to APPLYING", zap.Error(err))
+		// TODO: is this worthy of an early return?
 	}
 
 	configDir := o.cfg.RemoteConfigDir
@@ -487,11 +522,16 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 		o.logger.Error("Failed to create remote config directory",
 			zap.String("dir", configDir),
 			zap.Error(err))
+
+		_ = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+			LastRemoteConfigHash: remoteConfig.ConfigHash,
+			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+			ErrorMessage:         fmt.Sprintf("Failed to create remote config directory: %v", err),
+		})
 		return
 	}
 
-	for name, file := range remoteConfig.Config.ConfigMap {
-		fmt.Printf("Writing remote config file %s \n %s", name, file)
+	for _, file := range remoteConfig.Config.ConfigMap {
 		filename := "config.yaml"
 		filePath := filepath.Join(configDir, filename)
 
@@ -501,9 +541,46 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 			o.logger.Error("Failed to write remote config file",
 				zap.String("file", filePath),
 				zap.Error(err))
-			continue
+
+			_ = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+				LastRemoteConfigHash: remoteConfig.ConfigHash,
+				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+				ErrorMessage:         fmt.Sprintf("Failed to write remote config file: %v", err),
+			})
+			return
 		}
 	}
+
+	err = o.storeRemoteConfigHash(remoteConfig.ConfigHash)
+	if err != nil {
+		o.logger.Error("Failed to store remote config hash", zap.Error(err))
+	}
+}
+
+func (o *opampAgent) storeRemoteConfigHash(hash []byte) error {
+	configDir := o.cfg.RemoteConfigDir
+
+	hashFilePath := filepath.Join(configDir, ".remote_config_hash")
+
+	if err := os.WriteFile(hashFilePath, hash, 0644); err != nil {
+		return fmt.Errorf("failed to write remote config hash file: %w", err)
+	}
+
+	o.logger.Debug("Stored remote config hash to disk", zap.String("file", hashFilePath))
+	return nil
+}
+
+func (o *opampAgent) readRemoteConfigHash() ([]byte, error) {
+	configDir := o.cfg.RemoteConfigDir
+
+	hashFilePath := filepath.Join(configDir, ".remote_config_hash")
+
+	hash, err := os.ReadFile(hashFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read remote config hash file: %w", err)
+	}
+
+	return hash, nil
 }
 
 func (o *opampAgent) setHealth(ch *protobufs.ComponentHealth) {
