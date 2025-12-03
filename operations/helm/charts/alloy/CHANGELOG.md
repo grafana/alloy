@@ -10,7 +10,12 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.5.0 (2025-12-01)
+----------
+
 ### Enhancements
+
+- Update to Grafana Alloy v1.12.0. (@jharvey10)
 
 - Update RBAC rules to permit `mimir.alerts.kubernetes` to work by default. (@ptodev)
 
@@ -18,7 +23,7 @@ Unreleased
 
 - Correct `extraEnv` indentation in container template (@orkhan-huseyn)
 - Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
- 
+
 1.4.0 (2025-10-27)
 ----------
 
