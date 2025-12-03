@@ -4,7 +4,7 @@ aliases:
   - ./components/ # /docs/alloy/latest/get-started/components/
   - ./concepts/components/ # /docs/alloy/latest/concepts/components/
   - ./concepts/configuration-syntax/components/ # /docs/alloy/latest/concepts/configuration-syntax/
-  - ./get-started/configuration-syntax/components/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
+  - ./configuration-syntax/components/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
 description: Learn about components
 title: Components
 weight: 30
