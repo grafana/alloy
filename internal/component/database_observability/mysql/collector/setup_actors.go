@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -115,7 +116,7 @@ func (c *SetupActors) checkSetupActors(ctx context.Context) error {
 
 	var enabled, history string
 	err = c.dbConnection.QueryRowContext(ctx, selectQuery, user).Scan(&enabled, &history)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		if c.autoUpdateSetupActors {
 			return c.insertSetupActors(ctx, user)
 		} else {
