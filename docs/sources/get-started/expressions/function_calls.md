@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/functio
 aliases:
   - ./configuration-syntax/expressions/function_calls/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/function_calls/
   - ./concepts/configuration-syntax/expressions/function_calls/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/function_calls/
-  - ./get-started/configuration-syntax/expressions/function_calls/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/function_calls/
+  - ../configuration-syntax/expressions/function_calls/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/function_calls/
 description: Learn about function calls
 title: Function calls
 weight: 40
