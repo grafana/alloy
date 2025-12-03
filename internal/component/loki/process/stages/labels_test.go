@@ -19,7 +19,7 @@ import (
 var testLabelsYaml = ` stage.json {
                            expressions = { level = "", app_rename = "app" }
                        }
-                       stage.labels { 
+                       stage.labels {
                            values = {"level" = "", "app" = "app_rename" }
                        }`
 

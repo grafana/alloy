@@ -43,7 +43,7 @@ stage.limit {
 		rate  = 1
 		burst = 1
 		drop  = true
-		
+
 		by_label_name = "app"
 }`
 

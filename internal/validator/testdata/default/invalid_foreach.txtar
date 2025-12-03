@@ -52,7 +52,7 @@ foreach "invalid_nested" {
 			revision   = "master"
 			path       = module_path + ".alloy"
 		}
-	
+
 		// valid inside foreach
 		mod.myModule "mod" { }
 	}

@@ -2,7 +2,7 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT t.title, 
+SELECT t.title,
        COUNT(*) as employee_count,
        AVG(s.salary) as avg_salary,
        MIN(s.salary) as min_salary,

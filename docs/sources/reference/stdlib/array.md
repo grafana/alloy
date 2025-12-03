@@ -43,7 +43,7 @@ It takes three arguments:
 * The first two arguments are a of type `list(map(string))`. The keys of the map are strings.
   The value for each key could be of any Alloy type such as a `string`, `integer`, `map`, or a `capsule`.
 * The third input is an `array` containing strings. The strings are the keys whose value has to match for maps to be combined.
-* (optional) The fourth input is a `boolean` which defaults to `false`. 
+* (optional) The fourth input is a `boolean` which defaults to `false`.
   When it is set to `true`, each item from the first argument will be passed through even if there is no match.
   This is helpful if you want to enrich the first list with attributes from the second list, without losing any of the information from the first list.
 

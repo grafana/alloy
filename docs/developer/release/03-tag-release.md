@@ -8,10 +8,10 @@ A tag is required to create GitHub artifacts and as a prerequisite for publishin
 
 2. Make sure you are up to date on the release branch:
 
-   ``` 
+   ```
    git checkout release/VERSION_PREFIX
-   git fetch origin 
-   git pull origin 
+   git fetch origin
+   git pull origin
    ```
 
 3. Determine the [VERSION](concepts/version.md).

@@ -185,10 +185,10 @@ This example configures [`otelcol.receiver.otlp`][otelcol.receiver.otlp] to use 
 otelcol.receiver.otlp "example" {
   grpc {
     endpoint = "127.0.0.1:4317"
-    
+
     auth = otelcol.auth.basic.creds.handler
   }
-  
+
   output {
     metrics = [otelcol.exporter.debug.default.input]
     logs    = [otelcol.exporter.debug.default.input]
@@ -213,10 +213,10 @@ This example shows how to specify `htpasswd` content directly in the configurati
 otelcol.receiver.otlp "example" {
   grpc {
     endpoint = "127.0.0.1:4317"
-    
+
     auth = otelcol.auth.basic.creds.handler
   }
-  
+
   output {
     metrics = [otelcol.exporter.debug.default.input]
     logs    = [otelcol.exporter.debug.default.input]
@@ -241,10 +241,10 @@ To make the migration from the deprecated `username` and `password` attributes e
 otelcol.receiver.otlp "example" {
   grpc {
     endpoint = "127.0.0.1:4317"
-    
+
     auth = otelcol.auth.basic.creds.handler
   }
-  
+
   output {
     metrics = [otelcol.exporter.debug.default.input]
     logs    = [otelcol.exporter.debug.default.input]
@@ -257,7 +257,7 @@ otelcol.exporter.debug "default" {}
 otelcol.auth.basic "creds" {
   username = "demo"
   password = sys.env("API_KEY")
-  
+
   htpasswd {
     file = "/etc/alloy/.htpasswd"
   }

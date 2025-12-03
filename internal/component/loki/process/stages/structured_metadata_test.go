@@ -19,7 +19,7 @@ stage.logfmt {
 	mapping = { "app" = ""}
 }
 
-stage.structured_metadata { 
+stage.structured_metadata {
 	values = {"app" = ""}
 }
 `
@@ -29,7 +29,7 @@ stage.json {
 	expressions = {app = ""}
 }
 
-stage.structured_metadata { 
+stage.structured_metadata {
 	values = {"app" = ""}
 }
 `
@@ -39,7 +39,7 @@ stage.regex {
 	expression = "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<content>.*)$"
 }
 
-stage.structured_metadata { 
+stage.structured_metadata {
 	values = {"stream" = ""}
 }
 `
@@ -54,7 +54,7 @@ stage.template {
     template = "{{ ToUpper .Value }}"
 }
 
-stage.structured_metadata { 
+stage.structured_metadata {
 	values = {"app" = ""}
 }
 `
@@ -64,11 +64,11 @@ stage.json {
 	expressions = {app = "", component = "" }
 }
 
-stage.structured_metadata { 
+stage.structured_metadata {
 	values = {"app" = ""}
 }
 
-stage.labels { 
+stage.labels {
 	values = {"component" = ""}
 }
 `

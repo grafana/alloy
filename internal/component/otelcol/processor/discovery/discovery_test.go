@@ -46,7 +46,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 func Test_DefaultConfig(t *testing.T) {
 	cfg := `
 		targets = [{
-			"__address__" = "1.2.2.2", 
+			"__address__" = "1.2.2.2",
 			"__internal_label__" = "test_val",
 			"test_label" = "test_val2"}]
 
@@ -145,7 +145,7 @@ func Test_DefaultConfig(t *testing.T) {
 func Test_Insert(t *testing.T) {
 	cfg := `
 		targets = [{
-			"__address__" = "1.2.2.2", 
+			"__address__" = "1.2.2.2",
 			"__internal_label__" = "test_val",
 			"test_label" = "test_val2",
 			"test.label.with.dots" = "test.val2.with.dots"}]
@@ -268,7 +268,7 @@ func Test_Insert(t *testing.T) {
 func Test_Update(t *testing.T) {
 	cfg := `
 		targets = [{
-			"__address__" = "1.2.2.2", 
+			"__address__" = "1.2.2.2",
 			"__internal_label__" = "test_val",
 			"test_label" = "test_val2",
 			"test.label.with.dots" = "test.val2.with.dots"}]
@@ -391,7 +391,7 @@ func Test_PodAssociationLabels(t *testing.T) {
 	} {
 		cfg := fmt.Sprintf(`
 		targets = [{
-			"__address__" = "1.2.2.2", 
+			"__address__" = "1.2.2.2",
 			"__internal_label__" = "test_val",
 			"test_label" = "test_val2"}]
 

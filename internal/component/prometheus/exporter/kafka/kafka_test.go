@@ -125,7 +125,7 @@ func TestCustomizeTarget(t *testing.T) {
 func TestSASLPassword(t *testing.T) { // #6044
 	var exampleAlloyConfig = `
 		kafka_uris    = ["broker1"]
-		use_sasl      = true 
+		use_sasl      = true
 		sasl_password = "foobar"
 	`
 

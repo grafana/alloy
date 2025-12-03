@@ -4,10 +4,10 @@ local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-controller.json';
 
 {
-  local templateVariables = 
+  local templateVariables =
     templates.newTemplateVariablesList(
-      filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      filterSelector=$._config.filterSelector,
+      enableK8sCluster=$._config.enableK8sCluster,
       includeInstance=false,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
@@ -272,7 +272,7 @@ local filename = 'alloy-controller.json';
         panel.withDescription(|||
           The maximum duration of slow component evaluations over time.
 
-          This shows components that took longer than 1 minute to evaluate. Ideally, no component 
+          This shows components that took longer than 1 minute to evaluate. Ideally, no component
           should take more than 1 minute to evaluate. The components displayed in this chart
           may be a sign of a problem with the pipeline or performance issues.
         |||) +

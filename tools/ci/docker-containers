@@ -32,8 +32,8 @@ fi
 export RELEASE_ALLOY_IMAGE=grafana/alloy
 export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
-# We need to determine what version to assign to built binaries. 
-# If containers are being built from a GitHub Actions tag trigger, 
+# We need to determine what version to assign to built binaries.
+# If containers are being built from a GitHub Actions tag trigger,
 # we force the version to come from the GitHub Actions tag name.
 #
 # Otherwise, we use the ./tools/image-tag script to determine the version.

@@ -24,11 +24,11 @@ prometheus.remote_write "blackbox_metrics" {
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "blackbox_metrics",
-  }  
+  }
 }
 
 prometheus.exporter.blackbox "blackbox_metrics2" {
@@ -55,9 +55,9 @@ prometheus.remote_write "blackbox_metrics2" {
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "blackbox_metrics2",
-  }  
+  }
 }

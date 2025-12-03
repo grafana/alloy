@@ -88,24 +88,24 @@ Disabling can improve compatibility with brokers that don't fully support leader
 
 `initial_offset` must be either `"latest"` or `"earliest"`.
 
-The `group_rebalance_strategy` argument determines how Kafka distributes topic partitions among the consumers in the group during rebalances. 
+The `group_rebalance_strategy` argument determines how Kafka distributes topic partitions among the consumers in the group during rebalances.
 Supported strategies are:
 
-- `range`: This strategy assigns partitions to consumers based on a range. 
-  It aims to distribute partitions evenly across consumers, but it can lead to uneven distribution if the number of partitions is not a multiple of the number of consumers. 
+- `range`: This strategy assigns partitions to consumers based on a range.
+  It aims to distribute partitions evenly across consumers, but it can lead to uneven distribution if the number of partitions is not a multiple of the number of consumers.
   For more information, refer to the Kafka RangeAssignor documentation, see [RangeAssignor][].
-- `roundrobin`: This strategy assigns partitions to consumers in a round-robin fashion. 
-  It ensures a more even distribution of partitions across consumers, especially when the number of partitions is not a multiple of the number of consumers. 
+- `roundrobin`: This strategy assigns partitions to consumers in a round-robin fashion.
+  It ensures a more even distribution of partitions across consumers, especially when the number of partitions is not a multiple of the number of consumers.
   For more information, refer to the Kafka RoundRobinAssignor documentation, see [RoundRobinAssignor][].
-- `sticky`: This strategy aims to maintain the same partition assignments during rebalances as much as possible. 
-  It minimizes the number of partition movements, which can be beneficial for stateful consumers. 
+- `sticky`: This strategy aims to maintain the same partition assignments during rebalances as much as possible.
+  It minimizes the number of partition movements, which can be beneficial for stateful consumers.
   For more information, refer to the Kafka StickyAssignor documentation, see [StickyAssignor][].
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
 
-- If `group_instance_id` is set to a non-empty string, the consumer is treated as a static member of the group. 
+- If `group_instance_id` is set to a non-empty string, the consumer is treated as a static member of the group.
   This means that the consumer will maintain its partition assignments across restarts and rebalances, as long as it rejoins the group with the same `group_instance_id`.
-- If `group_instance_id` is set to an empty string (or not set), the consumer is treated as a dynamic member. 
+- If `group_instance_id` is set to an empty string (or not set), the consumer is treated as a dynamic member.
   In this case, the consumer's partition assignments may change during rebalances.
 
 [RangeAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/RangeAssignor.html

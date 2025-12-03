@@ -18,8 +18,8 @@ The image is tagged using this format:
 pr-<pr_number>-<version>-devel+<commit_sha>
 ```
 
-- `<pr_number>`: the PR number that triggered the build  
-- `<version>`: the Alloy version inferred from the code  
+- `<pr_number>`: the PR number that triggered the build
+- `<version>`: the Alloy version inferred from the code
 - `<commit_sha>`: the Git SHA of the commit included in the image
 
 **Example tag:**

@@ -297,7 +297,7 @@ func Test_ComponentIO(t *testing.T) {
 			spans = true
 			labels = ["attribute1", "redact_trace", "account_id"]
 			span_attributes = ["attribute1", "redact_trace", "account_id"]
-	
+
 			output {
 				// no-op: will be overridden by test code.
 			}
@@ -750,7 +750,7 @@ func Test_ComponentIO(t *testing.T) {
 								"value": { "intValue": "78" }
 							},
 							{
-								"key": "redact_trace", 
+								"key": "redact_trace",
 								"value": { "boolValue": true }
 							},
 							{
@@ -777,7 +777,7 @@ func Test_ComponentIO(t *testing.T) {
 								"value": { "intValue": "78" }
 							},
 							{
-								"key": "redact_trace", 
+								"key": "redact_trace",
 								"value": { "boolValue": true }
 							},
 							{

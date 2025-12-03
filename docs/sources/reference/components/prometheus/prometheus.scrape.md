@@ -290,7 +290,7 @@ The`scrape_classic_histograms` argument controls whether the component should al
 
 ## Example
 
-### Set up scrape jobs for `blackbox exporter` targets  
+### Set up scrape jobs for `blackbox exporter` targets
 
 The following example sets up the scrape job with certain attributes (scrape endpoint, scrape interval, query parameters) and lets it scrape two instances of the [blackbox exporter](https://github.com/prometheus/blackbox_exporter/).
 The exposed metrics are sent over to the provided list of receivers, as defined by other components.

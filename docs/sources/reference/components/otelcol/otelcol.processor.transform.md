@@ -176,8 +176,8 @@ The supported values for `context` are:
 
 Refer to [OTTL Context][] for more information about how to use contexts.
 
-`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
-The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
+`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements.
+The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements
 (including their individual `where` clauses) to be executed.
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
@@ -204,8 +204,8 @@ The supported values for `context` are:
 
 Refer to [OTTL Context][] for more information about how to use contexts.
 
-`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
-The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
+`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements.
+The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements
 (including their individual `where` clauses) to be executed.
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
@@ -273,8 +273,8 @@ The supported values for `context` are:
 
 Refer to [OTTL Context][] for more information about how to use contexts.
 
-`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
-The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
+`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements.
+The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements
 (including their individual `where` clauses) to be executed.
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.

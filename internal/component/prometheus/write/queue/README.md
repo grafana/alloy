@@ -7,7 +7,7 @@
 The `prometheus.write.queue` goals are to set reliable and repeatable memory and cpu usage based on the number of incoming and outgoing series. There are four broad parts to the system.
 
 1. The `prometheus.write.queue` component itself. This handles the lifecycle of the Alloy system.
-2. The `serialization` converts an array of series into a serializable format. This is handled via [msgp]() library. 
+2. The `serialization` converts an array of series into a serializable format. This is handled via [msgp]() library.
 3. The `filequeue` is where the buffers are written to. This has a series of files that are committed to disk and then are read.
 4. The `network` handles sending data. The data is sharded by the label hash across any number of loops that send data. The network layer supports HTTP proxy configuration and custom headers for increased flexibility.
 
@@ -23,15 +23,15 @@ The initial goal is to get a v1 version that will not include many features foun
 
 ### actors
 
-Underlying each of these major parts is an actor framework. The actor framework provides an work loop in the form of the func `DoWork`, each part is single threaded and only exposes a a handful of functions for sending and receiving data. Telemetry, configuration and other types of data are passed in via the work loop and handled one at a time. There are some allowances for setting atomic variables for specific scenarios. In the case of network retries it is necessary to break out of the tight loop. 
+Underlying each of these major parts is an actor framework. The actor framework provides an work loop in the form of the func `DoWork`, each part is single threaded and only exposes a a handful of functions for sending and receiving data. Telemetry, configuration and other types of data are passed in via the work loop and handled one at a time. There are some allowances for setting atomic variables for specific scenarios. In the case of network retries it is necessary to break out of the tight loop.
 
-This means that the parts are inherently context free and single threaded which greatly simplifies the design. Communication is handled via [mailboxes] that are backed by channels underneath. By default these are asynchronous calls to an unbounded queue. Where that differs will be noted. 
+This means that the parts are inherently context free and single threaded which greatly simplifies the design. Communication is handled via [mailboxes] that are backed by channels underneath. By default these are asynchronous calls to an unbounded queue. Where that differs will be noted.
 
 Using actors, mailboxes and messages creates a system that responds to actions instead of polling or calling functions from other threads. This allows us to handle bounded queues easily for if the network is slow or down the `network` queue is bounded and will block on anyone trying to send more work.
 
 The actual actor framework is never publicly exposed so that callers have no idea of what is running underneath.
 
-In general each actor exposes one to many `Send` function(s), `Start` and `Stop`. 
+In general each actor exposes one to many `Send` function(s), `Start` and `Stop`.
 
 ### serialization
 
@@ -41,7 +41,7 @@ When each append is called it sends data to the `serializer` that adds to its `S
 
 ### filequeue
 
-The `filequeue` handles writing and reading data from the `wal` directory. There exists one `filequeue` for each `endpoint` defined. Each file is represented by an atomicly increasing integer that is used to create a file named `<ID>.committed`. The committed name is simply to differentiate it from other files that may get created in the same directory. 
+The `filequeue` handles writing and reading data from the `wal` directory. There exists one `filequeue` for each `endpoint` defined. Each file is represented by an atomicly increasing integer that is used to create a file named `<ID>.committed`. The committed name is simply to differentiate it from other files that may get created in the same directory.
 
 The `filequeue` accepts data `[]byte` and metadata `map[string]string`. These are also written using `msgp` for convenience. The `filequeue` keeps an internal array of files in order by id and fill feed them one by one to the `endpoint`, On startup the `filequeue` will load any existing files into the internal array and start feeding them to `endpoint`. When passing a handle to `endpoint` it passes a callback that actually returns the data and metadata. Once the callback is called then the file is deleted. It should be noted that this is done without touching any state within `filequeue`, keeping the zero mutex promise. It is assumed when the callback is called the data is being processed.
 
@@ -49,7 +49,7 @@ This does mean that the system is not ACID compliant. If a restart happens befor
 
 ### endpoint
 
-The `endpoint` handles uncompressing the data, unmarshalling it to a `SeriesGroup` and feeding it to the `network` section. The `endpoint` is the parent of all the other parts and represents a single endpoint to write to. It ultimately controls the lifecycle of each child. 
+The `endpoint` handles uncompressing the data, unmarshalling it to a `SeriesGroup` and feeding it to the `network` section. The `endpoint` is the parent of all the other parts and represents a single endpoint to write to. It ultimately controls the lifecycle of each child.
 
 ### network
 
@@ -63,7 +63,7 @@ The network layer now supports:
 - Custom HTTP headers for the main requests (`headers` parameter)
 - Custom HTTP headers for proxy CONNECT requests (`proxy_connect_headers` parameter)
 
-These features enhance the component's ability to work in enterprise environments with complex networking requirements and security configurations.  
+These features enhance the component's ability to work in enterprise environments with complex networking requirements and security configurations.
 
 ### component
 
@@ -81,8 +81,8 @@ Given a certain set of scrapes, the memory usage should be fairly consistent. On
 
 ### Tradeoffs
 
-In any given system there are tradeoffs, this system goal is to have a consistent memory footprint, reasonable disk reads/writes, and allow replayability. That comes with increased CPU cost, this can range anywhere from 25% to 50% more CPU. 
+In any given system there are tradeoffs, this system goal is to have a consistent memory footprint, reasonable disk reads/writes, and allow replayability. That comes with increased CPU cost, this can range anywhere from 25% to 50% more CPU.
 
 ### Metrics backwards compatibility
 
-Where possible metrics have been created to allow similiar dashboards to be used, with some caveats. The labels are slightly different, and there is no active series metric. Having an active series metric count would require knowing and storing a reference to every single unique series on disk. This would violate the core consistency goal.  
+Where possible metrics have been created to allow similiar dashboards to be used, with some caveats. The labels are slightly different, and there is no active series metric. Having an active series metric count would require knowing and storing a reference to every single unique series on disk. This would violate the core consistency goal.

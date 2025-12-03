@@ -2,7 +2,7 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT 
+SELECT
     LEFT(last_name, 1) as last_name_initial,
     COUNT(*) as name_count
 FROM employees

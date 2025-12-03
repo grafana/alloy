@@ -33,7 +33,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 0
-		}	
+		}
 		`,
 	},
 	{
@@ -42,7 +42,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 42
-		}	
+		}
 		`,
 	},
 	{
@@ -56,7 +56,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 0
-		}	
+		}
 		`,
 	},
 	{
@@ -65,7 +65,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 42
-		}	
+		}
 		`,
 	},
 	{
@@ -79,7 +79,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 42
-		}	
+		}
 		`,
 	},
 	{
@@ -88,7 +88,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 0
-		}	
+		}
 		`,
 	},
 	{
@@ -97,7 +97,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 42
-		}	
+		}
 		`,
 	},
 	{
@@ -116,7 +116,7 @@ var testCases = []struct {
 		expectedAlloy: `
 		inner {
 			number = 42
-		}	
+		}
 		`,
 	},
 }

@@ -48,10 +48,10 @@ A `foreach` block may start several sub-pipelines for a `collection` specified i
 ```alloy
 // All components in the sub-pipeline will be scoped under "foreach.default/1/...".
 // Here, "1" is sub-pipeline number 1.
-// This way component names won't clash with other sub-pipelines from the same foreach, 
+// This way component names won't clash with other sub-pipelines from the same foreach,
 // and with the names of components outside of the foreach.
 foreach "default" {
-    
+
   // "collection" is what the for loop will iterate over.
   collection = discovery.file.default.targets
 
@@ -72,7 +72,7 @@ discovery.file "default" {
   files = ["/Users/batman/Desktop/redis_addresses.yaml"]
 }
 
-// Every component defined in the "foreach" block will be instantiated for each item in the collection. 
+// Every component defined in the "foreach" block will be instantiated for each item in the collection.
 // The instantiated components will be scoped using the name of the foreach block and the index of the
 // item in the collection. For example: /foreach.redis/0/prometheus.exporter.redis.default
 foreach "redis" {
@@ -238,7 +238,7 @@ We should find answers to the unknowns below before this proposal is accepted:
 * Will the solution only work for `list()`? What about `map()`?
   * If we go with a `foreach`, we could have a `key` attribute in addition to the `var` one. That way we can also access the key. The `key` attribute can be a no-op if `collection` is a map?
 * What about debug metrics? Should we aggregate the metrics for all "sub-pipelines"?
-  * If there is 1 series for each sub-pipeline, the amount of metrics could be huge. 
+  * If there is 1 series for each sub-pipeline, the amount of metrics could be huge.
     Some service discovery mechanisms may generate a huge number of elements in a list of targets.
   * If we want to aggregate the metrics, how would we do that? Is it even possible to do in within Alloy?
   * Can we have a configuration parameter which dictates whether the metrics should be aggregated or not?

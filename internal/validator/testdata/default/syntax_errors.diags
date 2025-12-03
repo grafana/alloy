@@ -24,13 +24,13 @@ Error: main.alloy:4:1: expected identifier, got }
 3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 4 | }
   | ^
-5 | 
+5 |
 
 Error: secondary.alloy:3:59: missing ',' in expression list
 
 2 | local.file_match "applogs" {
 3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}
-  |                                                           
+  |
 4 | }
 
 Error: secondary.alloy:4:1: expected expression, got }
@@ -38,10 +38,10 @@ Error: secondary.alloy:4:1: expected expression, got }
 3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}
 4 | }
   | ^
-5 | 
+5 |
 
 Error: secondary.alloy:5:1: expected ], got EOF
 
 4 | }
-5 | 
-  | 
+5 |
+  |

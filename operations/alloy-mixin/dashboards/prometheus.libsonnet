@@ -89,7 +89,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         panel.newQuery(
           expr=|||
             (
-                1 - 
+                1 -
                 (
                     sum(rate(prometheus_remote_storage_samples_failed_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]))
                 )

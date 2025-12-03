@@ -97,7 +97,7 @@ The following arguments are supported:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
  At most, one of the following can be provided:
- 
+
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
 * [`bearer_token`][client] argument

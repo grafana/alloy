@@ -11,22 +11,22 @@ import (
 var (
 	exampleAlloyConfig = `
 		enabled_collectors = ["textfile","cpu"]
-		
+
 		exchange {
 			enabled_list = ["example"]
 		}
-		
+
 		iis {
 			site_include = ".+"
 			site_exclude = ""
 			app_include = ".+"
 			app_exclude = ""
 		}
-		
+
 		text_file {
 			text_file_directory = "C:"
 		}
-		
+
 		smtp {
 			include = ".+"
 			exclude = ""
@@ -41,34 +41,34 @@ var (
 			include = ".+"
 			exclude = ""
 		}
-		
+
 		printer {
 			include = ".+"
 			exclude = ""
 		}
-		
+
 		process {
 			include = ".+"
 			exclude = ""
 		}
-		
+
 		smb {
 			enabled_list = ["example"]
 		}
-		
+
 		smb_client {
 			enabled_list = ["example"]
 		}
-		
+
 		network {
 			include = ".+"
 			exclude = ""
 		}
-		
+
 		mssql {
 			enabled_classes = ["accessmethods"]
 		}
-		
+
 		logical_disk {
 			include = ".+"
 			exclude = ""

@@ -65,7 +65,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  target_label: pod
 				- target_label: job
 				  replacement: operator/podmonitor
-				
+
 			`),
 			expected: &config.ScrapeConfig{
 				JobName:                "podMonitor/operator/podmonitor/1",

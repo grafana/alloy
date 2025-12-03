@@ -71,7 +71,7 @@ func TestParseExpressions(t *testing.T) {
 		"nested array":         `[[0, 1, 2], [3, 4, 5]]`,
 		"array multiline": `[
 			0,
-			1, 
+			1,
 			2,
 		]`,
 

@@ -52,12 +52,12 @@ Read [`otel-prometheus`][otel-prometheus] to find out how to set the Prometheus 
 Complete the following steps to create a sample task. Refer to the [ADOT doc][adot-doc] for more information.
 
 1. Create an SSM Parameter Store entry to hold the collector configuration file.
-   
+
    1. Open the AWS Console.
    1. In the AWS Console, choose Parameter Store.
    1. Choose *Create parameter*.
    1. Create a parameter with the following values:
-      
+
       * Name: `collector-config`
       * Tier: Standard
       * Type: String
@@ -72,7 +72,7 @@ Complete the following steps to create a sample task. Refer to the [ADOT doc][ad
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * Add an environment variable named AOT_CONFIG_CONTENT.
    Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to `collector-config`.
-   
+
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
 ### Configure {{% param "PRODUCT_NAME" %}}
@@ -112,12 +112,12 @@ This configuration sets up a scrape job for the container metrics and exports th
 Complete the following steps to create a sample task.
 
 1. Create an SSM Parameter Store entry to hold the collector configuration file.
-    
+
    1. Open the AWS Console.
    1. In the AWS Console, choose Parameter Store.
    1. Choose *Create parameter*.
    1. Create a parameter with the following values:
-      
+
       * Name: `collector-config`
       * Tier: Standard
       * Type: String

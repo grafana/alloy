@@ -1,6 +1,6 @@
 Error: main.alloy:20:17: component "prometheus.relabel.default.receiver" does not exist or is out of scope
 
-19 | 
+19 |
 20 |         forward_to = [prometheus.relabel.default.receiver]
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 21 |     }

@@ -14,20 +14,20 @@ title: otelcol.processor.probabilistic_sampler
 
 `otelcol.processor.probabilistic_sampler` accepts logs and traces data from other otelcol components and applies probabilistic sampling based on configuration options.
 
-<!-- 
+<!--
 The next few paragraphs were copied from the OTel docs:
 https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/probabilisticsamplerprocessor/README.md
 -->
 
-The probabilistic sampler processor supports several modes of sampling for spans and log records.  
+The probabilistic sampler processor supports several modes of sampling for spans and log records.
 Sampling is performed on a per-request basis, considering individual items statelessly.
 For whole trace sampling, see `otelcol.processor.tail_sampling`.
 
 For trace spans, this sampler supports probabilistic sampling based on a configured sampling percentage applied to the TraceID.
 In addition, the sampler recognizes a `sampling.priority` annotation, which can force the sampler to apply 0% or 100% sampling.
 
-For log records, this sampler can be configured to use the embedded TraceID and follow the same logic as applied to spans.  
-When the TraceID isn't defined, the sampler can be configured to apply hashing to a selected log record attribute.  
+For log records, this sampler can be configured to use the embedded TraceID and follow the same logic as applied to spans.
+When the TraceID isn't defined, the sampler can be configured to apply hashing to a selected log record attribute.
 This sampler also supports sampling priority.
 
 {{< admonition type="note" >}}

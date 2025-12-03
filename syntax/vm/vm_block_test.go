@@ -31,7 +31,7 @@ func TestVM_File(t *testing.T) {
 	}
 
 	input := `
-	setting_a = 15 
+	setting_a = 15
 
 	some_block {
 		string = "Hello, world!"
@@ -63,7 +63,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		}
 
 		input := `some_block {
-			number = 15 
+			number = 15
 			string = "Hello, world!"
 		}`
 		eval := vm.New(parseBlock(t, input))
@@ -80,7 +80,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		}
 
 		input := `some_block {
-			number {} 
+			number {}
 		}`
 		eval := vm.New(parseBlock(t, input))
 
@@ -95,7 +95,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		}
 
 		input := `some_block {
-			number = 15 
+			number = 15
 		}`
 		eval := vm.New(parseBlock(t, input))
 
@@ -110,7 +110,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		}
 
 		input := `some_block {
-			number = 15 
+			number = 15
 		}`
 		eval := vm.New(parseBlock(t, input))
 
@@ -126,7 +126,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		}
 
 		input := `some_block {
-			number  = 15 
+			number  = 15
 			invalid = "This attribute does not exist!"
 		}`
 		eval := vm.New(parseBlock(t, input))
@@ -159,7 +159,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.testName, func(t *testing.T) {
 				input := fmt.Sprintf(`some_block {
-					anything  = %s 
+					anything  = %s
 				}`, tt.val)
 				eval := vm.New(parseBlock(t, input))
 
@@ -180,7 +180,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 		}
 
 		input := `some_block {
-			number_a = 15 
+			number_a = 15
 			number_b = 20
 			number_c = 25
 			number_d = 30
@@ -280,7 +280,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			value = 15 
+			value = 15
 
 			child.block { attr = true }
 		}`
@@ -299,7 +299,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			value = 10 
+			value = 10
 
 			child.block { attr = true }
 			child.block { attr = false }
@@ -375,7 +375,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			value = 15 
+			value = 15
 		}`
 		eval := vm.New(parseBlock(t, input))
 
@@ -409,10 +409,10 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			block_a { attr = true } 
-			block_b { attr = false } 
-			block_c { attr = true } 
-			block_d { attr = false } 
+			block_a { attr = true }
+			block_b { attr = false }
+			block_c { attr = true }
+			block_d { attr = false }
 		}`
 		eval := vm.New(parseBlock(t, input))
 
@@ -440,8 +440,8 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 			input = `some_block {
 				outer_block_1 { attr = true }
 				outer_block_2 { attr = false }
-				inner_block_1 { attr = true } 
-				inner_block_2 { attr = false } 
+				inner_block_1 { attr = true }
+				inner_block_2 { attr = false }
 			}`
 
 			expect = OuterStruct{
@@ -476,8 +476,8 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 			input = `some_block {
 				outer_block_1 { attr = true }
 				outer_block_2 { attr = false }
-				inner_block_1 { attr = true } 
-				inner_block_2 { attr = false } 
+				inner_block_1 { attr = true }
+				inner_block_2 { attr = false }
 			}`
 
 			expect = OuterStruct{

@@ -54,7 +54,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg1 = "test"
-					arg2 = "test"	
+					arg2 = "test"
 					arg3 = true
 					block1 {
 						arg1 = "test"
@@ -64,7 +64,7 @@ func TestBlock(t *testing.T) {
 					block2 {
 						arg2 = "test"
 					}
-					
+
 					block2 {
 						arg1 = "test"
 						arg2 = "test"
@@ -76,7 +76,7 @@ func TestBlock(t *testing.T) {
 			desc: "missing optional attribute",
 			src: []byte(`
 				test "name" {
-					arg2 = "test"	
+					arg2 = "test"
 					arg3 = true
 
 					block1 {
@@ -174,11 +174,11 @@ func TestBlock(t *testing.T) {
 						arg1 = "test"
 						arg2 = "test"
 					}
-		
+
 					block2 {
 						arg2 = "test"
 					}
-					
+
 					block2 {
 						arg1 = "test"
 					}
@@ -198,11 +198,11 @@ func TestBlock(t *testing.T) {
 						arg1 = "test"
 						arg2 = "test"
 					}
-		
+
 					block3 {}
-		
+
 					block3 {}
-					
+
 					block3 {}
 				}
 			`),
@@ -213,7 +213,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg1 = "test"
-					arg2 = "test"	
+					arg2 = "test"
 					arg3 = true
 					block1 {
 						arg1 = "test"
@@ -223,7 +223,7 @@ func TestBlock(t *testing.T) {
 					block2 {
 						arg2 = "test"
 					}
-					
+
 					block2 {
 						arg1 = "test"
 						arg2 = "test"
@@ -232,7 +232,7 @@ func TestBlock(t *testing.T) {
 					enum.block1 {
 						arg2 = "test"
 					}
-	
+
 					enum.block2 {
 						arg3 = "test"
 					}
@@ -244,7 +244,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg1 = "test"
-					arg2 = "test"	
+					arg2 = "test"
 					arg3 = true
 					block1 {
 						arg1 = "test"
@@ -254,7 +254,7 @@ func TestBlock(t *testing.T) {
 					block2 {
 						arg2 = "test"
 					}
-					
+
 					block2 {
 						arg1 = "test"
 						arg2 = "test"
@@ -263,7 +263,7 @@ func TestBlock(t *testing.T) {
 					enum.block1 {
 						arg2 = "test"
 					}
-	
+
 					enum.block2 {}
 				}
 			`),

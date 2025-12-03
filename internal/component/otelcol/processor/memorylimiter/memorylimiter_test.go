@@ -30,7 +30,7 @@ func Test(t *testing.T) {
 	cfg := `
 		check_interval = "10ms"
 		limit          = "20MiB"
-		
+
 		output {
 			// no-op: will be overridden by test code.
 		}

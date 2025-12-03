@@ -30,12 +30,12 @@ func TestDeclare(t *testing.T) {
 				argument "input" {
 					optional = false
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
 				}
-			
+
 				export "output" {
 					value = testcomponents.passthrough.pt.output
 				}
@@ -44,11 +44,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			test "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}
@@ -70,7 +70,7 @@ func TestDeclare(t *testing.T) {
 						value = argument.input.value
 					}
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
@@ -78,7 +78,7 @@ func TestDeclare(t *testing.T) {
 				nested "default" {
 					input = testcomponents.passthrough.pt.output
 				}
-			
+
 				export "output" {
 					value = nested.default.output
 				}
@@ -87,11 +87,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			test "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}
@@ -105,7 +105,7 @@ func TestDeclare(t *testing.T) {
 				argument "input" {
 					optional = false
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
@@ -113,7 +113,7 @@ func TestDeclare(t *testing.T) {
 				rootDeclare "default" {
 					input = testcomponents.passthrough.pt.output
 				}
-			
+
 				export "output" {
 					value = rootDeclare.default.output
 				}
@@ -130,11 +130,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			test "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}
@@ -148,7 +148,7 @@ func TestDeclare(t *testing.T) {
 				argument "input" {
 					optional = false
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
@@ -167,7 +167,7 @@ func TestDeclare(t *testing.T) {
 				anotherDeclare "myOtherDeclare" {
 					input = testcomponents.passthrough.pt.output
 				}
-			
+
 				export "output" {
 					value = anotherDeclare.myOtherDeclare.output
 				}
@@ -184,11 +184,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			test "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}
@@ -202,12 +202,12 @@ func TestDeclare(t *testing.T) {
 				argument "input" {
 					optional = false
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
 				}
-			
+
 				export "output" {
 					value = testcomponents.passthrough.pt.output
 				}
@@ -216,11 +216,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			prometheus "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = prometheus.myModule.output
 			}
@@ -246,15 +246,15 @@ func TestDeclare(t *testing.T) {
 						value = -10
 					}
 				}
-			
+
 				a "default" {}
-			
+
 				export "output" {
 					value = a.default.output
 				}
 			}
 			test "myModule" {}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}
@@ -268,12 +268,12 @@ func TestDeclare(t *testing.T) {
 				argument "input" {
 					optional = false
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
 				}
-			
+
 				export "output" {
 					value = testcomponents.passthrough.pt.output
 				}
@@ -282,11 +282,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			constants "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = constants.myModule.output
 			}
@@ -302,12 +302,12 @@ func TestDeclare(t *testing.T) {
 				}
 
 				testcomponents.community "default" {}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
 				}
-			
+
 				export "output" {
 					value = testcomponents.passthrough.pt.output
 				}
@@ -316,11 +316,11 @@ func TestDeclare(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			com "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = com.myModule.output
 			}
@@ -365,7 +365,7 @@ func TestDeclare(t *testing.T) {
 func TestDeclareModulePath(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	config := `
-		declare "mod" {			
+		declare "mod" {
 			export "output" {
 				value = module_path
 			}
@@ -475,7 +475,7 @@ func TestDeclareError(t *testing.T) {
 			name: "OutOfScopeDefinition",
 			config: `
 			declare "a" {
-				b_1 "default" { } // this should error 
+				b_1 "default" { } // this should error
 			}
 			declare "b" {
 				declare "b_1" {}
@@ -544,12 +544,12 @@ func TestDeclareUpdateConfig(t *testing.T) {
 				argument "input" {
 					optional = false
 				}
-			
+
 				testcomponents.passthrough "pt" {
 					input = argument.input.value
 					lag = "1ms"
 				}
-			
+
 				export "output" {
 					value = testcomponents.passthrough.pt.output
 				}
@@ -558,11 +558,11 @@ func TestDeclareUpdateConfig(t *testing.T) {
 				frequency = "10ms"
 				max = 10
 			}
-		
+
 			test "myModule" {
 				input = testcomponents.count.inc.count
 			}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}
@@ -573,9 +573,9 @@ func TestDeclareUpdateConfig(t *testing.T) {
 					value = -10
 				}
 			}
-		
+
 			test "myModule" {}
-		
+
 			testcomponents.summation "sum" {
 				input = test.myModule.output
 			}

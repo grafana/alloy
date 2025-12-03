@@ -122,7 +122,7 @@ You can implement the following pipelines to send your data to Loki, Tempo, and 
 
 ```plaintext
 Metrics: OTLP Receiver → Batch Processor → Prometheus Exporter → Prometheus Remote Write
-Logs: OTLP Receiver → Batch Processor → Loki Exporter → Loki Write  
+Logs: OTLP Receiver → Batch Processor → Loki Exporter → Loki Write
 Traces: OTLP Receiver → Batch Processor → OTLP Exporter (gRPC/HTTP)
 ```
 

@@ -167,12 +167,12 @@ You can configure `otelcol.receiver.faro` to use TLS for added security:
 ```alloy
 otelcol.receiver.faro "default" {
   endpoint = "localhost:8443"
-  
+
   tls {
     cert_file = "/path/to/cert.pem"
     key_file  = "/path/to/key.pem"
   }
-  
+
   output {
     logs   = [otelcol.processor.batch.default.input]
     traces = [otelcol.processor.batch.default.input]
@@ -193,7 +193,7 @@ Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/refe
 ```alloy
 otelcol.receiver.faro "default" {
   auth     = otelcol.auth.basic.creds.handler
-  
+
   output {
     logs   = [otelcol.processor.batch.default.input]
     traces = [otelcol.processor.batch.default.input]
@@ -217,7 +217,7 @@ otelcol.receiver.faro "default" {
     allowed_headers = ["Content-Type", "X-Custom-Header"]
     max_age         = 3600
   }
-  
+
   output {
     logs   = [otelcol.processor.batch.default.input]
     traces = [otelcol.processor.batch.default.input]
@@ -225,7 +225,7 @@ otelcol.receiver.faro "default" {
 }
 ```
 
-[faro-sdk]: https://github.com/grafana/faro-web-sdk 
+[faro-sdk]: https://github.com/grafana/faro-web-sdk
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -45,8 +45,8 @@ func Test(t *testing.T) {
         }
 		body = "%s"
 
-		poll_frequency = "50ms" 
-		poll_timeout   = "25ms" 
+		poll_frequency = "50ms"
+		poll_timeout   = "25ms"
 	`, srv.URL, http.MethodPut, "hello there!")
 	var args http_component.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
