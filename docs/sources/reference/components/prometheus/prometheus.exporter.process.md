@@ -36,14 +36,16 @@ You can use the following arguments with `prometheus.exporter.process`:
 | `track_children`      | `bool`   | Whether to track a process' children.             | `true`    | no       |
 | `track_threads`       | `bool`   | Report metrics for a process' individual threads. | `true`    | no       |
 
-If `remove_empty_groups` is `true`, the process "groups" created by the `matcher` blocks continue to report metrics until {{< param "PRODUCT_NAME" >}} is restarted.
-This can cause unbounded growth in metrics being reported and resources consumed by {{< param "PRODUCT_NAME" >}} if the `matcher` blocks' `name` arguments define group names that
-may be different for new process instances.
-This is the default behavior for backwards compatibility, but we recommend that you set `remove_empty_groups` to `false`.
+If you set `remove_empty_groups` to the default, `false`, the process "groups" created by the `matcher` blocks continue to report metrics even after the processes in that group have stopped running.
+This ensures you can see when a process count drops to zero, but it can cause unbounded growth in reported metrics and memory usage if your `matcher` generates dynamic group names, for example, using specific PIDs.
+The reporting continues until {{< param "PRODUCT_NAME" >}} is restarted.
 
-For example, when `remove_empty_groups` is `true` and the `name` argument for a `matcher` block utilizes the `.PID` of
-a process, the `matcher` creates a new process group when a new instance of a process in that `matcher` block is identified.
-The previous group continues to report metrics even though no running processes are associated with that group.
+When you set `remove_empty_groups` to `true`, process groups are forgotten and stop reporting metrics as soon as they contain no running processes.
+Grafana recommends that you set `remove_empty_groups` to `true` if your name argument utilizes unique identifiers like `.PID` or `.StartTime`.
+
+For example, when you set `remove_empty_groups` to `false` and the `name` argument for a `matcher` block utilizes the `.PID` of a process, the `matcher` creates a new process group for every new process instance.
+The old process groups continue to report metrics with values of 0, even though no running processes are associated with them, leading to high cardinality.
+Set `remove_empty_groups` to `true` to remove the old groups, and prevent the high cardinality.
 
 ## Blocks
 
