@@ -43,6 +43,7 @@ type SetupActors struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
 	autoUpdateSetupActors bool
+	user                  string
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -72,6 +73,14 @@ func (c *SetupActors) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	var user string
+	if err := c.dbConnection.QueryRowContext(ctx, selectUserQuery).Scan(&user); err != nil {
+		level.Error(c.logger).Log("msg", "failed to get current user", "err", err)
+		c.running.Store(false)
+		cancel()
+		return err
+	}
+
 	go func() {
 		defer func() {
 			c.Stop()
@@ -81,7 +90,7 @@ func (c *SetupActors) Start(ctx context.Context) error {
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
-			if err := c.checkSetupActors(c.ctx); err != nil {
+			if err := c.checkSetupActors(c.ctx, user); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
@@ -106,16 +115,9 @@ func (c *SetupActors) Stop() {
 	c.running.Store(false)
 }
 
-func (c *SetupActors) checkSetupActors(ctx context.Context) error {
-	var user string
-	err := c.dbConnection.QueryRowContext(ctx, selectUserQuery).Scan(&user)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to get current user", "err", err)
-		return err
-	}
-
+func (c *SetupActors) checkSetupActors(ctx context.Context, user string) error {
 	var enabled, history string
-	err = c.dbConnection.QueryRowContext(ctx, selectQuery, user).Scan(&enabled, &history)
+	err := c.dbConnection.QueryRowContext(ctx, selectQuery, user).Scan(&enabled, &history)
 	if errors.Is(err, sql.ErrNoRows) {
 		if c.autoUpdateSetupActors {
 			return c.insertSetupActors(ctx, user)
