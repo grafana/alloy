@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/components/componen
 aliases:
   - ./component_controller/ # /docs/alloy/latest/get-started/component_controller/
   - ./concepts/component_controller/ # /docs/alloy/latest/concepts/component_controller/
-  - ./get-started/component_controller/ # /docs/alloy/latest/get-started/component_controller/
+  - ../component_controller/ # /docs/alloy/latest/get-started/component_controller/
 description: Learn about the component controller
 title: Component controller
 weight: 30
