@@ -26,6 +26,46 @@ You can run {{< param "PRODUCT_NAME" >}} from outside the cluster by supplying c
 `scrapeconfigs` may reference secrets for authenticating to targets to scrape them.
 In these cases, the secrets are loaded and refreshed only when the ScrapeConfig is updated or when this component refreshes its internal state, which happens on a 5-minute refresh cycle.
 
+## Service Discovery Methods
+
+ScrapeConfig resources support multiple service discovery mechanisms:
+
+### Static Configuration
+
+Static configurations define a fixed list of targets to scrape. This is useful when targets are known in advance and don't change frequently.
+
+### HTTP Service Discovery
+
+HTTP service discovery allows dynamic target discovery by querying an HTTP endpoint that returns target information in JSON format. The endpoint is polled at regular intervals to discover new targets or remove stale ones. This is particularly useful for:
+
+- Dynamic environments where targets are frequently added or removed
+- Integration with external service registries
+- Custom service discovery implementations
+
+The HTTP endpoint should return a JSON array of target groups, where each target group contains:
+- `targets`: Array of `host:port` combinations to scrape
+- `labels`: Optional labels to apply to all targets in the group
+
+Example JSON response:
+```json
+[
+  {
+    "targets": ["service1.example.com:8080", "service2.example.com:8080"],
+    "labels": {
+      "job": "web-servers",
+      "env": "production"
+    }
+  },
+  {
+    "targets": ["db1.example.com:9090"],
+    "labels": {
+      "job": "databases",
+      "env": "production"
+    }
+  }
+]
+```
+
 ## Usage
 
 ```alloy
@@ -236,6 +276,74 @@ prometheus.operator.scrapeconfigs "scrapeconfigs" {
         }
     }
 }
+```
+
+### Static Configuration Example
+
+This example shows a ScrapeConfig resource using static target discovery:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: static-targets
+  namespace: monitoring
+spec:
+  staticConfigs:
+  - targets:
+    - "web-server-1.example.com:8080"
+    - "web-server-2.example.com:8080"
+    labels:
+      job: "web-servers"
+      env: "production"
+  metricsPath: /metrics
+  scrapeInterval: 30s
+```
+
+### HTTP Service Discovery Example
+
+This example shows a ScrapeConfig resource using HTTP service discovery:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: http-discovery
+  namespace: monitoring
+spec:
+  httpSDConfigs:
+  - url: "http://service-registry.internal:8080/discover"
+    refreshInterval: 60s
+  metricsPath: /metrics
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+```
+
+The HTTP endpoint (`http://service-registry.internal:8080/discover`) should return JSON in this format:
+
+```json
+[
+  {
+    "targets": [
+      "api-server-1.example.com:8080",
+      "api-server-2.example.com:8080"
+    ],
+    "labels": {
+      "service": "api",
+      "version": "v1.2.3"
+    }
+  },
+  {
+    "targets": [
+      "worker-1.example.com:9090",
+      "worker-2.example.com:9090"
+    ],
+    "labels": {
+      "service": "worker",
+      "version": "v2.1.0"
+    }
+  }
+]
 ```
 
 ## Extra Metric Labels
