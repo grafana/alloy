@@ -40,7 +40,7 @@ const (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.connector.count",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
