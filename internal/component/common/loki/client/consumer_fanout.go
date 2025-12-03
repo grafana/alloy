@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
@@ -302,7 +301,6 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		if err == nil {
 			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
 			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
-
 			return
 		}
 
@@ -363,7 +361,16 @@ func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
+
+	// NOTE: it is important in goland to fully ready the body and
+	// close it so that the connection can be reused.
+	// We only partailly read the body if we encounter a non 2xx error
+	// so we should always consume whats left.
+	// https://github.com/golang/go/blob/32a9804c7ba3f4a0e0bd26cc24b9204860a49ec8/src/net/http/response.go#L59-L64
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))
