@@ -41,8 +41,6 @@ type tailer struct {
 	onPositionsFileError OnPositionsFileError
 	watcherConfig        tail.WatcherConfig
 
-	posAndSizeMtx sync.Mutex
-
 	running *atomic.Bool
 
 	componentStopping func() bool
@@ -155,7 +153,6 @@ func (t *tailer) Run(ctx context.Context) {
 	}
 
 	handler, err := t.initRun()
-
 	if err != nil {
 		// We are retrying tailers until the target has disappeared.
 		// We are mostly interested in this log if this happens directly when
@@ -330,7 +327,6 @@ func (t *tailer) updateStats(offset int64, size int64) {
 	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
 	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
 	t.positions.Put(t.key.Path, t.key.Labels, offset)
-
 }
 
 func (t *tailer) stop(done chan struct{}) {
@@ -351,6 +347,9 @@ func (t *tailer) stop(done chan struct{}) {
 	<-done
 
 	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.key.Path)
+
+	// We need to cleanup created metrics
+	t.cleanupMetrics()
 
 	// If the component is not stopping, then it means that the target for this component is gone and that
 	// we should clear the entry from the positions file.
