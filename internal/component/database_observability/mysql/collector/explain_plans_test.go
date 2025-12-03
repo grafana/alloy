@@ -310,7 +310,7 @@ func TestExplainPlansOutput(t *testing.T) {
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
 		explainPlanOutput, err := newExplainPlansOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
 		require.NoError(t, err)
-		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
+		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
 	})
 
 	currentTime := time.Now().Format(time.RFC3339)
@@ -1492,9 +1492,7 @@ func TestExplainPlansOutput(t *testing.T) {
 			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
 			output, err := newExplainPlansOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
-			// Override the generated at time to ensure the test is deterministic
-			output.Metadata.GeneratedAt = currentTime
-			require.Equal(t, test.result, output)
+			require.Equal(t, test.result.Plan, *output)
 		})
 	}
 }

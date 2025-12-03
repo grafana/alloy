@@ -15,7 +15,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/tools/txtar"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
@@ -2241,10 +2241,7 @@ func TestExplainPlanOutput(t *testing.T) {
 			jsonData := jsonFile.Data
 			output, err := newExplainPlanOutput(tt.engineVersion, tt.queryid, jsonData, currentTime)
 			require.NoError(t, err, "Failed generate explain plan output: %s", tt.fname)
-			// Override the generated at time to ensure the test is deterministic
-			output.Metadata.GeneratedAt = currentTime
-			require.Equal(t, tt.result.Metadata, output.Metadata)
-			validatePlan(t, tt.result.Plan, output.Plan)
+			validatePlan(t, tt.result.Plan, *output)
 		})
 	}
 }
@@ -2255,7 +2252,7 @@ func TestNewExplainPlan(t *testing.T) {
 	defer db.Close()
 
 	logger := log.NewNopLogger()
-	entryHandler := loki_fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
@@ -2462,11 +2459,7 @@ func TestNewExplainPlanOutput(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, output)
-	assert.Equal(t, "PostgreSQL", output.Metadata.DatabaseEngine)
-	assert.Equal(t, dbVersion, output.Metadata.DatabaseVersion)
-	assert.Equal(t, queryId, output.Metadata.QueryIdentifier)
-	assert.Equal(t, generatedAt, output.Metadata.GeneratedAt)
-	assert.Equal(t, database_observability.ExplainPlanOutputOperation("Seq Scan"), output.Plan.Operation)
+	assert.Equal(t, database_observability.ExplainPlanOutputOperation("Seq Scan"), output.Operation)
 }
 
 func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
@@ -2483,7 +2476,7 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 }
 
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
-	lokiClient := loki_fake.NewClient(func() {})
+	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
 	logger := log.NewNopLogger()
@@ -2757,7 +2750,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	})
 
 	t.Run("query validation", func(t *testing.T) {
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
