@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/
 aliases:
-  - ./get-started/configuration-syntax/ # /docs/alloy/latest/get-started/configuration-syntax/
-  - ./get-started/configuration-syntax/files/ # /docs/alloy/latest/get-started/configuration-syntax/files/
   - ./concepts/ # /docs/alloy/latest/concepts/
   - ./concepts/configuration-syntax/ # /docs/alloy/latest/concepts/configuration-syntax/
   - ./concepts/configuration-syntax/files/ # /docs/alloy/latest/concepts/configuration-syntax/files/
