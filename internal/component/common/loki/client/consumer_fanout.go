@@ -362,7 +362,7 @@ func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 		return -1, err
 	}
 
-	// NOTE: it is important in goland to fully ready the body and
+	// NOTE: it is important in go to fully read the body and
 	// close it so that the connection can be reused.
 	// We only partailly read the body if we encounter a non 2xx error
 	// so we should always consume whats left.
