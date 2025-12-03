@@ -2,6 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/get-started/components/configure-components/
 aliases:
   - ./configuration-syntax/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
+  - ../configuration-syntax/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
 description: Learn how to declare and configure components
 title: Configure components
 weight: 10
