@@ -53,11 +53,7 @@ func newExplainPlansOutput(logger log.Logger, explainJson []byte) (*database_obs
 	}
 
 	planNode, err := parseTopLevelPlanNode(logger, qblock)
-	if err != nil {
-		return nil, err
-	}
-
-	return &planNode, nil
+	return &planNode, err
 }
 
 func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (database_observability.ExplainPlanNode, error) {
