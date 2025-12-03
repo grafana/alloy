@@ -24,6 +24,10 @@ Main (unreleased)
 
 - Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
 
+- (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
+  - `explain_plans`
+    - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
+
 ### Bugfixes
 
 
