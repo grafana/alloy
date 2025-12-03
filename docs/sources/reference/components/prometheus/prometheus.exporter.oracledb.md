@@ -129,8 +129,8 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`DB_USERNAME`_: The database username
-- _`DB_PASSWORD`_: The password for the database user
+- _`<DB_USERNAME>`_: The database username
+- _`<DB_PASSWORD>`_: The password for the database user
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
