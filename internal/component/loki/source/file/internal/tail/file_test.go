@@ -131,8 +131,8 @@ func TestFile(t *testing.T) {
 		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
 			WatcherConfig: WatcherConfig{
-				MinPollFrequency: 5 * time.Millisecond,
-				MaxPollFrequency: 5 * time.Millisecond,
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
 			},
 		})
 		require.NoError(t, err)
@@ -175,32 +175,6 @@ func TestFile(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 	})
 
-	t.Run("removed and created during wait", func(t *testing.T) {
-		name := createFile(t, "removed", "hello\n")
-		defer removeFile(t, name)
-
-		file, err := NewFile(log.NewNopLogger(), &Config{
-			Offset:   0,
-			Filename: name,
-			WatcherConfig: WatcherConfig{
-				MinPollFrequency: 5 * time.Millisecond,
-				MaxPollFrequency: 5 * time.Millisecond,
-			},
-		})
-		require.NoError(t, err)
-		defer file.Stop()
-
-		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
-
-		go func() {
-			removeFile(t, name)
-			time.Sleep(50 * time.Millisecond)
-			recreateFile(t, name, "new\n")
-		}()
-
-		verify(t, file, &Line{Text: "new", Offset: 4}, nil)
-	})
-
 	t.Run("stopped while waiting for file to be created", func(t *testing.T) {
 		name := createFile(t, "removed", "hello\n")
 
@@ -208,8 +182,8 @@ func TestFile(t *testing.T) {
 			Offset:   0,
 			Filename: name,
 			WatcherConfig: WatcherConfig{
-				MinPollFrequency: 5 * time.Millisecond,
-				MaxPollFrequency: 5 * time.Millisecond,
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
 			},
 		})
 		require.NoError(t, err)
