@@ -77,9 +77,13 @@ type File struct {
 func (f *File) Next() (*Line, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	if f.ctx.Err() != nil {
+		return nil, f.ctx.Err()
+	}
+
 read:
 	text, err := f.readLine()
-
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			if err := f.wait(text != ""); err != nil {

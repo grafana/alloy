@@ -216,6 +216,20 @@ func TestFile(t *testing.T) {
 		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 819}, nil)
 		verify(t, file, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
 	})
+
+	t.Run("calls to next after stop", func(t *testing.T) {
+		name := createFile(t, "stopped", "hello\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Offset:   0,
+			Filename: name,
+		})
+		require.NoError(t, err)
+		file.Stop()
+
+		verify(t, file, nil, context.Canceled)
+	})
 }
 
 func createFile(t *testing.T, name, content string) string {
