@@ -44,10 +44,15 @@ loki.relabel "<LABEL>" {
 
 You can use the following arguments with `loki.relabel`:
 
-| Name             | Type             | Description                                                    | Default  | Required |
-| ---------------- | ---------------- | -------------------------------------------------------------- | -------- | -------- |
-| `forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |          | yes      |
-| `max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | `10000`  | no       |
+| Name                     | Type             | Description                                                                 | Default  | Required |
+| ------------------------ | ---------------- | --------------------------------------------------------------------------- | -------- | -------- |
+| `forward_to`             | `list(receiver)` | Where to forward log entries after relabeling.                              |          | yes      |
+| `max_cache_size`         | `int`            | The maximum number of elements to hold in the relabeling cache.             | `10000`  | no       |
+| `max_forward_queue_size` | `int`            | Maximum number of log entries to buffer per destination before dropping.    | `100000` | no       |
+| `block_on_full`          | `bool`           | Block instead of dropping when the queue is full, retrying with backoff.    | `false`  | no       |
+
+When `block_on_full` is `false` (default), log entries are dropped if a destination's queue is full.
+When `block_on_full` is `true`, the component retries with exponential backoff (5ms to 5s), which may slow the pipeline but prevents data loss.
 
 ## Blocks
 
