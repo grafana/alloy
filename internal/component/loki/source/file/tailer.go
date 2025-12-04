@@ -71,7 +71,7 @@ func newTailer(
 		receiver:             receiver,
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
-		labels:               opts.labels,
+		labels:               opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
 		running:              atomic.NewBool(false),
 		tailFromEnd:          opts.tailFromEnd,
 		legacyPositionUsed:   opts.legacyPositionUsed,
@@ -152,7 +152,7 @@ func (t *tailer) Run(ctx context.Context) {
 	default:
 	}
 
-	handler, err := t.initRun()
+	err := t.initRun()
 	if err != nil {
 		// We are retrying tailers until the target has disappeared.
 		// We are mostly interested in this log if this happens directly when
@@ -162,7 +162,6 @@ func (t *tailer) Run(ctx context.Context) {
 		})
 		return
 	}
-	defer handler.Stop()
 
 	// We call report so that retries won't log.
 	t.report.Do(func() {})
@@ -173,7 +172,7 @@ func (t *tailer) Run(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		// readLines closes done on exit
-		t.readLines(handler, done)
+		t.readLines(done)
 		cancel()
 	}()
 
@@ -184,21 +183,21 @@ func (t *tailer) Run(ctx context.Context) {
 	t.stop(done)
 }
 
-func (t *tailer) initRun() (loki.EntryHandler, error) {
+func (t *tailer) initRun() error {
 	fi, err := os.Stat(t.key.Path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to tail file: %w", err)
+		return fmt.Errorf("failed to tail file: %w", err)
 	}
 
 	pos, err := t.positions.Get(t.key.Path, t.key.Labels)
 	if err != nil {
 		switch t.onPositionsFileError {
 		case OnPositionsFileErrorSkip:
-			return nil, fmt.Errorf("failed to get file position: %w", err)
+			return fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
 			pos, err = getLastLinePosition(t.key.Path)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get last line position after positions error: %w", err)
+				return fmt.Errorf("failed to get last line position after positions error: %w", err)
 			}
 			level.Info(t.logger).Log("msg", "retrieved the position of the last line after positions error")
 		default:
@@ -215,7 +214,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	if pos == 0 && t.legacyPositionUsed {
 		pos, err = t.positions.Get(t.key.Path, "{}")
 		if err != nil {
-			return nil, fmt.Errorf("failed to get file position with empty labels: %w", err)
+			return fmt.Errorf("failed to get file position with empty labels: %w", err)
 		}
 	}
 
@@ -247,15 +246,12 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to tail the file: %w", err)
+		return fmt.Errorf("failed to tail the file: %w", err)
 	}
 
 	t.file = tail
 
-	labelsMiddleware := t.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(t.key.Path)})
-	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
-
-	return handler, nil
+	return nil
 }
 
 func getDecoder(encoding string) (*encoding.Decoder, error) {
@@ -276,10 +272,10 @@ func getDecoder(encoding string) (*encoding.Decoder, error) {
 // there are unread lines in this channel and the Stop method on the tailer is
 // called, the underlying tailer will never exit if there are unread lines in
 // the t.tail.Lines channel
-func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
+func (t *tailer) readLines(done chan struct{}) {
 	level.Info(t.logger).Log("msg", "tail routine: started", "path", t.key.Path)
 	var (
-		entries             = handler.Chan()
+		entries             = t.receiver.Chan()
 		lastOffset          = int64(0)
 		positionInterval    = t.positions.SyncPeriod()
 		lastUpdatedPosition = time.Time{}
@@ -304,9 +300,7 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
 		entries <- loki.Entry{
-			// Allocate the expected size of labels. This matches the number of labels added by the middleware
-			// as configured in initRun().
-			Labels: make(model.LabelSet, len(t.labels)+1),
+			Labels: t.labels,
 			Entry: push.Entry{
 				Timestamp: line.Time,
 				Line:      line.Text,
