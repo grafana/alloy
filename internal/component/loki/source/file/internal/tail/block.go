@@ -46,7 +46,7 @@ const (
 // It polls the file system to detect modifications, truncations, deletions, or renames.
 // The pos parameter is the current file position and is used to detect truncation events.
 // Returns the detected event type and any error encountered. Returns eventNone if the context is canceled.
-func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (event, error) {
+func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Config) (event, error) {
 	origFi, err := os.Stat(cfg.Filename)
 	if err != nil {
 		// If file no longer exists we treat it as a delete event.
@@ -61,10 +61,8 @@ func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (e
 		MaxBackoff: cfg.WatcherConfig.MaxPollFrequency,
 	})
 
-	var (
-		prevSize    = pos
-		prevModTime = origFi.ModTime()
-	)
+	prevModTime := origFi.ModTime()
+
 	for backoff.Ongoing() {
 		deletePending, err := fileext.IsDeletePending(f)
 
@@ -104,7 +102,6 @@ func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (e
 		if prevSize > 0 && prevSize < currentSize {
 			return eventModified, nil
 		}
-		prevSize = currentSize
 
 		// File was appended to (changed)?
 		modTime := fi.ModTime()
@@ -113,7 +110,7 @@ func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (e
 			return eventModified, nil
 		}
 
-		// File hasn't changed; increase backoff for next sleep.
+		// File hasn't changed so wait until next retry.
 		backoff.Wait()
 	}
 
