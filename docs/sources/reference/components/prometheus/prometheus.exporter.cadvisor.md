@@ -89,9 +89,9 @@ When you run {{< param "PRODUCT_NAME" >}} in Kubernetes to collect container met
 
 The DaemonSet requires:
 
-- **Host network access**: To access the container runtime
-- **Volume mounts**: Access to the container runtime socket and system directories
-- **Security context**: Privileged access or specific capabilities
+* **Host network access**: To access the container runtime
+* **Volume mounts**: Access to the container runtime socket and system directories
+* **Security context**: Privileged access or specific capabilities
 
 For detailed Kubernetes Deployment guidance, refer to the [Kubernetes Deployment example](#kubernetes-deployment-example) section.
 
@@ -100,8 +100,8 @@ For detailed Kubernetes Deployment guidance, refer to the [Kubernetes Deployment
 
 When you run {{< param "PRODUCT_NAME" >}} itself as a Docker container to monitor other containers on the host, the {{< param "PRODUCT_NAME" >}} container requires:
 
-- **Privileged mode**: Access to host resources
-- **Volume mounts**: Access to the container runtime socket and system directories
+* **Privileged mode**: Access to host resources
+* **Volume mounts**: Access to the container runtime socket and system directories
 
 For a complete Docker container deployment example, refer to the [Docker deployment example](#docker-deployment-example) section.
 
@@ -248,9 +248,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
@@ -285,12 +285,12 @@ services:
 
 The required volume mounts are:
 
-- `/var/run/docker.sock`: Docker socket for container discovery and API access
-- `/`: Host root filesystem (read-only) for system metrics
-- `/var/run`: Host runtime data (read-write) for accessing container state
-- `/sys`: Host system information (read-only) for cgroup and device metrics
-- `/var/lib/docker/`: Docker storage directory (read-only) for container metadata and layer information
-- `/dev/disk/`: Disk device information (read-only) for disk I/O metrics
+* `/var/run/docker.sock`: Docker socket for container discovery and API access
+* `/`: Host root filesystem (read-only) for system metrics
+* `/var/run`: Host runtime data (read-write) for accessing container state
+* `/sys`: Host system information (read-only) for cgroup and device metrics
+* `/var/lib/docker/`: Docker storage directory (read-only) for container metadata and layer information
+* `/dev/disk/`: Disk device information (read-only) for disk I/O metrics
 
 {{< admonition type="caution" >}}
 Running in privileged mode grants the container access to all host devices.
@@ -378,10 +378,10 @@ spec:
 
 Key configuration requirements:
 
-- **hostNetwork: true**: Allows access to the host network stack
-- **hostPID: true**: Enables process-level metrics collection
-- **privileged: true**: Grants access to host resources
-- **Volume mounts**: Provide access to container runtime and system directories
+* **hostNetwork: true**: Allows access to the host network stack
+* ***hostPID: true**: Enables process-level metrics collection
+* **privileged: true**: Grants access to host resources
+* **Volume mounts**: Provide access to container runtime and system directories
 
 {{< admonition type="note" >}}
 For container run times other than Docker, such as containerd or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
