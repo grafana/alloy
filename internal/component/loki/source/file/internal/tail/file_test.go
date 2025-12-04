@@ -105,7 +105,7 @@ func TestFile(t *testing.T) {
 		})
 	})
 
-	t.Run("partail line", func(t *testing.T) {
+	t.Run("partial line", func(t *testing.T) {
 		name := createFile(t, "partial", "hello\nwo")
 		defer removeFile(t, name)
 
