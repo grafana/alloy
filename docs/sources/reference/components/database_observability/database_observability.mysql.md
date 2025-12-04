@@ -3,14 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
-  stage: experimental
+  stage: public_preview
   products:
     - oss
 ---
 
 # `database_observability.mysql`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
@@ -44,7 +44,7 @@ The following collectors are configurable:
 | `query_samples`   | Collect query samples.                                   | yes                |
 | `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.    | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries. | no                 |
-| `explain_plans`   | Collect explain plans information.                       | no                 |
+| `explain_plans`   | Collect explain plans information.                       | yes                |
 
 ## Blocks
 

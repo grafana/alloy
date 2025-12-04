@@ -10,22 +10,71 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
+
+- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
+
+- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
+
+### Enhancements
+
+- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+
+- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
+- (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
+  - `explain_plans`
+    - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
+
+### Bugfixes
+
+
+- (_Public Preview_) Additions to `database_observability.postgres` component:
+  - `schema_details`
+    - fixes collection of schema details for mixed case table names (@fridgepoet)
+
+- (_Public Preview_) Additions to `database_observability.mysql` component:
+  - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
+
+- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
+
+v1.12.0
+-----------------
+
 ### Breaking changes
 
 - `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
-  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to a missing data when using the exporter
+  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to missing data when using the exporter
   with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
   set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
 
 ### Features
 
+- (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
+  logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
+
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
-  - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
+  - `explain_plans`
+    - collector now changes schema before returning the connection to the pool (@cristiangreco)
+    - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
+  - enable `explain_plans` collector by default (@rgeyer)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
-  - `explain_plans` added the explain plan collector (@rgeyer)
-  - add `user` field to wait events within `query_samples` collector (@gaantunes)
-  - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+  - `explain_plans`
+    - added the explain plan collector (@rgeyer)
+    - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
+  - `query_samples`
+    - add `user` field to wait events within `query_samples` collector (@gaantunes)
+    - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+    - process turned idle rows to calculate finalization times precisely and emit first seen idle rows (@gaantunes)
+  - `query_details`
+    - escape queries coming from pg_stat_statements with quotes (@gaantunes)
+  - enable `explain_plans` collector by default (@rgeyer)
+  - safely generate server_id when UDP socket used for database connection (@matthewnolf)
+  - add table registry and include "validated" in parsed table name logs (@fridgepoet)
+  - add database exclusion list for Postgres schema_details collector (@fridgepoet)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
@@ -33,7 +82,9 @@ Main (unreleased)
 
 - Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
 
-- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
+- Send effective config to the remote server for the remotecfg service. (@erikbaranowski)
+
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano)
 
 - Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
 
@@ -41,7 +92,30 @@ Main (unreleased)
 
 - Add `verbose_mode` configuration fields to alloy pyroscope.ebpf to be enable ebpf-profiler verbose mode. (@luweglarz)
 
+- Add `file_match` block to `loki.source.file` for built-in file discovery using glob patterns. (@kalleep)
+
+- Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
+
+- Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile. (@luweglarz)
+
+- OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
+  - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.
+  - All `otelcol.exporter.*` components providing the `sending_queue` > `batch` block have default `batch` values.
+  - The `otelcol.processor.k8sattributes` component has support for extracting annotations from k8s jobs and daemonsets.
+  - The `otelcol.processor.resourcedecetion` component supports nine new detectors.
+  - The `otelcol.exporter.kafka` component supports partitioning logs by trace ID (`partition_logs_by_trace_id`) and configuring default behavior if topic does not exist (`allow_auto_topic_creation`).
+  - The `otelcol.receiver.kafka` component has new configuration options `max_partition_fetch_size`, `rack_id`, and `use_leader_epoch`.
+  - The `otelcol.exporter.s3` component has new configuration options `s3_base_prefix` and `s3_partition_timezone`.
+  - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
+  - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
+
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+
 ### Enhancements
+
+- Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
@@ -53,7 +127,7 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Update Beyla component to 2.7.4. (@grcevski)
+- Update Beyla component to 2.7.8. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
@@ -64,6 +138,18 @@ Main (unreleased)
 
 - `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
 
+- `loki.source.podlogs` now supports `preserve_discovered_labels` parameter to preserve discovered pod metadata labels for use by downstream components. (@QuentinBisson)
+
+- Rework underlying framework of Alloy UI to use Vite instead of Create React App. (@jharvey10)
+
+- Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
+
+- `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
+
+- `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
+
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
@@ -72,11 +158,31 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Fix prometheus.exporter.process ignoring the `remove_empty_groups` argument. (@mhamzahkhan)
+
 - Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
+- Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
 
 - Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
 
-- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
+- Fix `loki.write` no longer includes internal labels `__`.  (@matt-gp)
+
+- Fix missing native histograms custom buckets (NHCB) samples from `prometheus.remote_write`. (@krajorama)
+
+- `otelcol.receiver.prometheus` now supports mixed histograms if `prometheus.scrape` has `honor_metadata` set to `true`. (@ptodev)
+  A mixed histogram is one which has both classic and exponential buckets.
+
+- `loki.source.file` has better support for non-UTF-8 encoded files. (@ptodev)
+  * A BOM will be taken into account if the file is UTF-16 encoded and `encoding` is set to `UTF-16`. (Not `UTF-16BE` or `UTF-16LE`)
+  * The carriage return symbol in Windows log files with CLRF endings will no longer be part of the log line.
+  * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
+
+- Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
+
+- Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
+
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
 v1.11.3
 -----------------
@@ -93,17 +199,17 @@ v1.11.3
 
 - Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
 
-- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa)
 
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
 - Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
 
+- Support recovering from corrupted positions file entries in `loki.source.file`. (@dehaansa)
+
 ### Other changes
 
 - Augment prometheus.scrape 'scheme' argument strengthening link to protocol. (@lewismc)
-
-- Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
 
 - Stop `faro.receiver` losing trace context when exception has stack trace. (@duartesaraiva98)
 
@@ -309,6 +415,8 @@ v1.11.0
 - Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
 
 - Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
+
+- Fix excessive debug logs always being emitted by `prometheus.exporter.mongodb`. (@kalleep)
 
 v1.10.2
 -----------------

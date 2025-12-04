@@ -8,7 +8,7 @@ import (
 	"bufio"
 	"compress/bzip2"
 	"compress/gzip"
-	"compress/zlib"
+	"compress/zlib" //TODO(ptodev): Replace this with https://github.com/klauspost/compress
 	"context"
 	"fmt"
 	"io"
@@ -20,16 +20,14 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/ianaindex"
-	"golang.org/x/text/transform"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -51,6 +49,8 @@ type decompressor struct {
 	labels model.LabelSet
 
 	posAndSizeMtx sync.RWMutex
+
+	onPositionsFileError OnPositionsFileError
 
 	running *atomic.Bool
 
@@ -78,31 +78,39 @@ func newDecompressor(
 
 	position, err := pos.Get(opts.path, labelsStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get positions: %w", err)
+		switch opts.onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `restart_from_beginning`")
+			fallthrough
+		default:
+			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", opts.onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
+			position = 0
+			level.Info(logger).Log("msg", "reset position to start of file after positions error", "original_error", err)
+		}
 	}
 
-	var decoder *encoding.Decoder
-	if opts.encoding != "" {
-		level.Info(logger).Log("msg", "decompressor will decode messages", "from", opts.encoding, "to", "UTF8")
-		encoder, err := ianaindex.IANA.Encoding(opts.encoding)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", opts.encoding, err)
-		}
-		decoder = encoder.NewDecoder()
+	decoder, err := getDecoder(opts.encoding)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
 
 	decompressor := &decompressor{
-		metrics:           metrics,
-		logger:            logger,
-		receiver:          receiver,
-		positions:         pos,
-		key:               positions.Entry{Path: opts.path, Labels: labelsStr},
-		labels:            opts.labels,
-		running:           atomic.NewBool(false),
-		position:          position,
-		decoder:           decoder,
-		cfg:               opts.decompressionConfig,
-		componentStopping: componentStopping,
+		metrics:              metrics,
+		logger:               logger,
+		receiver:             receiver,
+		positions:            pos,
+		key:                  positions.Entry{Path: opts.path, Labels: labelsStr},
+		labels:               opts.labels,
+		running:              atomic.NewBool(false),
+		position:             position,
+		decoder:              decoder,
+		cfg:                  opts.decompressionConfig,
+		onPositionsFileError: opts.onPositionsFileError,
+		componentStopping:    componentStopping,
 	}
 
 	return decompressor, nil
@@ -114,7 +122,7 @@ func newDecompressor(
 // If the actual file format is incorrect, the reading of the header may fail and return an error - depending on the
 // implementation of the underlying compression library. In any case, when a file is corrupted, the subsequent reading
 // of lines will fail.
-func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reader io.Reader, err error) {
+func mountReader(f *os.File, decoder *encoding.Decoder, logger log.Logger, format CompressionFormat) (reader io.Reader, err error) {
 	var decompressLib string
 
 	switch format.String() {
@@ -142,6 +150,13 @@ func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reade
 	}
 
 	level.Debug(logger).Log("msg", fmt.Sprintf("using %q to decompress file %q", decompressLib, f.Name()))
+
+	// Use the appropriated decoder for the file encoding.
+	// Otherwise the file may not be split into separate lines properly.
+	if decoder != nil {
+		reader = decoder.Reader(reader)
+	}
+
 	return reader, nil
 }
 
@@ -232,7 +247,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 	}
 	defer f.Close()
 
-	r, err := mountReader(f, d.logger, d.cfg.Format)
+	r, err := mountReader(f, d.decoder, d.logger, d.cfg.Format)
 	if err != nil {
 		level.Error(d.logger).Log("msg", "error mounting new reader", "err", err)
 		return
@@ -267,20 +282,11 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 		d.posAndSizeMtx.RUnlock()
 
 		text := scanner.Text()
-		var finalText string
-		if d.decoder != nil {
-			var err error
-			finalText, err = d.convertToUTF8(text)
-			if err != nil {
-				level.Debug(d.logger).Log("msg", "failed to convert encoding", "error", err)
-				d.metrics.encodingFailures.WithLabelValues(d.key.Path).Inc()
-				finalText = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Alloy: %s", err.Error())
-			}
-		} else {
-			finalText = text
-		}
 
 		d.metrics.readLines.WithLabelValues(d.key.Path).Inc()
+
+		// Trim Windows line endings
+		text = strings.TrimSuffix(text, "\r")
 
 		entries <- loki.Entry{
 			// Allocate the expected size of labels. This matches the number of labels added by the middleware
@@ -288,12 +294,12 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 			Labels: make(model.LabelSet, len(d.labels)+1),
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      finalText,
+				Line:      text,
 			},
 		}
 
 		d.posAndSizeMtx.Lock()
-		d.size = int64(unsafe.Sizeof(finalText))
+		d.size = int64(unsafe.Sizeof(text))
 		d.position++
 		d.posAndSizeMtx.Unlock()
 	}
@@ -335,15 +341,6 @@ func (d *decompressor) Key() positions.Entry {
 
 func (d *decompressor) IsRunning() bool {
 	return d.running.Load()
-}
-
-func (d *decompressor) convertToUTF8(text string) (string, error) {
-	res, _, err := transform.String(d.decoder, text)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode text to UTF8: %w", err)
-	}
-
-	return res, nil
 }
 
 // cleanupMetrics removes all metrics exported by this reader

@@ -145,7 +145,8 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// Start prometheus scrape manager.
-	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls, prometheus.NoopMetadataStore{})
+	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
+
 	opts := &scrape.Options{
 		EnableNativeHistogramsIngestion: c.args.Scrape.EnableNativeHistograms,
 	}

@@ -7,17 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
-	"github.com/grafana/dskit/flagext"
-	"github.com/prometheus/common/config"
-
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func Test_TopicDiscovery(t *testing.T) {
@@ -80,7 +79,7 @@ func Test_TopicDiscovery(t *testing.T) {
 func Test_NewTarget(t *testing.T) {
 	ts := &TargetSyncer{
 		logger: log.NewNopLogger(),
-		client: fake.NewClient(func() {}),
+		client: loki.NewCollectingHandler(),
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
 				{

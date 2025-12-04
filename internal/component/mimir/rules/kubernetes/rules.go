@@ -60,7 +60,7 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
-	mimirClient       mimirClient.Interface
+	mimirClient       mimirClient.RulerInterface
 	k8sClient         kubernetes.Interface
 	promClient        promVersioned.Interface
 	namespaceSelector labels.Selector
@@ -191,6 +191,8 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) error {
+	//TODO: There's a chance that the startup function is stuck retrying forever.
+	//      What's worse is that a config update wouldn't be able to fix it, since we haven't entered the config update loop yet.
 	c.startupWithRetries(ctx, c.leader, c, c)
 
 	for {

@@ -76,7 +76,7 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
 	// Precompute the hash of the target from the public labels and the ID of the
 	// target.
 	hasher := xxhash.New()
-	_, _ = fmt.Fprintf(hasher, "%016d", publicLabels.Hash())
+	_, _ = fmt.Fprintf(hasher, "%016d", labels.StableHash(publicLabels))
 	_, _ = fmt.Fprint(hasher, id)
 	_, _ = fmt.Fprint(hasher, uid)
 	hash := hasher.Sum64()
@@ -172,6 +172,12 @@ func (t *Target) LastEntry() time.Time {
 // Validation of lset fails if there is no label indicating the pod namespace,
 // pod name, or container name.
 func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, err error) {
+	return PrepareLabelsWithMetaPreservation(lset, defaultJob, false)
+}
+
+// PrepareLabelsWithMetaPreservation is like PrepareLabels but allows preserving meta labels.
+// When preserveMetaLabels is true, __meta_* labels are kept in the final label set.
+func PrepareLabelsWithMetaPreservation(lset labels.Labels, defaultJob string, preserveMetaLabels bool) (res labels.Labels, err error) {
 	tailLabels := []labels.Label{
 		{Name: model.JobLabel, Value: defaultJob},
 	}
@@ -226,13 +232,15 @@ func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, er
 		lb.Set(LabelPodUID, podUID)
 	}
 
-	// Meta labels are deleted after relabelling. Other internal labels propagate
-	// to the target which decides whether they will be part of their label set.
-	lset.Range(func(l labels.Label) {
-		if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
-			lb.Del(l.Name)
-		}
-	})
+	// Meta labels are deleted after relabelling unless preserveMetaLabels is true.
+	// Other internal labels propagate to the target which decides whether they will be part of their label set.
+	if !preserveMetaLabels {
+		lset.Range(func(l labels.Label) {
+			if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
+				lb.Del(l.Name)
+			}
+		})
+	}
 
 	// Default the instance label to the target address.
 	if !lset.Has(model.InstanceLabel) {
