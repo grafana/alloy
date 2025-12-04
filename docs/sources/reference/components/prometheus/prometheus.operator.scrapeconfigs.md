@@ -320,7 +320,7 @@ spec:
   scrapeTimeout: 10s
 ```
 
-The HTTP endpoint (`http://service-registry.internal:8080/discover`) should return JSON in this format:
+The HTTP endpoint (`http://service-registry.internal:8080/discover`) returns JSON in this format:
 
 ```json
 [
