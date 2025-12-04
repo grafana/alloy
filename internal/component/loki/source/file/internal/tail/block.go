@@ -10,7 +10,9 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 )
 
-// blockUntilExists will block until either file exists or context is canceled.
+// blockUntilExists blocks until the file specified in cfg exists or the context is canceled.
+// It polls the file system at intervals defined by WatcherConfig polling frequencies.
+// Returns an error if the context is canceled or an unrecoverable error occurs.
 func blockUntilExists(ctx context.Context, cfg *Config) error {
 	backoff := backoff.New(ctx, backoff.Config{
 		MinBackoff: cfg.WatcherConfig.MinPollFrequency,
@@ -30,16 +32,20 @@ func blockUntilExists(ctx context.Context, cfg *Config) error {
 	return backoff.Err()
 }
 
+// event represents a file system event detected during polling.
 type event int
 
 const (
-	eventNone event = iota
-	eventTruncated
-	eventModified
-	eventDeleted
+	eventNone      event = iota // no event detected
+	eventTruncated              // file was truncated (size decreased)
+	eventModified               // file was modified (size increased or modification time changed)
+	eventDeleted                // file was deleted, moved, or renamed
 )
 
-// blockUntilEvent will block until it detects a new event for file or context is canceled.
+// blockUntilEvent blocks until it detects a file system event for the given file or the context is canceled.
+// It polls the file system to detect modifications, truncations, deletions, or renames.
+// The pos parameter is the current file position and is used to detect truncation events.
+// Returns the detected event type and any error encountered. Returns eventNone if the context is canceled.
 func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (event, error) {
 	origFi, err := f.Stat()
 	if err != nil {
