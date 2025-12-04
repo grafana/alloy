@@ -193,7 +193,6 @@ func TestFile(t *testing.T) {
 		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
 
 		go func() {
-			time.Sleep(50 * time.Millisecond)
 			removeFile(t, name)
 			time.Sleep(50 * time.Millisecond)
 			recreateFile(t, name, "new\n")
