@@ -76,7 +76,7 @@ You can retrieve the logs in different ways depending on your platform and insta
 
 **macOS:**
 
-* If you're running {{< param "PRODUCT_NAME" >}} with Homebrew as a service, use `brew services info alloy` to check status and `tail -f $(brew --prefix)/var/log/alloy.log` for logs.
+* If you're running {{< param "PRODUCT_NAME" >}} with Homebrew as a service, use `brew services info grafana/grafana/alloy` to check status and `tail -f $(brew --prefix)/var/log/alloy.log` for logs.
 * If you're running {{< param "PRODUCT_NAME" >}} with launchd, use `log show --predicate 'process == "alloy"' --info` or check `/usr/local/var/log/alloy.log`.
 * If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
 

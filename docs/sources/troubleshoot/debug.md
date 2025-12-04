@@ -84,7 +84,7 @@ The clustering page shows the following information for each cluster node:
 
 * The node's name.
 * The node's advertised address.
-* The node's current state, Viewer, Participant, or Terminating.
+* The node's current state: Viewer, Participant, or Terminating.
 * The local node that serves the UI.
 
 ### Live Debugging page
