@@ -47,6 +47,7 @@ The HTTP endpoint should return a JSON array of target groups, where each target
 - `labels`: Optional labels to apply to all targets in the group
 
 Example JSON response:
+
 ```json
 [
   {
