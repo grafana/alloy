@@ -26,6 +26,10 @@ Main (unreleased)
 
 - Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
 
+- (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
+  - `explain_plans`
+    - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
+
 ### Bugfixes
 
 
