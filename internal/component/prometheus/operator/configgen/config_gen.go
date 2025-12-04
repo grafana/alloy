@@ -190,7 +190,7 @@ func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 		c.ScrapeTimeout = model.Duration(opt.DefaultScrapeTimeout)
 	}
 
-	if opt.EnableNativeHistograms {
+	if opt.ScrapeNativeHistograms {
 		c.ScrapeProtocols = config.DefaultProtoFirstScrapeProtocols
 	}
 

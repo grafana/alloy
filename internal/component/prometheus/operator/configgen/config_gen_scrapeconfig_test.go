@@ -219,7 +219,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 				ScrapeOptions: operator.ScrapeOptions{
 					DefaultScrapeInterval:  time.Hour,
 					DefaultScrapeTimeout:   42 * time.Second,
-					EnableNativeHistograms: false,
+					ScrapeNativeHistograms: false,
 				},
 			}
 			cfg, err := cg.generateStaticScrapeConfigConfig(tc.m, tc.ep, 1)
