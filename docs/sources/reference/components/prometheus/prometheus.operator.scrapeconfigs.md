@@ -42,7 +42,8 @@ HTTP service discovery allows dynamic target discovery by querying an HTTP endpo
 - Integration with external service registries
 - Custom service discovery implementations
 
-The HTTP endpoint should return a JSON array of target groups, where each target group contains:
+The HTTP endpoint returns a JSON array of target groups, where each target group contains:
+
 - `targets`: Array of `host:port` combinations to scrape
 - `labels`: Optional labels to apply to all targets in the group
 
