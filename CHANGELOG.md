@@ -42,6 +42,8 @@ Main (unreleased)
   - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
   - add `setup_actors` collector that checks and optionally updates settings to avoid tracking queries for the currently connected user (@cristiangreco)
 
+- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
+
 v1.12.0
 -----------------
 
