@@ -271,14 +271,6 @@ func truncateFile(t *testing.T, name, content string) {
 	require.NoError(t, err)
 }
 
-/*
-func renameFile(t *testing.T, oldname, newname string) {
-	oldname = t.TempDir() + "/" + oldname
-	newname = t.TempDir() + "/" + newname
-	require.NoError(t, os.Rename(oldname, newname))
-}
-*/
-
 func removeFile(t *testing.T, name string) {
 	require.NoError(t, os.Remove(name))
 }
