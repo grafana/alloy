@@ -266,12 +266,10 @@ func getDecoder(encoding string) (*encoding.Decoder, error) {
 	return encoder.NewDecoder(), nil
 }
 
-// readLines consumes the t.tail.Lines channel from the
-// underlying tailer. It will only exit when that channel is closed. This is
-// important to avoid a deadlock in the underlying tailer which can happen if
-// there are unread lines in this channel and the Stop method on the tailer is
-// called, the underlying tailer will never exit if there are unread lines in
-// the t.tail.Lines channel
+// readLines reads lines from the tailed file by calling Next() in a loop.
+// It processes each line by sending it to the receiver's channel and updates
+// position tracking periodically. It exits when Next() returns an error,
+// this happens when the tail.File is stopped or or we have a unrecoverable error.
 func (t *tailer) readLines(done chan struct{}) {
 	level.Info(t.logger).Log("msg", "tail routine: started", "path", t.key.Path)
 	var (
