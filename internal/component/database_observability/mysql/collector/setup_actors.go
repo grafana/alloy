@@ -43,7 +43,6 @@ type SetupActors struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
 	autoUpdateSetupActors bool
-	user                  string
 
 	logger  log.Logger
 	running *atomic.Bool
