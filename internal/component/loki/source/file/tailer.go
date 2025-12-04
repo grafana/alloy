@@ -291,9 +291,9 @@ func (t *tailer) readLines(done chan struct{}) {
 	for {
 		line, err := t.file.Next()
 		if err != nil {
-			// Maybe we should use a better signal than context canceled to indicate normal stop...
+			// We get context.Canceled if tail.File was stopped so we don't have to log it.
 			if !errors.Is(err, context.Canceled) {
-				level.Info(t.logger).Log("msg", "tail routine: stopping tailer", "path", t.key.Path, "err", err)
+				level.Error(t.logger).Log("msg", "tail routine: stopping tailer", "path", t.key.Path, "err", err)
 			}
 			return
 		}
