@@ -18,6 +18,10 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
+// NewFile creates a new File tailer for the specified file path.
+// It opens the file and seeks to the provided offset if one is specified.
+// The returned File can be used to read lines from the file as they are appended.
+// The caller is responsible for calling Stop() when done to close the file and clean up resources.
 func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	f, err := fileext.OpenFile(cfg.Filename)
 	if err != nil {
@@ -49,10 +53,14 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	}, nil
 }
 
+// File represents a file being tailed. It provides methods to read lines
+// from the file as they are appended, handling file events such as truncation,
+// deletion, and modification. File is safe for concurrent use.
 type File struct {
 	cfg    *Config
 	logger log.Logger
 
+	// protects file, reader, and lastOffset.
 	mu     sync.Mutex
 	file   *os.File
 	reader *bufio.Reader
@@ -63,7 +71,8 @@ type File struct {
 	cancel context.CancelFunc
 }
 
-// FIXME: need clear exit signal
+// Next reads and returns the next line from the file.
+// It blocks until a line is available, file is closed or unrecoverable error occurs.
 func (f *File) Next() (*Line, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -94,6 +103,8 @@ read:
 	}, nil
 }
 
+// Size returns the current size of the file in bytes.
+// It is safe to call concurrently with other File methods.
 func (f *File) Size() (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -105,6 +116,9 @@ func (f *File) Size() (int64, error) {
 	return fi.Size(), nil
 }
 
+// Stop closes the file and cancels any ongoing wait operations.
+// After Stop is called, Next() will return errors for any subsequent calls.
+// It is safe to call Stop multiple times.
 func (f *File) Stop() error {
 	f.cancel()
 	f.mu.Lock()
@@ -112,6 +126,8 @@ func (f *File) Stop() error {
 	return f.file.Close()
 }
 
+// wait blocks until a file event is detected (modification, truncation, or deletion).
+// Returns an error if the context is canceled or an unrecoverable error occurs.
 func (f *File) wait(partial bool) error {
 	offset, err := f.offset()
 	if err != nil {
@@ -122,7 +138,7 @@ func (f *File) wait(partial bool) error {
 	switch event {
 	case eventModified:
 		if partial {
-			// We need to reset to last succeful offset because we could have consumed a partial line.
+			// We need to reset to last succeful offset because we consumed a partial line.
 			f.file.Seek(f.lastOffset, io.SeekStart)
 			f.reader.Reset(f.file)
 		}
@@ -139,6 +155,8 @@ func (f *File) wait(partial bool) error {
 	}
 }
 
+// readLine reads a single line from the file, including the newline character.
+// The newline and any trailing carriage return (for Windows line endings) are stripped.
 func (f *File) readLine() (string, error) {
 	line, err := f.reader.ReadString('\n')
 	if err != nil {
@@ -151,6 +169,8 @@ func (f *File) readLine() (string, error) {
 	return line, err
 }
 
+// offset returns the current byte offset in the file where the next read will occur.
+// It accounts for buffered data in the reader.
 func (f *File) offset() (int64, error) {
 	offset, err := f.file.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -160,11 +180,16 @@ func (f *File) offset() (int64, error) {
 	return offset - int64(f.reader.Buffered()), nil
 }
 
+// reopen closes the current file handle and opens a new one for the same file path.
+// If truncated is true, it indicates the file was truncated and we should reopen immediately.
+// If truncated is false, it indicates the file was deleted or moved, and we should wait
+// for it to be recreated before reopening.
+//
+// reopen handles the case where a file is reopened so quickly it's still the same file,
+// which could cause the poller to hang on an open file handle to a file no longer being
+// written to. It saves the current file handle info to ensure we only start tailing a
+// different file instance.
 func (f *File) reopen(truncated bool) error {
-	// There are cases where the file is reopened so quickly it's still the same file
-	// which causes the poller to hang on an open file handle to a file no longer being written to
-	// and which eventually gets deleted.  Save the current file handle info to make sure we only
-	// start tailing a different file.
 	cf, err := f.file.Stat()
 	if !truncated && err != nil {
 		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
