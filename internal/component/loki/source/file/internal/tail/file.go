@@ -139,7 +139,7 @@ func (f *File) wait(partial bool) error {
 	switch event {
 	case eventModified:
 		if partial {
-			// We need to reset to last succeful offset because we consumed a partial line.
+			// We need to reset to last successful offset because we consumed a partial line.
 			f.file.Seek(f.lastOffset, io.SeekStart)
 			f.reader.Reset(f.file)
 		}
