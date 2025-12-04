@@ -2,6 +2,7 @@ package tail
 
 import (
 	"context"
+	"errors"
 	"os"
 	"runtime"
 
@@ -47,8 +48,12 @@ const (
 // The pos parameter is the current file position and is used to detect truncation events.
 // Returns the detected event type and any error encountered. Returns eventNone if the context is canceled.
 func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (event, error) {
-	origFi, err := f.Stat()
+	origFi, err := os.Stat(cfg.Filename)
 	if err != nil {
+		// If file no longer exists we treat it as a delete event.
+		if errors.Is(err, os.ErrNotExist) {
+			return eventDeleted, nil
+		}
 		return eventNone, err
 	}
 
