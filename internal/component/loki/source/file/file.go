@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -144,7 +145,7 @@ type Component struct {
 	// new arguments.
 	resolver resolver
 	// scheduler owns the lifecycle of sources.
-	scheduler *Scheduler[positions.Entry]
+	scheduler *source.Scheduler[positions.Entry]
 
 	// watcher is a background trigger that periodically invokes
 	// scheduling when file matching is enabled.
@@ -186,7 +187,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		receivers: args.ForwardTo,
 		posFile:   positionsFile,
-		scheduler: NewScheduler[positions.Entry](),
+		scheduler: source.NewScheduler[positions.Entry](),
 		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
@@ -368,7 +369,7 @@ func (c *Component) scheduleSources() {
 		c.scheduler.ScheduleSource(source)
 	}
 
-	var toDelete []Source[positions.Entry]
+	var toDelete []source.Source[positions.Entry]
 
 	// Avoid mutating the scheduler state during iteration. Collect sources to
 	// remove and stop them in a separate loop.
@@ -426,7 +427,7 @@ type sourceOptions struct {
 }
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.
-func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], error) {
+func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
 	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
 			c.metrics,
@@ -452,7 +453,7 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tailer %w", err)
 	}
-	return NewSourceWithRetry(tailer, backoff.Config{
+	return source.NewSourceWithRetry(tailer, backoff.Config{
 		MinBackoff: 1 * time.Second,
 		MaxBackoff: 10 * time.Second,
 	}), nil
