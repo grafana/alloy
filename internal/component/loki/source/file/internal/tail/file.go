@@ -214,7 +214,6 @@ func (f *File) reopen(truncated bool) error {
 				if err := blockUntilExists(f.ctx, f.cfg); err != nil {
 					return fmt.Errorf("failed to detect creation of %s: %w", f.cfg.Filename, err)
 				}
-				backoff.Wait()
 				continue
 			}
 			return fmt.Errorf("Unable to open file %s: %s", f.cfg.Filename, err)
