@@ -119,26 +119,26 @@ prometheus.exporter.cadvisor "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.cadvisor`:
 
-| Name                              | Type           | Description                                                                                                         | Default                             | Required |
-| --------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
-| \* `allowlisted_container_labels` | `list(string)` | Allowlist of container labels to convert to Prometheus labels.                                                      | `[]`                                | no       |
-| \* `containerd_host`              | `string`       | The containerd endpoint.                                                                                            | `"/run/containerd/containerd.sock"` | no       |
-| \* `containerd_namespace`         | `string`       | The containerd namespace.                                                                                           | `"k8s.io"`                          | no       |
-| \* `disable_root_cgroup_stats`    | `bool`         | Disable collecting root Cgroup stats.                                                                               | `false`                             | no       |
-| \* `disabled_metrics`             | `list(string)` | List of metrics to be disabled which, if set, overrides the default disabled metrics.                               | (see below)                         | no       |
-| \* `docker_host`                  | `string`       | Docker endpoint.                                                                                                    | `"unix:///var/run/docker.sock"`     | no       |
-| \* `docker_only`                  | `bool`         | Only report docker containers in addition to root stats.                                                            | `false`                             | no       |
-| \* `docker_tls_ca`                | `string`       | Path to a trusted CA for TLS connection to docker.                                                                  | `"ca.pem"`                          | no       |
-| \* `docker_tls_cert`              | `string`       | Path to client certificate for TLS connection to docker.                                                            | `"cert.pem"`                        | no       |
-| \* `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
-| \* `enabled_metrics`              | `list(string)` | List of metrics to be enabled which, if set, overrides `disabled_metrics`.                                          | `[]`                                | no       |
-| \* `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys matched with a specified prefix that needs to be collected for containers.   | `[]`                                | no       |
-| \* `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of perf events to measure.                                         | `""`                                | no       |
-| \* `raw_cgroup_prefix_allowlist`  | `list(string)` | List of cgroup path prefixes that need to be collected, even when `docker_only` is specified.                       | `[]`                                | no       |
-| \* `resctrl_interval`             | `duration`     | Interval to update resctrl mon groups.                                                                              | `"0"`                               | no       |
-| \* `storage_duration`             | `duration`     | Length of time to keep data stored in memory.                                                                       | `"2m"`                              | no       |
-| \* `store_container_labels`       | `bool`         | Whether to convert container labels and environment variables into labels on Prometheus metrics for each container. | `true`                              | no       |
-| \* `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
+| Name                           | Type           | Description                                                                                                         | Default                             | Required |
+| ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
+| `allowlisted_container_labels` | `list(string)` | Allowlist of container labels to convert to Prometheus labels.                                                      | `[]`                                | no       |
+| `containerd_host`              | `string`       | The containerd endpoint.                                                                                            | `"/run/containerd/containerd.sock"` | no       |
+| `containerd_namespace`         | `string`       | The containerd namespace.                                                                                           | `"k8s.io"`                          | no       |
+| `disable_root_cgroup_stats`    | `bool`         | Disable collecting root Cgroup stats.                                                                               | `false`                             | no       |
+| `disabled_metrics`             | `list(string)` | List of metrics to be disabled which, if set, overrides the default disabled metrics.                               | (see below)                         | no       |
+| `docker_host`                  | `string`       | Docker endpoint.                                                                                                    | `"unix:///var/run/docker.sock"`     | no       |
+| `docker_only`                  | `bool`         | Only report docker containers in addition to root stats.                                                            | `false`                             | no       |
+| `docker_tls_ca`                | `string`       | Path to a trusted CA for TLS connection to docker.                                                                  | `"ca.pem"`                          | no       |
+| `docker_tls_cert`              | `string`       | Path to client certificate for TLS connection to docker.                                                            | `"cert.pem"`                        | no       |
+| `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
+| `enabled_metrics`              | `list(string)` | List of metrics to be enabled which, if set, overrides `disabled_metrics`.                                          | `[]`                                | no       |
+| `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys matched with a specified prefix that needs to be collected for containers.   | `[]`                                | no       |
+| `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of perf events to measure.                                         | `""`                                | no       |
+| `raw_cgroup_prefix_allowlist`  | `list(string)` | List of cgroup path prefixes that need to be collected, even when `docker_only` is specified.                       | `[]`                                | no       |
+| `resctrl_interval`             | `duration`     | Interval to update resctrl mon groups.                                                                              | `"0"`                               | no       |
+| `storage_duration`             | `duration`     | Length of time to keep data stored in memory.                                                                       | `"2m"`                              | no       |
+| `store_container_labels`       | `bool`         | Whether to convert container labels and environment variables into labels on Prometheus metrics for each container. | `true`                              | no       |
+| `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
 
 For `allowlisted_container_labels` to take effect, `store_container_labels` must be set to `false`.
 
@@ -153,27 +153,27 @@ The values that you can use are:
 
 {{< column-list >}}
 
-- `"advtcp"`
-- `"app"`
-- `"cpu_topology"`
-- `"cpu"`
-- `"cpuLoad"`
-- `"cpuset"`
-- `"disk"`
-- `"diskIO"`
-- `"hugetlb"`
-- `"memory_numa"`
-- `"memory"`
-- `"network"`
-- `"oom_event"`
-- `"percpu"`
-- `"perf_event"`
-- `"process"`
-- `"referenced_memory"`
-- `"resctrl"`
-- `"sched"`
-- `"tcp"`
-- `"udp"`
+* `"advtcp"`
+* `"app"`
+* `"cpu_topology"`
+* `"cpu"`
+* `"cpuLoad"`
+* `"cpuset"`
+* `"disk"`
+* `"diskIO"`
+* `"hugetlb"`
+* `"memory_numa"`
+* `"memory"`
+* `"network"`
+* `"oom_event"`
+* `"percpu"`
+* `"perf_event"`
+* `"process"`
+* `"referenced_memory"`
+* `"resctrl"`
+* `"sched"`
+* `"tcp"`
+* `"udp"`
 
 {{< /column-list >}}
 
@@ -181,16 +181,16 @@ By default the following metric kinds are disabled:
 
 {{< column-list >}}
 
-- `"advtcp"`
-- `"cpu_topology"`
-- `"cpuset"`
-- `"hugetlb"`
-- `"memory_numa"`
-- `"process"`
-- `"referenced_memory"`
-- `"resctrl"`
-- `"tcp"`
-- `"udp"`
+* `"advtcp"`
+* `"cpu_topology"`
+* `"cpuset"`
+* `"hugetlb"`
+* `"memory_numa"`
+* `"process"`
+* `"referenced_memory"`
+* `"resctrl"`
+* `"tcp"`
+* `"udp"`
 
 {{< /column-list >}}
 
