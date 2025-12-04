@@ -73,6 +73,7 @@ type File struct {
 
 // Next reads and returns the next line from the file.
 // It blocks until a line is available, file is closed or unrecoverable error occurs.
+// If file was closed context.Canceled is returned.
 func (f *File) Next() (*Line, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
