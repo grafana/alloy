@@ -26,7 +26,8 @@ When you run the standalone binary, you must install the [Oracle Instant Client 
 Only the basic version is required for the exporter.
 
 {{< admonition type="note" >}}
-The {{< param "PRODUCT_NAME" >}} Docker image includes the Oracle Instant Client, so this prerequisite only applies to standalone binary installations.
+You must also provide Oracle Instant Client Basic when you run {{< param "PRODUCT_NAME" >}} in Docker or Kubernetes.
+The `prometheus.exporter.oracledb` component relies on Oracle Instant Client libraries that are available in the container image or host environment.
 {{< /admonition >}}
 
 ### Environment variables
