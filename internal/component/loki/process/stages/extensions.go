@@ -193,11 +193,6 @@ func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registere
 				"content",
 			},
 		},
-		{
-			OutputConfig: &OutputConfig{
-				"tags",
-			},
-		},
 	}
 
 	p, err := NewPipeline(logger, base, nil, registerer, minStability)
