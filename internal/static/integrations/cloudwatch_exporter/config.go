@@ -70,11 +70,12 @@ type TagsPerNamespace map[string][]string
 type DiscoveryJob struct {
 	InlineRegionAndRoles      `yaml:",inline"`
 	InlineCustomTags          `yaml:",inline"`
-	SearchTags                []Tag    `yaml:"search_tags"`
-	Type                      string   `yaml:"type"`
-	DimensionNameRequirements []string `yaml:"dimension_name_requirements"`
-	Metrics                   []Metric `yaml:"metrics"`
-	NilToZero                 *bool    `yaml:"nil_to_zero,omitempty"`
+	SearchTags                []Tag         `yaml:"search_tags"`
+	Type                      string        `yaml:"type"`
+	DimensionNameRequirements []string      `yaml:"dimension_name_requirements"`
+	Metrics                   []Metric      `yaml:"metrics"`
+	Delay                     time.Duration `yaml:"delay,omitempty"`
+	NilToZero                 *bool         `yaml:"nil_to_zero,omitempty"`
 }
 
 // StaticJob will scrape metrics that match all defined dimensions.
@@ -231,26 +232,8 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 	if err != nil {
 		return yaceModel.JobsConfig{}, fipsEnabled, err
 	}
-	PatchYACEDefaults(&modelConf)
 
 	return modelConf, fipsEnabled, nil
-}
-
-// PatchYACEDefaults overrides some default values YACE applies after validation.
-func PatchYACEDefaults(yc *yaceModel.JobsConfig) {
-	// YACE doesn't allow during validation a zero-delay in each metrics scrape. Override this behaviour since it's taken
-	// into account by the rounding period.
-	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/7e5949124bb5f26353eeff298724a5897de2a2a4/pkg/config/config.go#L320
-	for _, job := range yc.DiscoveryJobs {
-		for _, metric := range job.Metrics {
-			metric.Delay = 0
-		}
-	}
-	for _, staticConf := range yc.StaticJobs {
-		for _, metric := range staticConf.Metrics {
-			metric.Delay = 0
-		}
-	}
 }
 
 func toYACEStaticJob(job StaticJob) *yaceConf.Static {
@@ -298,6 +281,9 @@ func toYACEDiscoveryJob(job *DiscoveryJob) *yaceConf.Job {
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod: nil,
+		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
+			Delay: int64(job.Delay.Seconds()),
+		},
 	}
 	return &yaceJob
 }
@@ -327,10 +313,6 @@ func toYACEMetrics(metrics []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 			// data to fill the whole aggregation bucket. Therefore, Period == Length.
 			Period: periodSeconds,
 			Length: lengthSeconds,
-
-			// Delay moves back the time window for whom CloudWatch is requested data. Since we are already adjusting
-			// this with RoundingPeriod (see toYACEDiscoveryJob), we should omit this setting.
-			Delay: 0,
 
 			NilToZero:              nilToZero,
 			AddCloudwatchTimestamp: &addCloudwatchTimestamp,
