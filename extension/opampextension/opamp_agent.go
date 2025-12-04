@@ -4,6 +4,7 @@
 package opampextension // import "github.com/grafana/alloy/otelcol/extension/opampextension"
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -65,6 +66,9 @@ type opampAgent struct {
 	eclk            sync.RWMutex
 	effectiveConfig *confmap.Conf
 
+	// TODO: use with sync.RWMutex
+	lastRemoteConfigHash []byte
+
 	// lifetimeCtx is canceled on Stop of the component
 	lifetimeCtx       context.Context
 	lifetimeCtxCancel context.CancelFunc
@@ -105,6 +109,8 @@ var (
 )
 
 func (o *opampAgent) Start(ctx context.Context, host component.Host) error {
+	o.logger.Debug("Starting OpAMP agent")
+
 	o.reportFunc = func(event *componentstatus.Event) {
 		componentstatus.ReportStatus(host, event)
 	}
@@ -149,6 +155,7 @@ func (o *opampAgent) Start(ctx context.Context, host component.Host) error {
 			},
 			OnMessage: o.onMessage,
 		},
+		RemoteConfigStatus: o.ComposeRemoteConfigStatus(),
 	}
 
 	if err := o.createAgentDescription(); err != nil {
@@ -231,11 +238,7 @@ func (o *opampAgent) Dependencies() []component.ID {
 
 // Called from Collector service after config has been reloaded and applied
 func (o *opampAgent) NotifyConfig(ctx context.Context, conf *confmap.Conf) error {
-	currentHash, err := o.readRemoteConfigHash()
-	if err != nil {
-		o.logger.Debug("Could not read remote config hash, skipping status update", zap.Error(err))
-		return nil
-	}
+	o.logger.Debug("Notifying OpAMP agent of config change")
 
 	if o.capabilities.ReportsEffectiveConfig {
 		o.updateEffectiveConfig(conf)
@@ -244,23 +247,9 @@ func (o *opampAgent) NotifyConfig(ctx context.Context, conf *confmap.Conf) error
 		err := o.opampClient.UpdateEffectiveConfig(ctx)
 		if err != nil {
 			o.logger.Error("Failed to update effective config on OpAMP server", zap.Error(err))
-			return o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
-				LastRemoteConfigHash: currentHash,
-				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
-			})
-		}
-
-		err = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
-			LastRemoteConfigHash: currentHash,
-			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
-		})
-
-		if err != nil {
-			o.logger.Error("Failed to set remote config status to APPLIED", zap.Error(err))
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -347,6 +336,21 @@ func newOpampAgent(cfg *Config, set extension.Settings) (*opampAgent, error) {
 		return true
 	})
 
+	var lastRemoteConfigHash []byte
+
+	if cfg.Capabilities.ReportsRemoteConfig {
+		configDir := cfg.RemoteConfigDir
+
+		hashFilePath := filepath.Join(configDir, ".remote_config_hash")
+
+		hash, err := os.ReadFile(hashFilePath)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read remote config hash file: %w", err)
+		}
+
+		lastRemoteConfigHash = hash
+	}
+
 	opampClient := cfg.Server.GetClient(set.Logger)
 	agent := &opampAgent{
 		cfg:                      cfg,
@@ -361,6 +365,7 @@ func newOpampAgent(cfg *Config, set extension.Settings) (*opampAgent, error) {
 		componentHealthWg:        &sync.WaitGroup{},
 		readyCh:                  make(chan struct{}),
 		customCapabilityRegistry: newCustomCapabilityRegistry(set.Logger, opampClient),
+		lastRemoteConfigHash:     lastRemoteConfigHash,
 	}
 
 	agent.lifetimeCtx, agent.lifetimeCtxCancel = context.WithCancel(context.Background())
@@ -479,6 +484,18 @@ func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 	}
 }
 
+func (o *opampAgent) ComposeRemoteConfigStatus() *protobufs.RemoteConfigStatus {
+	if !o.capabilities.ReportsRemoteConfig || o.lastRemoteConfigHash == nil {
+		return nil
+	}
+
+	// TODO: read status from cache instead of assuming APPLIED?
+	return &protobufs.RemoteConfigStatus{
+		LastRemoteConfigHash: o.lastRemoteConfigHash,
+		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+	}
+}
+
 func (o *opampAgent) onMessage(_ context.Context, msg *types.MessageData) {
 	if msg.AgentIdentification != nil {
 		instanceID, err := uuid.FromBytes(msg.AgentIdentification.NewInstanceUid)
@@ -503,6 +520,12 @@ func (o *opampAgent) onMessage(_ context.Context, msg *types.MessageData) {
 func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfig) {
 	if remoteConfig.Config == nil || remoteConfig.Config.ConfigMap == nil {
 		o.logger.Warn("Received empty remote config")
+		return
+	}
+
+	// If new remote config hash is the same as the last remote config hash, skip processing
+	if bytes.Equal(remoteConfig.ConfigHash, o.lastRemoteConfigHash) {
+		o.logger.Debug("Received remote config with the same hash, skipping processing")
 		return
 	}
 
