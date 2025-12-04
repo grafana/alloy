@@ -2,7 +2,6 @@ package tail
 
 import (
 	"context"
-	"errors"
 	"os"
 	"runtime"
 
@@ -51,7 +50,7 @@ func blockUntilEvent(ctx context.Context, f *os.File, pos int64, cfg *Config) (e
 	origFi, err := os.Stat(cfg.Filename)
 	if err != nil {
 		// If file no longer exists we treat it as a delete event.
-		if errors.Is(err, os.ErrNotExist) {
+		if os.IsNotExist(err) {
 			return eventDeleted, nil
 		}
 		return eventNone, err
