@@ -22,15 +22,31 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
-- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+- Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
+- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
+
+- Add `delay` option to `prometheus.exporter.cloudwatch` component to delay scraping of metrics to account for CloudWatch ingestion latency. (@tmeijn)
+
+- Export `yace_.*` metrics from the underlying YACE Exporter to `prometheus.exporter.cloudwatch`. (@tmeijn)
+
+- (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
+  - `explain_plans`
+    - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
 
 ### Bugfixes
 
-
 - (_Public Preview_) Additions to `database_observability.postgres` component:
-    - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
+  - `schema_details`
+    - fixes collection of schema details for mixed case table names (@fridgepoet)
 
-v1.12.0-rc.3
+- (_Public Preview_) Additions to `database_observability.mysql` component:
+  - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
+  - add `setup_actors` collector that checks and optionally updates settings to avoid tracking queries for the currently connected user (@cristiangreco)
+
+- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
+
+v1.12.0
 -----------------
 
 ### Breaking changes
@@ -85,6 +101,8 @@ v1.12.0-rc.3
 - Add `file_match` block to `loki.source.file` for built-in file discovery using glob patterns. (@kalleep)
 
 - Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
+
+- Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile. (@luweglarz)
 
 - OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
   - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.

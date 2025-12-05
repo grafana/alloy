@@ -65,6 +65,31 @@ You can view the logs through Event Viewer.
 
 In other cases, redirect `stderr` of the {{< param "PRODUCT_NAME" >}} process to a file for logs to persist on disk.
 
+## Retrieve logs
+
+You can retrieve the logs in different ways depending on your platform and installation method:
+
+**Linux:**
+
+* If you're running {{< param "PRODUCT_NAME" >}} with systemd, use `journalctl -u alloy`.
+* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
+
+**macOS:**
+
+* If you're running {{< param "PRODUCT_NAME" >}} with Homebrew as a service, use `brew services info grafana/grafana/alloy` to check status and `tail -f $(brew --prefix)/var/log/alloy.log` for logs.
+* If you're running {{< param "PRODUCT_NAME" >}} with launchd, use `log show --predicate 'process == "alloy"' --info` or check `/usr/local/var/log/alloy.log`.
+* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
+
+**Windows:**
+
+* If you're running {{< param "PRODUCT_NAME" >}} as a Windows service, check the Windows Event Viewer under **Windows Logs** > **Application** for Alloy-related events.
+* If you're running {{< param "PRODUCT_NAME" >}} that is manually installed, check the log files in `%PROGRAMDATA%\Grafana\Alloy\logs\` or the directory specified in your configuration.
+* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
+
+**All platforms:**
+
+* {{< param "PRODUCT_NAME" >}} writes logs to `stderr` if started directly without a service manager.
+
 ## Example
 
 ```alloy

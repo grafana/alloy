@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/troubleshoot/debug/
 aliases:
   - ../tasks/debug/ # /docs/alloy/latest/tasks/debug/
-description: Learn about debugging issues with Grafana alloy
+description: Learn about debugging issues with Grafana Alloy
 title: Debug Grafana Alloy
 menuTitle: Debug
 weight: 1000
@@ -25,10 +25,10 @@ This default prevents other machines on the network from being able to view the 
 
 To expose the UI to other machines on the network on non-containerized platforms, refer to the documentation for how you [installed][install] {{< param "PRODUCT_NAME" >}}.
 
-If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer to the documentation for the [`alloy run` command][alloy run] to learn how to change the HTTP listen address, > and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
+If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer to the documentation for the [`run`][run] command to learn how to change the HTTP listen address and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
 
 [install]: ../../set-up/install/
-[alloy run]: ../../reference/cli/run/
+[run]: ../../reference/cli/run/
 {{< /admonition >}}
 
 ### Home page
@@ -56,6 +56,7 @@ To access the graph page of a module, click on the **Graph** button on the modul
 
 The amount of data that exits a component that supports [live debugging](#live-debugging-page) is shown on the outgoing edges of the component.
 The data is refreshed according to the `window` parameter.
+
 ### Component detail page
 
 {{< figure src="/media/docs/alloy/ui_component_detail_page_2.png" alt="Alloy UI component detail page" >}}
@@ -70,7 +71,7 @@ The component detail page shows the following information for each component:
 From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
 
 {{< admonition type="note" >}}
-Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
+Values marked as a [secret][] display only as the text `(secret)`.
 
 [secret]: ../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 {{< /admonition >}}
@@ -83,7 +84,7 @@ The clustering page shows the following information for each cluster node:
 
 * The node's name.
 * The node's advertised address.
-* The node's current state (Viewer/Participant/Terminating).
+* The node's current state: Viewer, Participant, or Terminating.
 * The local node that serves the UI.
 
 ### Live Debugging page
@@ -93,7 +94,7 @@ The clustering page shows the following information for each cluster node:
 Live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
 
 {{< admonition type="caution" >}}
-Live debugging is disabled by default to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [livedebugging block][livedebugging].
+Live debugging defaults to disabled to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [`livedebugging`][livedebugging] block.
 
 [livedebugging]: ../../reference/config-blocks/livedebugging/
 {{< /admonition >}}
@@ -128,19 +129,110 @@ Supported components:
 
 To debug using the UI:
 
-* Ensure that no component is reported as unhealthy.
+* Ensure that no component reports as unhealthy.
 * Ensure that the arguments and exports for misbehaving components appear correct.
 * Ensure that the live debugging data meets your expectations.
 
 ## Examine logs
 
-Logs may also help debug issues with {{< param "PRODUCT_NAME" >}}.
+{{< param "PRODUCT_NAME" >}} provides different log levels that help you determine the root cause of issues.
+You can configure the log level using the [`logging`][logging] configuration block in your {{< param "PRODUCT_NAME" >}} configuration file.
 
-To reduce logging noise, many components hide debugging info behind debug-level log lines.
-It's recommended that you configure the [`logging` block][logging] to show debug-level log lines when debugging issues with {{< param "PRODUCT_NAME" >}}.
+Logs from {{< param "PRODUCT_NAME" >}} are written in `logfmt` format by default.
+You can configure the [log format][] to be either `logfmt` or `json`.
+You can [retrieve][] the logs in different ways depending on your platform and installation method.
 
-The location of {{< param "PRODUCT_NAME" >}} logs is different based on how it's deployed.
-Refer to the [`logging` block][logging] page to see how to find logs for your system.
+[logging]: ../../reference/config-blocks/logging/
+[log format]: ../../reference/config-blocks/logging/#log-format
+[retrieve]: ../../reference/config-blocks/logging/#retrieve-logs
+
+### Common log messages
+
+The following log messages are normal during {{< param "PRODUCT_NAME" >}} operation:
+
+#### Component lifecycle messages
+
+During normal startup and operation, you'll see messages about component lifecycle:
+
+**Component startup and initialization:**
+
+```text
+level=info msg="starting controller"
+level=info msg="starting server"
+level=info msg="starting server" addr=localhost:8080
+level=info msg="started scheduled components"
+```
+
+{{< admonition type="note" >}}
+The `starting server` messages refer to the built-in [HTTP server][http] that hosts the debugging UI, `/metrics` endpoint, and other debugging endpoints.
+
+[http]: ../../reference/config-blocks/http/
+{{< /admonition >}}
+
+**Component updates and configuration changes:**
+
+```text
+level=info msg="configuration loaded"
+level=info msg="module content loaded"
+level=info msg="started scheduled components"
+level=info msg="terminating server"
+```
+
+**Component health reporting:**
+
+```text
+level=info msg="started scheduled components"
+level=warn msg="failed to start scheduled component" err="connection refused"
+level=warn msg="the discovery.process component only works on linux; enabling it otherwise will do nothing"
+```
+
+#### Cluster operation messages
+
+If you enable clustering, you'll see messages about cluster operations:
+
+**Normal startup and peer discovery:**
+
+```text
+level=info msg="starting cluster node" peers_count=2 peers=192.168.1.10:12345,192.168.1.11:12345 advertise_addr=192.168.1.12:12345
+level=info msg="using provided peers for discovery" join_peers="192.168.1.10:12345, 192.168.1.11:12345"
+level=info msg="discovered peers" peers_count=3 peers=192.168.1.10:12345,192.168.1.11:12345,192.168.1.12:12345
+level=info msg="rejoining peers" peers_count=2 peers=192.168.1.10:12345,192.168.1.11:12345
+```
+
+**Cluster size management:**
+
+```text
+level=info msg="minimum cluster size reached, marking cluster as ready to admit traffic" minimum_cluster_size=3 peers_count=3
+level=warn msg="minimum cluster size requirements are not met - marking cluster as not ready for traffic" minimum_cluster_size=3 minimum_size_wait_timeout=5m0s peers_count=2
+level=warn msg="deadline passed, marking cluster as ready to admit traffic" minimum_cluster_size=3 minimum_size_wait_timeout=5m0s peers_count=2
+```
+
+**Normal cluster operations:**
+
+```text
+level=debug msg="found an IP cluster join address" addr=192.168.1.10:12345
+level=debug msg="received DNS query response" addr=cluster.example.com record_type=A records_count=3
+```
+
+#### Expected warnings
+
+Some warnings are normal during startup or cluster changes:
+
+```text
+level=warn msg="failed to get peers to join at startup; will create a new cluster" err="no peers available"
+level=warn msg="failed to connect to peers; bootstrapping a new cluster" err="connection refused"
+level=warn msg="failed to resolve provided join address" addr=unavailable-node:12345
+```
+
+#### Problematic messages
+
+These messages indicate issues that require attention:
+
+```text
+level=error msg="failed to bootstrap a fresh cluster with no peers" err="bind: address already in use"
+level=error msg="failed to rejoin list of peers" err="connection timeout"
+level=warn msg="failed to refresh list of peers" err="dns resolution failed"
+```
 
 ## Debug clustering issues
 
@@ -153,16 +245,15 @@ To debug issues when using [clustering][], check for the following symptoms.
   Again, check for network connectivity issues.
   Check that the addresses or DNS names given to the node to join are correctly formatted and reachable.
 * **Configuration drift**: Clustering assumes that all nodes are running with the same configuration file at roughly the same time.
-  Check the logs for issues with the reloaded configuration file as well as the graph page to verify changes have been applied.
+  Check the logs for issues with the reloaded configuration file as well as the graph page to verify that the changes are applied.
 * **Node name conflicts**: Clustering assumes all nodes have unique names.
-  Nodes with conflicting names are rejected and won't join the cluster.
+  The cluster rejects nodes with conflicting names and they won't join the cluster.
   Look at the clustering UI page for the list of current peers with their names, and check the logs for any reported name conflict events.
 * **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it hasn't completely gone away.
   Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_NAME" >}} has been shut down.
 
 {{< admonition type="note" >}}
-Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an Alloy instance that can be interpreted as a node not joining the cluster.
+Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an {{< param "PRODUCT_NAME" >}} instance that you can interpret as a node not joining the cluster.
 {{< /admonition >}}
 
-[logging]: ../../reference/config-blocks/logging/
 [clustering]: ../../get-started/clustering/
