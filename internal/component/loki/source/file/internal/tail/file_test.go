@@ -238,8 +238,18 @@ func createFile(t *testing.T, name, content string) string {
 	return path
 }
 
-func recreateFile(t *testing.T, path, content string) {
-	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
+func createEmptyFile(t *testing.T, name string) *os.File {
+	path := t.TempDir() + "/" + name
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	return f
+}
+
+func createFileWithContent(t *testing.T, name, content string) *os.File {
+	path := createFile(t, name, content)
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	require.NoError(t, err)
+	return f
 }
 
 func appendToFile(t *testing.T, name, content string) {
