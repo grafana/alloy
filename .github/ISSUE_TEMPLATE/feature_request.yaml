@@ -85,6 +85,7 @@ body:
       - otelcol.auth.headers
       - otelcol.auth.oauth2
       - otelcol.auth.sigv4
+      - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
       - otelcol.connector.spanlogs
