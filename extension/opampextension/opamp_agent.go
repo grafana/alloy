@@ -311,23 +311,22 @@ func newOpampAgent(cfg *Config, set extension.Settings) (*opampAgent, error) {
 		agentVersion = sv.AsString()
 	}
 
-	uid, err := uuid.NewV7()
+	// 1. If instance_uid is explicitly configured, use it
+	// 2. Else, try to read from persisted file
+	// 3. Else, try to get from resource attributes
+	// 4. Else, generate new UUID and persist to file
+	uid, persistInstanceUID, err := resolveInstanceUID(cfg, set)
 	if err != nil {
-		return nil, fmt.Errorf("could not generate uuidv7: %w", err)
+		return nil, err
 	}
 
-	if cfg.InstanceUID != "" {
-		uid, err = parseInstanceIDString(cfg.InstanceUID)
-		if err != nil {
-			return nil, fmt.Errorf("could not parse configured instance id: %w", err)
-		}
-	} else {
-		sid, ok := set.Resource.Attributes().Get(string(semconv.ServiceInstanceIDKey))
-		if ok {
-			uid, err = uuid.Parse(sid.AsString())
-			if err != nil {
-				return nil, err
-			}
+	// Persist the instance_uid if it was newly generated
+	if persistInstanceUID {
+		if err := storeInstanceUID(cfg.RemoteConfigDir, uid, set.Logger); err != nil {
+			// Log the error but don't fail - we can still operate with the generated UUID
+			set.Logger.Warn("Failed to persist instance_uid to disk",
+				zap.String("instance_uid", uid.String()),
+				zap.Error(err))
 		}
 	}
 	resourceAttrs := make(map[string]string, set.Resource.Attributes().Len())
@@ -389,6 +388,95 @@ func parseInstanceIDString(instanceUID string) (uuid.UUID, error) {
 	}
 
 	return uuid.Nil, errors.Join(uuidParseErr, ulidParseErr)
+}
+
+const instanceUIDFileName = ".instance_uid"
+
+// resolveInstanceUID determines the instance_uid using the hybrid approach:
+// 1. If instance_uid is explicitly configured, use it
+// 2. Else, try to read from persisted file
+// 3. Else, try to get from resource attributes
+// 4. Else, generate new UUID (caller should persist it)
+// Returns the UUID and a boolean indicating whether it should be persisted.
+func resolveInstanceUID(cfg *Config, set extension.Settings) (uuid.UUID, bool, error) {
+	// Priority 1: Explicitly configured instance_uid
+	if cfg.InstanceUID != "" {
+		uid, err := parseInstanceIDString(cfg.InstanceUID)
+		if err != nil {
+			return uuid.Nil, false, fmt.Errorf("could not parse configured instance id: %w", err)
+		}
+		set.Logger.Debug("Using configured instance_uid", zap.String("instance_uid", uid.String()))
+		return uid, false, nil
+	}
+
+	// Priority 2: Read from persisted file
+	if uid, err := readInstanceUID(cfg.RemoteConfigDir); err == nil {
+		set.Logger.Debug("Using persisted instance_uid from disk", zap.String("instance_uid", uid.String()))
+		return uid, false, nil
+	}
+
+	// Priority 3: Get from resource attributes
+	if sid, ok := set.Resource.Attributes().Get(string(semconv.ServiceInstanceIDKey)); ok {
+		uid, err := uuid.Parse(sid.AsString())
+		if err == nil {
+			set.Logger.Debug("Using instance_uid from resource attributes", zap.String("instance_uid", uid.String()))
+			// Persist this for future restarts
+			return uid, true, nil
+		}
+		// If parsing fails, fall through to generate new UUID
+		set.Logger.Warn("Failed to parse service.instance.id from resource attributes, generating new UUID",
+			zap.String("service.instance.id", sid.AsString()),
+			zap.Error(err))
+	}
+
+	// Priority 4: Generate new UUID
+	uid, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, false, fmt.Errorf("could not generate uuidv7: %w", err)
+	}
+	set.Logger.Info("Generated new instance_uid", zap.String("instance_uid", uid.String()))
+	return uid, true, nil
+}
+
+// readInstanceUID reads the persisted instance_uid from the RemoteConfigDir.
+func readInstanceUID(configDir string) (uuid.UUID, error) {
+	if configDir == "" {
+		return uuid.Nil, errors.New("remote_config_dir not configured")
+	}
+
+	instanceUIDPath := filepath.Join(configDir, instanceUIDFileName)
+	data, err := os.ReadFile(instanceUIDPath)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to read instance_uid file: %w", err)
+	}
+
+	uidStr := strings.TrimSpace(string(data))
+	uid, err := parseInstanceIDString(uidStr)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse persisted instance_uid: %w", err)
+	}
+
+	return uid, nil
+}
+
+// storeInstanceUID persists the instance_uid to the RemoteConfigDir.
+func storeInstanceUID(configDir string, uid uuid.UUID, logger *zap.Logger) error {
+	if configDir == "" {
+		return errors.New("remote_config_dir not configured, cannot persist instance_uid")
+	}
+
+	// Ensure the directory exists
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create remote config directory: %w", err)
+	}
+
+	instanceUIDPath := filepath.Join(configDir, instanceUIDFileName)
+	if err := os.WriteFile(instanceUIDPath, []byte(uid.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write instance_uid file: %w", err)
+	}
+
+	logger.Debug("Stored instance_uid to disk", zap.String("file", instanceUIDPath), zap.String("instance_uid", uid.String()))
+	return nil
 }
 
 func stringKeyValue(key, value string) *protobufs.KeyValue {
@@ -455,6 +543,13 @@ func (o *opampAgent) updateAgentIdentity(instanceID uuid.UUID) {
 		zap.String("old_id", o.instanceID.String()),
 		zap.String("new_id", instanceID.String()))
 	o.instanceID = instanceID
+
+	// Persist server-assigned ID for future restarts
+	if err := storeInstanceUID(o.cfg.RemoteConfigDir, instanceID, o.logger); err != nil {
+		o.logger.Warn("Failed to persist server-assigned instance_uid",
+			zap.String("instance_uid", instanceID.String()),
+			zap.Error(err))
+	}
 }
 
 func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {

@@ -37,7 +37,8 @@ func TestUnmarshalConfig(t *testing.T) {
 					Endpoint: "wss://127.0.0.1:4320/v1/opamp",
 				},
 			},
-			InstanceUID: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+			RemoteConfigDir: "/tmp/alloy-opamp-config",
+			InstanceUID:     "01BX5ZZKBKACTAV9WEVGEMMVRZ",
 			Capabilities: Capabilities{
 				ReportsEffectiveConfig:     true,
 				ReportsHealth:              true,
@@ -63,7 +64,8 @@ func TestUnmarshalHttpConfig(t *testing.T) {
 					PollingInterval: 1 * time.Minute,
 				},
 			},
-			InstanceUID: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+			RemoteConfigDir: "/tmp/alloy-opamp-config",
+			InstanceUID:     "01BX5ZZKBKACTAV9WEVGEMMVRZ",
 			Capabilities: Capabilities{
 				ReportsEffectiveConfig:     true,
 				ReportsHealth:              true,

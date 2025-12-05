@@ -50,13 +50,14 @@ func TestNewOpampAgent(t *testing.T) {
 }
 
 func TestNewOpampAgentAttributes(t *testing.T) {
-	cfg := createDefaultConfig()
+	cfg := createDefaultConfig().(*Config)
+	cfg.RemoteConfigDir = t.TempDir() // Use isolated temp dir to avoid test pollution
 	set := extensiontest.NewNopSettings(extensiontest.NopType)
 	set.BuildInfo = component.BuildInfo{Version: "test version", Command: "otelcoltest"}
 	set.Resource.Attributes().PutStr(string(semconv.ServiceNameKey), "otelcol-distro")
 	set.Resource.Attributes().PutStr(string(semconv.ServiceVersionKey), "distro.0")
 	set.Resource.Attributes().PutStr(string(semconv.ServiceInstanceIDKey), "f8999bc1-4c9b-4619-9bae-7f009d2411ec")
-	o, err := newOpampAgent(cfg.(*Config), set)
+	o, err := newOpampAgent(cfg, set)
 	assert.NoError(t, err)
 	assert.Equal(t, "otelcol-distro", o.agentType)
 	assert.Equal(t, "distro.0", o.agentVersion)
@@ -168,6 +169,7 @@ func TestCreateAgentDescription(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := createDefaultConfig().(*Config)
+			cfg.RemoteConfigDir = t.TempDir() // Use isolated temp dir to avoid test pollution
 			tc.cfg(cfg)
 
 			set := extensiontest.NewNopSettings(extensiontest.NopType)
@@ -737,6 +739,234 @@ func TestParseInstanceIDString(t *testing.T) {
 			require.Equal(t, tc.expectedUUID, id)
 		})
 	}
+}
+
+func TestInstanceUIDPersistence(t *testing.T) {
+	t.Run("stores and reads instance_uid from file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		expectedUID := uuid.Must(uuid.NewV7())
+		logger := zap.NewNop()
+
+		// Store the instance_uid
+		err := storeInstanceUID(tmpDir, expectedUID, logger)
+		require.NoError(t, err)
+
+		// Read it back
+		readUID, err := readInstanceUID(tmpDir)
+		require.NoError(t, err)
+		assert.Equal(t, expectedUID, readUID)
+	})
+
+	t.Run("readInstanceUID fails when file does not exist", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		_, err := readInstanceUID(tmpDir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read instance_uid file")
+	})
+
+	t.Run("readInstanceUID fails with empty config dir", func(t *testing.T) {
+		_, err := readInstanceUID("")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "remote_config_dir not configured")
+	})
+
+	t.Run("storeInstanceUID fails with empty config dir", func(t *testing.T) {
+		err := storeInstanceUID("", uuid.Must(uuid.NewV7()), zap.NewNop())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "remote_config_dir not configured")
+	})
+
+	t.Run("storeInstanceUID creates directory if it does not exist", func(t *testing.T) {
+		tmpDir := filepath.Join(t.TempDir(), "nested", "dir")
+		uid := uuid.Must(uuid.NewV7())
+		logger := zap.NewNop()
+
+		err := storeInstanceUID(tmpDir, uid, logger)
+		require.NoError(t, err)
+
+		// Verify directory was created
+		_, err = os.Stat(tmpDir)
+		require.NoError(t, err)
+
+		// Verify file was written
+		readUID, err := readInstanceUID(tmpDir)
+		require.NoError(t, err)
+		assert.Equal(t, uid, readUID)
+	})
+}
+
+func TestResolveInstanceUID(t *testing.T) {
+	t.Run("uses configured instance_uid first", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		expectedUID := uuid.MustParse("f8999bc1-4c9b-4619-9bae-7f009d2411ec")
+
+		cfg := &Config{
+			InstanceUID:     expectedUID.String(),
+			RemoteConfigDir: tmpDir,
+		}
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+
+		uid, shouldPersist, err := resolveInstanceUID(cfg, set)
+		require.NoError(t, err)
+		assert.Equal(t, expectedUID, uid)
+		assert.False(t, shouldPersist, "configured instance_uid should not be persisted")
+	})
+
+	t.Run("uses persisted file when no config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		expectedUID := uuid.Must(uuid.NewV7())
+
+		// Pre-persist an instance_uid
+		err := storeInstanceUID(tmpDir, expectedUID, zap.NewNop())
+		require.NoError(t, err)
+
+		cfg := &Config{
+			RemoteConfigDir: tmpDir,
+		}
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+
+		uid, shouldPersist, err := resolveInstanceUID(cfg, set)
+		require.NoError(t, err)
+		assert.Equal(t, expectedUID, uid)
+		assert.False(t, shouldPersist, "persisted instance_uid should not be re-persisted")
+	})
+
+	t.Run("uses resource attribute when no config or file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		expectedUID := uuid.MustParse("f8999bc1-4c9b-4619-9bae-7f009d2411ec")
+
+		cfg := &Config{
+			RemoteConfigDir: tmpDir,
+		}
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		set.Resource.Attributes().PutStr(string(semconv.ServiceInstanceIDKey), expectedUID.String())
+
+		uid, shouldPersist, err := resolveInstanceUID(cfg, set)
+		require.NoError(t, err)
+		assert.Equal(t, expectedUID, uid)
+		assert.True(t, shouldPersist, "instance_uid from resource should be persisted")
+	})
+
+	t.Run("generates new UUID when no other source available", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &Config{
+			RemoteConfigDir: tmpDir,
+		}
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+
+		uid, shouldPersist, err := resolveInstanceUID(cfg, set)
+		require.NoError(t, err)
+		assert.NotEqual(t, uuid.Nil, uid)
+		assert.True(t, shouldPersist, "generated instance_uid should be persisted")
+	})
+
+	t.Run("configured instance_uid takes priority over persisted file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		persistedUID := uuid.Must(uuid.NewV7())
+		configuredUID := uuid.MustParse("f8999bc1-4c9b-4619-9bae-7f009d2411ec")
+
+		// Pre-persist a different instance_uid
+		err := storeInstanceUID(tmpDir, persistedUID, zap.NewNop())
+		require.NoError(t, err)
+
+		cfg := &Config{
+			InstanceUID:     configuredUID.String(),
+			RemoteConfigDir: tmpDir,
+		}
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+
+		uid, shouldPersist, err := resolveInstanceUID(cfg, set)
+		require.NoError(t, err)
+		assert.Equal(t, configuredUID, uid)
+		assert.False(t, shouldPersist)
+	})
+
+	t.Run("persisted file takes priority over resource attribute", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		persistedUID := uuid.Must(uuid.NewV7())
+		resourceUID := uuid.MustParse("f8999bc1-4c9b-4619-9bae-7f009d2411ec")
+
+		// Pre-persist an instance_uid
+		err := storeInstanceUID(tmpDir, persistedUID, zap.NewNop())
+		require.NoError(t, err)
+
+		cfg := &Config{
+			RemoteConfigDir: tmpDir,
+		}
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		set.Resource.Attributes().PutStr(string(semconv.ServiceInstanceIDKey), resourceUID.String())
+
+		uid, shouldPersist, err := resolveInstanceUID(cfg, set)
+		require.NoError(t, err)
+		assert.Equal(t, persistedUID, uid)
+		assert.False(t, shouldPersist)
+	})
+}
+
+func TestNewOpampAgentPersistsInstanceUID(t *testing.T) {
+	t.Run("persists generated instance_uid to file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := createDefaultConfig().(*Config)
+		cfg.RemoteConfigDir = tmpDir
+
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		set.BuildInfo = component.BuildInfo{Version: "test version", Command: "otelcoltest"}
+
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer o.Shutdown(t.Context())
+
+		// Verify the instance_uid was persisted
+		readUID, err := readInstanceUID(tmpDir)
+		require.NoError(t, err)
+		assert.Equal(t, o.instanceID, readUID)
+	})
+
+	t.Run("reads persisted instance_uid on restart", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		expectedUID := uuid.Must(uuid.NewV7())
+
+		// Pre-persist an instance_uid (simulating a previous run)
+		err := storeInstanceUID(tmpDir, expectedUID, zap.NewNop())
+		require.NoError(t, err)
+
+		cfg := createDefaultConfig().(*Config)
+		cfg.RemoteConfigDir = tmpDir
+
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		set.BuildInfo = component.BuildInfo{Version: "test version", Command: "otelcoltest"}
+
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer o.Shutdown(t.Context())
+
+		// Instance ID should match the persisted one
+		assert.Equal(t, expectedUID, o.instanceID)
+	})
+}
+
+func TestUpdateAgentIdentityPersistsToFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := createDefaultConfig().(*Config)
+	cfg.RemoteConfigDir = tmpDir
+
+	set := extensiontest.NewNopSettings(extensiontest.NopType)
+	o, err := newOpampAgent(cfg, set)
+	require.NoError(t, err)
+	defer o.Shutdown(t.Context())
+
+	// Update identity (simulating server-assigned ID)
+	newUID := uuid.Must(uuid.NewV7())
+	o.updateAgentIdentity(newUID)
+
+	// Verify the new ID was persisted
+	readUID, err := readInstanceUID(tmpDir)
+	require.NoError(t, err)
+	assert.Equal(t, newUID, readUID)
 }
 
 func TestOpAMPAgent_Dependencies(t *testing.T) {

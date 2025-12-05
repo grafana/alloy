@@ -10,7 +10,6 @@ import (
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
-	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	forwardconnector "go.opentelemetry.io/collector/connector/forwardconnector"
 	debugexporter "go.opentelemetry.io/collector/exporter/debugexporter"
 	nopexporter "go.opentelemetry.io/collector/exporter/nopexporter"
@@ -40,9 +39,7 @@ import (
 
 func components() (otelcol.Factories, error) {
 	var err error
-	factories := otelcol.Factories{
-		Telemetry: otelconftelemetry.NewFactory(),
-	}
+	factories := otelcol.Factories{}
 
 	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory](
 		zpagesextension.NewFactory(),
