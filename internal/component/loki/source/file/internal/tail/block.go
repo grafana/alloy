@@ -25,7 +25,6 @@ func blockUntilExists(ctx context.Context, cfg *Config) error {
 		} else if !os.IsNotExist(err) {
 			return err
 		}
-
 		backoff.Wait()
 	}
 

@@ -2,14 +2,50 @@ package tail
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestBlockUntilExists(t *testing.T) {
+	watcherConfig := WatcherConfig{
+		MinPollFrequency: 5 * time.Millisecond,
+		MaxPollFrequency: 5 * time.Millisecond,
+	}
+
+	t.Run("should block until file exists", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), "eventually")
+
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			createFileWithPath(t, filename, "")
+		}()
+
+		err := blockUntilExists(context.Background(), &Config{
+			Filename:      filename,
+			WatcherConfig: watcherConfig,
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("should exit when context is canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			cancel()
+		}()
+
+		err := blockUntilExists(ctx, &Config{
+			Filename:      filepath.Join(t.TempDir(), "never"),
+			WatcherConfig: watcherConfig,
+		})
+		require.ErrorIs(t, err, context.Canceled)
+	})
+}
 
 func TestBlockUntilEvent(t *testing.T) {
 	watcherConfig := WatcherConfig{
@@ -22,7 +58,7 @@ func TestBlockUntilEvent(t *testing.T) {
 		defer f.Close()
 
 		go func() {
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			_, err := f.WriteString("updated")
 			require.NoError(t, err)
 		}()
@@ -40,7 +76,7 @@ func TestBlockUntilEvent(t *testing.T) {
 		defer f.Close()
 
 		go func() {
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			require.NoError(t, os.Chtimes(f.Name(), time.Now(), time.Now()))
 		}()
 
@@ -57,7 +93,7 @@ func TestBlockUntilEvent(t *testing.T) {
 		defer f.Close()
 
 		go func() {
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			removeFile(t, f.Name())
 		}()
 
@@ -91,9 +127,8 @@ func TestBlockUntilEvent(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			time.Sleep(50 * time.Millisecond)
-			err := f.Truncate(0)
-			fmt.Println(err)
+			time.Sleep(10 * time.Millisecond)
+			require.NoError(t, f.Truncate(0))
 		}()
 
 		event, err := blockUntilEvent(context.Background(), f, offset, &Config{
@@ -103,4 +138,40 @@ func TestBlockUntilEvent(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, eventTruncated, event)
 	})
+
+	t.Run("should exit when context is canceled", func(t *testing.T) {
+		f := createEmptyFile(t, "startempty")
+		defer f.Close()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			cancel()
+		}()
+
+		event, err := blockUntilEvent(ctx, f, 0, &Config{
+			Filename:      f.Name(),
+			WatcherConfig: watcherConfig,
+		})
+		require.ErrorIs(t, err, context.Canceled)
+		require.Equal(t, eventNone, event)
+	})
+}
+
+func createEmptyFile(t *testing.T, name string) *os.File {
+	path := filepath.Join(t.TempDir(), name)
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	return f
+}
+
+func createFileWithContent(t *testing.T, name, content string) *os.File {
+	path := createFile(t, name, content)
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	require.NoError(t, err)
+	return f
+}
+
+func createFileWithPath(t *testing.T, path, content string) {
+	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
 }
