@@ -12,12 +12,14 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 
+	"dario.cat/mergo"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 	"github.com/open-telemetry/opamp-go/client"
@@ -27,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensioncapabilities"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -618,6 +621,18 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 		return
 	}
 
+	err := o.validateRemoteConfig(remoteConfig)
+
+	if err != nil {
+		_ = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+			LastRemoteConfigHash: remoteConfig.ConfigHash,
+			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+			ErrorMessage:         fmt.Sprintf("Invalid config: %v", err),
+		})
+		o.logger.Error("Received invalid remote config", zap.Error(err))
+		return
+	}
+
 	// If new remote config hash is the same as the last remote config hash, skip processing
 	if bytes.Equal(remoteConfig.ConfigHash, o.lastRemoteConfigHash) {
 		o.logger.Debug("Received remote config with the same hash, skipping processing")
@@ -625,7 +640,7 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 	}
 
 	// Set status to APPLYING - we're starting to process the remote config
-	err := o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+	err = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
 		LastRemoteConfigHash: remoteConfig.ConfigHash,
 		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING,
 	})
@@ -673,6 +688,108 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 	if err != nil {
 		o.logger.Error("Failed to store remote config hash", zap.Error(err))
 	}
+}
+
+func (o *opampAgent) validateRemoteConfig(remoteConfig *protobufs.AgentRemoteConfig) error {
+	err := xconfmap.Validate(remoteConfig.Config)
+	if err != nil {
+		return fmt.Errorf("invalid remote config: %w", err)
+	}
+
+	// Merge all config files into a single YAML string to validate against
+	mergedConfig, err := o.mergeAgentConfigFiles(remoteConfig.Config.ConfigMap)
+	if err != nil {
+		return fmt.Errorf("failed to merge config files: %w", err)
+	}
+
+	// Create a temporary file to write the merged config
+	tmpFile, err := os.CreateTemp("", "opamp-remote-config-*.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+	}()
+
+	if _, err := tmpFile.WriteString(mergedConfig); err != nil {
+		return fmt.Errorf("failed to write config to temporary file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary file: %w", err)
+	}
+
+	alloyBinary := "./build/alloy"
+
+	cmd := exec.Command(alloyBinary, "otel", "validate", "--config="+tmpFile.Name())
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		output := stdout.String()
+		if output == "" {
+			output = stderr.String()
+		}
+		if output == "" {
+			output = err.Error()
+		}
+
+		return fmt.Errorf("%s", output)
+	}
+
+	output := stdout.String()
+	if output != "" {
+		o.logger.Debug("Alloy validation succeeded", zap.String("output", output))
+	}
+
+	return nil
+}
+
+func (o *opampAgent) mergeAgentConfigFiles(configMap map[string]*protobufs.AgentConfigFile) (string, error) {
+	if len(configMap) == 0 {
+		return "", fmt.Errorf("config map is empty")
+	}
+
+	merged := map[string]any{}
+	keys := make([]string, len(configMap))
+
+	i := 0
+	for k := range configMap {
+		keys[i] = k
+		i++
+	}
+
+	for _, key := range keys {
+		file := configMap[key]
+		if file == nil || !isYAML(file.ContentType) {
+			continue
+		}
+
+		var m map[string]any
+		if err := yaml.Unmarshal(file.Body, &m); err != nil {
+			return "", fmt.Errorf("failed to parse YAML %q: %w", key, err)
+		}
+
+		if err := mergo.Merge(&merged, m, mergo.WithOverride); err != nil {
+			return "", fmt.Errorf("failed merging %q: %w", key, err)
+		}
+	}
+
+	out, err := yaml.Marshal(merged)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal merged config: %w", err)
+	}
+	return string(out), nil
+}
+
+func isYAML(ct string) bool {
+	switch ct {
+	case "", "text/yaml", "application/x-yaml":
+		return true
+	}
+	return false
 }
 
 func (o *opampAgent) storeRemoteConfigHash(hash []byte) error {
