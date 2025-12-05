@@ -13,6 +13,8 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 var deltaProfiles map[string][]fastdelta.ValueType = map[string][]fastdelta.ValueType{
@@ -58,6 +60,10 @@ type deltaAppender struct {
 
 	// true if we have seen at least one sample
 	initialized bool
+}
+
+func (d *deltaAppender) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+	
 }
 
 type gzipBuffer struct {

@@ -17,6 +17,8 @@ import (
 	"reflect"
 	"sync"
 
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -203,6 +205,10 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	profile.Labels = newLabels
 	c.metrics.profilesOutgoing.Inc()
 	return c.fanout.Appender().AppendIngest(ctx, profile)
+}
+
+func (c *Component) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+	c.fanout.Appender().UploadDebugInfo(ctx, fileID, fileName, buildID, open)
 }
 
 func (c *Component) Appender() pyroscope.Appender {
