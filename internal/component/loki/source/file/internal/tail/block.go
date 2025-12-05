@@ -2,6 +2,7 @@ package tail
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 
@@ -76,6 +77,8 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 		if err != nil || deletePending {
 			return eventDeleted, nil
 		}
+
+		fmt.Println(err, deletePending)
 
 		fi, err := os.Stat(cfg.Filename)
 		if err != nil {
