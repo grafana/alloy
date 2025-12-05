@@ -101,13 +101,12 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 		}
 
 		// File got bigger?
-		if prevSize > 0 && prevSize < currentSize {
+		if prevSize < currentSize {
 			return eventModified, nil
 		}
 
 		// File was appended to (changed)?
-		modTime := fi.ModTime()
-		if modTime != prevModTime {
+		if fi.ModTime() != prevModTime {
 			return eventModified, nil
 		}
 
