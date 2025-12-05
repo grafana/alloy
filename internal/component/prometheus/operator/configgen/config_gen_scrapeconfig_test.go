@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/http"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
@@ -252,6 +253,81 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 			}
 			checkRelabels(rlcs, tc.expectedRelabels)
 			checkRelabels(mrlcs, tc.expectedMetricRelabels)
+		})
+	}
+}
+
+func TestGenerateHTTPScrapeConfigConfig(t *testing.T) {
+	suite := []struct {
+		name     string
+		m        *promopv1alpha1.ScrapeConfig
+		ep       promopv1alpha1.HTTPSDConfig
+		expected *config.ScrapeConfig
+	}{
+		{
+			name: "http service discovery",
+			m: &promopv1alpha1.ScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test-namespace",
+					Name:      "test-scrapeconfig",
+				},
+				Spec: promopv1alpha1.ScrapeConfigSpec{
+					MetricsPath:    ptr.To("/metrics"),
+					ScrapeInterval: ptr.To(promopv1.Duration("60s")),
+				},
+			},
+			ep: promopv1alpha1.HTTPSDConfig{
+				URL:             "http://example-service.test-namespace:8080/sd",
+				RefreshInterval: ptr.To(promopv1.Duration("15s")),
+			},
+			expected: &config.ScrapeConfig{
+				JobName:         "scrapeConfig/test-namespace/test-scrapeconfig/http/0",
+				HonorTimestamps: true,
+				ScrapeInterval:  model.Duration(60 * time.Second),
+				ScrapeTimeout:   model.Duration(10 * time.Second),
+				MetricsPath:     "/metrics",
+				Scheme:          "http",
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&http.SDConfig{
+						HTTPClientConfig: commonConfig.DefaultHTTPClientConfig,
+						RefreshInterval:  model.Duration(15 * time.Second),
+						URL:              "http://example-service.test-namespace:8080/sd",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range suite {
+		t.Run(tc.name, func(t *testing.T) {
+			cg := &ConfigGenerator{
+				Client: &kubernetes.ClientArguments{},
+				AdditionalRelabelConfigs: []*alloy_relabel.Config{
+					{TargetLabel: "__meta_foo", Replacement: "bar"},
+				},
+				ScrapeOptions: operator.ScrapeOptions{
+					DefaultScrapeInterval: time.Hour,
+					DefaultScrapeTimeout:  42 * time.Second,
+				},
+			}
+			got, err := cg.generateHTTPScrapeConfigConfig(tc.m, tc.ep, 0)
+			require.NoError(t, err)
+
+			// Check job name
+			assert.Equal(t, tc.expected.JobName, got.JobName)
+
+			// Check metrics path
+			assert.Equal(t, tc.expected.MetricsPath, got.MetricsPath)
+
+			// Check scrape interval
+			assert.Equal(t, tc.expected.ScrapeInterval, got.ScrapeInterval)
+
+			// Check service discovery configs
+			require.Len(t, got.ServiceDiscoveryConfigs, 1)
+			httpSD, ok := got.ServiceDiscoveryConfigs[0].(*http.SDConfig)
+			require.True(t, ok, "Expected HTTP SD config")
+			assert.Equal(t, "http://example-service.test-namespace:8080/sd", httpSD.URL)
+			assert.Equal(t, model.Duration(15*time.Second), httpSD.RefreshInterval)
 		})
 	}
 }
