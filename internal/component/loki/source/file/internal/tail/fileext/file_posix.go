@@ -1,6 +1,6 @@
 //go:build linux || darwin || freebsd || netbsd || openbsd
 
-package tail
+package fileext
 
 import (
 	"os"
@@ -21,4 +21,8 @@ func OpenFile(name string) (file *os.File, err error) {
 		}
 	}
 	return os.Open(filename)
+}
+
+func IsDeletePending(_ *os.File) (bool, error) {
+	return false, nil
 }

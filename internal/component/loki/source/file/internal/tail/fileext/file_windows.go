@@ -1,18 +1,30 @@
 //go:build windows
 
-package winfile
+package fileext
 
 import (
 	"os"
+	"runtime"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 // issue also described here
-//https://codereview.appspot.com/8203043/
+// https://codereview.appspot.com/8203043/
+
+// https://github.com/jnwhiteh/golang/blob/master/src/pkg/os/file_windows.go#L133
+func OpenFile(name string) (file *os.File, err error) {
+	f, e := open(name, os.O_RDONLY|syscall.O_CLOEXEC, 0)
+	if e != nil {
+		return nil, e
+	}
+	return os.NewFile(uintptr(f), name), nil
+}
 
 // https://github.com/jnwhiteh/golang/blob/master/src/pkg/syscall/syscall_windows.go#L218
-func Open(path string, mode int, perm uint32) (fd syscall.Handle, err error) {
+func open(path string, mode int, _ uint32) (fd syscall.Handle, err error) {
 	if len(path) == 0 {
 		return syscall.InvalidHandle, syscall.ERROR_FILE_NOT_FOUND
 	}
@@ -66,27 +78,38 @@ func makeInheritSa() *syscall.SecurityAttributes {
 	return &sa
 }
 
-// https://github.com/jnwhiteh/golang/blob/master/src/pkg/os/file_windows.go#L133
-func OpenFile(name string, flag int, perm os.FileMode) (file *os.File, err error) {
-	r, e := Open(name, flag|syscall.O_CLOEXEC, syscallMode(perm))
-	if e != nil {
-		return nil, e
+func IsDeletePending(f *os.File) (bool, error) {
+	if f == nil {
+		return false, nil
 	}
-	return os.NewFile(uintptr(r), name), nil
+
+	fi, err := getFileStandardInfo(f)
+	if err != nil {
+		return false, err
+	}
+
+	return fi.DeletePending, nil
 }
 
-// https://github.com/jnwhiteh/golang/blob/master/src/pkg/os/file_posix.go#L61
-func syscallMode(i os.FileMode) (o uint32) {
-	o |= uint32(i.Perm())
-	if i&os.ModeSetuid != 0 {
-		o |= syscall.S_ISUID
+// From: https://github.com/microsoft/go-winio/blob/main/fileinfo.go
+// FileStandardInfo contains extended information for the file.
+// FILE_STANDARD_INFO in WinBase.h
+// https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_standard_info
+type fileStandardInfo struct {
+	AllocationSize, EndOfFile int64
+	NumberOfLinks             uint32
+	DeletePending, Directory  bool
+}
+
+// GetFileStandardInfo retrieves ended information for the file.
+func getFileStandardInfo(f *os.File) (*fileStandardInfo, error) {
+	si := &fileStandardInfo{}
+	if err := windows.GetFileInformationByHandleEx(windows.Handle(f.Fd()),
+		windows.FileStandardInfo,
+		(*byte)(unsafe.Pointer(si)),
+		uint32(unsafe.Sizeof(*si))); err != nil {
+		return nil, &os.PathError{Op: "GetFileInformationByHandleEx", Path: f.Name(), Err: err}
 	}
-	if i&os.ModeSetgid != 0 {
-		o |= syscall.S_ISGID
-	}
-	if i&os.ModeSticky != 0 {
-		o |= syscall.S_ISVTX
-	}
-	// No mapping for Go's ModeTemporary (plan9 only).
-	return
+	runtime.KeepAlive(f)
+	return si, nil
 }
