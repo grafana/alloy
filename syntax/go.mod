@@ -1,12 +1,12 @@
 module github.com/grafana/alloy/syntax
 
-go 1.25.1
+go 1.25.4
 
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fatih/color v1.18.0
-	github.com/ohler55/ojg v1.26.8
-	github.com/stretchr/testify v1.10.0
+	github.com/ohler55/ojg v1.27.0
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
