@@ -22,7 +22,9 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
-- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+- Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
+- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
 
 - Add `delay` option to `prometheus.exporter.cloudwatch` component to delay scraping of metrics to account for CloudWatch ingestion latency. (@tmeijn)
 
