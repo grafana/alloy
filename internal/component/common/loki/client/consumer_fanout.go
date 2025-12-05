@@ -364,9 +364,11 @@ func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 
 	// NOTE: it is important in go to fully read the body and
 	// close it so that the connection can be reused.
-	// We only partailly read the body if we encounter a non 2xx error
+	// We only partially read the body if we encounter a non 2xx error
 	// so we should always consume whats left.
 	// https://github.com/golang/go/blob/32a9804c7ba3f4a0e0bd26cc24b9204860a49ec8/src/net/http/response.go#L59-L64
+	// It is unclear that we always need to drain the body but
+	// https://github.com/golang/go/issues/60240#issuecomment-1551060433 seems to indicate that we should.
 	defer func() {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		_ = resp.Body.Close()
