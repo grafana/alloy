@@ -16,6 +16,8 @@ extensions:
 
 service:
   telemetry:
+    resource:
+      service.instance.id: "${env:INSTANCE_UID}"
     logs:
       level: "debug"
       encoding: "console"

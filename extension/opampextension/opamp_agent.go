@@ -621,17 +621,17 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 		return
 	}
 
-	err := o.validateRemoteConfig(remoteConfig)
+	// err := o.validateRemoteConfig(remoteConfig)
 
-	if err != nil {
-		_ = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
-			LastRemoteConfigHash: remoteConfig.ConfigHash,
-			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
-			ErrorMessage:         fmt.Sprintf("Invalid config: %v", err),
-		})
-		o.logger.Error("Received invalid remote config", zap.Error(err))
-		return
-	}
+	// if err != nil {
+	// 	_ = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+	// 		LastRemoteConfigHash: remoteConfig.ConfigHash,
+	// 		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+	// 		ErrorMessage:         fmt.Sprintf("Invalid config: %v", err),
+	// 	})
+	// 	o.logger.Error("Received invalid remote config", zap.Error(err))
+	// 	return
+	// }
 
 	// If new remote config hash is the same as the last remote config hash, skip processing
 	if bytes.Equal(remoteConfig.ConfigHash, o.lastRemoteConfigHash) {
@@ -640,7 +640,7 @@ func (o *opampAgent) handleRemoteConfig(remoteConfig *protobufs.AgentRemoteConfi
 	}
 
 	// Set status to APPLYING - we're starting to process the remote config
-	err = o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+	err := o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
 		LastRemoteConfigHash: remoteConfig.ConfigHash,
 		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING,
 	})
