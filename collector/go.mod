@@ -47,6 +47,7 @@ require (
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.139.0
 	go.opentelemetry.io/collector/receiver v1.45.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.139.0
+	go.opentelemetry.io/collector/service v0.139.0
 	golang.org/x/sys v0.38.0
 )
 
@@ -906,7 +907,6 @@ require (
 	go.opentelemetry.io/collector/scraper v0.139.0 // indirect
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.139.0 // indirect
 	go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685 // indirect
-	go.opentelemetry.io/collector/service v0.139.0 // indirect
 	go.opentelemetry.io/collector/service/hostcapabilities v0.139.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.61.0 // indirect
