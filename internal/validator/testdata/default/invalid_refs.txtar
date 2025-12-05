@@ -12,7 +12,7 @@ declare "self_collect" {
 		optional = false
 		comment  = ""
 	}
-	
+
 
 	prometheus.scrape "selfmonitor" {
 		targets = [{

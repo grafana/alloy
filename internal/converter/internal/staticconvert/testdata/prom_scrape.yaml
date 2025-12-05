@@ -23,7 +23,7 @@ metrics:
       basic_auth:
         username: 11111
         password: my-secret-password-here
- 
+
   configs:
     - name: agent
       host_filter: false

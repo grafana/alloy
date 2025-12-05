@@ -30,7 +30,7 @@ mkdir -p query_results
 
 # Query 1: Complex aggregation with case
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     d.dept_name,
     COUNT(*) as total_employees,
     SUM(CASE WHEN e.gender = 'M' THEN 1 ELSE 0 END) as male_count,
@@ -47,13 +47,13 @@ write_txtar_file complex_aggregation_with_case "$query" "$query_result"
 
 # Query 2: Complex join with aggregate subquery
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT d.dept_name, 
+EXPLAIN (FORMAT JSON) SELECT d.dept_name,
         COUNT(e.id) as emp_count,
-       (SELECT AVG(amount) 
-        FROM employees.salary s2 
+       (SELECT AVG(amount)
+        FROM employees.salary s2
         WHERE s2.employee_id IN (
-            SELECT employee_id 
-            FROM employees.department_employee de2 
+            SELECT employee_id
+            FROM employees.department_employee de2
             WHERE de2.department_id = d.id
             AND de2.to_date = '9999-01-01'
         )
@@ -71,7 +71,7 @@ write_txtar_file complex_join_with_aggregate_subquery "$query" "$query_result"
 
 # Query 3: Complex query with multiple conditions and functions
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     d.dept_name,
     t.title,
     COUNT(*) as count,
@@ -96,18 +96,18 @@ write_txtar_file complex_query_with_multiple_conditions "$query" "$query_result"
 
 # Query 4 Complex subquery in SELECT clause
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     e.first_name,
     e.last_name,
-    (SELECT d.dept_name 
-     FROM employees.department_employee de 
+    (SELECT d.dept_name
+     FROM employees.department_employee de
      JOIN employees.department d ON de.department_id = d.id
-     WHERE de.employee_id = e.id 
+     WHERE de.employee_id = e.id
      AND de.to_date = '9999-01-01'
     ) as current_department,
-    (SELECT t.title 
-     FROM employees.title t 
-     WHERE t.employee_id = e.id 
+    (SELECT t.title
+     FROM employees.title t
+     WHERE t.employee_id = e.id
      AND t.to_date = '9999-01-01'
     ) as current_title
 FROM employees.employee e
@@ -119,7 +119,7 @@ write_txtar_file complex_subquery_in_select_clause "$query" "$query_result"
 
 # Query 5: Conditional aggregation with CASE and YEAR
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     EXTRACT(YEAR FROM hire_date) as hire_year,
     COUNT(*) as total_hires,
     SUM(CASE WHEN gender = 'M' THEN 1 ELSE 0 END) as male_hires,
@@ -139,10 +139,10 @@ FROM employees.employee e
 JOIN employees.title t ON e.id = t.employee_id
 WHERE t.to_date = '9999-01-01'
 AND t.title IN (
-    SELECT title FROM employees.title 
+    SELECT title FROM employees.title
     WHERE employee_id IN (
-        SELECT employee_id FROM employees.salary 
-        WHERE amount > 100000 
+        SELECT employee_id FROM employees.salary
+        WHERE amount > 100000
         AND to_date = '9999-01-01'
     )
 );
@@ -165,14 +165,14 @@ write_txtar_file date_manipulation_with_conditions "$query" "$query_result"
 
 # Query 8: Derived table with aggregates
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     dept_salary_stats.dept_name,
     dept_salary_stats.avg_salary,
     e.first_name,
     e.last_name,
     s.amount
 FROM (
-    SELECT 
+    SELECT
         d.id,
         d.dept_name,
         AVG(s.amount) as avg_salary
@@ -236,7 +236,7 @@ write_txtar_file join_and_order "$query" "$query_result"
 
 # Query 12: Multiple aggregate functions with HAVING
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT t.title, 
+EXPLAIN (FORMAT JSON) SELECT t.title,
        COUNT(*) as employee_count,
        AVG(s.amount) as avg_salary,
        MIN(s.amount) as min_salary,
@@ -254,7 +254,7 @@ write_txtar_file multiple_aggregate_functions_with_having "$query" "$query_resul
 
 # Query 13: Multiple joins with date functions
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT e.first_name, e.last_name, 
+EXPLAIN (FORMAT JSON) SELECT e.first_name, e.last_name,
        DATE_PART('year', AGE(CURRENT_DATE, e.hire_date)) as years_employed,
        d.dept_name
 FROM employees.employee e
@@ -288,7 +288,7 @@ write_txtar_file nested_subqueries_with_exists "$query" "$query_result"
 
 # Query 15: Self join with string concatenation
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     CONCAT(e1.first_name, ' ', e1.last_name) as employee_name,
     e1.hire_date,
     CONCAT(e2.first_name, ' ', e2.last_name) as colleague_name,
@@ -309,7 +309,7 @@ write_txtar_file self_join_with_date_comparison "$query" "$query_result"
 
 # Query 16: String functions with grouping
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     LEFT(last_name, 1) as last_name_initial,
     COUNT(*) as name_count
 FROM employees.employee
@@ -352,7 +352,7 @@ write_txtar_file union_with_different_conditions "$query" "$query_result"
 
 # Query 19: Window functions with partitioning
 query=$(cat <<EOF
-EXPLAIN (FORMAT JSON) SELECT 
+EXPLAIN (FORMAT JSON) SELECT
     d.dept_name,
     e.first_name,
     e.last_name,

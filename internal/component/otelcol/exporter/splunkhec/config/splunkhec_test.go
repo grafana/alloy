@@ -108,7 +108,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 				telemetry {
 				   enabled = true
 		        }
-				
+
 				`,
 		},
 	} {

@@ -7,8 +7,8 @@ import (
 )
 
 func Test_fallbackVersionFromText(t *testing.T) {
-	in := `# This is a comment 
-# This is another comment 
+	in := `# This is a comment
+# This is another comment
 
 v1.2.3
 

@@ -51,7 +51,7 @@ This conversion allows you to take full advantage of the many additional feature
 
     * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
     * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
-  
+
 1. [Stop][] Grafana Agent static.
 
 1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:

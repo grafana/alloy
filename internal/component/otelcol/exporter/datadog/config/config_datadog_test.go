@@ -150,7 +150,7 @@ func TestUnmarshalDatadogMetricConfig(t *testing.T) {
 
 				sums {
 					cumulative_monotonic_mode = "to_delta"
-					initial_cumulative_monotonic_value = "auto"      
+					initial_cumulative_monotonic_value = "auto"
 				}
 
 				summaries {

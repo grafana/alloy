@@ -196,7 +196,7 @@ func TestValidate(t *testing.T) {
 		pattern = "^HEADER .*$"
 		metadata_operators = []
 	}
-	
+
 	operators 					  = [{
       type = "regex_parser",
       regex = "^(?P<timestamp>[^ ]+)",

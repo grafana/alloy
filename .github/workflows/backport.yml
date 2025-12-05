@@ -11,7 +11,7 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
-    # For now, only run this on the main repo. 
+    # For now, only run this on the main repo.
     if: github.repository == 'grafana/alloy'
     # These permissions are needed to assume roles from Github's OIDC.
     permissions:
@@ -36,7 +36,7 @@ jobs:
             ALLOYBOT_APP_ID=alloybot:app_id
             ALLOYBOT_PRIVATE_KEY=alloybot:private_key
           export_env: false
-      
+
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         id: app-token
         with:

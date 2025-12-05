@@ -20,7 +20,7 @@ var testTenantAlloyExtractedData = `
 stage.json {
 		expressions = { "customer_id" = "" }
 }
-stage.tenant { 
+stage.tenant {
 		source = "customer_id"
 } `
 

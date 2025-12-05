@@ -7,10 +7,10 @@ FROM employees e
 JOIN titles t ON e.emp_no = t.emp_no
 WHERE t.to_date = '9999-01-01'
 AND t.title IN (
-    SELECT title FROM titles 
+    SELECT title FROM titles
     WHERE emp_no IN (
-        SELECT emp_no FROM salaries 
-        WHERE salary > 100000 
+        SELECT emp_no FROM salaries
+        WHERE salary > 100000
         AND to_date = '9999-01-01'
     )
 )\G

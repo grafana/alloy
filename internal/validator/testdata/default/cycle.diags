@@ -1,41 +1,41 @@
 Error: main.alloy:2:1: cycle detected: prometheus.relabel.label1, prometheus.relabel.label2
 
-1 | 
+1 |
 2 | prometheus.relabel "label1" {
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 3 |   forward_to = [prometheus.relabel.label2.receiver]
 
 Error: main.alloy:6:1: cycle detected: prometheus.relabel.label1, prometheus.relabel.label2
 
-5 | 
+5 |
 6 | prometheus.relabel "label2" {
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 7 |   forward_to = [prometheus.relabel.label1.receiver]
 
 Error: main.alloy:10:1: cycle detected: prometheus.relabel.label3, prometheus.relabel.label4, prometheus.relabel.label5
 
- 9 | 
+ 9 |
 10 | prometheus.relabel "label3" {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 11 |   forward_to = [prometheus.relabel.label4.receiver]
 
 Error: main.alloy:14:1: cycle detected: prometheus.relabel.label3, prometheus.relabel.label4, prometheus.relabel.label5
 
-13 | 
+13 |
 14 | prometheus.relabel "label4" {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 15 |   forward_to = [prometheus.relabel.label5.receiver]
 
 Error: main.alloy:18:1: cycle detected: prometheus.relabel.label3, prometheus.relabel.label4, prometheus.relabel.label5
 
-17 | 
+17 |
 18 | prometheus.relabel "label5" {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 19 |   forward_to = [prometheus.relabel.label3.receiver]
 
 Error: main.alloy:22:1: cannot reference self
 
-21 | 
+21 |
 22 | prometheus.relabel "label6" {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 23 |   forward_to = [prometheus.relabel.label6.receiver]

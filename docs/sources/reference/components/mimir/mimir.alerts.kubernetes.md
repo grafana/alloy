@@ -192,7 +192,7 @@ mimir.alerts.kubernetes "default" {
   global_config = remote.kubernetes.configmap.default.data["glbl"]
 
   template_files = {
-    `default_template` = 
+    `default_template` =
 `{{ define "__alertmanager" }}AlertManager{{ end }}
 {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}`,
   }
@@ -352,7 +352,7 @@ data:
         address = "http://mimir-nginx.mimir-test.svc:80"
         global_config = remote.kubernetes.configmap.default.data["glbl"]
         template_files = {
-          `default_template` = 
+          `default_template` =
       `{{ define "__alertmanager" }}AlertManager{{ end }}
       {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}`,
         }

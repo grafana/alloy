@@ -254,7 +254,7 @@ prometheus.exporter.windows "default" {
   performancecounter {
     objects = local.file.counters.content
   }
-  
+
   ...
 }
 ```

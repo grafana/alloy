@@ -37,7 +37,7 @@ receivers:
       initial_interval: "10s"
       max_interval: "1m"
       max_elapsed_time: "10m"
-    
+
 
 exporters:
   syslog:

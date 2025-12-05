@@ -37,7 +37,7 @@ otelcol.receiver.prometheus "<LABEL>" {
 The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.prometheus` will translate Prometheus native histograms into 
+`otelcol.receiver.prometheus` will translate Prometheus native histograms into
 OTLP exponential histograms if Alloy is ran with the `--stability.level=experimental` configuration flag.
 {{< /admonition >}}
 

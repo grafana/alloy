@@ -2,13 +2,13 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT d.dept_name, 
+SELECT d.dept_name,
        COUNT(e.emp_no) as emp_count,
-       (SELECT AVG(salary) 
-        FROM salaries s2 
+       (SELECT AVG(salary)
+        FROM salaries s2
         WHERE s2.emp_no IN (
-            SELECT emp_no 
-            FROM dept_emp de2 
+            SELECT emp_no
+            FROM dept_emp de2
             WHERE de2.dept_no = d.dept_no
             AND de2.to_date = '9999-01-01'
         )

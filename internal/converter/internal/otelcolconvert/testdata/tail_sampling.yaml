@@ -93,7 +93,7 @@ processors:
             name: and-policy-1,
             type: and,
             and: {
-              and_sub_policy: 
+              and_sub_policy:
               [
                 {
                   name: test-and-policy-1,

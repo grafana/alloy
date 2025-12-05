@@ -32,7 +32,7 @@ func Test(t *testing.T) {
 
 		{
 			testName: "validConfig",
-			args: ` 
+			args: `
 				verbosity = "detailed"
 				sampling_initial = 5
 				sampling_thereafter = 20

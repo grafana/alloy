@@ -54,7 +54,7 @@ local filename = 'alloy-loki.json';
       panel.withStacked() +
       panel.withUnit('cps') +
       panel.withDescription(|||
-        Successful journal reads.	
+        Successful journal reads.
       |||) +
       panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
@@ -84,7 +84,7 @@ local filename = 'alloy-loki.json';
           expr=|||
             sum by(instance) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
             /
-            sum by(instance) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])) * 100 
+            sum by(instance) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])) * 100
           ||| % $._config,
         ),
       ])

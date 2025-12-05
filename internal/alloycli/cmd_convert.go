@@ -41,7 +41,7 @@ provided, no report is generated.
 
 The -f flag can be used to specify the format we are converting from.
 
-The -b flag can be used to bypass errors. Errors are defined as 
+The -b flag can be used to bypass errors. Errors are defined as
 non-critical issues identified during the conversion where an
 output can still be generated.
 

@@ -76,7 +76,7 @@
     },
     datasource: '${datasource}',
     refresh: 2,
-    sort: 2,    
+    sort: 2,
   },
 
   newTemplateVariableCustom(name, query) :: {

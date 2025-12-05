@@ -24,7 +24,7 @@ const tracingConfig = `
 	tracing {}`
 
 const argumentConfig = `
-	argument "username" {} 
+	argument "username" {}
 	argument "defaulted" {
 		optional = true
 		default = "default_value"
@@ -33,7 +33,7 @@ const argumentConfig = `
 const argumentWithFullOptsConfig = `
 	argument "foo" {
 		comment = "description of foo"
-		optional = true	
+		optional = true
 		default = "default_value"
 	}`
 

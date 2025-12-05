@@ -86,7 +86,7 @@ The most commonly used journal fields for filtering include:
 * `_SYSTEMD_UNIT` - The systemd unit name, for example, `nginx.service`
 * `PRIORITY` - The syslog priority level between 0 and 7, where 0 is highest priority
 * `_PID` - Process ID
-* `_UID` - User ID  
+* `_UID` - User ID
 * `_COMM` - Command name
 * `SYSLOG_IDENTIFIER` - Syslog identifier
 * `_TRANSPORT` - Transport mechanism, for example, `kernel`, `syslog`, `journal`
@@ -186,7 +186,7 @@ loki.source.journal "nginx_logs" {
 
 // Read entries from multiple conditions (logical AND)
 loki.source.journal "critical_errors" {
-  forward_to = [loki.write.endpoint.receiver]  
+  forward_to = [loki.write.endpoint.receiver]
   matches    = "_SYSTEMD_UNIT=nginx.service PRIORITY=3"
   labels     = {service = "nginx", level = "error"}
 }

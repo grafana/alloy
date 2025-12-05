@@ -47,7 +47,7 @@ After an effort has been made to triage an issue, the issue should be in one of 
 
 The `needs-attention` label is applied to issues that are seen as stale in a GitHub action.
 This includes issues that have not been interacted with in 90 days.
-Issues with the `needs-attention` label may be closed if they are not in an actionable state.  
+Issues with the `needs-attention` label may be closed if they are not in an actionable state.
 
 The `keepalive` label can be applied to exempt an issue or pull request from being marked as stale.
 

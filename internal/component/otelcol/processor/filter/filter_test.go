@@ -125,7 +125,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "ValidOtelFilterFunctionUsage",
 			cfg: `
-			error_mode = "ignore"	
+			error_mode = "ignore"
 			metrics {
 				metric = [
 					"HasAttrKeyOnDatapoint(\"http.method\")",
@@ -147,7 +147,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "invalidOtelFilterFunctionUsage",
 			cfg: `
-			error_mode = "ignore"	
+			error_mode = "ignore"
 			metrics {
 				metric = [
 					"UnknowFunction(\"http.method\")",

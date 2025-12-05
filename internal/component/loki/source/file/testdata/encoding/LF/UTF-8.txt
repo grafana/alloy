@@ -1,5 +1,5 @@
-2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) 
-	Sep 24 2019 13:48:23 
+2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64)
+	Sep 24 2019 13:48:23
 	Copyright (C) 2019 Microsoft Corporation
 	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)
 

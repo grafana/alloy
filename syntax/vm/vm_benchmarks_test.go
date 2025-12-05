@@ -50,7 +50,7 @@ func BenchmarkExprs(b *testing.B) {
 		{
 			name: "object to struct",
 			input: `{
-					name = "John Doe", 
+					name = "John Doe",
 					age = 42,
 			}`,
 			expect: struct {

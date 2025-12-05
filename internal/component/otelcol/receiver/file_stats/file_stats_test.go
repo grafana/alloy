@@ -23,11 +23,11 @@ func TestArguments(t *testing.T) {
 			file.count {
 				enabled = true
 			}
-		} 
+		}
 
 		resource_attributes {
 			file.name {
-				enabled = true 
+				enabled = true
 
 				metrics_include {
 					strict = "foobar"
@@ -81,11 +81,11 @@ func TestArguments_NoFilters(t *testing.T) {
 			file.count {
 				enabled = true
 			}
-		} 
+		}
 
 		resource_attributes {
 			file.name {
-				enabled = true 
+				enabled = true
 			}
 		}
 

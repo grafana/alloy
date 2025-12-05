@@ -10,7 +10,7 @@ scrape_configs:
     scrape_interval: 10s
     scrape_timeout: 5s
     static_configs:
-      - targets: ["localhost:9090", "localhost:9091"] 
+      - targets: ["localhost:9090", "localhost:9091"]
         labels:
           app: 'foo'
     basic_auth:

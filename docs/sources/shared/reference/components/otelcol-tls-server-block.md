@@ -33,7 +33,7 @@ The following pairs of arguments are mutually exclusive and can't both be set si
 If `cipher_suites` is left blank, a safe default list is used.
 Refer to the [Go Cipher Suites documentation][golang-cipher-suites] for a list of supported cipher suites.
 
-`client_ca_file` sets the `ClientCA` and `ClientAuth` to `RequireAndVerifyClientCert` in the `TLSConfig`. 
+`client_ca_file` sets the `ClientCA` and `ClientAuth` to `RequireAndVerifyClientCert` in the `TLSConfig`.
 Refer to the [Go TLS documentation][golang-tls] for more information.
 
 The `curve_preferences` argument determines the set of elliptic curves to prefer during a handshake in preference order.

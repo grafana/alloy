@@ -14,7 +14,7 @@ title: pyroscope.relabel
 
 The `pyroscope.relabel` component rewrites the label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 
-If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments. 
+If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments.
 The profile is dropped if no labels remain after the relabeling rules are applied.
 
 The most common use of `pyroscope.relabel` is to filter profiles or standardize the label set that is passed to one or more downstream receivers.

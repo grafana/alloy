@@ -348,7 +348,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    [debug]: ../../troubleshoot/debug/#alloy-ui
    {{< /admonition >}}
    <!-- INTERACTIVE ignore END -->
-  
+
    {{< docs/ignore >}}
 
    > This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`. If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=` argument. If you don't use this argument, the [debugging UI](../../troubleshoot/debug/#alloy-ui) won't be available outside of the Docker container.

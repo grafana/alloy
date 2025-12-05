@@ -11,7 +11,7 @@ local openTelemetryAlerts = (import './alerts/opentelemetry.libsonnet');
   ],
 
   prometheusAlerts+:: {
-    groups+: 
+    groups+:
       if $._config.enableAlloyCluster then
         alloyClusterAlerts + otherAlerts
       else

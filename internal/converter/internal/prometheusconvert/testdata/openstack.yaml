@@ -26,7 +26,7 @@ scrape_configs:
           ca: "ca"
           server_name: example.local
           insecure_skip_verify: true
-          
+
   - job_name: "prometheus2"
     openstack_sd_configs:
       - role: "hypervisor"

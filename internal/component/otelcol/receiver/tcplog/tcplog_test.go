@@ -115,7 +115,7 @@ func TestUnmarshal(t *testing.T) {
 		encoding = "utf-8"
 		one_log_per_packet = true
 		add_attributes = true
-		
+
 		tls {
 			include_system_ca_certs_pool = true
 			reload_interval = "1m"
@@ -126,7 +126,7 @@ func TestUnmarshal(t *testing.T) {
 			line_end_pattern = "}"
 			omit_pattern = true
 		}
-		
+
 		retry_on_failure {
 			enabled = true
 			initial_interval = "10s"

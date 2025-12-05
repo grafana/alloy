@@ -88,7 +88,7 @@ func TestAlloyConfigConvert(t *testing.T) {
 	set_collectors = ["collector3", "collector4"]
 	lock_wait_timeout = 1
 	log_slow_filter = false
-	
+
 	info_schema.processlist {
 		min_time = 2
 		processes_by_user = true

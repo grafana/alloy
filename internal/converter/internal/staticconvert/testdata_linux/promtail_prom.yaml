@@ -12,7 +12,7 @@ metrics:
           consul_sd_configs:
           - server: 'localhost:8500'
             services: ['myapp']
-    
+
 logs:
   global:
     file_watch_config:

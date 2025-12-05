@@ -15,18 +15,18 @@ declare "module" {
 	}
 
 	export "invalid_expr" {
-		value = ""			
+		value = ""
 		test = ""
 	}
-	
+
 	export "missing_attr" {}
-	
+
 	argument "duplicate" {}
 	argument "duplicate" {}
 
 	export "duplicate" {}
 	export "duplicate" {}
-	
+
 	// missing labels
 	argument {}
 	export {

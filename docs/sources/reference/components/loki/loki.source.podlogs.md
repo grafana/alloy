@@ -50,7 +50,7 @@ Each `PodLogs` resource describes a set of pods to tail logs from.
 
 When `tail_from_end` is `false` (the default), `loki.source.podlogs` reads all available logs from the Kubernetes API for newly discovered Pod containers.
 For long-running Pods, this can result in a large volume of logs being processed, which may be rejected by the downstream Loki instance if they are too old.
-Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer. 
+Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer.
 If a last-read offset is already saved for a Pod, `loki.source.podlogs` will resume from that position and ignore the `tail_from_end` argument.
 
 When `preserve_discovered_labels` is `true`, `loki.source.podlogs` preserves discovered Pod metadata labels so they can be accessed by downstream components.
@@ -225,7 +225,7 @@ Clustering looks only at the following labels for determining the shard key:
 
 The `node_filter` block configures node-based filtering for Pod discovery.
 
-The following arguments are supported: 
+The following arguments are supported:
 
 | Name        | Type     | Description                                                                               | Default | Required |
 | ----------- | -------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
@@ -368,7 +368,7 @@ This example shows how to use node filtering for DaemonSet deployments to collec
 ```alloy
 loki.source.podlogs "daemonset" {
   forward_to = [loki.write.local.receiver]
-  
+
   node_filter {
     enabled = true
     // node_name will be automatically read from NODE_NAME environment variable

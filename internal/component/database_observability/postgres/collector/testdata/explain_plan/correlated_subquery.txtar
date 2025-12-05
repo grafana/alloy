@@ -7,10 +7,10 @@ FROM employees.employee e
 JOIN employees.title t ON e.id = t.employee_id
 WHERE t.to_date = '9999-01-01'
 AND t.title IN (
-    SELECT title FROM employees.title 
+    SELECT title FROM employees.title
     WHERE employee_id IN (
-        SELECT employee_id FROM employees.salary 
-        WHERE amount > 100000 
+        SELECT employee_id FROM employees.salary
+        WHERE amount > 100000
         AND to_date = '9999-01-01'
     )
 );

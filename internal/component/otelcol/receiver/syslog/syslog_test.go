@@ -138,7 +138,7 @@ func TestUnmarshal(t *testing.T) {
 				reload_interval = "1m"
 			}
 		}
-		
+
 		udp {
 			listen_address = "localhost:1515"
 			one_log_per_packet = false
@@ -155,7 +155,7 @@ func TestUnmarshal(t *testing.T) {
 				line_end_pattern = "logend"
 				omit_pattern = true
 			}
-			
+
 		}
 
 		retry_on_failure {

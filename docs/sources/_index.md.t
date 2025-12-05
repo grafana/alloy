@@ -18,7 +18,7 @@ hero:
   width: 110
   height: 110
   description: >-
-    Grafana Alloy combines the strengths of the leading collectors into one place. Whether observing applications, infrastructure, or both, Grafana Alloy can collect, process, and export telemetry signals to scale and future-proof your observability approach. 
+    Grafana Alloy combines the strengths of the leading collectors into one place. Whether observing applications, infrastructure, or both, Grafana Alloy can collect, process, and export telemetry signals to scale and future-proof your observability approach.
 cards:
   title_class: pt-0 lh-1
   items:

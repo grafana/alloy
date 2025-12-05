@@ -21,12 +21,12 @@ blackbox_targets:
   address: https://www.cloudflare.com
   module: http_2xx_ipv4
 blackbox_config:
-  modules:               
+  modules:
     http_2xx_ipv4:
       prober: http
       timeout: 5s
       http:
-        preferred_ip_protocol: "ip4"        
+        preferred_ip_protocol: "ip4"
     icmp_ipv4:
       prober: "icmp"
       timeout: 5s

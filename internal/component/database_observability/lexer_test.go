@@ -49,26 +49,26 @@ func TestPgSqlParser_Redact(t *testing.T) {
 			sql: `WITH active_users AS (
 					SELECT * FROM users WHERE last_login > '2024-01-01'
 				), recent_orders AS (
-					SELECT o.* FROM orders o 
-					JOIN active_users u ON u.id = o.user_id 
+					SELECT o.* FROM orders o
+					JOIN active_users u ON u.id = o.user_id
 					WHERE o.created_at > '2024-03-01'
 				)
-				SELECT au.name, COUNT(ro.id) as order_count 
-				FROM active_users au 
-				LEFT JOIN recent_orders ro ON ro.user_id = au.id 
-				GROUP BY au.name 
+				SELECT au.name, COUNT(ro.id) as order_count
+				FROM active_users au
+				LEFT JOIN recent_orders ro ON ro.user_id = au.id
+				GROUP BY au.name
 				HAVING COUNT(ro.id) > 5`,
 			want: `WITH active_users AS (
 					SELECT * FROM users WHERE last_login > ?
 				), recent_orders AS (
-					SELECT o.* FROM orders o 
-					JOIN active_users u ON u.id = o.user_id 
+					SELECT o.* FROM orders o
+					JOIN active_users u ON u.id = o.user_id
 					WHERE o.created_at > ?
 				)
-				SELECT au.name, COUNT(ro.id) as order_count 
-				FROM active_users au 
-				LEFT JOIN recent_orders ro ON ro.user_id = au.id 
-				GROUP BY au.name 
+				SELECT au.name, COUNT(ro.id) as order_count
+				FROM active_users au
+				LEFT JOIN recent_orders ro ON ro.user_id = au.id
+				GROUP BY au.name
 				HAVING COUNT(ro.id) > ?`,
 		},
 		{
@@ -106,13 +106,13 @@ func TestPgSqlParser_Redact(t *testing.T) {
 		{
 			name: "WITH statement with UPDATE",
 			sql: `WITH inactive_users AS (
-					SELECT id FROM users 
+					SELECT id FROM users
 					WHERE last_login < '2023-01-01' AND status = 'active'
 				)
 				UPDATE users SET status = 'inactive', updated_at = '2024-03-20'
 				WHERE id IN (SELECT id FROM inactive_users)`,
 			want: `WITH inactive_users AS (
-					SELECT id FROM users 
+					SELECT id FROM users
 					WHERE last_login < ? AND status = ?
 				)
 				UPDATE users SET status = ?, updated_at = ?
@@ -121,16 +121,16 @@ func TestPgSqlParser_Redact(t *testing.T) {
 		{
 			name: "WITH statement with DELETE",
 			sql: `WITH old_orders AS (
-					SELECT id FROM orders 
+					SELECT id FROM orders
 					WHERE created_at < '2023-01-01' AND status = 'completed'
 				)
-				DELETE FROM order_items 
+				DELETE FROM order_items
 				WHERE order_id IN (SELECT id FROM old_orders)`,
 			want: `WITH old_orders AS (
-					SELECT id FROM orders 
+					SELECT id FROM orders
 					WHERE created_at < ? AND status = ?
 				)
-				DELETE FROM order_items 
+				DELETE FROM order_items
 				WHERE order_id IN (SELECT id FROM old_orders)`,
 		},
 		{
@@ -233,14 +233,14 @@ func TestPgSqlParser_ExtractTableNames(t *testing.T) {
 		},
 		{
 			name: "subquery in where clause",
-			sql: `SELECT * FROM orders 
+			sql: `SELECT * FROM orders
 				WHERE user_id IN (SELECT id FROM users WHERE status = 'active')`,
 			want: []string{"orders", "users"},
 		},
 		{
 			name: "multiple schema qualified tables with aliases",
-			sql: `SELECT u.name, o.total, p.status 
-				FROM public.users u 
+			sql: `SELECT u.name, o.total, p.status
+				FROM public.users u
 				JOIN sales.orders o ON u.id = o.user_id
 				LEFT JOIN shipping.packages p ON o.id = p.order_id`,
 			want: []string{"public.users", "sales.orders", "shipping.packages"},

@@ -152,7 +152,7 @@ metrics:
 max_idle_connections: 5
 max_open_connections: 6
 timeout: 1m
-query_config: 
+query_config:
   collector_name: mssql_standard
   metrics:
     - metric_name: mssql_local_time_seconds

@@ -17,7 +17,7 @@ body:
   - type: checkboxes
     attributes:
       label: Community component maintainer
-      description: Are you willing to be the maintainer for this component in Alloy? 
+      description: Are you willing to be the maintainer for this component in Alloy?
       options:
         - label: I agree to be a maintainer for this component.
   - type: textarea

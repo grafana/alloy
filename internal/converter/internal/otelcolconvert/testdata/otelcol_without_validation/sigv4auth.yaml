@@ -32,4 +32,4 @@ service:
     traces:
       receivers: [otlp]
       processors: []
-      exporters: [otlp] 
+      exporters: [otlp]

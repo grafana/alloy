@@ -36,8 +36,8 @@ See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prom
 
 ### Breaking changes in `prometheus.scrape`
 
-`scrape_native_histograms` attribute for `prometheus.scrape` is now set to `false`, whereas in previous versions of Alloy it would default to `true`. 
-This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms - `scrape_native_histograms` has to be enabled. 
+`scrape_native_histograms` attribute for `prometheus.scrape` is now set to `false`, whereas in previous versions of Alloy it would default to `true`.
+This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms - `scrape_native_histograms` has to be enabled.
 If `scrape_native_histograms` is enabled, `scrape_protocols` will automatically be configured correctly for you to include `PrometheusProto`.
 If you configure it explicitly, Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
 
@@ -102,9 +102,9 @@ Set `enable_context_propagation` to `all` to get the same behaviour as `enable_c
 
 The `msmq` block has been removed. The `enable_v2_collector`, `where_clause`, and `use_api` attributes in the `service` block are also removed.
 
-Prior to Alloy v1.9.0, the `service` collector exists in 2 different versions. 
-Version 1 used WMI (Windows Management Instrumentation) to query all services and was able to provide additional information. 
-Version 2 is a more efficient solution by directly connecting to the service manager, 
+Prior to Alloy v1.9.0, the `service` collector exists in 2 different versions.
+Version 1 used WMI (Windows Management Instrumentation) to query all services and was able to provide additional information.
+Version 2 is a more efficient solution by directly connecting to the service manager,
 but is not able to provide additional information like run_as or start configuration.
 
 In Alloy v1.9.0 the Version 1 collector was removed, hence why some arguments and blocks were removed.
@@ -126,7 +126,7 @@ windows_service_state{display_name="Declared Configuration(DC) service",name="dc
 ```
 
 For more information on V1 and V2 `service` metrics, see the upstream exporter documentation for [version 0.27.3 of the Windows Exporter][win-exp-svc-0-27-3],
-which is the version used in Alloy v1.8.3. 
+which is the version used in Alloy v1.8.3.
 Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-30-7].
 
 [win-exp-svc-0-27-3]: https://github.com/prometheus-community/windows_exporter/blob/v0.27.3/docs/collector.service.md
@@ -140,28 +140,28 @@ A bug in `loki.source.kafka` caused the component to treat all topics as regular
 With the fix introduced in this version, topic values are now treated as exact matches by default.
 Regular expression matching is still supported by prefixing a topic with "^", allowing it to match multiple topics.
 
-### Breaking change: Change decision precedence in `otelcol.processor.tail_sampling` when using `and_sub_policy` and `invert_match` 
+### Breaking change: Change decision precedence in `otelcol.processor.tail_sampling` when using `and_sub_policy` and `invert_match`
 
 Alloy v1.5 upgraded to [OpenTelemetry Collector v0.104.0][otel-v0_104], which included a [fix][#33671] to the tail sampling processor:
 
-> Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled` 
+> Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled`
 > it would return a `NotSampled` decision regardless, effectively downgrading the result.
 > This was breaking the documented behaviour that inverted decisions should take precedence over all others.
 
 The "documented behavior" which the above quote is referring to is in the [processor documentation][tail-sample-docs]:
 
 > Each policy will result in a decision, and the processor will evaluate them to make a final decision:
-> 
+>
 > * When there's an "inverted not sample" decision, the trace is not sampled;
 > * When there's a "sample" decision, the trace is sampled;
 > * When there's a "inverted sample" decision and no "not sample" decisions, the trace is sampled;
 > * In all other cases, the trace is NOT sampled
-> 
+>
 > An "inverted" decision is the one made based on the "invert_match" attribute, such as the one from the string, numeric or boolean tag policy.
-    
+
 However, in [OpenTelemetry Collector v0.116.0][otel-v0_116] this fix was [reverted][#36673]:
 
-> Reverts [#33671][], allowing for composite policies to specify inverted clauses in conjunction with other policies. 
+> Reverts [#33671][], allowing for composite policies to specify inverted clauses in conjunction with other policies.
 > This is a change bringing the previous state into place, breaking users who rely on what was introduced as part of [#33671][].
 
 [otel-v0_104]: https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.104.0

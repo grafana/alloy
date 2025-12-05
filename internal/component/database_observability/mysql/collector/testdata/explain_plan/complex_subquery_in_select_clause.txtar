@@ -2,18 +2,18 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT 
+SELECT
     e.first_name,
     e.last_name,
-    (SELECT d.dept_name 
-     FROM dept_emp de 
+    (SELECT d.dept_name
+     FROM dept_emp de
      JOIN departments d ON de.dept_no = d.dept_no
-     WHERE de.emp_no = e.emp_no 
+     WHERE de.emp_no = e.emp_no
      AND de.to_date = '9999-01-01'
     ) as current_department,
-    (SELECT t.title 
-     FROM titles t 
-     WHERE t.emp_no = e.emp_no 
+    (SELECT t.title
+     FROM titles t
+     WHERE t.emp_no = e.emp_no
      AND t.to_date = '9999-01-01'
     ) as current_title
 FROM employees e

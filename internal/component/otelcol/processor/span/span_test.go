@@ -659,7 +659,7 @@ func Test_StatusError(t *testing.T) {
 				"spans": [{
 					"name": "TestSpan",
 					"status": {
-						"code":2, 
+						"code":2,
 						"message":"some additional error description"
 					}
 				}]

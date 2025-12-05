@@ -136,7 +136,7 @@ func TestLoader(t *testing.T) {
 			}
 
 			testcomponents.summation "sum" {
-				input = testcomponents.passthrough.pass.output 
+				input = testcomponents.passthrough.pass.output
 			}
 		`
 		l := controller.NewLoader(newLoaderOptions())

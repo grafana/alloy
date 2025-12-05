@@ -2,7 +2,7 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT e.first_name, e.last_name, 
+SELECT e.first_name, e.last_name,
        TIMESTAMPDIFF(YEAR, e.hire_date, CURDATE()) as years_employed,
        d.dept_name
 FROM employees e

@@ -21,9 +21,9 @@ matched target to the metric sample. If match doesn't happen, the metrics will b
 ```alloy
 prometheus.enrich "<LABEL>" {
   targets = <DISCOVERY_COMPONENT>.targets
-  
+
   target_match_label = "<LABEL>"
-  
+
   forward_to = [<RECEIVER_LIST>]
 }
 ```
@@ -107,31 +107,31 @@ The following example shows how the `prometheus.enrich` enriches incoming metric
 `prometheus.remote_write.default` component:
 
 ```alloy
-discovery.file "network_devices" {  
-   files = ["/etc/alloy/devices.json"]  
-}  
-  
+discovery.file "network_devices" {
+   files = ["/etc/alloy/devices.json"]
+}
+
 prometheus.receive_http "default" {
   http {
     listen_address = "0.0.0.0"
     listen_port = 9999
   }
-  
+
   forward_to = [prometheus.enrich.default.receiver]
 }
 
-prometheus.enrich "default" {  
-    targets = discovery.file.network_devices.targets  
-  
-    target_match_label = "hostname"  
-    
-    forward_to = [prometheus.remote_write.default.receiver]  
+prometheus.enrich "default" {
+    targets = discovery.file.network_devices.targets
+
+    target_match_label = "hostname"
+
+    forward_to = [prometheus.remote_write.default.receiver]
 }
 
-prometheus.remote_write "default" {  
-  endpoint {  
-    url = "http://mimir:9009/api/v1/push"    
-  }    
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
 }
 ```
 

@@ -43,7 +43,7 @@ loki.enrich "enricher" {
   // Match on hostname/IP from logs
   target_match_label = "hostname"
   logs_match_label = "host"
-  
+
   forward_to = [loki.write.enriched.receiver]
 }
 

@@ -114,7 +114,7 @@ Section "install"
     StrCpy $AuthFlag "obj= $\"$User$\""
     ${If} $Password != ""
       StrCpy $AuthFlag "$AuthFlag password= $\"$Password$\""
-    ${EndIf}  
+    ${EndIf}
   ${EndIf}
 
   # Create the service.

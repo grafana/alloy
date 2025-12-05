@@ -120,7 +120,7 @@ docker compose up -d
 K6 will be configured to send traces on `ENDPOINT=host.docker.internal:4320`.
 This means that the local Alloy instance must be configured to accept traces on `0.0.0.0:4320`.
 
-The ["otelcol" components][otelcol-components]  are the only components which use OTel. 
+The ["otelcol" components][otelcol-components]  are the only components which use OTel.
 Try to test as many of them as possible using a config file like this one:
 
 [otelcol-components](https://grafana.com/docs/alloy/latest/reference/components/otelcol/)

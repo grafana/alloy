@@ -7,7 +7,7 @@ beyla.ebpf "default" {
   debug = true
   metrics {
     features = [
-      "application", 
+      "application",
       ]
   }
   output {

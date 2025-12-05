@@ -2,14 +2,14 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT 
+SELECT
     dept_salary_stats.dept_name,
     dept_salary_stats.avg_salary,
     e.first_name,
     e.last_name,
     s.salary
 FROM (
-    SELECT 
+    SELECT
         d.dept_no,
         d.dept_name,
         AVG(s.salary) as avg_salary

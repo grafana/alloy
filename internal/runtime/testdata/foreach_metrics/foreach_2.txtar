@@ -1,4 +1,4 @@
-Test to make sure debug metrics for foreach are shown when they are enabled explicitly. 
+Test to make sure debug metrics for foreach are shown when they are enabled explicitly.
 Foreach with only one item. The pulse will send "1" to the receiver of the summation component until it reaches 10.
 
 -- main.alloy --

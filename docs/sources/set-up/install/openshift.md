@@ -113,7 +113,7 @@ runAsUser:
 fsGroup:
   type: MustRunAs
   uid: 1000
-volumes: 
+volumes:
 - '*'
 users:
 - my-admin-user
@@ -145,7 +145,7 @@ volumes:
   - downwardAPI
   - emptyDir
   - persistentVolumeClaim
-  - secret 
+  - secret
 ```
 
 {{< /admonition >}}

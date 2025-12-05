@@ -141,9 +141,9 @@ In this example, the component requires the following arguments:
 ```alloy
 loki.process "labels" {
     stage.json {
-      expressions = { "extracted_service" = "service_name", 
-                      "extracted_code_line" = "code_line", 
-                      "extracted_server" = "server_id", 
+      expressions = { "extracted_service" = "service_name",
+                      "extracted_code_line" = "code_line",
+                      "extracted_server" = "server_id",
                     }
     }
 

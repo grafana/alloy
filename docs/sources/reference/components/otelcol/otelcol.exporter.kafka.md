@@ -118,7 +118,7 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [debug_metrics]: #debug_metrics
 
 ### `logs`
-	
+
 The `logs` block configures how to send logs to Kafka brokers.
 
 | Name                     | Type     | Description                                                                  | Default        | Required |

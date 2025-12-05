@@ -165,15 +165,15 @@ func TestBlock(t *testing.T) {
 	}
 
 	expect := `[
-		{ 
-			"name": "number", 
-			"type": "attr", 
+		{
+			"name": "number",
+			"type": "attr",
 			"value": { "type": "number", "value": 5 }
 		},
 		{
 			"name": "array",
 			"type": "attr",
-			"value": { 
+			"value": {
 				"type": "array",
 				"value": [
 					{ "type": "number", "value": 1 },

@@ -14,24 +14,24 @@ description: Learn about the Grafana Agent API
 weight: 500
 ---
 # Custom Resource Definition Reference
-{{ end}} 
+{{ end}}
 
 {{ range .packages }}
 {{ with (index .GoPackages 0 )}}
 {{ with .DocComments }}
 {{ . }}
-{{ end }} 
-{{ end }} 
-
-## Resource Types:
-{{ range (visibleTypes (sortedTypes .Types)) }} 
-{{ if isExportedType . -}}
-* [{{ typeDisplayName . }}]({{ linkForType . }}) 
-{{- end }} 
+{{ end }}
 {{ end }}
 
-{{ range (visibleTypes (sortedTypes .Types))}} 
-{{ template "type" . }} 
+## Resource Types:
+{{ range (visibleTypes (sortedTypes .Types)) }}
+{{ if isExportedType . -}}
+* [{{ typeDisplayName . }}]({{ linkForType . }})
+{{- end }}
+{{ end }}
+
+{{ range (visibleTypes (sortedTypes .Types))}}
+{{ template "type" . }}
 {{ end }}
 {{ end }}
 {{ end }}

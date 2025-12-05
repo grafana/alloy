@@ -48,18 +48,18 @@ func TestUnmarshalAlloyTargets(t *testing.T) {
 		config_file = "modules.yml"
 		targets = [
 			{
-				"name" = "target_a", 
-				"address" = "http://example.com", 
+				"name" = "target_a",
+				"address" = "http://example.com",
 				"module" = "http_2xx",
 				"some_label1" = "a",
 				"some_label2" = "b",
 			},
 			{
-				"name" = "target_b", 
-				"address" = "http://grafana.com", 
+				"name" = "target_b",
+				"address" = "http://grafana.com",
 				"module" = "http_2xx",
 			},
-		  ]	
+		  ]
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -118,7 +118,7 @@ func TestUnmarshalAlloyWithInlineConfigYaml(t *testing.T) {
 		config = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n"
 
 		target {
-			name = "target_a" 
+			name = "target_a"
 			address = "http://example.com"
 			module = "http_2xx"
 		}

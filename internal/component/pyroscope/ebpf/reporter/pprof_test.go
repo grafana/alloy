@@ -88,11 +88,11 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 Period: 10309278
 Samples:
 cpu/nanoseconds
-   10309278: 1 
+   10309278: 1
 Locations
      1: 0x30 M=2 myfunc /bin/bar:1234:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   
+1: 0x0/0x0/0x0
 2: 0x0/0x0/0x0 /bin/bar  [FN][LN]
 `
 	assert.Equal(t, expected, p.String())
@@ -144,12 +144,12 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 Period: 10309278
 Samples:
 cpu/nanoseconds
-   10309278: 1 
+   10309278: 1
 Locations
-     1: 0x1000 M=2 
+     1: 0x1000 M=2
 Mappings
-1: 0x0/0x0/0x0   
-2: 0x1000/0x2000/0x100 /usr/lib/libexample.so  
+1: 0x0/0x0/0x0
+2: 0x1000/0x2000/0x100 /usr/lib/libexample.so
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -189,11 +189,11 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 Period: 10309278
 Samples:
 cpu/nanoseconds
-   10309278: 1 
+   10309278: 1
 Locations
-     1: 0x2000 M=1 
+     1: 0x2000 M=1
 Mappings
-1: 0x0/0x0/0x0   
+1: 0x0/0x0/0x0
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -248,9 +248,9 @@ func TestPPROFReporter_Bug(t *testing.T) {
 Period: 10309278
 Samples:
 cpu/nanoseconds
-   10309278: 1 2 3 4 
+   10309278: 1 2 3 4
 Locations
-     1: 0x2000 M=1 
+     1: 0x2000 M=1
      2: 0x0 M=1 f1 :42:0 s=0()
      3: 0x0 M=1 f2 :239:0 s=0()
      4: 0x0 M=1 f2 :240:0 s=0()
@@ -335,14 +335,14 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 Period: 10309278
 Samples:
 cpu/nanoseconds
-   10309278: 1 2 3 4 
+   10309278: 1 2 3 4
 Locations
-     1: 0x2000 M=1 
-     2: 0xface000 M=1 
+     1: 0x2000 M=1
+     2: 0xface000 M=1
      3: 0xcafe00ef M=2 ConcurrentGCThread::run() :0:0 s=0()
      4: 0xcafe00de M=2 PlatformMonitor::wait(unsigned long) :0:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   
+1: 0x0/0x0/0x0
 2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())
@@ -399,13 +399,13 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 Period: 10309278
 Samples:
 cpu/nanoseconds
-   10309278: 1 2 3 
+   10309278: 1 2 3
 Locations
-     1: 0x2000 M=1 
-     2: 0xface000 M=1 
+     1: 0x2000 M=1
+     2: 0xface000 M=1
      3: 0xcafe00ef M=2 $ libfoo.so + 0xcafe00ef :0:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   
+1: 0x0/0x0/0x0
 2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())

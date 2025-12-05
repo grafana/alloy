@@ -109,8 +109,8 @@ Valid values for `azure_cloud_environment` are `azurecloud`, `azurechinacloud`, 
 `validate_dimensions` is disabled by default to reduce the number of Azure exporter instances required when a `resource_type` has metrics with varying dimensions.
 When `validate_dimensions` is enabled you will need one exporter instance per metric + dimension combination which is more tedious to maintain.
 
-`timespan` and `interval` are used to control how metrics are queried from Azure Monitor. 
-The exporter queries metrics over the `timespan` and returns the most recent datapoint at the specified `interval`. 
+`timespan` and `interval` are used to control how metrics are queried from Azure Monitor.
+The exporter queries metrics over the `timespan` and returns the most recent datapoint at the specified `interval`.
 If you are having issues with missing metrics, try increasing the `timespan` to a larger value, such as `PT10M` for 10 minutes, or `PT15M` for 15 minutes.
 
 [Kusto query]: https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/

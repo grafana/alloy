@@ -160,7 +160,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "default",
-			alloyCfg: ` 
+			alloyCfg: `
 				api {
 					api_key = "abc"
 				}
@@ -208,7 +208,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "alt datadog site",
-			alloyCfg: ` 
+			alloyCfg: `
 				api {
 					api_key = "abc"
 					site = "ap1.datadoghq.com"

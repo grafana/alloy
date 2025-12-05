@@ -129,7 +129,7 @@ The following `strategy` strings are valid:
 
 Rate limiting functions as a [token bucket algorithm][token-bucket], where a bucket has a maximum capacity for up to `burst_size` requests and refills at a rate of `rate` per second.
 
-Each HTTP request drains the capacity of the bucket by one. 
+Each HTTP request drains the capacity of the bucket by one.
 
 After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
 

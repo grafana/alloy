@@ -3,7 +3,7 @@ receivers:
     protocols:
       grpc:
       http:
-  
+
   faro:
     endpoint: localhost:8080
 
