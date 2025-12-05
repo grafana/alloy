@@ -111,12 +111,15 @@ func TestConfig_ToScrapeSettings(t *testing.T) {
 
 func TestConfig_Validate(t *testing.T) {
 	baseConfig := azure_exporter.Config{
-		Subscriptions:         []string{"subscriptionA"},
-		ResourceType:          "resourceType",
-		Metrics:               []string{"MetricA"},
-		AzureCloudEnvironment: "azurecloud",
-		Interval:              "PT1M",
-		Timespan:              "PT5M",
+		Subscriptions:                   []string{"subscriptionA"},
+		ResourceType:                    "resourceType",
+		Metrics:                         []string{"MetricA"},
+		AzureCloudEnvironment:           "azurecloud",
+		Interval:                        "PT1M",
+		Timespan:                        "PT5M",
+		ConcurrencySubscription:         5,
+		ConcurrencySubscriptionResource: 10,
+		EnableCaching:                   false,
 	}
 
 	baseConfigValid := t.Run("Base Config is Valid", func(t *testing.T) {
@@ -210,6 +213,34 @@ func TestConfig_Validate(t *testing.T) {
 				return config
 			},
 		},
+		{
+			name: "zero concurrency_subscription",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.ConcurrencySubscription = 0
+				return config
+			},
+		},
+		{
+			name: "negative concurrency_subscription",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.ConcurrencySubscription = -1
+				return config
+			},
+		},
+		{
+			name: "zero concurrency_subscription_resource",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.ConcurrencySubscriptionResource = 0
+				return config
+			},
+		},
+		{
+			name: "negative concurrency_subscription_resource",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.ConcurrencySubscriptionResource = -1
+				return config
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -252,6 +283,9 @@ func TestMergeConfigWithQueryParams_MapsAllExpectedFieldsByYamlNameFromConfig(t 
 			case "bool":
 				urlParams[yamlFieldName] = []string{"false"}
 				fieldValue = false
+			case "int":
+				urlParams[yamlFieldName] = []string{"42"}
+				fieldValue = 42
 			default:
 				t.Fatalf("Attempting to map %s, discovered unexpected type %s", mappableField.Name, mappableField.Type.String())
 			}

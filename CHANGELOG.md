@@ -34,6 +34,8 @@ Main (unreleased)
   - `explain_plans`
     - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
 
+- `prometheus.exporter.azure` now supports `concurrency_subscription` and `concurrency_subscription_resource` arguments to control the number of concurrent API requests. (@akselleirv)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
