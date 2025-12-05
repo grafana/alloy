@@ -151,63 +151,9 @@ If it's not specified, it's attempted to be inferred from multiple sources:
 
 If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
 
-## Troubleshoot unknown symbols
+## Troubleshoot profile collection
 
-Symbols are extracted from various sources, including:
-
-* The `.gopclntab` section in Go language ELF files.
-* The `.symtab` and `.dynsym` sections in the debug ELF file.
-* The `.symtab` and `.dynsym` sections in the ELF file.
-
-The search for debug files follows [gdb algorithm][].
-For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
-The following paths are examined:
-
-* `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
-* `/lib/x86_64-linux-gnu/libc.so.6.debug`
-* `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
-* `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
-
-### Deal with unknown symbols
-
-Unknown symbols in the profiles you've collected indicate that the profiler couldn't access an ELF file associated with a given address in the trace.
-
-This can occur for several reasons:
-
-* The process has terminated, making the ELF file inaccessible.
-* The ELF file is either corrupted or not recognized as an ELF file.
-* There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
-
-### Address unresolved symbols
-
-If you only see module names without corresponding function names, for example, `/lib/x86_64-linux-gnu/libc.so.6`, it indicates that the symbols couldn't be mapped to their respective function names.
-
-This can occur for several reasons:
-
-* The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
-* The debug file is missing or couldn't be located.
-
-To fix this for your binaries, ensure that they're either not stripped or that you have separate debug files available.
-You can achieve this by running:
-
-```bash
-objcopy --only-keep-debug elf elf.debug
-strip elf -o elf.stripped
-objcopy --add-gnu-debuglink=elf.debug elf.stripped elf.debuglink
-```
-
-For system libraries, ensure that debug symbols are installed.
-On Ubuntu, for example, you can install debug symbols for `libc` by executing:
-
-```bash
-apt install libc6-dbg
-```
-
-### Understand flat stack traces
-
-If your profiles show many shallow stack traces, typically 1-2 frames deep, your binary might have been compiled without frame pointers.
-
-To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
+{{< docs/shared lookup="reference/components/pyroscope-ebpf-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
@@ -309,7 +255,7 @@ pyroscope.ebpf "default" {
 }
 ```
 
-[troubleshooting]: #troubleshoot-unknown-symbols
+[troubleshooting]: #troubleshoot-profile-collection
 [gdb algorithm]: https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
