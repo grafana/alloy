@@ -47,7 +47,9 @@ const (
 // The pos parameter is the current file position and is used to detect truncation events.
 // Returns the detected event type and any error encountered. Returns eventNone if the context is canceled.
 func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Config) (event, error) {
-	origFi, err := os.Stat(cfg.Filename)
+	// NOTE: it is important that we stat the open file here. Later we do os.Stat(cfg.Filename)
+	// and use os.IsSameFile to detect if file was rotated.
+	origFi, err := f.Stat()
 	if err != nil {
 		// If file no longer exists we treat it as a delete event.
 		if os.IsNotExist(err) {
@@ -106,7 +108,6 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 		// File was appended to (changed)?
 		modTime := fi.ModTime()
 		if modTime != prevModTime {
-			prevModTime = modTime
 			return eventModified, nil
 		}
 
