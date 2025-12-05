@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
@@ -40,19 +41,27 @@ func (args *Arguments) SetToDefault() {
 
 // Exports are the set of fields exposed by the telemetry.save component.
 type Exports struct {
-	MetricsReceiver storage.Appendable `alloy:"metrics_receiver,attr"`
-	LogsReceiver    loki.LogsReceiver  `alloy:"logs_receiver,attr"`
+	MetricsReceiver storage.Appendable      `alloy:"metrics_receiver,attr"`
+	LogsReceiver    loki.LogsReceiver       `alloy:"logs_receiver,attr"`
+	OTLP            otelcol.ConsumerExports `alloy:"otlp,attr"`
 }
 
 // Component is the telemetry.save component.
 type Component struct {
-	mut               sync.RWMutex
-	args              Arguments
-	logger            log.Logger
+	mut    sync.RWMutex
+	args   Arguments
+	logger log.Logger
+
 	promMetricsFolder string
-	lokiLogsFolder    string
-	logsReceiver      loki.LogsReceiver
-	logsHandler       *LogsHandler
+
+	lokiLogsFolder string
+	logsReceiver   loki.LogsReceiver
+	logsHandler    *LogsHandler
+
+	otlpLogsFolder    string
+	otlpMetricsFolder string
+	otlpTracesFolder  string
+	otlpConsumer      otelcol.Consumer
 }
 
 var _ component.Component = (*Component)(nil)
@@ -92,6 +101,33 @@ func NewComponent(opts component.Options, args Arguments) (*Component, error) {
 	}
 	c.lokiLogsFolder = lokiLogsFolder
 
+	// Create OTLP folder
+	otlpFolder := filepath.Join(dir, "otlp")
+	if err := os.MkdirAll(otlpFolder, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create otlp directory: %w", err)
+	}
+
+	// Create OTLP logs folder
+	otlpLogsFolder := filepath.Join(otlpFolder, "logs")
+	if err := os.MkdirAll(otlpLogsFolder, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create otlp logs directory: %w", err)
+	}
+	c.otlpLogsFolder = otlpLogsFolder
+
+	// Create OTLP metrics folder
+	otlpMetricsFolder := filepath.Join(otlpFolder, "metrics")
+	if err := os.MkdirAll(otlpMetricsFolder, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create otlp metrics directory: %w", err)
+	}
+	c.otlpMetricsFolder = otlpMetricsFolder
+
+	// Create OTLP traces folder
+	otlpTracesFolder := filepath.Join(otlpFolder, "traces")
+	if err := os.MkdirAll(otlpTracesFolder, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create otlp traces directory: %w", err)
+	}
+	c.otlpTracesFolder = otlpTracesFolder
+
 	// Create logs receiver
 	c.logsReceiver = loki.NewLogsReceiver(loki.WithComponentID("telemetry.save"))
 
@@ -101,10 +137,16 @@ func NewComponent(opts component.Options, args Arguments) (*Component, error) {
 	// Start the log entry handler goroutine
 	c.logsHandler.Start(c.logsReceiver)
 
+	// Initialize OTLP consumer
+	c.otlpConsumer = newOTLPConsumer(c)
+
 	// Export the receiver interfaces
 	opts.OnStateChange(Exports{
 		MetricsReceiver: c,
 		LogsReceiver:    c.logsReceiver,
+		OTLP: otelcol.ConsumerExports{
+			Input: c.otlpConsumer,
+		},
 	})
 
 	return c, nil
@@ -159,6 +201,30 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create loki logs directory: %w", err)
 	}
 	c.lokiLogsFolder = lokiLogsFolder
+
+	// Update OTLP folders
+	otlpFolder := filepath.Join(dir, "otlp")
+	if err := os.MkdirAll(otlpFolder, 0755); err != nil {
+		return fmt.Errorf("failed to create otlp directory: %w", err)
+	}
+
+	otlpLogsFolder := filepath.Join(otlpFolder, "logs")
+	if err := os.MkdirAll(otlpLogsFolder, 0755); err != nil {
+		return fmt.Errorf("failed to create otlp logs directory: %w", err)
+	}
+	c.otlpLogsFolder = otlpLogsFolder
+
+	otlpMetricsFolder := filepath.Join(otlpFolder, "metrics")
+	if err := os.MkdirAll(otlpMetricsFolder, 0755); err != nil {
+		return fmt.Errorf("failed to create otlp metrics directory: %w", err)
+	}
+	c.otlpMetricsFolder = otlpMetricsFolder
+
+	otlpTracesFolder := filepath.Join(otlpFolder, "traces")
+	if err := os.MkdirAll(otlpTracesFolder, 0755); err != nil {
+		return fmt.Errorf("failed to create otlp traces directory: %w", err)
+	}
+	c.otlpTracesFolder = otlpTracesFolder
 
 	// Cleanup the old directory
 	oldDir := filepath.Dir(c.args.OutputLocation)
