@@ -164,7 +164,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.consumer.Stop()
 	}
 
-	cfgs := newArgs.convertClientConfigs()
+	cfgs := newArgs.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
