@@ -90,7 +90,7 @@ func GetDefaultEndpointOptions() EndpointOptions {
 			Enabled:          false,
 			CacheSize:        8 * 1024,
 			StripTextSection: true,
-			QueueSize:        64,
+			QueueSize:        256,
 			WorkerNum:        8,
 			CachePath:        "/tmp/symb-cache/parca-symbols-uploader",
 		},

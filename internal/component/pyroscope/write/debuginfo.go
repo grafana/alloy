@@ -33,22 +33,26 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 		return nil, nil
 	}
 
-	creds := insecure.NewCredentials()
-
-	if promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert(); promTLSConfig != nil {
-		tlsConf, err := commonconfig.NewTLSConfig(promTLSConfig)
-		if err != nil {
-			return nil, err
+	var creds credentials.TransportCredentials
+	switch u.Scheme {
+	case "http":
+		creds = insecure.NewCredentials()
+	case "https":
+		if promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert(); promTLSConfig != nil {
+			tlsConf, err := commonconfig.NewTLSConfig(promTLSConfig)
+			if err != nil {
+				return nil, err
+			}
+			creds = credentials.NewTLS(tlsConf)
+		} else {
+			creds = credentials.NewTLS(&tls.Config{})
 		}
-		creds = credentials.NewTLS(tlsConf)
-	} else if u.Scheme == "https" {
-		creds = credentials.NewTLS(&tls.Config{})
+	default:
+		return nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
 	}
+
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
-		grpc.WithDefaultCallOptions(grpc.HeaderCallOption{
-			HeaderAddr: nil,
-		}),
 	}
 	if auth, err := newGrpcBasicAuthCredentials(e); err != nil {
 		return nil, err
