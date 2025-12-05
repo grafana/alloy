@@ -13,6 +13,8 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -445,6 +447,10 @@ func TestMetricsWithRelabeling(t *testing.T) {
 type TestAppender struct {
 	mu       sync.Mutex
 	profiles []*pyroscope.IncomingProfile
+}
+
+func (t *TestAppender) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+
 }
 
 func NewTestAppender() *TestAppender {

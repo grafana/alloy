@@ -4,19 +4,18 @@ package reporter
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/ebpf-profiler/libpf/pfelf"
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 
 	discovery "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 )
 
 func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, funcName, sourceFile string, sourceLine libpf.SourceLineno) libpf.Frames {
@@ -32,7 +31,7 @@ func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, li
 	return frames
 }
 
-func newReporter() *PPROFReporter {
+func new TODO Reporter() *PPROFReporter {
 	tp := discovery.NewTargetProducer(discovery.TargetsOptions{
 		Targets: []discovery.DiscoveredTarget{
 			{
@@ -41,14 +40,11 @@ func newReporter() *PPROFReporter {
 			},
 		},
 	})
-	return NewPPROF(
-		nil,
-		&Config{
-			SamplesPerSecond:          97,
-			ExtraNativeSymbolResolver: nil,
-		},
-		tp,
-	)
+	return NewPPROF(nil, &Config{
+		SamplesPerSecond: 97,
+	}, tp, func(ctx context.Context, p []PPROF) {
+
+	})
 }
 
 func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
@@ -260,98 +256,10 @@ Mappings
 	assert.Equal(t, expected, p.String())
 }
 
-func TestPPROFReporter_Demangle(t *testing.T) {
-	fid := libpf.NewFileID(7, 13)
-	key := symbolizerKey{
-		fid:  fid,
-		addr: 0xcafe00de,
-	}
-	rep := newReporter()
-	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{
-		symbols: map[symbolizerKey]irsymcache.SourceInfo{
-			key: {
-				LineNumber:   9,
-				FunctionName: libpf.Intern("_ZN15PlatformMonitor4waitEm"),
-			},
-		},
-	}
-	rep.cfg.Demangle = "full"
-
-	frames := make(libpf.Frames, 0, 1)
-	frames.Append(&libpf.Frame{
-		Type:            libpf.KernelFrame,
-		AddressOrLineno: 0x2000,
-	})
-	frames.Append(&libpf.Frame{ // a native frame without a valid mapping should not be symbolized
-		Type:            libpf.NativeFrame,
-		AddressOrLineno: 0xface000,
-	})
-	frames.Append(&libpf.Frame{ // a native frame with a mapping, already symbolized, should not be symbolized again
-		Type:            libpf.NativeFrame,
-		FunctionName:    libpf.Intern("_ZN18ConcurrentGCThread3runEv"),
-		AddressOrLineno: 0xcafe00ef,
-		MappingStart:    0xcafe0000,
-		MappingEnd:      0xcafe1000,
-		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   fid,
-			FileName: libpf.Intern("libfoo.so"),
-		}),
-	})
-	frames.Append(&libpf.Frame{ // a native frame with a mapping should be symbolized
-		Type:            libpf.NativeFrame,
-		FunctionName:    libpf.NullString,
-		AddressOrLineno: 0xcafe00de,
-		MappingStart:    0xcafe0000,
-		MappingEnd:      0xcafe1000,
-		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   fid,
-			FileName: libpf.Intern("libfoo.so"),
-		}),
-	})
-
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
-			Frames:     frames,
-			Timestamps: []uint64{42},
-		},
-	}
-
-	profiles := rep.createProfile(
-		samples.ContainerID(""),
-		support.TraceOriginSampling,
-		events,
-	)
-	require.Len(t, profiles, 1)
-	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
-
-	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
-	require.NoError(t, err)
-
-	p.TimeNanos = 0
-	expected := `PeriodType: cpu nanoseconds
-Period: 10309278
-Samples:
-cpu/nanoseconds
-   10309278: 1 2 3 4 
-Locations
-     1: 0x2000 M=1 
-     2: 0xface000 M=1 
-     3: 0xcafe00ef M=2 ConcurrentGCThread::run() :0:0 s=0()
-     4: 0xcafe00de M=2 PlatformMonitor::wait(unsigned long) :0:0 s=0()
-Mappings
-1: 0x0/0x0/0x0   
-2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
-`
-	assert.Equal(t, expected, p.String())
-}
-
 func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 	rep := newReporter()
-	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{}
-	rep.cfg.ReporterUnsymbolizedStubs = true
+	rep.cfg.
+		ReporterUnsymbolizedStubs = true
 
 	frames := make(libpf.Frames, 0, 1)
 	frames.Append(&libpf.Frame{
@@ -409,29 +317,4 @@ Mappings
 2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())
-}
-
-type symbolizer struct {
-	symbols map[symbolizerKey]irsymcache.SourceInfo
-}
-
-type symbolizerKey struct {
-	fid  libpf.FileID
-	addr uint64
-}
-
-func (s symbolizer) ExecutableKnown(id libpf.FileID) bool {
-	return true
-}
-
-func (s symbolizer) ObserveExecutable(id libpf.FileID, ref *pfelf.Reference) error {
-	return nil
-}
-
-func (s symbolizer) ResolveAddress(file libpf.FileID, addr uint64) (irsymcache.SourceInfo, error) {
-	return s.symbols[symbolizerKey{fid: file, addr: addr}], nil
-}
-
-func (s symbolizer) Cleanup() {
-
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -74,6 +75,8 @@ type EndpointOptions struct {
 	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
 	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
 	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+
+	DebugInfo DebugInfoOptions `alloy:"debug_info,block,optional"`
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
@@ -83,6 +86,14 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoff:        5 * time.Minute,
 		MaxBackoffRetries: 10,
 		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
+		DebugInfo: DebugInfoOptions{
+			Enabled:          false,
+			CacheSize:        8 * 1024,
+			StripTextSection: true,
+			QueueSize:        256,
+			WorkerNum:        8,
+			CachePath:        "/tmp/symb-cache/parca-symbols-uploader",
+		},
 	}
 
 	return defaultEndpointOptions
@@ -112,6 +123,7 @@ type Component struct {
 	metrics       *metrics
 	userAgent     string
 	uid           string
+	receiver      *fanOutClient
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -145,6 +157,7 @@ func New(
 		metrics:       m,
 		userAgent:     userAgent,
 		uid:           uid,
+		receiver:      receiver,
 	}, nil
 }
 
@@ -162,25 +175,34 @@ func (c *Component) Update(newConfig Arguments) error {
 		return err
 	}
 	c.onStateChange(Exports{Receiver: receiver})
+	c.receiver = receiver
+	c.receiver.cancel()
 	return nil
 }
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
 	pushClients   []pushv1connect.PusherServiceClient
+	debugInfo     []*reporter.ParcaSymbolUploader
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
 	metrics       *metrics
 	tracer        trace.Tracer
 	logger        log.Logger
+	cancel        context.CancelFunc
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
 func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
+	debugInfoClients := make([]*reporter.ParcaSymbolUploader, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for _, endpoint := range config.Endpoints {
+		u, err := url.Parse(endpoint.URL)
+		if err != nil {
+			return nil, err
+		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -196,14 +218,29 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
 		)
 		ingestClients[endpoint] = httpClient
+
+		if symbolsUploader, err := newDebugInfoUpload(u, metrics, endpoint); err != nil {
+			return nil, err
+		} else if symbolsUploader != nil {
+			debugInfoClients = append(debugInfoClients, symbolsUploader)
+		}
+
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	for _, c := range debugInfoClients {
+		go func() {
+			_ = c.Run(ctx)
+		}()
 	}
 	return &fanOutClient{
 		logger:        logger,
 		tracer:        tracer,
 		pushClients:   pushClients,
+		debugInfo:     debugInfoClients,
 		ingestClients: ingestClients,
 		config:        config,
 		metrics:       metrics,
+		cancel:        cancel,
 	}, nil
 }
 

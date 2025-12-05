@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -105,6 +107,10 @@ func (e *enrichAppendable) AppendIngest(ctx context.Context, profile *pyroscope.
 	}
 
 	return e.component.fanout.Appender().AppendIngest(ctx, enrichedProfile)
+}
+
+func (e *enrichAppendable) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+	e.component.fanout.Appender().UploadDebugInfo(ctx, fileID, fileName, buildID, open)
 }
 
 // Run implements component.Component.

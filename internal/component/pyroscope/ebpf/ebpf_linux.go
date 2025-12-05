@@ -17,16 +17,17 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
+	"go.opentelemetry.io/ebpf-profiler/process"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	reporter2 "go.opentelemetry.io/ebpf-profiler/reporter"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
@@ -57,20 +58,6 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	nfs, err := irsymcache.NewFSCache(irsymcache.TableTableFactory{
-		Options: []lidia.Option{
-			lidia.WithFiles(),
-			lidia.WithLines(),
-		},
-	}, irsymcache.Options{
-		SizeEntries: uint32(args.SymbCacheSizeEntries),
-		Path:        args.SymbCachePath,
-	})
-	if err != nil {
-		return nil, err
-	}
-	cfg.ExecutableReporter = nfs
-
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
 	} else {
@@ -88,21 +75,50 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		argsUpdate:             make(chan Arguments, 4),
 	}
 
-	cfg.Reporter = reporter.NewPPROF(logger, &reporter.Config{
+	r := reporter.NewPPROF(logger, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
-		ExtraNativeSymbolResolver: nfs,
-		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
-			res.sendProfiles(ctx, ps)
-		}),
-	}, discovery)
+	}, discovery, func(ctx context.Context, ps []reporter.PPROF) {
+		res.sendProfiles(ctx, ps)
+	})
+	cfg.Reporter = r
+	cfg.ExecutableReporter = ExecutableReporterFunc(func(args *reporter2.ExecutableMetadata) {
+		if !args.MappingFile.Valid() {
+			return
+		}
+		mf := args.MappingFile.Value()
+		res.appendable.Appender().UploadDebugInfo(context.Background(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
+			fallback := func() (process.ReadAtCloser, error) {
+				return args.Process.OpenMappingFile(args.Mapping)
+			}
+			if args.DebuglinkFileName == "" {
+				return fallback()
+			}
+			if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+				return fallback()
+			} else {
+				if f, err := os.Open(file); err != nil {
+					return fallback()
+				} else {
+					return f, nil
+				}
+			}
+		})
+	})
+	// todo, should we keep the ontarget lidia symbolizer for a while?
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	return res, nil
+}
+
+type ExecutableReporterFunc func(md *reporter2.ExecutableMetadata)
+
+func (e ExecutableReporterFunc) ReportExecutable(md *reporter2.ExecutableMetadata) {
+	e(md)
 }
 
 type Component struct {
@@ -158,6 +174,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var g run.Group
+
 	g.Add(func() error {
 		for {
 			select {
