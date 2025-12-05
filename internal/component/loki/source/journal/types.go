@@ -17,6 +17,7 @@ type Arguments struct {
 	Receivers      []loki.LogsReceiver `alloy:"forward_to,attr"`
 	Labels         map[string]string   `alloy:"labels,attr,optional"`
 	LegacyPosition *LegacyPosition     `alloy:"legacy_position,block,optional"`
+	UseOtel        bool                `alloy:"use_otel,attr,optional"`
 }
 
 type LegacyPosition struct {

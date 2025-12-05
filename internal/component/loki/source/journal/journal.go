@@ -36,10 +36,15 @@ func init() {
 
 var _ component.Component = (*Component)(nil)
 
+// journalTarget is an interface that both JournalTarget and OtelJournalTarget implement.
+type journalTarget interface {
+	Stop() error
+}
+
 // Component represents reading from a journal
 type Component struct {
 	mut            sync.RWMutex
-	t              *target.JournalTarget
+	t              journalTarget
 	metrics        *target.Metrics
 	o              component.Options
 	handler        chan loki.Entry
@@ -197,11 +202,12 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 
 	// Grab current state
 	c.mut.RLock()
-	var targetToStop *target.JournalTarget
+	var targetToStop journalTarget
 	if c.t != nil {
 		targetToStop = c.t
 	}
 	rcs := alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
+	useOtel := c.args.UseOtel
 	c.mut.RUnlock()
 
 	// Stop existing target
@@ -221,9 +227,19 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 	c.t = nil
 	entryHandler := loki.NewEntryHandler(c.handler, func() {})
 
-	newTarget, err := target.NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, c.args))
+	var newTarget journalTarget
+	var err error
+	targetConfig := convertArgs(c.o.ID, c.args)
+
+	if useOtel {
+		level.Info(c.o.Logger).Log("msg", "using OTEL-based journal target implementation")
+		newTarget, err = target.NewOtelJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, targetConfig)
+	} else {
+		newTarget, err = target.NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, targetConfig)
+	}
+
 	if err != nil {
-		level.Error(c.o.Logger).Log("msg", "error creating journal target", "err", err, "path", c.args.Path)
+		level.Error(c.o.Logger).Log("msg", "error creating journal target", "err", err, "path", c.args.Path, "use_otel", useOtel)
 		c.healthErr = fmt.Errorf("error creating journal target: %w", err)
 	} else {
 		c.t = newTarget
