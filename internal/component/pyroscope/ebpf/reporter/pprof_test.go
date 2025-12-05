@@ -4,6 +4,7 @@ package reporter
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/google/pprof/profile"
@@ -30,7 +31,7 @@ func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, li
 	return frames
 }
 
-func newReporter() *PPROFReporter {
+func new TODO Reporter() *PPROFReporter {
 	tp := discovery.NewTargetProducer(discovery.TargetsOptions{
 		Targets: []discovery.DiscoveredTarget{
 			{
@@ -39,9 +40,11 @@ func newReporter() *PPROFReporter {
 			},
 		},
 	})
-	return NewPPROF(nil, nil, &Config{
+	return NewPPROF(nil, &Config{
 		SamplesPerSecond: 97,
-	}, tp)
+	}, tp, func(ctx context.Context, p []PPROF) {
+
+	})
 }
 
 func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {

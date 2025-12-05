@@ -34,14 +34,21 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 	}
 
 	creds := insecure.NewCredentials()
-	promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert()
 
-	if promTLSConfig != nil {
-		tlsConfig, err := commonconfig.NewTLSConfig(promTLSConfig)
+	// Check if TLS config has meaningful settings before using it
+	tlsConfig := &e.HTTPClientConfig.TLSConfig
+	hasMeaningfulTLS := tlsConfig.CA != "" || tlsConfig.CAFile != "" ||
+		tlsConfig.Cert != "" || tlsConfig.CertFile != "" ||
+		tlsConfig.Key != "" || tlsConfig.KeyFile != "" ||
+		tlsConfig.ServerName != "" || tlsConfig.InsecureSkipVerify
+
+	if hasMeaningfulTLS {
+		promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert()
+		tlsConf, err := commonconfig.NewTLSConfig(promTLSConfig)
 		if err != nil {
 			return nil, err
 		}
-		creds = credentials.NewTLS(tlsConfig)
+		creds = credentials.NewTLS(tlsConf)
 	} else if u.Scheme == "https" {
 		creds = credentials.NewTLS(&tls.Config{})
 	}
@@ -80,13 +87,13 @@ func (f *fanOutClient) UploadDebugInfo(ctx context.Context, fileID libpf.FileID,
 
 func newGrpcBasicAuthCredentials(e *EndpointOptions) (*basicAuthCredential, error) {
 	auth := e.HTTPClientConfig.BasicAuth
-	if auth.Username == "" {
+	if auth == nil || auth.Username == "" {
 		return nil, nil
 	}
 	if auth.Password != "" {
 		return &basicAuthCredential{
 			username: auth.Username,
-			password: auth.PasswordFile,
+			password: string(auth.Password),
 		}, nil
 	}
 	if auth.PasswordFile != "" {
