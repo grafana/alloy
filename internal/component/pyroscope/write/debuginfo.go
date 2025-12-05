@@ -35,15 +35,7 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 
 	creds := insecure.NewCredentials()
 
-	// Check if TLS config has meaningful settings before using it
-	tlsConfig := &e.HTTPClientConfig.TLSConfig
-	hasMeaningfulTLS := tlsConfig.CA != "" || tlsConfig.CAFile != "" ||
-		tlsConfig.Cert != "" || tlsConfig.CertFile != "" ||
-		tlsConfig.Key != "" || tlsConfig.KeyFile != "" ||
-		tlsConfig.ServerName != "" || tlsConfig.InsecureSkipVerify
-
-	if hasMeaningfulTLS {
-		promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert()
+	if promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert(); promTLSConfig != nil {
 		tlsConf, err := commonconfig.NewTLSConfig(promTLSConfig)
 		if err != nil {
 			return nil, err
@@ -63,7 +55,7 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 	} else if auth != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(auth))
 	}
-	cc, err := grpc.NewClient(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()))
+	cc, err := grpc.NewClient(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), opts...)
 	if err != nil {
 		return nil, err
 	}

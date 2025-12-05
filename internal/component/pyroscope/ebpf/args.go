@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
 )
 
 type Arguments struct {
@@ -39,9 +38,7 @@ type Arguments struct {
 }
 
 type DebugInfoArguments struct {
-	Enabled               bool              `alloy:"enabled,attr,optional"`
-	write.EndpointOptions `alloy:",squash"` //todo
-	//Client otelcol.GRPCClientArguments `alloy:"client,block"` //todo
+	//Enabled bool `alloy:"enabled,attr,optional"`
 }
 type DeprecatedArguments struct {
 	// deprecated

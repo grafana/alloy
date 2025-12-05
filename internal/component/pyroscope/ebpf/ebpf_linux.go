@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -85,31 +84,29 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		res.sendProfiles(ctx, ps)
 	})
 	cfg.Reporter = r
-	if args.DebugInfo.Enabled {
-		cfg.ExecutableReporter = ExecutableReporterFunc(func(args *reporter2.ExecutableMetadata) {
-			if !args.MappingFile.Valid() {
-				return
+	cfg.ExecutableReporter = ExecutableReporterFunc(func(args *reporter2.ExecutableMetadata) {
+		if !args.MappingFile.Valid() {
+			return
+		}
+		mf := args.MappingFile.Value()
+		res.appendable.Appender().UploadDebugInfo(context.Background(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
+			fallback := func() (process.ReadAtCloser, error) {
+				return args.Process.OpenMappingFile(args.Mapping)
 			}
-			mf := args.MappingFile.Value()
-			res.appendable.Appender().UploadDebugInfo(context.Background(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
-				fallback := func() (process.ReadAtCloser, error) {
-					return args.Process.OpenMappingFile(args.Mapping)
-				}
-				if args.DebuglinkFileName == "" {
-					return fallback()
-				}
-				if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+			if args.DebuglinkFileName == "" {
+				return fallback()
+			}
+			if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+				return fallback()
+			} else {
+				if f, err := os.Open(file); err != nil {
 					return fallback()
 				} else {
-					if f, err := os.Open(file); err != nil {
-						return fallback()
-					} else {
-						return f, nil
-					}
+					return f, nil
 				}
-			})
+			}
 		})
-	}
+	})
 	// todo, should we keep the ontarget lidia symbolizer for a while?
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
@@ -302,7 +299,6 @@ func NewDefaultArguments() Arguments {
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = NewDefaultArguments()
-	args.DebugInfo.EndpointOptions = write.GetDefaultEndpointOptions()
 }
 
 func (args *Arguments) Convert() (*controller.Config, error) {
