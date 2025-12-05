@@ -115,6 +115,19 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			shouldError: false,
 		},
+		{
+			name: "extra filter with colon in filter expression",
+			configModifier: func(config gcp_exporter.Config) gcp_exporter.Config {
+				config.MetricPrefixes = []string{
+					"cloudsql.googleapis.com/database/cpu",
+				}
+				config.ExtraFilters = []string{
+					`cloudsql.googleapis.com/database/cpu:resource.labels.database_id="project_id:database_name"`,
+				}
+				return config
+			},
+			shouldError: false,
+		},
 	}
 	for _, tt := range tests {
 		testName := tt.name
