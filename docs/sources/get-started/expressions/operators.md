@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/operators/
 aliases:
-  - ./configuration-syntax/expressions/operators/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/operators/
+  - ../configuration-syntax/expressions/operators/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/operators/
   - ./concepts/configuration-syntax/expressions/operators/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/operators/
 description: Learn about operators
 title: Operators

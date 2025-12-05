@@ -3,7 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/components/
 aliases:
   - ./components/ # /docs/alloy/latest/get-started/components/
   - ./concepts/components/ # /docs/alloy/latest/concepts/components/
-  - ./concepts/configuration-syntax/components/ # /docs/alloy/latest/concepts/configuration-syntax/components/
+  - ./concepts/configuration-syntax/components/ # /docs/alloy/latest/concepts/configuration-syntax/
+  - ./configuration-syntax/components/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
+  - ./configuration-syntax/ # /docs/alloy/latest/get-started/configuration-syntax/
+  - ./configuration-syntax/files/ # /docs/alloy/latest/get-started/configuration-syntax/files/
 description: Learn about components
 title: Components
 weight: 30

@@ -28,10 +28,19 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
-- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+- Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
+- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
+
+- Add `delay` option to `prometheus.exporter.cloudwatch` component to delay scraping of metrics to account for CloudWatch ingestion latency. (@tmeijn)
+
+- Export `yace_.*` metrics from the underlying YACE Exporter to `prometheus.exporter.cloudwatch`. (@tmeijn)
+
+- (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
+  - `explain_plans`
+    - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
 
 ### Bugfixes
-
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
   - `schema_details`
@@ -39,6 +48,9 @@ Main (unreleased)
 
 - (_Public Preview_) Additions to `database_observability.mysql` component:
   - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
+  - add `setup_actors` collector that checks and optionally updates settings to avoid tracking queries for the currently connected user (@cristiangreco)
+
+- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
 
 v1.12.0
 -----------------

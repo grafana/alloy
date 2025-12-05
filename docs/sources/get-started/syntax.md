@@ -1,7 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/syntax/
 aliases:
-  - ../configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
+  - ../configuration-syntax/syntax/ # /docs/alloy/latest/configuration-syntax/syntax/
+  - ./configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
 description: Learn about the Alloy configuration language syntax
 title: Alloy syntax
 menuTitle: Alloy syntax
