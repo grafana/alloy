@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
@@ -59,7 +60,7 @@ var plName = "testPipeline"
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitWaitPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitWaitAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitWaitAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {
@@ -77,7 +78,7 @@ func TestLimitWaitPipeline(t *testing.T) {
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	logs := make([]Entry, 0)
 	logCount := 10
 	for i := 0; i < logCount; i++ {
@@ -95,7 +96,7 @@ func TestLimitDropPipeline(t *testing.T) {
 // TestLimitByLabelPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitByLabelPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitByLabelAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitByLabelAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {

@@ -7,6 +7,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
@@ -85,19 +86,19 @@ func toStage(p Processor) Stage {
 }
 
 // New creates a new stage for the given type and configuration.
-func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability, ls labelstore.LabelStore) (Stage, error) {
 	var (
 		s   Stage
 		err error
 	)
 	switch {
 	case cfg.DockerConfig != nil:
-		s, err = NewDocker(logger, registerer, minStability)
+		s, err = NewDocker(logger, registerer, minStability, ls)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.CRIConfig != nil:
-		s, err = NewCRI(logger, *cfg.CRIConfig, registerer, minStability)
+		s, err = NewCRI(logger, *cfg.CRIConfig, registerer, minStability, ls)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +118,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.MetricsConfig != nil:
-		s, err = newMetricStage(logger, *cfg.MetricsConfig, registerer)
+		var componentID string
+		if jobName != nil {
+			componentID = *jobName
+		}
+		s, err = newMetricStage(logger, *cfg.MetricsConfig, registerer, componentID, ls)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +157,7 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(logger, jobName, *cfg.MatchConfig, registerer, minStability)
+		s, err = newMatcherStage(logger, jobName, *cfg.MatchConfig, registerer, minStability, ls)
 		if err != nil {
 			return nil, err
 		}
