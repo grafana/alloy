@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
@@ -68,6 +69,7 @@ type Component struct {
 	fanout    []loki.LogsReceiver
 
 	debugDataPublisher livedebugging.DebugDataPublisher
+	labelStore         labelstore.LabelStore
 }
 
 // New creates a new loki.process component.
@@ -77,9 +79,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	data, err := o.GetServiceData(labelstore.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+	ls := data.(labelstore.LabelStore)
+
 	c := &Component{
 		opts:               o,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+		labelStore:         ls,
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -142,7 +151,7 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability, c.labelStore)
 		if err != nil {
 			return err
 		}
