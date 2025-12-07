@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -8,11 +9,16 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
+	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	prometheus_client "github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/storage"
 )
 
 // Metric types.
@@ -29,21 +35,33 @@ type MetricConfig struct {
 
 // MetricsConfig is a set of configured metrics.
 type MetricsConfig struct {
-	Metrics []MetricConfig `alloy:"metric,enum,optional"`
+	Metrics              []MetricConfig       `alloy:"metric,enum,optional"`
+	ForwardTo            []storage.Appendable `alloy:"forward_to,attr,optional"`
+	MetricsFlushInterval time.Duration        `alloy:"metrics_flush_interval,attr,optional"`
+}
+
+func (m *MetricsConfig) SetToDefault() {
+	m.MetricsFlushInterval = 60 * time.Second
 }
 
 type cfgCollector struct {
 	cfg       MetricConfig
-	collector prometheus.Collector
+	collector prometheus_client.Collector
+	fullName  string
 }
 
 // newMetricStage creates a new set of metrics to process for each log entry
-func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus.Registerer) (Stage, error) {
+func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus_client.Registerer, componentID string, ls labelstore.LabelStore) (Stage, error) {
 	metrics := map[string]cfgCollector{}
-	for _, cfg := range config.Metrics {
-		var collector prometheus.Collector
-		var err error
+	var fanout *prometheus.Fanout
+	if len(config.ForwardTo) > 0 {
+		fanout = prometheus.NewFanout(config.ForwardTo, componentID, registry, ls)
+	}
 
+	for _, cfg := range config.Metrics {
+		var collector prometheus_client.Collector
+		var err error
+		var fullName string
 		switch {
 		case cfg.Counter != nil:
 			customPrefix := ""
@@ -52,13 +70,17 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			} else {
 				customPrefix = defaultMetricsPrefix
 			}
-			collector, err = metric.NewCounters(customPrefix+cfg.Counter.Name, cfg.Counter)
+			fullName = customPrefix + cfg.Counter.Name
+			collector, err = metric.NewCounters(fullName, cfg.Counter)
 			if err != nil {
 				return nil, err
 			}
-			// It is safe to .MustRegister here because the metric created above is unchecked.
-			registry.MustRegister(collector)
-			metrics[cfg.Counter.Name] = cfgCollector{cfg: cfg, collector: collector}
+			// Register the collector with the registry when not forwarding to another component.
+			if fanout == nil {
+				// It is safe to .MustRegister here because the metric created above is unchecked.
+				registry.MustRegister(collector)
+			}
+			metrics[cfg.Counter.Name] = cfgCollector{cfg: cfg, collector: collector, fullName: fullName}
 		case cfg.Gauge != nil:
 			customPrefix := ""
 			if cfg.Gauge.Prefix != "" {
@@ -66,13 +88,17 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			} else {
 				customPrefix = defaultMetricsPrefix
 			}
-			collector, err = metric.NewGauges(customPrefix+cfg.Gauge.Name, cfg.Gauge)
+			fullName = customPrefix + cfg.Gauge.Name
+			collector, err = metric.NewGauges(fullName, cfg.Gauge)
 			if err != nil {
 				return nil, err
 			}
-			// It is safe to .MustRegister here because the metric created above is unchecked.
-			registry.MustRegister(collector)
-			metrics[cfg.Gauge.Name] = cfgCollector{cfg: cfg, collector: collector}
+			// Register the collector with the registry when not forwarding to another component.
+			if fanout == nil {
+				// It is safe to .MustRegister here because the metric created above is unchecked.
+				registry.MustRegister(collector)
+			}
+			metrics[cfg.Gauge.Name] = cfgCollector{cfg: cfg, collector: collector, fullName: fullName}
 		case cfg.Histogram != nil:
 			customPrefix := ""
 			if cfg.Histogram.Prefix != "" {
@@ -80,27 +106,39 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			} else {
 				customPrefix = defaultMetricsPrefix
 			}
-			collector, err = metric.NewHistograms(customPrefix+cfg.Histogram.Name, cfg.Histogram)
+			fullName = customPrefix + cfg.Histogram.Name
+			collector, err = metric.NewHistograms(fullName, cfg.Histogram)
 			if err != nil {
 				return nil, err
 			}
-			// It is safe to .MustRegister here because the metric created above is unchecked.
-			registry.MustRegister(collector)
-			metrics[cfg.Histogram.Name] = cfgCollector{cfg: cfg, collector: collector}
+			// Register the collector with the registry when not forwarding to another component.
+			if fanout == nil {
+				// It is safe to .MustRegister here because the metric created above is unchecked.
+				registry.MustRegister(collector)
+			}
+			metrics[cfg.Histogram.Name] = cfgCollector{cfg: cfg, collector: collector, fullName: fullName}
 		default:
 			return nil, fmt.Errorf("undefined stage type in '%v', exiting", cfg)
 		}
 	}
 	return &metricStage{
-		logger:  logger,
-		metrics: metrics,
+		logger:        logger,
+		metrics:       metrics,
+		forwardTo:     config.ForwardTo,
+		fanout:        fanout,
+		flushInterval: config.MetricsFlushInterval,
+		quit:          make(chan struct{}),
 	}, nil
 }
 
 // metricStage creates and updates prometheus metrics based on extracted pipeline data
 type metricStage struct {
-	logger  log.Logger
-	metrics map[string]cfgCollector
+	logger        log.Logger
+	metrics       map[string]cfgCollector
+	forwardTo     []storage.Appendable
+	fanout        *prometheus.Fanout
+	flushInterval time.Duration
+	quit          chan struct{}
 }
 
 func (m *metricStage) Run(in chan Entry) chan Entry {
@@ -113,7 +151,148 @@ func (m *metricStage) Run(in chan Entry) chan Entry {
 			out <- e
 		}
 	}()
+
+	if len(m.forwardTo) > 0 && m.fanout != nil {
+		go m.runFlushLoop()
+	}
+
 	return out
+}
+
+func (m *metricStage) runFlushLoop() {
+	ticker := time.NewTicker(m.flushInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			m.flushMetrics()
+		case <-m.quit:
+			return
+		}
+	}
+}
+
+func (m *metricStage) flushMetrics() {
+	if m.fanout == nil {
+		level.Error(m.logger).Log("msg", "fanout is not set, skipping flush")
+		return
+	}
+
+	ctx := context.Background()
+	app := m.fanout.Appender(ctx)
+	timestamp := time.Now().UnixMilli()
+
+	// For each metric block
+	for _, cc := range m.metrics {
+		ch := make(chan prometheus_client.Metric)
+		go func() {
+			cc.collector.Collect(ch)
+			close(ch)
+		}()
+
+		for metric := range ch {
+			var d dto.Metric
+			if err := metric.Write(&d); err != nil {
+				level.Error(m.logger).Log("msg", "failed to write metric to dto", "err", err)
+				continue
+			}
+
+			var ls []labels.Label
+			ls = append(ls, labels.Label{Name: labels.MetricName, Value: cc.fullName})
+			for _, lp := range d.Label {
+				ls = append(ls, labels.Label{Name: lp.GetName(), Value: lp.GetValue()})
+			}
+			// Get sorted labels
+			lbls := labels.New(ls...)
+
+			if d.Counter != nil {
+				if _, err := app.UpdateMetadata(0, lbls, metadata.Metadata{
+					Type: model.MetricTypeCounter,
+					Help: cc.cfg.Counter.Description,
+				}); err != nil {
+					level.Error(m.logger).Log("msg", "failed to update metadata", "err", err)
+				}
+
+				if _, err := app.Append(0, lbls, timestamp, d.Counter.GetValue()); err != nil {
+					level.Error(m.logger).Log("msg", "failed to append counter", "err", err)
+				}
+			} else if d.Gauge != nil {
+				if _, err := app.UpdateMetadata(0, lbls, metadata.Metadata{
+					Type: model.MetricTypeGauge,
+					Help: cc.cfg.Gauge.Description,
+				}); err != nil {
+					level.Error(m.logger).Log("msg", "failed to update metadata", "err", err)
+				}
+
+				if _, err := app.Append(0, lbls, timestamp, d.Gauge.GetValue()); err != nil {
+					level.Error(m.logger).Log("msg", "failed to append gauge", "err", err)
+				}
+			} else if d.Histogram != nil {
+				h := d.Histogram
+
+				if _, err := app.UpdateMetadata(0, lbls, metadata.Metadata{
+					Type: model.MetricTypeHistogram,
+					Help: cc.cfg.Histogram.Description,
+				}); err != nil {
+					level.Error(m.logger).Log("msg", "failed to update metadata", "err", err)
+				}
+
+				// Buckets
+				for _, b := range h.Bucket {
+					bucketLs := make([]labels.Label, 0, len(ls)+1)
+					bucketLs = append(bucketLs, ls...)
+
+					for i, l := range bucketLs {
+						if l.Name == labels.MetricName {
+							bucketLs[i].Value = cc.fullName + "_bucket"
+							break
+						}
+					}
+					bucketLs = append(bucketLs, labels.Label{Name: "le", Value: fmt.Sprintf("%g", b.GetUpperBound())})
+					bucketLbls := labels.New(bucketLs...)
+
+					if _, err := app.Append(0, bucketLbls, timestamp, float64(b.GetCumulativeCount())); err != nil {
+						level.Error(m.logger).Log("msg", "failed to append histogram bucket", "err", err)
+					}
+				}
+
+				// Sum
+				sumLs := make([]labels.Label, len(ls))
+				copy(sumLs, ls)
+				for i, l := range sumLs {
+					if l.Name == labels.MetricName {
+						sumLs[i].Value = cc.fullName + "_sum"
+						break
+					}
+				}
+				sumLbls := labels.New(sumLs...)
+
+				if _, err := app.Append(0, sumLbls, timestamp, h.GetSampleSum()); err != nil {
+					level.Error(m.logger).Log("msg", "failed to append histogram sum", "err", err)
+				}
+
+				// Count
+				countLs := make([]labels.Label, len(ls))
+				copy(countLs, ls)
+				for i, l := range countLs {
+					if l.Name == labels.MetricName {
+						countLs[i].Value = cc.fullName + "_count"
+						break
+					}
+				}
+				countLbls := labels.New(countLs...)
+
+				if _, err := app.Append(0, countLbls, timestamp, float64(h.GetSampleCount())); err != nil {
+					level.Error(m.logger).Log("msg", "failed to append histogram count", "err", err)
+				}
+			}
+		}
+	}
+
+	if err := app.Commit(); err != nil {
+		level.Error(m.logger).Log("msg", "failed to commit metrics", "err", err)
+	}
 }
 
 // Process implements Stage
@@ -162,6 +341,7 @@ func (m *metricStage) Name() string {
 
 // Cleanup implements Stage.
 func (m *metricStage) Cleanup() {
+	close(m.quit)
 	for _, cfgCollector := range m.metrics {
 		switch vec := cfgCollector.collector.(type) {
 		case *metric.Counters:

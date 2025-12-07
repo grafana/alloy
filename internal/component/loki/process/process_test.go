@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
@@ -24,8 +25,10 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
@@ -634,10 +637,62 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	r.stop()
 }
 
+func TestMetricStage_ForwardTo_Leak(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	appender := testappender.NewCollectingAppender()
+	stageCfgStr := `
+	stage.metrics {
+		metric.counter {
+			name = "leak_test_counter"
+			action = "inc"
+			match_all = true
+		}
+	}
+	`
+	var stageCfgStruct struct {
+		Stages []stages.StageConfig `alloy:"stage,enum"`
+	}
+	require.NoError(t, syntax.Unmarshal([]byte(stageCfgStr), &stageCfgStruct))
+
+	// Inject appender to trigger runFlushLoop
+	stageCfgStruct.Stages[0].MetricsConfig.ForwardTo = []storage.Appendable{testappender.ConstantAppendable{Inner: appender}}
+
+	args := Arguments{
+		Stages:    stageCfgStruct.Stages,
+		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+	}
+
+	opts := component.Options{
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Run(ctx)
+
+	// Update component multiple times.
+	for i := 0; i < 100; i++ {
+		stageCfgStruct.Stages[0].MetricsConfig.Metrics[0].Counter.Description = fmt.Sprintf("desc %d", i)
+		args.Stages = stageCfgStruct.Stages
+
+		err := c.Update(args)
+		require.NoError(t, err)
+	}
+}
+
 func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil
+	case labelstore.ServiceName:
+		return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
@@ -662,6 +717,8 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 		switch name {
 		case livedebugging.ServiceName:
 			return ld, nil
+		case labelstore.ServiceName:
+			return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 		default:
 			return nil, fmt.Errorf("service not found %s", name)
 		}
