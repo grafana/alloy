@@ -37,11 +37,14 @@ type MetricConfig struct {
 type MetricsConfig struct {
 	Metrics              []MetricConfig       `alloy:"metric,enum,optional"`
 	ForwardTo            []storage.Appendable `alloy:"forward_to,attr,optional"`
-	MetricsFlushInterval time.Duration        `alloy:"metrics_flush_interval,attr,optional"`
+	MetricsFlushInterval *time.Duration       `alloy:"metrics_flush_interval,attr,optional"`
 }
 
 func (m *MetricsConfig) SetToDefault() {
-	m.MetricsFlushInterval = 60 * time.Second
+	if len(m.ForwardTo) > 0 {
+		defaultMetricsFlushInterval := 60 * time.Second
+		m.MetricsFlushInterval = &defaultMetricsFlushInterval
+	}
 }
 
 type cfgCollector struct {
@@ -54,6 +57,10 @@ type cfgCollector struct {
 func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus_client.Registerer, componentID string, ls labelstore.LabelStore) (Stage, error) {
 	metrics := map[string]cfgCollector{}
 	var fanout *prometheus.Fanout
+	flushInterval := 60 * time.Second
+	if config.MetricsFlushInterval != nil {
+		flushInterval = *config.MetricsFlushInterval
+	}
 	if len(config.ForwardTo) > 0 {
 		fanout = prometheus.NewFanout(config.ForwardTo, componentID, registry, ls)
 	}
@@ -126,7 +133,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 		metrics:       metrics,
 		forwardTo:     config.ForwardTo,
 		fanout:        fanout,
-		flushInterval: config.MetricsFlushInterval,
+		flushInterval: flushInterval,
 		quit:          make(chan struct{}),
 	}, nil
 }

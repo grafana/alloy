@@ -4,6 +4,7 @@ package metric
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -77,7 +78,7 @@ func NewGauges(name string, config *GaugeConfig) (*Gauges, error) {
 				Name:        name,
 				ConstLabels: labels,
 			}),
-				0,
+				atomic.Int64{},
 			}
 		}, int64(config.MaxIdle.Seconds())),
 		Cfg: config,
@@ -91,50 +92,50 @@ func (g *Gauges) With(labels model.LabelSet) prometheus.Gauge {
 
 type expiringGauge struct {
 	prometheus.Gauge
-	lastModSec int64
+	lastModSec atomic.Int64
 }
 
 // Set sets the Gauge to an arbitrary value.
 func (g *expiringGauge) Set(val float64) {
 	g.Gauge.Set(val)
-	g.lastModSec = time.Now().Unix()
+	g.lastModSec.Store(time.Now().Unix())
 }
 
 // Inc increments the Gauge by 1. Use Add to increment it by arbitrary
 // values.
 func (g *expiringGauge) Inc() {
 	g.Gauge.Inc()
-	g.lastModSec = time.Now().Unix()
+	g.lastModSec.Store(time.Now().Unix())
 }
 
 // Dec decrements the Gauge by 1. Use Sub to decrement it by arbitrary
 // values.
 func (g *expiringGauge) Dec() {
 	g.Gauge.Dec()
-	g.lastModSec = time.Now().Unix()
+	g.lastModSec.Store(time.Now().Unix())
 }
 
 // Add adds the given value to the Gauge. (The value can be negative,
 // resulting in a decrease of the Gauge.)
 func (g *expiringGauge) Add(val float64) {
 	g.Gauge.Add(val)
-	g.lastModSec = time.Now().Unix()
+	g.lastModSec.Store(time.Now().Unix())
 }
 
 // Sub subtracts the given value from the Gauge. (The value can be
 // negative, resulting in an increase of the Gauge.)
 func (g *expiringGauge) Sub(val float64) {
 	g.Gauge.Sub(val)
-	g.lastModSec = time.Now().Unix()
+	g.lastModSec.Store(time.Now().Unix())
 }
 
 // SetToCurrentTime sets the Gauge to the current Unix time in seconds.
 func (g *expiringGauge) SetToCurrentTime() {
 	g.Gauge.SetToCurrentTime()
-	g.lastModSec = time.Now().Unix()
+	g.lastModSec.Store(time.Now().Unix())
 }
 
 // HasExpired implements Expirable
 func (g *expiringGauge) HasExpired(currentTimeSec int64, maxAgeSec int64) bool {
-	return currentTimeSec-g.lastModSec >= maxAgeSec
+	return currentTimeSec-g.lastModSec.Load() >= maxAgeSec
 }
