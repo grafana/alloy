@@ -20,6 +20,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add `forward_to` argument to the `stage.metrics` block in `loki.process` to forward metrics to remote storage components like `prometheus.remote_write` instead of exposing them at the local `/metrics` endpoint. (@harshrai654)
+
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
 - Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
