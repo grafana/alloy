@@ -79,6 +79,10 @@ Main (unreleased)
 
 - Fix an issue in the `prometheus.exporter.gcp` component where colons inside `extra_filters` were incorrectly removed. Filter expressions such as `database_id="project_id:database_name"` are now preserved as expected. (@Kim-Yukyung)
 
+- Fix issue in `loki.source.docker` where scheduling containers to tail could take too long. (@kalleep)
+
+- Fix potential deadlock in `loki.source.docker` when component is shutting down. (@kalleep)
+
 v1.12.0
 -----------------
 
@@ -156,7 +160,7 @@ v1.12.0
 
 ### Enhancements
 
-- Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
+- Add per-applicationTestDockerChunkWriter rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
