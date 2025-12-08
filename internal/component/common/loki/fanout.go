@@ -25,15 +25,14 @@ type Fanout struct {
 // if the context is cancelled while sending.
 func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 	f.mut.RLock()
+	defer f.mut.Unlock()
 	for _, recv := range f.children {
 		select {
 		case <-ctx.Done():
-			f.mut.RUnlock()
 			return ctx.Err()
 		case recv.Chan() <- entry:
 		}
 	}
-	f.mut.RUnlock()
 	return nil
 }
 
