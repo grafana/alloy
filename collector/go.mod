@@ -9,7 +9,6 @@ require (
 	github.com/grafana/alloy/extension/alloyengine v0.1.0
 	github.com/grafana/alloy/otelcol/extension/opampextension v0.1.0
 	github.com/grafana/alloy/otelcol/provider/dirwatcherprovider v0.1.0
-	github.com/grafana/alloy/otelcol/provider/opampprovider v0.1.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0
@@ -1011,8 +1010,6 @@ replace github.com/grafana/alloy/syntax => ../syntax
 replace github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
 
 replace github.com/grafana/alloy/otelcol/extension/opampextension => ../extension/opampextension
-
-replace github.com/grafana/alloy/otelcol/provider/opampprovider => ../provider/opampprovider
 
 replace github.com/grafana/alloy/otelcol/provider/dirwatcherprovider => ../provider/dirwatcherprovider
 
