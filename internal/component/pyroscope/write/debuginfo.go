@@ -101,7 +101,6 @@ func newGrpcBasicAuthCredentials(e *EndpointOptions) (*basicAuthCredential, erro
 			username: auth.Username,
 			password: strings.TrimSpace(string(passwordBytes)),
 		}, nil
-
 	}
 	return nil, nil
 }

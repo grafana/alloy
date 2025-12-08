@@ -224,7 +224,6 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		} else if symbolsUploader != nil {
 			debugInfoClients = append(debugInfoClients, symbolsUploader)
 		}
-
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	for _, c := range debugInfoClients {

@@ -12,17 +12,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
+
 	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+
 	lru "github.com/elastic/go-freelru"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 type uploadRequest struct {
@@ -58,6 +61,7 @@ func NewParcaSymbolUploader(
 	cacheDir string,
 	uploadRequestBytes prometheus.Counter,
 ) (*ParcaSymbolUploader, error) {
+
 	retryCache, err := lru.NewSynced[libpf.FileID, struct{}](cacheSize, libpf.FileID.Hash32)
 	if err != nil {
 		return nil, err
@@ -150,6 +154,7 @@ func (i *inProgressTracker) Remove(fileID libpf.FileID) {
 
 	if i.shrinkLimitRatio > 0 &&
 		int(float64(len(i.m))+float64(len(i.m))*i.shrinkLimitRatio) < i.maxSizeSeen {
+
 		i.m = maps.Clone(i.m)
 		i.maxSizeSeen = len(i.m)
 	}
@@ -181,6 +186,7 @@ func (u *ParcaSymbolUploader) Run(ctx context.Context) error {
 // is marked not to be retried.
 func (u *ParcaSymbolUploader) Upload(ctx context.Context, fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
+
 	_, ok := u.retry.Get(fileID)
 	if ok {
 		return

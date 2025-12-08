@@ -25,15 +25,6 @@ import (
 	"github.com/klauspost/compress/zlib"
 )
 
-type zeroReader struct{}
-
-func (*zeroReader) ReadAt(p []byte, off int64) (_ int, _ error) {
-	for i := range p {
-		p[i] = 0
-	}
-	return len(p), nil
-}
-
 type countingWriter struct {
 	w       io.Writer
 	written int64

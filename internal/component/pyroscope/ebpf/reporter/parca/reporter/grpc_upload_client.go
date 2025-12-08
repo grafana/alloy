@@ -62,7 +62,7 @@ func (c *GrpcUploadClient) grpcUpload(ctx context.Context, uploadInstructions *d
 
 	defer func() {
 		if stream != nil {
-			stream.CloseAndRecv()
+			_, _ = stream.CloseAndRecv()
 		}
 	}()
 

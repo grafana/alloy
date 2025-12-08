@@ -1,23 +1,24 @@
-// Copyright (C) 2025 go-delve, parca-agent 
-// 
+// Copyright (C) 2025 go-delve, parca-agent
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 // -----------------------------------------------------------------------------
+
 // Package elfwriter is a package to write ELF files without having their entire
 // contents in memory at any one time.
 //
@@ -853,19 +854,4 @@ func (w *Writer) writeStringTable(strs []string) {
 
 func isSectionStringTable(sec *elf.Section) bool {
 	return sec.Type == elf.SHT_STRTAB && sec.Name == sectionHeaderStrTable
-}
-
-func newSectionReaderWithoutRawSource(fhdr *elf.FileHeader) sectionReaderProviderFn {
-	return func(sec elf.Section) (io.Reader, error) {
-		// Opens the header. If it is compressed, it will un-compress it.
-		// If compressed, it will skip past the compression header [1] and
-		// give a reader to the section itself.
-		//
-		// - [1] https://github.com/golang/go/blob/cd33b4089caf362203cd749ee1b3680b72a8c502/src/debug/elf/file.go#L132
-		r := sec.Open()
-		if sec.Type == elf.SHT_NOBITS {
-			r = io.NewSectionReader(&zeroReader{}, 0, 0)
-		}
-		return r, nil
-	}
 }
