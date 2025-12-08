@@ -17,6 +17,12 @@ import (
 	"time"
 
 	"github.com/golang/snappy"
+	"github.com/grafana/alloy/internal/component"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
@@ -29,13 +35,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/protoadapt"
-
-	"github.com/grafana/alloy/internal/component"
-	fnet "github.com/grafana/alloy/internal/component/common/net"
-	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // generateTestCertAndKey generates a self-signed certificate and private key for testing

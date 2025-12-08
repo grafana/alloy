@@ -27,7 +27,9 @@ var _ storage.Appendable = (*Fanout)(nil)
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
-	children       []storage.Appendable
+	children []storage.Appendable
+	// ComponentID is what component this belongs to.
+	componentID    string
 	writeLatency   prometheus.Histogram
 	samplesCounter prometheus.Counter
 	ls             labelstore.LabelStore
@@ -38,7 +40,7 @@ type Fanout struct {
 }
 
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
+func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "prometheus_fanout_latency",
 		Help:    "Write latency for sending to direct and indirect components",
@@ -54,6 +56,7 @@ func NewFanout(children []storage.Appendable, register prometheus.Registerer, ls
 
 	return &Fanout{
 		children:       children,
+		componentID:    componentID,
 		writeLatency:   wl,
 		samplesCounter: s,
 		ls:             ls,

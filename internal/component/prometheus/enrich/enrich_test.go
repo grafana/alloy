@@ -5,16 +5,15 @@ import (
 	"testing"
 	"time"
 
-	prom "github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/storage"
-	"github.com/stretchr/testify/require"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
+	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/storage"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnricher(t *testing.T) {
