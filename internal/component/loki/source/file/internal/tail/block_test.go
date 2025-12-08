@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBlockUntilExists(t *testing.T) {
@@ -111,7 +110,11 @@ func TestBlockUntilEvent(t *testing.T) {
 
 	t.Run("should return deleted event if file is deleted before", func(t *testing.T) {
 		f := createEmptyFile(t, "startempty")
-		defer f.Close()
+		require.NoError(t, f.Close())
+
+		// NOTE: important for windows that we open with correct flags.
+		f, err := fileext.OpenFile(f.Name())
+		require.NoError(t, err)
 
 		removeFile(t, f.Name())
 
@@ -165,11 +168,6 @@ func TestBlockUntilEvent(t *testing.T) {
 func createEmptyFile(t *testing.T, name string) *os.File {
 	path := filepath.Join(t.TempDir(), name)
 	f, err := os.Create(path)
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
-
-	// NOTE: Important for windows that we use the specialized version of OpenFile.
-	f, err = fileext.OpenFile(path)
 	require.NoError(t, err)
 	return f
 }
