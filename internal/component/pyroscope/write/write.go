@@ -18,7 +18,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -183,7 +182,7 @@ func (c *Component) Update(newConfig Arguments) error {
 type fanOutClient struct {
 	// The list of push clients to fan out to.
 	pushClients   []pushv1connect.PusherServiceClient
-	debugInfo     []*reporter.ParcaSymbolUploader
+	debugInfo     []debugInfoUploader
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
 	metrics       *metrics
@@ -192,10 +191,15 @@ type fanOutClient struct {
 	cancel        context.CancelFunc
 }
 
+type debugInfoUploader interface {
+	UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData)
+	Run(ctx context.Context) error
+}
+
 // newFanOut creates a new fan out client that will fan out to all endpoints.
 func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
-	debugInfoClients := make([]*reporter.ParcaSymbolUploader, 0, len(config.Endpoints))
+	debugInfoClients := make([]debugInfoUploader, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for _, endpoint := range config.Endpoints {
@@ -610,6 +614,12 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+func (f *fanOutClient) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
+	for _, u := range f.debugInfo {
+		u.UploadDebugInfo(ctx, arg)
+	}
 }
 
 func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {

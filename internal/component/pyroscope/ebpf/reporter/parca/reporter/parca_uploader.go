@@ -20,7 +20,6 @@ import (
 	lru "github.com/elastic/go-freelru"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	//nolint:depguard // errgroup is needed for concurrent uploads
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

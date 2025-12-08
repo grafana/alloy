@@ -4,14 +4,12 @@ import (
 	"context"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 type AppenderMock struct {
 	AppendIngestFunc    func(ctx context.Context, profile *IncomingProfile) error
 	AppendFunc          func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-	UploadDebugInfoFunc func(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error))
+	UploadDebugInfoFunc func(ctx context.Context, arg DebugInfoData)
 }
 
 func (a AppenderMock) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
@@ -22,8 +20,8 @@ func (a AppenderMock) AppendIngest(ctx context.Context, profile *IncomingProfile
 	return a.AppendIngestFunc(ctx, profile)
 }
 
-func (a AppenderMock) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
-	a.UploadDebugInfoFunc(ctx, fileID, fileName, buildID, open)
+func (a AppenderMock) UploadDebugInfo(ctx context.Context, arg DebugInfoData) {
+	a.UploadDebugInfoFunc(ctx, arg)
 }
 
 func (a AppenderMock) Appender() Appender {

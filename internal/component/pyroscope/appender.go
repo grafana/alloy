@@ -9,8 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
-	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 const (
@@ -30,9 +28,7 @@ type Appendable interface {
 type Appender interface {
 	Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 	AppendIngest(ctx context.Context, profile *IncomingProfile) error
-
-	UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string,
-		open func() (process.ReadAtCloser, error))
+	UploadDebugInfo(ctx context.Context, arg DebugInfoData)
 }
 
 type RawSample struct {
@@ -121,9 +117,9 @@ type appender struct {
 	writeLatency prometheus.Histogram
 }
 
-func (a *appender) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+func (a *appender) UploadDebugInfo(ctx context.Context, arg DebugInfoData) {
 	for _, c := range a.children {
-		c.UploadDebugInfo(ctx, fileID, fileName, buildID, open)
+		c.UploadDebugInfo(ctx, arg)
 	}
 }
 

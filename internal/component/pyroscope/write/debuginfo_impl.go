@@ -1,3 +1,5 @@
+//go:build linux && (arm64 || amd64)
+
 package write
 
 import (
@@ -10,10 +12,9 @@ import (
 	"strings"
 
 	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	commonconfig "github.com/prometheus/common/config"
-	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -28,7 +29,7 @@ type DebugInfoOptions struct {
 	CachePath        string
 }
 
-func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*reporter.ParcaSymbolUploader, error) {
+func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (debugInfoUploader, error) {
 	if !e.DebugInfo.Enabled {
 		return nil, nil
 	}
@@ -64,7 +65,7 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 		return nil, err
 	}
 
-	return reporter.NewParcaSymbolUploader(
+	impl, err := reporter.NewParcaSymbolUploader(
 		debuginfogrpc.NewDebuginfoServiceClient(cc),
 		e.DebugInfo.CacheSize,
 		e.DebugInfo.StripTextSection,
@@ -73,12 +74,10 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 		e.DebugInfo.CachePath,
 		metrics.debugInfoUploadBytes,
 	)
-}
-
-func (f *fanOutClient) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
-	for _, u := range f.debugInfo {
-		u.Upload(ctx, fileID, fileName, buildID, open)
+	if err != nil {
+		return nil, err
 	}
+	return &debugInfoUploaderImpl{impl}, nil
 }
 
 func newGrpcBasicAuthCredentials(e *EndpointOptions) (*basicAuthCredential, error) {
@@ -120,4 +119,12 @@ func (b *basicAuthCredential) GetRequestMetadata(ctx context.Context, uri ...str
 
 func (b *basicAuthCredential) RequireTransportSecurity() bool {
 	return true
+}
+
+type debugInfoUploaderImpl struct {
+	*reporter.ParcaSymbolUploader
+}
+
+func (r *debugInfoUploaderImpl) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
+	r.ParcaSymbolUploader.Upload(ctx, arg.FileID, arg.FileName, arg.BuildID, arg.Open)
 }

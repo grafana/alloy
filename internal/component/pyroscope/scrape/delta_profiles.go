@@ -14,9 +14,6 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-
-	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 var deltaProfiles map[string][]fastdelta.ValueType = map[string][]fastdelta.ValueType{
@@ -64,7 +61,7 @@ type deltaAppender struct {
 	initialized bool
 }
 
-func (d *deltaAppender) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+func (d *deltaAppender) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
 
 }
 

@@ -11,15 +11,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
-
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
 )
 
 type mockProfiler struct {
@@ -54,7 +51,7 @@ func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.In
 	return args.Error(0)
 }
 
-func (m *mockAppendable) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+func (m *mockAppendable) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
 
 }
 

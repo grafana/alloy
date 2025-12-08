@@ -89,23 +89,29 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 			return
 		}
 		mf := args.MappingFile.Value()
-		res.appendable.Appender().UploadDebugInfo(context.Background(), mf.FileID, mf.FileName.String(), mf.GnuBuildID, func() (process.ReadAtCloser, error) {
-			fallback := func() (process.ReadAtCloser, error) {
-				return args.Process.OpenMappingFile(args.Mapping)
-			}
-			if args.DebuglinkFileName == "" {
-				return fallback()
-			}
-			if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
-				return fallback()
-			} else {
-				if f, err := os.Open(file); err != nil {
+		arg := pyroscope.DebugInfoData{
+			FileID:   mf.FileID,
+			FileName: mf.FileName.String(),
+			BuildID:  mf.GnuBuildID,
+			Open: func() (process.ReadAtCloser, error) {
+				fallback := func() (process.ReadAtCloser, error) {
+					return args.Process.OpenMappingFile(args.Mapping)
+				}
+				if args.DebuglinkFileName == "" {
+					return fallback()
+				}
+				if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
 					return fallback()
 				} else {
-					return f, nil
+					if f, err := os.Open(file); err != nil {
+						return fallback()
+					} else {
+						return f, nil
+					}
 				}
-			}
-		})
+			},
+		}
+		res.appendable.Appender().UploadDebugInfo(context.Background(), arg)
 	})
 	// todo, should we keep the ontarget lidia symbolizer for a while?
 	if cfg.VerboseMode {
