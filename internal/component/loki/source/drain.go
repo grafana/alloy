@@ -13,8 +13,7 @@ import (
 // the goroutine exits.
 //
 // This is typically used during component shutdown to drain any remaining entries
-// from a receiver channel while performing cleanup operations (e.g., stopping
-// sources, closing channels).
+// from a receiver channel while performing cleanup operations.
 func Drain(recv loki.LogsReceiver, f func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
