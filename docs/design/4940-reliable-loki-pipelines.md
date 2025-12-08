@@ -8,7 +8,9 @@
 
 Alloy's Loki pipelines currently use channels, which limits throughput due to head-of-line blocking and can cause silent log drops during config reloads or shutdowns.
 
-This proposal introduces a function-based pipeline using a `Consumer` interface, replacing the channel-based design. Source components will call `Consume()` directly on downstream components, enabling parallel processing and returning errors that sources can use for retry logic or proper HTTP error responses.
+This proposal introduces a function-based pipeline using a `Consumer` or `Appender` interface, replacing the channel-based design.
+
+Source components will call functions directly on downstream components, enabling parallel processing and returning errors that sources can use for retry logic or proper HTTP error responses.
 
 ## Problem
 
@@ -33,6 +35,8 @@ loki.write "loki" {}
 ```
 
 `loki.source.file` will tail all files from targets and compete to send on the channel exposed by `loki.process`. Only one entry will be processed by each stage configured in `loki.process`. If a reload happens or if Alloy is shutting down, logs could be silently dropped.
+
+There is also no way to abort entries in the pipeline. This is problematic when using components such as `loki.source.api` where caller could cancel request due to e.g. timeouts.
 
 ## Proposal 0: Do nothing
 This architecture works in most cases, it will be hard to use slow components such as `secretfilter` because a lot of the time it's too slow.
