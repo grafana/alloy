@@ -1,5 +1,7 @@
 # Major Dependency Updates
 
+A guide for LLM agents to update the major dependencies of the Alloy project.
+
 ## What are major dependencies?
 
 Major dependencies are Go module dependencies of the Alloy project that are known to be complex to upgrade and often resulting in conflicts or breaking changes. At the same time we are committed to update these dependencies regularly in order to receive fixes and improvements from the upstream.
@@ -21,6 +23,45 @@ Major dependencies are Go module dependencies of the Alloy project that are know
   - `go.opentelemetry.io/obi`
   - `go.opentelemetry.io/ebpf-profiler`
 - Loki dependencies (Loki)
+
+## Tools and snippets to use throughout the whole process
+
+Use the tools in the `tools/` directory to help you accomplish tasks whenever appropriate:
+
+- Each tool is contained in its own leaf directory within this folder.
+- Each tool contains a runnable `main.go` file that can be used to run the tool.
+- Each tool contains a `README.md` that describes how to use the tool.
+  - `Overview` section describes what the tool does
+  - `Usage` describes the positional arguments and flags that can be used for the tool.
+  - `Output` describes or provides an example of the output. Most output will be self-descriptive, natural language or tables, etc.
+
+### Best Usage Practices
+
+With these practices you should be able to directly get the information you need from the tools and run them without unnecessary intermediate steps:
+
+- List all tools by listing their README.md files: `find tools -name README.md`
+- See which tools are relevant to your task based on their name as the first filter. If the name is not clear, open the README.md to read the overview.
+- Read the `README.md` file for each tool directly to understand how to use it as per the Usage section.
+- Run the tool via `go run main.go ...` with appropriate arguments and flags to use the tool as described in readme.
+- Read the output of the tool:
+  - It may contain the information you need directly.
+  - But it may also contain further instructions on what to do next.
+- If the tool is not working as expected or misses files, report broken tool and stop.
+
+### Snippets
+
+When there is no specific tool, you can use these command snippets that are tried and tested to work well. Note that you may need to adapt them to your specific use case.
+
+- Find Go module releases using Go dependency management: `go list -m -versions <package> | tr ' ' '\n'`
+- Find Go module release using GitHub releases: `gh release list -R <owner>/<repo> -L 20`
+- Find changes between two GitHub releases: `gh api repos/<owner>/<repo>/compare/<from>...<to> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
+- List changes in a fork branch compared to upstream base: `gh api repos/<owner>/<repo>/compare/<base_ref>...<fork_owner>:<fork_branch> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
+- Find PR details by number: `gh pr view <number> -R <owner>/<repo> --json title,body,url`
+- Extract PR number from a commit message: `gh api repos/<owner>/<repo>/commits/<sha> --jq '.commit.message | scan("#[0-9]+")'`
+- Find changelog from GitHub release notes: `gh release view <tag> -R <owner>/<repo> --json tagName,name,publishedAt,body`
+- Find issue details by number: `gh issue view <number> -R <owner>/<repo> --json number,title,state,body,url,createdAt,closedAt`
+- Search for issues mentioning an error or keyword: `gh issue list -R <owner>/<repo> -S "<search terms>" -L 10`
+- Find commit details by SHA: `gh commit view <sha> -R <owner>/<repo> --json sha,author,date,message`
 
 ## Major Dependency Relationships
 
@@ -223,24 +264,6 @@ If after all your best efforts there are remaining test failures, make sure you 
 
 ### Tools
 
-#### Finding latest releases on GitHub (preferred method)
-
-```bash
-gh release list -R prometheus/prometheus -L 20
-```
-
-Skip RC releases or patches to previous LTS releases. Look for the latest stable release by semantic versioning.
-
-#### Finding latest releases on Go package manager (alternative method)
-
-Use this command to find the latest releases on the Go package manager:
-
-```bash
-go list -m -versions <package> | tr ' ' '\n'
-```
-
-Be careful to filter out any versions that are not proper semantic versioning releases. Then you typically want to pick the lastest version as ordered by the semantic versioning convention.
-
 #### Figuring out latest `github.com/prometheus/prometheus` dependency version
 
 If you find on GitHub a release of prometheus/prometheus, for example `v3.4.2`, you need to translate it into a Go module version: The Go module version starts with a `v0.` followed by the major version, and the minor version expressed as two digits (so would have a leading zero if needed). Then comes the `.` followed by the patch version.
@@ -250,6 +273,8 @@ So in our example, the `v3.4.2` release would be translated into the `v0.304.2` 
 You may need to do the reverse of this conversion to resolve a GitHub tag from a Go module version.
 
 Also, similar convention may apply to Loki dependency.
+
+TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
 
 #### Viewing dependencies of a Go module
 
@@ -266,63 +291,7 @@ For example, to view the dependencies of prometheus/prometheus v0.304.2, you wou
 go mod download github.com/prometheus/prometheus@v0.304.2 && cd $(go env GOMODCACHE)/github.com/prometheus/prometheus@v0.304.2 && cat go.mod
 ```
 
-#### Getting list of changes that have been added to a forked dependency
-
-List changes in fork `grafana/prometheus` branch `staleness_disabling_v3.7.3` compared to upstream `main`:
-
-```bash
-gh api repos/prometheus/prometheus/compare/main...grafana:staleness_disabling_v3.7.3 --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'
-```
-
-#### Getting list of changes made to a dependency between two versions
-
-List changes in `prometheus/prometheus` between `v3.7.1` and `v3.7.3`:
-
-```bash
-gh api repos/prometheus/prometheus/compare/v3.7.1...v3.7.3 --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'
-```
-
-For each change, use "Getting PR details" to fetch full PR descriptions.
-
-#### Getting PR details
-
-Extract PR number from commit SHA:
-
-```bash
-gh api repos/prometheus/prometheus/commits/1195563 --jq '.commit.message | scan("#[0-9]+")'
-```
-
-Fetch PR description by number:
-
-```bash
-gh pr view 17355 -R prometheus/prometheus --json title,body,url
-```
-
-#### Getting changelog from GitHub release notes
-
-Fetch release notes and changelog:
-
-```bash
-gh release view v3.7.3 -R prometheus/prometheus --json tagName,name,publishedAt,body
-```
-
-#### Checking if the issue is already known upstream
-
-Search for issues mentioning an error:
-
-```bash
-gh issue list -R open-telemetry/opentelemetry-collector-contrib -S "loadbalancer does not have type otlp" -L 10
-```
-
-Add filters: `is:open`, `is:closed`, `label:bug`, `author:username` to narrow results.
-
-#### Viewing issue details
-
-View full issue details including status, description, and comments:
-
-```bash
-gh issue view 44054 -R open-telemetry/opentelemetry-collector-contrib --json number,title,state,body,url,createdAt,closedAt
-```
+TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
 
 #### Using a specific commit for a go.mod dependency
 
@@ -335,6 +304,8 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadb
 ```
 
 Run `go mod tidy` and it will fix the raw commit sha with the correct version number corresponding to the commit you want!
+
+TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
 
 #### Inspecting upstream code changes between versions
 
@@ -356,6 +327,8 @@ diff -ur \
   "$(go env GOMODCACHE)/${module}@${old}" \
   "$(go env GOMODCACHE)/${module}@${new}" | head -200
 ```
+
+TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
 
 #### Checking if a fork is still needed
 
@@ -398,3 +371,5 @@ gh api 'repos/upstream-org/repo-name/commits?path=relevant/path&sha=main' --jq '
 # Search PRs with keywords from fork purpose
 gh pr list -R upstream-org/repo-name -S "keywords from fork" --state merged -L 10
 ```
+
+TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
