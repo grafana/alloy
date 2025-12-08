@@ -54,6 +54,7 @@ RUN apt-get update \
         ca-certificates \
         libsystemd0 \
         tzdata \
+        strace lsof curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -71,6 +72,7 @@ RUN groupadd --gid $UID $USERNAME \
     && chown -R $USERNAME:$USERNAME /var/lib/alloy \
     && chmod -R 770 /var/lib/alloy
 
-ENTRYPOINT ["/bin/alloy"]
+# ENTRYPOINT ["/bin/alloy"]
+ENTRYPOINT [ "strace", "-f", "--trace=%file", "/bin/alloy" ]
 ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
