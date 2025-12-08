@@ -52,8 +52,10 @@ With these practices you should be able to directly get the information you need
 
 When there is no specific tool, you can use these command snippets that are tried and tested to work well. Note that you may need to adapt them to your specific use case.
 
-- Find Go module releases using Go dependency management: `go list -m -versions <package> | tr ' ' '\n'`
+TODO: Won't work when there are no releases.
+
 - Find Go module release using GitHub releases: `gh release list -R <owner>/<repo> -L 20`
+
 - Find changes between two GitHub releases: `gh api repos/<owner>/<repo>/compare/<from>...<to> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
 - List changes in a fork branch compared to upstream base: `gh api repos/<owner>/<repo>/compare/<base_ref>...<fork_owner>:<fork_branch> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
 - Find PR details by number: `gh pr view <number> -R <owner>/<repo> --json title,body,url`
@@ -61,7 +63,15 @@ When there is no specific tool, you can use these command snippets that are trie
 - Find changelog from GitHub release notes: `gh release view <tag> -R <owner>/<repo> --json tagName,name,publishedAt,body`
 - Find issue details by number: `gh issue view <number> -R <owner>/<repo> --json number,title,state,body,url,createdAt,closedAt`
 - Search for issues mentioning an error or keyword: `gh issue list -R <owner>/<repo> -S "<search terms>" -L 10`
+
+TODO: This is not valid. Use `gh api repos/<owner>/<repo>/commits/<sha> --jq '{sha: .sha, author: .commit.author, date: .commit.author.date, message: .commit.message}'` instead.
+
 - Find commit details by SHA: `gh commit view <sha> -R <owner>/<repo> --json sha,author,date,message`
+
+TODO: This won't work for modules with local replaces:
+
+- View dependency graph of a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && go mod graph`
+- View the `go.mod` file for a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && cat go.mod`
 
 ## Major Dependency Relationships
 
@@ -273,23 +283,6 @@ So in our example, the `v3.4.2` release would be translated into the `v0.304.2` 
 You may need to do the reverse of this conversion to resolve a GitHub tag from a Go module version.
 
 Also, similar convention may apply to Loki dependency.
-
-TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
-
-#### Viewing dependencies of a Go module
-
-```bash
-go mod download <module>@<version>
-cd $(go env GOMODCACHE)/<module>@<version>
-go mod graph # to view the dependency graph
-cat go.mod # to view the go.mod file for details of what is direct / indirect dependencies
-```
-
-For example, to view the dependencies of prometheus/prometheus v0.304.2, you would run:
-
-```bash
-go mod download github.com/prometheus/prometheus@v0.304.2 && cd $(go env GOMODCACHE)/github.com/prometheus/prometheus@v0.304.2 && cat go.mod
-```
 
 TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
 

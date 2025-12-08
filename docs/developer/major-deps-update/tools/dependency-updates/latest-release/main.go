@@ -1,18 +1,30 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ============================================================================
 // Constants
 // ============================================================================
+
+// LookupMethod defines how to fetch version information
+type LookupMethod string
+
+const (
+	GoModule      LookupMethod = "gomodule" // Use Go module versions
+	GitHubRelease LookupMethod = "release"  // Use GitHub releases
+	GitTag        LookupMethod = "tag"      // Use Git tags
+)
 
 var specialModuleMappings = map[string]string{
 	"go.opentelemetry.io/otel":          "open-telemetry/opentelemetry-go",
@@ -20,11 +32,31 @@ var specialModuleMappings = map[string]string{
 	"go.opentelemetry.io/collector":     "open-telemetry/opentelemetry-collector",
 	"go.opentelemetry.io/build-tools":   "open-telemetry/opentelemetry-go-build-tools",
 	"go.opentelemetry.io/auto":          "open-telemetry/opentelemetry-go-instrumentation",
-	"go.opentelemetry.io/obi":           "open-telemetry/opentelemetry-ebpf-instrumentation",
-	"go.opentelemetry.io/ebpf-profiler": "open-telemetry/opentelemetry-ebpf-profiler",
+	"go.opentelemetry.io/obi":           "grafana/opentelemetry-ebpf-instrumentation",
+	"go.opentelemetry.io/ebpf-profiler": "grafana/opentelemetry-ebpf-profiler",
 }
 
 var specialVersioningRepos = []string{"prometheus/prometheus"}
+
+// primaryLookupMethod maps GitHub repositories to their primary lookup method
+// This determines which single source is used for each dependency
+var primaryLookupMethod = map[string]LookupMethod{
+	// Grafana forks use Git tags as primary source
+	"grafana/opentelemetry-ebpf-profiler":        GitTag,
+	"grafana/opentelemetry-ebpf-instrumentation": GitTag,
+
+	// Major dependencies use GitHub releases as primary source
+	"prometheus/prometheus":                          GitHubRelease,
+	"prometheus/common":                              GitHubRelease,
+	"prometheus/client_golang":                       GitHubRelease,
+	"prometheus/client_model":                        GitHubRelease,
+	"open-telemetry/opentelemetry-collector":         GitHubRelease,
+	"open-telemetry/opentelemetry-collector-contrib": GitHubRelease,
+	"open-telemetry/opentelemetry-go":                GitHubRelease,
+	"open-telemetry/opentelemetry-go-contrib":        GitHubRelease,
+	"grafana/beyla":                                  GitHubRelease,
+	"grafana/loki":                                   GitHubRelease,
+}
 
 // ============================================================================
 // Parsing Functions
@@ -37,23 +69,98 @@ type Release struct {
 	Published string
 }
 
-// parseGoVersionsOutput parses the output of 'go list -m -versions' command
-func parseGoVersionsOutput(output string) []string {
-	parts := strings.Fields(strings.TrimSpace(output))
-	if len(parts) > 1 {
-		return parts[1:] // Skip module path, return versions
-	}
-	return []string{}
+// VersionInfo represents a Go module version with its publish time
+type VersionInfo struct {
+	Version string
+	Time    time.Time
 }
 
-// getGoModuleVersions gets all versions of a Go module using go list -m -versions
-func getGoModuleVersions(modulePath string) ([]string, error) {
-	cmd := exec.Command("go", "list", "-m", "-versions", modulePath)
+// goListModuleJSON represents the JSON output from 'go list -m -json'
+type goListModuleJSON struct {
+	Path     string    `json:"Path"`
+	Version  string    `json:"Version"`
+	Time     time.Time `json:"Time"`
+	Versions []string  `json:"Versions"`
+}
+
+// parseGoVersionsOutput parses the output of 'go list -m -versions' command.
+// It mirrors:
+//
+//	go list -m -versions <module> | tr ' ' '\n' | grep -v '+incompatible'
+//
+// by skipping the module path and filtering out any versions containing
+// "+incompatible".
+func parseGoVersionsOutput(output string) []string {
+	parts := strings.Fields(strings.TrimSpace(output))
+	if len(parts) <= 1 {
+		return []string{}
+	}
+
+	versions := make([]string, 0, len(parts)-1)
+	for _, v := range parts[1:] { // Skip module path
+		if strings.Contains(v, "+incompatible") {
+			continue
+		}
+		versions = append(versions, v)
+	}
+	return versions
+}
+
+// getGoModuleVersions gets all versions of a Go module with their publish times,
+// sorted by publish date (newest first)
+func getGoModuleVersions(modulePath string) ([]VersionInfo, error) {
+	// First, get all available versions
+	cmd := exec.Command("go", "list", "-m", "-json", "-versions", modulePath)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("error fetching Go module versions: %w", err)
 	}
-	return parseGoVersionsOutput(string(output)), nil
+
+	// Parse the JSON to get the list of versions
+	var modInfo goListModuleJSON
+	if err := json.Unmarshal(output, &modInfo); err != nil {
+		return nil, fmt.Errorf("error parsing module info: %w", err)
+	}
+
+	// Filter out incompatible versions
+	versions := make([]string, 0, len(modInfo.Versions))
+	for _, v := range modInfo.Versions {
+		if !strings.Contains(v, "+incompatible") {
+			versions = append(versions, v)
+		}
+	}
+
+	if len(versions) == 0 {
+		return []VersionInfo{}, nil
+	}
+
+	// Fetch publish time for each version
+	versionInfos := make([]VersionInfo, 0, len(versions))
+	for _, version := range versions {
+		cmd := exec.Command("go", "list", "-m", "-json", modulePath+"@"+version)
+		output, err := cmd.Output()
+		if err != nil {
+			// If we can't get the time for this version, skip it
+			continue
+		}
+
+		var vInfo goListModuleJSON
+		if err := json.Unmarshal(output, &vInfo); err != nil {
+			continue
+		}
+
+		versionInfos = append(versionInfos, VersionInfo{
+			Version: version,
+			Time:    vInfo.Time,
+		})
+	}
+
+	// Sort by time, newest first
+	sort.Slice(versionInfos, func(i, j int) bool {
+		return versionInfos[i].Time.After(versionInfos[j].Time)
+	})
+
+	return versionInfos, nil
 }
 
 // extractGitHubRepo extracts GitHub owner/repo from a Go module path
@@ -119,9 +226,76 @@ func getGitHubReleases(repo string, limit int) ([]Release, error) {
 	return parseGitHubReleasesOutput(string(output)), nil
 }
 
+// parseGitTagsOutput parses the output of 'gh api repos/OWNER/REPO/tags' command
+func parseGitTagsOutput(output string) []Release {
+	var releases []Release
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.Split(line, "\t")
+		if len(parts) >= 1 {
+			tag := strings.TrimSpace(parts[0])
+			published := "N/A"
+			if len(parts) >= 2 {
+				published = strings.TrimSpace(parts[1])
+			}
+
+			releases = append(releases, Release{
+				Tag:       tag,
+				Title:     tag, // For tags, use the tag name as the title
+				Published: published,
+			})
+		}
+	}
+	return releases
+}
+
+// getGitTags gets Git tags using gh API
+func getGitTags(repo string, limit int) ([]Release, error) {
+	// Use per_page to limit results
+	perPage := limit
+	if perPage > 100 {
+		perPage = 100
+	}
+
+	cmd := exec.Command("gh", "api", "repos/"+repo+"/tags",
+		"--jq", `.[] | "\(.name)\t\(if .commit.commit.author.date then .commit.commit.author.date else "N/A" end)"`,
+		"-X", "GET",
+		"-F", fmt.Sprintf("per_page=%d", perPage))
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching Git tags: %w", err)
+	}
+
+	return parseGitTagsOutput(string(output)), nil
+}
+
 // ============================================================================
 // Version Conversion Functions (Prometheus-style)
 // ============================================================================
+
+// isSemverTag reports whether a tag looks like a semantic version starting
+// with a "v" prefix, e.g. v1.2.3, v3.6.2-rc.1, etc.
+func isSemverTag(tag string) bool {
+	re := regexp.MustCompile(`^v\d+\.\d+\.\d+.*$`)
+	return re.MatchString(tag)
+}
+
+// latestSemverTag scans releases (assumed newest-first as returned by
+// "gh release list") and returns the first tag that looks like a semantic
+// version (vMAJOR.MINOR.PATCH...). If none is found, it returns an empty
+// string.
+func latestSemverTag(releases []Release) string {
+	for _, r := range releases {
+		if isSemverTag(r.Tag) {
+			return r.Tag
+		}
+	}
+	return ""
+}
 
 // normalizeVersion normalizes version for comparison (ensure 'v' prefix)
 func normalizeVersion(version string) string {
@@ -129,6 +303,47 @@ func normalizeVersion(version string) string {
 		return version
 	}
 	return "v" + version
+}
+
+// latestGoModuleVersion picks the most relevant "latest" Go module version from
+// the list (already sorted by publish date, newest first).
+//
+// For Prometheus-style repos (specialVersioning == true) we want the latest
+// v0.x.y version so that it can be mapped to the corresponding GitHub release
+// (vMAJOR.MINOR.PATCH).
+//
+// For other repos we prefer the latest semantic version (vMAJOR.MINOR.PATCH...)
+// and intentionally skip versions that are clearly metadata-only markers such
+// as "*-retract".
+func latestGoModuleVersion(goVersions []VersionInfo, specialVersioning bool) string {
+	if len(goVersions) == 0 {
+		return "N/A"
+	}
+
+	// Prometheus-style mapping: pick the newest v0.x.y version.
+	if specialVersioning {
+		for _, vInfo := range goVersions {
+			v := vInfo.Version
+			if strings.HasPrefix(v, "v0.") && !strings.Contains(v, "-retract") {
+				return v
+			}
+		}
+		// If we didn't find a v0.* version, fall back to the first entry (newest).
+		return goVersions[0].Version
+	}
+
+	// Generic modules: prefer the latest semantic version that is not a retract
+	// marker. Since versions are already sorted by date (newest first), we just
+	// need to find the first one that matches our criteria.
+	for _, vInfo := range goVersions {
+		v := vInfo.Version
+		if isSemverTag(v) && !strings.Contains(v, "-retract") {
+			return v
+		}
+	}
+
+	// Fallback: if nothing matched our expectations, use the first entry (newest).
+	return goVersions[0].Version
 }
 
 // githubVersionToGoModule converts Prometheus/Loki GitHub version to Go module version
@@ -188,77 +403,97 @@ func usesSpecialVersioning(repo string) bool {
 }
 
 // ============================================================================
+// Lookup Method Functions
+// ============================================================================
+
+// getPrimaryLookupMethod determines which single method to use for fetching version information
+// It checks explicit mappings first, then pattern matching, then defaults
+func getPrimaryLookupMethod(modulePath, githubRepo string) LookupMethod {
+	// Check explicit mapping first
+	if method, exists := primaryLookupMethod[githubRepo]; exists {
+		return method
+	}
+
+	// Pattern matching: GitHub repos default to GitHub releases
+	if strings.HasPrefix(modulePath, "github.com/") {
+		return GitHubRelease
+	}
+
+	// Default to Go modules for non-GitHub modules (e.g., golang.org/x/*, gopkg.in/*)
+	return GoModule
+}
+
+// ============================================================================
 // Display Functions
 // ============================================================================
 
-func displayLatestVersions(latestGo, latestGitHub string, specialVersioning bool) {
-	if specialVersioning && latestGo != "N/A" {
-		convertedGitHub := goModuleVersionToGitHub(latestGo)
-		fmt.Printf("Latest from Go modules:      %s (GitHub: %s)\n", latestGo, convertedGitHub)
-	} else {
-		fmt.Printf("Latest from Go modules:      %s\n", latestGo)
+func displayLatestVersion(latestVersion string, method LookupMethod, specialVersioning bool) {
+	methodName := "Go modules"
+	if method == GitHubRelease {
+		methodName = "GitHub releases"
+	} else if method == GitTag {
+		methodName = "Git tags"
 	}
 
-	if specialVersioning && latestGitHub != "N/A" {
-		convertedGo := githubVersionToGoModule(latestGitHub)
-		fmt.Printf("Latest from GitHub releases: %s (Go module: %s)\n", latestGitHub, convertedGo)
-	} else {
-		fmt.Printf("Latest from GitHub releases: %s\n", latestGitHub)
-	}
-}
+	fmt.Printf("Lookup method: %s\n", methodName)
 
-func displayVersionComparison(latestGo, latestGitHub string, specialVersioning bool) {
-	if latestGo == "N/A" || latestGitHub == "N/A" {
-		return
-	}
-
-	versionsMatch := false
-	if specialVersioning {
-		convertedGitHubVersion := githubVersionToGoModule(latestGitHub)
-		versionsMatch = normalizeVersion(latestGo) == normalizeVersion(convertedGitHubVersion)
-	} else {
-		versionsMatch = normalizeVersion(latestGo) == normalizeVersion(latestGitHub)
-	}
-
-	if versionsMatch {
-		fmt.Println("\n✓ Both sources agree on the latest version")
-	} else {
-		fmt.Println("\n⚠️  DISCREPANCY DETECTED: Latest versions differ between sources!")
-	}
-}
-
-func displayGoVersions(goVersions []string, specialVersioning bool) {
-	if len(goVersions) == 0 {
-		fmt.Println("\nNo Go module versions found.")
-		return
-	}
-
-	fmt.Println("\nAll Go module versions (last 10):")
-	// Get last 10, newest first
-	start := len(goVersions) - 10
-	if start < 0 {
-		start = 0
-	}
-	displayVersions := goVersions[start:]
-	// Reverse to show newest first
-	for i := len(displayVersions) - 1; i >= 0; i-- {
-		version := displayVersions[i]
-		if specialVersioning {
-			githubVer := goModuleVersionToGitHub(version)
-			fmt.Printf("  %-15s (GitHub: %s)\n", version, githubVer)
+	if specialVersioning && latestVersion != "N/A" {
+		// For Prometheus-style repos, show both formats
+		if method == GitHubRelease || method == GitTag {
+			// We have GitHub version, show Go module equivalent
+			goModVer := githubVersionToGoModule(latestVersion)
+			fmt.Printf("Latest version:  %s (Go module: %s)\n", latestVersion, goModVer)
 		} else {
-			fmt.Printf("  %s\n", version)
+			// We have Go module version, show GitHub equivalent
+			githubVer := goModuleVersionToGitHub(latestVersion)
+			fmt.Printf("Latest version:  %s (GitHub: %s)\n", latestVersion, githubVer)
+		}
+	} else {
+		fmt.Printf("Latest version:  %s\n", latestVersion)
+	}
+}
+
+func displayVersionList(goVersions []VersionInfo, releases []Release, method LookupMethod, specialVersioning bool) {
+	if method == GoModule {
+		displayGoVersions(goVersions, specialVersioning)
+	} else {
+		displayGitHubReleases(releases, specialVersioning)
+	}
+}
+
+func displayGoVersions(goVersions []VersionInfo, specialVersioning bool) {
+	if len(goVersions) == 0 {
+		fmt.Println("\nNo versions found.")
+		return
+	}
+
+	fmt.Println("\nRecent versions (last 10, newest first):")
+	// Already sorted by date (newest first), just take first 10
+	limit := 10
+	if len(goVersions) < limit {
+		limit = len(goVersions)
+	}
+
+	for i := 0; i < limit; i++ {
+		vInfo := goVersions[i]
+		dateDisplay := vInfo.Time.Format("2006-01-02")
+
+		if specialVersioning {
+			githubVer := goModuleVersionToGitHub(vInfo.Version)
+			fmt.Printf("  %-15s %-12s (GitHub: %s)\n", vInfo.Version, dateDisplay, githubVer)
+		} else {
+			fmt.Printf("  %-15s %-12s\n", vInfo.Version, dateDisplay)
 		}
 	}
 }
 
 func displayGitHubReleases(releases []Release, specialVersioning bool) {
 	if len(releases) == 0 {
-		fmt.Println("\nNo GitHub releases found.")
+		fmt.Println("\nNo versions found.")
 		return
 	}
 
-	fmt.Println("\nRecent GitHub releases:")
+	fmt.Println("\nRecent versions (last 10, newest first):")
 	limit := 10
 	if len(releases) < limit {
 		limit = len(releases)
@@ -305,53 +540,72 @@ func main() {
 
 	fmt.Printf("Go Module: %s\n\n", modulePath)
 
-	// Fetch data from both sources
-	goVersions, goErr := getGoModuleVersions(modulePath)
-	if goErr != nil {
-		fmt.Fprintf(os.Stderr, "Error fetching Go module versions: %v\n", goErr)
-		goVersions = []string{}
-	}
-
+	// Extract GitHub repo (if applicable)
 	githubRepo := extractGitHubRepo(modulePath)
-	var githubReleases []Release
 
-	var ghErr error
-	if githubRepo != "" {
-		var err error
-		githubReleases, err = getGitHubReleases(githubRepo, *limit)
-		if err != nil {
-			ghErr = err
-			fmt.Fprintf(os.Stderr, "Error fetching GitHub releases: %v\n", err)
-			githubReleases = []Release{}
-		}
-	} else {
-		fmt.Fprintln(os.Stderr, "Warning: Could not extract GitHub repository from module path.")
-		fmt.Fprintln(os.Stderr, "GitHub releases will not be available.")
-		githubReleases = []Release{}
-	}
+	// Determine the single lookup method to use
+	lookupMethod := getPrimaryLookupMethod(modulePath, githubRepo)
 
-	// Determine versioning scheme and latest versions
+	// Determine if this repo uses special versioning (Prometheus-style)
 	specialVersioning := githubRepo != "" && usesSpecialVersioning(githubRepo)
-	latestGo := "N/A"
-	if len(goVersions) > 0 {
-		latestGo = goVersions[len(goVersions)-1]
-	}
 
-	latestGitHub := "N/A"
-	if len(githubReleases) > 0 {
-		latestGitHub = githubReleases[0].Tag
-	}
+	// Perform ONLY ONE lookup based on the primary method
+	var versions []VersionInfo
+	var releases []Release
+	var latestVersion string
+	var err error
 
-	// If both data sources failed and the module path looks shortened (e.g., "prometheus/common"),
-	// print a helpful suggestion about using the full module path.
-	if goErr != nil && (ghErr != nil || githubRepo == "") && !strings.Contains(modulePath, ".") {
-		fmt.Fprintf(os.Stderr, "\nHint: %q does not look like a full Go module path.\n", modulePath)
-		fmt.Fprintln(os.Stderr, "      Please provide the full module path, for example: github.com/prometheus/common")
+	switch lookupMethod {
+	case GoModule:
+		versions, err = getGoModuleVersions(modulePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error fetching Go module versions: %v\n", err)
+			if !strings.Contains(modulePath, ".") {
+				fmt.Fprintf(os.Stderr, "\nHint: %q does not look like a full Go module path.\n", modulePath)
+				fmt.Fprintln(os.Stderr, "      Please provide the full module path, for example: github.com/prometheus/common")
+			}
+			os.Exit(1)
+		}
+		latestVersion = latestGoModuleVersion(versions, specialVersioning)
+
+	case GitHubRelease:
+		if githubRepo == "" {
+			fmt.Fprintln(os.Stderr, "Error: Could not extract GitHub repository from module path.")
+			os.Exit(1)
+		}
+		releases, err = getGitHubReleases(githubRepo, *limit)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error fetching GitHub releases: %v\n", err)
+			os.Exit(1)
+		}
+		if len(releases) > 0 {
+			if tag := latestSemverTag(releases); tag != "" {
+				latestVersion = tag
+			} else {
+				latestVersion = releases[0].Tag
+			}
+		} else {
+			latestVersion = "N/A"
+		}
+
+	case GitTag:
+		if githubRepo == "" {
+			fmt.Fprintln(os.Stderr, "Error: Could not extract GitHub repository from module path.")
+			os.Exit(1)
+		}
+		releases, err = getGitTags(githubRepo, *limit)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error fetching Git tags: %v\n", err)
+			os.Exit(1)
+		}
+		if len(releases) > 0 {
+			latestVersion = releases[0].Tag
+		} else {
+			latestVersion = "N/A"
+		}
 	}
 
 	// Display results
-	displayLatestVersions(latestGo, latestGitHub, specialVersioning)
-	displayVersionComparison(latestGo, latestGitHub, specialVersioning)
-	displayGoVersions(goVersions, specialVersioning)
-	displayGitHubReleases(githubReleases, specialVersioning)
+	displayLatestVersion(latestVersion, lookupMethod, specialVersioning)
+	displayVersionList(versions, releases, lookupMethod, specialVersioning)
 }

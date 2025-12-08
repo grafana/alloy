@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 )
 
 func TestGitHubToGoBasic(t *testing.T) {
@@ -244,7 +245,6 @@ func TestPrometheusDetected(t *testing.T) {
 func TestOtherReposNotDetected(t *testing.T) {
 	repos := []string{
 		"prometheus/common",
-		"grafana/loki",
 		"stretchr/testify",
 		"open-telemetry/opentelemetry-go",
 	}
@@ -270,6 +270,86 @@ func TestNormalizeWithVPrefix(t *testing.T) {
 		if result != tt.expected {
 			t.Errorf("normalizeVersion(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
+	}
+}
+
+func TestIsSemverTag(t *testing.T) {
+	tests := []struct {
+		tag      string
+		expected bool
+	}{
+		{"v1.0.0", true},
+		{"v2.3.4-rc.1", true},
+		{"operator/v0.9.0", false},
+		{"1.0.0", false},
+		{"v1.0", false},
+		{"foo", false},
+	}
+
+	for _, tt := range tests {
+		if got := isSemverTag(tt.tag); got != tt.expected {
+			t.Errorf("isSemverTag(%q) = %v, want %v", tt.tag, got, tt.expected)
+		}
+	}
+}
+
+func TestLatestGoModuleVersionSpecialVersioning(t *testing.T) {
+	// Versions in order from oldest to newest by date
+	versions := []VersionInfo{
+		{Version: "v1.99.0-retract", Time: time.Date(2025, 12, 8, 0, 0, 0, 0, time.UTC)},
+		{Version: "v1.99.0", Time: time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)},
+		{Version: "v0.308.0", Time: time.Date(2025, 12, 6, 0, 0, 0, 0, time.UTC)},
+		{Version: "v0.308.0-rc.1", Time: time.Date(2025, 12, 5, 0, 0, 0, 0, time.UTC)},
+		{Version: "v0.308.0-rc.0", Time: time.Date(2025, 12, 4, 0, 0, 0, 0, time.UTC)},
+		{Version: "v0.307.0", Time: time.Date(2025, 12, 3, 0, 0, 0, 0, time.UTC)},
+		{Version: "v0.306.0", Time: time.Date(2025, 12, 2, 0, 0, 0, 0, time.UTC)},
+		{Version: "v0.305.0", Time: time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)},
+	}
+
+	got := latestGoModuleVersion(versions, true)
+	want := "v0.308.0"
+	if got != want {
+		t.Fatalf("latestGoModuleVersion(special) = %q, want %q", got, want)
+	}
+}
+
+func TestLatestGoModuleVersionGenericSkipsRetract(t *testing.T) {
+	// Versions sorted by date, newest first
+	versions := []VersionInfo{
+		{Version: "v1.9.0-retract", Time: time.Date(2025, 12, 3, 0, 0, 0, 0, time.UTC)},
+		{Version: "v1.9.0", Time: time.Date(2025, 12, 2, 0, 0, 0, 0, time.UTC)},
+		{Version: "v1.8.0", Time: time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)},
+	}
+
+	got := latestGoModuleVersion(versions, false)
+	want := "v1.9.0"
+	if got != want {
+		t.Fatalf("latestGoModuleVersion(generic) = %q, want %q", got, want)
+	}
+}
+
+func TestLatestSemverTagPrefersSemanticRelease(t *testing.T) {
+	releases := []Release{
+		{Tag: "operator/v0.9.0"},
+		{Tag: "v3.6.2"},
+		{Tag: "v3.6.1"},
+	}
+
+	tag := latestSemverTag(releases)
+	if tag != "v3.6.2" {
+		t.Errorf("latestSemverTag = %q, want %q", tag, "v3.6.2")
+	}
+}
+
+func TestLatestSemverTagNoneFound(t *testing.T) {
+	releases := []Release{
+		{Tag: "operator/v0.9.0"},
+		{Tag: "foo"},
+	}
+
+	tag := latestSemverTag(releases)
+	if tag != "" {
+		t.Errorf("latestSemverTag = %q, want empty string", tag)
 	}
 }
 
@@ -353,6 +433,22 @@ func TestParseModuleOnly(t *testing.T) {
 	versions := parseGoVersionsOutput(output)
 	if len(versions) != 0 {
 		t.Error("parseGoVersionsOutput with only module name should return empty slice")
+	}
+}
+
+func TestParseFiltersIncompatibleVersions(t *testing.T) {
+	output := "github.com/prometheus/prometheus v0.305.0 v0.306.0+incompatible v0.307.0 v0.308.0+incompatible"
+	versions := parseGoVersionsOutput(output)
+	expected := []string{"v0.305.0", "v0.307.0"}
+
+	if len(versions) != len(expected) {
+		t.Fatalf("Expected %d versions, got %d", len(expected), len(versions))
+	}
+
+	for i, v := range expected {
+		if versions[i] != v {
+			t.Errorf("versions[%d] = %q, want %q", i, versions[i], v)
+		}
 	}
 }
 
@@ -482,14 +578,114 @@ func TestAllOpenTelemetryMappings(t *testing.T) {
 		"go.opentelemetry.io/collector/component": "open-telemetry/opentelemetry-collector",
 		"go.opentelemetry.io/build-tools":         "open-telemetry/opentelemetry-go-build-tools",
 		"go.opentelemetry.io/auto":                "open-telemetry/opentelemetry-go-instrumentation",
-		"go.opentelemetry.io/obi":                 "open-telemetry/opentelemetry-ebpf-instrumentation",
-		"go.opentelemetry.io/ebpf-profiler":       "open-telemetry/opentelemetry-ebpf-profiler",
+		"go.opentelemetry.io/obi":                 "grafana/opentelemetry-ebpf-instrumentation",
+		"go.opentelemetry.io/ebpf-profiler":       "grafana/opentelemetry-ebpf-profiler",
 	}
 
 	for module, expectedRepo := range mappings {
 		actualRepo := extractGitHubRepo(module)
 		if actualRepo != expectedRepo {
 			t.Errorf("Failed for %q: expected %q, got %q", module, expectedRepo, actualRepo)
+		}
+	}
+}
+
+func TestGrafanaForkMappings(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"go.opentelemetry.io/obi", "grafana/opentelemetry-ebpf-instrumentation"},
+		{"go.opentelemetry.io/ebpf-profiler", "grafana/opentelemetry-ebpf-profiler"},
+	}
+
+	for _, tt := range tests {
+		result := extractGitHubRepo(tt.input)
+		if result != tt.expected {
+			t.Errorf("extractGitHubRepo(%q) = %q, want %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
+func TestLokiDoesNotUseSpecialVersioning(t *testing.T) {
+	// Loki uses standard semantic versioning (v3.6.2, v2.9.17, etc.)
+	// not Prometheus-style versioning (v0.306.2)
+	if usesSpecialVersioning("grafana/loki") {
+		t.Error("grafana/loki should NOT use special versioning")
+	}
+}
+
+func TestParseGitTagsOutput(t *testing.T) {
+	output := `v0.0.202549	2024-12-01T10:00:00Z
+v0.0.202545	2024-11-28T15:30:00Z
+v0.0.202540	2024-11-25T09:15:00Z`
+
+	releases := parseGitTagsOutput(output)
+
+	if len(releases) != 3 {
+		t.Fatalf("Expected 3 releases, got %d", len(releases))
+	}
+
+	if releases[0].Tag != "v0.0.202549" {
+		t.Errorf("releases[0].Tag = %q, want %q", releases[0].Tag, "v0.0.202549")
+	}
+	if releases[0].Title != "v0.0.202549" {
+		t.Errorf("releases[0].Title = %q, want %q", releases[0].Title, "v0.0.202549")
+	}
+	if releases[0].Published != "2024-12-01T10:00:00Z" {
+		t.Errorf("releases[0].Published = %q, want %q", releases[0].Published, "2024-12-01T10:00:00Z")
+	}
+
+	if releases[1].Tag != "v0.0.202545" {
+		t.Errorf("releases[1].Tag = %q, want %q", releases[1].Tag, "v0.0.202545")
+	}
+}
+
+func TestParseGitTagsOutputWithoutDate(t *testing.T) {
+	output := `v0.0.202549
+v0.0.202545`
+
+	releases := parseGitTagsOutput(output)
+
+	if len(releases) != 2 {
+		t.Fatalf("Expected 2 releases, got %d", len(releases))
+	}
+
+	if releases[0].Published != "N/A" {
+		t.Errorf("releases[0].Published = %q, want %q", releases[0].Published, "N/A")
+	}
+}
+
+func TestGetPrimaryLookupMethod(t *testing.T) {
+	tests := []struct {
+		modulePath string
+		githubRepo string
+		expected   LookupMethod
+	}{
+		// Explicit mappings - Grafana forks use Git tags
+		{"go.opentelemetry.io/ebpf-profiler", "grafana/opentelemetry-ebpf-profiler", GitTag},
+		{"go.opentelemetry.io/obi", "grafana/opentelemetry-ebpf-instrumentation", GitTag},
+
+		// Explicit mappings - Major dependencies use GitHub releases
+		{"github.com/prometheus/prometheus", "prometheus/prometheus", GitHubRelease},
+		{"github.com/prometheus/common", "prometheus/common", GitHubRelease},
+		{"github.com/grafana/loki/v3", "grafana/loki", GitHubRelease},
+		{"go.opentelemetry.io/collector", "open-telemetry/opentelemetry-collector", GitHubRelease},
+
+		// Pattern matching - GitHub modules default to releases
+		{"github.com/stretchr/testify", "stretchr/testify", GitHubRelease},
+		{"github.com/some/unknown-repo", "some/unknown-repo", GitHubRelease},
+
+		// Non-GitHub modules default to Go modules
+		{"golang.org/x/text", "", GoModule},
+		{"gopkg.in/yaml.v3", "", GoModule},
+	}
+
+	for _, tt := range tests {
+		result := getPrimaryLookupMethod(tt.modulePath, tt.githubRepo)
+		if result != tt.expected {
+			t.Errorf("getPrimaryLookupMethod(%q, %q) = %q, want %q",
+				tt.modulePath, tt.githubRepo, result, tt.expected)
 		}
 	}
 }
