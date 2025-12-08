@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/phayes/freeport"
@@ -543,6 +545,10 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	}
 	a.lastProfile = newProfile
 	return a.appendErr
+}
+
+func (a *testAppender) UploadDebugInfo(_ context.Context, _ libpf.FileID, _ string, _ string, _ func() (process.ReadAtCloser, error)) {
+
 }
 
 // TestUpdateArgs verifies that the component can be updated with new arguments. This explicitly also makes sure that the server is restarted when the server configuration changes. And there are no metric registration conflicts.
