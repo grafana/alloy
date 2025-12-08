@@ -9,6 +9,7 @@ extensions:
       http:
         endpoint: "${env:GCLOUD_FM_URL}/v1/opamp"
         auth: basicauth/grafana_cloud
+        polling_interval: 10s
     capabilities:
       accepts_remote_config: true
       reports_remote_config: true
