@@ -2,6 +2,26 @@
 
 In this directory you will find prompts and tools for the LLM agents to help with the process of updating the major dependencies of the Alloy project.
 
+## How to use this
+
+Use your preferred LLM agent and give it a prompt like this:
+
+```text
+Follow instructions in the major-dep-updates.md and update all the major dependencies.
+```
+
+Or if you want to update only one major dependency, you can try this:
+
+```text
+Follow instructions in the major-dep-updates.md and update only the Prometheus dependencies.
+```
+
+Or if you only want to execute some first steps, try this:
+
+```text
+Follow instructions in the major-dep-updates.md and execute only steps 1-3.
+```
+
 ## Prompt guidelines
 
 Below are some guidelines for writing and improving the LLM agent prompt for the major dependency updates process.
