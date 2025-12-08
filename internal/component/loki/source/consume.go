@@ -18,6 +18,7 @@ func Consume(ctx context.Context, recv loki.LogsReceiver, f *loki.Fanout) {
 		case <-ctx.Done():
 			return
 		case entry := <-recv.Chan():
+			// NOTE: the only error we can get is context.Canceled.
 			if err := f.Send(ctx, entry); err != nil {
 				return
 			}
