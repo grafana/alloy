@@ -24,6 +24,12 @@ Major dependencies are Go module dependencies of the Alloy project that are know
   - `go.opentelemetry.io/ebpf-profiler`
 - Loki dependencies (Loki)
 
+### Version numbers of `github.com/prometheus/prometheus` dependency
+
+If you find on GitHub a release of prometheus/prometheus, for example `v3.4.2`, you need to translate it into a Go module version: The Go module version starts with a `v0.` followed by the major version, and the minor version expressed as two digits (so would have a leading zero if needed). Then comes the `.` followed by the patch version.
+
+So in our example, the `v3.4.2` release would be translated into the `v0.304.2` Go module version. You may need to do the reverse of this conversion to resolve a GitHub tag from a Go module version.
+
 ## Tools and snippets to use throughout the whole process
 
 Use the tools in the `tools/` directory to help you accomplish tasks whenever appropriate:
@@ -52,10 +58,6 @@ With these practices you should be able to directly get the information you need
 
 When there is no specific tool, you can use these command snippets that are tried and tested to work well. Note that you may need to adapt them to your specific use case.
 
-TODO: Won't work when there are no releases.
-
-- Find Go module release using GitHub releases: `gh release list -R <owner>/<repo> -L 20`
-
 - Find changes between two GitHub releases: `gh api repos/<owner>/<repo>/compare/<from>...<to> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
 - List changes in a fork branch compared to upstream base: `gh api repos/<owner>/<repo>/compare/<base_ref>...<fork_owner>:<fork_branch> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
 - Find PR details by number: `gh pr view <number> -R <owner>/<repo> --json title,body,url`
@@ -63,14 +65,7 @@ TODO: Won't work when there are no releases.
 - Find changelog from GitHub release notes: `gh release view <tag> -R <owner>/<repo> --json tagName,name,publishedAt,body`
 - Find issue details by number: `gh issue view <number> -R <owner>/<repo> --json number,title,state,body,url,createdAt,closedAt`
 - Search for issues mentioning an error or keyword: `gh issue list -R <owner>/<repo> -S "<search terms>" -L 10`
-
-TODO: This is not valid. Use `gh api repos/<owner>/<repo>/commits/<sha> --jq '{sha: .sha, author: .commit.author, date: .commit.author.date, message: .commit.message}'` instead.
-
-- Find commit details by SHA: `gh commit view <sha> -R <owner>/<repo> --json sha,author,date,message`
-
-TODO: This won't work for modules with local replaces:
-
-- View dependency graph of a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && go mod graph`
+- Find commit details by SHA: `gh api repos/<owner>/<repo>/commits/<sha> --jq '{sha: .sha, author: .commit.author, date: .commit.author.date, message: .commit.message}'`
 - View the `go.mod` file for a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && cat go.mod`
 
 ## Major Dependency Relationships
@@ -115,23 +110,23 @@ Here is a summary of the relationships between the major dependencies of Alloy.
 
 Don't write anything in this document. Create a separate document called 'deps-update-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
 
-### Step 1: Familiarize yourself with the "Tools" section below
+### Step 1: Familiarize yourself with the tools and snippets
 
-Throughout this process, you will be using several tools to gather the information required for accurate decision making. These tools are described in the "Tools" section below. Make sure you familiarize yourself with them before you start.
+As mentioned above, throughout this process, you will be using several tools and command snippets to gather the information required for accurate decision making. Make sure you list all the tools you have available as instructed above so you can call them when appropriate.
 
 ### Step 2: Establish the latest and current versions of all the major dependencies
 
-For all the major dependencies as listed in "List of major dependencies" section, use the tools described in "Tools" section to find the current and the latest versions.
+For all the major dependencies as listed in "List of major dependencies" section, use the tools and snippets to find the current and the latest versions.
 
-List these versions in a form of a table containing columns: the dependency name, the current version, the latest version and the emoji indicating whether it needs an update. Write this table to the output. Don't write much more to keep it brief.
+List these versions in a form of a table containing columns: the dependency name, the current version, the latest version and the ✅ emoji when it's already up-to-date or 🛑 when it needs to be updated. Write this table to the output. Don't write much more to keep it brief.
 
 Now, the major dependencies also depend on each other. You can see this in the 'Relationships' paragraph above. For each major dependency, take a look at its latest version and see what are the versions of the major dependencies that it uses. For example, we know that Beyla depends on Prometheus client libraries. We want to know what are the versions of these Prometheus client libraries that Beyla pulls in. Create a table for each major dependency that lists the other major dependencies that it pulls. Include columns: dependency name, current version, latest version, an emoji indicating whether the update is required.
 
-The major dependencies that are using the same versions as the ones we want to update to should be denoted with "READY TO GO ✅". Otherwise, recommend what needs to be updated by the owners of the project.
+The major dependencies that are using the same minor versions as the ones we want to update to should be denoted with "READY TO GO ✅". Otherwise, recommend what needs to ideally be updated by the owners of the project to make the process smooth.
 
 ### Step 3: List the current forks and what changes have been added to them
 
-For all the major dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools described in the "Tools" section. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
+For all the major dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools and snippets to help you. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
 
 Make a short summary of the forks: what version they fork from (if it's possible to determine), the list of commits that are added to the fork, and one sentence summary of these changes.
 
@@ -202,7 +197,7 @@ Start fixing the compilation errors in the following order, which ensures we sta
 - `./internal/converter/...` - to fix the config converters
 - `make alloy` - to build the whole project and make sure it compiles
 
-As you encounter errors, you need to fix them. Use the tools described in the "Tools" section below to help you. Make sure you try the following approaches:
+As you encounter errors, you need to fix them. Use the tools and snippets to help you. Make sure you try the following approaches:
 
 - Isolate the dependencies and packages and errors that are involved, so you can focus on solving one issue at a time. Establish what was the previous version of the dependency and what is the new version.
 
@@ -248,7 +243,7 @@ Start fixing the test errors and failures in the following order, which ensures 
 - `./internal/converter/...` - to fix the config converters
 - `make test` - to run all the tests and make sure they all pass
 
-As you encounter errors, you need to fix them. Use the tools described in the "Tools" section below to help you. Make sure you try the following approaches:
+As you encounter errors, you need to fix them. Use the tools and snippets to help you. Make sure you try the following approaches:
 
 - Isolate the dependencies and packages and errors that are involved, so you can focus on solving one issue at a time. Establish what was the previous version of the dependency and what is the new version.
 
@@ -262,7 +257,7 @@ As you encounter errors, you need to fix them. Use the tools described in the "T
 
 - Don't be too quick to conclude that there is an upstream bug. It's relatively rare and it is much more frequent that we are using mismatched versions of these dependencies or that we are doing something wrong in our code. Investigate all test failures thoroughly before concluding they're upstream bugs. Try to find workarounds or fixes in our codebase first, and don't assume upstream bugs without exhausting all options.  
 
-- If you think you found a real issue upstream, search the issues and PRs, maybe there is someone who has already found it and maybe there are fixes already in the main. Use the Tools descirbed in this doc. If the issue is fixed upstream, you can switch to use that commit SHA after merge (important! take the commit SHA that is on the main branch upstream, not development branch).
+- If you think you found a real issue upstream, search the issues and PRs, maybe there is someone who has already found it and maybe there are fixes already in the main. Use the tools and snippets to help you. If the issue is fixed upstream, you can switch to use that commit SHA after merge (important! take the commit SHA that is on the main branch upstream, not development branch).
 
 - Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
 
@@ -273,18 +268,6 @@ If the tests pass, but we had to change the test expectations in a meaningful wa
 If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on. Provide description of what you think is failing and how does it relate to our dependency updates.
 
 ### Tools
-
-#### Figuring out latest `github.com/prometheus/prometheus` dependency version
-
-If you find on GitHub a release of prometheus/prometheus, for example `v3.4.2`, you need to translate it into a Go module version: The Go module version starts with a `v0.` followed by the major version, and the minor version expressed as two digits (so would have a leading zero if needed). Then comes the `.` followed by the patch version.
-
-So in our example, the `v3.4.2` release would be translated into the `v0.304.2` Go module version.
-
-You may need to do the reverse of this conversion to resolve a GitHub tag from a Go module version.
-
-Also, similar convention may apply to Loki dependency.
-
-TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
 
 #### Using a specific commit for a go.mod dependency
 

@@ -9,9 +9,11 @@ go run main.go [flags] <module_path>
 ```
 
 **Positional Arguments:**
+
 - `module_path` (required): The Go module path (e.g., `github.com/prometheus/prometheus`)
 
 **Flags:**
+
 - `--limit N`: Number of recent releases/tags to fetch (default: 20)
 
 ## Output
