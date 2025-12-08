@@ -77,7 +77,7 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (*repo
 
 func (f *fanOutClient) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
 	for _, u := range f.debugInfo {
-		u.Upload(context.TODO(), fileID, fileName, buildID, open)
+		u.Upload(ctx, fileID, fileName, buildID, open)
 	}
 }
 
