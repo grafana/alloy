@@ -154,8 +154,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	defer c.posFile.Stop()
-
 	defer func() {
 		c.posFile.Stop()
 
