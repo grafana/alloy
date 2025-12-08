@@ -60,7 +60,7 @@ func getMarkers(fileType types.FileType) (startMarker, endMarker string, err err
 		return "", "", err
 	}
 
-	return fmt.Sprintf("%s BEGIN GENERATED REPLACES - DO NOT EDIT", commentSymbol),
+	return fmt.Sprintf("%s BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY", commentSymbol),
 		fmt.Sprintf("%s END GENERATED REPLACES", commentSymbol),
 		nil
 }

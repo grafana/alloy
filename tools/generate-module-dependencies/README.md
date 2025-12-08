@@ -9,11 +9,10 @@ A small utility to keep Go module replace directives consistent across the repos
 - Renders the list of `replace` directives using a template.
 - Injects the rendered block into target files (e.g., `go.mod`) between well-known markers.
 - Runs `go mod tidy` for affected modules.
-- Cleans up temporary files created during generation.
 
 Generated blocks are wrapped with:
 ```
-BEGIN GENERATED REPLACES - DO NOT EDIT ...  END GENERATED REPLACES
+BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY ...  END GENERATED REPLACES
 ```
 
 **Do not edit anything between these markers**, manually—update `dependency-replacements.yaml` instead. Anything 
@@ -27,9 +26,6 @@ in `dependency-replacements.yaml`. These must be included separately in `go.mod`
 - One-off run from repo root:
     - `make generate-module-dependencies`
     - or `cd tools/generate-module-dependencies && go generate`
-
-- Automatically invoked by:
-    - `make alloy` (locally, via a prerequisite)
 
 ## Configuration
 
@@ -47,5 +43,4 @@ Comments are normalized (single-line) and included above the corresponding `repl
 ## Notes
 
 - This tool writes only the generated block; existing content outside the markers is preserved.
-- CI skips the generation step by design—commit any changes produced locally to keep the repo in sync.
-- However, CI will run a check and fail if the output of the generate-module-dependencies step differs from the committed version.
+- The CI will run a check and fail if the output of the generate-module-dependencies step differs from the committed version.
