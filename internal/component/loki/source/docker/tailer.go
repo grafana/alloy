@@ -1,4 +1,4 @@
-package dockertarget
+package docker
 
 // NOTE: This code is adapted from Promtail (90a1d4593e2d690b37333386383870865fe177bf).
 // The dockertarget package is used to configure and run the targets that can
@@ -31,24 +31,17 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-const (
-	// See github.com/prometheus/prometheus/discovery/moby
-	dockerLabel                = model.MetaLabelPrefix + "docker_"
-	dockerLabelContainerPrefix = dockerLabel + "container_"
-	dockerLabelLogStream       = dockerLabelContainerPrefix + "log_stream"
-	dockerMaxChunkSize         = 16384
-)
-
-// Target enables reading Docker container logs.
-type Target struct {
-	logger        log.Logger
-	handler       loki.EntryHandler
-	positions     positions.Positions
-	containerName string
-	labels        model.LabelSet
-	labelsStr     string
-	relabelConfig []*relabel.Config
-	metrics       *Metrics
+// tailer for Docker container logs.
+type tailer struct {
+	logger          log.Logger
+	recv            loki.LogsReceiver
+	positions       positions.Positions
+	containerID     string
+	labels          model.LabelSet
+	labelsStr       string
+	relabelConfig   []*relabel.Config
+	metrics         *metrics
+	restartInverval time.Duration
 
 	client client.APIClient
 
@@ -63,39 +56,141 @@ type Target struct {
 	since *atomic.Int64
 }
 
-// NewTarget starts a new target to read logs from a given container ID.
-func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, position positions.Positions, containerID string, labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient) (*Target, error) {
+// newTailer starts a new tailer to read logs from a given container ID.
+func newTailer(
+	metrics *metrics, logger log.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
+	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
+) (*tailer, error) {
+
 	labelsStr := labels.String()
 	pos, err := position.Get(positions.CursorKey(containerID), labelsStr)
 	if err != nil {
 		return nil, err
 	}
-	var since int64
-	if pos != 0 {
-		since = pos
-	}
 
-	t := &Target{
-		logger:        logger,
-		handler:       handler,
-		since:         atomic.NewInt64(since),
-		last:          atomic.NewInt64(0),
-		positions:     position,
-		containerName: containerID,
-		labels:        labels,
-		labelsStr:     labelsStr,
-		relabelConfig: relabelConfig,
-		metrics:       metrics,
-		client:        client,
-	}
-
-	// NOTE (@tpaschalis) The original Promtail implementation would call
-	// t.StartIfNotRunning() right here to start tailing.
-	// We manage targets from a task's Run method.
-	return t, nil
+	return &tailer{
+		logger:          logger,
+		recv:            recv,
+		since:           atomic.NewInt64(pos),
+		last:            atomic.NewInt64(0),
+		positions:       position,
+		containerID:     containerID,
+		labels:          labels,
+		labelsStr:       labelsStr,
+		relabelConfig:   relabelConfig,
+		metrics:         metrics,
+		client:          client,
+		restartInverval: restartInterval,
+	}, nil
 }
 
-func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
+func (s *tailer) Run(ctx context.Context) {
+	ticker := time.NewTicker(s.restartInverval)
+	defer ticker.Stop()
+
+	// start on initial call to Run.
+	s.startIfNotRunning()
+
+	for {
+		select {
+		case <-ticker.C:
+			res, err := s.client.ContainerInspect(ctx, s.containerID)
+			if err != nil {
+				level.Error(s.logger).Log("msg", "error inspecting Docker container", "id", s.containerID, "error", err)
+				continue
+			}
+
+			finished, err := time.Parse(time.RFC3339Nano, res.State.FinishedAt)
+			if err != nil {
+				level.Error(s.logger).Log("msg", "error parsing finished time for Docker container", "id", s.containerID, "error", err)
+				finished = time.Unix(0, 0)
+			}
+
+			if res.State.Running || finished.Unix() >= s.last.Load() {
+				s.startIfNotRunning()
+			}
+		case <-ctx.Done():
+			s.stop()
+			return
+		}
+	}
+}
+
+// startIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
+func (s *tailer) startIfNotRunning() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.running {
+		level.Debug(s.logger).Log("msg", "starting process loop", "container", s.containerID)
+
+		ctx := context.Background()
+		info, err := s.client.ContainerInspect(ctx, s.containerID)
+		if err != nil {
+			level.Error(s.logger).Log("msg", "could not inspect container info", "container", s.containerID, "err", err)
+			s.err = err
+			return
+		}
+
+		reader, err := s.client.ContainerLogs(ctx, s.containerID, container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+			Timestamps: true,
+			Since:      strconv.FormatInt(s.since.Load(), 10),
+		})
+		if err != nil {
+			level.Error(s.logger).Log("msg", "could not fetch logs for container", "container", s.containerID, "err", err)
+			s.err = err
+			return
+		}
+
+		ctx, cancel := context.WithCancel(ctx)
+		s.cancel = cancel
+		s.running = true
+		// proccessLoop will start 3 goroutines that we need to wait for if Stop is called.
+		s.wg.Add(3)
+		go s.processLoop(ctx, info.Config.Tty, reader)
+	}
+}
+
+// stop shuts down the target.
+func (s *tailer) stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running {
+		s.running = false
+		if s.cancel != nil {
+			s.cancel()
+		}
+		s.wg.Wait()
+		level.Debug(s.logger).Log("msg", "stopped Docker target", "container", s.containerID)
+	}
+}
+
+func (s *tailer) Key() string {
+	return s.containerID
+}
+
+func (s *tailer) DebugInfo() any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	running := s.running
+
+	var errMsg string
+	if s.err != nil {
+		errMsg = s.err.Error()
+	}
+
+	return sourceInfo{
+		ID:         s.containerID,
+		LastError:  errMsg,
+		Labels:     s.labelsStr,
+		IsRunning:  running,
+		ReadOffset: s.positions.GetString(positions.CursorKey(s.containerID), s.labelsStr),
+	}
+}
+
+func (s *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
 	defer reader.Close()
 
 	// Start transferring
@@ -103,10 +198,10 @@ func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	rstderr, wstderr := io.Pipe()
 	go func() {
 		defer func() {
-			t.wg.Done()
+			s.wg.Done()
 			wstdout.Close()
 			wstderr.Close()
-			t.Stop()
+			s.stop()
 		}()
 		var written int64
 		var err error
@@ -114,26 +209,26 @@ func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 			written, err = io.Copy(wstdout, reader)
 		} else {
 			// For non-TTY, wrap the pipe writers with our chunk writer to reassemble frames.
-			wcstdout := newChunkWriter(wstdout, t.logger)
+			wcstdout := newChunkWriter(wstdout, s.logger)
 			defer wcstdout.Close()
-			wcstderr := newChunkWriter(wstderr, t.logger)
+			wcstderr := newChunkWriter(wstderr, s.logger)
 			defer wcstderr.Close()
 			written, err = stdcopy.StdCopy(wcstdout, wcstderr, reader)
 		}
 		if err != nil {
-			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerName, "err", err)
+			level.Warn(s.logger).Log("msg", "could not transfer logs", "written", written, "container", s.containerID, "err", err)
 		} else {
-			level.Info(t.logger).Log("msg", "finished transferring logs", "written", written, "container", t.containerName)
+			level.Info(s.logger).Log("msg", "finished transferring logs", "written", written, "container", s.containerID)
 		}
 	}()
 
 	// Start processing
-	go t.process(rstdout, t.getStreamLabels("stdout"))
-	go t.process(rstderr, t.getStreamLabels("stderr"))
+	go s.process(rstdout, s.getStreamLabels("stdout"))
+	go s.process(rstderr, s.getStreamLabels("stderr"))
 
 	// Wait until done
 	<-ctx.Done()
-	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerName)
+	level.Debug(s.logger).Log("msg", "done processing Docker logs", "container", s.containerID)
 }
 
 // extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
@@ -157,8 +252,24 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 	return ts, line[spaceIdx+1:], nil
 }
 
-func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
-	defer t.wg.Done()
+// https://devmarkpro.com/working-big-files-golang
+func readLine(r *bufio.Reader) (string, error) {
+	var (
+		isPrefix = true
+		err      error
+		line, ln []byte
+	)
+
+	for isPrefix && err == nil {
+		line, isPrefix, err = r.ReadLine()
+		ln = append(ln, line...)
+	}
+
+	return string(ln), err
+}
+
+func (s *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
+	defer s.wg.Done()
 
 	scanner := bufio.NewScanner(r)
 	const maxCapacity = dockerMaxChunkSize * 64
@@ -169,19 +280,19 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		ts, content, err := extractTsFromBytes(line)
 		if err != nil {
-			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
-			t.metrics.dockerErrors.Inc()
+			level.Error(s.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
+			s.metrics.dockerErrors.Inc()
 			continue
 		}
 
-		t.handler.Chan() <- loki.Entry{
+		s.recv.Chan() <- loki.Entry{
 			Labels: logStreamLset,
 			Entry: push.Entry{
 				Timestamp: ts,
 				Line:      string(content),
 			},
 		}
-		t.metrics.dockerEntries.Inc()
+		s.metrics.dockerEntries.Inc()
 
 		// NOTE(@tpaschalis) We don't save the positions entry with the
 		// filtered labels, but with the default label set, as this is the one
@@ -189,124 +300,24 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// problematic if we have the same container with a different set of
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
-		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
-		t.since.Store(ts.Unix())
-		t.last.Store(time.Now().Unix())
+		s.positions.Put(positions.CursorKey(s.containerID), s.labelsStr, ts.Unix())
+		s.since.Store(ts.Unix())
+		s.last.Store(time.Now().Unix())
 	}
 	if err := scanner.Err(); err != nil {
-		level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
-		t.metrics.dockerErrors.Inc()
+		level.Error(s.logger).Log("msg", "error reading docker log line", "err", err)
+		s.metrics.dockerErrors.Inc()
 	}
 }
 
-// StartIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
-func (t *Target) StartIfNotRunning() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if !t.running {
-		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerName)
-
-		ctx := context.Background()
-		info, err := t.client.ContainerInspect(ctx, t.containerName)
-		if err != nil {
-			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
-			t.err = err
-			return
-		}
-
-		reader, err := t.client.ContainerLogs(ctx, t.containerName, container.LogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     true,
-			Timestamps: true,
-			Since:      strconv.FormatInt(t.since.Load(), 10),
-		})
-		if err != nil {
-			level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
-			t.err = err
-			return
-		}
-
-		ctx, cancel := context.WithCancel(ctx)
-		t.cancel = cancel
-		t.running = true
-		// proccessLoop will start 3 goroutines that we need to wait for if Stop is called.
-		t.wg.Add(3)
-		go t.processLoop(ctx, info.Config.Tty, reader)
-	}
-}
-
-// Stop shuts down the target.
-func (t *Target) Stop() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.running {
-		t.running = false
-		if t.cancel != nil {
-			t.cancel()
-		}
-		t.wg.Wait()
-		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
-	}
-}
-
-// Ready reports whether the target is running.
-func (t *Target) Ready() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.running
-}
-
-// LabelsStr returns the target's original labels string representation.
-func (t *Target) LabelsStr() string {
-	return t.labelsStr
-}
-
-// Name reports the container name.
-func (t *Target) Name() string {
-	return t.containerName
-}
-
-// Hash is used when comparing targets in tasks.
-func (t *Target) Hash() uint64 {
-	return uint64(t.labels.Fingerprint())
-}
-
-// Path returns the target's container name.
-func (t *Target) Path() string {
-	return t.containerName
-}
-
-// Last returns the unix timestamp of the target's last processing loop.
-func (t *Target) Last() int64 { return t.last.Load() }
-
-// Details returns target-specific details.
-func (t *Target) Details() map[string]string {
-	t.mu.Lock()
-	running := t.running
-
-	var errMsg string
-	if t.err != nil {
-		errMsg = t.err.Error()
-	}
-	t.mu.Unlock()
-
-	return map[string]string{
-		"id":       t.containerName,
-		"error":    errMsg,
-		"position": t.positions.GetString(positions.CursorKey(t.containerName), t.labelsStr),
-		"running":  strconv.FormatBool(running),
-	}
-}
-
-func (t *Target) getStreamLabels(logStream string) model.LabelSet {
+func (s *tailer) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
 	lb := labels.NewBuilder(labels.EmptyLabels())
-	for k, v := range t.labels {
+	for k, v := range s.labels {
 		lb.Set(string(k), string(v))
 	}
 	lb.Set(dockerLabelLogStream, logStream)
-	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
+	processed, _ := relabel.Process(lb.Labels(), s.relabelConfig...)
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {

@@ -1,4 +1,4 @@
-package dockertarget
+package docker
 
 // NOTE: This code is adapted from Promtail (90a1d4593e2d690b37333386383870865fe177bf).
 // The dockertarget package is used to configure and run the targets that can
@@ -6,7 +6,9 @@ package dockertarget
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -23,17 +25,19 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
-func TestDockerTarget(t *testing.T) {
+const restartInterval = 20 * time.Millisecond
+
+func TestTailer(t *testing.T) {
 	server := newDockerServer(t)
 	defer server.Close()
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	entryHandler := loki.NewCollectingHandler()
 	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
@@ -44,18 +48,24 @@ func TestDockerTarget(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	tgt, err := NewTarget(
-		NewMetrics(prometheus.NewRegistry()),
+	tailer, err := newTailer(
+		newMetrics(prometheus.NewRegistry()),
 		logger,
-		entryHandler,
+		entryHandler.Receiver(),
 		ps,
 		"flog",
 		model.LabelSet{"job": "docker"},
 		[]*relabel.Config{},
 		client,
+		restartInterval,
 	)
 	require.NoError(t, err)
-	tgt.StartIfNotRunning()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	wg := sync.WaitGroup{}
+	wg.Go(func() {
+		tailer.Run(ctx)
+	})
 
 	expectedLines := []string{
 		"5.3.69.55 - - [09/Dec/2021:09:15:02 +0000] \"HEAD /brand/users/clicks-and-mortar/front-end HTTP/2.0\" 503 27087",
@@ -69,14 +79,16 @@ func TestDockerTarget(t *testing.T) {
 		assertExpectedLog(c, entryHandler, expectedLines)
 	}, 5*time.Second, 100*time.Millisecond, "Expected log lines were not found within the time limit.")
 
-	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.False(c, tgt.Ready())
-	}, 5*time.Second, 20*time.Millisecond, "Expected target to finish processing within the time limit.")
-
 	entryHandler.Clear()
 	// restart target to simulate container restart
-	tgt.Stop()
-	tgt.StartIfNotRunning()
+	cancel()
+	wg.Wait()
+
+	ctx, cancel = context.WithCancel(t.Context())
+	defer cancel()
+	wg.Go(func() {
+		tailer.Run(ctx)
+	})
 	expectedLinesAfterRestart := []string{
 		"243.115.12.215 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /morph/exploit/granular HTTP/1.0\" 500 26468",
 		"221.41.123.237 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /user-centric/whiteboard HTTP/2.0\" 205 22487",
@@ -89,7 +101,7 @@ func TestDockerTarget(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond, "Expected log lines after restart were not found within the time limit.")
 }
 
-func TestStartStopStressTest(t *testing.T) {
+func TestTailerStartStopStressTest(t *testing.T) {
 	server := newDockerServer(t)
 	defer server.Close()
 
@@ -105,19 +117,20 @@ func TestStartStopStressTest(t *testing.T) {
 	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
 
-	tgt, err := NewTarget(
-		NewMetrics(prometheus.NewRegistry()),
+	tgt, err := newTailer(
+		newMetrics(prometheus.NewRegistry()),
 		logger,
-		entryHandler,
+		entryHandler.Receiver(),
 		ps,
 		"flog",
 		model.LabelSet{"job": "docker"},
 		[]*relabel.Config{},
 		client,
+		restartInterval,
 	)
 	require.NoError(t, err)
 
-	tgt.StartIfNotRunning()
+	tgt.startIfNotRunning()
 
 	// Stress test the concurrency of StartIfNotRunning and Stop
 	wg := sync.WaitGroup{}
@@ -125,19 +138,83 @@ func TestStartStopStressTest(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			tgt.StartIfNotRunning()
+			tgt.startIfNotRunning()
 		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			tgt.Stop()
+			tgt.stop()
 		}()
 	}
 	wg.Wait()
 }
 
-func TestDockerChunkWriter(t *testing.T) {
+func TestTailerRestart(t *testing.T) {
+	finishedAt := "2024-05-02T13:11:55.879889Z"
+	runningState := atomic.NewBool(true)
+
+	client := clientMock{
+		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		running:    func() bool { return runningState.Load() },
+		finishedAt: func() string { return finishedAt },
+	}
+	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
+
+	tailer, entryHandler := setupTailer(t, client)
+	go tailer.Run(t.Context())
+
+	// The container is already running, expect log lines.
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		logLines := entryHandler.Received()
+		if assert.NotEmpty(c, logLines) {
+			assert.Equal(c, expectedLogLine, logLines[0].Line)
+		}
+	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit.")
+
+	// Stops the container.
+	runningState.Store(false)
+	time.Sleep(restartInterval + 10*time.Millisecond) // Sleep for a duration greater than targetRestartInterval to make sure it stops sending log lines.
+	entryHandler.Clear()
+	time.Sleep(restartInterval + 10*time.Millisecond)
+	assert.Empty(t, entryHandler.Received()) // No log lines because the container was not running.
+
+	// Restart the container and expect log lines.
+	runningState.Store(true)
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		logLines := entryHandler.Received()
+		if assert.NotEmpty(c, logLines) {
+			assert.Equal(c, expectedLogLine, logLines[0].Line)
+		}
+	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
+}
+
+func TestTailerNeverStarted(t *testing.T) {
+	runningState := false
+	finishedAt := "2024-05-02T13:11:55.879889Z"
+	client := clientMock{
+		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		running:    func() bool { return runningState },
+		finishedAt: func() string { return finishedAt },
+	}
+	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
+
+	tailer, entryHandler := setupTailer(t, client)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	go tailer.Run(ctx)
+
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		logLines := entryHandler.Received()
+		if assert.NotEmpty(c, logLines) {
+			assert.Equal(c, expectedLogLine, logLines[0].Line)
+		}
+	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
+
+	require.NotPanics(t, func() { cancel() })
+}
+
+func TestChunkWriter(t *testing.T) {
 	logger := log.NewNopLogger()
 	var buf bytes.Buffer
 	writer := newChunkWriter(&buf, logger)
@@ -194,10 +271,12 @@ func newDockerServer(t *testing.T) *httptest.Server {
 		default:
 			w.Header().Set("Content-Type", "application/json")
 			info := container.InspectResponse{
-				ContainerJSONBase: &container.ContainerJSONBase{},
-				Mounts:            []container.MountPoint{},
-				Config:            &container.Config{Tty: false},
-				NetworkSettings:   &container.NetworkSettings{},
+				ContainerJSONBase: &container.ContainerJSONBase{
+					State: &container.State{},
+				},
+				Mounts:          []container.MountPoint{},
+				Config:          &container.Config{Tty: false},
+				NetworkSettings: &container.NetworkSettings{},
 			}
 			writeErr = json.NewEncoder(w).Encode(info)
 		}
@@ -239,4 +318,54 @@ func containsString(slice []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHandler) {
+	logger := log.NewNopLogger()
+	entryHandler := loki.NewCollectingHandler()
+
+	ps, err := positions.New(logger, positions.Config{
+		SyncPeriod:    10 * time.Second,
+		PositionsFile: t.TempDir() + "/positions.yml",
+	})
+	require.NoError(t, err)
+
+	tailer, err := newTailer(
+		newMetrics(prometheus.NewRegistry()),
+		logger,
+		entryHandler.Receiver(),
+		ps,
+		"flog",
+		model.LabelSet{"job": "docker"},
+		[]*relabel.Config{},
+		client,
+		restartInterval,
+	)
+	require.NoError(t, err)
+
+	return tailer, entryHandler
+}
+
+type clientMock struct {
+	client.APIClient
+	logLine    string
+	running    func() bool
+	finishedAt func() string
+}
+
+func (mock clientMock) ContainerInspect(ctx context.Context, c string) (container.InspectResponse, error) {
+	return container.InspectResponse{
+		ContainerJSONBase: &container.ContainerJSONBase{
+			ID: c,
+			State: &container.State{
+				Running:    mock.running(),
+				FinishedAt: mock.finishedAt(),
+			},
+		},
+		Config: &container.Config{Tty: true},
+	}, nil
+}
+
+func (mock clientMock) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
+	return io.NopCloser(strings.NewReader(mock.logLine)), nil
 }
