@@ -1,0 +1,73 @@
+From 60a81b1ca568cde8ca257b55161f2095c15841e4 Mon Sep 17 00:00:00 2001
+From: synthe102 <leonard@suslian.engineer>
+Date: Thu, 4 Dec 2025 21:58:40 +0000
+Subject: [PATCH] fix: add StoreBuilder to mimir.alerts.kubernetes
+ eventProcessor
+
+Fixes #4975
+---
+ internal/component/mimir/alerts/kubernetes/alerts.go | 7 +++++--
+ internal/component/mimir/alerts/kubernetes/events.go | 3 ++-
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/internal/component/mimir/alerts/kubernetes/alerts.go b/internal/component/mimir/alerts/kubernetes/alerts.go
+index fe2cffc46f..d2bc3baa7f 100644
+--- a/internal/component/mimir/alerts/kubernetes/alerts.go
++++ b/internal/component/mimir/alerts/kubernetes/alerts.go
+@@ -28,6 +28,7 @@ import (
+ 	"k8s.io/client-go/informers"
+ 	"k8s.io/client-go/kubernetes"
+ 
++	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
+ 	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
+ 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
+ 	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+@@ -233,8 +234,9 @@ func (c *Component) Startup(ctx context.Context) error {
+ 	if err != nil {
+ 		return fmt.Errorf("failed to unmarshal global config: %w", err)
+ 	}
++	sb := assets.NewStoreBuilder(c.k8sClient.CoreV1(), c.k8sClient.CoreV1())
+ 
+-	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg)
++	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg, sb)
+ 
+ 	go c.eventProcessor.run(ctx)
+ 	return nil
+@@ -346,7 +348,7 @@ func (c *Component) startConfigInformer(queue workqueue.TypedRateLimitingInterfa
+ 
+ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{},
+ 	namespaceLister coreListers.NamespaceLister, cfgLister promListers_v1alpha1.AlertmanagerConfigLister,
+-	baseCfg alertmgr_cfg.Config) *eventProcessor {
++	baseCfg alertmgr_cfg.Config, sb *assets.StoreBuilder) *eventProcessor {
+ 
+ 	// Deep copy to make sure that a change in arguments won't immediately propagate to the event processor.
+ 	templateFiles := make(map[string]string, len(c.args.TemplateFiles))
+@@ -366,5 +368,6 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
+ 		logger:            c.log,
+ 		kclient:           c.k8sClient,
+ 		templateFiles:     templateFiles,
++		storeBuilder:      sb,
+ 	}
+ }
+diff --git a/internal/component/mimir/alerts/kubernetes/events.go b/internal/component/mimir/alerts/kubernetes/events.go
+index 3bcf528cad..271cee9e6b 100644
+--- a/internal/component/mimir/alerts/kubernetes/events.go
++++ b/internal/component/mimir/alerts/kubernetes/events.go
+@@ -41,6 +41,7 @@ type eventProcessor struct {
+ 	namespaceSelector labels.Selector
+ 	cfgSelector       labels.Selector
+ 	kclient           go_k8s.Interface
++	storeBuilder      *assets.StoreBuilder
+ 
+ 	baseCfg       alertmgr_cfg.Config
+ 	templateFiles map[string]string
+@@ -253,7 +254,7 @@ func (e *eventProcessor) desiredStateFromKubernetes(ctx context.Context) (*alert
+ 		}
+ 	}
+ 
+-	cfg, err := e.provisionAlertmanagerConfiguration(ctx, amConfigs, nil)
++	cfg, err := e.provisionAlertmanagerConfiguration(ctx, amConfigs, e.storeBuilder)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("failed to provision Alertmanager configuration: %w", err)
+ 	}
+
