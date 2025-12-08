@@ -157,11 +157,14 @@ func (c *Component) Run(ctx context.Context) error {
 	defer c.posFile.Stop()
 
 	defer func() {
-		c.mut.Lock()
-		defer c.mut.Unlock()
+		c.posFile.Stop()
 
-		// FIXME: We need to drain here
-		c.scheduler.Stop()
+		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
+		source.Drain(c.handler, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			c.scheduler.Stop()
+		})
 	}()
 
 	for {

@@ -203,27 +203,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping sources and positions file")
-
 		// We need to stop posFile first so we don't record entries we are draining
 		c.posFile.Stop()
-		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
-		drainCtx, cancelDrain := context.WithCancel(context.Background())
-		defer cancelDrain()
-		go func() {
-			for {
-				select {
-				case <-drainCtx.Done():
-					return
-				case <-c.handler.Chan(): // Ignore the remaining entries
-				}
-			}
-		}()
-		c.mut.Lock()
-		c.stopping.Store(true)
-		c.watcher.Stop()
-		c.scheduler.Stop()
-		close(c.handler.Chan())
-		c.mut.Unlock()
+
+		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
+		source.Drain(c.handler, func() {
+			c.mut.Lock()
+			c.stopping.Store(true)
+			c.watcher.Stop()
+			c.scheduler.Stop()
+			close(c.handler.Chan())
+			c.mut.Unlock()
+		})
 	}()
 
 	var wg sync.WaitGroup
