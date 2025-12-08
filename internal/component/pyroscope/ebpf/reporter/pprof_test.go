@@ -31,7 +31,7 @@ func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, li
 	return frames
 }
 
-func new TODO Reporter() *PPROFReporter {
+func newReporter() *PPROFReporter {
 	tp := discovery.NewTargetProducer(discovery.TargetsOptions{
 		Targets: []discovery.DiscoveredTarget{
 			{

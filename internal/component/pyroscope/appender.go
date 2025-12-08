@@ -21,7 +21,7 @@ const (
 	HeaderContentType = "Content-Type"
 )
 
-//var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
+var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
 
 type Appendable interface {
 	Appender() Appender
@@ -166,35 +166,3 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 	}
 	return multiErr
 }
-
-//todo
-//type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-//
-//func (f AppendableFunc) Appender() Appender {
-//	return f
-//}
-//
-//func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
-//	return f(ctx, labels, samples)
-//}
-//
-//func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
-//	// This is a no-op implementation
-//	return nil
-//}
-//
-//// For testing AppendIngest operations
-//type AppendableIngestFunc func(ctx context.Context, profile *IncomingProfile) error
-//
-//func (f AppendableIngestFunc) Appender() Appender {
-//	return f
-//}
-//
-//func (f AppendableIngestFunc) AppendIngest(ctx context.Context, p *IncomingProfile) error {
-//	return f(ctx, p)
-//}
-//
-//func (f AppendableIngestFunc) Append(_ context.Context, _ labels.Labels, _ []*RawSample) error {
-//	// This is a no-op implementation
-//	return nil
-//}
