@@ -20,15 +20,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type DebugInfoOptions struct {
-	Enabled          bool   `alloy:"enabled,attr,optional"`
-	CacheSize        uint32 `alloy:"cache_size,attr,optional"`
-	StripTextSection bool   `alloy:"strip_text_section,attr,optional"`
-	QueueSize        uint32
-	WorkerNum        int
-	CachePath        string
-}
-
 func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (debugInfoUploader, error) {
 	if !e.DebugInfo.Enabled {
 		return nil, nil

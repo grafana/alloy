@@ -78,6 +78,15 @@ type EndpointOptions struct {
 	DebugInfo DebugInfoOptions `alloy:"debug_info,block,optional"`
 }
 
+type DebugInfoOptions struct {
+	Enabled          bool   `alloy:"enabled,attr,optional"`
+	CacheSize        uint32 `alloy:"cache_size,attr,optional"`
+	StripTextSection bool   `alloy:"strip_text_section,attr,optional"`
+	QueueSize        uint32
+	WorkerNum        int
+	CachePath        string
+}
+
 func GetDefaultEndpointOptions() EndpointOptions {
 	defaultEndpointOptions := EndpointOptions{
 		RemoteTimeout:     10 * time.Second,
