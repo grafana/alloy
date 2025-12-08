@@ -317,9 +317,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
+		// NOTE: Native histograms are now always enabled in Prometheus v3.8.0+
 		// NOTE: This is not Update()-able.
-		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
-		AppendMetadata:                  args.HonorMetadata,
+		AppendMetadata: args.HonorMetadata,
 		// otelcol.receiver.prometheus gets metadata from context
 		PassMetadataInContext: args.HonorMetadata,
 	}
@@ -531,10 +531,12 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 		dec.JobName = jobName
 	}
 	copyScrapeClassicHistograms := c.ScrapeClassicHistograms // make a copy as Prometheus wants a pointer.
+	copyScrapeNativeHistograms := c.ScrapeNativeHistograms     // make a copy as Prometheus wants a pointer.
 	dec.HonorLabels = c.HonorLabels
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
 	dec.Params = c.Params
+	dec.ScrapeNativeHistograms = &copyScrapeNativeHistograms
 	dec.AlwaysScrapeClassicHistograms = &copyScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)

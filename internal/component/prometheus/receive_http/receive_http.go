@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/exp/api/remote"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/storage/remote"
+	promremote "github.com/prometheus/prometheus/storage/remote"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -71,17 +71,21 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	opts.Registerer.MustRegister(uncheckedCollector)
 
 	// TODO: Make these configurable in the future?
-	supportedRemoteWriteProtoMsgs := config.RemoteWriteProtoMsgs{config.RemoteWriteProtoMsgV1}
+	supportedRemoteWriteProtoMsgs := remote.MessageTypes{remote.WriteV1MessageType}
 	ingestCTZeroSample := false
+	enableTypeAndUnitLabels := false
+	appendMetadata := false
 
 	c := &Component{
 		opts: opts,
-		handler: remote.NewWriteHandler(
+		handler: promremote.NewWriteHandler(
 			slog.New(logging.NewSlogGoKitHandler(opts.Logger)),
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
 			ingestCTZeroSample,
+			enableTypeAndUnitLabels,
+			appendMetadata,
 		),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,
