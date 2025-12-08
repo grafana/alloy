@@ -36,7 +36,11 @@ func normalizeComments(entries []types.ReplaceEntry) {
 }
 
 func generateReplacesForFileType(dirs *helpers.FileHelper, projectReplaces *types.ProjectReplaces, fileType types.FileType) (*string, error) {
-	templatePath := dirs.TemplatePath(fileType)
+	templatePath, err := dirs.TemplatePath(fileType)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not get template path: %w", err)
+	}
 
 	str, err := generateFromTemplate(templatePath, projectReplaces.Replaces)
 

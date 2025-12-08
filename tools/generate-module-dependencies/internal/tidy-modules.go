@@ -18,7 +18,11 @@ func TidyModules(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectR
 }
 
 func runGoModTidy(dirs *helpers.FileHelper, module types.Module) error {
-	moduleDir := dirs.ModuleDir(module.Path)
+	moduleDir, err := dirs.ModuleDir(module.Path)
+
+	if err != nil {
+		return err
+	}
 
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = moduleDir
