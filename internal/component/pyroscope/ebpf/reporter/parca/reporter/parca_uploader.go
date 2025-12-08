@@ -20,7 +20,7 @@ import (
 	lru "github.com/elastic/go-freelru"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/errgroup" //nolint:depguard
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

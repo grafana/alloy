@@ -85,7 +85,7 @@ func (w *NullifyingWriter) Flush() error {
 	for _, sec := range w.sections {
 		if match(sec, w.sectionPredicates...) ||
 			sec.Type == elf.SHT_NOBITS || sec.Type == elf.SHT_NULL || isSectionStringTable(sec) {
-			
+
 			continue
 		}
 		sec.Type = elf.SHT_NOBITS
