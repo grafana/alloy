@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sync"
 	"time"
 
@@ -154,8 +153,7 @@ type Component struct {
 	handler loki.LogsReceiver
 	posFile positions.Positions
 
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 
 	stopping atomic.Bool
 }
@@ -185,7 +183,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:      o,
 		metrics:   newMetrics(o.Registerer),
 		handler:   loki.NewLogsReceiver(),
-		receivers: args.ForwardTo,
+		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
 		scheduler: source.NewScheduler[positions.Entry](),
 		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
@@ -218,25 +216,9 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var wg sync.WaitGroup
-	wg.Go(func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case entry := <-c.handler.Chan():
-				c.receiversMut.RLock()
-				for _, receiver := range c.receivers {
-					select {
-					case <-ctx.Done():
-						c.receiversMut.RUnlock()
-						return
-					case receiver.Chan() <- entry:
-					}
-				}
-				c.receiversMut.RUnlock()
-			}
-		}
-	})
+
+	// Start consume and fanout loop
+	wg.Go(func() { source.Consume(ctx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		for {
@@ -268,16 +250,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.receiversMut.RLock()
-	if receiversChanged(c.receivers, newArgs.ForwardTo) {
-		// Upgrade lock to write.
-		c.receiversMut.RUnlock()
-		c.receiversMut.Lock()
-		c.receivers = newArgs.ForwardTo
-		c.receiversMut.Unlock()
-	} else {
-		c.receiversMut.RUnlock()
-	}
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
@@ -447,16 +420,4 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 
 func (c *Component) IsStopping() bool {
 	return c.stopping.Load()
-}
-
-func receiversChanged(prev, next []loki.LogsReceiver) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	for i := range prev {
-		if !reflect.DeepEqual(prev[i], next[i]) {
-			return true
-		}
-	}
-	return false
 }

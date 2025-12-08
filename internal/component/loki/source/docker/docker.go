@@ -115,8 +115,7 @@ type Component struct {
 	posFile   positions.Positions
 	rcs       []*relabel.Config
 
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 }
 
 // New creates a new loki.source.file component.
@@ -140,7 +139,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:   newMetrics(o.Registerer),
 		handler:   loki.NewLogsReceiver(),
 		scheduler: source.NewScheduler[string](),
-		receivers: args.ForwardTo,
+		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
 	}
 
@@ -165,23 +164,9 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-			for _, receiver := range receivers {
-				select {
-				case <-ctx.Done():
-					return nil
-				case receiver.Chan() <- entry:
-				}
-			}
-		}
-	}
+	// Start consume and fanout loop
+	source.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 type promTarget struct {
@@ -193,13 +178,10 @@ type promTarget struct {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update the receivers before anything else, just in case something fails.
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
-
 	c.mut.Lock()
 	defer c.mut.Unlock()
+
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	opts, err := c.getClient(newArgs)
 	if err != nil {
