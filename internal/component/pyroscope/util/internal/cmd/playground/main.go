@@ -52,7 +52,7 @@ func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component
 	args := ebpf.NewDefaultArguments()
 	args.PyroscopeDynamicProfilingPolicy = false
 	args.ForwardTo = []pyroscope.Appendable{forward}
-	//args.ReporterUnsymbolizedStubs = true
+	args.ReporterUnsymbolizedStubs = true
 	args.Demangle = "full"
 	args.UProbeLinks = uprobeLinks
 	e, err := ebpf.New(

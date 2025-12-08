@@ -28,8 +28,6 @@ type Arguments struct {
 	LazyMode            bool                   `alloy:"lazy_mode,attr,optional"`
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
-	DebugInfo DebugInfoArguments `alloy:"debug_info,block,optional"`
-
 	// undocumented
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
@@ -37,9 +35,6 @@ type Arguments struct {
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 }
 
-type DebugInfoArguments struct {
-	//Enabled bool `alloy:"enabled,attr,optional"`
-}
 type DeprecatedArguments struct {
 	// deprecated
 	PidCacheSize int `alloy:"pid_cache_size,attr,optional"`
