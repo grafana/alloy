@@ -46,8 +46,6 @@ type PPROFReporter struct {
 
 	sd discovery.TargetProducer
 
-	forwardTo pyroscope.Appendable
-
 	wg              sync.WaitGroup
 	cancelReporting context.CancelFunc
 }

@@ -20,6 +20,7 @@ import (
 	lru "github.com/elastic/go-freelru"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	//nolint:depguard // errgroup is needed for concurrent uploads
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -213,6 +214,7 @@ func (u *ParcaSymbolUploader) Upload(ctx context.Context, fileID libpf.FileID, f
 // attemptUpload attempts to upload the file with the given fileID and buildID.
 func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) error {
+
 	defer u.inProgressTracker.Remove(fileID)
 
 	buildIDType := debuginfopb.BuildIDType_BUILD_ID_TYPE_GNU
