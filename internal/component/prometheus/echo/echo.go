@@ -3,6 +3,7 @@ package echo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"sort"
 	"sync"
 	"time"
@@ -354,14 +355,14 @@ func (b *builder) buildMetricsFromSamples() {
 		family := b.getOrCreateFamily(metricName)
 		metric := &dto.Metric{}
 
-		for _, label := range sample.Labels {
+		sample.Labels.Range(func(label labels.Label) {
 			if label.Name != model.MetricNameLabel {
 				metric.Label = append(metric.Label, &dto.LabelPair{
 					Name:  ptr.To(string(label.Name)),
 					Value: ptr.To(string(label.Value)),
 				})
 			}
-		}
+		})
 
 		switch family.GetType() {
 		case dto.MetricType_COUNTER:
@@ -392,14 +393,14 @@ func (b *builder) buildHistograms() {
 
 		metric := &dto.Metric{}
 
-		for _, label := range hist.Labels {
+		hist.Labels.Range(func(label labels.Label) {
 			if label.Name != model.MetricNameLabel {
 				metric.Label = append(metric.Label, &dto.LabelPair{
 					Name:  ptr.To(string(label.Name)),
 					Value: ptr.To(string(label.Value)),
 				})
 			}
-		}
+		})
 
 		metric.Histogram = &dto.Histogram{
 			SampleCount: ptr.To(hist.Histogram.Count),
@@ -433,12 +434,12 @@ func (b *builder) assignExemplars() {
 					exemplar.Timestamp = timestamppb.New(time.Unix(ts, (ex.Exemplar.Ts%1000)*1e6))
 				}
 
-				for _, label := range ex.Exemplar.Labels {
+				ex.Exemplar.Labels.Range(func(label labels.Label) {
 					exemplar.Label = append(exemplar.Label, &dto.LabelPair{
 						Name:  ptr.To(string(label.Name)),
 						Value: ptr.To(string(label.Value)),
 					})
-				}
+				})
 
 				if metric.Counter != nil {
 					metric.Counter.Exemplar = exemplar
@@ -469,28 +470,25 @@ func (b *builder) getOrCreateFamily(metricName string) *dto.MetricFamily {
 }
 
 func (b *builder) labelsMatch(seriesLabels labels.Labels, metricLabels []*dto.LabelPair) bool {
-	if len(seriesLabels) != len(metricLabels)+1 {
+	if seriesLabels.Len() != len(metricLabels)+1 {
 		return false
 	}
 
-	for _, seriesLabel := range seriesLabels {
+	foundErr := seriesLabels.Validate(func(seriesLabel labels.Label) error {
 		if seriesLabel.Name == model.MetricNameLabel {
-			continue
+			return nil
 		}
 
-		found := false
 		for _, metricLabel := range metricLabels {
 			if string(seriesLabel.Name) == metricLabel.GetName() && string(seriesLabel.Value) == metricLabel.GetValue() {
-				found = true
-				break
+				return nil
 			}
 		}
-		if !found {
-			return false
-		}
-	}
 
-	return true
+		return errors.New("label not found")
+	})
+
+	return foundErr == nil
 }
 
 func (b *builder) sortFamilies() {
