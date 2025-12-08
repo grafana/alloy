@@ -89,24 +89,27 @@ func TestBlockUntilEvent(t *testing.T) {
 		require.Equal(t, eventModified, event)
 	})
 
-	/*
-		t.Run("should return deleted event if file is deleted", func(t *testing.T) {
-			f := createEmptyFile(t, "startempty")
-			defer f.Close()
+	t.Run("should return deleted event if file is deleted", func(t *testing.T) {
+		f := createEmptyFile(t, "startempty")
+		require.NoError(t, f.Close())
 
-			go func() {
-				time.Sleep(10 * time.Millisecond)
-				removeFile(t, f.Name())
-			}()
+		// NOTE: important for windows that we open with correct flags.
+		f, err := fileext.OpenFile(f.Name())
+		require.NoError(t, err)
+		defer f.Close()
 
-			event, err := blockUntilEvent(context.Background(), f, 0, &Config{
-				Filename:      f.Name(),
-				WatcherConfig: watcherConfig,
-			})
-			require.NoError(t, err)
-			require.Equal(t, eventDeleted, event)
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			removeFile(t, f.Name())
+		}()
+
+		event, err := blockUntilEvent(context.Background(), f, 0, &Config{
+			Filename:      f.Name(),
+			WatcherConfig: watcherConfig,
 		})
-	*/
+		require.NoError(t, err)
+		require.Equal(t, eventDeleted, event)
+	})
 
 	t.Run("should return deleted event if file is deleted before", func(t *testing.T) {
 		f := createEmptyFile(t, "startempty")
@@ -115,6 +118,7 @@ func TestBlockUntilEvent(t *testing.T) {
 		// NOTE: important for windows that we open with correct flags.
 		f, err := fileext.OpenFile(f.Name())
 		require.NoError(t, err)
+		defer f.Close()
 
 		removeFile(t, f.Name())
 

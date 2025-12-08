@@ -75,16 +75,16 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 		// IsDeletePending may fail in cases where the file handle becomes
 		// invalid, so we treat a failed call the same as a pending delete.
 		if err != nil || deletePending {
+			fmt.Println("Pending delete")
 			return eventDeleted, nil
 		}
-
-		fmt.Println(err, deletePending)
 
 		fi, err := os.Stat(cfg.Filename)
 		if err != nil {
 			// Windows cannot delete a file if a handle is still open (tail keeps one open)
 			// so it gives access denied to anything trying to read it until all handles are released.
 			if os.IsNotExist(err) || (runtime.GOOS == "windows" && os.IsPermission(err)) {
+				fmt.Println("DELETE fs")
 				// File does not exist (has been deleted).
 				return eventDeleted, nil
 			}
