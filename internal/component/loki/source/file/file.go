@@ -386,10 +386,10 @@ func (c *Component) scheduleSources() {
 }
 
 type debugInfo struct {
-	TargetsInfo []targetInfo `alloy:"targets_info,block"`
+	TargetsInfo []any `alloy:"targets_info,block"`
 }
 
-type targetInfo struct {
+type sourceDebugInfo struct {
 	Path       string `alloy:"path,attr"`
 	Labels     string `alloy:"labels,attr"`
 	IsRunning  bool   `alloy:"is_running,attr"`
@@ -404,13 +404,8 @@ func (c *Component) DebugInfo() any {
 	defer c.mut.RUnlock()
 	var res debugInfo
 	for s := range c.scheduler.Sources() {
-		offset, _ := c.posFile.Get(s.Key().Path, s.Key().Labels)
-		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
-			Path:       s.Key().Path,
-			Labels:     s.Key().Labels,
-			IsRunning:  s.IsRunning(),
-			ReadOffset: offset,
-		})
+		ds := s.(source.DebugSource[positions.Entry])
+		res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
 	}
 	return res
 }

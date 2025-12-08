@@ -354,10 +354,6 @@ func (t *tailer) Key() positions.Entry {
 	return t.key
 }
 
-func (t *tailer) IsRunning() bool {
-	return t.running.Load()
-}
-
 // cleanupMetrics removes all metrics exported by this tailer
 func (t *tailer) cleanupMetrics() {
 	// When we stop tailing the file, also un-export metrics related to the file
@@ -365,4 +361,14 @@ func (t *tailer) cleanupMetrics() {
 	t.metrics.readLines.DeleteLabelValues(t.key.Path)
 	t.metrics.readBytes.DeleteLabelValues(t.key.Path)
 	t.metrics.totalBytes.DeleteLabelValues(t.key.Path)
+}
+
+func (t *tailer) DebugInfo() any {
+	offset, _ := t.positions.Get(t.key.Path, t.key.Labels)
+	return sourceDebugInfo{
+		Path:       t.key.Path,
+		Labels:     t.key.Labels,
+		IsRunning:  t.running.Load(),
+		ReadOffset: offset,
+	}
 }

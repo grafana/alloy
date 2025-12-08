@@ -356,6 +356,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 
 	// tailer needs some time to start
 	time.Sleep(50 * time.Millisecond)
+
 	_, err = logFile.Write([]byte("writing some text\n"))
 	require.NoError(t, err)
 	select {

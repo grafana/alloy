@@ -98,8 +98,12 @@ type Source[K comparable] interface {
 	Run(ctx context.Context)
 	// Key is used to uniquely identify the source.
 	Key() K
-	// IsRunning reports if source is still running.
-	IsRunning() bool
+}
+
+// DebugSource is an optional interface with debug information.
+type DebugSource[k comparable] interface {
+	Source[k]
+	DebugInfo() any
 }
 
 func NewSourceWithRetry[K comparable](source Source[K], config backoff.Config) *SourceWithRetry[K] {
@@ -124,10 +128,6 @@ func (s *SourceWithRetry[K]) Run(ctx context.Context) {
 
 func (s *SourceWithRetry[K]) Key() K {
 	return s.source.Key()
-}
-
-func (s *SourceWithRetry[K]) IsRunning() bool {
-	return s.source.IsRunning()
 }
 
 // scheduledSource is a source that is already scheduled.
