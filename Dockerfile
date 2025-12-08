@@ -73,6 +73,6 @@ RUN groupadd --gid $UID $USERNAME \
     && chmod -R 770 /var/lib/alloy
 
 # ENTRYPOINT ["/bin/alloy"]
-ENTRYPOINT [ "strace", "-f", "--trace=%file", "/bin/alloy" ]
+ENTRYPOINT [ "strace", "-tt", "-T", "-f", "--trace=%file", "/bin/alloy" ]
 ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
