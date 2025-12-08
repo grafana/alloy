@@ -5,166 +5,6 @@ import (
 	"time"
 )
 
-func TestGitHubToGoBasic(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"v3.8.0", "v0.308.0"},
-		{"v3.4.2", "v0.304.2"},
-		{"v2.9.17", "v0.209.17"},
-	}
-
-	for _, tt := range tests {
-		result := githubVersionToGoModule(tt.input)
-		if result != tt.expected {
-			t.Errorf("githubVersionToGoModule(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGitHubToGoWithPrerelease(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"v3.8.0-rc.1", "v0.308.0-rc.1"},
-		{"v3.7.0-rc.0", "v0.307.0-rc.0"},
-		{"v2.5.0-beta.1", "v0.205.0-beta.1"},
-	}
-
-	for _, tt := range tests {
-		result := githubVersionToGoModule(tt.input)
-		if result != tt.expected {
-			t.Errorf("githubVersionToGoModule(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGitHubToGoDoubleDigitMinor(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"v3.12.5", "v0.312.5"},
-		{"v1.25.3", "v0.125.3"},
-	}
-
-	for _, tt := range tests {
-		result := githubVersionToGoModule(tt.input)
-		if result != tt.expected {
-			t.Errorf("githubVersionToGoModule(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGitHubToGoInvalid(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"invalid", "invalid"},
-		{"v1.0", "v1.0"},
-	}
-
-	for _, tt := range tests {
-		result := githubVersionToGoModule(tt.input)
-		if result != tt.expected {
-			t.Errorf("githubVersionToGoModule(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGoToGitHubBasic(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"v0.308.0", "v3.8.0"},
-		{"v0.304.2", "v3.4.2"},
-		{"v0.209.17", "v2.9.17"},
-	}
-
-	for _, tt := range tests {
-		result := goModuleVersionToGitHub(tt.input)
-		if result != tt.expected {
-			t.Errorf("goModuleVersionToGitHub(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGoToGitHubWithPrerelease(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"v0.308.0-rc.1", "v3.8.0-rc.1"},
-		{"v0.307.0-rc.0", "v3.7.0-rc.0"},
-		{"v0.205.0-beta.1", "v2.5.0-beta.1"},
-	}
-
-	for _, tt := range tests {
-		result := goModuleVersionToGitHub(tt.input)
-		if result != tt.expected {
-			t.Errorf("goModuleVersionToGitHub(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGoToGitHubDoubleDigitMinor(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"v0.312.5", "v3.12.5"},
-		{"v0.125.3", "v1.25.3"},
-	}
-
-	for _, tt := range tests {
-		result := goModuleVersionToGitHub(tt.input)
-		if result != tt.expected {
-			t.Errorf("goModuleVersionToGitHub(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestGoToGitHubInvalid(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"invalid", "invalid"},
-		{"v1.0.0", "v1.0.0"},
-	}
-
-	for _, tt := range tests {
-		result := goModuleVersionToGitHub(tt.input)
-		if result != tt.expected {
-			t.Errorf("goModuleVersionToGitHub(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
-func TestBidirectionalConversion(t *testing.T) {
-	githubVersions := []string{"v3.8.0", "v2.12.5", "v1.0.3", "v4.15.0-rc.1"}
-	for _, ghVer := range githubVersions {
-		goVer := githubVersionToGoModule(ghVer)
-		result := goModuleVersionToGitHub(goVer)
-		if result != ghVer {
-			t.Errorf("Bidirectional conversion failed for %q: got %q", ghVer, result)
-		}
-	}
-
-	goVersions := []string{"v0.308.0", "v0.212.5", "v0.100.3", "v0.415.0-rc.1"}
-	for _, goVer := range goVersions {
-		ghVer := goModuleVersionToGitHub(goVer)
-		result := githubVersionToGoModule(ghVer)
-		if result != goVer {
-			t.Errorf("Bidirectional conversion failed for %q: got %q", goVer, result)
-		}
-	}
-}
-
 func TestStandardGitHubPath(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -236,38 +76,19 @@ func TestNonGitHubPath(t *testing.T) {
 	}
 }
 
-func TestPrometheusDetected(t *testing.T) {
-	if !usesSpecialVersioning("prometheus/prometheus") {
-		t.Error("prometheus/prometheus should use special versioning")
-	}
-}
-
-func TestOtherReposNotDetected(t *testing.T) {
-	repos := []string{
-		"prometheus/common",
-		"stretchr/testify",
-		"open-telemetry/opentelemetry-go",
-	}
-
-	for _, repo := range repos {
-		if usesSpecialVersioning(repo) {
-			t.Errorf("%q should not use special versioning", repo)
-		}
-	}
-}
-
-func TestNormalizeWithVPrefix(t *testing.T) {
+func TestNormalizeVersion(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
 	}{
 		{"v1.0.0", "v1.0.0"},
 		{"v2.5.3", "v2.5.3"},
+		{"1.0.0", "v1.0.0"},
+		{"2.5.3", "v2.5.3"},
 	}
 
 	for _, tt := range tests {
-		result := normalizeVersion(tt.input)
-		if result != tt.expected {
+		if result := normalizeVersion(tt.input); result != tt.expected {
 			t.Errorf("normalizeVersion(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
 	}
@@ -293,38 +114,15 @@ func TestIsSemverTag(t *testing.T) {
 	}
 }
 
-func TestLatestGoModuleVersionSpecialVersioning(t *testing.T) {
-	// Versions in order from oldest to newest by date
-	versions := []VersionInfo{
-		{Version: "v1.99.0-retract", Time: time.Date(2025, 12, 8, 0, 0, 0, 0, time.UTC)},
-		{Version: "v1.99.0", Time: time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)},
-		{Version: "v0.308.0", Time: time.Date(2025, 12, 6, 0, 0, 0, 0, time.UTC)},
-		{Version: "v0.308.0-rc.1", Time: time.Date(2025, 12, 5, 0, 0, 0, 0, time.UTC)},
-		{Version: "v0.308.0-rc.0", Time: time.Date(2025, 12, 4, 0, 0, 0, 0, time.UTC)},
-		{Version: "v0.307.0", Time: time.Date(2025, 12, 3, 0, 0, 0, 0, time.UTC)},
-		{Version: "v0.306.0", Time: time.Date(2025, 12, 2, 0, 0, 0, 0, time.UTC)},
-		{Version: "v0.305.0", Time: time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)},
-	}
-
-	got := latestGoModuleVersion(versions, true)
-	want := "v0.308.0"
-	if got != want {
-		t.Fatalf("latestGoModuleVersion(special) = %q, want %q", got, want)
-	}
-}
-
-func TestLatestGoModuleVersionGenericSkipsRetract(t *testing.T) {
-	// Versions sorted by date, newest first
+func TestLatestGoModuleVersionSkipsRetract(t *testing.T) {
 	versions := []VersionInfo{
 		{Version: "v1.9.0-retract", Time: time.Date(2025, 12, 3, 0, 0, 0, 0, time.UTC)},
 		{Version: "v1.9.0", Time: time.Date(2025, 12, 2, 0, 0, 0, 0, time.UTC)},
 		{Version: "v1.8.0", Time: time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)},
 	}
 
-	got := latestGoModuleVersion(versions, false)
-	want := "v1.9.0"
-	if got != want {
-		t.Fatalf("latestGoModuleVersion(generic) = %q, want %q", got, want)
+	if got := latestGoModuleVersion(versions); got != "v1.9.0" {
+		t.Fatalf("latestGoModuleVersion() = %q, want %q", got, "v1.9.0")
 	}
 }
 
@@ -335,8 +133,7 @@ func TestLatestSemverTagPrefersSemanticRelease(t *testing.T) {
 		{Tag: "v3.6.1"},
 	}
 
-	tag := latestSemverTag(releases)
-	if tag != "v3.6.2" {
+	if tag := latestSemverTag(releases); tag != "v3.6.2" {
 		t.Errorf("latestSemverTag = %q, want %q", tag, "v3.6.2")
 	}
 }
@@ -347,26 +144,8 @@ func TestLatestSemverTagNoneFound(t *testing.T) {
 		{Tag: "foo"},
 	}
 
-	tag := latestSemverTag(releases)
-	if tag != "" {
+	if tag := latestSemverTag(releases); tag != "" {
 		t.Errorf("latestSemverTag = %q, want empty string", tag)
-	}
-}
-
-func TestNormalizeWithoutVPrefix(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"1.0.0", "v1.0.0"},
-		{"2.5.3", "v2.5.3"},
-	}
-
-	for _, tt := range tests {
-		result := normalizeVersion(tt.input)
-		if result != tt.expected {
-			t.Errorf("normalizeVersion(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
 	}
 }
 
@@ -542,31 +321,6 @@ v3.7.3		v3.7.3	2025-10-30T15:30:00Z`
 	}
 }
 
-func TestPrometheusPrometheusOutput(t *testing.T) {
-	goOutput := "github.com/prometheus/prometheus v0.305.0 v0.306.0 v0.307.0 v0.308.0"
-	versions := parseGoVersionsOutput(goOutput)
-
-	if versions[len(versions)-1] != "v0.308.0" {
-		t.Errorf("Latest version = %q, want %q", versions[len(versions)-1], "v0.308.0")
-	}
-
-	if goModuleVersionToGitHub("v0.308.0") != "v3.8.0" {
-		t.Error("Conversion v0.308.0 -> v3.8.0 failed")
-	}
-
-	ghOutput := `v3.8.0	Latest	v3.8.0	2025-12-02T10:00:00Z
-v3.7.3		v3.7.3	2025-10-30T15:30:00Z`
-	releases := parseGitHubReleasesOutput(ghOutput)
-
-	if releases[0].Tag != "v3.8.0" {
-		t.Errorf("Latest GitHub tag = %q, want %q", releases[0].Tag, "v3.8.0")
-	}
-
-	if githubVersionToGoModule("v3.8.0") != "v0.308.0" {
-		t.Error("Conversion v3.8.0 -> v0.308.0 failed")
-	}
-}
-
 func TestAllOpenTelemetryMappings(t *testing.T) {
 	mappings := map[string]string{
 		"go.opentelemetry.io/otel":                "open-telemetry/opentelemetry-go",
@@ -604,14 +358,6 @@ func TestGrafanaForkMappings(t *testing.T) {
 		if result != tt.expected {
 			t.Errorf("extractGitHubRepo(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
-	}
-}
-
-func TestLokiDoesNotUseSpecialVersioning(t *testing.T) {
-	// Loki uses standard semantic versioning (v3.6.2, v2.9.17, etc.)
-	// not Prometheus-style versioning (v0.306.2)
-	if usesSpecialVersioning("grafana/loki") {
-		t.Error("grafana/loki should NOT use special versioning")
 	}
 }
 
@@ -662,30 +408,21 @@ func TestGetPrimaryLookupMethod(t *testing.T) {
 		githubRepo string
 		expected   LookupMethod
 	}{
-		// Explicit mappings - Grafana forks use Git tags
 		{"go.opentelemetry.io/ebpf-profiler", "grafana/opentelemetry-ebpf-profiler", GitTag},
 		{"go.opentelemetry.io/obi", "grafana/opentelemetry-ebpf-instrumentation", GitTag},
-
-		// Explicit mappings - Major dependencies use GitHub releases
 		{"github.com/prometheus/prometheus", "prometheus/prometheus", GitHubRelease},
 		{"github.com/prometheus/common", "prometheus/common", GitHubRelease},
 		{"github.com/grafana/loki/v3", "grafana/loki", GitHubRelease},
 		{"go.opentelemetry.io/collector", "open-telemetry/opentelemetry-collector", GitHubRelease},
-
-		// Pattern matching - GitHub modules default to releases
 		{"github.com/stretchr/testify", "stretchr/testify", GitHubRelease},
 		{"github.com/some/unknown-repo", "some/unknown-repo", GitHubRelease},
-
-		// Non-GitHub modules default to Go modules
 		{"golang.org/x/text", "", GoModule},
 		{"gopkg.in/yaml.v3", "", GoModule},
 	}
 
 	for _, tt := range tests {
-		result := getPrimaryLookupMethod(tt.modulePath, tt.githubRepo)
-		if result != tt.expected {
-			t.Errorf("getPrimaryLookupMethod(%q, %q) = %q, want %q",
-				tt.modulePath, tt.githubRepo, result, tt.expected)
+		if result := getPrimaryLookupMethod(tt.modulePath, tt.githubRepo); result != tt.expected {
+			t.Errorf("getPrimaryLookupMethod(%q, %q) = %q, want %q", tt.modulePath, tt.githubRepo, result, tt.expected)
 		}
 	}
 }
