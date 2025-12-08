@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
-	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
