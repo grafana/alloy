@@ -15,6 +15,8 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/process"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -50,6 +52,10 @@ func (m *mockAppendable) Append(ctx context.Context, labels labels.Labels, sampl
 func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
 	args := m.Called(ctx, profile)
 	return args.Error(0)
+}
+
+func (m *mockAppendable) UploadDebugInfo(ctx context.Context, fileID libpf.FileID, fileName string, buildID string, open func() (process.ReadAtCloser, error)) {
+
 }
 
 func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
