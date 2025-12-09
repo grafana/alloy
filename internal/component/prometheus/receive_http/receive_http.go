@@ -70,7 +70,10 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
-	// TODO: Make these configurable in the future?
+	// TODO: Make these configurable in the future:
+	// TODO: Expose ingestCTZeroSample: https://github.com/grafana/alloy/issues/4045
+	// TODO: Expose enableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
+	// TODO: Expose appendMetadata: https://github.com/grafana/alloy/issues/5036
 	supportedRemoteWriteProtoMsgs := remote.MessageTypes{remote.WriteV1MessageType}
 	ingestCTZeroSample := false
 	enableTypeAndUnitLabels := false

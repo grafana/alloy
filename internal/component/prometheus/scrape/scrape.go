@@ -322,6 +322,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		AppendMetadata: args.HonorMetadata,
 		// otelcol.receiver.prometheus gets metadata from context
 		PassMetadataInContext: args.HonorMetadata,
+		// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
+		// TODO: Expose EnableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -531,7 +533,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 		dec.JobName = jobName
 	}
 	copyScrapeClassicHistograms := c.ScrapeClassicHistograms // make a copy as Prometheus wants a pointer.
-	copyScrapeNativeHistograms := c.ScrapeNativeHistograms     // make a copy as Prometheus wants a pointer.
+	copyScrapeNativeHistograms := c.ScrapeNativeHistograms   // make a copy as Prometheus wants a pointer.
 	dec.HonorLabels = c.HonorLabels
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
