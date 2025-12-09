@@ -58,6 +58,7 @@ func TestTailer(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		restartInterval,
+		func() bool { return false },
 	)
 	require.NoError(t, err)
 
@@ -127,6 +128,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		restartInterval,
+		func() bool { return false },
 	)
 	require.NoError(t, err)
 
@@ -340,6 +342,7 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 		[]*relabel.Config{},
 		client,
 		restartInterval,
+		func() bool { return false },
 	)
 	require.NoError(t, err)
 

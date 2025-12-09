@@ -33,15 +33,16 @@ import (
 
 // tailer for Docker container logs.
 type tailer struct {
-	logger          log.Logger
-	recv            loki.LogsReceiver
-	positions       positions.Positions
-	containerID     string
-	labels          model.LabelSet
-	labelsStr       string
-	relabelConfig   []*relabel.Config
-	metrics         *metrics
-	restartInverval time.Duration
+	logger            log.Logger
+	recv              loki.LogsReceiver
+	positions         positions.Positions
+	containerID       string
+	labels            model.LabelSet
+	labelsStr         string
+	relabelConfig     []*relabel.Config
+	metrics           *metrics
+	restartInterval   time.Duration
+	componentStopping func() bool
 
 	client client.APIClient
 
@@ -60,6 +61,7 @@ type tailer struct {
 func newTailer(
 	metrics *metrics, logger log.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
 	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
+	componentStopping func() bool,
 ) (*tailer, error) {
 
 	labelsStr := labels.String()
@@ -80,12 +82,12 @@ func newTailer(
 		relabelConfig:   relabelConfig,
 		metrics:         metrics,
 		client:          client,
-		restartInverval: restartInterval,
+		restartInterval: restartInterval,
 	}, nil
 }
 
 func (s *tailer) Run(ctx context.Context) {
-	ticker := time.NewTicker(s.restartInverval)
+	ticker := time.NewTicker(s.restartInterval)
 	defer ticker.Stop()
 
 	// start on initial call to Run.
@@ -164,6 +166,13 @@ func (s *tailer) stop() {
 		}
 		s.wg.Wait()
 		level.Debug(s.logger).Log("msg", "stopped Docker target", "container", s.containerID)
+
+		// If the component is not stopping, then it means that the target for this component is gone and that
+		// we should clear the entry from the positions file.
+		if !s.componentStopping() {
+			s.positions.Remove(positions.CursorKey(s.containerID), s.labelsStr)
+		}
+
 	}
 }
 

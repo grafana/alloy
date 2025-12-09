@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	types "github.com/grafana/alloy/internal/component/common/config"
@@ -106,6 +107,7 @@ var (
 type Component struct {
 	opts    component.Options
 	metrics *metrics
+	exited  *atomic.Bool
 
 	mut       sync.RWMutex
 	args      Arguments
@@ -137,6 +139,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:      o,
 		metrics:   newMetrics(o.Registerer),
+		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
 		scheduler: source.NewScheduler[string](),
 		fanout:    loki.NewFanout(args.ForwardTo),
@@ -154,6 +157,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
+		c.exited.Store(true)
 		c.posFile.Stop()
 
 		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
@@ -183,12 +187,13 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	opts, err := c.getClient(newArgs)
+	client, err := c.getClient(newArgs)
 	if err != nil {
 		return err
 	}
 
-	if opts != c.client {
+	if client != c.client {
+		c.client = client
 		// Stop all tailers so all will be restarted
 		c.scheduler.Stop()
 	}
@@ -238,8 +243,9 @@ func (c *Component) Update(args component.Arguments) error {
 			string(containerID),
 			markedTarget.labels.Merge(defaultLabels),
 			c.rcs,
-			opts,
+			client,
 			5*time.Second,
+			func() bool { return c.exited.Load() },
 		)
 
 		if err != nil {
