@@ -220,7 +220,13 @@ func (c *Component) Update(args component.Arguments) error {
 			continue
 		}
 
-		if c.scheduler.Contains(string(containerID)) {
+		key := string(containerID)
+		if _, ok := shouldRun[key]; ok {
+			continue
+		}
+		shouldRun[key] = struct{}{}
+
+		if c.scheduler.Contains(key) {
 			continue
 		}
 
@@ -237,10 +243,10 @@ func (c *Component) Update(args component.Arguments) error {
 		)
 
 		if err != nil {
-			return err
+			level.Error(c.opts.Logger).Log("msg", "failed to tail docker container", "containerID", containerID, "error", err)
+			continue
 		}
 
-		shouldRun[tailer.Key()] = struct{}{}
 		c.scheduler.ScheduleSource(tailer)
 	}
 
