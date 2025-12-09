@@ -3,8 +3,9 @@ package prometheus
 import (
 	"testing"
 
-	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/service/labelstore"
 
 	"github.com/prometheus/prometheus/storage"
 
