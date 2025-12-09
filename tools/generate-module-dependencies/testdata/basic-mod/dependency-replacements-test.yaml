@@ -1,0 +1,14 @@
+modules:
+  - name: test-module
+    path: go.mod
+    file_type: mod
+
+replaces:
+  - comment: Test replace for example.com/package
+    dependency: example.com/package
+    replacement: example.com/fork v1.0.0
+
+  - comment: Another test replace
+    dependency: github.com/test/dependency
+    replacement: github.com/test/fork v1.0.0
+

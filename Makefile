@@ -48,6 +48,7 @@
 ##   generate-ui               Generate the UI assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
 ##
 ## Other targets:
 ##
@@ -255,6 +256,13 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	bash ./operations/helm/scripts/rebuild-tests.sh
+endif
+
+generate-module-dependencies:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
 endif
 
 generate-ui:
