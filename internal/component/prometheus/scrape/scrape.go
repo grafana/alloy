@@ -317,7 +317,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
-		// NOTE: Native histograms are now always enabled in Prometheus v3.8.0+
 		// NOTE: This is not Update()-able.
 		AppendMetadata: args.HonorMetadata,
 		// otelcol.receiver.prometheus gets metadata from context
