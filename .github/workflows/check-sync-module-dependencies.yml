@@ -40,7 +40,7 @@ jobs:
             echo "Diff:"
             git --no-pager diff -- $CHANGED || true
             echo
-            echo "To fix locally, run:"
-            echo "  make generate-module-dependencies"
+            echo "To fix locally:"
+            echo "  Ensure that you update the dependency-replacements.yaml file and run make generate-module-dependencies"
             exit 1
           fi

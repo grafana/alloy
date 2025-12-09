@@ -38,7 +38,7 @@ func TestE2E(t *testing.T) {
 			testdataDir := filepath.Join(currentDir, "testdata", tc.testdataDir)
 			goModPath := filepath.Join(testdataDir, "go.mod")
 			expectedPath := filepath.Join(testdataDir, "go.mod.expected")
-			dependencyYaml := filepath.Join("testdata", tc.testdataDir, "dependency-replacements.yaml")
+			dependencyYaml := filepath.Join("testdata", tc.testdataDir, "dependency-replacements-test.yaml")
 			projectRoot := filepath.Join("testdata", tc.testdataDir)
 
 			originalGoMod, err := os.ReadFile(goModPath)
