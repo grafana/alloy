@@ -194,8 +194,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if client != c.client {
 		c.client = client
-		// Stop all tailers so all will be restarted
-		c.scheduler.Stop()
+		// Stop all tailers because we need to restart them.
+		c.scheduler.Reset()
 	}
 
 	defaultLabels := make(model.LabelSet, len(newArgs.Labels))

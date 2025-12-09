@@ -86,10 +86,20 @@ func (s *Scheduler[K]) Len() int {
 }
 
 // Stop will stop all running sources and wait for them to finish.
+// Scheduler should not be reused after Stop is called.
 func (s *Scheduler[K]) Stop() {
 	s.cancel()
 	s.running.Wait()
 	s.sources = make(map[K]scheduledSource[K])
+}
+
+// Reset will stop all running sources and wait for them to finish and reset
+// Scheduler to a usable state.
+func (s *Scheduler[K]) Reset() {
+	s.cancel()
+	s.running.Wait()
+	s.sources = make(map[K]scheduledSource[K])
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 type Source[K comparable] interface {
