@@ -77,9 +77,13 @@ Main (unreleased)
 
 - Fix default values for relabel rules, this caused issues in e.g. `prometheus.operator.servicemonitors` when using labeldrop. (@kalleep)
 
+<<<<<<< HEAD
 - Fix an issue in the `prometheus.exporter.gcp` component where colons inside `extra_filters` were incorrectly removed. Filter expressions such as `database_id="project_id:database_name"` are now preserved as expected. (@Kim-Yukyung)
 
 - Fix issue in `loki.source.docker` where scheduling containers to tail could take too long. (@kalleep)
+=======
+- Fix issue in `loki.source.docker` where scheduling containers to tail could take too long, this would increase the chance of Alloy missing shortlived jobs. (@kalleep)
+>>>>>>> f85390481 (Update changelog)
 
 - Fix potential deadlock in `loki.source.docker` when component is shutting down. (@kalleep)
 
