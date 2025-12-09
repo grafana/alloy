@@ -13,13 +13,16 @@ import (
 	"github.com/grafana/alloy/internal/mimir/alertmanager"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -113,7 +116,20 @@ spec:
     webhookConfigs:
     - url: http://test.url
       httpConfig:
-        followRedirects: true`
+        followRedirects: true
+    slackConfigs:
+    - apiURL:
+        key: api-url
+        name: "s-receiver-api-url"
+      actions:
+      - type: type
+        text: text
+        name: my-action
+        confirm:
+          text: text
+      fields:
+      - title: title
+        value: value`
 
 	amConfCrd1_mynamespace := fmt.Sprintf(amConfCrd1, "mynamespace", "")
 	amConfCrd1_mynamespace_alloyLabel := fmt.Sprintf(amConfCrd1, "mynamespace", `{alloy: "yes"}`)
@@ -160,6 +176,17 @@ receivers:
 - name: "null"
 - name: mynamespace/alertmgr-config1/null
 - name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
   webhook_configs:
   - http_config:
       follow_redirects: true
@@ -196,6 +223,17 @@ receivers:
 - name: "null"
 - name: mynamespace/alertmgr-config1/null
 - name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
   webhook_configs:
   - http_config:
       follow_redirects: true
@@ -349,6 +387,19 @@ spec:
 				testLogger = util.TestLogger(t)
 			}
 
+			c := fake.NewSimpleClientset(
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "s-receiver-api-url",
+						Namespace: "mynamespace",
+					},
+					Data: map[string][]byte{
+						"api-url": []byte("https://val1.com"),
+					},
+				},
+			)
+			store := assets.NewStoreBuilder(c.CoreV1(), c.CoreV1())
+
 			processor := &eventProcessor{
 				queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 				stopChan:          make(chan struct{}),
@@ -361,6 +412,7 @@ spec:
 				cfgSelector:       cfgSelector,
 				metrics:           newMetrics(),
 				logger:            testLogger,
+				storeBuilder:      store,
 			}
 
 			ctx := t.Context()
