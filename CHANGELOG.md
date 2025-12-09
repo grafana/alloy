@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Remove extraneous `output` stage from the `cri` stage pipeline in `loki.process`. (@kalleep)
 
+- Fix Docker log corruption for multiplexed long lines. (@axd1x8a)
+
 v1.12.0
 -----------------
 

@@ -5,6 +5,7 @@ package dockertarget
 // read logs from Docker containers and forward them to other loki components.
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -134,6 +135,44 @@ func TestStartStopStressTest(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestDockerChunkWriter(t *testing.T) {
+	logger := log.NewNopLogger()
+	var buf bytes.Buffer
+	writer := newChunkWriter(&buf, logger)
+
+	timestamp := []byte("2023-12-09T12:00:00.000000000Z ")
+	shortLine := []byte("short log line\n")
+
+	var longContent []byte
+	for range 50 * 1024 {
+		longContent = append(longContent, 'a')
+	}
+	longContent = append(longContent, '\n')
+
+	// First part of long line
+	chunk1 := append(timestamp, longContent[:32*1024]...)
+	_, err := writer.Write(chunk1)
+	require.NoError(t, err)
+
+	// Second part of long line
+	chunk2 := append(timestamp, longContent[32*1024:]...)
+	_, err = writer.Write(chunk2)
+	require.NoError(t, err)
+
+	// Start a new short line
+	chunk3 := append(timestamp, shortLine...)
+	_, err = writer.Write(chunk3)
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	expected := append(timestamp, longContent...)
+	expected = append(expected, chunk3...)
+
+	assert.Equal(t, expected, buf.Bytes())
 }
 
 func newDockerServer(t *testing.T) *httptest.Server {
