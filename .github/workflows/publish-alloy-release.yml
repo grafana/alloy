@@ -271,6 +271,6 @@ jobs:
 
     - name: Publish
       run: |
-        VERSION="${GITHUB_REF_NAME}" RELEASE_DOC_TAG=$(echo "${GITHUB_REF_NAME}" | awk -F '.' '{print $1"."$2}') ./tools/release
+        VERSION="${GITHUB_REF_NAME}" RELEASE_DOC_TAG=$(echo "${GITHUB_REF_NAME}" | awk -F '.' '{print $1"."$2}') ./tools/mkrelease
       env:
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

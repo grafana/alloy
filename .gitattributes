@@ -4,4 +4,4 @@ pkg/operator/crds/*.yaml linguist-generated=true
 Makefile text eol=lf
 tools/make/*.mk text eol=lf
 tools/image-tag text eol=lf
-tools/release text eol=lf
+tools/mkrelease text eol=lf

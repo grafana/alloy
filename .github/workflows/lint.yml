@@ -55,7 +55,7 @@ jobs:
           packaging,\
           production,\
           tools/ci,\
-          tools/release,\
+          tools/mkrelease,\
           docs/sources/tutorials/assets\
           "
 
