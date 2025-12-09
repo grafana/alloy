@@ -1,0 +1,32 @@
+service:
+  telemetry:
+    logs:
+      processors:
+        - batch:
+            exporter:
+              otlp:
+                endpoint: https://otlp-gateway-prod-us-central-0.grafana.net/otlp/v1/logs
+                headers:
+                  - name: Authorization
+                    value: Basic ${env:GCLOUD_BASIC_AUTH}
+                protocol: http/protobuf
+    metrics:
+      readers:
+        - periodic:
+            exporter:
+              otlp:
+                endpoint: https://otlp-gateway-prod-us-central-0.grafana.net/otlp/v1/metrics
+                headers:
+                  - name: Authorization
+                    value: Basic ${env:GCLOUD_BASIC_AUTH}
+                protocol: http/protobuf
+    traces:
+      processors:
+        - batch:
+            exporter:
+              otlp:
+                endpoint: https://otlp-gateway-prod-us-central-0.grafana.net/otlp/v1/traces
+                headers:
+                  - name: Authorization
+                    value: Basic ${env:GCLOUD_BASIC_AUTH}
+                protocol: http/protobuf
