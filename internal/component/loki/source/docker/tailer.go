@@ -147,7 +147,7 @@ func (s *tailer) startIfNotRunning() {
 		ctx, cancel := context.WithCancel(ctx)
 		s.cancel = cancel
 		s.running = true
-		// proccessLoop will start 3 goroutines that we need to wait for if Stop is called.
+		// processLoop will start 3 goroutines that we need to wait for if Stop is called.
 		s.wg.Add(3)
 		go s.processLoop(ctx, info.Config.Tty, reader)
 	}
