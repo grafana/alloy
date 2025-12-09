@@ -1,0 +1,156 @@
+// Package git provides shared git CLI operations for release tools.
+package git
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+)
+
+// validBranchName matches safe git branch names (no leading dash, no special chars that could cause issues).
+var validBranchName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]*$`)
+
+// validSHA matches a git SHA (hex string, 7-40 chars).
+var validSHA = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
+
+// validateBranchName ensures a branch name is safe to use in git commands.
+func validateBranchName(name string) error {
+	if !validBranchName.MatchString(name) {
+		return fmt.Errorf("invalid branch name: %q", name)
+	}
+	return nil
+}
+
+// validateSHA ensures a string looks like a git SHA.
+func validateSHA(sha string) error {
+	if !validSHA.MatchString(sha) {
+		return fmt.Errorf("invalid SHA: %q", sha)
+	}
+	return nil
+}
+
+// run executes a command with stdout/stderr connected to the terminal.
+func run(args ...string) error {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// runOutput executes a command and returns its stdout.
+func runOutput(args ...string) (string, error) {
+	cmd := exec.Command(args[0], args[1:]...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+// ConfigureUser configures git with the given user identity for commit authorship.
+func ConfigureUser(name, email string) error {
+	if err := run("git", "config", "user.name", name); err != nil {
+		return fmt.Errorf("setting user.name: %w", err)
+	}
+	if err := run("git", "config", "user.email", email); err != nil {
+		return fmt.Errorf("setting user.email: %w", err)
+	}
+	return nil
+}
+
+// BranchExistsOnRemote checks if a branch exists on the remote using git ls-remote.
+func BranchExistsOnRemote(branch string) (bool, error) {
+	if err := validateBranchName(branch); err != nil {
+		return false, err
+	}
+	out, err := runOutput("git", "ls-remote", "--heads", "origin", branch)
+	if err != nil {
+		return false, fmt.Errorf("checking remote branch %s: %w", branch, err)
+	}
+	return out != "", nil
+}
+
+// Fetch fetches a branch from origin.
+func Fetch(branch string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	if err := run("git", "fetch", "origin", branch); err != nil {
+		return fmt.Errorf("fetching branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// CreateBranchFrom creates a new branch from a base ref and checks it out.
+func CreateBranchFrom(branch, base string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	// Base can be "origin/branch" so validate the branch part after any "origin/" prefix
+	baseBranch := strings.TrimPrefix(base, "origin/")
+	if err := validateBranchName(baseBranch); err != nil {
+		return fmt.Errorf("invalid base: %w", err)
+	}
+	if err := run("git", "checkout", "-b", branch, base); err != nil {
+		return fmt.Errorf("creating branch %s from %s: %w", branch, base, err)
+	}
+	return nil
+}
+
+// CherryPick cherry-picks a commit, adding a "(cherry picked from commit ...)" reference.
+func CherryPick(sha string) error {
+	if err := validateSHA(sha); err != nil {
+		return err
+	}
+	if err := run("git", "cherry-pick", "-x", sha); err != nil {
+		return fmt.Errorf("cherry-picking commit %s: %w", sha, err)
+	}
+	return nil
+}
+
+// Push pushes a branch to origin.
+func Push(branch string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	if err := run("git", "push", "origin", branch); err != nil {
+		return fmt.Errorf("pushing branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// Checkout checks out an existing branch.
+func Checkout(branch string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	if err := run("git", "checkout", branch); err != nil {
+		return fmt.Errorf("checking out branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// Merge merges a branch into the current branch with a merge commit.
+// The message is used for the merge commit.
+func Merge(branch, message string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	if err := run("git", "merge", "--no-ff", "-m", message, branch); err != nil {
+		return fmt.Errorf("merging branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// PushBranch pushes the current branch to origin with tracking.
+func PushBranch() error {
+	if err := run("git", "push", "-u", "origin", "HEAD"); err != nil {
+		return fmt.Errorf("pushing current branch: %w", err)
+	}
+	return nil
+}
