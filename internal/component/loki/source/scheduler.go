@@ -101,8 +101,7 @@ type Source[K comparable] interface {
 }
 
 // DebugSource is an optional interface with debug information.
-type DebugSource[k comparable] interface {
-	Source[k]
+type DebugSource interface {
 	DebugInfo() any
 }
 
@@ -128,6 +127,14 @@ func (s *SourceWithRetry[K]) Run(ctx context.Context) {
 
 func (s *SourceWithRetry[K]) Key() K {
 	return s.source.Key()
+}
+
+func (s *SourceWithRetry[K]) DebugInfo() any {
+	ss, ok := s.source.(DebugSource)
+	if !ok {
+		return nil
+	}
+	return ss.DebugInfo()
 }
 
 // scheduledSource is a source that is already scheduled.

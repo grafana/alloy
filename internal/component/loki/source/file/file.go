@@ -368,8 +368,10 @@ func (c *Component) DebugInfo() any {
 	defer c.mut.RUnlock()
 	var res debugInfo
 	for s := range c.scheduler.Sources() {
-		ds := s.(source.DebugSource[positions.Entry])
-		res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
+		ds, ok := s.(source.DebugSource)
+		if ok {
+			res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
+		}
 	}
 	return res
 }

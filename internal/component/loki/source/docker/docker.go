@@ -316,8 +316,10 @@ func (c *Component) DebugInfo() interface{} {
 
 	var res readerDebugInfo
 	for s := range c.scheduler.Sources() {
-		ds := s.(source.DebugSource[string])
-		res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
+		ds, ok := s.(source.DebugSource)
+		if ok {
+			res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
+		}
 	}
 	return res
 }
