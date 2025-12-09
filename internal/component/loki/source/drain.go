@@ -22,8 +22,11 @@ func Drain(recv loki.LogsReceiver, f func()) {
 			select {
 			case <-ctx.Done():
 				return
-			case <-recv.Chan():
+			case _, ok := <-recv.Chan():
 				// Consume and discard entries to prevent channel blocking
+				if !ok {
+					return
+				}
 			}
 		}
 	}()
