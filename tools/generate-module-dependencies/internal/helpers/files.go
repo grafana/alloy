@@ -33,7 +33,7 @@ func NewFileHelper(pathToDependencyReplacements string, projectRoot string) (*Fi
 
 	absReplacesPath, err := filepath.Abs(pathToDependencyReplacements)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve dependency-replacements.yaml: %v", err)
+		return nil, fmt.Errorf("Failed to resolve %s: %v", pathToDependencyReplacements, err)
 	}
 
 	return &FileHelper{
@@ -74,12 +74,12 @@ func (d *FileHelper) ModuleDir(modulePath string) (string, error) {
 func (d *FileHelper) LoadProjectReplaces() (*types.ProjectReplaces, error) {
 	data, err := os.ReadFile(d.ProjectReplacesPath)
 	if err != nil {
-		return nil, fmt.Errorf("read dependency-replacements.yaml: %w", err)
+		return nil, fmt.Errorf("could not read %s: %w", d.ProjectReplacesPath, err)
 	}
 
 	var projectReplaces types.ProjectReplaces
 	if err := yaml.Unmarshal(data, &projectReplaces); err != nil {
-		return nil, fmt.Errorf("parse dependency-replacements.yaml: %w", err)
+		return nil, fmt.Errorf("could not parse %s: %w", d.ProjectReplacesPath, err)
 	}
 
 	return &projectReplaces, nil
