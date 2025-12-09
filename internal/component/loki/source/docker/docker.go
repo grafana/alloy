@@ -262,7 +262,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-// getClient created client from args. If args hasn't changed
+// getClient creates a client from args. If args hasn't changed
 // from the last call to getClient, c.client is returned.
 // getClient must only be called when c.mut is held.
 func (c *Component) getClient(args Arguments) (client.APIClient, error) {
