@@ -40,6 +40,8 @@ Main (unreleased)
   - `explain_plans`
     - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
 
+- Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
