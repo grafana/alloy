@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 )
 
@@ -20,6 +21,7 @@ type memSeries struct {
 
 	ref  chunks.HeadSeriesRef
 	lset labels.Labels
+	meta *metadata.Metadata
 
 	// Last recorded timestamp. Used by gc to determine if a series is stale.
 	lastTs int64
