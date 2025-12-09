@@ -35,6 +35,6 @@ node_modules
 .image-tag
 /alloy
 
-# local testing files
+# Local testing files
 /targets.yaml
 /config.alloy
