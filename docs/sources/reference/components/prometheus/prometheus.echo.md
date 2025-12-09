@@ -110,12 +110,13 @@ This example outputs metrics using the OpenMetrics format instead of the traditi
 
 ## Compatible components
 
-`prometheus.echo` can accept arguments from the following components:
+`prometheus.echo` has exports that can be consumed by the following components:
 
-- Components that export [Targets](../../../compatibility/#targets-exporters)
+- Components that consume [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
 
-## Has exports
-
-- [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->

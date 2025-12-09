@@ -358,8 +358,8 @@ func (b *builder) buildMetricsFromSamples() {
 		sample.Labels.Range(func(label labels.Label) {
 			if label.Name != model.MetricNameLabel {
 				metric.Label = append(metric.Label, &dto.LabelPair{
-					Name:  ptr.To(string(label.Name)),
-					Value: ptr.To(string(label.Value)),
+					Name:  ptr.To(label.Name),
+					Value: ptr.To(label.Value),
 				})
 			}
 		})
@@ -396,8 +396,8 @@ func (b *builder) buildHistograms() {
 		hist.Labels.Range(func(label labels.Label) {
 			if label.Name != model.MetricNameLabel {
 				metric.Label = append(metric.Label, &dto.LabelPair{
-					Name:  ptr.To(string(label.Name)),
-					Value: ptr.To(string(label.Value)),
+					Name:  ptr.To(label.Name),
+					Value: ptr.To(label.Value),
 				})
 			}
 		})
@@ -436,8 +436,8 @@ func (b *builder) assignExemplars() {
 
 				ex.Exemplar.Labels.Range(func(label labels.Label) {
 					exemplar.Label = append(exemplar.Label, &dto.LabelPair{
-						Name:  ptr.To(string(label.Name)),
-						Value: ptr.To(string(label.Value)),
+						Name:  ptr.To(label.Name),
+						Value: ptr.To(label.Value),
 					})
 				})
 
@@ -480,7 +480,7 @@ func (b *builder) labelsMatch(seriesLabels labels.Labels, metricLabels []*dto.La
 		}
 
 		for _, metricLabel := range metricLabels {
-			if string(seriesLabel.Name) == metricLabel.GetName() && string(seriesLabel.Value) == metricLabel.GetValue() {
+			if seriesLabel.Name == metricLabel.GetName() && seriesLabel.Value == metricLabel.GetValue() {
 				return nil
 			}
 		}

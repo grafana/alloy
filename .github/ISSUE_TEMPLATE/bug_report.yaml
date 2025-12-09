@@ -144,6 +144,7 @@ body:
       - otelcol.receiver.vcenter
       - otelcol.receiver.zipkin
       - otelcol.storage.file
+      - prometheus.echo
       - prometheus.enrich
       - prometheus.exporter.apache
       - prometheus.exporter.azure
