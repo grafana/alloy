@@ -1,5 +1,6 @@
 discovery.kubernetes "logs_config_with_metrics" {
 	role = "pod"
+
 	selectors {
 		role  = "pod"
 		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
