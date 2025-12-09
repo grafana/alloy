@@ -54,6 +54,8 @@ Main (unreleased)
 
 - [`mimir.alerts.kubernetes`] Fixed a bug which caused Alloy to crash when using a Kubernetes secret or configmap in the AlertmanagerConfig CRD. (@synthe102)
 
+- Remove extraneous `output` stage from the `cri` stage pipeline in `loki.process`. (@kalleep)
+
 v1.12.0
 -----------------
 
