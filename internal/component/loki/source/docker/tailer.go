@@ -119,7 +119,7 @@ func (s *tailer) Run(ctx context.Context) {
 	}
 }
 
-// startIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
+// startIfNotRunning starts processing container logs. The operation is idempotent, i.e. the processing cannot be started twice.
 func (s *tailer) startIfNotRunning() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
