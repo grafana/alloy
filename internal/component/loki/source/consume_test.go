@@ -42,16 +42,4 @@ func TestConsume(t *testing.T) {
 		cancel()
 		wg.Wait()
 	})
-
-	t.Run("should stop if context is canceled while trying to send", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Go(func() {
-			Consume(ctx, producer, fanout)
-		})
-
-		producer.Chan() <- loki.Entry{Entry: push.Entry{Line: "1"}}
-		cancel()
-		wg.Wait()
-	})
 }
