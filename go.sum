@@ -1162,7 +1162,6 @@ github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesproces
 github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23/go.mod h1:7+xyIHr2PJNE9kic/D91c9SMxACdGIGCJykzTcqsYv0=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.10/go.mod h1:/O9nceaQ+yhwDdosHsQrs1AilAJWAZf2Laa2DssrjJk=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13 h1:za+TpC0g0Iu7UYz0Q7rLbIzhsRLItZCuPr2pFeVhW/U=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13/go.mod h1:/O9nceaQ+yhwDdosHsQrs1AilAJWAZf2Laa2DssrjJk=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c h1:I9KB024eev8z9NRJZTcmTw0V0+txKLC6RqPUX3ADO2s=
