@@ -71,18 +71,19 @@ func newTailer(
 	}
 
 	return &tailer{
-		logger:          logger,
-		recv:            recv,
-		since:           atomic.NewInt64(pos),
-		last:            atomic.NewInt64(0),
-		positions:       position,
-		containerID:     containerID,
-		labels:          labels,
-		labelsStr:       labelsStr,
-		relabelConfig:   relabelConfig,
-		metrics:         metrics,
-		client:          client,
-		restartInterval: restartInterval,
+		logger:            logger,
+		recv:              recv,
+		since:             atomic.NewInt64(pos),
+		last:              atomic.NewInt64(0),
+		positions:         position,
+		containerID:       containerID,
+		labels:            labels,
+		labelsStr:         labelsStr,
+		relabelConfig:     relabelConfig,
+		metrics:           metrics,
+		client:            client,
+		restartInterval:   restartInterval,
+		componentStopping: componentStopping,
 	}, nil
 }
 
@@ -172,7 +173,6 @@ func (s *tailer) stop() {
 		if !s.componentStopping() {
 			s.positions.Remove(positions.CursorKey(s.containerID), s.labelsStr)
 		}
-
 	}
 }
 
