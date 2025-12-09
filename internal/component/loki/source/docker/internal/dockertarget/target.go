@@ -141,10 +141,15 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 	const timestampLayout = "2006-01-02T15:04:05.999999999Z07:00"
 
 	spaceIdx := bytes.IndexByte(line, ' ')
-	if spaceIdx == -1 {
+	if spaceIdx == -1 || spaceIdx >= len(line)-1 {
 		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
 	}
-	// We know that the bytes won't be modified during the time.Parse call, so it's safe to use unsafe.String here
+
+	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp
+	// This is safe because:
+	// 1. spaceIdx > 0 and spaceIdx < len(line)-1 is guaranteed by the check above
+	// 2. time.Parse doesn't retain the string after returning
+	// 3. The underlying bytes aren't modified during parsing
 	ts, err := time.Parse(timestampLayout, unsafe.String(&line[0], spaceIdx))
 	if err != nil {
 		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
@@ -324,9 +329,7 @@ type dockerChunkWriter struct {
 
 var bufferPool = sync.Pool{
 	New: func() interface{} {
-		buf := &bytes.Buffer{}
-		buf.Grow(dockerMaxChunkSize * 2)
-		return buf
+		return bytes.NewBuffer(make([]byte, 0, dockerMaxChunkSize*2))
 	},
 }
 
