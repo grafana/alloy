@@ -52,6 +52,8 @@ Main (unreleased)
 
 - Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
 
+- [`mimir.alerts.kubernetes`] Fixed a bug which caused Alloy to crash when using a Kubernetes secret or configmap in the AlertmanagerConfig CRD. (@synthe102)
+
 v1.12.0
 -----------------
 
