@@ -25,11 +25,15 @@ type Fanout struct {
 // if the context is cancelled while sending.
 func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 	// NOTE: It's important that we hold a read lock for the duration of Send
-	// rather than making a copy of children and releasing the lock early. When
-	// the Alloy config is updated and one or more receivers are removed, all
-	// updates are performed before a component is stopped. Because we hold the
-	// lock for the duration of this call, updates will be blocked until we have
-	// sent the entry to all receivers.
+	// rather than making a copy of children and releasing the lock early.
+	//
+	// When config is updated, the loader evaluates all components and updates
+	// them while they continue running. The scheduler only stops removed components
+	// after all updates complete. During this window, Send may execute concurrently
+	// with receiver list updates. By holding the read lock for the entire Send
+	// operation, receiver list updates (which require a write lock) will block
+	// until all in-flight Send calls complete. This prevents sending entries to
+	// receivers that have been removed by the scheduler.
 
 	f.mut.RLock()
 	defer f.mut.RUnlock()
