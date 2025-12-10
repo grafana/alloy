@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/prometheus/common/model"
 )
 
 // TODO(thampiotr): We should reconsider which parts of this component should be exported and which should
@@ -38,8 +39,9 @@ func init() {
 // Arguments holds values which are used to configure the loki.process
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver  `alloy:"forward_to,attr"`
-	Stages    []stages.StageConfig `alloy:"stage,enum,optional"`
+	ForwardTo                  []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	Stages                     []stages.StageConfig `alloy:"stage,enum,optional"`
+	LabelNameValidationScheme  string               `alloy:"label_name_validation_scheme,attr,optional"`
 }
 
 // Exports exposes the receiver that can be used to send log entries to
@@ -125,6 +127,19 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
+	// Validate label_name_validation_scheme
+	validationScheme := model.LegacyValidation
+	if newArgs.LabelNameValidationScheme != "" {
+		switch newArgs.LabelNameValidationScheme {
+		case model.UTF8Validation.String():
+			validationScheme = model.UTF8Validation
+		case model.LegacyValidation.String():
+			validationScheme = model.LegacyValidation
+		default:
+			return fmt.Errorf("invalid label_name_validation_scheme %q: must be either %q or %q", newArgs.LabelNameValidationScheme, model.UTF8Validation.String(), model.LegacyValidation.String())
+		}
+	}
+
 	// Update c.fanout first in case anything else fails.
 	c.fanoutMut.Lock()
 	c.fanout = newArgs.ForwardTo
@@ -142,7 +157,7 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability, validationScheme)
 		if err != nil {
 			return err
 		}

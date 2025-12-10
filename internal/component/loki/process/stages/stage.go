@@ -85,7 +85,7 @@ func toStage(p Processor) Stage {
 }
 
 // New creates a new stage for the given type and configuration.
-func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability, validationScheme model.ValidationScheme) (Stage, error) {
 	var (
 		s   Stage
 		err error
@@ -117,17 +117,17 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.MetricsConfig != nil:
-		s, err = newMetricStage(logger, *cfg.MetricsConfig, registerer)
+		s, err = newMetricStage(logger, *cfg.MetricsConfig, registerer, validationScheme)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s, err = newLabelStage(logger, *cfg.LabelsConfig)
+		s, err = newLabelStage(logger, *cfg.LabelsConfig, validationScheme)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadata != nil:
-		s, err = newStructuredMetadataStage(logger, *cfg.StructuredMetadata)
+		s, err = newStructuredMetadataStage(logger, *cfg.StructuredMetadata, validationScheme)
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +137,7 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(logger, *cfg.RegexConfig)
+		s, err = newRegexStage(logger, *cfg.RegexConfig, validationScheme)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(logger, jobName, *cfg.MatchConfig, registerer, minStability)
+		s, err = newMatcherStage(logger, jobName, *cfg.MatchConfig, registerer, minStability, validationScheme)
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +199,7 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s, err = newStaticLabelsStage(logger, *cfg.StaticLabelsConfig)
+		s, err = newStaticLabelsStage(logger, *cfg.StaticLabelsConfig, validationScheme)
 		if err != nil {
 			return nil, err
 		}
@@ -216,11 +216,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 	case cfg.SamplingConfig != nil:
 		s = newSamplingStage(logger, *cfg.SamplingConfig, registerer)
 	case cfg.EventLogMessageConfig != nil:
-		s = newEventLogMessageStage(logger, cfg.EventLogMessageConfig)
+		s = newEventLogMessageStage(logger, cfg.EventLogMessageConfig, validationScheme)
 	case cfg.WindowsEventConfig != nil:
-		s = newWindowsEventStage(logger, cfg.WindowsEventConfig)
+		s = newWindowsEventStage(logger, cfg.WindowsEventConfig, validationScheme)
 	case cfg.PatternConfig != nil:
-		s, err = newPatternStage(logger, *cfg.PatternConfig)
+		s, err = newPatternStage(logger, *cfg.PatternConfig, validationScheme)
 		if err != nil {
 			return nil, err
 		}

@@ -48,21 +48,23 @@ func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
 
 // regexStage sets extracted data using regular expressions
 type regexStage struct {
-	config     *RegexConfig
-	expression *regexp.Regexp
-	logger     log.Logger
+	config           *RegexConfig
+	expression       *regexp.Regexp
+	logger           log.Logger
+	validationScheme model.ValidationScheme
 }
 
 // newRegexStage creates a newRegexStage
-func newRegexStage(logger log.Logger, config RegexConfig) (Stage, error) {
+func newRegexStage(logger log.Logger, config RegexConfig, validationScheme model.ValidationScheme) (Stage, error) {
 	expression, err := validateRegexConfig(config)
 	if err != nil {
 		return nil, err
 	}
 	return toStage(&regexStage{
-		config:     &config,
-		expression: expression,
-		logger:     log.With(logger, "component", "stage", "type", "regex"),
+		config:           &config,
+		expression:       expression,
+		logger:           log.With(logger, "component", "stage", "type", "regex"),
+		validationScheme: validationScheme,
 	}), nil
 }
 
@@ -123,9 +125,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interfa
 				labelName := model.LabelName(name)
 				labelValue := model.LabelValue(match[i])
 
-				// TODO: add support for different validation schemes.
-				//nolint:staticcheck
-				if !labelName.IsValid() {
+				if !labelName.IsValidWithValidationScheme(r.validationScheme) {
 					if Debug {
 						level.Debug(r.logger).Log("msg", "invalid label name from regex capture group", "labelName", labelName)
 					}

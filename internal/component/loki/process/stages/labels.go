@@ -23,16 +23,14 @@ type LabelsConfig struct {
 }
 
 // validateLabelsConfig validates the Label stage configuration
-func validateLabelsConfig(c map[string]*string) (map[string]string, error) {
+func validateLabelsConfig(c map[string]*string, validationScheme model.ValidationScheme) (map[string]string, error) {
 	// We must not mutate the c.Values, create a copy with changes we need.
 	ret := map[string]string{}
 	if c == nil {
 		return nil, errors.New(ErrEmptyLabelStageConfig)
 	}
 	for labelName, labelSrc := range c {
-		// TODO: add support for different validation schemes.
-		//nolint:staticcheck
-		if !model.LabelName(labelName).IsValid() {
+		if !model.LabelName(labelName).IsValidWithValidationScheme(validationScheme) {
 			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
 		}
 		// If no label source was specified, use the key name
@@ -46,8 +44,8 @@ func validateLabelsConfig(c map[string]*string) (map[string]string, error) {
 }
 
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
-	labelsConfig, err := validateLabelsConfig(configs.Values)
+func newLabelStage(logger log.Logger, configs LabelsConfig, validationScheme model.ValidationScheme) (Stage, error) {
+	labelsConfig, err := validateLabelsConfig(configs.Values, validationScheme)
 	if err != nil {
 		return nil, err
 	}

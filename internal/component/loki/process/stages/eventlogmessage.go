@@ -20,11 +20,6 @@ type EventLogMessageConfig struct {
 }
 
 func (e *EventLogMessageConfig) Validate() error {
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if !model.LabelName(e.Source).IsValidLegacy() {
-		return fmt.Errorf(ErrInvalidLabelName, e.Source)
-	}
 	return nil
 }
 
@@ -33,15 +28,17 @@ func (e *EventLogMessageConfig) SetToDefault() {
 }
 
 type eventLogMessageStage struct {
-	cfg    *EventLogMessageConfig
-	logger log.Logger
+	cfg              *EventLogMessageConfig
+	logger           log.Logger
+	validationScheme model.ValidationScheme
 }
 
 // Create a event log message stage, including validating any supplied configuration
-func newEventLogMessageStage(logger log.Logger, cfg *EventLogMessageConfig) Stage {
+func newEventLogMessageStage(logger log.Logger, cfg *EventLogMessageConfig, validationScheme model.ValidationScheme) Stage {
 	return &eventLogMessageStage{
-		cfg:    cfg,
-		logger: log.With(logger, "component", "stage", "type", "eventlogmessage"),
+		cfg:              cfg,
+		logger:           log.With(logger, "component", "stage", "type", "eventlogmessage"),
+		validationScheme: validationScheme,
 	}
 }
 
@@ -83,9 +80,7 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 			continue
 		}
 		mkey := parts[0]
-		// TODO: add support for different validation schemes.
-		//nolint:staticcheck
-		if !model.LabelName(mkey).IsValidLegacy() {
+		if !model.LabelName(mkey).IsValidWithValidationScheme(m.validationScheme) {
 			if m.cfg.DropInvalidLabels {
 				if Debug {
 					level.Debug(m.logger).Log("msg", "invalid label parsed from message", "key", mkey)

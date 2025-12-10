@@ -17,8 +17,8 @@ type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
-func newStaticLabelsStage(_ log.Logger, config StaticLabelsConfig) (Stage, error) {
-	err := validateLabelStaticConfig(config)
+func newStaticLabelsStage(_ log.Logger, config StaticLabelsConfig, validationScheme model.ValidationScheme) (Stage, error) {
+	err := validateLabelStaticConfig(config, validationScheme)
 	if err != nil {
 		return nil, err
 	}
@@ -40,14 +40,12 @@ func newStaticLabelsStage(_ log.Logger, config StaticLabelsConfig) (Stage, error
 	return toStage(&staticLabelStage{values}), nil
 }
 
-func validateLabelStaticConfig(c StaticLabelsConfig) error {
+func validateLabelStaticConfig(c StaticLabelsConfig, validationScheme model.ValidationScheme) error {
 	if c.Values == nil {
 		return ErrEmptyStaticLabelStageConfig
 	}
 	for labelName := range c.Values {
-		// TODO: add support for different validation schemes.
-		//nolint:staticcheck
-		if !model.LabelName(labelName).IsValid() {
+		if !model.LabelName(labelName).IsValidWithValidationScheme(validationScheme) {
 			return fmt.Errorf(ErrInvalidLabelName, labelName)
 		}
 	}
