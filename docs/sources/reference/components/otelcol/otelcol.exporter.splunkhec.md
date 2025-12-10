@@ -149,6 +149,7 @@ The following arguments are supported:
 | Name                      | Type       | Description                                                                                     | Default | Required |
 |---------------------------|------------|-------------------------------------------------------------------------------------------------|---------|----------|
 | `endpoint`                | `string`   | The Splunk HEC endpoint to use.                                                                 |         | yes      |
+| `force_attempt_http2`     | `bool`     | Force the HTTP client to try to use the HTTP/2 protocol.                                        | `true`  | no       |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                                        | `false` | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                                           | `"45s"` | no       |
 | `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                                       | `false` | no       |
