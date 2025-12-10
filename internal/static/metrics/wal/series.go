@@ -21,6 +21,8 @@ type memSeries struct {
 
 	ref  chunks.HeadSeriesRef
 	lset labels.Labels
+
+	// TODO: Intern the type and unit values using the unique pkg: https://go.dev/blog/unique
 	meta *metadata.Metadata
 
 	// Last recorded timestamp. Used by gc to determine if a series is stale.
