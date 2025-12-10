@@ -69,6 +69,8 @@ Main (unreleased)
 
 - Allow configuration of `force_attempt_http2` and default it to `true` for otelcol exporters with HTTP client configurations. (@dehaansa)
 
+- Fix default values for relabel rules, this caused issues in e.g. `prometheus.operator.servicemonitors` when using labeldrop. (@kalleep)
+
 v1.12.0
 -----------------
 
