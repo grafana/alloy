@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
@@ -299,12 +300,12 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 			metric = discovery.MetricValueOffCPU
 		}
 
-		builder := labels.NewScratchBuilder(ls.Len() + 1)
-		ls.Range(func(l labels.Label) {
-			builder.Add(l.Name, l.Value)
-		})
-		builder.Add(labels.MetricName, metric)
-		builder.Sort()
+	builder := labels.NewScratchBuilder(ls.Len() + 1)
+	ls.Range(func(l labels.Label) {
+		builder.Add(l.Name, l.Value)
+	})
+	builder.Add(model.MetricNameLabel, metric)
+	builder.Sort()
 		res = append(res, PPROF{
 			Raw:    buf.Bytes(),
 			Labels: builder.Labels(),
