@@ -10,16 +10,28 @@ import (
 	"strings"
 )
 
-// validBranchName matches safe git branch names (no leading dash, no special chars that could cause issues).
+// validBranchName matches safe git branch names (no leading dash, no special chars that could cause
+// issues).
 var validBranchName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]*$`)
 
 // validSHA matches a git SHA (hex string, 7-40 chars).
 var validSHA = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 
-// validateBranchName ensures a branch name is safe to use in git commands.
+// validateBranchName ensures a branch name is safe to use in git commands by preventing things like
+// directory traversal and dangerous patterns.
 func validateBranchName(name string) error {
 	if !validBranchName.MatchString(name) {
 		return fmt.Errorf("invalid branch name: %q", name)
+	}
+	// Prevent directory traversal and dangerous patterns
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("branch name must not contain '..': %q", name)
+	}
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+		return fmt.Errorf("branch name must not start or end with '/': %q", name)
+	}
+	if strings.Contains(name, "//") {
+		return fmt.Errorf("branch name must not contain consecutive slashes: %q", name)
 	}
 	return nil
 }

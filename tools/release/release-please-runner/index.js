@@ -41,7 +41,7 @@ function loadManifest(github, inputs) {
   console.log('Loading manifest from config file');
   return Manifest.fromManifest(
     github,
-    github.repository.defaultBranch,
+    inputs.targetBranch || github.repository.defaultBranch,
     inputs.configFile,
     inputs.manifestFile
   );
