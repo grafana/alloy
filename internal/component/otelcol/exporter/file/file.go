@@ -10,9 +10,9 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 )
 
 func init() {
@@ -193,5 +193,11 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 
-	return cfg.Validate()
+	// cast to fileexporter.Config
+	fileCfg, ok := cfg.(*fileexporter.Config)
+	if !ok {
+		return errors.New("failed to validate configuration: not a fileexporter config")
+	}
+
+	return fileCfg.Validate()
 }
