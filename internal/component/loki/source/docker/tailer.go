@@ -87,119 +87,119 @@ func newTailer(
 	}, nil
 }
 
-func (s *tailer) Run(ctx context.Context) {
-	ticker := time.NewTicker(s.restartInterval)
+func (t *tailer) Run(ctx context.Context) {
+	ticker := time.NewTicker(t.restartInterval)
 	defer ticker.Stop()
 
 	// start on initial call to Run.
-	s.startIfNotRunning()
+	t.startIfNotRunning()
 
 	for {
 		select {
 		case <-ticker.C:
-			res, err := s.client.ContainerInspect(ctx, s.containerID)
+			res, err := t.client.ContainerInspect(ctx, t.containerID)
 			if err != nil {
-				level.Error(s.logger).Log("msg", "error inspecting Docker container", "id", s.containerID, "error", err)
+				level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
 				continue
 			}
 
 			finished, err := time.Parse(time.RFC3339Nano, res.State.FinishedAt)
 			if err != nil {
-				level.Error(s.logger).Log("msg", "error parsing finished time for Docker container", "id", s.containerID, "error", err)
+				level.Error(t.logger).Log("msg", "error parsing finished time for Docker container", "id", t.containerID, "error", err)
 				finished = time.Unix(0, 0)
 			}
 
-			if res.State.Running || finished.Unix() >= s.last.Load() {
-				s.startIfNotRunning()
+			if res.State.Running || finished.Unix() >= t.last.Load() {
+				t.startIfNotRunning()
 			}
 		case <-ctx.Done():
-			s.stop()
+			t.stop()
 			return
 		}
 	}
 }
 
 // startIfNotRunning starts processing container logs. The operation is idempotent, i.e. the processing cannot be started twice.
-func (s *tailer) startIfNotRunning() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.running {
-		level.Debug(s.logger).Log("msg", "starting process loop", "container", s.containerID)
+func (t *tailer) startIfNotRunning() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.running {
+		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerID)
 
 		ctx := context.Background()
-		info, err := s.client.ContainerInspect(ctx, s.containerID)
+		info, err := t.client.ContainerInspect(ctx, t.containerID)
 		if err != nil {
-			level.Error(s.logger).Log("msg", "could not inspect container info", "container", s.containerID, "err", err)
-			s.err = err
+			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerID, "err", err)
+			t.err = err
 			return
 		}
 
-		reader, err := s.client.ContainerLogs(ctx, s.containerID, container.LogsOptions{
+		reader, err := t.client.ContainerLogs(ctx, t.containerID, container.LogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
 			Follow:     true,
 			Timestamps: true,
-			Since:      strconv.FormatInt(s.since.Load(), 10),
+			Since:      strconv.FormatInt(t.since.Load(), 10),
 		})
 		if err != nil {
-			level.Error(s.logger).Log("msg", "could not fetch logs for container", "container", s.containerID, "err", err)
-			s.err = err
+			level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerID, "err", err)
+			t.err = err
 			return
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
-		s.cancel = cancel
-		s.running = true
+		t.cancel = cancel
+		t.running = true
 		// processLoop will start 3 goroutines that we need to wait for if Stop is called.
-		s.wg.Add(3)
-		go s.processLoop(ctx, info.Config.Tty, reader)
+		t.wg.Add(3)
+		go t.processLoop(ctx, info.Config.Tty, reader)
 	}
 }
 
 // stop shuts down the target.
-func (s *tailer) stop() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.running {
-		s.running = false
-		if s.cancel != nil {
-			s.cancel()
+func (t *tailer) stop() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.running {
+		t.running = false
+		if t.cancel != nil {
+			t.cancel()
 		}
-		s.wg.Wait()
-		level.Debug(s.logger).Log("msg", "stopped Docker target", "container", s.containerID)
+		t.wg.Wait()
+		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerID)
 
 		// If the component is not stopping, then it means that the target for this component is gone and that
 		// we should clear the entry from the positions file.
-		if !s.componentStopping() {
-			s.positions.Remove(positions.CursorKey(s.containerID), s.labelsStr)
+		if !t.componentStopping() {
+			t.positions.Remove(positions.CursorKey(t.containerID), t.labelsStr)
 		}
 	}
 }
 
-func (s *tailer) Key() string {
-	return s.containerID
+func (t *tailer) Key() string {
+	return t.containerID
 }
 
-func (s *tailer) DebugInfo() any {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	running := s.running
+func (t *tailer) DebugInfo() any {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	running := t.running
 
 	var errMsg string
-	if s.err != nil {
-		errMsg = s.err.Error()
+	if t.err != nil {
+		errMsg = t.err.Error()
 	}
 
 	return sourceInfo{
-		ID:         s.containerID,
+		ID:         t.containerID,
 		LastError:  errMsg,
-		Labels:     s.labelsStr,
+		Labels:     t.labelsStr,
 		IsRunning:  running,
-		ReadOffset: s.positions.GetString(positions.CursorKey(s.containerID), s.labelsStr),
+		ReadOffset: t.positions.GetString(positions.CursorKey(t.containerID), t.labelsStr),
 	}
 }
 
-func (s *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
+func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
 	defer reader.Close()
 
 	// Start transferring
@@ -207,10 +207,10 @@ func (s *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	rstderr, wstderr := io.Pipe()
 	go func() {
 		defer func() {
-			s.wg.Done()
+			t.wg.Done()
 			wstdout.Close()
 			wstderr.Close()
-			s.stop()
+			t.stop()
 		}()
 		var written int64
 		var err error
@@ -218,26 +218,26 @@ func (s *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 			written, err = io.Copy(wstdout, reader)
 		} else {
 			// For non-TTY, wrap the pipe writers with our chunk writer to reassemble frames.
-			wcstdout := newChunkWriter(wstdout, s.logger)
+			wcstdout := newChunkWriter(wstdout, t.logger)
 			defer wcstdout.Close()
-			wcstderr := newChunkWriter(wstderr, s.logger)
+			wcstderr := newChunkWriter(wstderr, t.logger)
 			defer wcstderr.Close()
 			written, err = stdcopy.StdCopy(wcstdout, wcstderr, reader)
 		}
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "could not transfer logs", "written", written, "container", s.containerID, "err", err)
+			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerID, "err", err)
 		} else {
-			level.Info(s.logger).Log("msg", "finished transferring logs", "written", written, "container", s.containerID)
+			level.Info(t.logger).Log("msg", "finished transferring logs", "written", written, "container", t.containerID)
 		}
 	}()
 
 	// Start processing
-	go s.process(rstdout, s.getStreamLabels("stdout"))
-	go s.process(rstderr, s.getStreamLabels("stderr"))
+	go t.process(rstdout, t.getStreamLabels("stdout"))
+	go t.process(rstderr, t.getStreamLabels("stderr"))
 
 	// Wait until done
 	<-ctx.Done()
-	level.Debug(s.logger).Log("msg", "done processing Docker logs", "container", s.containerID)
+	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerID)
 }
 
 // extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
@@ -277,8 +277,8 @@ func readLine(r *bufio.Reader) (string, error) {
 	return string(ln), err
 }
 
-func (s *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
-	defer s.wg.Done()
+func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
+	defer t.wg.Done()
 
 	scanner := bufio.NewScanner(r)
 	const maxCapacity = dockerMaxChunkSize * 64
@@ -289,19 +289,19 @@ func (s *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		ts, content, err := extractTsFromBytes(line)
 		if err != nil {
-			level.Error(s.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
-			s.metrics.dockerErrors.Inc()
+			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
+			t.metrics.dockerErrors.Inc()
 			continue
 		}
 
-		s.recv.Chan() <- loki.Entry{
+		t.recv.Chan() <- loki.Entry{
 			Labels: logStreamLset,
 			Entry: push.Entry{
 				Timestamp: ts,
 				Line:      string(content),
 			},
 		}
-		s.metrics.dockerEntries.Inc()
+		t.metrics.dockerEntries.Inc()
 
 		// NOTE(@tpaschalis) We don't save the positions entry with the
 		// filtered labels, but with the default label set, as this is the one
@@ -309,24 +309,24 @@ func (s *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 		// problematic if we have the same container with a different set of
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
-		s.positions.Put(positions.CursorKey(s.containerID), s.labelsStr, ts.Unix())
-		s.since.Store(ts.Unix())
-		s.last.Store(time.Now().Unix())
+		t.positions.Put(positions.CursorKey(t.containerID), t.labelsStr, ts.Unix())
+		t.since.Store(ts.Unix())
+		t.last.Store(time.Now().Unix())
 	}
 	if err := scanner.Err(); err != nil {
-		level.Error(s.logger).Log("msg", "error reading docker log line", "err", err)
-		s.metrics.dockerErrors.Inc()
+		level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
+		t.metrics.dockerErrors.Inc()
 	}
 }
 
-func (s *tailer) getStreamLabels(logStream string) model.LabelSet {
+func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
 	lb := labels.NewBuilder(labels.EmptyLabels())
-	for k, v := range s.labels {
+	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
 	lb.Set(dockerLabelLogStream, logStream)
-	processed, _ := relabel.Process(lb.Labels(), s.relabelConfig...)
+	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
