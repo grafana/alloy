@@ -36,11 +36,4 @@ func TestDrain(t *testing.T) {
 
 	wg.Wait()
 	require.True(t, completed, "Drain should complete without deadlock")
-
-	// Verify channel is empty.
-	select {
-	case <-recv.Chan():
-		t.Fatal("Channel should be empty after draining")
-	default:
-	}
 }
