@@ -26,19 +26,28 @@ type TargetServer struct {
 // NewTargetServer creates a new TargetServer, applying some defaults to the server configuration.
 // If provided config is nil, a default configuration will be used instead.
 func NewTargetServer(logger log.Logger, metricsNamespace string, reg prometheus.Registerer, config *ServerConfig) (*TargetServer, error) {
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if !model.IsValidMetricName(model.LabelValue(metricsNamespace)) {
+	if config == nil {
+		config = DefaultServerConfig()
+	}
+
+	// Validate metric_name_validation_scheme
+	var validationScheme model.ValidationScheme
+	switch config.MetricNameValidationScheme {
+	case model.UTF8Validation.String():
+		validationScheme = model.UTF8Validation
+	case model.LegacyValidation.String(), "":
+		validationScheme = model.LegacyValidation
+	default:
+		return nil, fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", config.MetricNameValidationScheme, model.UTF8Validation.String(), model.LegacyValidation.String())
+	}
+
+	if !model.IsValidMetricNameWithValidationScheme(model.LabelValue(metricsNamespace), validationScheme) {
 		return nil, fmt.Errorf("metrics namespace is not prometheus compatible: %s", metricsNamespace)
 	}
 
 	ts := &TargetServer{
 		logger:           logger,
 		metricsNamespace: metricsNamespace,
-	}
-
-	if config == nil {
-		config = DefaultServerConfig()
 	}
 
 	// convert from Alloy into the dskit config

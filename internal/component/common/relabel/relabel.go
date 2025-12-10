@@ -131,30 +131,33 @@ func (re Regexp) String() string {
 
 // Config describes a relabelling step to be applied on a target.
 type Config struct {
-	SourceLabels []string `alloy:"source_labels,attr,optional"`
-	Separator    string   `alloy:"separator,attr,optional"`
-	Regex        Regexp   `alloy:"regex,attr,optional"`
-	Modulus      uint64   `alloy:"modulus,attr,optional"`
-	TargetLabel  string   `alloy:"target_label,attr,optional"`
-	Replacement  string   `alloy:"replacement,attr,optional"`
-	Action       Action   `alloy:"action,attr,optional"`
+	SourceLabels               []string `alloy:"source_labels,attr,optional"`
+	Separator                  string   `alloy:"separator,attr,optional"`
+	Regex                      Regexp   `alloy:"regex,attr,optional"`
+	Modulus                    uint64   `alloy:"modulus,attr,optional"`
+	TargetLabel                string   `alloy:"target_label,attr,optional"`
+	Replacement                string   `alloy:"replacement,attr,optional"`
+	Action                     Action   `alloy:"action,attr,optional"`
+	LabelNameValidationScheme  string   `alloy:"label_name_validation_scheme,attr,optional"`
 }
 
 // DefaultRelabelConfig sets the default values of fields when decoding a RelabelConfig block.
 var DefaultRelabelConfig = Config{
-	Action:      Replace,
-	Separator:   ";",
-	Regex:       mustNewRegexp("(.*)"),
-	Replacement: "$1",
+	Action:                    Replace,
+	Separator:                 ";",
+	Regex:                     mustNewRegexp("(.*)"),
+	Replacement:               "$1",
+	LabelNameValidationScheme: model.LegacyValidation.String(),
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (c *Config) SetToDefault() {
 	*c = Config{
-		Action:      Replace,
-		Separator:   ";",
-		Regex:       mustNewRegexp("(.*)"),
-		Replacement: "$1",
+		Action:                    Replace,
+		Separator:                 ";",
+		Regex:                     mustNewRegexp("(.*)"),
+		Replacement:               "$1",
+		LabelNameValidationScheme: model.LegacyValidation.String(),
 	}
 }
 
@@ -171,17 +174,24 @@ func (rc *Config) Validate() error {
 	if (rc.Action == Replace || rc.Action == HashMod || rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && rc.TargetLabel == "" {
 		return fmt.Errorf("relabel configuration for %s action requires 'target_label' value", rc.Action)
 	}
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if rc.Action == Replace && !strings.Contains(rc.TargetLabel, "$") && !model.LabelName(rc.TargetLabel).IsValid() {
+	
+	// Validate label_name_validation_scheme
+	switch rc.LabelNameValidationScheme {
+	case model.UTF8Validation.String(), model.LegacyValidation.String():
+	default:
+		return fmt.Errorf("invalid label_name_validation_scheme %q: must be either %q or %q", rc.LabelNameValidationScheme, model.UTF8Validation.String(), model.LegacyValidation.String())
+	}
+	
+	// Get the validation scheme
+	validationScheme := rc.getValidationScheme()
+	
+	if rc.Action == Replace && !strings.Contains(rc.TargetLabel, "$") && !model.LabelName(rc.TargetLabel).IsValidWithValidationScheme(validationScheme) {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
 	if rc.Action == Replace && strings.Contains(rc.TargetLabel, "$") && !relabelTarget.MatchString(rc.TargetLabel) {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && !model.LabelName(rc.TargetLabel).IsValid() {
+	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && !model.LabelName(rc.TargetLabel).IsValidWithValidationScheme(validationScheme) {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
 	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && rc.Replacement != DefaultRelabelConfig.Replacement {
@@ -190,9 +200,7 @@ func (rc *Config) Validate() error {
 	if rc.Action == LabelMap && !relabelTarget.MatchString(rc.Replacement) {
 		return fmt.Errorf("%q is invalid 'replacement' for %s action", rc.Replacement, rc.Action)
 	}
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if rc.Action == HashMod && !model.LabelName(rc.TargetLabel).IsValid() {
+	if rc.Action == HashMod && !model.LabelName(rc.TargetLabel).IsValidWithValidationScheme(validationScheme) {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
 
@@ -218,6 +226,14 @@ func (rc *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// getValidationScheme converts the string validation scheme to model.ValidationScheme.
+func (rc *Config) getValidationScheme() model.ValidationScheme {
+	if rc.LabelNameValidationScheme == model.UTF8Validation.String() {
+		return model.UTF8Validation
+	}
+	return model.LegacyValidation
 }
 
 // ProcessBuilder should be called with lb LabelBuilder containing the initial set of labels,
@@ -267,9 +283,7 @@ func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
 			break
 		}
 		target := model.LabelName(cfg.Regex.ExpandString([]byte{}, cfg.TargetLabel, val, indexes))
-		// TODO: add support for different validation schemes.
-		//nolint:staticcheck
-		if !target.IsValid() {
+		if !target.IsValidWithValidationScheme(cfg.getValidationScheme()) {
 			break
 		}
 		res := cfg.Regex.ExpandString([]byte{}, cfg.Replacement, val, indexes)
@@ -331,7 +345,7 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 			Replacement:          rc.Replacement,
 			Action:               relabel.Action(rc.Action),
 			Regex:                relabel.Regexp{Regexp: rc.Regex.Regexp},
-			NameValidationScheme: model.LegacyValidation,
+			NameValidationScheme: rc.getValidationScheme(),
 		}
 	}
 

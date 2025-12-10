@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
 )
 
 const (
@@ -36,6 +37,9 @@ type ServerConfig struct {
 
 	// GracefulShutdownTimeout configures a timeout to gracefully shut down the server.
 	GracefulShutdownTimeout time.Duration `alloy:"graceful_shutdown_timeout,attr,optional"`
+
+	// MetricNameValidationScheme configures the validation scheme to use for metric names.
+	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
 }
 
 // HTTPConfig configures the HTTP dskit started by dskit.Server.
@@ -181,6 +185,7 @@ func DefaultServerConfig() *ServerConfig {
 			ServerMaxSendMsg:           size4MB,
 			ServerMaxRecvMsg:           size4MB,
 		},
-		GracefulShutdownTimeout: 30 * time.Second,
+		GracefulShutdownTimeout:    30 * time.Second,
+		MetricNameValidationScheme: model.LegacyValidation.String(),
 	}
 }
