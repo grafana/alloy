@@ -91,8 +91,8 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 	})
 
 	m.totalAppendedMetadata = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "prometheus_remote_write_wal_metadata_appended_total",
-		Help: "Total number of metadata entries appended to the WAL",
+		Name: "prometheus_remote_write_wal_metadata_updates_total",
+		Help: "Total number of metadata updates sent through the WAL",
 	})
 
 	if r != nil {

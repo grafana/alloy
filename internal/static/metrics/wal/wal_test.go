@@ -231,7 +231,7 @@ prometheus_remote_write_wal_samples_appended_total 40
 		"prometheus_remote_write_wal_metadata_appended_total",
 		"prometheus_remote_write_wal_samples_appended_total",
 	)
-	require.NoError(t, err, "expected prometheus registry to be empty")
+	require.NoError(t, err)
 }
 
 func TestStorage_Rollback(t *testing.T) {
