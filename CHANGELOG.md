@@ -61,6 +61,8 @@ Main (unreleased)
 
 - Fix Docker log corruption for multiplexed long lines. (@axd1x8a)
 
+- Allow configuration of `force_attempt_http2` and default it to `true` for otelcol exporters with HTTP client configurations. (@dehaansa)
+
 v1.12.0
 -----------------
 
