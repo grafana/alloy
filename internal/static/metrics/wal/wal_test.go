@@ -749,7 +749,6 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 			_, err := app.UpdateMetadata(ref, lbls, *sample.meta)
 			require.NoError(t, err)
 		}
-
 	}
 
 	sRef := *s.ref
@@ -925,7 +924,7 @@ func buildMixedTypeSeries(baseTs int64) seriesList {
 				{baseTs + 30, -1, nil, tsdbutil.GenerateTestFloatHistogram(100), &metadata.Metadata{Type: "histogram", Help: "Test metric for float histogram", Unit: "bytes"}}},
 			exemplars: []exemplar.Exemplar{
 				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 3, HasTs: true},
-				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(baseTs + 30), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 30, HasTs: true},
 			},
 		},
 		{
@@ -934,8 +933,8 @@ func buildMixedTypeSeries(baseTs int64) seriesList {
 				{baseTs + 2, -1, tsdbutil.GenerateTestCustomBucketsHistogram(1), nil, &metadata.Metadata{Type: "histogram", Help: "Test metric for integer NHCB", Unit: "bytes"}},
 				{baseTs + 20, -1, tsdbutil.GenerateTestCustomBucketsHistogram(100), nil, &metadata.Metadata{Type: "histogram", Help: "Test metric for integer NHCB", Unit: "bytes"}}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(baseTs + 2), HasTs: true},
-				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(baseTs + 20), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 2, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 20, HasTs: true},
 			},
 		},
 		{
@@ -944,8 +943,8 @@ func buildMixedTypeSeries(baseTs int64) seriesList {
 				{baseTs + 3, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(1), &metadata.Metadata{Type: "histogram", Help: "Test metric for float NHCB", Unit: "bytes"}},
 				{baseTs + 30, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(100), &metadata.Metadata{Type: "histogram", Help: "Test metric for float NHCB", Unit: "bytes"}}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(baseTs + 3), HasTs: true},
-				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(baseTs + 30), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 3, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 30, HasTs: true},
 			},
 		},
 	}

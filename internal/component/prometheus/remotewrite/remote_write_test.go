@@ -673,6 +673,7 @@ func sendMetrics(
 	tc *componenttest.Controller,
 	metrics []Appendable,
 ) {
+
 	rwExports := tc.Exports().(remotewrite.Exports)
 	appender := rwExports.Receiver.Appender(t.Context())
 
@@ -687,5 +688,4 @@ func testArgs(t *testing.T, cfg string) remotewrite.Arguments {
 	var args remotewrite.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	return args
-
 }
