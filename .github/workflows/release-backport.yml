@@ -1,0 +1,92 @@
+name: Backport PR
+
+on:
+  pull_request:
+    types: [labeled, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  backport:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR is merged and find backport labels 🏷️
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            if (!pr.merged_at) {
+              console.log('PR is not merged, skipping');
+              core.setOutput('should_backport', 'false');
+              return;
+            }
+
+            const labels = pr.labels || [];
+            const backportLabels = labels
+              .map(l => l.name)
+              .filter(name => name.startsWith('backport/'));
+
+            if (backportLabels.length === 0) {
+              console.log('No backport labels found, skipping');
+              core.setOutput('should_backport', 'false');
+              return;
+            }
+
+            console.log(`PR is merged and has backport labels: ${backportLabels.join(', ')}`);
+            core.setOutput('labels', JSON.stringify(backportLabels));
+            core.setOutput('should_backport', 'true');
+
+      - name: Get GitHub app secrets 🔐
+        if: steps.check.outputs.should_backport == 'true'
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        if: steps.check.outputs.should_backport == 'true'
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository 🛎️
+        if: steps.check.outputs.should_backport == 'true'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Set up Go 🏗️
+        if: steps.check.outputs.should_backport == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+
+      - name: Run backport tool 🍒
+        if: steps.check.outputs.should_backport == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          cd tools
+          labels='${{ steps.check.outputs.labels }}'
+
+          for label in $(echo "$labels" | jq -r '.[]'); do
+            echo "🍒 Processing backport for label: $label"
+            go run ./release/backport \
+              --pr "${{ github.event.pull_request.number }}" \
+              --label "$label"
+          done

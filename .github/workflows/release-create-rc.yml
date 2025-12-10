@@ -1,0 +1,65 @@
+name: Create Release Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (do not create tag or release)'
+        type: boolean
+        default: true # For safety!
+
+permissions:
+  contents: write
+  pull-requests: read
+  id-token: write
+
+jobs:
+  create-rc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub app secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Validate branch format 🔎
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          if [[ ! "$BRANCH" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::This workflow must be run from a release branch (release/vX.Y)"
+            echo "::error::Selected branch: $BRANCH"
+            exit 1
+          fi
+          echo "✅ Running on release branch: $BRANCH"
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Go 🏗️
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+
+      - name: Run create-rc tool 🚀
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cd tools
+          go run ./release/create-rc --branch "${{ github.ref_name }}" ${{ inputs.dry_run == true && '--dry-run' || '' }}
