@@ -350,7 +350,7 @@ func (c *Component) scheduleSources() {
 }
 
 type debugInfo struct {
-	TargetsInfo []any `alloy:"targets_info,block"`
+	TargetsInfo []sourceDebugInfo `alloy:"targets_info,block"`
 }
 
 type sourceDebugInfo struct {
@@ -370,7 +370,7 @@ func (c *Component) DebugInfo() any {
 	for s := range c.scheduler.Sources() {
 		ds, ok := s.(source.DebugSource)
 		if ok {
-			res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
+			res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo().(sourceDebugInfo))
 		}
 	}
 	return res

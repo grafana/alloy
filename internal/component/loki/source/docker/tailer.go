@@ -180,7 +180,7 @@ func (t *tailer) Key() string {
 	return t.containerID
 }
 
-func (t *tailer) DebugInfo() any {
+func (t *tailer) DebugInfo() sourceInfo {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	running := t.running

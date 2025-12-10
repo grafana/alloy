@@ -327,16 +327,15 @@ func (c *Component) DebugInfo() interface{} {
 
 	var res readerDebugInfo
 	for s := range c.scheduler.Sources() {
-		ds, ok := s.(source.DebugSource)
-		if ok {
-			res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo())
-		}
+		t := s.(*tailer)
+		res.TargetsInfo = append(res.TargetsInfo, t.DebugInfo())
+
 	}
 	return res
 }
 
 type readerDebugInfo struct {
-	TargetsInfo []any `alloy:"targets_info,block"`
+	TargetsInfo []sourceInfo `alloy:"targets_info,block"`
 }
 
 type sourceInfo struct {
