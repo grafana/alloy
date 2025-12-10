@@ -207,6 +207,11 @@ func newRemoteWriteComponent(t testing.TB, logger log.Logger, ls *labelstore.Ser
 	inMemoryAppendable := testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}
 	store := storage.NewFanout(fanoutLogger, walStorage, testStorage{inMemoryAppendable: inMemoryAppendable})
 
+	t.Cleanup(func() {
+		store.Close()
+		walStorage.Close()
+	})
+
 	return remotewrite.NewInterceptor("prometheus.remote_write.test", &atomic.Bool{}, livedebugging.NewLiveDebugging(), ls, store), inMemoryAppendable.Inner
 }
 
