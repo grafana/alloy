@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
 
+- Add `prometheus.echo` component for local inspection of Prometheus metrics. The component writes received metrics to stdout in Prometheus exposition format, enabling easier debugging and testing of metrics flow. (@iamrajiv)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
@@ -296,8 +298,6 @@ v1.11.0
   - [`otelcol.processor.tail_sampling`] Add a new `block_on_overflow` config attribute.
 
 ### Features
-
-- Add `prometheus.echo` component for local inspection of Prometheus metrics. The component writes received metrics to stdout in Prometheus exposition format, enabling easier debugging and testing of metrics flow. (@iamrajiv)
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 - Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
