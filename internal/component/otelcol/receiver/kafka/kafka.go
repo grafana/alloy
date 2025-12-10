@@ -60,9 +60,12 @@ type Arguments struct {
 	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
 	DefaultFetchSize       int32         `alloy:"default_fetch_size,attr,optional"`
 	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
+	MaxPartitionFetchSize  int32         `alloy:"max_partition_fetch_size,attr,optional"`
 	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
 	GroupRebalanceStrategy string        `alloy:"group_rebalance_strategy,attr,optional"`
 	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
+	RackID                 string        `alloy:"rack_id,attr,optional"`
+	UseLeaderEpoch         bool          `alloy:"use_leader_epoch,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -91,8 +94,11 @@ func (args *Arguments) SetToDefault() {
 		MinFetchSize:           1,
 		DefaultFetchSize:       1048576,
 		MaxFetchSize:           0,
+		MaxPartitionFetchSize:  1048576,
 		MaxFetchWait:           250 * time.Millisecond,
 		GroupRebalanceStrategy: "range",
+		RackID:                 "",
+		UseLeaderEpoch:         true,
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -237,9 +243,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.MinFetchSize = args.MinFetchSize
 	result.DefaultFetchSize = args.DefaultFetchSize
 	result.MaxFetchSize = args.MaxFetchSize
+	result.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.MaxFetchWait = args.MaxFetchWait
 	result.GroupRebalanceStrategy = args.GroupRebalanceStrategy
 	result.GroupInstanceID = args.GroupInstanceID
+	result.RackID = args.RackID
+	result.UseLeaderEpoch = args.UseLeaderEpoch
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
 	result.Logs = args.Logs.convert(

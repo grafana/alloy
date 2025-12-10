@@ -10,7 +10,42 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.5.0 (2025-12-01)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.12.0. (@jharvey10)
+
+- Update RBAC rules to permit `mimir.alerts.kubernetes` to work by default. (@ptodev)
+
 ### Bug fixes
+
+- Correct `extraEnv` indentation in container template (@orkhan-huseyn)
+- Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
+
+1.4.0 (2025-10-27)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.11.3. (@kalleep)
+
+- Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
+
+- Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
+
+1.3.1 (2025-10-10)
+----------
+
+- Update to Grafana Alloy v1.11.2. (@kalleep)
+
+1.3.0 (2025-09-30)
+----------
+
+### Bug fixes
+
+- Update to Grafana Alloy v1.11.0. (@kalleep)
 
 - Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
 

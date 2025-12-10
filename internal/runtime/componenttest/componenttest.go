@@ -118,7 +118,7 @@ func (c *Controller) Exports() component.Exports {
 // until ctx is canceled, the component exits, or if there was an error.
 //
 // Run may only be called once per Controller.
-func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
+func (c *Controller) Run(ctx context.Context, args component.Arguments, optsModifiers ...func(opts component.Options) component.Options) error {
 	dataPath, err := os.MkdirTemp("", "controller-*")
 	if err != nil {
 		return err
@@ -127,22 +127,37 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 		_ = os.RemoveAll(dataPath)
 	}()
 
-	run, err := c.buildComponent(dataPath, args)
+	run, err := c.buildComponent(dataPath, args, optsModifiers...)
 
-	// We close c.running before checking the error, since the component will
-	// never run if we return an error anyway.
+	if err != nil {
+		c.onRun.Do(func() {
+			c.runError.Store(err)
+			close(c.running)
+		})
+		return err
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+		// ensure we signal running if the component doesn't exit within the first few hundred ms
+		case <-time.After(500 * time.Millisecond):
+			c.onRun.Do(func() {
+				close(c.running)
+			})
+		}
+	}()
+	// Ensure the error is captured for the defer
+	err = run.Run(ctx)
+
 	c.onRun.Do(func() {
 		c.runError.Store(err)
 		close(c.running)
 	})
-
-	if err != nil {
-		return err
-	}
-	return run.Run(ctx)
+	return err
 }
 
-func (c *Controller) buildComponent(dataPath string, args component.Arguments) (component.Component, error) {
+func (c *Controller) buildComponent(dataPath string, args component.Arguments, optsModifiers ...func(opts component.Options) component.Options) (component.Component, error) {
 	c.innerMut.Lock()
 	defer c.innerMut.Unlock()
 
@@ -172,6 +187,10 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 				return nil, fmt.Errorf("no service named %s defined", name)
 			}
 		},
+	}
+
+	for _, mod := range optsModifiers {
+		opts = mod(opts)
 	}
 
 	inner, err := c.reg.Build(opts, args)

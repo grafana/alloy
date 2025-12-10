@@ -5,41 +5,46 @@ package configgen
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/namespacelabeler"
+	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/http"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func (cg *ConfigGenerator) GenerateScrapeConfigConfigs(m *promopv1alpha1.ScrapeConfig) (cfg []*config.ScrapeConfig, errors []error) {
-	cfg, errors = cg.generateStaticScrapeConfigConfigs(m, cfg, errors)
-	return
-}
-
-func (cg *ConfigGenerator) generateStaticScrapeConfigConfigs(m *promopv1alpha1.ScrapeConfig, cfg []*config.ScrapeConfig, errors []error) ([]*config.ScrapeConfig, []error) {
 	for i, ep := range m.Spec.StaticConfigs {
-		scrapeConfig, err := cg.generateStaticScrapeConfigConfig(m, ep, i)
-		if err != nil {
+		if scrapeConfig, err := cg.generateStaticScrapeConfigConfig(m, ep, i); err != nil {
 			errors = append(errors, err)
 		} else {
 			cfg = append(cfg, scrapeConfig)
 		}
 	}
-	return cfg, errors
+	for i, ep := range m.Spec.HTTPSDConfigs {
+		if scrapeConfig, err := cg.generateHTTPScrapeConfigConfig(m, ep, i); err != nil {
+			errors = append(errors, err)
+		} else {
+			cfg = append(cfg, scrapeConfig)
+		}
+	}
+	return
 }
 
 func (cg *ConfigGenerator) generateStaticScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, sc promopv1alpha1.StaticConfig, i int) (cfg *config.ScrapeConfig, err error) {
 	relabels := cg.initRelabelings()
 	metricRelabels := relabeler{}
 	cfg, err = cg.commonScrapeConfigConfig(m, i, &relabels, &metricRelabels)
-	cfg.JobName = fmt.Sprintf("scrapeConfig/%s/%s/static/%d", m.Namespace, m.Name, i)
 	if err != nil {
 		return nil, err
 	}
+	cfg.JobName = fmt.Sprintf("scrapeConfig/%s/%s/static/%d", m.Namespace, m.Name, i)
+
 	targets := []model.LabelSet{}
 	for _, target := range sc.Targets {
 		targets = append(targets, model.LabelSet{
@@ -55,17 +60,65 @@ func (cg *ConfigGenerator) generateStaticScrapeConfigConfig(m *promopv1alpha1.Sc
 	for k, v := range sc.Labels {
 		labels[model.LabelName(k)] = model.LabelValue(v)
 	}
-	config := discovery.StaticConfig{
+	discoveryCfg := discovery.StaticConfig{
 		&targetgroup.Group{
 			Targets: targets,
 			Labels:  labels,
 			Source:  cfg.JobName,
 		},
 	}
-	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, config)
-	cfg.RelabelConfigs = relabels.configs
-	cfg.MetricRelabelConfigs = metricRelabels.configs
-	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
+	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, discoveryCfg)
+	return cg.finalizeScrapeConfig(cfg, &relabels, &metricRelabels)
+}
+
+func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, httpSD promopv1alpha1.HTTPSDConfig, i int) (cfg *config.ScrapeConfig, err error) {
+	relabels := cg.initRelabelings()
+	metricRelabels := relabeler{}
+	cfg, err = cg.commonScrapeConfigConfig(m, i, &relabels, &metricRelabels)
+	if err != nil {
+		return nil, err
+	}
+	cfg.JobName = fmt.Sprintf("scrapeConfig/%s/%s/http/%d", m.Namespace, m.Name, i)
+
+	// Convert HTTPSDConfig to Prometheus HTTP SD config
+	httpSDConfig := &http.SDConfig{
+		HTTPClientConfig: commonConfig.DefaultHTTPClientConfig,
+		RefreshInterval:  model.Duration(30 * time.Second), // Default refresh interval
+		URL:              httpSD.URL,
+	}
+
+	// Set refresh interval if specified
+	if httpSD.RefreshInterval != nil {
+		if httpSDConfig.RefreshInterval, err = model.ParseDuration(string(*httpSD.RefreshInterval)); err != nil {
+			return nil, fmt.Errorf("parsing refresh interval from HTTPSDConfig: %w", err)
+		}
+	}
+
+	// Add TLS configuration if specified
+	if httpSD.TLSConfig != nil {
+		if httpSDConfig.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*httpSD.TLSConfig, m.Namespace); err != nil {
+			return nil, err
+		}
+	}
+
+	// Add BasicAuth if specified
+	if httpSD.BasicAuth != nil {
+		httpSDConfig.HTTPClientConfig.BasicAuth, err = cg.generateBasicAuth(*httpSD.BasicAuth, m.Namespace)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Add Authorization if specified
+	if httpSD.Authorization != nil {
+		httpSDConfig.HTTPClientConfig.Authorization, err = cg.generateAuthorization(*httpSD.Authorization, m.Namespace)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, httpSDConfig)
+	return cg.finalizeScrapeConfig(cfg, &relabels, &metricRelabels)
 }
 
 func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, _ int, relabels *relabeler, metricRelabels *relabeler) (cfg *config.ScrapeConfig, err error) {
@@ -85,6 +138,13 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		if cfg.ScrapeTimeout, err = model.ParseDuration(string(*m.Spec.ScrapeTimeout)); err != nil {
 			return nil, fmt.Errorf("parsing timeout from scrapeConfig: %w", err)
 		}
+	}
+	if m.Spec.ScrapeProtocols != nil {
+		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
+		if err != nil {
+			return nil, fmt.Errorf("converting scrape protocols: %w", err)
+		}
+		cfg.ScrapeProtocols = protocols
 	}
 	if m.Spec.MetricsPath != nil {
 		cfg.MetricsPath = *m.Spec.MetricsPath
@@ -135,4 +195,11 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
 	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
 	return cfg, err
+}
+
+// finalizeScrapeConfig applies common finalization steps to a scrape config
+func (cg *ConfigGenerator) finalizeScrapeConfig(cfg *config.ScrapeConfig, relabels *relabeler, metricRelabels *relabeler) (*config.ScrapeConfig, error) {
+	cfg.RelabelConfigs = relabels.configs
+	cfg.MetricRelabelConfigs = metricRelabels.configs
+	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }

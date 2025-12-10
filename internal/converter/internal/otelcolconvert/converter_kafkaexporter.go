@@ -70,6 +70,9 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Encoding:                             cfg.Encoding,
 		PartitionTracesByID:                  cfg.PartitionTracesByID,
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
+		PartitionLogsByResourceAttributes:    cfg.PartitionLogsByResourceAttributes,
+		PartitionLogsByTraceID:               cfg.PartitionLogsByTraceID,
+		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
 
 		Logs:    toKafkaSignalConfig(cfg.Logs),
@@ -90,11 +93,12 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 
 func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
-		MaxMessageBytes:   cfg.MaxMessageBytes,
-		Compression:       cfg.Compression,
-		CompressionParams: toKafkaCompressionParams(cfg.CompressionParams),
-		RequiredAcks:      int(cfg.RequiredAcks),
-		FlushMaxMessages:  cfg.FlushMaxMessages,
+		MaxMessageBytes:        cfg.MaxMessageBytes,
+		Compression:            cfg.Compression,
+		CompressionParams:      toKafkaCompressionParams(cfg.CompressionParams),
+		RequiredAcks:           int(cfg.RequiredAcks),
+		FlushMaxMessages:       cfg.FlushMaxMessages,
+		AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
 	}
 }
 
@@ -106,7 +110,8 @@ func toKafkaCompressionParams(cfg configcompression.CompressionParams) kafka.Com
 
 func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) *kafka.KafkaExporterSignalConfig {
 	return &kafka.KafkaExporterSignalConfig{
-		Topic:    cfg.Topic,
-		Encoding: cfg.Encoding,
+		Topic:                cfg.Topic,
+		TopicFromMetadataKey: cfg.TopicFromMetadataKey,
+		Encoding:             cfg.Encoding,
 	}
 }

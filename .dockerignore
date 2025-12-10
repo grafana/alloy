@@ -3,7 +3,8 @@ data/
 data-alloy/
 dist/
 internal/web/ui/node_modules/
-internal/web/ui/build/
+internal/web/ui/dist/
 packaging/windows/LICENSE
 packaging/windows/agent-windows-amd64.exe
 cmd/grafana-agent/Dockerfile
+alloy

@@ -1,5 +1,4 @@
 //go:build windows
-// +build windows
 
 // This code is copied from Promtail v1.6.2-0.20231004111112-07cbef92268a with minor changes.
 
@@ -13,8 +12,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/sys/windows"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
+	"github.com/grafana/alloy/internal/component/loki/source/windowsevent/win_eventlog"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 type Event struct {

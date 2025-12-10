@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/caarlos0/env/v9"
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
@@ -152,6 +153,9 @@ func (args Attributes) Convert() beyla.Attributes {
 	attrs.Kubernetes.DisableInformers = args.Kubernetes.DisableInformers
 	attrs.Kubernetes.MetaRestrictLocalNode = args.Kubernetes.MetaRestrictLocalNode
 	attrs.Kubernetes.ClusterName = args.Kubernetes.ClusterName
+	if args.Kubernetes.MetaCacheAddress != "" {
+		attrs.Kubernetes.MetaCacheAddress = args.Kubernetes.MetaCacheAddress
+	}
 	// InstanceID
 	if args.InstanceID.HostnameDNSResolution {
 		attrs.InstanceID.HostnameDNSResolution = args.InstanceID.HostnameDNSResolution
@@ -443,6 +447,12 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 		p.Instrumentations = args.Instrumentations
 	}
 	p.AllowServiceGraphSelfReferences = args.AllowServiceGraphSelfReferences
+	if args.ExtraResourceLabels != nil {
+		p.ExtraResourceLabels = args.ExtraResourceLabels
+	}
+	if args.ExtraSpanResourceLabels != nil {
+		p.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
+	}
 	return p
 }
 
@@ -580,6 +590,31 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	return c, nil
 }
 
+func (c *Component) loadConfig() (*beyla.Config, error) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	cfg, err := c.args.Convert()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert arguments: %w", err)
+	}
+
+	if err := env.Parse(cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse env: %w", err)
+	}
+
+	if cfg.Discovery.SurveyEnabled() {
+		cfg.Discovery.OverrideDefaultExcludeForSurvey()
+	}
+
+	c.reg = prometheus.NewRegistry()
+	c.reportHealthy()
+
+	cfg.Prometheus.Registry = c.reg
+
+	return cfg, nil
+}
+
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	// Add deprecation warnings at the start of Run
@@ -625,18 +660,12 @@ func (c *Component) Run(ctx context.Context) error {
 			newCtx, cancelFunc := context.WithCancel(ctx)
 			cancel = cancelFunc
 
-			c.mut.Lock()
-			cfg, err := c.args.Convert()
+			cfg, err := c.loadConfig()
 			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to convert arguments", "err", err)
+				level.Error(c.opts.Logger).Log("msg", "failed to load config", "err", err)
 				c.reportUnhealthy(err)
-				c.mut.Unlock()
 				continue
 			}
-			c.reg = prometheus.NewRegistry()
-			c.reportHealthy()
-			cfg.Prometheus.Registry = c.reg
-			c.mut.Unlock()
 
 			g, launchCtx := errgroup.WithContext(newCtx)
 			cancelG = g

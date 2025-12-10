@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	_ "github.com/grafana/alloy/internal/component/all" // Register all components
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert/envprovider"
@@ -22,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/service/pipelines"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	"golang.org/x/exp/maps"
 )
 
@@ -144,6 +146,7 @@ func getFactories() otelcol.Factories {
 		Exporters:  make(map[component.Type]exporter.Factory),
 		Extensions: make(map[component.Type]extension.Factory),
 		Connectors: make(map[component.Type]connector.Factory),
+		Telemetry:  otelconftelemetry.NewFactory(),
 	}
 
 	for _, converter := range converters {
@@ -175,7 +178,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 	var diags diag.Diagnostics
 
 	if convertServiceAttrs {
-		diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry))
+		diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry.(*otelconftelemetry.Config)))
 	}
 
 	groups, err := createPipelineGroups(cfg.Service.Pipelines)

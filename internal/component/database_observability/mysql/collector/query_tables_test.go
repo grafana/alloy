@@ -7,14 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/common/model"
-	"go.uber.org/goleak"
-
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestQueryTables(t *testing.T) {
@@ -367,7 +366,7 @@ func TestQueryTables(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			lokiClient := loki_fake.NewClient(func() {})
+			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
@@ -427,7 +426,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -492,7 +491,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
@@ -554,7 +553,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,

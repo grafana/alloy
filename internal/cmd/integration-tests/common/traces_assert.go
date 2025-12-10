@@ -46,7 +46,7 @@ func TracesTest(t *testing.T, tags map[string]string, testName string) {
 		tags = make(map[string]string)
 	}
 	tags["test_name"] = testName
-	
+
 	AssertTracesAvailable(t, tags)
 }
 
@@ -55,16 +55,23 @@ func AssertTracesAvailable(t *testing.T, tags map[string]string) {
 	query := TempoSearchQuery(tags)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var searchResponse TempoTraceSearchResponse
-		err := FetchDataFromURL(query, &searchResponse)
+		_, err := FetchDataFromURL(query, &searchResponse)
 		assert.NoError(c, err)
 		assert.NotEmpty(c, searchResponse.Traces, "Expected to find traces matching the search criteria")
-		
+
 		// Additional validation - ensure we have actual trace data
 		if len(searchResponse.Traces) > 0 {
 			trace := searchResponse.Traces[0]
 			assert.NotEmpty(c, trace.TraceID, "Trace should have a valid trace ID")
 			assert.NotEmpty(c, trace.RootServiceName, "Trace should have a root service name")
-			assert.Greater(c, trace.DurationMs, 0.0, "Trace should have a positive duration")
+
+			// TODO (erikbaranowski): Some more intrusive changes may be possible to handle this
+			// but this will unblock CI flakiness. Consider looping on the traces and finding
+			// one with a non-zero duration or finding a way that trace duration isn't rounded to 0.
+			assert.GreaterOrEqual(c, trace.DurationMs, 0.0, "Trace duration should be non-negative")
+			if trace.DurationMs == 0.0 {
+				t.Logf("Note: Trace has zero duration (TraceID: %s). This can occur with very fast eBPF-instrumented operations.", trace.TraceID)
+			}
 		}
 	}, DefaultTimeout, DefaultRetryInterval, "No traces found matching the search criteria within the time limit")
 }

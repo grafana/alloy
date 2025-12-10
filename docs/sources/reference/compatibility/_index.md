@@ -112,6 +112,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.snmp](../components/prometheus/prometheus.exporter.snmp)
 - [prometheus.exporter.snowflake](../components/prometheus/prometheus.exporter.snowflake)
 - [prometheus.exporter.squid](../components/prometheus/prometheus.exporter.squid)
+- [prometheus.exporter.static](../components/prometheus/prometheus.exporter.static)
 - [prometheus.exporter.statsd](../components/prometheus/prometheus.exporter.statsd)
 - [prometheus.exporter.unix](../components/prometheus/prometheus.exporter.unix)
 - [prometheus.exporter.windows](../components/prometheus/prometheus.exporter.windows)
@@ -158,6 +159,7 @@ The following components, grouped by namespace, _consume_ Targets.
 
 {{< collapse title="pyroscope" >}}
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
+- [pyroscope.enrich](../components/pyroscope/pyroscope.enrich)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
@@ -307,6 +309,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 <!-- START GENERATED SECTION: EXPORTERS OF OpenTelemetry `otelcol.Consumer` -->
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
@@ -316,6 +319,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
 - [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
+- [otelcol.exporter.googlecloudpubsub](../components/otelcol/otelcol.exporter.googlecloudpubsub)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
@@ -360,6 +364,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 {{< /collapse >}}
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
@@ -380,6 +385,9 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
 - [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
+- [otelcol.receiver.awsecscontainermetrics](../components/otelcol/otelcol.receiver.awsecscontainermetrics)
+- [otelcol.receiver.awss3](../components/otelcol/otelcol.receiver.awss3)
+- [otelcol.receiver.cloudflare](../components/otelcol/otelcol.receiver.cloudflare)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
 - [otelcol.receiver.faro](../components/otelcol/otelcol.receiver.faro)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
@@ -418,6 +426,7 @@ The following components, grouped by namespace, _export_ Pyroscope `ProfilesRece
 <!-- START GENERATED SECTION: EXPORTERS OF Pyroscope `ProfilesReceiver` -->
 
 {{< collapse title="pyroscope" >}}
+- [pyroscope.enrich](../components/pyroscope/pyroscope.enrich)
 - [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.write](../components/pyroscope/pyroscope.write)
 {{< /collapse >}}
@@ -433,6 +442,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 
 {{< collapse title="pyroscope" >}}
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
+- [pyroscope.enrich](../components/pyroscope/pyroscope.enrich)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
 - [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
 - [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)

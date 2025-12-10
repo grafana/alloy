@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/loki/v3/pkg/util"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -63,7 +63,7 @@ func translate(m PushMessageBody, other model.LabelSet, useIncomingTimestamp boo
 	// Collect all push-specific labels. Every one of them is first configured
 	// as optional, and the user can relabel it if needed. The relabeling and
 	// internal drop is handled in parseGCPLogsEntry.
-	lbs := labels.NewBuilder(nil)
+	lbs := labels.NewBuilder(labels.EmptyLabels())
 	lbs.Set("__gcp_message_id", m.ID())
 	lbs.Set("__gcp_subscription_name", m.Subscription)
 	for k, v := range m.Message.Attributes {

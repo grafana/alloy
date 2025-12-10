@@ -63,11 +63,11 @@ func TestMetricsHandlerIntegration_Targets(t *testing.T) {
 			actual := i.Targets(integrations.Endpoint{Host: "test", Prefix: "/test/"})
 			require.Len(t, actual, 1)
 
-			for _, lbl := range cfg.ExtraLabels {
+			cfg.ExtraLabels.Range(func(lbl labels.Label) {
 				val, ok := actual[0].Labels[model.LabelName(lbl.Name)]
 				require.True(t, ok, "target does not have extra label %s", lbl.Name)
 				require.Equal(t, lbl.Value, string(val), "extra label %s does not match expectation", lbl.Name)
-			}
+			})
 		})
 	})
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -41,32 +42,18 @@ const selectDigestsForExplainPlan = `
 	WHERE LAST_SEEN > ?
 	AND QUERY_SAMPLE_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
+	AND SCHEMA_NAME NOT IN ` + EXCLUDED_SCHEMAS
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
-func newExplainPlansOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanOutput, error) {
-	output := &database_observability.ExplainPlanOutput{
-		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:  "MySQL",
-			DatabaseVersion: dbVersion,
-			QueryIdentifier: digest,
-			GeneratedAt:     generatedAt,
-		},
-	}
-
+func newExplainPlansOutput(logger log.Logger, explainJson []byte) (*database_observability.ExplainPlanNode, error) {
 	qblock, _, _, err := jsonparser.Get(explainJson, "query_block")
 	if err != nil {
-		return output, fmt.Errorf("failed to get query block: %w", err)
+		return nil, fmt.Errorf("failed to get query block: %w", err)
 	}
 
 	planNode, err := parseTopLevelPlanNode(logger, qblock)
-	output.Plan = planNode
-	if err != nil {
-		return output, err
-	}
-
-	return output, nil
+	return &planNode, err
 }
 
 func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (database_observability.ExplainPlanNode, error) {
@@ -451,12 +438,48 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 	}, nil
 }
 
+func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
+	output := &database_observability.ExplainPlanOutput{
+		Metadata: database_observability.ExplainPlanMetadataInfo{
+			DatabaseEngine:         "MySQL",
+			DatabaseVersion:        c.dbVersion,
+			QueryIdentifier:        digest,
+			GeneratedAt:            generatedAt,
+			ProcessingResult:       result,
+			ProcessingResultReason: reason,
+		},
+	}
+	if plan != nil {
+		output.Plan = *plan
+	}
+
+	explainPlanOutputJSON, err := json.Marshal(output)
+	if err != nil {
+		return fmt.Errorf("failed to marshal explain plan output: %w", err)
+	}
+
+	logMessage := fmt.Sprintf(
+		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		schemaName,
+		digest,
+		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+	)
+
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		OP_EXPLAIN_PLAN_OUTPUT,
+		logMessage,
+	)
+
+	return nil
+}
+
 func (c *ExplainPlans) Name() string {
 	return ExplainPlansCollector
 }
 
 func (c *ExplainPlans) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", "collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -506,11 +529,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 
 	// Populate cache
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
-			return err
-		}
-
+		generatedAt := time.Now().Format(time.RFC3339)
 		var schemaName, digest, queryText string
 		var ls time.Time
 		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
@@ -521,20 +540,50 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 			return strings.EqualFold(schema, schemaName)
 		}) {
 
+			err := c.sendExplainPlansOutput(
+				schemaName,
+				digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query belongs to excluded schema",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send excluded schema skip explain plan output", "err", err)
+			}
 			continue
 		}
 
 		qi := newQueryInfo(schemaName, digest, queryText)
 		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
 			c.queryCache[qi.uniqueKey] = qi
+		} else {
+			err := c.sendExplainPlansOutput(
+				schemaName,
+				digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query denylisted",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send denylisted query skip explain plan output", "err", err)
+			}
+			continue
 		}
 		if ls.After(c.lastSeen) {
 			c.lastSeen = ls
 		}
 	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to iterate digest rows for explain plans", "err", err)
+		return err
+	}
+
 	// Calculate batch size based on current cache size
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
-	level.Info(c.logger).Log("msg", "fetched digests", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
+	level.Debug(c.logger).Log("msg", "populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	return nil
 }
 
@@ -547,6 +596,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 	processedCount := 0
 	for _, qi := range c.queryCache {
+		generatedAt := time.Now().Format(time.RFC3339)
 		nonRecoverableFailureOccurred := false
 		if processedCount >= c.currentBatchSize {
 			break
@@ -557,18 +607,55 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			if *nonRecoverableFailureOccurred {
 				qi.failureCount++
 				c.queryDenylist[qi.uniqueKey] = qi
-				level.Info(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++
 		}(&nonRecoverableFailureOccurred)
 
 		if strings.HasSuffix(qi.queryText, "...") {
-			level.Debug(logger).Log("msg", "skipping truncated query")
+			err := c.sendExplainPlansOutput(
+				qi.schemaName,
+				qi.digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query is truncated",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send truncated query skip explain plan output", "err", err)
+			}
 			continue
 		}
 
-		if !strings.HasPrefix(strings.ToLower(qi.queryText), "select") {
+		containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to check for reserved keywords", "err", err)
+			err := c.sendExplainPlansOutput(
+				qi.schemaName,
+				qi.digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultError,
+				fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+			}
+			continue
+		}
+
+		if containsReservedWord {
+			err := c.sendExplainPlansOutput(
+				qi.schemaName,
+				qi.digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query contains reserved word",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+			}
 			continue
 		}
 
@@ -576,7 +663,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			for _, code := range unrecoverableSQLCodes {
 				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
 					nonRecoverableFailureOccurred = true
@@ -608,9 +695,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		level.Debug(logger).Log("msg", "db native explain plan",
 			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
-		generatedAt := time.Now().Format(time.RFC3339)
-
-		explainPlanOutput, genErr := newExplainPlansOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, genErr := newExplainPlansOutput(logger, byteExplainPlanJSON)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
@@ -628,20 +713,16 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		logMessage := fmt.Sprintf(
-			`schema="%s" digest="%s" explain_plan_output="%s"`,
+		if err := c.sendExplainPlansOutput(
 			qi.schemaName,
 			qi.digest,
-			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-		)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_EXPLAIN_PLAN_OUTPUT,
-			logMessage,
-		)
-		// TODO: Add context to logging when errors occur so the original node can be found.
-		// I.E. query_block->nested_loop[1]->table etc..
+			generatedAt,
+			database_observability.ExplainProcessingResultSuccess,
+			"",
+			explainPlanOutput,
+		); err != nil {
+			level.Error(c.logger).Log("msg", "failed to send explain plan output", "err", err)
+		}
 	}
 
 	return nil
@@ -658,6 +739,11 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
 		return nil, fmt.Errorf("failed to set schema: %w", err)
 	}
+	defer func() {
+		// Switch to performance_schema to avoid that when the connection
+		// is reused by some other collector, it uses the wrong schema.
+		_, _ = conn.ExecContext(ctx, "USE `performance_schema`")
+	}()
 
 	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
 	if err := rsExplain.Err(); err != nil {

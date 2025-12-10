@@ -19,7 +19,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout Actions
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: "grafana/grafana-github-actions"
           path: ./actions
@@ -30,7 +30,7 @@ jobs:
       - name: Install Actions
         run: npm install --production --prefix ./actions
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
         with:
           repo_secrets: |
             ALLOYBOT_APP_ID=alloybot:app_id
@@ -45,12 +45,24 @@ jobs:
           owner: grafana
           repositories: alloy
 
-      # These need to be hard-coded to the bot being used; ideally in the future
-      # we can find a way to automatically determine this based on the token.
-      - name: Setup Git
+      - name: Get GitHub App
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        id: get-app
         run: |
-          git config --global user.name "grafana-alloybot[bot]"
-          git config --global user.email "879451+grafana-alloybot[bot]@users.noreply.github.com"
+          APP_ID="$(gh api "/apps/${APP_SLUG}" --jq .id)" || exit 1
+          echo "app-id=${APP_ID}" >> "${GITHUB_OUTPUT}"
+          echo "app-login=${APP_SLUG}[bot]" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure Git
+        env:
+          APP_ID: ${{ steps.get-app.outputs.app-id }}
+          APP_LOGIN: ${{ steps.get-app.outputs.app-login }}
+        run: |
+          git config --global user.name "${APP_LOGIN}"
+          git config --global user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
+
       - name: Run backport
         uses: ./actions/backport
         with:

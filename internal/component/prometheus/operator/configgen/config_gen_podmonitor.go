@@ -47,6 +47,13 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 			return nil, fmt.Errorf("parsing timeout from podMonitor: %w", err)
 		}
 	}
+	if m.Spec.ScrapeProtocols != nil {
+		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
+		if err != nil {
+			return nil, err
+		}
+		cfg.ScrapeProtocols = protocols
+	}
 	if ep.Path != "" {
 		cfg.MetricsPath = ep.Path
 	}
@@ -66,16 +73,16 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	if ep.FollowRedirects != nil {
 		cfg.HTTPClientConfig.FollowRedirects = *ep.FollowRedirects
 	}
-	if ep.EnableHttp2 != nil {
-		cfg.HTTPClientConfig.EnableHTTP2 = *ep.EnableHttp2
+	if ep.EnableHTTP2 != nil {
+		cfg.HTTPClientConfig.EnableHTTP2 = *ep.EnableHTTP2
 	}
 	if ep.TLSConfig != nil {
 		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*ep.TLSConfig, m.Namespace); err != nil {
 			return nil, err
 		}
 	}
-	if ep.BearerTokenSecret.Name != "" { //nolint:staticcheck
-		val, err := cg.Secrets.GetSecretValue(m.Namespace, ep.BearerTokenSecret) //nolint:staticcheck
+	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" { //nolint:staticcheck
+		val, err := cg.Secrets.GetSecretValue(m.Namespace, *ep.BearerTokenSecret) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}

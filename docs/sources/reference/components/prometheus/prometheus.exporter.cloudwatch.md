@@ -196,6 +196,7 @@ You can configure the `discovery` block one or multiple times to scrape metrics 
 | `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                           | `{}`    | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics are filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
+| `delay`                       | `duration`     | Delay the start time of the CloudWatch metrics query by this duration.                                                                                                                                         | `0`     | no       |
 | `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                               | `true`  | no       |
 | `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                         | `false` | no       |
 | `search_tags`                 | `map(string)`  | List of key / value pairs to use for tag filtering (all must match). The value can be a regular expression.                                                                                                                                            | `{}`    | no       |
@@ -293,6 +294,7 @@ You can configure the `custom_namespace` block multiple times to scrape metrics 
 | `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                                                                                                           |         | yes      |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                   |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                           | `{}`    | no       |
+| `delay`                       | `duration`     | Delay the start time of the CloudWatch metrics query by this duration.                                                                                                                                         | `0`     | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics are filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
 | `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                               | `true`  | no       |
 | `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                         | `false` | no       |
@@ -424,7 +426,6 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/Cognito`
 * Namespace: `AWS/DataSync`
 * Namespace: `AWS/DDoSProtection`
-* Namespace: `AWS/DirectoryService`
 * Namespace: `AWS/DMS`
 * Namespace: `AWS/DocDB`
 * Namespace: `AWS/DX`
@@ -466,9 +467,9 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/MWAA`
 * Namespace: `AWS/NATGateway`
 * Namespace: `AWS/Neptune`
+* Namespace: `AWS/Network Manager`
 * Namespace: `AWS/NetworkELB`
 * Namespace: `AWS/NetworkFirewall`
-* Namespace: `AWS/Network Manager`
 * Namespace: `AWS/PrivateLinkEndpoints`
 * Namespace: `AWS/PrivateLinkServices`
 * Namespace: `AWS/Prometheus`
@@ -476,7 +477,6 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/QuickSight`
 * Namespace: `AWS/RDS`
 * Namespace: `AWS/Redshift`
-* Namespace: `AWS/Redshift-Serverless`
 * Namespace: `AWS/Route53`
 * Namespace: `AWS/Route53Resolver`
 * Namespace: `AWS/RUM`
@@ -504,6 +504,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `Glue`
 
 {{< /column-list >}}
+
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

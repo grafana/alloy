@@ -6,15 +6,16 @@ import (
 
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 
+	"github.com/prometheus/common/model"
+	promconfig "github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/storage"
+	apiv1 "k8s.io/api/core/v1"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/prometheus/common/model"
-	promconfig "github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/storage"
-	apiv1 "k8s.io/api/core/v1"
 )
 
 type Arguments struct {
@@ -48,13 +49,17 @@ type ScrapeOptions struct {
 
 	// DefaultScrapeTimeout is the default timeout to scrape targets.
 	DefaultScrapeTimeout time.Duration `alloy:"default_scrape_timeout,attr,optional"`
+
+	// ScrapeNativeHistograms enables scraping of Prometheus native histograms.
+	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
 	cfg := promconfig.DefaultGlobalConfig
 	cfg.ScrapeInterval = model.Duration(s.DefaultScrapeInterval)
 	cfg.ScrapeTimeout = model.Duration(s.DefaultScrapeTimeout)
-	cfg.MetricNameValidationScheme = promconfig.LegacyValidationConfig
+	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
+	cfg.MetricNameValidationScheme = model.LegacyValidation
 	cfg.MetricNameEscapingScheme = model.EscapeUnderscores
 	return cfg
 }

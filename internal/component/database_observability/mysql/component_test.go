@@ -9,7 +9,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,20 +16,19 @@ import (
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
-func Test_collectSQLText(t *testing.T) {
+func Test_disableQueryRedaction(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		query_samples {
 			disable_query_redaction = true
 		}
@@ -44,11 +42,10 @@ func Test_collectSQLText(t *testing.T) {
 	})
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -59,11 +56,10 @@ func Test_collectSQLText(t *testing.T) {
 	})
 
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		setup_consumers {
 			collect_interval = "1h"
 		}
@@ -79,11 +75,10 @@ func Test_collectSQLText(t *testing.T) {
 
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse cloud provider block", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		cloud_provider {
 			aws {
 				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
@@ -98,11 +93,10 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
 	})
 	t.Run("empty cloud provider block", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -118,6 +112,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -131,7 +126,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
-			collector.ExplainPlansCollector:   false,
+			collector.SetupActorsCollector:    true,
+			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
@@ -140,7 +136,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		targets = []
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -154,6 +151,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
+			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
 		}, actualCollectors)
@@ -163,7 +161,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans"]
+		targets = []
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans"]
 	`
 
 		var args Arguments
@@ -177,6 +176,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  false,
 			collector.QuerySamplesCollector:   false,
 			collector.SetupConsumersCollector: false,
+			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
@@ -186,8 +186,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
-		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		targets = []
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -201,6 +202,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
+			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
 		}, actualCollectors)
@@ -210,7 +212,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		targets = []
+		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 		enable_collectors = ["query_details"]
 	`
 
@@ -225,6 +228,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  false,
 			collector.QuerySamplesCollector:   false,
 			collector.SetupConsumersCollector: false,
+			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
@@ -234,6 +238,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		enable_collectors = ["some_string"]
 		disable_collectors = ["another_string"]
 	`
@@ -249,7 +254,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
-			collector.ExplainPlansCollector:   false,
+			collector.SetupActorsCollector:    true,
+			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
@@ -257,14 +263,14 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
-		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-server-uuid")
+		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-server-id-hash")
 
 		go func() {
 			ts := time.Now().UnixNano()
 			entryHandler.Chan() <- loki.Entry{
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Unix(0, ts),
 					Line:      "some-message",
 				},
@@ -279,7 +285,7 @@ func Test_addLokiLabels(t *testing.T) {
 		assert.Equal(t, model.LabelSet{
 			"job":       database_observability.JobName,
 			"instance":  model.LabelValue("some-instance-key"),
-			"server_id": model.LabelValue("some-server-uuid"),
+			"server_id": model.LabelValue("some-server-id-hash"),
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})
@@ -288,8 +294,6 @@ func Test_addLokiLabels(t *testing.T) {
 // TestMySQL_Update_DBUnavailable_ReportsUnhealthy tests that the component does not return an error when the database is unavailable,
 // but reports unhealthy with the error message from the database.
 func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
-	t.Parallel()
-
 	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}
 	opts := cmp.Options{
 		ID:     "test.mysql",
@@ -308,11 +312,9 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 // TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors tests that the component tries to start collectors on a best effort basis,
 // reports unhealthy stacking errors for the collectors that failed to start and generate metrics for the collectors that started successfully.
 func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
-	t.Parallel()
-
 	args := Arguments{
 		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
-		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "explain_plans"},
+		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "setup_actors", "explain_plans"},
 		EnableCollectors:  []string{"query_samples", "locks"},
 		QuerySamplesArguments: QuerySamplesArguments{
 			CollectInterval:       time.Second,
@@ -340,7 +342,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	// First ping to the database succeeds, so we can start collectors
 	mock.ExpectPing()
 	// Engine info succeeds (if reached)
-	mock.ExpectQuery(`SELECT @@server_uuid, VERSION\(\)`).WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "version"}).AddRow("uuid-1", "8.0.0"))
+	mock.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).AddRow("uuid-1", "test-hostname", "8.0.0"))
 	// QuerySample constructor queries uptime and fails
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'")).
 		WillReturnRows(sqlmock.NewRows([]string{"variable_value"}).AddRow(1))

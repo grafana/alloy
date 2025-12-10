@@ -18,7 +18,7 @@ title: otelcol.receiver.fluentforward
 `otelcol.receiver.fluentforward` is a wrapper over the upstream OpenTelemetry Collector [`fluentforward`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 
-[`fluentforward`]: <https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{>< param "OTEL_VERSION" >}}/receiver/fluentforwardreceiver
+[`fluentforward`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/fluentforwardreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.fluentforward` components by giving them different labels.

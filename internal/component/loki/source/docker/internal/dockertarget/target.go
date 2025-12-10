@@ -6,6 +6,7 @@ package dockertarget
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -13,19 +14,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -34,6 +36,7 @@ const (
 	dockerLabel                = model.MetaLabelPrefix + "docker_"
 	dockerLabelContainerPrefix = dockerLabel + "container_"
 	dockerLabelLogStream       = dockerLabelContainerPrefix + "log_stream"
+	dockerMaxChunkSize         = 16384
 )
 
 // Target enables reading Docker container logs.
@@ -110,7 +113,12 @@ func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 		if tty {
 			written, err = io.Copy(wstdout, reader)
 		} else {
-			written, err = stdcopy.StdCopy(wstdout, wstderr, reader)
+			// For non-TTY, wrap the pipe writers with our chunk writer to reassemble frames.
+			wcstdout := newChunkWriter(wstdout, t.logger)
+			defer wcstdout.Close()
+			wcstderr := newChunkWriter(wstderr, t.logger)
+			defer wcstderr.Close()
+			written, err = stdcopy.StdCopy(wcstdout, wcstderr, reader)
 		}
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerName, "err", err)
@@ -128,53 +136,38 @@ func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerName)
 }
 
-// extractTs tries for read the timestamp from the beginning of the log line.
-// It's expected to follow the format 2006-01-02T15:04:05.999999999Z07:00.
-func extractTs(line string) (time.Time, string, error) {
-	pair := strings.SplitN(line, " ", 2)
-	if len(pair) != 2 {
-		return time.Now(), line, fmt.Errorf("could not find timestamp in '%s'", line)
+// extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
+func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
+	const timestampLayout = "2006-01-02T15:04:05.999999999Z07:00"
+
+	spaceIdx := bytes.IndexByte(line, ' ')
+	if spaceIdx == -1 || spaceIdx >= len(line)-1 {
+		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
 	}
-	ts, err := time.Parse("2006-01-02T15:04:05.999999999Z07:00", pair[0])
+
+	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp
+	// This is safe because:
+	// 1. spaceIdx > 0 and spaceIdx < len(line)-1 is guaranteed by the check above
+	// 2. time.Parse doesn't retain the string after returning
+	// 3. The underlying bytes aren't modified during parsing
+	ts, err := time.Parse(timestampLayout, unsafe.String(&line[0], spaceIdx))
 	if err != nil {
-		return time.Now(), line, fmt.Errorf("could not parse timestamp from '%s': %w", pair[0], err)
+		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
 	}
-	return ts, pair[1], nil
-}
-
-// https://devmarkpro.com/working-big-files-golang
-func readLine(r *bufio.Reader) (string, error) {
-	var (
-		isPrefix = true
-		err      error
-		line, ln []byte
-	)
-
-	for isPrefix && err == nil {
-		line, isPrefix, err = r.ReadLine()
-		ln = append(ln, line...)
-	}
-
-	return string(ln), err
+	return ts, line[spaceIdx+1:], nil
 }
 
 func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
-	defer func() {
-		t.wg.Done()
-	}()
+	defer t.wg.Done()
 
-	reader := bufio.NewReader(r)
-	for {
-		line, err := readLine(reader)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			level.Error(t.logger).Log("msg", "error reading docker log line, skipping line", "err", err)
-			t.metrics.dockerErrors.Inc()
-		}
+	scanner := bufio.NewScanner(r)
+	const maxCapacity = dockerMaxChunkSize * 64
+	buf := make([]byte, 0, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+	for scanner.Scan() {
+		line := scanner.Bytes()
 
-		ts, line, err := extractTs(line)
+		ts, content, err := extractTsFromBytes(line)
 		if err != nil {
 			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
 			t.metrics.dockerErrors.Inc()
@@ -183,9 +176,9 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		t.handler.Chan() <- loki.Entry{
 			Labels: logStreamLset,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: ts,
-				Line:      line,
+				Line:      string(content),
 			},
 		}
 		t.metrics.dockerEntries.Inc()
@@ -199,6 +192,10 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
 		t.since.Store(ts.Unix())
 		t.last.Store(time.Now().Unix())
+	}
+	if err := scanner.Err(); err != nil {
+		level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
+		t.metrics.dockerErrors.Inc()
 	}
 }
 
@@ -304,7 +301,7 @@ func (t *Target) Details() map[string]string {
 
 func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
@@ -312,12 +309,75 @@ func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return filtered
+}
+
+// dockerChunkWriter implements io.Writer to preprocess and reassemble Docker log frames.
+type dockerChunkWriter struct {
+	writer      io.Writer
+	logger      log.Logger
+	buffer      *bytes.Buffer
+	isBuffering bool
+}
+
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(make([]byte, 0, dockerMaxChunkSize*2))
+	},
+}
+
+func newChunkWriter(writer io.Writer, logger log.Logger) *dockerChunkWriter {
+	return &dockerChunkWriter{
+		writer: writer,
+		logger: logger,
+		buffer: bufferPool.Get().(*bytes.Buffer),
+	}
+}
+
+func (fw *dockerChunkWriter) Close() error {
+	if fw.buffer != nil {
+		fw.buffer.Reset()
+		bufferPool.Put(fw.buffer)
+		fw.buffer = nil
+	}
+	return nil
+}
+
+func (fw *dockerChunkWriter) Write(p []byte) (int, error) {
+	if !fw.isBuffering {
+		if len(p) < dockerMaxChunkSize || p[len(p)-1] == 0x0A {
+			// Short or complete frame: write directly without buffering.
+			return fw.writer.Write(p)
+		}
+		// Long frame start: buffer the first chunk.
+		fw.buffer.Write(p)
+		fw.isBuffering = true
+		return len(p), nil
+	}
+
+	// Continuation chunk: strip redundant timestamp and append content.
+	_, content, err := extractTsFromBytes(p)
+	if err != nil {
+		// Should not normally happen, but flog.log has entries like this for some reason.
+		level.Warn(fw.logger).Log("msg", "could not strip timestamp from continuation chunk", "err", err)
+		fw.buffer.Write(p)
+	} else {
+		fw.buffer.Write(content)
+	}
+	// If this is the last continuation chunk (ends with newline), flush the buffer
+	if len(p) > 0 && p[len(p)-1] == 0x0A {
+		if _, err := fw.writer.Write(fw.buffer.Bytes()); err != nil {
+			return 0, err
+		}
+		fw.buffer.Reset()
+		fw.isBuffering = false
+	}
+	return len(p), nil
 }

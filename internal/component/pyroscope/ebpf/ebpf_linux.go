@@ -22,10 +22,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 func init() {
@@ -40,6 +42,8 @@ func init() {
 		},
 	})
 	python.NoContinueWithNextUnwinder.Store(true)
+	// Disable ebpf profiler metrics
+	ebpfmetrics.Start(metricnoop.Meter{})
 }
 
 func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
@@ -65,7 +69,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	if err != nil {
 		return nil, err
 	}
-	cfg.FileObserver = nfs
+	cfg.ExecutableReporter = nfs
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -118,6 +122,14 @@ type Component struct {
 
 func (c *Component) Run(ctx context.Context) error {
 	c.checkTraceFS()
+
+	if c.args.LazyMode && len(c.args.Targets) == 0 {
+		_ = level.Info(c.logger).Log("msg", "lazy mode enabled, waiting for targets to profile")
+		if err := c.waitForTargets(ctx); err != nil {
+			return err
+		}
+	}
+
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
 	var err error
@@ -138,8 +150,10 @@ func (c *Component) Run(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
-		if c.cfg.FileObserver != nil {
-			c.cfg.FileObserver.Cleanup()
+		if c.cfg.ExecutableReporter != nil {
+			if nfs, ok := c.cfg.ExecutableReporter.(*irsymcache.Resolver); ok {
+				nfs.Cleanup()
+			}
 		}
 	}()
 
@@ -150,14 +164,32 @@ func (c *Component) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return nil
 			case newArgs := <-c.argsUpdate:
-				c.args = newArgs
-				c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
-				c.appendable.UpdateChildren(newArgs.ForwardTo)
-				c.metrics.targetsActive.Set(float64(len(c.args.Targets)))
+				c.updateArgs(newArgs)
 			}
 		}
 	}, func(error) {})
 	return g.Run()
+}
+
+func (c *Component) updateArgs(newArgs Arguments) {
+	c.args = newArgs
+	c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
+	c.appendable.UpdateChildren(newArgs.ForwardTo)
+	c.metrics.targetsActive.Set(float64(len(c.args.Targets)))
+}
+
+func (c *Component) waitForTargets(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case newArgs := <-c.argsUpdate:
+			c.updateArgs(newArgs)
+			if len(c.args.Targets) > 0 {
+				return nil
+			}
+		}
+	}
 }
 
 func (c *Component) Update(args component.Arguments) error {
@@ -235,6 +267,10 @@ func NewDefaultArguments() Arguments {
 		DotNetEnabled:   true,
 		OffCPUThreshold: 0,
 		GoEnabled:       true,
+		LoadProbe:       false,
+		UProbeLinks:     []string{},
+		VerboseMode:     false,
+		LazyMode:        false,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
@@ -259,10 +295,14 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	}
 
 	cfg := &controller.Config{Config: cfgProtoType}
+	cfg.SendErrorFrames = true
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
 	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.LoadProbe = args.LoadProbe
+	cfg.UProbeLinks = args.UProbeLinks
+	cfg.VerboseMode = args.VerboseMode
 	return cfg, nil
 }
 

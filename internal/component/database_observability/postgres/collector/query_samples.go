@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -20,6 +22,14 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT         = "wait_event"
+)
+
+const (
+	queryTextClause     = ", s.query"
+	stateActive         = "active"
+	stateIdle           = "idle"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -43,24 +53,19 @@ const selectPgStatActivity = `
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
-		s.query_id,
-		s.query
+		s.query_id
+		%s
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
-		s.pid <> pg_backend_pid() AND
+		s.pid != pg_backend_pid() AND
 		(
 			s.backend_type != 'client backend' OR
 			(
-				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND
-				(
-					s.state != 'idle' OR
-					(s.state = 'idle' AND s.state_change > $1)
-				) AND
-				coalesce(TRIM(s.state), '') != ''
+				coalesce(TRIM(s.query), '') != '' AND
+				s.query_id != 0
 			)
 		)
-		AND query_id > 0
 `
 
 type QuerySamplesInfo struct {
@@ -103,14 +108,105 @@ type QuerySamples struct {
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
 
-	logger     log.Logger
-	running    *atomic.Bool
-	ctx        context.Context
-	cancel     context.CancelFunc
-	lastScrape time.Time
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+
+	// in-memory state of running samples
+	samples map[SampleKey]*SampleState
+	// keep track of idle keys that were already emitted to avoid duplicates
+	idleEmitted *expirable.LRU[SampleKey, struct{}]
+}
+
+// SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
+// query across backends/transactions are uniquely tracked between scrapes.
+type SampleKey struct {
+	PID          int
+	QueryID      int64
+	QueryStartNs int64
+}
+
+func newSampleKey(pid int, queryID int64, queryStart sql.NullTime) SampleKey {
+	key := SampleKey{PID: pid, QueryID: queryID, QueryStartNs: 0}
+	if queryStart.Valid {
+		key.QueryStartNs = queryStart.Time.UnixNano()
+	}
+	return key
+}
+
+// SampleState buffers state across scrapes and is emitted once the query
+// turns idle or disappears, avoiding partial/duplicate emissions.
+type SampleState struct {
+	LastRow     QuerySamplesInfo
+	LastSeenAt  time.Time
+	LastCpuTime string // last cpu_time observed under CPU condition
+	tracker     WaitEventTracker
+	// EndAt is the time we determined the sample ended (idle transition
+	// or when it was only observed idle), used to compute durations/timestamps.
+	EndAt sql.NullTime
+}
+
+func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// setEndedAt sets EndAt and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) setEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndAt = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndAt = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
+}
+
+// WaitEventTracker coalesces consecutive identical wait events
+// to reduce log volume while preserving timing.
+type WaitEventTracker struct {
+	waitEvents []WaitEventOccurrence
+	openIdx    int // -1 means none open
+}
+
+func newWaitEventTracker() WaitEventTracker {
+	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
+}
+
+func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
+func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
+
+// WaitEventOccurrence tracks a continuous occurrence of the same wait event
+// with the same blocked_by_pids set.
+type WaitEventOccurrence struct {
+	WaitEventType string
+	WaitEvent     string
+	BlockedByPIDs []int64 // normalized set (sorted, unique)
+	LastWaitTime  string  // last stateDuration seen for this wait event
+	LastState     string
+	LastTimestamp time.Time
+}
+
+// WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
+type WaitEventIdentity struct {
+	eventType string
+	event     string
+	blockedBy []int64 // normalized
+}
+
+func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
+	if w.eventType != other.eventType || w.event != other.event {
+		return false
+	}
+	return equalPIDSets(w.blockedBy, other.blockedBy)
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	const emittedCacheSize = 1000 //pg_stat_statements default max number of statements to track
+	const emittedCacheTTL = 10 * time.Minute
+
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
@@ -118,6 +214,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction: args.DisableQueryRedaction,
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
+		samples:               map[SampleKey]*SampleState{},
+		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 	}, nil
 }
 
@@ -126,7 +224,11 @@ func (c *QuerySamples) Name() string {
 }
 
 func (c *QuerySamples) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -167,144 +269,56 @@ func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
-// calculateDuration returns a formatted duration string between a nullable time and current time
-func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
-	if nullableTime.Valid {
-		return currentTime.Sub(nullableTime.Time).Round(time.Millisecond).String()
-	}
-	return ""
-}
-
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	scrapeTime := time.Now()
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
+	queryTextField := ""
+	if c.disableQueryRedaction {
+		queryTextField = queryTextClause
+	}
+
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField)
+	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
+
 	defer rows.Close()
 
+	activeKeys := map[SampleKey]struct{}{}
+
 	for rows.Next() {
-		sample := QuerySamplesInfo{}
-		err := rows.Scan(
-			&sample.Now,
-			&sample.DatabaseName,
-			&sample.PID,
-			&sample.LeaderPID,
-			&sample.Username,
-			&sample.ApplicationName,
-			&sample.ClientAddr,
-			&sample.ClientPort,
-			&sample.BackendType,
-			&sample.BackendStart,
-			&sample.BackendXID,
-			&sample.BackendXmin,
-			&sample.XactStart,
-			&sample.State,
-			&sample.StateChange,
-			&sample.WaitEventType,
-			&sample.WaitEvent,
-			&sample.BlockedByPIDs,
-			&sample.QueryStart,
-			&sample.QueryID,
-			&sample.Query,
-		)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", err)
+		sample, scanErr := c.scanRow(rows)
+		if scanErr != nil {
+			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
 
-		err = c.validateQuerySample(sample)
-		if err != nil {
-			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", err)
+		key, procErr := c.processRow(sample)
+		if procErr != nil {
+			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
 			continue
 		}
 
-		leaderPID := ""
-		if sample.LeaderPID.Valid {
-			leaderPID = fmt.Sprintf(`%d`, sample.LeaderPID.Int64)
-		}
-
-		stateDuration := calculateDuration(sample.StateChange, sample.Now)
-		queryDuration := calculateDuration(sample.QueryStart, sample.Now)
-		xactDuration := calculateDuration(sample.XactStart, sample.Now)
-		backendDuration := calculateDuration(sample.BackendStart, sample.Now)
-
-		clientAddr := ""
-		if sample.ClientAddr.Valid {
-			clientAddr = sample.ClientAddr.String
-			if sample.ClientPort.Valid {
-				clientAddr = fmt.Sprintf("%s:%d", clientAddr, sample.ClientPort.Int32)
+		// Handle idle states specially: emit finalized sample once
+		if isIdleState(sample.State.String) {
+			if st, hadActive := c.samples[key]; hadActive {
+				st.setEndedAt(sample)
+				st.LastRow.State = sample.State
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			} else if _, already := c.idleEmitted.Get(key); !already {
+				// new idle sample not yet seen -> create a new sample state to track and emit it
+				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+				newIdleState.setEndedAt(sample)
+				newIdleState.LastRow.State = sample.State
+				c.samples[key] = newIdleState
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
 			}
+			continue
 		}
 
-		waitEventFullName := ""
-		waitEvent := sample.WaitEvent.String
-		waitEventType := sample.WaitEventType.String
-		if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
-			waitEventFullName = fmt.Sprintf("%s:%s", sample.WaitEventType.String, sample.WaitEvent.String)
-		}
-
-		// Get query string and redact if needed
-		queryText := sample.Query.String
-		if !c.disableQueryRedaction {
-			queryText = redact(queryText)
-		}
-
-		// Build query sample entry
-		sampleLabels := fmt.Sprintf(
-			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
-			sample.DatabaseName.String,
-			sample.PID,
-			leaderPID,
-			sample.Username.String,
-			sample.ApplicationName.String,
-			clientAddr,
-			sample.BackendType.String,
-			backendDuration,
-			sample.BackendXID.Int32,
-			sample.BackendXmin.Int32,
-			xactDuration,
-			sample.State.String,
-			queryDuration,
-			sample.QueryID.Int64,
-			queryText,
-		)
-
-		if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == "active" {
-			// If the wait event is null and the state is active, it means the query is executing on CPU
-			// Log it as a cpu_time within the query sample op
-			sampleLabels = fmt.Sprintf(`%s cpu_time="%s"`, sampleLabels, stateDuration)
-		}
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_QUERY_SAMPLE,
-			sampleLabels,
-			sample.Now.UnixNano(),
-		)
-
-		if waitEvent != "" {
-			waitEventLabels := fmt.Sprintf(
-				`datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
-				sample.DatabaseName.String,
-				sample.BackendType.String,
-				sample.State.String,
-				stateDuration,
-				waitEventType,
-				waitEvent,
-				waitEventFullName,
-				sample.BlockedByPIDs,
-				sample.QueryID.Int64,
-				queryText,
-			)
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				waitEventLabels,
-				sample.Now.UnixNano(),
-			)
-		}
+		// Non-idle: keep tracking as active
+		c.upsertActiveSample(key, sample)
+		activeKeys[key] = struct{}{}
+		continue
 	}
 
 	if err := rows.Err(); err != nil {
@@ -312,15 +326,60 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-	// Update last scrape time after successful scrape
-	c.lastScrape = scrapeTime
-
+	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndAt.Valid {
+			continue
+		}
+		c.emitAndDeleteSample(key)
+	}
 	return nil
 }
 
+func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
+	sample := QuerySamplesInfo{}
+	scanArgs := []interface{}{
+		&sample.Now,
+		&sample.DatabaseName,
+		&sample.PID,
+		&sample.LeaderPID,
+		&sample.Username,
+		&sample.ApplicationName,
+		&sample.ClientAddr,
+		&sample.ClientPort,
+		&sample.BackendType,
+		&sample.BackendStart,
+		&sample.BackendXID,
+		&sample.BackendXmin,
+		&sample.XactStart,
+		&sample.State,
+		&sample.StateChange,
+		&sample.WaitEventType,
+		&sample.WaitEvent,
+		&sample.BlockedByPIDs,
+		&sample.QueryStart,
+		&sample.QueryID,
+	}
+	if c.disableQueryRedaction {
+		scanArgs = append(scanArgs, &sample.Query)
+	}
+	err := rows.Scan(scanArgs...)
+	return sample, err
+}
+
+func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
+	if err := c.validateQuerySample(sample); err != nil {
+		return SampleKey{}, err
+	}
+	key := newSampleKey(sample.PID, sample.QueryID.Int64, sample.QueryStart)
+	return key, nil
+}
+
 func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
-	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-		return fmt.Errorf("insufficient privilege to access query. sample set: %+v", sample)
+	if c.disableQueryRedaction {
+		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
+			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
+		}
 	}
 
 	if !sample.DatabaseName.Valid {
@@ -328,4 +387,199 @@ func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	}
 
 	return nil
+}
+
+func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
+	state, ok := c.samples[key]
+	if !ok {
+		state = &SampleState{tracker: newWaitEventTracker()}
+		c.samples[key] = state
+	}
+	state.LastRow = sample
+	state.LastSeenAt = sample.Now
+	state.updateCpuTime(sample)
+	state.LastRow.State = sample.State
+	state.tracker.upsertWaitEvent(sample, sample.Now)
+}
+
+func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Time) {
+	if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
+		current := WaitEventIdentity{
+			eventType: sample.WaitEventType.String,
+			event:     sample.WaitEvent.String,
+			blockedBy: normalizePIDs(sample.BlockedByPIDs),
+		}
+		if t.openIdx >= 0 {
+			we := t.waitEvents[t.openIdx]
+			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
+			if existing.Equal(current) {
+				we.LastWaitTime = calculateDuration(sample.StateChange, now)
+				we.LastState = sample.State.String
+				we.LastTimestamp = now
+				t.waitEvents[t.openIdx] = we
+				return
+			}
+			t.openIdx = -1
+		}
+
+		newOcc := WaitEventOccurrence{
+			WaitEventType: current.eventType,
+			WaitEvent:     current.event,
+			BlockedByPIDs: current.blockedBy,
+			LastWaitTime:  calculateDuration(sample.StateChange, now),
+			LastState:     sample.State.String,
+			LastTimestamp: now,
+		}
+		t.waitEvents = append(t.waitEvents, newOcc)
+		t.openIdx = len(t.waitEvents) - 1
+		return
+	}
+
+	if t.openIdx >= 0 {
+		t.openIdx = -1
+	}
+}
+
+func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
+	state, ok := c.samples[key]
+	if !ok {
+		return
+	}
+	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
+	ts := state.LastSeenAt.UnixNano()
+	if state.EndAt.Valid {
+		ts = state.EndAt.Time.UnixNano()
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		OP_QUERY_SAMPLE,
+		sampleLabels,
+		ts,
+	)
+
+	for _, we := range state.tracker.WaitEvents() {
+		if we.WaitEventType == "" || we.WaitEvent == "" {
+			continue
+		}
+		waitEventLabels := c.buildWaitEventLabels(state, we)
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			OP_WAIT_EVENT,
+			waitEventLabels,
+			we.LastTimestamp.UnixNano(),
+		)
+	}
+
+	delete(c.samples, key)
+}
+
+func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	end := state.LastRow.Now
+	if endAt.Valid {
+		end = endAt.Time
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
+
+	clientAddr := ""
+	if state.LastRow.ClientAddr.Valid {
+		clientAddr = state.LastRow.ClientAddr.String
+		if state.LastRow.ClientPort.Valid {
+			clientAddr = fmt.Sprintf("%s:%d", clientAddr, state.LastRow.ClientPort.Int32)
+		}
+	}
+
+	labels := fmt.Sprintf(
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.ApplicationName.String,
+		clientAddr,
+		state.LastRow.BackendType.String,
+		state.LastRow.State.String,
+		state.LastRow.BackendXID.Int32,
+		state.LastRow.BackendXmin.Int32,
+		xactDuration,
+		queryDuration,
+		state.LastRow.QueryID.Int64,
+	)
+	if state.LastCpuTime != "" {
+		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction && state.LastRow.Query.Valid {
+		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+	}
+	return labels
+}
+
+func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	return fmt.Sprintf(
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		we.LastState,
+		state.LastRow.BackendXID.Int32,
+		state.LastRow.BackendXmin.Int32,
+		we.LastWaitTime,
+		we.WaitEventType,
+		we.WaitEvent,
+		waitEventFullName,
+		we.BlockedByPIDs,
+		state.LastRow.QueryID.Int64,
+	)
+}
+
+func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
+	if !nullableTime.Valid {
+		return ""
+	}
+	return currentTime.Sub(nullableTime.Time).Round(time.Nanosecond).String()
+}
+
+func normalizePIDs(pids pq.Int64Array) []int64 {
+	seen := make(map[int64]struct{}, len(pids))
+	out := make([]int64, 0, len(pids))
+	for _, pid := range pids {
+		if _, ok := seen[pid]; ok {
+			continue
+		}
+		seen[pid] = struct{}{}
+		out = append(out, pid)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func equalPIDSets(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func isIdleState(state string) bool {
+	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
 }

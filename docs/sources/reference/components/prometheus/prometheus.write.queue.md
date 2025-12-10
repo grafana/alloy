@@ -80,6 +80,7 @@ The following arguments are supported:
 | `flush_interval`         | `duration`    | How long to wait until sending if `batch_count` isn't triggered.                 | `"1s"`                      | no       |
 | `headers`                | `map(secret)` | Custom HTTP headers to add to all requests sent to the server.                   |                             | no       |
 | `max_retry_attempts`     | `uint`        | Maximum number of retries before dropping the batch.                             | `0`                         | no       |
+| `metadata_cache_enabled` | `bool`        | Enables an LRU cache for tracking Metadata to support sparse metadata sending.   | `false`                     | no       |
 | `metadata_cache_size`    | `uint`        | Maximum number of metadata entries to keep in cache to track what has been sent. | `1000`                      | no       |
 | `protobuf_message`       | `string`      | Protobuf message format to use for remote write.                                 | `"prometheus.WriteRequest"` | no       |
 | `proxy_url`              | `string`      | URL of the HTTP proxy to use for requests.                                       |                             | no       |
@@ -90,7 +91,7 @@ The following arguments are supported:
 
 `protobuf_message` must be `prometheus.WriteRequest` or `io.prometheus.write.v2.Request`. These values represent prometheus remote write protocol versions 1 and 2.
 
-`metadata_cache_size` is only relevant when using `io.prometheus.write.v2.Request`, and is intended to reduce the frequency of metadata sending to reduce overall network traffic.
+'metadata_cache_enabled' and `metadata_cache_size` are only relevant when using `io.prometheus.write.v2.Request`, and is intended to reduce the frequency of metadata sending to reduce overall network traffic.
 A larger cache_size will consume more memory, but if you are sending many different metrics will also reduce how frequently metadata is sent with samples.
 
 ### `basic_auth`

@@ -1,0 +1,79 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/grafana/replace-generator/cmd"
+)
+
+type testCase struct {
+	name        string
+	testdataDir string
+}
+
+var testCases = []testCase{
+	{
+		name:        "Basic",
+		testdataDir: "basic-mod",
+	},
+	{
+		name:        "UpdateExisting",
+		testdataDir: "update-existing-mod",
+	},
+}
+
+func TestE2E(t *testing.T) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+
+	command := cmd.NewRootCommand()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testdataDir := filepath.Join(currentDir, "testdata", tc.testdataDir)
+			goModPath := filepath.Join(testdataDir, "go.mod")
+			expectedPath := filepath.Join(testdataDir, "go.mod.expected")
+			dependencyYaml := filepath.Join("testdata", tc.testdataDir, "dependency-replacements-test.yaml")
+			projectRoot := filepath.Join("testdata", tc.testdataDir)
+
+			originalGoMod, err := os.ReadFile(goModPath)
+			if err != nil {
+				t.Fatalf("Failed to read original go.mod: %v", err)
+			}
+
+			// Restore the original go.mod after the test
+			defer func() {
+				if err := os.WriteFile(goModPath, originalGoMod, 0644); err != nil {
+					t.Errorf("Failed to restore original go.mod: %v", err)
+				}
+			}()
+
+			command.SetArgs([]string{"generate", "--dependency-yaml", dependencyYaml, "--project-root", projectRoot})
+			err = command.Execute()
+			if err != nil {
+				t.Fatalf("Failed to run command: %v", err)
+			}
+
+			expectedContent, err := os.ReadFile(expectedPath)
+			if err != nil {
+				t.Fatalf("Failed to read expected go.mod: %v", err)
+			}
+			expectedGoMod := strings.TrimSpace(string(expectedContent))
+
+			actualContent, err := os.ReadFile(goModPath)
+			if err != nil {
+				t.Fatalf("Failed to read actual go.mod: %v", err)
+			}
+			actualGoMod := strings.TrimSpace(string(actualContent))
+
+			if actualGoMod != expectedGoMod {
+				t.Errorf("go.mod content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedGoMod, actualGoMod)
+			}
+		})
+	}
+}

@@ -15,9 +15,10 @@
 ##
 ## Targets for running tests:
 ##
-##   test              Run tests
-##   lint              Lint code
-##   integration-test  Run integration tests
+##   test                  Run tests
+##   lint                  Lint code
+##   integration-test      Run integration tests
+##   integration-test-k8s  Run Kubernetes integration tests
 ##
 ## Targets for building binaries:
 ##
@@ -48,6 +49,7 @@
 ##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
 ##
 ## Other targets:
 ##
@@ -146,19 +148,19 @@ endif
 .PHONY: lint
 lint: alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
-# more without -race for packages that have known race detection issues. The
+# more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v -E '/integration-tests/|/integration-tests-k8s/')
+	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
 	$(GO_ENV) cd ./syntax && go test -race ./...
 
 test-packages:
@@ -166,7 +168,7 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging  ./internal/tools/packaging_test
+	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
 .PHONY: integration-test
@@ -178,6 +180,11 @@ test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
 	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
 		$(GO_ENV) go build .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	cd ./internal/cmd/integration-tests-k8s/ && \
+		$(GO_ENV) go test -timeout 10m ./...
 
 #
 # Targets for building binaries
@@ -251,11 +258,18 @@ else
 	bash ./operations/helm/scripts/rebuild-tests.sh
 endif
 
+generate-module-dependencies:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+endif
+
 generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./internal/web/ui && yarn --network-timeout=1200000 && yarn run build
+	cd ./internal/web/ui && npm install && npm run build
 endif
 
 generate-versioned-files:

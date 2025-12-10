@@ -5,6 +5,7 @@ package dockertarget
 // read logs from Docker containers and forward them to other loki components.
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +14,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -25,7 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
 func TestDockerTarget(t *testing.T) {
@@ -34,7 +34,7 @@ func TestDockerTarget(t *testing.T) {
 
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
 	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
 
@@ -94,7 +94,7 @@ func TestStartStopStressTest(t *testing.T) {
 	defer server.Close()
 
 	logger := log.NewNopLogger()
-	entryHandler := fake.NewClient(func() {})
+	entryHandler := loki.NewCollectingHandler()
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
@@ -135,6 +135,44 @@ func TestStartStopStressTest(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestDockerChunkWriter(t *testing.T) {
+	logger := log.NewNopLogger()
+	var buf bytes.Buffer
+	writer := newChunkWriter(&buf, logger)
+
+	timestamp := []byte("2023-12-09T12:00:00.000000000Z ")
+	shortLine := []byte("short log line\n")
+
+	var longContent []byte
+	for range 50 * 1024 {
+		longContent = append(longContent, 'a')
+	}
+	longContent = append(longContent, '\n')
+
+	// First part of long line
+	chunk1 := append(timestamp, longContent[:32*1024]...)
+	_, err := writer.Write(chunk1)
+	require.NoError(t, err)
+
+	// Second part of long line
+	chunk2 := append(timestamp, longContent[32*1024:]...)
+	_, err = writer.Write(chunk2)
+	require.NoError(t, err)
+
+	// Start a new short line
+	chunk3 := append(timestamp, shortLine...)
+	_, err = writer.Write(chunk3)
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	expected := append(timestamp, longContent...)
+	expected = append(expected, chunk3...)
+
+	assert.Equal(t, expected, buf.Bytes())
 }
 
 func newDockerServer(t *testing.T) *httptest.Server {
@@ -178,7 +216,7 @@ func newDockerServer(t *testing.T) *httptest.Server {
 }
 
 // assertExpectedLog will verify that all expectedLines were received, in any order, without duplicates.
-func assertExpectedLog(c *assert.CollectT, entryHandler *fake.Client, expectedLines []string) {
+func assertExpectedLog(c *assert.CollectT, entryHandler *loki.CollectingHandler, expectedLines []string) {
 	logLines := entryHandler.Received()
 	testLogLines := make(map[string]int)
 	for _, l := range logLines {

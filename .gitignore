@@ -18,7 +18,7 @@ data-alloy/
 /dist.temp/
 /packaging/windows/LICENSE
 /packaging/windows/agent-windows-amd64.exe
-internal/web/ui/build
+internal/web/ui/dist
 
 .DS_Store
 buildx-v*
@@ -33,3 +33,8 @@ node_modules
 # file of the pair will detect a dirty work tree and detect the wrong tag name.
 .tag-only
 .image-tag
+/alloy
+
+# local testing files
+/targets.yaml
+/config.alloy

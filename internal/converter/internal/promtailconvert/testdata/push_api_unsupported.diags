@@ -2,8 +2,6 @@
 (Error) grpc_listen_network is not supported in server config
 (Error) tls_cipher_suites is not supported in server config
 (Error) tls_min_version is not supported in server config
-(Error) http_tls_config is not supported in server config
-(Error) grpc_tls_config is not supported in server config
 (Error) register_instrumentation is not supported in server config
 (Error) graceful_shutdown_timeout is not supported in server config
 (Error) grpc_server_keepalive_time is not supported in server config

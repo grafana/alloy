@@ -19,38 +19,36 @@ const (
 	DefaultTimeout       = 90 * time.Second
 )
 
-func FetchDataFromURL(url string, target Unmarshaler) error {
+func FetchDataFromURL(url string, target Unmarshaler) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Non-OK HTTP status: %s, body: %s, url: %s", resp.Status, string(bodyBytes), url)
+		return "", fmt.Errorf("Non-OK HTTP status: %s, body: %s, url: %s", resp.Status, string(bodyBytes), url)
 	}
 
-	return target.Unmarshal(bodyBytes)
+	err = target.Unmarshal(bodyBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal response from %s: Error: %w, Status=%s, Body=%s", url, err, resp.Status, string(bodyBytes))
+	}
+
+	return string(bodyBytes), nil
 }
 
 // AssertStatefulTestEnv verifies the environment is properly configured if the test is supposed to be stateful
 func AssertStatefulTestEnv(t *testing.T) {
-	// Check if stateful is set
-	statefulEnv := os.Getenv(TestStatefulEnv)
-	if statefulEnv == "" {
-		return
-	}
-
-	isStateful, err := strconv.ParseBool(statefulEnv)
+	isStateful, err := isStatefulFromEnv()
 	if err != nil {
-		t.Fatalf("Invalid value for %s: %s", TestStatefulEnv, err)
+		t.Fatalf("Failed to get stateful test flag from environment: %s", err)
 	}
-
 	if !isStateful {
 		return
 	}
@@ -60,7 +58,6 @@ func AssertStatefulTestEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get Alloy start time from environment: %s", err)
 	}
-	return
 }
 
 // AlloyStartTimeUnix pulls the start time from env.
@@ -92,6 +89,28 @@ func startTimeFromEnv() (int64, error) {
 	}
 
 	return parsed, nil
+}
+
+func IsStatefulTest() bool {
+	isStateful, err := isStatefulFromEnv()
+	if err != nil {
+		return false
+	}
+	return isStateful
+}
+
+func isStatefulFromEnv() (bool, error) {
+	statefulEnv := os.Getenv(TestStatefulEnv)
+	if statefulEnv == "" {
+		return false, nil
+	}
+
+	isStateful, err := strconv.ParseBool(statefulEnv)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse %s value %s as a boolean: %s", TestStatefulEnv, statefulEnv, err)
+	}
+
+	return isStateful, nil
 }
 
 func TestTimeoutEnv(t *testing.T) time.Duration {

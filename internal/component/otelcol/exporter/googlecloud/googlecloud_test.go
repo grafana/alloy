@@ -58,12 +58,7 @@ func TestConfigConversion(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      true,
-					NumConsumers: 10,
-					QueueSize:    1000,
-					Sizer:        exporterhelper.RequestSizerTypeRequests,
-				},
+				QueueSettings: exporterhelper.NewDefaultQueueConfig(),
 			},
 		},
 		{
@@ -197,6 +192,7 @@ func TestConfigConversion(t *testing.T) {
 					NumConsumers: 57,
 					QueueSize:    567,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},

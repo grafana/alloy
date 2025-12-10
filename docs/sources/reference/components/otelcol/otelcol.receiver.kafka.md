@@ -56,16 +56,35 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `initial_offset`                           | `string`        | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
 | `max_fetch_size`                           | `int`           | The maximum number of message bytes to fetch in a request.                                                            | `0`                | no       |
 | `max_fetch_wait`                           | `duration`      | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
+| `max_partition_fetch_size`                 | `int`           | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
 | `min_fetch_size`                           | `int`           | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
+| `rack_id`                                  | `string`        | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.            | `""`               | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
 | `session_timeout`                          | `duration`      | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
 | `topic`                                    | `string`        | (Deprecated) Kafka topic to read from.                                                                                | _See below_        | no       |
+| `use_leader_epoch`                         | `bool`          | Whether to use leader epoch for log truncation detection (KIP-320).                                                   | `true`             | no       |
 
 {{< admonition type="warning" >}}
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 {{< /admonition >}}
 
 For `max_fetch_size`, the value `0` means no limit.
+
+For `max_partition_fetch_size`, this setting controls the maximum bytes to fetch per partition.
+If a single record batch is larger than this value, the broker will still return it to ensure the consumer can make progress.
+This setting only applies when using the franz-go client.
+
+The `rack_id` setting enables rack-aware replica selection.
+When configured and brokers support a rack-aware replica selector, the client will prefer fetching from the closest replica.
+
+The `use_leader_epoch` setting is experimental and controls whether the consumer uses leader epochs (KIP-320) for detecting log truncation.
+When enabled, the consumer uses the leader epoch returned by brokers to detect log truncation.
+Setting this to `false` clears the leader epoch from fetch offsets, disabling KIP-320.
+Disabling can improve compatibility with brokers that don't fully support leader epochs (for example, Azure Event Hubs), but you lose automatic log-truncation safety.
 
 `initial_offset` must be either `"latest"` or `"earliest"`.
 

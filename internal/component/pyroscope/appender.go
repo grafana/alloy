@@ -104,6 +104,10 @@ func (f *Fanout) Appender() Appender {
 	return app
 }
 
+func (f *Fanout) String() string {
+	return f.componentID + ".receiver"
+}
+
 var _ Appender = (*appender)(nil)
 
 type appender struct {

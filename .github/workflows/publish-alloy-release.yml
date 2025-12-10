@@ -34,7 +34,7 @@ jobs:
 
   build_alloy:
     name: Build Alloy
-    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -43,7 +43,7 @@ jobs:
     - publish_windows_container
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
 
@@ -118,14 +118,14 @@ jobs:
 
   build_alloy_windows_installer:
     name: Build Alloy Windows installer with signed executables
-    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
     - sign_alloy_windows
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
 
@@ -150,7 +150,7 @@ jobs:
     # This step bypasses make so that Go does not rebuild the executables and lose the signed files from the previous job
     - name: Build unsigned Windows installer containing signed files
       run: |
-        RELEASE_BUILD=1 makensis -V4 -DVERSION=$(VERSION) -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
+        RELEASE_BUILD=1 makensis -V4 -DVERSION=${VERSION} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
         VERSION: ${{ github.ref_name }}
 
@@ -196,7 +196,7 @@ jobs:
   publish_github_release:
     name: Publish GitHub release
     if: github.ref_type == 'tag'
-    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -207,7 +207,7 @@ jobs:
       id-token: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
 
@@ -222,6 +222,32 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+
+    # A GitHub App is used to create the release instead of github-actions so that submit-winget-manifest is triggered when the release is published
+    - name: Get GitHub app secrets
+      id: get-secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      with:
+        export_env: false
+        repo_secrets: |
+          ALLOYBOT_APP_ID=alloybot:app_id
+          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+    - name: Create GitHub app token
+      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      id: app-token
+      with:
+        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+        owner: grafana
+        repositories: alloy
+
+    - name: Checkout
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        fetch-depth: 0
+        token: ${{ steps.app-token.outputs.token }}
+        persist-credentials: false
 
     - name: Download dist
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
@@ -247,4 +273,4 @@ jobs:
       run: |
         VERSION="${GITHUB_REF_NAME}" RELEASE_DOC_TAG=$(echo "${GITHUB_REF_NAME}" | awk -F '.' '{print $1"."$2}') ./tools/release
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

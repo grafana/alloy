@@ -11,10 +11,12 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/tracing/internal/jaegerremote"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -25,6 +27,7 @@ var (
 	DefaultOptions = Options{
 		SamplingFraction: 0.1,                  // Keep 10% of spans
 		WriteTo:          []otelcol.Consumer{}, // Don't send spans anywhere.
+		SendTraceparent:  false,
 	}
 
 	DefaultJaegerRemoteSamplerOptions = JaegerRemoteSamplerOptions{
@@ -39,6 +42,7 @@ type Options struct {
 	// SamplingFraction determines which rate of traces to sample. A value of 1
 	// means to keep 100% of traces. A value of 0 means to keep 0% of traces.
 	SamplingFraction float64 `alloy:"sampling_fraction,attr,optional"`
+	SendTraceparent  bool    `alloy:"send_traceparent,attr,optional"`
 
 	// Sampler holds optional samplers to configure on top of the sampling
 	// fraction.
@@ -109,6 +113,8 @@ func New(cfg Options) (*Tracer, error) {
 	var sampler lazySampler
 	sampler.SetSampler(tracesdk.TraceIDRatioBased(cfg.SamplingFraction))
 
+	setOTELTraceContextPropagators(cfg)
+
 	shimClient := &client{}
 	exp := otlptrace.NewUnstarted(shimClient)
 
@@ -135,6 +141,8 @@ func New(cfg Options) (*Tracer, error) {
 func (t *Tracer) Update(opts Options) error {
 	t.samplerMut.Lock()
 	defer t.samplerMut.Unlock()
+
+	setOTELTraceContextPropagators(opts)
 
 	t.client.UpdateWriteTo(opts.WriteTo)
 
@@ -167,6 +175,19 @@ func (t *Tracer) Update(opts Options) error {
 	}
 
 	return nil
+}
+
+func setOTELTraceContextPropagators(opts Options) {
+	var propagators []propagation.TextMapPropagator
+	if opts.SendTraceparent {
+		propagators = append(
+			propagators,
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		)
+	}
+
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagators...))
 }
 
 // Run starts the tracing subsystem and runs it until the provided context is

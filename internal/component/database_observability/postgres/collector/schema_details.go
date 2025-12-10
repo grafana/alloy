@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -26,7 +29,15 @@ const (
 )
 
 const (
-	selectDatabaseName = `SELECT current_database()`
+	excludedDatabases = `('azure_maintenance')`
+
+	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
+	selectAllDatabases = `
+		SELECT datname
+		FROM pg_database
+		WHERE datistemplate = false
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ` + excludedDatabases
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
@@ -59,7 +70,8 @@ const (
 		pg_attribute: stores column information
 		pg_attrdef: stores default values for columns
 		pg_constraint: stores primary key information
-		attr.attrelid = $1::regclass -- filter by the table name
+		JOIN pg_class to filter by table name
+		JOIN pg_namespace to filter by schema name
 		AND attr.attnum > 0  -- no system columns
 		AND NOT attr.attisdropped -- no dropped columns`
 	*/
@@ -76,24 +88,104 @@ const (
 		END as is_primary_key
 	FROM
 		pg_attribute attr
+		JOIN pg_catalog.pg_class pg_class ON attr.attrelid = pg_class.oid
+		JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
 		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum
 		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p'
 	WHERE
-		attr.attrelid = $1::regclass
+		pg_namespace.nspname = $1
+		AND pg_class.relname = $2
 		AND attr.attnum > 0
 		AND NOT attr.attisdropped`
+
+	// selectIndexes retrieves column-based and expression-based indexes on a specified table
+	/*
+		Postgres indexes can contain:
+		1. Regular columns (pg_index.indkey[pos] != 0)
+		2. Expressions (pg_index.indkey[pos] = 0)
+		3. Mixed indexes with both columns and expressions
+		pg_index.indkey: array of column numbers, 0 means expression
+		generate_subscripts: creates positions 1,2,3... for each indkey element
+		pg_get_indexdef(indexrelid, pos+1, true): gets expression text
+		array_agg FILTERs: separate columns and expressions into different arrays
+		column_nullables: array of nullability for each column (for Go processing)
+		bool_or(NOT pg_attribute.attnotnull): true if ANY column is nullable
+	*/
+	selectIndexes = `
+	SELECT
+		index_relations.relname as index_name,
+		pg_am.amname as index_type,
+		pg_index.indisunique as unique,
+		array_agg(
+			CASE WHEN pg_index.indkey[pos] != 0
+			THEN pg_attribute.attname
+			END ORDER BY pos
+		) FILTER (WHERE pg_index.indkey[pos] != 0) as column_names,
+		array_agg(
+			CASE WHEN pg_index.indkey[pos] = 0
+			THEN pg_get_indexdef(pg_index.indexrelid, pos + 1, true)
+			END ORDER BY pos
+		) FILTER (WHERE pg_index.indkey[pos] = 0) as expressions,
+		COALESCE(bool_or(NOT pg_attribute.attnotnull), false) as has_nullable_column
+	FROM pg_class table_relations
+	JOIN pg_index ON table_relations.oid = pg_index.indrelid
+	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid
+	JOIN pg_am ON index_relations.relam = pg_am.oid
+	JOIN generate_subscripts(pg_index.indkey, 1) AS pos ON true
+	LEFT JOIN pg_attribute ON table_relations.oid = pg_attribute.attrelid
+		AND pg_attribute.attnum = pg_index.indkey[pos]
+		AND NOT pg_attribute.attisdropped
+	WHERE table_relations.relname = $2
+		AND table_relations.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1)
+	GROUP BY index_relations.relname, pg_am.amname, pg_index.indisunique
+	ORDER BY index_name
+`
+
+	// selectForeignKeys retrieves foreign key constraints for a specified table
+	/*
+		pg_constraint stores all constraints
+		join pg_class (table info) to get the source table
+		join to pg_namespace (schema info) for schema filtering
+		join to pg_class again to get referenced table
+		use generate_subscripts() to correlate multi-column foreign keys by position
+		pg_attribute joined twice to get column names for both source and referenced columns
+	*/
+	selectForeignKeys = `
+	SELECT
+		constraints.conname as constraint_name,
+		source_column.attname as column_name,
+		referenced_table.relname as referenced_table_name,
+		referenced_column.attname as referenced_column_name
+	FROM pg_constraint constraints
+	JOIN pg_class source_table ON constraints.conrelid = source_table.oid
+	JOIN pg_namespace schema ON source_table.relnamespace = schema.oid
+	JOIN pg_class referenced_table ON constraints.confrelid = referenced_table.oid
+	JOIN generate_subscripts(constraints.conkey, 1) AS position ON true
+	JOIN pg_attribute source_column ON constraints.conrelid = source_column.attrelid
+		AND source_column.attnum = constraints.conkey[position]
+		AND NOT source_column.attisdropped
+	JOIN pg_attribute referenced_column ON constraints.confrelid = referenced_column.attrelid
+		AND referenced_column.attnum = constraints.confkey[position]
+		AND NOT referenced_column.attisdropped
+	WHERE constraints.contype = 'f'
+		AND schema.nspname = $1
+		AND source_table.relname = $2
+	ORDER BY constraints.conname, position
+`
 )
 
 type tableInfo struct {
-	database     string
-	schema       string
-	tableName    string
+	database     database
+	schema       schema
+	tableName    table
 	updateTime   time.Time
 	b64TableSpec string
 }
 
 type tableSpec struct {
-	Columns []columnSpec `json:"columns"`
+	Columns     []columnSpec `json:"columns"`
+	Indexes     []indexSpec  `json:"indexes,omitempty"`
+	ForeignKeys []foreignKey `json:"foreign_keys,omitempty"`
 }
 
 type columnSpec struct {
@@ -105,17 +197,121 @@ type columnSpec struct {
 	DefaultValue  string `json:"default_value,omitempty"`
 }
 
+type indexSpec struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Columns     []string `json:"columns"`
+	Expressions []string `json:"expressions,omitempty"`
+	Unique      bool     `json:"unique"`
+	Nullable    bool     `json:"nullable"`
+}
+
+type foreignKey struct {
+	Name                 string `json:"name"`
+	ColumnName           string `json:"column_name"`
+	ReferencedTableName  string `json:"referenced_table_name"`
+	ReferencedColumnName string `json:"referenced_column_name"`
+}
+
+type database string
+type schema string
+type table string
+
+// TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[database]map[schema]map[table]struct{}
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[database]map[schema]map[table]struct{}),
+	}
+}
+
+func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*tableInfo) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	delete(tr.tables, database)
+
+	if len(tablesInfo) > 0 {
+		tr.tables[database] = make(map[schema]map[table]struct{})
+		for _, tblInfo := range tablesInfo {
+			if tr.tables[database][tblInfo.schema] == nil {
+				tr.tables[database][tblInfo.schema] = make(map[table]struct{})
+			}
+			tr.tables[database][tblInfo.schema][tblInfo.tableName] = struct{}{}
+		}
+	}
+}
+
+// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry
+func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return false
+	}
+
+	schemaName, tableName := parseSchemaQualifiedIfAny(parsedTableName)
+	switch schemaName {
+	case "": // parsedTableName isn't schema-qualified, e.g. SELECT * FROM table_name.
+		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/alloy/issues/4815
+		for _, tables := range schemas {
+			if _, ok := tables[tableName]; ok {
+				return true
+			}
+		}
+	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+		if tables, ok := schemas[schemaName]; ok {
+			_, ok := tables[tableName]
+			return ok
+		}
+	}
+
+	return false
+}
+
+// parseSchemaQualifiedIfAny returns separated schema and table if the parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
+	parts := strings.SplitN(parsedTableName, ".", 2)
+	if len(parts) == 2 {
+		return schema(parts[0]), table(parts[1])
+	}
+	return "", table(parsedTableName)
+}
+
 type SchemaDetailsArguments struct {
-	DB           *sql.DB
-	EntryHandler loki.EntryHandler
+	DB              *sql.DB
+	DSN             string
+	CollectInterval time.Duration
+	EntryHandler    loki.EntryHandler
+
+	CacheEnabled bool
+	CacheSize    int
+	CacheTTL     time.Duration
 
 	Logger log.Logger
+
+	dbConnectionFactory databaseConnectionFactory
 }
 
 type SchemaDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
+	initialConnection   *sql.DB
+	dbDSN               string
+	dbConnectionFactory databaseConnectionFactory
+	collectInterval     time.Duration
+	entryHandler        loki.EntryHandler
+
+	// Cache of table definitions. Entries are removed after a configurable TTL.
+	// Key is a string of the form "database.schema.table".
+	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
+	cache *expirable.LRU[string, *tableInfo]
+
+	tableRegistry *TableRegistry
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -124,12 +320,24 @@ type SchemaDetails struct {
 }
 
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
+	factory := args.dbConnectionFactory
+	if factory == nil {
+		factory = defaultDbConnectionFactory
+	}
+
 	c := &SchemaDetails{
-		dbConnection:    args.DB,
-		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
-		running:         &atomic.Bool{},
+		initialConnection:   args.DB,
+		dbDSN:               args.DSN,
+		dbConnectionFactory: factory,
+		collectInterval:     args.CollectInterval,
+		entryHandler:        args.EntryHandler,
+		tableRegistry:       NewTableRegistry(),
+		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
+		running:             &atomic.Bool{},
+	}
+
+	if args.CacheEnabled {
+		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
@@ -137,6 +345,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -181,14 +393,34 @@ func (c *SchemaDetails) Stop() {
 	c.cancel()
 }
 
-func (c *SchemaDetails) extractNames(ctx context.Context) error {
-	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
-	var dbName string
-	if err := rs.Scan(&dbName); err != nil {
-		return fmt.Errorf("failed to scan database name: %w", err)
+func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
+	rows, err := c.initialConnection.QueryContext(ctx, selectAllDatabases)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
+		return nil, fmt.Errorf("failed to discover databases: %w", err)
+	}
+	defer rows.Close()
+
+	var databases []string
+	for rows.Next() {
+		var datname string
+		if err := rows.Scan(&datname); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan database name", "err", err)
+			continue
+		}
+		databases = append(databases, datname)
 	}
 
-	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
+	if err := rows.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error iterating database rows", "err", err)
+		return nil, fmt.Errorf("error iterating database rows: %w", err)
+	}
+
+	return databases, nil
+}
+
+func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB) error {
+	schemaRs, err := dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
 	}
@@ -198,7 +430,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	for schemaRs.Next() {
 		var schema string
 		if err := schemaRs.Scan(&schema); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_namespace", "database", dbName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan pg_namespace", "datname", dbName, "err", err)
 			break
 		}
 		schemas = append(schemas, schema)
@@ -206,7 +438,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_SCHEMA_DETECTION,
-			fmt.Sprintf(`database="%s" schema="%s"`, dbName, schema),
+			fmt.Sprintf(`datname="%s" schema="%s"`, dbName, schema),
 		)
 	}
 
@@ -215,16 +447,16 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	}
 
 	if len(schemas) == 0 {
-		level.Info(c.logger).Log("msg", "no schema detected from pg_namespace", "database", dbName)
+		level.Info(c.logger).Log("msg", "no schema detected from pg_namespace", "datname", dbName)
 		return nil
 	}
 
 	tables := []*tableInfo{}
 
-	for _, schema := range schemas {
-		rs, err := c.dbConnection.QueryContext(ctx, selectTableNames, schema)
+	for _, schemaName := range schemas {
+		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to query tables", "database", dbName, "schema", schema, "err", err)
+			level.Error(c.logger).Log("msg", "failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
 			break
 		}
 		defer rs.Close()
@@ -232,45 +464,62 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 		for rs.Next() {
 			var tableName string
 			if err := rs.Scan(&tableName); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan tables", "database", dbName, "schema", schema, "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
 				break
 			}
 			tables = append(tables, &tableInfo{
-				database:   dbName,
-				schema:     schema,
-				tableName:  tableName,
+				database:   database(dbName),
+				schema:     schema(schemaName),
+				tableName:  table(tableName),
 				updateTime: time.Now(),
 			})
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_TABLE_DETECTION,
-				fmt.Sprintf(`database="%s" schema="%s" table="%s"`, dbName, schema, tableName),
+				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
 			)
 		}
 
 		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
+			return fmt.Errorf("failed to iterate over tables result set for database %q schema %q: %w", dbName, schemaName, err)
 		}
 	}
 
+	c.tableRegistry.SetTablesForDatabase(database(dbName), tables)
+
 	if len(tables) == 0 {
-		level.Info(c.logger).Log("msg", "no tables detected from pg_tables", "database", dbName)
+		level.Info(c.logger).Log("msg", "no tables detected from pg_tables", "datname", dbName)
 		return nil
 	}
 
 	for _, table := range tables {
-		table, err = c.fetchTableDefinitions(ctx, table)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to get table definitions", "database", dbName, "schema", table.schema, "err", err)
-			continue
+		cacheKey := fmt.Sprintf("%s.%s.%s", table.database, table.schema, table.tableName)
+
+		cacheHit := false
+		if c.cache != nil {
+			if cached, ok := c.cache.Get(cacheKey); ok {
+				table = cached
+				cacheHit = true
+			}
+		}
+
+		if !cacheHit {
+			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
+				continue
+			}
+			if c.cache != nil {
+				c.cache.Add(cacheKey, table)
+			}
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_CREATE_STATEMENT,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" table_spec="%s"`,
+				`datname="%s" schema="%s" table="%s" table_spec="%s"`,
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
@@ -279,16 +528,54 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableInfo) (*tableInfo, error) {
-	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName)
+func (c *SchemaDetails) extractNames(ctx context.Context) error {
+	databases, err := c.getAllDatabases(ctx)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to analyze table spec", "database", table.database, "schema", table.schema, "table", table.tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
+		return fmt.Errorf("failed to discover databases: %w", err)
+	}
+
+	for _, dbName := range databases {
+		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to create DSN for database", "datname", dbName, "err", err)
+			continue
+		}
+
+		conn, err := c.dbConnectionFactory(databaseDSN)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to create connection to database", "datname", dbName, "err", err)
+			continue
+		}
+
+		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
+			level.Error(c.logger).Log("msg", "failed to collect schema from database", "datname", dbName, "err", err)
+			if conn != c.initialConnection {
+				conn.Close()
+			}
+			continue
+		}
+
+		if conn != c.initialConnection {
+			if err := conn.Close(); err != nil {
+				level.Warn(c.logger).Log("msg", "failed to close database connection", "datname", dbName, "err", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableInfo, dbConnection *sql.DB) (*tableInfo, error) {
+	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName, dbConnection)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to analyze table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
 		return table, err
 	}
 
 	jsonSpec, err := json.Marshal(spec)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to marshal table spec", "database", table.database, "schema", table.schema, "table", table.tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to marshal table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
 		return table, err
 	}
 	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
@@ -296,11 +583,10 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 	return table, nil
 }
 
-func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string) (*tableSpec, error) {
-	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
-	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
+func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName database, schemaName schema, tableName table, dbConnection *sql.DB) (*tableSpec, error) {
+	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table columns", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer colRS.Close()
@@ -312,7 +598,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		var columnDefault sql.NullString
 		var notNullable, isPrimaryKey bool
 		if err := colRS.Scan(&columnName, &columnType, &notNullable, &columnDefault, &identityGeneration, &isPrimaryKey); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan table columns", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -337,7 +623,69 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	indexesRS, err := dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer indexesRS.Close()
+
+	for indexesRS.Next() {
+		var indexName, indexType string
+		var unique, hasNullableColumn bool
+		var columns, expressions pq.StringArray
+
+		if err := indexesRS.Scan(&indexName, &indexType, &unique, &columns, &expressions, &hasNullableColumn); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		// nullable if has nullable columns or has expressions
+		nullable := hasNullableColumn || len(expressions) > 0 // assume that indexes with any expressions are nullable, TODO: investigate nullability of expressions
+
+		tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
+			Name:        indexName,
+			Type:        indexType,
+			Unique:      unique,
+			Columns:     columns,
+			Expressions: expressions,
+			Nullable:    nullable,
+		})
+	}
+
+	if err := indexesRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	fkRS, err := dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer fkRS.Close()
+
+	for fkRS.Next() {
+		var constraintName, columnName, referencedTableName, referencedColumnName string
+		if err := fkRS.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		tblSpec.ForeignKeys = append(tblSpec.ForeignKeys, foreignKey{
+			Name:                 constraintName,
+			ColumnName:           columnName,
+			ReferencedTableName:  referencedTableName,
+			ReferencedColumnName: referencedColumnName,
+		})
+	}
+
+	if err := fkRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 

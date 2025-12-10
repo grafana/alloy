@@ -103,6 +103,7 @@ func (args Arguments) convertClientConfigs() []client.Config {
 			},
 			Timeout:                cfg.RemoteTimeout,
 			TenantID:               cfg.TenantID,
+			MaxStreams:             args.MaxStreams,
 			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
 			Queue: client.QueueConfig{
 				Capacity:     int(cfg.QueueConfig.Capacity),
