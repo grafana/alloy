@@ -127,7 +127,7 @@ The `sending_queue` block configures queueing and batching for the exporter.
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `batch`
-
+<!-- TODO: How to mention that `batch {}` has to be specified in the config for the defaults to apply? -->
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
