@@ -1752,11 +1752,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexport
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.139.0/go.mod h1:9NnMIHYfX/puYksPAqlevBN15Lb6TioPQJtNxUUVJZY=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.139.0 h1:pwNl0a3FoDcCtXfEUiiCypl8L+eUgKfBnaghZ4pVSgA=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.139.0/go.mod h1:b/T0K7kht0LE7MK1nUqW7Q1PxPF4NLApgtjWiNZh67A=
-<<<<<<< HEAD
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0 h1:QJgMzOfN1LAsDx5mK8tmdxnARkmZIW14HHyL0mnH0w0=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0/go.mod h1:alvQHqc6nmNM05X4kxX4PcTU6R6YdvTPohg42fDFeks=
-=======
->>>>>>> origin/main
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.139.0 h1:KSgaZjjYYJtN2bUklE5LiRwp5VR/77U/0h831IXSfkk=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.139.0/go.mod h1:yZxz+KdnBYFzZ2VksYoKpmQ2pYqslYVCiVT6WDXjQ1s=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.139.0 h1:sGyXfDvxUtCESxoO8uBVu2Hd7yC0Vop8WN4+WmJFKkE=
@@ -1779,11 +1776,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokena
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.139.0/go.mod h1:SpIy4uzTAvb2py2eh2Xg/yDRFX0AZDykAHiT4WzPQHo=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.139.0 h1:1QFqedMedvZsRpmQaO5oWr5pJi7+3i5OwEM+IAP/Tkk=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.139.0/go.mod h1:9mpukHt/0N6vy/8/gvI6+bg6I2dLd2LR1mT0kDVKPNs=
-<<<<<<< HEAD
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.139.0 h1:vZ7KJwUsS/nwZLc//vByccWV2xOOmkrLcQ4PchYwY+k=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.139.0/go.mod h1:5aszmchJt3fNr1eWTZUD+NItZmNbltOpP7flOcVc+5Q=
-=======
->>>>>>> origin/main
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.139.0 h1:xaZsP6s0TRQRgly/kBCJvputnLmE781MuWEXkBL+Wa8=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.139.0/go.mod h1:UnK8tYeOy+bqYhBhx3n/fj1F2StDF53pAVemG6ksu7Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.139.0 h1:3xO0afygr8eAcAjmWHZ/1XZw7QVzuroHRnN53RshW/8=
