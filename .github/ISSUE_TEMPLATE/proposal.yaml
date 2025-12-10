@@ -94,6 +94,7 @@ body:
       - otelcol.exporter.datadog
       - otelcol.exporter.debug
       - otelcol.exporter.faro
+      - otelcol.exporter.file
       - otelcol.exporter.googlecloud
       - otelcol.exporter.googlecloudpubsub
       - otelcol.exporter.kafka
