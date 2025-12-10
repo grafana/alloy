@@ -15,6 +15,15 @@ import (
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
 
+// prereleaseParams holds parameters for creating a draft prerelease.
+type prereleaseParams struct {
+	Tag       string // Tag name (e.g., "v1.0.0-rc.0")
+	TargetSHA string // Commit SHA to tag
+	Version   string // Version string without 'v' prefix (e.g., "1.0.0")
+	RCNumber  int    // Release candidate number
+	PRNumber  int    // Associated release-please PR number
+}
+
 func main() {
 	var (
 		dryRun        bool
@@ -76,22 +85,18 @@ func main() {
 	branchSHA := pr.GetHead().GetSHA()
 	fmt.Printf("Branch HEAD SHA: %s\n", branchSHA)
 
-	// Create the tag
-	err = client.CreateTag(ctx, gh.CreateTagParams{
-		Tag:     rcTag,
-		SHA:     branchSHA,
-		Message: fmt.Sprintf("Release candidate %s", rcTag),
+	// Create draft prerelease (this also creates the tag - GitHub signs tags created via Releases API)
+	releaseURL, err := createDraftPrerelease(ctx, client, prereleaseParams{
+		Tag:       rcTag,
+		TargetSHA: branchSHA,
+		Version:   ver,
+		RCNumber:  rcNumber,
+		PRNumber:  pr.GetNumber(),
 	})
-	if err != nil {
-		log.Fatalf("Failed to create tag: %v", err)
-	}
-	fmt.Printf("✅ Created tag: %s\n", rcTag)
-
-	// Create draft prerelease
-	releaseURL, err := createDraftPrerelease(ctx, client, rcTag, ver, rcNumber, pr.GetNumber())
 	if err != nil {
 		log.Fatalf("Failed to create draft prerelease: %v", err)
 	}
+	fmt.Printf("✅ Created tag: %s\n", rcTag)
 	fmt.Printf("✅ Created draft prerelease: %s\n", releaseURL)
 }
 
@@ -174,7 +179,7 @@ func findNextRCNumber(ctx context.Context, client *gh.Client, ver string) (int, 
 	return rcNumbers[len(rcNumbers)-1] + 1, nil
 }
 
-func createDraftPrerelease(ctx context.Context, client *gh.Client, tag, ver string, rcNumber, prNumber int) (string, error) {
+func createDraftPrerelease(ctx context.Context, client *gh.Client, p prereleaseParams) (string, error) {
 	body := fmt.Sprintf(`## Release Candidate %d for v%s
 
 This is a **release candidate** and should be used for testing purposes only.
@@ -184,18 +189,15 @@ This is a **release candidate** and should be used for testing purposes only.
 ### Changes
 
 See the [release PR #%d](https://github.com/%s/%s/pull/%d) for the full changelog.
-
-### Testing
-
-Please test this release candidate and report any issues before the final release.
-`, rcNumber, ver, prNumber, client.Owner(), client.Repo(), prNumber)
+`, p.RCNumber, p.Version, p.PRNumber, client.Owner(), client.Repo(), p.PRNumber)
 
 	release := &github.RepositoryRelease{
-		TagName:    github.String(tag),
-		Name:       github.String(tag),
-		Body:       github.String(body),
-		Draft:      github.Bool(true),
-		Prerelease: github.Bool(true),
+		TagName:         github.String(p.Tag),
+		TargetCommitish: github.String(p.TargetSHA), // GitHub creates & signs the tag when using Releases API
+		Name:            github.String(p.Tag),
+		Body:            github.String(body),
+		Draft:           github.Bool(true),
+		Prerelease:      github.Bool(true),
 	}
 
 	created, _, err := client.API().Repositories.CreateRelease(ctx, client.Owner(), client.Repo(), release)

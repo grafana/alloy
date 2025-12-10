@@ -40,25 +40,12 @@ type CreateBranchParams struct {
 	SHA    string
 }
 
-// CreateTagParams holds parameters for CreateTag.
-type CreateTagParams struct {
-	Tag     string
-	SHA     string
-	Message string
-}
-
 // CreatePRParams holds parameters for CreatePR.
 type CreatePRParams struct {
 	Title string
 	Head  string
 	Base  string
 	Body  string
-}
-
-// FindOpenPRParams holds parameters for FindOpenPR.
-type FindOpenPRParams struct {
-	Head string
-	Base string
 }
 
 // FindCommitParams holds parameters for FindCommitWithPattern and CommitExistsWithPattern.
@@ -192,37 +179,6 @@ func (c *Client) CreateBranch(ctx context.Context, p CreateBranchParams) error {
 	return nil
 }
 
-// CreateTag creates an annotated tag.
-func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
-	tagObj := &github.Tag{
-		Tag:     github.String(p.Tag),
-		Message: github.String(p.Message),
-		Object: &github.GitObject{
-			Type: github.String("commit"),
-			SHA:  github.String(p.SHA),
-		},
-	}
-
-	createdTag, _, err := c.api.Git.CreateTag(ctx, c.owner, c.repo, tagObj)
-	if err != nil {
-		return fmt.Errorf("creating tag object: %w", err)
-	}
-
-	ref := &github.Reference{
-		Ref: github.String("refs/tags/" + p.Tag),
-		Object: &github.GitObject{
-			SHA: createdTag.SHA,
-		},
-	}
-
-	_, _, err = c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
-	if err != nil {
-		return fmt.Errorf("creating tag reference: %w", err)
-	}
-
-	return nil
-}
-
 // ReadManifest reads the release-please manifest from the repository.
 func (c *Client) ReadManifest(ctx context.Context, ref string) (map[string]string, error) {
 	fileContent, _, _, err := c.api.Repositories.GetContents(
@@ -277,28 +233,6 @@ func (c *Client) GetAppIdentity(ctx context.Context) (AppIdentity, error) {
 		Name:  fmt.Sprintf("%s[bot]", slug),
 		Email: fmt.Sprintf("%d+%s[bot]@users.noreply.github.com", id, slug),
 	}, nil
-}
-
-// FindOpenPR finds an open PR with the given head and base branches.
-func (c *Client) FindOpenPR(ctx context.Context, p FindOpenPRParams) (*github.PullRequest, error) {
-	opts := &github.PullRequestListOptions{
-		State: "open",
-		Head:  fmt.Sprintf("%s:%s", c.owner, p.Head),
-		Base:  p.Base,
-		ListOptions: github.ListOptions{
-			PerPage: 10,
-		},
-	}
-
-	prs, _, err := c.api.PullRequests.List(ctx, c.owner, c.repo, opts)
-	if err != nil {
-		return nil, fmt.Errorf("listing pull requests: %w", err)
-	}
-
-	if len(prs) > 0 {
-		return prs[0], nil
-	}
-	return nil, nil
 }
 
 // GetPR fetches a pull request by number.
