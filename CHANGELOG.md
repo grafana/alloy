@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- In `otelcol.exporter` components with a `sending_queue` > `batch` block, 
+  the default value for `min_size` changed from `8192` to `2000` and `max_size` changed from `0` to `3000`.
+  This is to make defaults in line with `otelcol.processor.batch`.
+  The `batch` block only takes effect if it is explicitly configured in the Alloy configuration file. (@ptodev)
+
 ### Features
 
 - Add `otelcol.connector.count` component to count the number of spans, metrics, and logs passing through it. (@hhertout)

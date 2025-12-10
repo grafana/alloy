@@ -161,8 +161,8 @@ var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
 func (args *BatchConfig) SetToDefault() {
 	*args = BatchConfig{
 		FlushTimeout: 200 * time.Millisecond,
-		MinSize:      8192,
-		MaxSize:      0,
+		MinSize:      2000,
+		MaxSize:      3000,
 		Sizer:        "items",
 	}
 }
