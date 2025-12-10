@@ -187,6 +187,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.echo](../components/prometheus/prometheus.echo)
 - [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)

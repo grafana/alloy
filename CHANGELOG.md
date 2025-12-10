@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
 
+- Add `prometheus.echo` component for local inspection of Prometheus metrics. The component writes received metrics to stdout in Prometheus exposition format, enabling easier debugging and testing of metrics flow. (@iamrajiv)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)

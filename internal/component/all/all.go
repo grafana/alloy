@@ -127,6 +127,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"                 // Import otelcol.receiver.vcenter
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/zipkin"                  // Import otelcol.receiver.zipkin
 	_ "github.com/grafana/alloy/internal/component/otelcol/storage/file"                     // Import otelcol.storage.file
+	_ "github.com/grafana/alloy/internal/component/prometheus/echo"                          // Import prometheus.echo
 	_ "github.com/grafana/alloy/internal/component/prometheus/enrich"                        // Import prometheus.enrich
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/apache"               // Import prometheus.exporter.apache
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/azure"                // Import prometheus.exporter.azure
