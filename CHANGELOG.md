@@ -42,6 +42,8 @@ Main (unreleased)
 
 - Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
 
+- Support structured metadata as source type of `stage.labels` for `loki.process`
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
