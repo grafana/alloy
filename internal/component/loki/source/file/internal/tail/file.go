@@ -201,8 +201,8 @@ func (f *File) reopen(truncated bool) error {
 	f.file.Close()
 
 	backoff := backoff.New(f.ctx, backoff.Config{
-		MinBackoff: defaultWatcherConfig.MaxPollFrequency,
-		MaxBackoff: defaultWatcherConfig.MaxPollFrequency,
+		MinBackoff: f.cfg.WatcherConfig.MinPollFrequency,
+		MaxBackoff: f.cfg.WatcherConfig.MaxPollFrequency,
 		MaxRetries: 20,
 	})
 
