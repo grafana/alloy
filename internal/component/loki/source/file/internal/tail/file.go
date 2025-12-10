@@ -167,11 +167,7 @@ func (f *File) readLine() (string, error) {
 	if err != nil {
 		return line, err
 	}
-
-	line = strings.TrimRight(line, "\n")
-	// Trim Windows line endings
-	line = strings.TrimSuffix(line, "\r")
-	return line, err
+	return strings.TrimRight(line, "\r\n"), err
 }
 
 // offset returns the current byte offset in the file where the next read will occur.
