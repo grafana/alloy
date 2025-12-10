@@ -37,6 +37,7 @@ func TestConfigConversion(t *testing.T) {
 					headers = {
 						"X-Scope-OrgID" = "123",
 					}
+					force_attempt_http2 = false
 				}
 				sending_queue {
 					enabled = true
@@ -63,6 +64,7 @@ func TestConfigConversion(t *testing.T) {
 					Headers: configopaque.MapList{
 						configopaque.Pair{Name: "X-Scope-OrgID", Value: "123"},
 					},
+					ForceAttemptHTTP2: false,
 				},
 				QueueConfig: defaultQueueConfig,
 				RetryConfig: configretry.BackOffConfig{
@@ -84,13 +86,14 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: faroexporter.Config{
 				ClientConfig: confighttp.ClientConfig{
-					Endpoint:        "https://faro.example.com/collect",
-					Timeout:         defaultTimeout,
-					Compression:     "gzip",
-					WriteBufferSize: 512 * 1024,
-					MaxIdleConns:    100,
-					IdleConnTimeout: 90 * time.Second,
-					Headers:         configopaque.MapList{},
+					Endpoint:          "https://faro.example.com/collect",
+					Timeout:           defaultTimeout,
+					Compression:       "gzip",
+					WriteBufferSize:   512 * 1024,
+					MaxIdleConns:      100,
+					IdleConnTimeout:   90 * time.Second,
+					Headers:           configopaque.MapList{},
+					ForceAttemptHTTP2: true,
 				},
 				QueueConfig: defaultQueueConfig,
 				RetryConfig: defaultRetrySettings,
