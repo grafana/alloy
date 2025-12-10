@@ -217,9 +217,9 @@ func TestStorage_RepeatedCommitWithMetadata(t *testing.T) {
 		})
 	}
 
-	expectedMetrics := `# HELP prometheus_remote_write_wal_metadata_appended_total Total number of metadata entries appended to the WAL
-# TYPE prometheus_remote_write_wal_metadata_appended_total counter
-prometheus_remote_write_wal_metadata_appended_total 10
+	expectedMetrics := `# HELP prometheus_remote_write_wal_metadata_updates_total Total number of metadata updates sent through the WAL
+# TYPE prometheus_remote_write_wal_metadata_updates_total counter
+prometheus_remote_write_wal_metadata_updates_total 10
 # HELP prometheus_remote_write_wal_samples_appended_total Total number of samples appended to the WAL
 # TYPE prometheus_remote_write_wal_samples_appended_total counter
 prometheus_remote_write_wal_samples_appended_total 40
@@ -228,7 +228,7 @@ prometheus_remote_write_wal_samples_appended_total 40
 	err = testutil.GatherAndCompare(
 		reg,
 		strings.NewReader(expectedMetrics),
-		"prometheus_remote_write_wal_metadata_appended_total",
+		"prometheus_remote_write_wal_metadata_updates_total",
 		"prometheus_remote_write_wal_samples_appended_total",
 	)
 	require.NoError(t, err)

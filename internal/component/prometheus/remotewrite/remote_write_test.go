@@ -37,10 +37,10 @@ const (
 	RemoteWriteVersionV2
 )
 
-// Test is an integration-level test which ensures that metrics can get sent to
+// TestSend is an integration-level test which ensures that metrics can get sent to
 // a prometheus.remote_write component and forwarded to a
 // remote_write-compatible server.
-func Test(t *testing.T) {
+func TestSend(t *testing.T) {
 	// We need to use a future timestamp since remote_write will ignore any
 	// sample which is earlier than the time when it started. Adding a minute
 	// ensures that our samples will never get ignored.
@@ -159,7 +159,9 @@ func Test(t *testing.T) {
 			defer srv.Close()
 
 			// Load expected response and metrics from testdata
-			testdataDir := filepath.Join("testdata", test.name)
+			// Convert test name to directory name: replace spaces with underscores
+			testDirName := strings.ReplaceAll(test.name, " ", "_")
+			testdataDir := filepath.Join("testdata", "TestSend", testDirName)
 			expectedResponseBytes, err := os.ReadFile(filepath.Join(testdataDir, "expected_response.json"))
 			require.NoError(t, err)
 			expectedResponse := strings.ReplaceAll(string(expectedResponseBytes), "\"__TIMESTAMP__\"", strconv.FormatInt(sampleTimestamp, 10))
@@ -229,7 +231,7 @@ func Test(t *testing.T) {
 					"prometheus_remote_storage_samples_pending",
 					"prometheus_remote_storage_samples_retried_total",
 					"prometheus_remote_storage_samples_total",
-					"prometheus_remote_write_wal_metadata_appended_total",
+					"prometheus_remote_write_wal_metadata_updates_total",
 					"prometheus_remote_write_wal_samples_appended_total",
 				)
 				require.NoError(c, err)
@@ -245,67 +247,15 @@ func TestMetadataResend_V2(t *testing.T) {
 	// ensures that our samples will never get ignored.
 	startTimestamp := time.Now().Add(time.Hour).UnixMilli()
 
-	expectedResponseTemplate := `{
-    "symbols": [
-        "",
-        "test metric foo",
-        "cluster",
-        "local",
-        "foo",
-        "bar"
-    ],
-    "timeseries": [
-        {
-            "labels_refs": [
-                2,
-                3,
-                4,
-                5
-            ],
-            "samples": [
-                {
-                    "value": "__VALUE__",
-                    "timestamp": "__TIMESTAMP__"
-                }
-            ],
-            "histograms": null,
-            "exemplars": null,
-            "metadata": {
-                "type": 1,
-                "help_ref": 1
-            }
-        }
-    ]
-}`
+	// Load expected response and metrics templates from testdata
+	testdataDir := filepath.Join("testdata", "TestMetadataResend_V2")
+	expectedResponseBytes, err := os.ReadFile(filepath.Join(testdataDir, "expected_response.json"))
+	require.NoError(t, err)
+	expectedResponseTemplate := string(expectedResponseBytes)
 
-	expectedMetricsTemplate := `# HELP prometheus_remote_storage_metadata_failed_total Total number of metadata entries which failed on send to remote storage, non-recoverable errors.
-# TYPE prometheus_remote_storage_metadata_failed_total counter
-prometheus_remote_storage_metadata_failed_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
-# HELP prometheus_remote_storage_metadata_retried_total Total number of metadata entries which failed on send to remote storage but were retried because the send error was recoverable.
-# TYPE prometheus_remote_storage_metadata_retried_total counter
-prometheus_remote_storage_metadata_retried_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
-# HELP prometheus_remote_storage_metadata_total Total number of metadata entries sent to remote storage.
-# TYPE prometheus_remote_storage_metadata_total counter
-prometheus_remote_storage_metadata_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} __ITERATION__
-# HELP prometheus_remote_storage_samples_failed_total Total number of samples which failed on send to remote storage, non-recoverable errors.
-# TYPE prometheus_remote_storage_samples_failed_total counter
-prometheus_remote_storage_samples_failed_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
-# HELP prometheus_remote_storage_samples_pending The number of samples pending in the queues shards to be sent to the remote storage.
-# TYPE prometheus_remote_storage_samples_pending gauge
-prometheus_remote_storage_samples_pending{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
-# HELP prometheus_remote_storage_samples_retried_total Total number of samples which failed on send to remote storage but were retried because the send error was recoverable.
-# TYPE prometheus_remote_storage_samples_retried_total counter
-prometheus_remote_storage_samples_retried_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
-# HELP prometheus_remote_storage_samples_total Total number of samples sent to remote storage.
-# TYPE prometheus_remote_storage_samples_total counter
-prometheus_remote_storage_samples_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} __ITERATION__
-# HELP prometheus_remote_write_wal_metadata_appended_total Total number of metadata entries appended to the WAL
-# TYPE prometheus_remote_write_wal_metadata_appended_total counter
-prometheus_remote_write_wal_metadata_appended_total 1
-# HELP prometheus_remote_write_wal_samples_appended_total Total number of samples appended to the WAL
-# TYPE prometheus_remote_write_wal_samples_appended_total counter
-prometheus_remote_write_wal_samples_appended_total __ITERATION__
-`
+	expectedMetricsBytes, err := os.ReadFile(filepath.Join(testdataDir, "expected_metrics.txt"))
+	require.NoError(t, err)
+	expectedMetricsTemplate := string(expectedMetricsBytes)
 
 	writeResult := make(chan string)
 	responseStats := remote.WriteResponseStats{
@@ -389,7 +339,7 @@ prometheus_remote_write_wal_samples_appended_total __ITERATION__
 					"prometheus_remote_storage_samples_pending",
 					"prometheus_remote_storage_samples_retried_total",
 					"prometheus_remote_storage_samples_total",
-					"prometheus_remote_write_wal_metadata_appended_total",
+					"prometheus_remote_write_wal_metadata_updates_total",
 					"prometheus_remote_write_wal_samples_appended_total",
 				)
 				require.NoError(c, err)
