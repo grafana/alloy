@@ -68,6 +68,9 @@ type CreateLabelParams struct {
 	Description string // Optional description
 }
 
+// ErrCommitNotFound is returned when a commit matching the search criteria is not found.
+var ErrCommitNotFound = errors.New("commit not found")
+
 // NewClientFromEnv creates a new Client from environment variables.
 // Reads GITHUB_TOKEN and GITHUB_REPOSITORY (format: owner/repo).
 func NewClientFromEnv(ctx context.Context) (*Client, error) {
@@ -292,14 +295,14 @@ func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) 
 		opts.Page = resp.NextPage
 	}
 
-	return "", fmt.Errorf("no commit found with pattern %q in branch %s", p.Pattern, p.Branch)
+	return "", fmt.Errorf("%w with pattern %q in branch %s", ErrCommitNotFound, p.Pattern, p.Branch)
 }
 
 // CommitExistsWithPattern checks if any commit in the branch history contains the pattern in its title.
 func (c *Client) CommitExistsWithPattern(ctx context.Context, p FindCommitParams) (bool, error) {
 	_, err := c.FindCommitWithPattern(ctx, p)
 	if err != nil {
-		if strings.Contains(err.Error(), "no commit found") {
+		if errors.Is(err, ErrCommitNotFound) {
 			return false, nil
 		}
 		return false, err

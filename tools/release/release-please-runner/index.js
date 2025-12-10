@@ -16,9 +16,19 @@ const DEFAULT_CONFIG_FILE = 'release-please-config.json';
 const DEFAULT_MANIFEST_FILE = '.release-please-manifest.json';
 
 function parseInputs() {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error('GITHUB_TOKEN environment variable is required');
+  }
+
+  const repoUrl = process.env.REPO_URL || process.env.GITHUB_REPOSITORY || '';
+  if (!repoUrl) {
+    throw new Error('REPO_URL or GITHUB_REPOSITORY environment variable is required');
+  }
+
   return {
-    token: process.env.GITHUB_TOKEN,
-    repoUrl: process.env.REPO_URL || process.env.GITHUB_REPOSITORY || '',
+    token,
+    repoUrl,
     targetBranch: process.env.TARGET_BRANCH || undefined,
     configFile: process.env.CONFIG_FILE || DEFAULT_CONFIG_FILE,
     manifestFile: process.env.MANIFEST_FILE || DEFAULT_MANIFEST_FILE,

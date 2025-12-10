@@ -41,15 +41,19 @@ func run(args ...string) error {
 }
 
 // runOutput executes a command and returns its stdout.
+// On error, stderr is included in the error message for better diagnostics.
 func runOutput(args ...string) (string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = os.Stderr
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if stderr.Len() > 0 {
+			return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+		}
 		return "", err
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 // ConfigureUser configures git with the given user identity for commit authorship.

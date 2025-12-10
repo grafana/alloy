@@ -5,7 +5,7 @@
  */
 
 import { DefaultVersioningStrategy } from 'release-please/build/src/versioning-strategies/default.js';
-import { MinorVersionUpdate } from 'release-please/build/src/versioning-strategy.js';
+import { MajorVersionUpdate, MinorVersionUpdate } from 'release-please/build/src/versioning-strategy.js';
 
 export class MinorBreakingVersioningStrategy extends DefaultVersioningStrategy {
   /**
@@ -16,7 +16,10 @@ export class MinorBreakingVersioningStrategy extends DefaultVersioningStrategy {
     const releaseType = super.determineReleaseType(version, commits);
 
     // If the default strategy would do a major bump, do a minor bump instead
-    if (releaseType.constructor.name === 'MajorVersionUpdate') {
+    if (
+      releaseType instanceof MajorVersionUpdate ||
+      releaseType.constructor.name === 'MajorVersionUpdate'
+    ) {
       console.log('Breaking changes detected - bumping minor version instead of major');
       return new MinorVersionUpdate();
     }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strconv"
 	"strings"
 
 	gh "github.com/grafana/alloy/tools/release/internal/github"
@@ -130,9 +129,19 @@ func cleanupOldBackportLabels(ctx context.Context, client *gh.Client) error {
 
 	// Sort labels by version (descending)
 	sort.Slice(labels, func(i, j int) bool {
-		vi := parseBackportVersion(labels[i])
-		vj := parseBackportVersion(labels[j])
-		return vi > vj
+		majI, minI, err := parseBackportVersion(labels[i])
+		if err != nil {
+			return false
+		}
+		majJ, minJ, err := parseBackportVersion(labels[j])
+		if err != nil {
+			return false
+		}
+
+		if majI != majJ {
+			return majI > majJ
+		}
+		return minI > minJ
 	})
 
 	// Delete labels beyond the max count
@@ -146,19 +155,20 @@ func cleanupOldBackportLabels(ctx context.Context, client *gh.Client) error {
 	return nil
 }
 
-// parseBackportVersion extracts the minor version number from a backport label.
-// e.g., "backport/v1.9" -> 9, "backport/v1.10" -> 10
-func parseBackportVersion(label string) int {
-	// Remove prefix "backport/v"
-	versionStr := strings.TrimPrefix(label, backportLabelPrefix)
-	// Split by "." and get the minor version
-	parts := strings.Split(versionStr, ".")
-	if len(parts) < 2 {
-		return 0
-	}
-	minor, err := strconv.Atoi(parts[1])
+// parseBackportVersion extracts the major and minor version numbers from a backport label.
+// e.g., "backport/v1.9" -> (1, 9), "backport/v2.10" -> (2, 10)
+func parseBackportVersion(label string) (major int, minor int, err error) {
+	// Remove "backport/" prefix to get "vX.Y", append ".0" to make valid semver
+	v := strings.TrimPrefix(label, "backport/") + ".0"
+
+	// Use version package to extract major.minor string via semver
+	mm, err := version.MajorMinor(v)
 	if err != nil {
-		return 0
+		return 0, 0, err
 	}
-	return minor
+
+	if _, err := fmt.Sscanf(mm, "%d.%d", &major, &minor); err != nil {
+		return 0, 0, fmt.Errorf("parsing major.minor from %s: %w", mm, err)
+	}
+	return major, minor, nil
 }
