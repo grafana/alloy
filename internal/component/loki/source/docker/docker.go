@@ -329,7 +329,6 @@ func (c *Component) DebugInfo() interface{} {
 	for s := range c.scheduler.Sources() {
 		t := s.(*tailer)
 		res.TargetsInfo = append(res.TargetsInfo, t.DebugInfo())
-
 	}
 	return res
 }
