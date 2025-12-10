@@ -39,6 +39,7 @@ Main (unreleased)
 - (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
   - `explain_plans`
     - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
+  - Metrics are now appended with cloud provider information labels (@matthewnolf)
 
 - Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
 
