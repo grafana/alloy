@@ -35,7 +35,7 @@ jobs:
           repositories: alloy
 
       - name: Validate PR title 🔎
-        uses: amannn/action-semantic-pull-request@v5
+        uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825 # v5
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
