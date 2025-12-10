@@ -89,8 +89,8 @@ We'd typically prefer options in the following order:
 ## Communicating the breaking changes
 
 Currently, we use our CHANGELOG.md to communicate the presence of breaking
-changes. They are also included on a GitHub release page under the notable
-changes section. For changes that require manual steps to migrate, we must also
+changes. They are also included on a GitHub release page under the Breaking
+Changes section. For changes that require manual steps to migrate, we must also
 include a migration guide.
 
 ## Tracking work that needs to be done for the next major release

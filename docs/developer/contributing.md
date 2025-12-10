@@ -114,54 +114,6 @@ you can @-reply a reviewer asking for a review in the pull request or a
 comment, or you can ask for a review on the Slack channel
 [#alloy](https://slack.grafana.com).
 
-## Updating the changelog
-
-We keep a [changelog](../../CHANGELOG.md) of code changes which result in new
-or changed user-facing behavior.
-
-Changes are grouped by change type, denoted by `### Category_Name`. The change
-types are, in order:
-
-1. Security fixes
-2. Breaking changes
-3. Deprecations
-4. Features
-5. Enhancements
-6. Bugfixes
-7. Other changes
-
-Categories won't be listed if there's not any changes for that category.
-
-When opening a PR which impacts user-facing behavior, contributors should:
-
-1. Determine which changes need to be documented in the changelog (a PR may
-   change more than one user-facing behavior).
-
-2. If there are no other changes for that change type, add a header for it
-   (e.g., `### Bugfixes`). Make sure to keep the order listed above.
-
-3. Add relevant entries into the changelog.
-
-When in doubt, look at a previous release for style and ordering examples.
-
-### Changelog entry style tips
-
-Change entries in the changelog should:
-
-1. Be complete sentences, ending in a period. It is acceptable to use multiple
-   complete sentences if one sentence can't accurately describe the change.
-2. Describe the impact on the user which is reading the changelog.
-3. Include credit to the GitHub user that opened the PR following the sentence.
-
-For example:
-`- Config file reading is now 1500% faster. (@torvalds)`
-
-> Readers should be able to understand how a change impacts them. Default to
-> being explicit over vague.
->
-> * Vague: `- Fixed issue with metric names. (@ghost)`
-> * Explicit: `- Fixed issue where instances of the letter s in metric names were replaced with z. (@ghost)`
-
 ## Dependency management
 
 Alloy uses [Go modules][go-modules] to manage dependencies on external

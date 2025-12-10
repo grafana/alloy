@@ -391,3 +391,23 @@ func (c *Client) DeleteLabel(ctx context.Context, name string) error {
 	}
 	return nil
 }
+
+// GetReleaseByTag fetches a release by its tag name.
+func (c *Client) GetReleaseByTag(ctx context.Context, tag string) (*github.RepositoryRelease, error) {
+	release, _, err := c.api.Repositories.GetReleaseByTag(ctx, c.owner, c.repo, tag)
+	if err != nil {
+		return nil, fmt.Errorf("getting release for tag %s: %w", tag, err)
+	}
+	return release, nil
+}
+
+// UpdateReleaseBody updates only the body of a release.
+func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body string) error {
+	_, _, err := c.api.Repositories.EditRelease(ctx, c.owner, c.repo, releaseID, &github.RepositoryRelease{
+		Body: github.String(body),
+	})
+	if err != nil {
+		return fmt.Errorf("updating release %d body: %w", releaseID, err)
+	}
+	return nil
+}
