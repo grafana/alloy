@@ -61,6 +61,8 @@ Main (unreleased)
 
 - Fix Docker log corruption for multiplexed long lines. (@axd1x8a)
 
+- Fix the promtail converter behavior to mimic promtail behavior by default and limit kubernetes discovery to the same node. (@dehaansa)
+
 - Allow configuration of `force_attempt_http2` and default it to `true` for otelcol exporters with HTTP client configurations. (@dehaansa)
 
 v1.12.0
