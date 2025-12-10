@@ -261,22 +261,6 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 	return ts, line[spaceIdx+1:], nil
 }
 
-// https://devmarkpro.com/working-big-files-golang
-func readLine(r *bufio.Reader) (string, error) {
-	var (
-		isPrefix = true
-		err      error
-		line, ln []byte
-	)
-
-	for isPrefix && err == nil {
-		line, isPrefix, err = r.ReadLine()
-		ln = append(ln, line...)
-	}
-
-	return string(ln), err
-}
-
 func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 	defer t.wg.Done()
 
