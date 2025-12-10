@@ -48,7 +48,6 @@ func init() {
 var userAgent = useragent.Get()
 
 const (
-	// See github.com/prometheus/prometheus/discovery/moby
 	dockerLabel                = model.MetaLabelPrefix + "docker_"
 	dockerLabelContainerPrefix = dockerLabel + "container_"
 	dockerLabelContainerID     = dockerLabelContainerPrefix + "id"
