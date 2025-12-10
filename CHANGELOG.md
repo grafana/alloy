@@ -79,6 +79,8 @@ v1.12.0
 
 ### Features
 
+- Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
+
 - (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
   logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
 

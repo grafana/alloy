@@ -126,6 +126,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.139.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0

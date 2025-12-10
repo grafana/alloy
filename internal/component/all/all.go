@@ -77,6 +77,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"                 // Import otelcol.exporter.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/faro"                    // Import otelcol.exporter.faro
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/file"                    // Import otelcol.exporter.file
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud"             // Import otelcol.exporter.googlecloud
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloudpubsub"       // Import otelcol.exporter.googlecloudpubsub
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"                   // Import otelcol.exporter.kafka
