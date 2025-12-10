@@ -28,7 +28,7 @@ func (fileExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 	label := state.AlloyComponentLabel()
 
-	args := toFileExporter(cfg.(*fileexporter.Config))
+	args := toFileExporter(diags, cfg.(*fileexporter.Config))
 	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "file"}, label, args, common.GetAlloyTypesOverrideHook())
 
 	diags.Add(
@@ -40,7 +40,7 @@ func (fileExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	return diags
 }
 
-func toFileExporter(cfg *fileexporter.Config) *file.Arguments {
+func toFileExporter(diags diag.Diagnostics, cfg *fileexporter.Config) *file.Arguments {
 	args := &file.Arguments{
 		Path:          cfg.Path,
 		Format:        cfg.FormatType,
@@ -73,6 +73,10 @@ func toFileExporter(cfg *fileexporter.Config) *file.Arguments {
 	if cfg.Encoding != nil {
 		// We don't support encoding yet, so we'll skip this
 		// In a future implementation, this would be converted to a string representation
+		diags.Add(
+			diag.SeverityLevelWarn,
+			"encoding parameter is not yet supported in the file exporter conversion and will be ignored",
+		)
 	}
 
 	return args
