@@ -1,30 +1,32 @@
-# Majore dependency updates
+# Key dependency updates
 
-In this directory you will find prompts and tools for the LLM agents to help with the process of updating the major dependencies of the Alloy project.
+In this directory you will find prompts and tools for the LLM agents to help with the process of updating the key dependencies of the Alloy project.
 
 ## How to use this
 
 Use your preferred LLM agent and give it a prompt like this:
 
 ```text
-Follow instructions in the major-dep-updates.md and update all the major dependencies.
+Follow instructions in the key-dep-updates.md and update all the key dependencies.
 ```
 
-Or if you want to update only one major dependency, you can try this:
+Or if you want to update only one key dependency, you can try this:
 
 ```text
-Follow instructions in the major-dep-updates.md and update only the Prometheus dependencies.
+Follow instructions in the key-dep-updates.md and update only the Prometheus dependencies.
 ```
 
 Or if you only want to execute some first steps, try this:
 
 ```text
-Follow instructions in the major-dep-updates.md and execute only steps 1-3.
+Follow instructions in the key-dep-updates.md and execute only steps 1-3.
 ```
+
+If your LLM agent supports planning mode, it may provide better results if you use it.
 
 ## Prompt guidelines
 
-Below are some guidelines for writing and improving the LLM agent prompt for the major dependency updates process.
+Below are some guidelines for writing and improving the LLM agent prompt for the key dependency updates process.
 
 - We need to break the task down into manageable pieces and give the LLM an option to stop and ask for help if it cannot achieve a milestone.
 
@@ -48,7 +50,8 @@ Below are some guidelines for writing and improving the LLM agent prompt for the
 
 - We could start an update process by making sure the dependencies are ready first:
   - First we determine the versions we want to update to. We could publish them somewhere in a GitHub, so they can be referenced to by the LLM agents.
-  - Then we go to major dependencies' repositories and update them to these new versions, for example, making sure that Beyla depends on the same version of OTel as the one we want to update to. This could be facilitated by a similar LLM prompt as the one we have here, with any customisations needed.
-  - Once the major dependencies are on the same page, we can update them in Alloy.
+  - Then we go to key dependencies' repositories and update them to these new versions, for example, making sure that Beyla depends on the same version of OTel as the one we want to update to. This could be facilitated by a similar LLM prompt as the one we have here, with any customisations needed.
+  - Once the key dependencies are on the same page, we can update them in Alloy.
 
 - For now we are telling the LLM not to worry about Prometheus exporters forks, becuase there are too many of them now and we know the progress to upstream the required changes is often stalled. We can re-enable this in the future as we further improve the upgrade process.
+

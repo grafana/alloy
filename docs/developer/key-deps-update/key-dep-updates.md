@@ -1,12 +1,12 @@
-# Major Dependency Updates
+# Key Dependency Updates
 
-A guide for LLM agents to update the major dependencies of the Alloy project.
+A guide for LLM agents to update the key dependencies of the Alloy project.
 
-## What are major dependencies?
+## What are key dependencies?
 
-Major dependencies are Go module dependencies of the Alloy project that are known to be complex to upgrade and often resulting in conflicts or breaking changes. At the same time we are committed to update these dependencies regularly in order to receive fixes and improvements from the upstream.
+Key dependencies are Go module dependencies of the Alloy project that are known to be complex to upgrade and often resulting in conflicts or breaking changes. At the same time we are committed to update these dependencies regularly in order to receive fixes and improvements from the upstream.
 
-## List of major dependencies
+## List of key dependencies
 
 - OpenTelemetry Collector and related dependencies (OTel)
   - The core dependencies have `go.opentelemetry.io/collector/...` import paths.
@@ -68,12 +68,12 @@ When there is no specific tool, you can use these command snippets that are trie
 - Find commit details by SHA: `gh api repos/<owner>/<repo>/commits/<sha> --jq '{sha: .sha, author: .commit.author, date: .commit.author.date, message: .commit.message}'`
 - View the `go.mod` file for a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && cat go.mod`
 
-## Major Dependency Relationships
+## Key Dependency Relationships
 
-Here is a summary of the relationships between the major dependencies of Alloy.
+Here is a summary of the relationships between the key dependencies of Alloy.
 
 1. **Prometheus Client Libraries** (client_golang, client_model, common)
-   - These are foundational libraries with no dependencies on other major dependencies
+   - These are foundational libraries with no dependencies on other key dependencies
    - Used by: Prometheus, Beyla, Loki, and Alloy directly
 
 2. **OpenTelemetry Collector Core**
@@ -106,7 +106,7 @@ Here is a summary of the relationships between the major dependencies of Alloy.
    - Depends on: OpenTelemetry Collector Contrib (internal/exp/metrics, pkg/pdatautil, processor/deltatocumulativeprocessor)
    - Does NOT depend on: Beyla
 
-## Steps to update major dependencies
+## Steps to update key dependencies
 
 Don't write anything in this document. Create a separate document called 'deps-update-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
 
@@ -114,25 +114,25 @@ Don't write anything in this document. Create a separate document called 'deps-u
 
 As mentioned above, throughout this process, you will be using several tools and command snippets to gather the information required for accurate decision making. Make sure you list all the tools you have available as instructed above so you can call them when appropriate.
 
-### Step 2: Establish the latest and current versions of all the major dependencies
+### Step 2: Establish the latest and current versions of all the key dependencies
 
-For all the major dependencies as listed in "List of major dependencies" section, use the tools and snippets to find the current and the latest versions.
+For all the key dependencies as listed in "List of key dependencies" section, use the tools and snippets to find the current and the latest versions.
 
 List these versions in a form of a table containing columns: the dependency name, the current version, the latest version and the ✅ emoji when it's already up-to-date or 🛑 when it needs to be updated. Write this table to the output. Don't write much more to keep it brief.
 
-Now, the major dependencies also depend on each other. You can see this in the 'Relationships' paragraph above. For each major dependency, take a look at its latest version and see what are the versions of the major dependencies that it uses. For example, we know that Beyla depends on Prometheus client libraries. We want to know what are the versions of these Prometheus client libraries that Beyla pulls in. Create a table for each major dependency that lists the other major dependencies that it pulls. Include columns: dependency name, current version, latest version, an emoji indicating whether the update is required.
+Now, the key dependencies also depend on each other. You can see this in the 'Relationships' paragraph above. For each key dependency, take a look at its latest version and see what are the versions of the key dependencies that it uses. For example, we know that Beyla depends on Prometheus client libraries. We want to know what are the versions of these Prometheus client libraries that Beyla pulls in. Create a table for each key dependency that lists the other key dependencies that it pulls. Include columns: dependency name, current version, latest version, an emoji indicating whether the update is required.
 
-The major dependencies that are using the same minor versions as the ones we want to update to should be denoted with "READY TO GO ✅". Otherwise, recommend what needs to ideally be updated by the owners of the project to make the process smooth.
+The key dependencies that are using the same minor versions as the ones we want to update to should be denoted with "READY TO GO ✅". Otherwise, recommend what needs to ideally be updated by the owners of the project to make the process smooth.
 
 ### Step 3: List the current forks and what changes have been added to them
 
-For all the major dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools and snippets to help you. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
+For all the key dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools and snippets to help you. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
 
 Make a short summary of the forks: what version they fork from (if it's possible to determine), the list of commits that are added to the fork, and one sentence summary of these changes.
 
 Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned through a comment in the commit message, a PR description on the fork or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
 
-If the fork is using a branch or a tag with certain naming convention that can be continued, determine the expected name of the new branch or tag in the fork that can use the latest version of the upstream major dependency as the base.
+If the fork is using a branch or a tag with certain naming convention that can be continued, determine the expected name of the new branch or tag in the fork that can use the latest version of the upstream key dependency as the base.
 
 Determine what is the status of the fork:
 
@@ -141,11 +141,11 @@ Determine what is the status of the fork:
 - In the case of `go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation` and `go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler` replaces, we want to pick the latest version from the grafana fork as it is the most up to date. Determine that version and denote with ✅
 - If it doesn't exist, write clearly that we need to update the fork before we can continue. State what upstream version should be used as the base. Denote with 🛑
 
-Only continue to the next step if all the major dependenies have a fork ready, don't need one, or you're told to continue. If there are forks that are not ready but not for the major dependencies, we can continue and keep them unchanged.
+Only continue to the next step if all the key dependenies have a fork ready, don't need one, or you're told to continue. If there are forks that are not ready but not for the key dependencies, we can continue and keep them unchanged.
 
 ### Step 4: Update Go modules to desired versions
 
-Having determined the desired versions of the major dependencies, update the go.mod file to use the desired versions. Make sure you keep in mind the relationships between the major dependencies as described in the "Major Dependency Relationships" section above.
+Having determined the desired versions of the key dependencies, update the go.mod file to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
 
 You know the update is successful if `go mod tidy` can successfully resolve the dependencies.
 
@@ -156,10 +156,10 @@ If you encounter conflicts, you need to resolve them. You can do this by:
 - If there is an existing replace directive for the problematic dependencies, try to remove it and see if `go mod tidy` can successfully pass - perhaps it is no longer needed. If that's the case, call it out in summary. It may be a fork that we no longer need.
   
 - If you are unable to resolve the conflicts, call it out and recommend the next steps. Make sure you clearly and briefly classify the kind of issue:
-  - Is it that a major dependency upstream is lagging behind with updating some other dependency?
+  - Is it that a key dependency upstream is lagging behind with updating some other dependency?
   - Is it that some dependency has breaking changes?
   - What would be the best approach to handle the issue? Can we avoid forking?
-  - What would be the simplest and fastest approach to handle the issue? Can we update to an older version of major dependencies instead while the conflicts are resolved?
+  - What would be the simplest and fastest approach to handle the issue? Can we update to an older version of key dependencies instead while the conflicts are resolved?
 
 - DO NOT simply declare that 'this is an upstream issue'. In order to do that, explore the changelog and isolate specific commits and changes that happened upstream with specific examples of why this is an upstream issue.
 
@@ -281,7 +281,7 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadb
 
 Run `go mod tidy` and it will fix the raw commit sha with the correct version number corresponding to the commit you want!
 
-TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
+TODO: Write this as a Go tool as explained in `docs/developer/key-deps-update/README.md`.
 
 #### Inspecting upstream code changes between versions
 
@@ -304,7 +304,7 @@ diff -ur \
   "$(go env GOMODCACHE)/${module}@${new}" | head -200
 ```
 
-TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
+TODO: Write this as a Go tool as explained in `docs/developer/key-deps-update/README.md`.
 
 #### Checking if a fork is still needed
 
@@ -348,4 +348,5 @@ gh api 'repos/upstream-org/repo-name/commits?path=relevant/path&sha=main' --jq '
 gh pr list -R upstream-org/repo-name -S "keywords from fork" --state merged -L 10
 ```
 
-TODO: Write this as a Go tool as explained in `docs/developer/major-deps-update/README.md`.
+TODO: Write this as a Go tool as explained in `docs/developer/key-deps-update/README.md`.
+
