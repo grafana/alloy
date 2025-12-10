@@ -300,12 +300,12 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 			metric = discovery.MetricValueOffCPU
 		}
 
-	builder := labels.NewScratchBuilder(ls.Len() + 1)
-	ls.Range(func(l labels.Label) {
-		builder.Add(l.Name, l.Value)
-	})
-	builder.Add(model.MetricNameLabel, metric)
-	builder.Sort()
+		builder := labels.NewScratchBuilder(ls.Len() + 1)
+		ls.Range(func(l labels.Label) {
+			builder.Add(l.Name, l.Value)
+		})
+		builder.Add(model.MetricNameLabel, metric)
+		builder.Sort()
 		res = append(res, PPROF{
 			Raw:    buf.Bytes(),
 			Labels: builder.Labels(),
