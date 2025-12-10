@@ -226,16 +226,13 @@ When `group_by` is enabled, files are created dynamically based on resource attr
 
 ## Compatible components
 
-`otelcol.exporter.file` can accept arguments from the following components:
-
-- Components that export [OpenTelemetry `otelcol.Consumer`](../otelcol/#opentelemetry-otelcolconsumer-exporters)
-
 `otelcol.exporter.file` has exports that can be consumed by the following components:
 
-- Components that consume [OpenTelemetry `otelcol.Consumer`](../otelcol/#opentelemetry-otelcolconsumer-exporters)
+- Components that consume [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-consumers)
 
 {{< admonition type="note" >}}
-Connecting some components may not be sensible or components may require further configuration to make the connection work correctly. Refer to the linked documentation for more details.
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
 {{< /admonition >}}
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
