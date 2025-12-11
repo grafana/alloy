@@ -9,6 +9,8 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
 	"github.com/grafana/alloy/syntax/internal/tagcache"
+	"github.com/grafana/alloy/syntax/internal/transform"
+	"github.com/grafana/alloy/syntax/internal/value"
 )
 
 type structState struct {
@@ -192,7 +194,7 @@ func checkStructEnum(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.Di
 	return block(b, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(elem, tf.BlockField)))
 }
 
-func checkStructAttr(s *structState, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics {
+func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) diag.Diagnostics {
 	tf, ok := s.tags.TagLookup[a.Name.Name]
 	if !ok {
 		return diag.Diagnostics{{
@@ -220,5 +222,50 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, _ reflect.Value) diag
 	}
 
 	s.seenAttrs[a.Name.Name] = struct{}{}
+
+	switch v := a.Value.(type) {
+	case *ast.LiteralExpr:
+		return typecheckLiteralExpr(a, v, reflectutil.GetOrAlloc(rv, tf))
+	default:
+		// ignore rest for now.
+	}
+
+	return nil
+}
+
+func typecheckLiteralExpr(a *ast.AttributeStmt, expr *ast.LiteralExpr, rv reflect.Value) diag.Diagnostics {
+	have, err := transform.ValueFromLiteral(expr.Value, expr.Kind)
+
+	// We don't expect to get error here because parser always produce valid tokens.
+	if err != nil {
+		return diag.Diagnostics{{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(a).Position(),
+			EndPos:   ast.EndPos(a).Position(),
+			Message:  fmt.Sprintf("%q unexpected error %s", a.Name.Name, err),
+		}}
+	}
+
+	have.TryConvertToObject()
+	have.TryConvertToObject()
+
+	expected := value.AlloyType(rv.Type())
+	if expected == value.TypeCapsule {
+		ok, _ := value.TryCapsuleConvert(have, rv, expected)
+		// FIXME: We should probably unwrap the capsule type
+		if ok {
+			return nil
+		}
+	}
+
+	if have.Type() != expected {
+		return diag.Diagnostics{{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(a).Position(),
+			EndPos:   ast.EndPos(a).Position(),
+			Message:  fmt.Sprintf("%q should be %s, got %s", a.Name.Name, expected, have.Type()),
+		}}
+	}
+
 	return nil
 }
