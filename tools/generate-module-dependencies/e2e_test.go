@@ -14,24 +14,24 @@ type testCase struct {
 	testdataDir string
 }
 
-var testCases = []testCase{
-	{
-		name:        "Basic",
-		testdataDir: "basic-mod",
-	},
-	{
-		name:        "UpdateExisting",
-		testdataDir: "update-existing-mod",
-	},
-}
-
-func TestE2E(t *testing.T) {
+func TestE2EMod(t *testing.T) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get current working directory: %v", err)
 	}
 
 	command := cmd.NewRootCommand()
+
+	var testCases = []testCase{
+		{
+			name:        "Basic",
+			testdataDir: "basic-mod",
+		},
+		{
+			name:        "UpdateExisting",
+			testdataDir: "update-existing-mod",
+		},
+	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -73,6 +73,70 @@ func TestE2E(t *testing.T) {
 
 			if actualGoMod != expectedGoMod {
 				t.Errorf("go.mod content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedGoMod, actualGoMod)
+			}
+		})
+	}
+}
+
+func TestE2EOCB(t *testing.T) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+
+	command := cmd.NewRootCommand()
+
+	var testCases = []testCase{
+		{
+			name:        "Basic",
+			testdataDir: "basic-ocb",
+		},
+		{
+			name:        "UpdateExisting",
+			testdataDir: "update-existing-ocb",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testdataDir := filepath.Join(currentDir, "testdata", tc.testdataDir)
+			builderYamlPath := filepath.Join(testdataDir, "test-builder-config.yaml")
+			expectedPath := filepath.Join(testdataDir, "test-builder-config-expected.yaml")
+			dependencyYaml := filepath.Join("testdata", tc.testdataDir, "dependency-replacements-test.yaml")
+			projectRoot := filepath.Join("testdata", tc.testdataDir)
+
+			originalGoMod, err := os.ReadFile(builderYamlPath)
+			if err != nil {
+				t.Fatalf("Failed to read original builder yaml: %v", err)
+			}
+
+			// Restore the original builder yaml after the test
+			defer func() {
+				if err := os.WriteFile(builderYamlPath, originalGoMod, 0644); err != nil {
+					t.Errorf("Failed to restore original builder yaml: %v", err)
+				}
+			}()
+
+			command.SetArgs([]string{"generate", "--dependency-yaml", dependencyYaml, "--project-root", projectRoot})
+			err = command.Execute()
+			if err != nil {
+				t.Fatalf("Failed to run command: %v", err)
+			}
+
+			expectedContent, err := os.ReadFile(expectedPath)
+			if err != nil {
+				t.Fatalf("Failed to read expected builder yaml: %v", err)
+			}
+			expectedGoMod := strings.TrimSpace(string(expectedContent))
+
+			actualContent, err := os.ReadFile(builderYamlPath)
+			if err != nil {
+				t.Fatalf("Failed to read actual builder yaml: %v", err)
+			}
+			actualGoMod := strings.TrimSpace(string(actualContent))
+
+			if actualGoMod != expectedGoMod {
+				t.Errorf("builder yaml content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedGoMod, actualGoMod)
 			}
 		})
 	}
