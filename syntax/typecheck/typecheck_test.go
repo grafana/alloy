@@ -3,20 +3,22 @@ package typecheck
 import (
 	"testing"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/stretchr/testify/require"
 )
 
 type Args struct {
-	Arg1       string      `alloy:"arg1,attr,optional"`
-	Arg2       string      `alloy:"arg2,attr"`
-	Block1     Block1      `alloy:"block1,block"`
-	Block2     []Block1    `alloy:"block2,block,optional"`
-	Block3     [2]Block1   `alloy:"block3,block,optional"`
-	Block4     Block2      `alloy:"block4,block,optional"`
-	InnerBlock InnerBlock  `alloy:",squash"`
-	EnumBlock  []EnumBlock `alloy:"enum,enum,optional"`
+	Arg1       string            `alloy:"arg1,attr,optional"`
+	Arg2       string            `alloy:"arg2,attr"`
+	Capsure    alloytypes.Secret `alloy:"capsule,attr,optional"`
+	Block1     Block1            `alloy:"block1,block"`
+	Block2     []Block1          `alloy:"block2,block,optional"`
+	Block3     [2]Block1         `alloy:"block3,block,optional"`
+	Block4     Block2            `alloy:"block4,block,optional"`
+	InnerBlock InnerBlock        `alloy:",squash"`
+	EnumBlock  []EnumBlock       `alloy:"enum,enum,optional"`
 }
 
 type Block1 struct {
@@ -56,6 +58,7 @@ func TestBlock(t *testing.T) {
 					arg1 = "test"
 					arg2 = "test"	
 					arg3 = true
+					capsule = "secret"
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -234,7 +237,7 @@ func TestBlock(t *testing.T) {
 					}
 	
 					enum.block2 {
-						arg3 = "test"
+						arg3 = true
 					}
 				}
 			`),
@@ -287,6 +290,30 @@ func TestBlock(t *testing.T) {
 				}
 			`),
 			expectedErr: `12:7: missing required attribute "nested_arg"`,
+		},
+		{
+			desc: "wrong literal",
+			src: []byte(`
+				test "name" {
+					arg1 = true
+					arg2 = "test"	
+					arg3 = true
+					block1 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					block2 {
+						arg2 = "test"
+					}
+					
+					block2 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+				}
+			`),
+			expectedErr: `3:6: "arg1" should be string, got bool`,
 		},
 	}
 
