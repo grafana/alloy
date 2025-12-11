@@ -246,6 +246,17 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 }
 
 func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics {
+	// Check if the expected type is actually a slice or array before trying to make a slice
+	if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+		expectedType := value.AlloyType(rv.Type())
+		return diag.Diagnostics{{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("%q should be %s, got array", name, expectedType),
+		}}
+	}
+
 	// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot.
 	rv.Set(reflect.MakeSlice(rv.Type(), 1, 1))
 	// Extract the expected item.
@@ -273,6 +284,17 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 }
 
 func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+	// Check if the expected type is actually a map before trying to get its element type
+	if rv.Kind() != reflect.Map {
+		expectedType := value.AlloyType(rv.Type())
+		return diag.Diagnostics{{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("%q should be %s, got object", name, expectedType),
+		}}
+	}
+
 	expected := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
 
 	var diags diag.Diagnostics
