@@ -53,6 +53,8 @@ Main (unreleased)
 
 - Refactor tailer used in `loki.source.file` to reduce resource usage. (@kalleep)
 
+- `prometheus.exporter.azure` now supports `concurrency_subscription` and `concurrency_subscription_resource` arguments to control the number of concurrent API requests. (@akselleirv)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
