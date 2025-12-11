@@ -10,23 +10,34 @@ func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
 
 	rs := []*relabel.Config{&r}
 
-	if cp != nil && cp.AWS != nil {
-		providerName := relabel.DefaultRelabelConfig
-		providerName.Replacement = "aws"
-		providerName.TargetLabel = "provider_name"
-		providerName.Action = relabel.Replace
+	if cp != nil {
+		if cp.AWS != nil {
+			providerName := relabel.DefaultRelabelConfig
+			providerName.Replacement = "aws"
+			providerName.TargetLabel = "provider_name"
+			providerName.Action = relabel.Replace
 
-		providerRegion := relabel.DefaultRelabelConfig
-		providerRegion.Replacement = cp.AWS.ARN.Region
-		providerRegion.TargetLabel = "provider_region"
-		providerRegion.Action = relabel.Replace
+			providerRegion := relabel.DefaultRelabelConfig
+			providerRegion.Replacement = cp.AWS.ARN.Region
+			providerRegion.TargetLabel = "provider_region"
+			providerRegion.Action = relabel.Replace
 
-		providerAccount := relabel.DefaultRelabelConfig
-		providerAccount.Replacement = cp.AWS.ARN.AccountID
-		providerAccount.TargetLabel = "provider_account"
-		providerAccount.Action = relabel.Replace
+			providerAccount := relabel.DefaultRelabelConfig
+			providerAccount.Replacement = cp.AWS.ARN.AccountID
+			providerAccount.TargetLabel = "provider_account"
+			providerAccount.Action = relabel.Replace
 
-		rs = append(rs, &providerName, &providerRegion, &providerAccount)
+			rs = append(rs, &providerName, &providerRegion, &providerAccount)
+		}
+		if cp.Azure != nil {
+			// We only support Azure provider_name for now.
+			providerName := relabel.DefaultRelabelConfig
+			providerName.Replacement = "azure"
+			providerName.TargetLabel = "provider_name"
+			providerName.Action = relabel.Replace
+
+			rs = append(rs, &providerName)
+		}
 	}
 
 	return rs
