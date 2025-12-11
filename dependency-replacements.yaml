@@ -35,17 +35,6 @@ replaces:
     dependency: go.opentelemetry.io/collector/featuregate
     replacement: github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
 
-  - comment: Replace directives from Prometheus
-    dependency: github.com/fsnotify/fsnotify v1.8.0
-    replacement: github.com/fsnotify/fsnotify v1.7.0
-
-  - comment: >
-      TODO: remove replace directive once there is a release of Prometheus
-      which addresses https://github.com/prometheus/prometheus/issues/14049,
-      for example, via this implementation: https://github.com/grafana/prometheus/pull/34
-    dependency: github.com/prometheus/prometheus
-    replacement: github.com/grafana/prometheus v1.8.2-0.20251030104821-c9e0b31e9aeb
-
   - comment: Replace yaml.v2 with fork
     dependency: gopkg.in/yaml.v2
     replacement: github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc

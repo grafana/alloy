@@ -47,6 +47,10 @@ Main (unreleased)
 
 - Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
 
+- Updated Prometheus dependencies to v3.8.0. (@thampiotr)
+
+- Updated Loki dependencies to v3.6.2. (@thampiotr)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
