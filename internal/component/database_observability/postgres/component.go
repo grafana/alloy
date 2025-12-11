@@ -348,7 +348,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:  true,
 		collector.SchemaDetailsCollector: true,
 		collector.ExplainPlanCollector:   true,
-		collector.ErrorLogsCollector:     false, // Disabled by default (opt-in)
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -487,25 +486,37 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		c.collectors = append(c.collectors, epCollector)
 	}
 
-	// Error Logs Collector
-	if collectors[collector.ErrorLogsCollector] && c.args.ErrorLogArguments != nil {
-		elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
-			Receiver:     c.errorLogsReceiver,
-			Severities:   c.args.ErrorLogArguments.Severities,
-			PassThrough:  c.args.ErrorLogArguments.PassThrough,
-			EntryHandler: entryHandler,
-			Logger:       c.opts.Logger,
-			InstanceKey:  c.instanceKey,
-			SystemID:     systemID,
-		})
-		if err != nil {
-			logStartError(collector.ErrorLogsCollector, "create", err)
+	// Error Logs Collector - always started (passive log receiver)
+	// Use configured values if available, otherwise use defaults
+	errorLogArgs := c.args.ErrorLogArguments
+	if errorLogArgs == nil {
+		level.Debug(c.opts.Logger).Log("msg", "error_logs collector arguments not configured, using defaults")
+		errorLogArgs = DefaultArguments.ErrorLogArguments
+	}
+
+	level.Debug(c.opts.Logger).Log(
+		"msg", "starting error_logs collector (always enabled)",
+		"severities", fmt.Sprintf("%v", errorLogArgs.Severities),
+		"pass_through", errorLogArgs.PassThrough,
+	)
+
+	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
+		Receiver:     c.errorLogsReceiver,
+		Severities:   errorLogArgs.Severities,
+		PassThrough:  errorLogArgs.PassThrough,
+		EntryHandler: entryHandler,
+		Logger:       c.opts.Logger,
+		InstanceKey:  c.instanceKey,
+		SystemID:     systemID,
+		Registry:     c.registry,
+	})
+	if err != nil {
+		logStartError(collector.ErrorLogsCollector, "create", err)
+	} else {
+		if err := elCollector.Start(context.Background()); err != nil {
+			logStartError(collector.ErrorLogsCollector, "start", err)
 		} else {
-			if err := elCollector.Start(context.Background()); err != nil {
-				logStartError(collector.ErrorLogsCollector, "start", err)
-			} else {
-				c.collectors = append(c.collectors, elCollector)
-			}
+			c.collectors = append(c.collectors, elCollector)
 		}
 	}
 

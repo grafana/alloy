@@ -1,8 +1,8 @@
 package collector
 
-// SQLStateCategories maps SQLSTATE class codes to human-readable categories.
+// SQLStateClass maps SQLSTATE class codes to human-readable categories.
 // See: https://www.postgresql.org/docs/current/errcodes-appendix.html
-var SQLStateCategories = map[string]string{
+var SQLStateClass = map[string]string{
 	"00": "Successful Completion",
 	"01": "Warning",
 	"02": "No Data",

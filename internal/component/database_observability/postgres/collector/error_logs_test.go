@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -139,6 +140,7 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 				Logger:       log.NewNopLogger(),
 				InstanceKey:  "test-instance",
 				SystemID:     "test-system",
+				Registry:     prometheus.NewRegistry(),
 			})
 			require.NoError(t, err)
 
@@ -229,6 +231,7 @@ func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
 				Logger:       log.NewNopLogger(),
 				InstanceKey:  "test",
 				SystemID:     "test",
+				Registry:     prometheus.NewRegistry(),
 			})
 			require.NoError(t, err)
 
@@ -304,6 +307,7 @@ func TestErrorLogsCollector_StartStop(t *testing.T) {
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test",
 		SystemID:     "test",
+		Registry:     prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)
