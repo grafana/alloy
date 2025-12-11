@@ -47,6 +47,10 @@ Main (unreleased)
 
 - Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
 
+- Updated Prometheus dependencies to v3.8.0. (@thampiotr)
+
+- Updated Loki dependencies to v3.6.2. (@thampiotr)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
@@ -68,6 +72,8 @@ Main (unreleased)
 - Fix the promtail converter behavior to mimic promtail behavior by default and limit kubernetes discovery to the same node. (@dehaansa)
 
 - Allow configuration of `force_attempt_http2` and default it to `true` for otelcol exporters with HTTP client configurations. (@dehaansa)
+
+- Fix default values for relabel rules, this caused issues in e.g. `prometheus.operator.servicemonitors` when using labeldrop. (@kalleep)
 
 - Fix an issue in the `prometheus.exporter.gcp` component where colons inside `extra_filters` were incorrectly removed. Filter expressions such as `database_id="project_id:database_name"` are now preserved as expected. (@Kim-Yukyung)
 
