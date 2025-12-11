@@ -20,7 +20,8 @@ type Args struct {
 	InnerBlock InnerBlock        `alloy:",squash"`
 	EnumBlock  []EnumBlock       `alloy:"enum,enum,optional"`
 	Arr        []string          `alloy:"arr,attr,optional"`
-	ArrArr     [][]string        `alloy:"arrarr,attr,optional`
+	ArrArr     [][]string        `alloy:"arrarr,attr,optional"`
+	Obj        map[string]string `alloy:"obj,attr,optional"`
 }
 
 type Block1 struct {
@@ -305,6 +306,7 @@ func TestBlock(t *testing.T) {
 					arg2 = "test"	
 					arg3 = true
 					arr = ["test", 1]
+					obj = { "key" = 1 }
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -323,6 +325,7 @@ func TestBlock(t *testing.T) {
 			expectedErr: []string{
 				`3:13: "arg1" should be string, got bool`,
 				`6:21: "arr" should be string, got number`,
+				`7:22: "obj" should be string, got number`,
 			},
 		},
 	}
