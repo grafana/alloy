@@ -69,8 +69,8 @@ func getMarkers(fileType types.FileType) (startMarker, endMarker string, err err
 
 // Upserts the generated block using the markers, or lack thereof, as a guide
 func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker string) (string, error) {
-	startIdx := strings.Index(targetContent, startMarker)
-	startFound := startIdx != -1
+	lineStart := strings.Index(targetContent, startMarker)
+	startFound := lineStart != -1
 
 	if !startFound {
 		// No start marker: if the end marker exists anywhere, it's invalid.
@@ -83,16 +83,28 @@ func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker str
 		return targetContent + "\n" + replacement, nil
 	}
 
-	searchFrom := startIdx + len(startMarker)
+	// Find the start of the line containing the start marker
+	for lineStart > 0 && targetContent[lineStart-1] != '\n' {
+		lineStart--
+	}
+
+	searchFrom := lineStart + len(startMarker)
 	endRel := strings.Index(targetContent[searchFrom:], endMarker)
 	if endRel == -1 {
 		// Start marker exists without an end marker, which is invalid
 		return "", fmt.Errorf("found start marker without end marker")
 	}
 
-	endIdx := searchFrom + endRel
-	endOfMarker := endIdx + len(endMarker)
+	lineEnd := searchFrom + endRel + len(endMarker)
 
-	// Replace [startIdx, endOfMarker) with replacement.
-	return targetContent[:startIdx] + replacement + targetContent[endOfMarker:], nil
+	// Find the end of the line containing the end marker (or end of file)
+	for lineEnd < len(targetContent) && targetContent[lineEnd] != '\n' {
+		lineEnd++
+	}
+	// Include the newline if present
+	if lineEnd < len(targetContent) {
+		lineEnd++
+	}
+
+	return targetContent[:lineStart] + replacement + targetContent[lineEnd:], nil
 }
