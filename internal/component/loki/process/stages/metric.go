@@ -38,7 +38,7 @@ type cfgCollector struct {
 }
 
 // newMetricStage creates a new set of metrics to process for each log entry
-func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus.Registerer) (Stage, error) {
+func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus.Registerer, validationScheme model.ValidationScheme) (Stage, error) {
 	metrics := map[string]cfgCollector{}
 	for _, cfg := range config.Metrics {
 		var collector prometheus.Collector
@@ -52,7 +52,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			} else {
 				customPrefix = defaultMetricsPrefix
 			}
-			collector, err = metric.NewCounters(customPrefix+cfg.Counter.Name, cfg.Counter)
+			collector, err = metric.NewCounters(customPrefix+cfg.Counter.Name, cfg.Counter, validationScheme)
 			if err != nil {
 				return nil, err
 			}
@@ -66,7 +66,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			} else {
 				customPrefix = defaultMetricsPrefix
 			}
-			collector, err = metric.NewGauges(customPrefix+cfg.Gauge.Name, cfg.Gauge)
+			collector, err = metric.NewGauges(customPrefix+cfg.Gauge.Name, cfg.Gauge, validationScheme)
 			if err != nil {
 				return nil, err
 			}
@@ -80,7 +80,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			} else {
 				customPrefix = defaultMetricsPrefix
 			}
-			collector, err = metric.NewHistograms(customPrefix+cfg.Histogram.Name, cfg.Histogram)
+			collector, err = metric.NewHistograms(customPrefix+cfg.Histogram.Name, cfg.Histogram, validationScheme)
 			if err != nil {
 				return nil, err
 			}

@@ -29,7 +29,7 @@ type PatternConfig struct {
 }
 
 // validatePatternConfig validates the config and return a regex
-func validatePatternConfig(c PatternConfig) (*pattern.Matcher, error) {
+func validatePatternConfig(c PatternConfig, validationScheme model.ValidationScheme) (*pattern.Matcher, error) {
 	if c.Pattern == "" {
 		return nil, ErrPatternRequired
 	}
@@ -44,8 +44,7 @@ func validatePatternConfig(c PatternConfig) (*pattern.Matcher, error) {
 	}
 
 	for _, name := range matcher.Names() {
-		// TODO - support UTF8 when loki does
-		if !model.LegacyValidation.IsValidLabelName(name) {
+		if !validationScheme.IsValidLabelName(name) {
 			return nil, fmt.Errorf("invalid capture label name '%s'", name)
 		}
 	}
@@ -55,21 +54,23 @@ func validatePatternConfig(c PatternConfig) (*pattern.Matcher, error) {
 
 // patternStage sets extracted data using logQL patterns
 type patternStage struct {
-	config  *PatternConfig
-	matcher *pattern.Matcher
-	logger  log.Logger
+	config           *PatternConfig
+	matcher          *pattern.Matcher
+	logger           log.Logger
+	validationScheme model.ValidationScheme
 }
 
 // newPatternStage creates a newPatternStage
-func newPatternStage(logger log.Logger, config PatternConfig) (Stage, error) {
-	matcher, err := validatePatternConfig(config)
+func newPatternStage(logger log.Logger, config PatternConfig, validationScheme model.ValidationScheme) (Stage, error) {
+	matcher, err := validatePatternConfig(config, validationScheme)
 	if err != nil {
 		return nil, err
 	}
 	return toStage(&patternStage{
-		config:  &config,
-		matcher: matcher,
-		logger:  log.With(logger, "component", "stage", "type", "pattern"),
+		config:           &config,
+		matcher:          matcher,
+		logger:           log.With(logger, "component", "stage", "type", "pattern"),
+		validationScheme: validationScheme,
 	}), nil
 }
 
@@ -131,8 +132,7 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]inter
 			labelName := model.LabelName(name)
 			labelValue := model.LabelValue(m)
 
-			// TODO - support UTF8 when loki does
-			if !model.LegacyValidation.IsValidLabelName(name) {
+			if !r.validationScheme.IsValidLabelName(name) {
 				if Debug {
 					level.Debug(r.logger).Log("msg", "invalid label name from pattern capture", "labelName", labelName)
 				}

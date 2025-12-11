@@ -15,12 +15,12 @@ type StructuredMetadataConfig struct {
 	Regex  string             `alloy:"regex,attr,optional"`
 }
 
-func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig) (Stage, error) {
+func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig, validationScheme model.ValidationScheme) (Stage, error) {
 	var validatedLabelsConfig map[string]string
 	var err error
 
 	if len(configs.Values) > 0 {
-		validatedLabelsConfig, err = validateLabelsConfig(configs.Values)
+		validatedLabelsConfig, err = validateLabelsConfig(configs.Values, validationScheme)
 		if err != nil {
 			return nil, err
 		}

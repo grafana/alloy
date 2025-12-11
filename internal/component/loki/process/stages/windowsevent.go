@@ -22,11 +22,6 @@ type WindowsEventConfig struct {
 }
 
 func (e *WindowsEventConfig) Validate() error {
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if !model.LabelName(e.Source).IsValid() {
-		return fmt.Errorf(ErrInvalidLabelName, e.Source)
-	}
 	return nil
 }
 
@@ -35,19 +30,21 @@ func (e *WindowsEventConfig) SetToDefault() {
 }
 
 type WindowsEventStage struct {
-	cfg    *WindowsEventConfig
-	logger log.Logger
+	cfg              *WindowsEventConfig
+	logger           log.Logger
+	validationScheme model.ValidationScheme
 
 	keyReplacer   *strings.Replacer
 	valueReplacer *strings.Replacer
 }
 
 // Create a windowsevent stage, including validating any supplied configuration
-func newWindowsEventStage(logger log.Logger, cfg *WindowsEventConfig) Stage {
+func newWindowsEventStage(logger log.Logger, cfg *WindowsEventConfig, validationScheme model.ValidationScheme) Stage {
 	return &WindowsEventStage{
-		cfg:           cfg,
-		logger:        log.With(logger, "component", "stage", "type", "windowsevent"),
-		keyReplacer:   strings.NewReplacer("\t", "", "\r", "", "\n", "", " ", ""),
+		cfg:              cfg,
+		logger:           log.With(logger, "component", "stage", "type", "windowsevent"),
+		validationScheme: validationScheme,
+		keyReplacer:      strings.NewReplacer("\t", "", "\r", "", "\n", "", " ", ""),
 		valueReplacer: strings.NewReplacer("\t", "", "\r", "", "\n", ""),
 	}
 }
@@ -167,9 +164,7 @@ func (w *WindowsEventStage) processEntry(extracted map[string]interface{}, key s
 
 func (w *WindowsEventStage) sanitizeKey(ekey string, extracted map[string]interface{}) (string, error) {
 	k := w.keyReplacer.Replace(ekey)
-	// TODO: add support for different validation schemes.
-	//nolint:staticcheck
-	if !model.LabelName(k).IsValid() {
+	if !model.LabelName(k).IsValidWithValidationScheme(w.validationScheme) {
 		if w.cfg.DropInvalidLabels {
 			return "", fmt.Errorf("invalid label parsed from message, key: %s", k)
 		}
