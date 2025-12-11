@@ -10,6 +10,8 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+- Support specifying DNS discovery mode prefixes in `--cluster.join-addresses` flag. (@x1unix)
+
 ### Features
 
 - Add `otelcol.connector.count` component to count the number of spans, metrics, and logs passing through it. (@hhertout)
