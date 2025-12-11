@@ -258,6 +258,8 @@ func typecheckLiteralExpr(a *ast.AttributeStmt, expr *ast.LiteralExpr, rv reflec
 		}
 	}
 
+	// FIXME: Check Values of arrays, maps etc...
+
 	if have.Type() != expected {
 		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
@@ -265,6 +267,14 @@ func typecheckLiteralExpr(a *ast.AttributeStmt, expr *ast.LiteralExpr, rv reflec
 			EndPos:   ast.EndPos(a).Position(),
 			Message:  fmt.Sprintf("%q should be %s, got %s", a.Name.Name, expected, have.Type()),
 		}}
+	}
+
+	// FIXME: typecheck items..
+	if have.Type() == value.TypeArray {
+	}
+
+	// FIXME: typecheck k v
+	if have.Type() == value.TypeObject {
 	}
 
 	return nil
