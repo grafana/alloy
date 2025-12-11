@@ -227,8 +227,9 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 
 	switch expr := a.Value.(type) {
 	case *ast.ArrayExpr:
-		fieldValue := reflectutil.GetOrAlloc(rv, tf)
-		diags.Merge(typecheckArrayExpr(a.Name.Name, expr, fieldValue))
+		diags.Merge(typecheckArrayExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
+	case *ast.ObjectExpr:
+		diags.Merge(typecheckObject(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
 	case *ast.LiteralExpr:
 		if d := typecheckLiteralExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
 			diags.Add(*d)
@@ -262,7 +263,32 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 		default:
 			// ignore rest for now.
 		}
+	}
 
+	if diags != nil {
+		return diags
+	}
+
+	return nil
+}
+
+func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+	expected := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
+
+	var diags diag.Diagnostics
+	for _, f := range expr.Fields {
+		switch expr := f.Value.(type) {
+		case *ast.LiteralExpr:
+			if d := typecheckLiteralExpr(name, expr, expected); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.ArrayExpr:
+			diags.Merge(typecheckArrayExpr(name, expr, expected))
+		case *ast.ObjectExpr:
+			diags.Merge(typecheckObject(name, expr, expected))
+		default:
+			// ignore rest for now.
+		}
 	}
 
 	if diags != nil {
