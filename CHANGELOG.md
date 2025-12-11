@@ -10,13 +10,23 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+- Support specifying DNS discovery mode prefixes in `--cluster.join-addresses` flag. (@x1unix)
+
 ### Features
+
+- Add `otelcol.connector.count` component to count the number of spans, metrics, and logs passing through it. (@hhertout)
+
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
 
 - (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
 
 - (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
 
 - Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
+
+- Add `prometheus.echo` component for local inspection of Prometheus metrics. The component writes received metrics to stdout in Prometheus exposition format, enabling easier debugging and testing of metrics flow. (@iamrajiv)
 
 ### Enhancements
 
@@ -33,6 +43,9 @@ Main (unreleased)
 - (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
   - `explain_plans`
     - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
+  - Metrics are now appended with cloud provider information labels (@matthewnolf)
+
+- Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
 
 ### Bugfixes
 
@@ -46,7 +59,17 @@ Main (unreleased)
 
 - Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
 
-- Fix an issue in the `prometheus.exporter.gcp` component where colons inside `extra_filters` were incorrectly removed. Filter expressions such as `database_id="project_id:database_name"` are now preserved as expected (@Kim-Yukyung)
+- [`mimir.alerts.kubernetes`] Fixed a bug which caused Alloy to crash when using a Kubernetes secret or configmap in the AlertmanagerConfig CRD. (@synthe102)
+
+- Remove extraneous `output` stage from the `cri` stage pipeline in `loki.process`. (@kalleep)
+
+- Fix Docker log corruption for multiplexed long lines. (@axd1x8a)
+
+- Fix the promtail converter behavior to mimic promtail behavior by default and limit kubernetes discovery to the same node. (@dehaansa)
+
+- Allow configuration of `force_attempt_http2` and default it to `true` for otelcol exporters with HTTP client configurations. (@dehaansa)
+
+- Fix an issue in the `prometheus.exporter.gcp` component where colons inside `extra_filters` were incorrectly removed. Filter expressions such as `database_id="project_id:database_name"` are now preserved as expected. (@Kim-Yukyung)
 
 v1.12.0
 -----------------
@@ -59,6 +82,8 @@ v1.12.0
   set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
 
 ### Features
+
+- Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
 
 - (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
   logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
