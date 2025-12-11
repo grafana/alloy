@@ -58,6 +58,7 @@ Main (unreleased)
 - (_Public Preview_) Additions to `database_observability.postgres` component:
   - `schema_details`
     - fixes collection of schema details for mixed case table names (@fridgepoet)
+    - do not track query samples for currently connected user, via option `exclude_current_user` (@cristiangreco)
 
 - (_Public Preview_) Additions to `database_observability.mysql` component:
   - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
