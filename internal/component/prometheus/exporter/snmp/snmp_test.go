@@ -36,7 +36,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 		}
 		walk_param "public" {
 			retries = 2
-		}		
+		}
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -72,15 +72,15 @@ func TestUnmarshalAlloyTargets(t *testing.T) {
 		config_file = "modules.yml"
 		targets = [
 			{
-				"name" = "network_switch_1", 
-				"address" = "192.168.1.2", 
+				"name" = "network_switch_1",
+				"address" = "192.168.1.2",
 				"module" = "if_mib",
 				"walk_params" = "public",
 				"auth" = "public_v2",
 			},
 			{
-				"name" = "network_router_2", 
-				"address" = "192.168.1.3", 
+				"name" = "network_router_2",
+				"address" = "192.168.1.3",
 				"module" = "mikrotik",
 				"walk_params" = "private",
 			},
@@ -90,7 +90,7 @@ func TestUnmarshalAlloyTargets(t *testing.T) {
 		}
 		walk_param "public" {
 			retries = 2
-		}		
+		}
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -269,12 +269,12 @@ func TestValidateTargetMissingName(t *testing.T) {
 		config_file = "modules.yml"
 		targets = [
 			{
-				"address" = "192.168.1.2", 
+				"address" = "192.168.1.2",
 				"module" = "if_mib",
 				"walk_params" = "public",
 				"auth" = "public_v2",
 			},
-		  ]		
+		  ]
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -291,7 +291,7 @@ func TestValidateTargetMissingAddress(t *testing.T) {
 				"walk_params" = "public",
 				"auth" = "public_v2",
 			},
-		  ]		
+		  ]
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -304,12 +304,12 @@ func TestValidateTargetsMutualExclusivity(t *testing.T) {
 		targets = [
 			{
 				"name" = "t1",
-				"address" = "192.168.1.2", 
+				"address" = "192.168.1.2",
 				"module" = "if_mib",
 				"walk_params" = "public",
 				"auth" = "public_v2",
 			},
-		  ]		
+		  ]
 		target "t2" {
 			address = "192.168.1.3"
 			module = "mikrotik"

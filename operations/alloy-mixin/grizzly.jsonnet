@@ -9,7 +9,7 @@
 
 (import './grizzly/dashboards.jsonnet')
 
-// By default, alerts get also deployed; This should work out-of-the-box when 
+// By default, alerts get also deployed; This should work out-of-the-box when
 // using the example docker-compose environment. If you are using grizzly with
 // a different environemnt, set up the environment variables as documented in
 // https://grafana.github.io/grizzly/configuration/ or comment out the line below.

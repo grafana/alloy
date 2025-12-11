@@ -151,7 +151,7 @@ In those cases, exported fields are kept at their last healthy values.
 All metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
 
 - `push_total`: Total latency for push operations
-- `push_endpoint`: Per-endpoint latency for push operations  
+- `push_endpoint`: Per-endpoint latency for push operations
 - `push_downstream`: Downstream request latency for push operations
 - `ingest_total`: Total latency for ingest operations
 - `ingest_endpoint`: Per-endpoint latency for ingest operations

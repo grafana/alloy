@@ -60,7 +60,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				block_on_overflow = false
 				sizer = "items"
 				wait_for_result = false
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 100
@@ -122,7 +122,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				enabled = true
 				queue_size = 100
 				sizer = "items"
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 200
@@ -135,7 +135,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with invalid sizer",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 100
@@ -149,7 +149,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with invalid flush_timeout",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "0s"
 					min_size = 100
@@ -162,7 +162,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with negative min_size",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = -1
@@ -175,7 +175,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with max_size less than min_size",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 200

@@ -18,7 +18,7 @@ extensions:
       key_file: keyfile
     # timeout for the token client
     timeout: 2s
-    
+
 receivers:
   otlp:
     protocols:
@@ -27,7 +27,7 @@ receivers:
 exporters:
   otlphttp/noauth:
     endpoint: database:4318
-      
+
   otlp/withauth:
     tls:
       ca_file: /tmp/certs/ca.pem

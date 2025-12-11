@@ -5,10 +5,10 @@ local templates = import './utils/templates.libsonnet';
 local cluster_node_filename = 'alloy-cluster-node.json';
 
 {
-  local templateVariables = 
+  local templateVariables =
     templates.newTemplateVariablesList(
-      filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      filterSelector=$._config.filterSelector,
+      enableK8sCluster=$._config.enableK8sCluster,
       includeInstance=false,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
@@ -264,7 +264,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
 
           This graph helps to identify which instances may be in a split brain state.
 
-          The minimum cluster size shows the value of the --cluster.wait-for-size flag, which specifies the minimum 
+          The minimum cluster size shows the value of the --cluster.wait-for-size flag, which specifies the minimum
           number of instances required before cluster-enabled components begin processing traffic.
         |||) +
         panel.withPosition({ h: 12, w: 24, x: 0, y: 18 }) +
@@ -281,7 +281,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
             ||| % $._config,
             legendFormat='Minimum cluster size',
           )
-        ]) + 
+        ]) +
         panel.withOverridesByName('Minimum cluster size', minClusterSizeLineStyle)
       ),
     ]),

@@ -17,9 +17,9 @@ prometheus.remote_write "redis_metrics" {
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "redis_metrics",
-  }  
+  }
 }

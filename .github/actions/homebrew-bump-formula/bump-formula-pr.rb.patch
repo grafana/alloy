@@ -7,6 +7,6 @@ index 167ea9134a..e07aecfe83 100644
          tap = formula.tap
          return if tap.nil?
 +        return if args.force?
- 
+
          # if we haven't already found open requests, try for an exact match across all pull requests
          GitHub.check_for_duplicate_pull_requests(

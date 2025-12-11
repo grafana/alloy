@@ -30,7 +30,7 @@ func Test(t *testing.T) {
 
 	cfg := `
 		timeout = "10ms"
-		
+
 		output {
 			// no-op: will be overridden by test code.
 		}

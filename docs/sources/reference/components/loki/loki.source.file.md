@@ -62,7 +62,7 @@ This attribute defines the behavior if the positions file entry for a given file
 
 `tail_from_end` and a `on_positions_file_error` value of `"restart_from_end"` are not supported when `decompression` is enabled.
 
-The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
+The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy.
 The format of the positions file is different in Grafana Alloy, so this will convert it to the new format.
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
 When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.

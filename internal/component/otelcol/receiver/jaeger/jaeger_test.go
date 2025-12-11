@@ -70,7 +70,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	t.Run("thrift_http", func(t *testing.T) {
 		in := `
 			protocols { thrift_http {} }
-			output {} 
+			output {}
 		`
 
 		var args jaeger.Arguments

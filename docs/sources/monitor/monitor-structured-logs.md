@@ -144,11 +144,11 @@ In this example, the component requires the following arguments:
 ```alloy
 loki.process "labels" {
     stage.json {
-      expressions = { 
+      expressions = {
                       "timestamp" = "",
-                      "state" = "", 
-                      "package_size" = "", 
-                      "package_status" = "", 
+                      "state" = "",
+                      "package_size" = "",
+                      "package_status" = "",
                       "package_id" = "",
                     }
     }

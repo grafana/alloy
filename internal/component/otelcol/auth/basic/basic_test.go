@@ -62,7 +62,7 @@ var (
 	`, actualUsername, actualPasswordSHA512, clientAuthUsername, clientAuthPassword)
 
 	serverCfg = fmt.Sprintf(`
-		username = "%s"	
+		username = "%s"
 		password = "%s"
 	`, actualUsername, actualPasswordSHA512)
 	htpasswdCfg = fmt.Sprintf(`
@@ -74,9 +74,9 @@ var (
 	cfgWithHtpasswd = fmt.Sprintf(`
 		username = "%s"
 		password = "%s"
-		
+
 		htpasswd {
-			file = "%s"	
+			file = "%s"
 		}
 	`, actualUsername, actualPasswordSHA512, htpasswdPath)
 )

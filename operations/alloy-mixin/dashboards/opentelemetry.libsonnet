@@ -16,10 +16,10 @@ local stackedPanelMixin = {
 };
 
 {
-  local templateVariables = 
+  local templateVariables =
     templates.newTemplateVariablesList(
-      filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      filterSelector=$._config.filterSelector,
+      enableK8sCluster=$._config.enableK8sCluster,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
@@ -238,7 +238,7 @@ local stackedPanelMixin = {
         panelPosition4Across(row=3, col=0) +
         panel.withQueries([
           panel.newQuery(
-            expr= ||| 
+            expr= |||
               sum by(instance) (rate(otelcol_exporter_sent_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),

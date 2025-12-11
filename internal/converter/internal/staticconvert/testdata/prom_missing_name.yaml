@@ -2,4 +2,3 @@ metrics:
   configs:
     - remote_write:
         - url: http://localhost:9010/api/prom/push
-    

@@ -101,7 +101,7 @@ data:
         sync_interval = "5s"
         global_config = remote.kubernetes.configmap.default.data["glbl"]
         template_files = {
-          `default_template` = 
+          `default_template` =
       `{{ define "__alertmanager" }}AlertManager{{ end }}
       {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}`,
         }
@@ -206,9 +206,9 @@ kind: AlertmanagerConfig
 metadata:
   name: alertmgr-config3
   namespace: testing
-  # This config should not have the label required for 
-  # mimir.alerts.kubernetes to pick up the CRD. 
-  # 
+  # This config should not have the label required for
+  # mimir.alerts.kubernetes to pick up the CRD.
+  #
   # labels:
   #   alloy: "yes"
 spec:

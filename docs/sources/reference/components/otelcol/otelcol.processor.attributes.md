@@ -480,11 +480,11 @@ This processor will obfuscate the `db.statement` attribute in spans where the `d
 ```alloy
 otelcol.processor.attributes "default" {
     include {
-        // "match_type" of "regexp" defines that the "value" attributes 
+        // "match_type" of "regexp" defines that the "value" attributes
         // in the "attribute" blocks are regexp-es.
         match_type = "regexp"
 
-        // This attribute ('db.statement') must exist in the span and match 
+        // This attribute ('db.statement') must exist in the span and match
         // the regex ('SELECT \* FROM USERS.*') for a match.
         attribute {
             key = "db.statement"

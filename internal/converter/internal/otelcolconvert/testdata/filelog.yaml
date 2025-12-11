@@ -64,7 +64,7 @@ extensions:
     compaction:
       directory: /var/lib/otelcol/file_storage
     fsync: true
-    
+
 service:
   extensions: [ file_storage ]
   pipelines:

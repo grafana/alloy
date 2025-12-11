@@ -2,19 +2,19 @@ Error: main.alloy:1:1: missing required block "template"
 
 1 | foreach "missing" { }
   | ^^^^^^^^^^^^^^^^^^^^^
-2 | 
+2 |
 
 Error: main.alloy:1:1: missing required attribute "collection"
 
 1 | foreach "missing" { }
   | ^^^^^^^^^^^^^^^^^^^^^
-2 | 
+2 |
 
 Error: main.alloy:1:1: missing required attribute "var"
 
 1 | foreach "missing" { }
   | ^^^^^^^^^^^^^^^^^^^^^
-2 | 
+2 |
 
 Error: main.alloy:4:2: unrecognized attribute name "test"
 
@@ -28,21 +28,21 @@ Error: main.alloy:30:3: logging not allowed in foreach
 29 |         // Service configuration.
 30 |         logging { }
    |         ^^^^^^^
-31 | 
+31 |
 
 Error: main.alloy:17:3: cannot find the definition of component name "local.missing"
 
 16 |         // Unknown component.
 17 |         local.missing "applogs" { }
    |         ^^^^^^^^^^^^^
-18 | 
+18 |
 
 Error: main.alloy:20:3: missing required attribute "url"
 
 19 |         // Missing required property.
 20 |         remote.http "missing_required" { }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-21 | 
+21 |
 
 Error: main.alloy:24:4: unrecognized attribute name "test"
 
@@ -53,14 +53,14 @@ Error: main.alloy:24:4: unrecognized attribute name "test"
 
 Error: main.alloy:37:3: block local.file_match.applogs already declared at main.alloy:33:3
 
-36 | 
+36 |
 37 |         local.file_match "applogs" {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 38 |             path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 
 Error: main.alloy:62:1: block foreach.invalid_nested already declared at main.alloy:43:1
 
-61 | 
+61 |
 62 | foreach "invalid_nested" {
    | ^^^^^^^^^^^^^^^^^^^^^^
 63 |     collection = []
@@ -70,21 +70,21 @@ Error: main.alloy:86:5: logging not allowed in foreach
 85 |                 // Service configuration.
 86 |                 logging { }
    |                 ^^^^^^^
-87 | 
+87 |
 
 Error: main.alloy:73:5: cannot find the definition of component name "local.missing"
 
 72 |                 // Unknown component.
 73 |                 local.missing "applogs" { }
    |                 ^^^^^^^^^^^^^
-74 | 
+74 |
 
 Error: main.alloy:76:5: missing required attribute "url"
 
 75 |                 // Missing required property.
 76 |                 remote.http "missing_required" { }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-77 | 
+77 |
 
 Error: main.alloy:80:6: unrecognized attribute name "test"
 
@@ -95,7 +95,7 @@ Error: main.alloy:80:6: unrecognized attribute name "test"
 
 Error: main.alloy:93:5: block local.file_match.applogs already declared at main.alloy:89:5
 
-92 | 
+92 |
 93 |                 local.file_match "applogs" {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 94 |                     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
@@ -105,7 +105,7 @@ Error: main.alloy:60:1: cannot find the definition of component name "mod.myModu
 59 | // invalid outside of foreach
 60 | mod.myModule "mod" { }
    | ^^^^^^^^^^^^
-61 | 
+61 |
 
 Error: main.alloy:119:15: component "prometheus.exporter.redis.default.targets" does not exist or is out of scope
 

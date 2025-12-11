@@ -13,7 +13,7 @@ title: pyroscope.enrich
 
 # `pyroscope.enrich`
 
-{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}  
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -82,27 +82,27 @@ discovery.kubernetes "pods" {
 // Add custom labels from Kubernetes metadata
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
-  
+
   rule {
     source_labels = ["__meta_kubernetes_namespace"]
     target_label  = "namespace"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_node_name"]
     target_label  = "node"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     target_label  = "app"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_label_environment"]
     target_label  = "environment"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_ip"]
     target_label  = "pod_ip"

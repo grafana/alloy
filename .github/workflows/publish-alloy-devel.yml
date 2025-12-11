@@ -34,7 +34,7 @@ jobs:
     with:
       img-name: alloy-devel
       dev: true
-        
+
   update_deployment_tools:
     name: Update deployment_tools
     runs-on: ubuntu-latest

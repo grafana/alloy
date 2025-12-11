@@ -2007,7 +2007,7 @@ loki.process "default" {
   stage.labels {
     values = {
       Description = "",
-      Subject_SecurityID  = "",        
+      Subject_SecurityID  = "",
       ReadOP = "Subject_ReadOperation",
     }
   }

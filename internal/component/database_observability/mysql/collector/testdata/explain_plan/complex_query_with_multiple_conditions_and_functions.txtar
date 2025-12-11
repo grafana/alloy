@@ -2,7 +2,7 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT 
+SELECT
     d.dept_name,
     t.title,
     COUNT(*) as count,

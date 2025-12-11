@@ -100,7 +100,7 @@ A resource doesn't need to have all of the attributes.
 The list must include enough attributes to properly identify unique resources or risk aggregating data from more than one service and span.
 For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
 
-When the `aggregation_cardinality_limit` limit is reached, additional unique combinations will be dropped but registered under a new entry with `otel.metric.overflow="true"`. 
+When the `aggregation_cardinality_limit` limit is reached, additional unique combinations will be dropped but registered under a new entry with `otel.metric.overflow="true"`.
 A value of `0` means no limit is applied.
 
 ## Blocks

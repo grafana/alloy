@@ -20,14 +20,14 @@ func Test_Extract(t *testing.T) {
 				key_regex = "(.*)/(.*)"
 				tag_name  = "$1.$2"
 			}
-	
+
 			metadata = [
 				"k8s.namespace.name",
 				"k8s.job.name",
 				"k8s.node.name",
 			]
 		}
-	
+
 		output {
 			// no-op: will be overridden by test code.
 		}
@@ -58,7 +58,7 @@ func Test_ExtractAnnotations(t *testing.T) {
 				key_regex = "opentel.*"
 				from      = "pod"
 			}
-	
+
 			metadata = [
 				"k8s.namespace.name",
 				"k8s.job.name",
@@ -67,7 +67,7 @@ func Test_ExtractAnnotations(t *testing.T) {
 
 			otel_annotations = true
 		}
-	
+
 		output {
 			// no-op: will be overridden by test code.
 		}
@@ -262,13 +262,13 @@ func Test_PodAssociationPair(t *testing.T) {
 				name = "k8s.pod.ip"
 			}
 		}
-		pod_association {	
+		pod_association {
 			source {
 				from = "resource_attribute"
 				name = "k8s.pod.uid"
 			}
 			source {
-				from = "connection"	
+				from = "connection"
 			}
 		}
 

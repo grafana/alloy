@@ -45,7 +45,7 @@ traces:
         namespace: metrics_prefix
         const_labels:
           foo: bar
-          fizz: buzz 
+          fizz: buzz
       tail_sampling:
         policies:
           [
@@ -67,7 +67,7 @@ traces:
               endpoint: jaeger-collector:14250
 
 # This metrics config is needed when we enable spanmetrics for traces
-# 
+#
 metrics:
   global:
     remote_write:

@@ -8,9 +8,9 @@ local alert = import './utils/alert.jsonnet';
         // Cluster not converging.
         alert.newRule(
           'ClusterNotConverging',
-          if enableK8sCluster then 
-            'stddev by (cluster, namespace, job, cluster_name) (sum without (state) (cluster_node_peers)) != 0' 
-          else 
+          if enableK8sCluster then
+            'stddev by (cluster, namespace, job, cluster_name) (sum without (state) (cluster_node_peers)) != 0'
+          else
             'stddev by (job) (sum without (state) (cluster_node_peers)) != 0',
           'Cluster is not converging.',
           'Cluster is not converging: nodes report different number of peers in the cluster. Job is {{ $labels.job }}',
@@ -34,13 +34,13 @@ local alert = import './utils/alert.jsonnet';
           |||
           ,
           'Nodes report different number of peers vs. the count of observed Alloy metrics.',
-          'Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state. Job is {{ $labels.job }}',          
+          'Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state. Job is {{ $labels.job }}',
           '15m',
         ),
 
         // Nodes health score is not zero.
         alert.newRule(
-          'ClusterNodeUnhealthy',        
+          'ClusterNodeUnhealthy',
           |||
             cluster_node_gossip_health_score > 0
           |||,
@@ -52,13 +52,13 @@ local alert = import './utils/alert.jsonnet';
         // Node tried to join the cluster with an already-present node name.
         alert.newRule(
           'ClusterNodeNameConflict',
-          if enableK8sCluster then 
+          if enableK8sCluster then
             'sum by (cluster, namespace, job, cluster_name) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           else
             'sum by (job) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           ,
           'Cluster Node Name Conflict.',
-          'A node tried to join the cluster with a name conflicting with an existing peer. Job is {{ $labels.job }}',          
+          'A node tried to join the cluster with a name conflicting with an existing peer. Job is {{ $labels.job }}',
           '10m',
         ),
 
@@ -93,5 +93,5 @@ local alert = import './utils/alert.jsonnet';
           '5m',
         ),
       ]
-    )  
+    )
 }

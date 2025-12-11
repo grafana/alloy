@@ -9,8 +9,8 @@ cache:
     writeback_goroutines: 5
   caches:
   - roles:
-    - frontend-search  
-    memcached: 
+    - frontend-search
+    memcached:
       host: memcached:11211
 
 query_frontend:

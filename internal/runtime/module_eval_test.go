@@ -178,7 +178,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	testcomponents.summation "sum_1" {
 		input = module.string.test_1.exports.output
 	}
-	
+
 	module.string "test_2" {
 		content = ` + strconv.Quote(module) + `
 	}

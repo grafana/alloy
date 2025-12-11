@@ -25,7 +25,7 @@ func TestBadAlloyConfig(t *testing.T) {
       name = "test-policy-1"
       type = "always_sample"
     }
-    output { 
+    output {
 	    // no-op: will be overridden by test code.
     }
 `
@@ -54,7 +54,7 @@ func TestBadAlloyConfigErrorMode(t *testing.T) {
         ]
       }
     }
-    output { 
+    output {
 	    // no-op: will be overridden by test code.
     }
 `
@@ -72,7 +72,7 @@ func TestBadOtelConfig(t *testing.T) {
       name = "test-policy-1"
       type = "bad_type"
     }
-    output { 
+    output {
       // no-op: will be overridden by test code.
     }
 `
@@ -346,7 +346,7 @@ func TestBigConfig(t *testing.T) {
         }
       }
     }
-  
+
     output {
   	  // no-op: will be overridden by test code.
     }
@@ -383,7 +383,7 @@ func TestTraceProcessing(t *testing.T) {
       name = "test-policy-1"
       type = "always_sample"
     }
-    output { 
+    output {
 	    // no-op: will be overridden by test code.
     }
   `

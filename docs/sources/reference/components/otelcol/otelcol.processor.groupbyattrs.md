@@ -180,17 +180,17 @@ Resource {host.name="localhost"}
   InstrumentationLibrary {name="OtherLibrary"}
   Spans
     Span {span_id=2, ...}
-    
+
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=3, ...}
-    
+
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=4, ...}
-    
+
 Resource {host.name="otherhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans

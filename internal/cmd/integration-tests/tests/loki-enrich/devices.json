@@ -12,11 +12,11 @@
   {
     "targets": ["router2.example.com"],
     "labels": {
-      "hostname": "router2.example.com", 
+      "hostname": "router2.example.com",
       "environment": "production",
       "datacenter": "us-west",
       "role": "edge-router",
       "__meta_rack": "rack2"
     }
   }
-] 
+]

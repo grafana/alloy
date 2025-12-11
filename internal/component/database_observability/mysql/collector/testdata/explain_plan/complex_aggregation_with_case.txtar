@@ -2,7 +2,7 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT 
+SELECT
     d.dept_name,
     COUNT(*) as total_employees,
     SUM(CASE WHEN e.gender = 'M' THEN 1 ELSE 0 END) as male_count,

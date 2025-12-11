@@ -54,7 +54,7 @@ fail=true
 	require.Error(t, err)
 
 	goodContent :=
-		`test.fail.module "good" { 
+		`test.fail.module "good" {
 content=""
 fail=false
 }`

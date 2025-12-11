@@ -1,9 +1,9 @@
 local dashboard = import './dashboard.jsonnet';
 
 {
-    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false):: (     
+    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false):: (
 
-        local clusterTemplateQuery = 
+        local clusterTemplateQuery =
             if std.isEmpty(filterSelector) then
             |||
                 label_values(alloy_component_controller_running_components, cluster)
@@ -22,8 +22,8 @@ local dashboard = import './dashboard.jsonnet';
             |||
                 label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster"}, namespace)
             ||| % filterSelector;
-        
-        local k8sJobTemplateQuery = 
+
+        local k8sJobTemplateQuery =
             if std.isEmpty(filterSelector) then
             |||
                 label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)
@@ -32,18 +32,18 @@ local dashboard = import './dashboard.jsonnet';
             |||
                 label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster", namespace=~"$namespace"}, job)
             ||| % filterSelector;
-        
-        local k8sInstanceTemplateQuery = 
+
+        local k8sInstanceTemplateQuery =
             if std.isEmpty(filterSelector) then
             |||
                 label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
-            ||| 
+            |||
             else
             |||
                 label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
             ||| % filterSelector;
 
-        local jobTemplateQuery = 
+        local jobTemplateQuery =
             if std.isEmpty(filterSelector) then
             |||
                 label_values(alloy_component_controller_running_components, job)
@@ -52,8 +52,8 @@ local dashboard = import './dashboard.jsonnet';
             |||
                 label_values(alloy_component_controller_running_components{%s}, job)
             ||| % filterSelector;
-        
-        local instanceTemplateQuery = 
+
+        local instanceTemplateQuery =
             if std.isEmpty(filterSelector) then
             |||
                 label_values(alloy_component_controller_running_components{job=~"$job"}, instance)
@@ -62,41 +62,41 @@ local dashboard = import './dashboard.jsonnet';
             |||
                 label_values(alloy_component_controller_running_components{%s, job=~"$job"}, instance)
             ||| % filterSelector;
-        
+
         if enableK8sCluster then
             [
                 dashboard.newTemplateVariable(
-                name='cluster', 
+                name='cluster',
                 query=clusterTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),
                 dashboard.newTemplateVariable(
-                name='namespace', 
+                name='namespace',
                 query=namespaceTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),
                 dashboard.newTemplateVariable(
-                name='job', 
+                name='job',
                 query=k8sJobTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),
-            ] + 
+            ] +
             if includeInstance then
-                [   
+                [
                     dashboard.newMultiTemplateVariable(
-                    name='instance', 
+                    name='instance',
                     query=k8sInstanceTemplateQuery,
-                    setenceCaseLabels=setenceCaseLabels) 
+                    setenceCaseLabels=setenceCaseLabels)
                 ]
             else []
         else
             [
                 dashboard.newTemplateVariable(
-                name='job', 
+                name='job',
                 query=jobTemplateQuery,
-                setenceCaseLabels=setenceCaseLabels),                
-            ] + 
+                setenceCaseLabels=setenceCaseLabels),
+            ] +
             if includeInstance then
                 [
                     dashboard.newMultiTemplateVariable(
-                    name='instance', 
+                    name='instance',
                     query=instanceTemplateQuery,
                     setenceCaseLabels=setenceCaseLabels)
                 ]

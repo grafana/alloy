@@ -4,10 +4,10 @@ local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-cluster-node.json';
 
 {
-  local templateVariables = 
+  local templateVariables =
     templates.newTemplateVariablesList(
-      filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      filterSelector=$._config.filterSelector,
+      enableK8sCluster=$._config.enableK8sCluster,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
@@ -48,7 +48,7 @@ local filename = 'alloy-cluster-node.json';
         panel.withQueries([
           panel.newNamedInstantQuery(
             expr= |||
-              sum(cluster_node_lamport_time{%(instanceSelector)s}) 
+              sum(cluster_node_lamport_time{%(instanceSelector)s})
             ||| % $._config,
             refId='Lamport clock time',
             format='table',
@@ -122,7 +122,7 @@ local filename = 'alloy-cluster-node.json';
         panel.withPosition({ x: 0, y: 9, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr= ||| 
+            expr= |||
               sum(cluster_node_peers{%(instanceSelector)s})
             ||| % $._config,
           ),
@@ -249,7 +249,7 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr= ||| 
+            expr= |||
               rate(cluster_transport_stream_rx_bytes_total{%(instanceSelector)s}[$__rate_interval])
             ||| % $._config,
             legendFormat='rx',
@@ -311,7 +311,7 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr= ||| 
+            expr= |||
               cluster_transport_streams{%(instanceSelector)s}
             ||| % $._config,
             legendFormat='Open streams'

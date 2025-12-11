@@ -15,7 +15,7 @@ import (
 
 func TestRelabelConfigApplication(t *testing.T) {
 	alloyArguments := `
-targets = [ 
+targets = [
 	{ "__meta_foo" = "foo", "__meta_bar" = "bar", "__address__" = "localhost", "instance" = "one",   "app" = "backend",  "__tmp_a" = "tmp" },
 	{ "__meta_foo" = "foo", "__meta_bar" = "bar", "__address__" = "localhost", "instance" = "two",   "app" = "db",       "__tmp_b" = "tmp" },
 	{ "__meta_baz" = "baz", "__meta_qux" = "qux", "__address__" = "localhost", "instance" = "three", "app" = "frontend", "__tmp_c" = "tmp" },
@@ -26,7 +26,7 @@ rule {
 	separator     = "/"
 	target_label  = "destination"
 	action        = "replace"
-} 
+}
 
 rule {
 	source_labels = ["app"]

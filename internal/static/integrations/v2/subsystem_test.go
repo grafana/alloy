@@ -26,7 +26,7 @@ func TestSubsystemOptions_Unmarshal(t *testing.T) {
 		{
 			name: "invalid integration",
 			in: `
-        invalidintegration: 
+        invalidintegration:
           autoscrape:
             enabled: true
       `,

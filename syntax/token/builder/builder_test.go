@@ -109,13 +109,13 @@ func TestBuilder_GoEncode(t *testing.T) {
 	expect := format(t, `
 		// Hello, world!
 		null_value = null
-	
+
 		num    = 15
 		string = "Hello, world!"
 		bool   = true
 		list   = [0, 1, 2]
 		func   = function
-		
+
 		capsule          = capsule("chan int")
 		mappable_capsule = {
 			address = "11a Sesame St",
@@ -204,7 +204,7 @@ func TestBuilder_AppendFrom(t *testing.T) {
 
 	expect := format(t, `
 		field = "some_value"
-	
+
 		block {
 			number = 1
 		}
@@ -250,7 +250,7 @@ func TestBuilder_AppendFrom_EnumSlice(t *testing.T) {
 
 	expect := format(t, `
 		field = "some_value"
-	
+
 		block.c {
 			number = 1
 		}
@@ -296,7 +296,7 @@ func TestBuilder_AppendFrom_EnumSlice_Pointer(t *testing.T) {
 
 	expect := format(t, `
 		field = "some_value"
-	
+
 		block.c {
 			number = 1
 		}
@@ -418,7 +418,7 @@ func TestBuilder_ValueOverrideHook(t *testing.T) {
 
 	expect := format(t, `
 		field = "some other value"
-	
+
 		block {
 			another_field = "some other value"
 		}

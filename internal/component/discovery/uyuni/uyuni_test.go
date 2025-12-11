@@ -24,7 +24,7 @@ func TestUnmarshal(t *testing.T) {
 		ca_file   = "/etc/ssl/certs/ca-certificates.crt"
 		cert_file = "/etc/ssl/certs/client.crt"
 		key_file  = "/etc/ssl/certs/client.key"
-	}	
+	}
 	`
 	var args Arguments
 	err := syntax.Unmarshal([]byte(cfg), &args)

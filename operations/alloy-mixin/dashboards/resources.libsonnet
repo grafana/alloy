@@ -28,10 +28,10 @@ local stackedPanelMixin = {
 };
 
 {
-  local templateVariables = 
+  local templateVariables =
     templates.newTemplateVariablesList(
-      filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      filterSelector=$._config.filterSelector,
+      enableK8sCluster=$._config.enableK8sCluster,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 

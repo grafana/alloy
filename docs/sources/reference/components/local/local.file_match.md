@@ -144,7 +144,7 @@ local.file_match "labeled_logs" {
     {
       "__path__"    = "/var/log/apache2/*.log",
       "__address__" = "localhost",
-      "instance"    = "web-server-01", 
+      "instance"    = "web-server-01",
       "job"         = "apache",
       "service"     = "web",
     },
@@ -153,7 +153,7 @@ local.file_match "labeled_logs" {
       "__path_exclude__" = "/var/log/nginx/*.gz",
       "__address__"    = "localhost",
       "instance"       = "web-server-01",
-      "job"            = "nginx", 
+      "job"            = "nginx",
       "service"        = "web",
     },
   ]

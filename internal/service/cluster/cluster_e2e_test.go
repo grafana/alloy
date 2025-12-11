@@ -80,7 +80,7 @@ func TestClusterE2E(t *testing.T) {
 			period = "500ms"
 			max_value = 30
 		}
-		
+
 		testcomponents.slow_update "test" {
 			counter = testcomponents.ticker.tick.counter
 			update_lag = "5s"

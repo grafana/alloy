@@ -384,7 +384,7 @@ The `sampler` block configures trace sampling settings. This block can be used i
 1. **Per-service sampling** - as a sub-block of `discovery` > `services` to configure sampling for individual discovered services
 1. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
 
-The following arguments are supported: 
+The following arguments are supported:
 
 | Name   | Type     | Description                               | Default | Required |
 |--------|----------|-------------------------------------------|---------|----------|
@@ -451,17 +451,17 @@ The `ebpf` block configures eBPF-specific settings.
 
 #### `context_propagation`
 
-`context_propagation` allows Beyla to propagate any incoming context to downstream services. 
+`context_propagation` allows Beyla to propagate any incoming context to downstream services.
 This context propagation support works for any programming language.
 
-For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level, 
+For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level,
 and requires that Beyla is present on both sides of the communication.
 
-The TCP/IP packet level encoding uses Linux Traffic Control (TC). 
-eBPF programs that also use TC need to chain correctly with Beyla. 
+The TCP/IP packet level encoding uses Linux Traffic Control (TC).
+eBPF programs that also use TC need to chain correctly with Beyla.
 For more information about chaining programs, refer to the [Cilium compatibility][cilium] documentation.
 
-You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`. 
+You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`.
 This context propagation support is fully compatible with any OpenTelemetry distributed tracing library.
 
 `context_propagation` can be set to either one of the following values:
@@ -561,18 +561,18 @@ The `metrics` block configures which metrics Beyla collects.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
 
-`extra_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
+`extra_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable
 on the service, that you want to include on the `target_info` metric.
 
-`extra_span_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
+`extra_span_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable
 on the service, that you want to include on the span metrics. The default list includes:
 
 * `k8s.cluster.name`
-* `k8s.namespace.name` 
+* `k8s.namespace.name`
 * `service.version`
 * `deployment.environment`
 
-The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in 
+The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in
 Grafana Cloud.
 
 #### `network` metrics
@@ -715,7 +715,7 @@ beyla.ebpf "default" {
 
   metrics {
     features = [
-     "application", 
+     "application",
     ]
   }
 }
@@ -754,7 +754,7 @@ beyla.ebpf "default" {
   }
   metrics {
     features = [
-     "application", 
+     "application",
     ]
   }
 }

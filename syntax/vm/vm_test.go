@@ -151,7 +151,7 @@ func TestVM_Evaluate(t *testing.T) {
 		{`{ a = 5, b = 10 }`, map[string]int{"a": 5, "b": 10}},
 		{
 			input: `{
-					name = "John Doe", 
+					name = "John Doe",
 					age = 42,
 			}`,
 			expect: struct {

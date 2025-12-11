@@ -2,7 +2,7 @@ MySQL explain json generated from the query:
 
 ```
 EXPLAIN FORMAT=JSON
-SELECT 
+SELECT
     YEAR(hire_date) as hire_year,
     COUNT(*) as total_hires,
     SUM(CASE WHEN gender = 'M' THEN 1 ELSE 0 END) as male_hires,
