@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -147,30 +148,87 @@ func BenchmarkPipelines(b *testing.B) {
 		{"relabel", newRelabelPipeline},
 	}
 
-	numberOfMetrics := []int{2, 10, 100, 1000}
-
+	// Simulate appending varying numbers of new metrics
+	numberOfMetrics := []int{10, 100, 1000}
 	for _, n := range numberOfMetrics {
 		for _, tt := range tests {
 			// Don't need care about the labelstore and destination for benchmarks
 			pipeline, _, _ := tt.pipelineBuilder(b, log.NewNopLogger())
 			b.Run(fmt.Sprintf("%s/%d-metrics", tt.name, n), func(b *testing.B) {
+				metrics := setupMetrics(n)
 				b.ReportAllocs()
 				b.ResetTimer()
 
 				for b.Loop() {
-					for i := 0; i < n; i++ {
-						sendMetric(
-							b,
-							pipeline.Appender(b.Context()),
-							labels.FromStrings(fmt.Sprintf("metric-%d", i), fmt.Sprintf("metric-%d", i)),
-							time.Now().Add(time.Minute).UnixMilli(),
-							float64(i),
-						)
+					a := pipeline.Appender(b.Context())
+					for i, metric := range metrics {
+						_, err := a.Append(0, metric, time.Now().Add(time.Minute).UnixMilli(), float64(i))
+						require.NoError(b, err)
 					}
+					require.NoError(b, a.Commit())
 				}
 			})
 		}
 	}
+
+	// Simulate concurrently appending from multiple scrapers for known metrics
+	concurrency := []int{10, 1000}
+	for _, c := range concurrency {
+		for _, tt := range tests {
+			pipeline, ls, _ := tt.pipelineBuilder(b, log.NewNopLogger())
+			b.Run(fmt.Sprintf("%s/%d-concurrency", tt.name, c), func(b *testing.B) {
+				var metricsForAppenders [][]labels.Labels
+				numMetrics := 1000
+				for appenderIndex := range c {
+					metrics := setupMetrics(numMetrics, fmt.Sprintf("concurrency-%d", appenderIndex))
+					// Seed them in to labelstore and make sure it's in order
+					for metricIndex, metric := range metrics {
+						ref := ls.GetOrAddGlobalRefID(metric)
+						expectedRef := uint64(appenderIndex*numMetrics + metricIndex + 1)
+						require.Equal(b, expectedRef, ref)
+					}
+					metricsForAppenders = append(metricsForAppenders, metrics)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+
+				for b.Loop() {
+					var wg sync.WaitGroup
+
+					for appenderIndex := 0; appenderIndex < c; appenderIndex++ {
+						wg.Add(1)
+						go func(appenderIndex int) {
+							defer wg.Done()
+
+							a := pipeline.Appender(b.Context())
+							for metricIndex, metric := range metricsForAppenders[appenderIndex] {
+								expectedRef := storage.SeriesRef(appenderIndex*numMetrics + metricIndex + 1)
+								_, err := a.Append(expectedRef, metric, time.Now().Add(time.Minute).UnixMilli(), float64(metricIndex))
+								require.NoError(b, err)
+							}
+							require.NoError(b, a.Commit())
+						}(appenderIndex)
+					}
+
+					wg.Wait()
+				}
+			})
+		}
+	}
+}
+
+func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
+	metrics := make([]labels.Labels, 0, numberOfMetrics)
+	for i := 0; i < numberOfMetrics; i++ {
+		key := fmt.Sprintf("metric-%d", i)
+		value := fmt.Sprintf("%d", i)
+		lbls := labels.FromStrings(key, value)
+		for _, extraLabel := range extraLabels {
+			lbls = labels.NewBuilder(lbls).Set(extraLabel, "value").Labels()
+		}
+		metrics = append(metrics, lbls)
+	}
+	return metrics
 }
 
 func newDefaultPipeline(t testing.TB, logger log.Logger) (storage.Appendable, labelstore.LabelStore, testappender.CollectingAppender) {
