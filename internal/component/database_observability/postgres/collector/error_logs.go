@@ -218,13 +218,13 @@ func (c *ErrorLogs) initMetrics() {
 		[]string{"severity", "database", "instance"},
 	)
 
-	// Single metric with sqlstate_category label
+	// Single metric with sqlstate_class and queryid labels
 	c.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "postgres_errors_by_sqlstate_total",
-			Help: "Errors by SQLSTATE code with category",
+			Name: "postgres_errors_by_sqlstate_queryid_total",
+			Help: "Errors by SQLSTATE code with category and query ID",
 		},
-		[]string{"sqlstate", "sqlstate_category", "severity", "database", "instance"},
+		[]string{"sqlstate", "sqlstate_class", "severity", "database", "queryid", "instance"},
 	)
 
 	c.constraintViolations = prometheus.NewCounterVec(
@@ -521,6 +521,7 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 			parsed.ErrorCategory,
 			parsed.ErrorSeverity,
 			parsed.DatabaseName,
+			fmt.Sprintf("%d", parsed.QueryID),
 			c.instanceKey,
 		).Inc()
 	}
@@ -584,7 +585,7 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	if parsed.SQLStateCode != "" {
 		logMessage += fmt.Sprintf(` sqlstate="%s"`, parsed.SQLStateCode)
 		if parsed.ErrorCategory != "" {
-			logMessage += fmt.Sprintf(` sqlstate_category="%s"`, parsed.ErrorCategory)
+			logMessage += fmt.Sprintf(` sqlstate_class="%s"`, parsed.ErrorCategory)
 		}
 	}
 
