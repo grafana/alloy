@@ -4,6 +4,7 @@ package metric
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -78,7 +79,7 @@ func NewCounters(name string, config *CounterConfig) (*Counters, error) {
 				Name:        name,
 				ConstLabels: labels,
 			}),
-				0,
+				atomic.Int64{},
 			}
 		}, int64(config.MaxIdle.Seconds())),
 		Cfg: config,
@@ -92,24 +93,24 @@ func (c *Counters) With(labels model.LabelSet) prometheus.Counter {
 
 type expiringCounter struct {
 	prometheus.Counter
-	lastModSec int64
+	lastModSec atomic.Int64
 }
 
 // Inc increments the counter by 1. Use Add to increment it by arbitrary
 // non-negative values.
 func (e *expiringCounter) Inc() {
 	e.Counter.Inc()
-	e.lastModSec = time.Now().Unix()
+	e.lastModSec.Store(time.Now().Unix())
 }
 
 // Add adds the given value to the counter. It panics if the value is <
 // 0.
 func (e *expiringCounter) Add(val float64) {
 	e.Counter.Add(val)
-	e.lastModSec = time.Now().Unix()
+	e.lastModSec.Store(time.Now().Unix())
 }
 
 // HasExpired implements Expirable
 func (e *expiringCounter) HasExpired(currentTimeSec int64, maxAgeSec int64) bool {
-	return currentTimeSec-e.lastModSec >= maxAgeSec
+	return currentTimeSec-e.lastModSec.Load() >= maxAgeSec
 }

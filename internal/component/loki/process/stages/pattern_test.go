@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -193,7 +194,7 @@ func TestPipeline_Pattern(t *testing.T) {
 			t.Parallel()
 
 			logger := util.TestAlloyLogger(t)
-			pl, err := NewPipeline(logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -209,7 +210,7 @@ func TestPipelineWithMissingKey_Pattern(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testPatternAlloySourceWithMissingKey), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testPatternAlloySourceWithMissingKey), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +451,7 @@ func TestPatternParser_Parse(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			logger := util.TestAlloyLogger(t)
-			p, err := New(logger, nil, StageConfig{PatternConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
+			p, err := New(logger, nil, StageConfig{PatternConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 			if err != nil {
 				t.Fatalf("failed to create pattern parser: %s", err)
 			}
@@ -477,7 +478,7 @@ func BenchmarkPatternStage(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			logger := util.TestAlloyLogger(b)
-			stage, err := New(logger, nil, StageConfig{PatternConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable)
+			stage, err := New(logger, nil, StageConfig{PatternConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 			if err != nil {
 				panic(err)
 			}

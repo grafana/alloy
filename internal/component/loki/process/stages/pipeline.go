@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 // StageConfig defines a single stage in a processing pipeline.
@@ -56,10 +57,10 @@ type Pipeline struct {
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
+func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability, ls labelstore.LabelStore) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, jobName, stage, registerer, minStability)
+		newStage, err := New(logger, jobName, stage, registerer, minStability, ls)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}

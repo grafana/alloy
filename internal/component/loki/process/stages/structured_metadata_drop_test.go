@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -108,7 +109,7 @@ func Test_StructuredMetadataDropStage(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(test.pipelineStagesYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(test.pipelineStagesYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 			require.NoError(t, err)
 
 			result := processEntries(pl, newEntry(nil, nil, "", time.Now()))[0]

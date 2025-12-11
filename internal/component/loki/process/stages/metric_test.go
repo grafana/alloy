@@ -2,6 +2,7 @@ package stages
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -10,10 +11,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util/testappender"
 )
 
 var testMetricAlloy = `
@@ -109,7 +113,7 @@ loki_process_custom_total_lines_count{test="app"} 2
 
 func TestMetricsPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testMetricAlloy), nil, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testMetricAlloy), nil, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +151,7 @@ stage.metrics {
 				action = "set"
 		}
 } `
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testConfig), nil, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testConfig), nil, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +171,7 @@ func TestPipelineWithMissingKey_Metrics(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testMetricAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testMetricAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +210,7 @@ loki_process_custom_loki_count 1
 
 func TestMetricsWithDropInPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testMetricWithDropAlloy), nil, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testMetricWithDropAlloy), nil, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +352,7 @@ loki_process_custom_payload_size_bytes_count{test="app"} 1
 	} {
 		t.Run(name, func(t *testing.T) {
 			registry := prometheus.NewRegistry()
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(tc.promtailConfig), nil, registry, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(tc.promtailConfig), nil, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 			require.NoError(t, err)
 			in := make(chan Entry)
 			out := pl.Run(in)
@@ -448,15 +452,15 @@ func TestMetricStage_Process(t *testing.T) {
 		}}}
 
 	registry := prometheus.NewRegistry()
-	jsonStage, err := New(log.NewNopLogger(), nil, jsonStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	jsonStage, err := New(log.NewNopLogger(), nil, jsonStageConfig, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
-	regexStage, err := New(log.NewNopLogger(), nil, regexStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	regexStage, err := New(log.NewNopLogger(), nil, regexStageConfig, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
-	metricStage, err := New(log.NewNopLogger(), nil, metricsStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	metricStage, err := New(log.NewNopLogger(), nil, metricsStageConfig, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
@@ -471,6 +475,175 @@ func TestMetricStage_Process(t *testing.T) {
 	if err := testutil.GatherAndCompare(registry,
 		strings.NewReader(goldenMetrics), names...); err != nil {
 		t.Fatalf("mismatch metrics: %v", err)
+	}
+}
+
+func TestMetricStage_ForwardTo(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	appender := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: appender}
+
+	metricsConfig := MetricsConfig{
+		Metrics: []MetricConfig{
+			{
+				Counter: &metric.CounterConfig{
+					Name:        "forwarded_counter",
+					Description: "verifying metadata forwarding",
+					Action:      metric.CounterInc,
+					MatchAll:    true,
+				},
+			},
+			{
+				Gauge: &metric.GaugeConfig{
+					Name:        "forwarded_gauge",
+					Description: "verifying gauge forwarding",
+					Action:      metric.GaugeSet,
+					Source:      "gauge",
+				},
+			},
+			{
+				Histogram: &metric.HistogramConfig{
+					Name:        "forwarded_histogram",
+					Description: "verifying histogram forwarding",
+					Source:      "latency",
+					Buckets:     []float64{1, 2, 5},
+				},
+			},
+		},
+		ForwardTo:            []storage.Appendable{appendable},
+		MetricsFlushInterval: 50 * time.Millisecond,
+	}
+
+	stageConfig := StageConfig{
+		MetricsConfig: &metricsConfig,
+	}
+
+	ls := labelstore.New(nil, registry)
+	jobName := "test-metrics-stage"
+
+	st, err := New(log.NewNopLogger(), &jobName, stageConfig, registry, featuregate.StabilityGenerallyAvailable, ls)
+	require.NoError(t, err)
+
+	in := make(chan Entry)
+	out := st.Run(in)
+
+	in <- newEntry(map[string]interface{}{"latency": "1.5", "gauge": "10"}, nil, `test log line`, time.Now())
+	close(in)
+
+	// Drain the output to ensure processing completes
+	for range out {
+	}
+
+	require.Eventually(t, func() bool {
+		return len(appender.CollectedSamples()) > 0
+	}, 2*time.Second, 10*time.Millisecond, "expected metrics to be flushed to the appender")
+
+	samples := appender.CollectedSamples()
+	metadata := appender.CollectedMetadata()
+
+	findSample := func(metricName string) (string, *testappender.MetricSample, bool) {
+		for k, s := range samples {
+			if s.Labels.Get("__name__") == metricName {
+				return k, s, true
+			}
+		}
+		return "", nil, false
+	}
+
+	// Check Counter Sample
+	counterName := "loki_process_custom_forwarded_counter"
+	key, sample, ok := findSample(counterName)
+	require.True(t, ok, "expected counter sample was not found")
+	require.Equal(t, 1.0, sample.Value)
+
+	md, ok := metadata[key]
+	require.True(t, ok, "expected metadata for metric %s", counterName)
+	require.Equal(t, "verifying metadata forwarding", md.Help)
+	require.Equal(t, model.MetricTypeCounter, md.Type)
+
+	// Check Gauge Sample
+	gaugeName := "loki_process_custom_forwarded_gauge"
+	key, sample, ok = findSample(gaugeName)
+	require.True(t, ok, "expected gauge sample was not found")
+	require.Equal(t, 10.0, sample.Value)
+
+	md, ok = metadata[key]
+	require.True(t, ok, "expected metadata for metric %s", gaugeName)
+	require.Equal(t, "verifying gauge forwarding", md.Help)
+	require.Equal(t, model.MetricTypeGauge, md.Type)
+
+	// Check Histogram Samples
+	histName := "loki_process_custom_forwarded_histogram"
+
+	// _bucket
+	_, _, ok = findSample(histName + "_bucket")
+	require.True(t, ok, "expected histogram bucket sample was not found")
+
+	// _sum
+	_, sample, ok = findSample(histName + "_sum")
+	require.True(t, ok, "expected histogram sum sample was not found")
+	require.Equal(t, 1.5, sample.Value)
+
+	// _count
+	_, sample, ok = findSample(histName + "_count")
+	require.True(t, ok, "expected histogram count sample was not found")
+	require.Equal(t, 1.0, sample.Value)
+
+	histogramMetadataKey := fmt.Sprintf("{__name__=\"%s\"}", histName)
+	md, ok = metadata[histogramMetadataKey]
+	require.True(t, ok, "expected metadata for metric %s", histName)
+	require.Equal(t, "verifying histogram forwarding", md.Help)
+	require.Equal(t, model.MetricTypeHistogram, md.Type)
+}
+
+func TestMetricStage_ForwardTo_NoRegistryExposure(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	appender := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: appender}
+
+	metricsConfig := MetricsConfig{
+		Metrics: []MetricConfig{
+			{
+				Counter: &metric.CounterConfig{
+					Name:        "forwarded_counter",
+					Description: "verifying metadata forwarding",
+					Action:      metric.CounterInc,
+					MatchAll:    true,
+				},
+			},
+		},
+		ForwardTo:            []storage.Appendable{appendable},
+		MetricsFlushInterval: 50 * time.Millisecond,
+	}
+
+	stageConfig := StageConfig{
+		MetricsConfig: &metricsConfig,
+	}
+
+	ls := labelstore.New(nil, registry)
+
+	st, err := New(log.NewNopLogger(), nil, stageConfig, registry, featuregate.StabilityGenerallyAvailable, ls)
+	require.NoError(t, err)
+
+	in := make(chan Entry)
+	out := st.Run(in)
+
+	in <- newEntry(nil, nil, "test log line", time.Now())
+	close(in)
+
+	// Drain the output
+	for range out {
+	}
+
+	// Verify that the registry does not contain the metric
+	mfs, err := registry.Gather()
+	require.NoError(t, err)
+	for _, mf := range mfs {
+		if mf.GetName() == "loki_process_custom_forwarded_counter" {
+			t.Fatal("metric should not be exposed to the registry")
+		}
 	}
 }
 

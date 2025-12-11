@@ -7,6 +7,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -56,7 +57,7 @@ func (args *CRIConfig) Validate() error {
 
 // NewDocker creates a predefined pipeline for parsing entries in the Docker
 // json log format.
-func NewDocker(logger log.Logger, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func NewDocker(logger log.Logger, registerer prometheus.Registerer, minStability featuregate.Stability, ls labelstore.LabelStore) (Stage, error) {
 	stages := []StageConfig{
 		{
 			JSONConfig: &JSONConfig{
@@ -84,7 +85,7 @@ func NewDocker(logger log.Logger, registerer prometheus.Registerer, minStability
 			},
 		},
 	}
-	return NewPipeline(logger, stages, nil, registerer, minStability)
+	return NewPipeline(logger, stages, nil, registerer, minStability, ls)
 }
 
 type cri struct {
@@ -170,7 +171,7 @@ func (c *cri) ensureTruncateIfRequired(e *Entry) {
 
 // NewCRI creates a predefined pipeline for parsing entries in the CRI log
 // format.
-func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registerer, minStability featuregate.Stability, ls labelstore.LabelStore) (Stage, error) {
 	base := []StageConfig{
 		{
 			RegexConfig: &RegexConfig{
@@ -195,7 +196,7 @@ func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registere
 		},
 	}
 
-	p, err := NewPipeline(logger, base, nil, registerer, minStability)
+	p, err := NewPipeline(logger, base, nil, registerer, minStability, ls)
 	if err != nil {
 		return nil, err
 	}

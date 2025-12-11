@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -434,7 +435,7 @@ func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_drop_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),

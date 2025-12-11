@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -113,7 +114,7 @@ func TestWindowsEvent(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental, labelstore.New(nil, prometheus.DefaultRegisterer))
 			require.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{
@@ -181,7 +182,7 @@ func TestWindowsEventArgs(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental, labelstore.New(nil, prometheus.DefaultRegisterer))
 			require.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{

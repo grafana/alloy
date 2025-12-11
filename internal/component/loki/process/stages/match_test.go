@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -68,7 +69,7 @@ func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_match_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +164,7 @@ func TestMatcher(t *testing.T) {
 				"",
 			}
 			logger := util.TestAlloyLogger(t)
-			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable, labelstore.New(nil, prometheus.DefaultRegisterer))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)
 				return
