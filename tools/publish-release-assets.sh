@@ -15,10 +15,14 @@ if [ -z "${RELEASE_TAG:-}" ]; then
   exit 1
 fi
 
+# Disable xtrace to avoid leaking GH_TOKEN in logs
+set +x
 if [ -z "${GH_TOKEN:-}" ]; then
   echo "Error: GH_TOKEN environment variable is required"
   exit 1
 fi
+# Re-enable xtrace
+set -x
 
 # Zip up all the binaries to reduce the download size. DEBs and RPMs
 # aren't included to be easier to work with.
