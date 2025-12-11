@@ -77,6 +77,8 @@ Main (unreleased)
 
 - Fix default values for relabel rules, this caused issues in e.g. `prometheus.operator.servicemonitors` when using labeldrop. (@kalleep)
 
+- Fix an issue in the `prometheus.exporter.gcp` component where colons inside `extra_filters` were incorrectly removed. Filter expressions such as `database_id="project_id:database_name"` are now preserved as expected. (@Kim-Yukyung)
+
 v1.12.0
 -----------------
 
