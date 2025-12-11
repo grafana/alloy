@@ -84,7 +84,7 @@ jobs:
           LABELS: ${{ steps.check.outputs.labels }}
         run: |
           cd tools
-          labels='${LABELS}'
+          labels="${LABELS}"
 
           for label in $(echo "$labels" | jq -r '.[]'); do
             echo "🍒 Processing backport for label: $label"
