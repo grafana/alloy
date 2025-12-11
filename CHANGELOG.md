@@ -51,6 +51,8 @@ Main (unreleased)
 
 - Updated Loki dependencies to v3.6.2. (@thampiotr)
 
+- Refactor tailer used in `loki.source.file` to reduce resource usage. (@kalleep)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
