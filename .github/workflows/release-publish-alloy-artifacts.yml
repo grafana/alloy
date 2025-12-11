@@ -1,4 +1,4 @@
-name: Publish alloy release containers
+name: Publish Alloy release artifacts
 on:
   release:
     types: [published]
