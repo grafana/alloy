@@ -105,14 +105,14 @@ func TestE2EOCB(t *testing.T) {
 			dependencyYaml := filepath.Join("testdata", tc.testdataDir, "dependency-replacements-test.yaml")
 			projectRoot := filepath.Join("testdata", tc.testdataDir)
 
-			originalGoMod, err := os.ReadFile(builderYamlPath)
+			originalYaml, err := os.ReadFile(builderYamlPath)
 			if err != nil {
 				t.Fatalf("Failed to read original builder yaml: %v", err)
 			}
 
 			// Restore the original builder yaml after the test
 			defer func() {
-				if err := os.WriteFile(builderYamlPath, originalGoMod, 0644); err != nil {
+				if err := os.WriteFile(builderYamlPath, originalYaml, 0644); err != nil {
 					t.Errorf("Failed to restore original builder yaml: %v", err)
 				}
 			}()
@@ -127,16 +127,16 @@ func TestE2EOCB(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read expected builder yaml: %v", err)
 			}
-			expectedGoMod := strings.TrimSpace(string(expectedContent))
+			expectedYaml := strings.TrimSpace(string(expectedContent))
 
 			actualContent, err := os.ReadFile(builderYamlPath)
 			if err != nil {
 				t.Fatalf("Failed to read actual builder yaml: %v", err)
 			}
-			actualGoMod := strings.TrimSpace(string(actualContent))
+			actualYaml := strings.TrimSpace(string(actualContent))
 
-			if actualGoMod != expectedGoMod {
-				t.Errorf("builder yaml content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedGoMod, actualGoMod)
+			if actualYaml != expectedYaml {
+				t.Errorf("builder yaml content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedYaml, actualYaml)
 			}
 		})
 	}
