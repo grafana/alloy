@@ -223,58 +223,91 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 
 	s.seenAttrs[a.Name.Name] = struct{}{}
 
-	switch v := a.Value.(type) {
+	var diags diag.Diagnostics
+
+	switch expr := a.Value.(type) {
+	case *ast.ArrayExpr:
+		fieldValue := reflectutil.GetOrAlloc(rv, tf)
+		diags.Merge(typecheckArrayExpr(a.Name.Name, expr, fieldValue))
 	case *ast.LiteralExpr:
-		return typecheckLiteralExpr(a, v, reflectutil.GetOrAlloc(rv, tf))
+		if d := typecheckLiteralExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+			diags.Add(*d)
+		}
 	default:
 		// ignore rest for now.
+	}
+
+	if diags != nil {
+		return diags
 	}
 
 	return nil
 }
 
-func typecheckLiteralExpr(a *ast.AttributeStmt, expr *ast.LiteralExpr, rv reflect.Value) diag.Diagnostics {
+func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics {
+	// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot.
+	rv.Set(reflect.MakeSlice(rv.Type(), 1, 1))
+	// Extract the expected item.
+	expected := reflectutil.DeferencePointer(rv.Index(0))
+
+	var diags diag.Diagnostics
+	for _, e := range expr.Elements {
+		switch expr := e.(type) {
+		case *ast.LiteralExpr:
+			if d := typecheckLiteralExpr(name, expr, expected); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.ArrayExpr:
+			diags.Merge(typecheckArrayExpr(name, expr, expected))
+		default:
+			// ignore rest for now.
+		}
+
+	}
+
+	if diags != nil {
+		return diags
+	}
+
+	return nil
+}
+
+func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnostic {
 	have, err := transform.ValueFromLiteral(expr.Value, expr.Kind)
 
 	// We don't expect to get error here because parser always produce valid tokens.
 	if err != nil {
-		return diag.Diagnostics{{
+		return &diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
-			StartPos: ast.StartPos(a).Position(),
-			EndPos:   ast.EndPos(a).Position(),
-			Message:  fmt.Sprintf("%q unexpected error %s", a.Name.Name, err),
-		}}
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("unexpected err: %s", err),
+		}
 	}
-
-	have.TryConvertToObject()
-	have.TryConvertToObject()
 
 	expected := value.AlloyType(rv.Type())
 	if expected == value.TypeCapsule {
 		ok, _ := value.TryCapsuleConvert(have, rv, expected)
-		// FIXME: We should probably unwrap the capsule type
+		// FIXME(kalleep): We should probably unwrap the capsule type.
 		if ok {
 			return nil
 		}
-	}
 
-	// FIXME: Check Values of arrays, maps etc...
+		return &diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("%q should be %s, got %s", name, expected, have.Type()),
+		}
+	}
 
 	if have.Type() != expected {
-		return diag.Diagnostics{{
+		return &diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
-			StartPos: ast.StartPos(a).Position(),
-			EndPos:   ast.EndPos(a).Position(),
-			Message:  fmt.Sprintf("%q should be %s, got %s", a.Name.Name, expected, have.Type()),
-		}}
-	}
-
-	// FIXME: typecheck items..
-	if have.Type() == value.TypeArray {
-	}
-
-	// FIXME: typecheck k v
-	if have.Type() == value.TypeObject {
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("%q should be %s, got %s", name, expected, have.Type()),
+		}
 	}
 
 	return nil
