@@ -47,6 +47,8 @@ Main (unreleased)
 
 - Reduced resource overhead of `prometheus.scrape`, `prometheus.relabel`, `prometheus.enrich`, and `prometheus.remote_write` by removing unnecessary usage of labelstore.LabelStore. (@kgeckhart)
 
+- Add a `virtual_node_peer_attributes` and `virtual_node_extra_label` arguments to `otelcol.connector.servicegraph`. (@hainenber, @ptodev)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:
