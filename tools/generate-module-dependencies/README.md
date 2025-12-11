@@ -8,7 +8,7 @@ A small utility to keep Go module replace directives consistent across the repos
 - Reads dependency definitions from the project-level `dependency-replacements.yaml`.
 - Renders the list of `replace` directives using a template.
 - Injects the rendered block into target files (e.g., `go.mod` or OCB builder config YAML files) between well-known markers.
-- Runs `go mod tidy` for affected modules.
+- Runs `go mod tidy` for affected modules with `file_type` of mod
 
 Generated blocks are wrapped with:
 ```
