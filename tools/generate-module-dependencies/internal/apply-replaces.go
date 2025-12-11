@@ -49,8 +49,10 @@ func getCommentMarker(fileType types.FileType) (string, error) {
 	switch fileType {
 	case types.FileTypeMod:
 		return "//", nil
+	case types.FileTypeOCB:
+		return "#", nil
 	default:
-		return "", fmt.Errorf("unknown file_type %q", fileType)
+		return "", fmt.Errorf("Unknown file_type %q (expected %q or %q)", fileType, types.FileTypeMod, types.FileTypeOCB)
 	}
 }
 
