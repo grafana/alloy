@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"strings"
 
 	prom_config "github.com/prometheus/prometheus/config"
 
@@ -57,9 +58,17 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 		return nil, diags
 	}
 
-	prettyByte, newDiags := common.PrettyPrint(buf.Bytes())
+	prettyByte, newDiags := common.PrettyPrint([]byte(fixFunctionUse(buf.String())))
 	diags.AddAll(newDiags)
 	return prettyByte, diags
+}
+
+// There is not a way to express a function call in a struct to encode back into Alloy config, so we need to fix it
+func fixFunctionUse(buf string) string {
+	return strings.ReplaceAll(buf,
+		`"\"spec.nodeName=\" + coalesce(sys.env(\"HOSTNAME\"), constants.hostname)"`,
+		`"spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)`,
+	)
 }
 
 // AppendAll analyzes the entire static config in memory and transforms it into

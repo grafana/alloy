@@ -10,4 +10,4 @@ kubectl create namespace mimir-test
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 # TODO: Upgrade to version 6 of Mimir's Helm chart.
-helm -n mimir-test install mimir grafana/mimir-distributed --version 5.8.0
+helm -n mimir-test install mimir grafana/mimir-distributed --version 5.8.0 --wait

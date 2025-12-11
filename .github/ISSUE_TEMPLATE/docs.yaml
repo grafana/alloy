@@ -97,6 +97,7 @@ body:
       - otelcol.exporter.datadog
       - otelcol.exporter.debug
       - otelcol.exporter.faro
+      - otelcol.exporter.file
       - otelcol.exporter.googlecloud
       - otelcol.exporter.googlecloudpubsub
       - otelcol.exporter.kafka
@@ -147,6 +148,7 @@ body:
       - otelcol.receiver.vcenter
       - otelcol.receiver.zipkin
       - otelcol.storage.file
+      - prometheus.echo
       - prometheus.enrich
       - prometheus.exporter.apache
       - prometheus.exporter.azure
