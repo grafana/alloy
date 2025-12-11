@@ -10,8 +10,12 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// Default metrics metadata
-var PromDefaultMetricMetadata = map[string]Metadata{
+// Default metrics metadata that the prometheus.write_queue component creates in Mimir.
+// For some reason it causes _bucket, _count, and _sum metrics to be visible on Mimir's /metadata endpoint.
+// This is not normal. When Prometheus or Alloy's prometheus.remote_write components send metrics to Mimir,
+// only the metric family is visible on Mimir's /metadata endpoint.
+// TODO: Look into why the write_queue components causes Mimir to behave this way.
+var WriteQueueDefaultMetricMetadata = map[string]Metadata{
 	"golang_counter":                {Type: "counter", Help: "The counter description string"},
 	"golang_gauge":                  {Type: "gauge", Help: "The gauge description string"},
 	"golang_histogram_bucket":       {Type: "histogram", Help: "The histogram description string"},
@@ -23,11 +27,8 @@ var PromDefaultMetricMetadata = map[string]Metadata{
 	"golang_summary":                {Type: "summary", Help: "The summary description string"},
 }
 
-// Default metrics metadata for OTLP generated metrics.
-// When you send metrics to Mimir's OTLP endpoint,
-// Mimir doesn't generate metadata for
-// _bucket, _count, and _sum metrics of classic histograms.
-var OtlpDefaultMetricMetadata = map[string]Metadata{
+// Default metrics metadata that the prometheus.remote_write and otelcol.exporter.otlphttp components create in Mimir.
+var PromDefaultMetricMetadata = map[string]Metadata{
 	"golang_counter":         {Type: "counter", Help: "The counter description string"},
 	"golang_gauge":           {Type: "gauge", Help: "The gauge description string"},
 	"golang_histogram":       {Type: "histogram", Help: "The histogram description string"},

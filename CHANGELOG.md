@@ -53,6 +53,9 @@ Main (unreleased)
 
 - Refactor tailer used in `loki.source.file` to reduce resource usage. (@kalleep)
 
+- `prometheus.remote_write` now sends metadata if it is configured for Remote Write v2 
+  and if `prometheus.scrape` is configured with `honor_metadata = true`. (@ptodev, @kgeckhart)
+
 ### Bugfixes
 
 - (_Public Preview_) Additions to `database_observability.postgres` component:

@@ -24,6 +24,8 @@ import (
 
 // A Controller is a testing controller which controls a single component.
 type Controller struct {
+	PromRegistry prometheus.Registerer
+
 	reg component.Registration
 	log log.Logger
 
@@ -58,6 +60,8 @@ func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller 
 	}
 
 	return &Controller{
+		PromRegistry: prometheus.NewRegistry(),
+
 		reg: reg,
 		log: l,
 
@@ -176,7 +180,7 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 		Tracer:        noop.NewTracerProvider(),
 		DataPath:      dataPath,
 		OnStateChange: c.onStateChange,
-		Registerer:    prometheus.NewRegistry(),
+		Registerer:    c.PromRegistry,
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
 			case labelstore.ServiceName:
