@@ -10,7 +10,7 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-- Add DNS SD URLs support for `--cluster.join-addresses` flag. (@x1unix)
+- Support specifying DNS discovery mode prefixes in `--cluster.join-addresses` flag. (@x1unix)
 
 ### Features
 
