@@ -75,12 +75,14 @@ type File struct {
 // It blocks until a line is available, file is closed or unrecoverable error occurs.
 // If file was closed context.Canceled is returned.
 func (f *File) Next() (*Line, error) {
+	select {
+	case <-f.ctx.Done():
+		return nil, f.ctx.Err()
+	default:
+	}
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
-
-	if f.ctx.Err() != nil {
-		return nil, f.ctx.Err()
-	}
 
 read:
 	text, err := f.readLine()
