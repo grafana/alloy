@@ -55,7 +55,8 @@ func TestAlloyUnmarshal(t *testing.T) {
 
 	require.NoError(t, err)
 	expected := Arguments{
-		Text: promtext,
+		Text:                       promtext,
+		MetricNameValidationScheme: "legacy",
 	}
 	require.Equal(t, expected, args)
 }
@@ -75,4 +76,54 @@ http_requests_total{method="post",code="200"} 1027 1395066363000 123
 	var invalidArgs Arguments
 	err = syntax.Unmarshal([]byte(invalidAlloyConfig), &invalidArgs)
 	require.Error(t, err)
+}
+
+func TestValidationScheme(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      string
+		expectError bool
+	}{
+		{
+			name: "default legacy validation",
+			config: `text = ` + "`" + promtext + "`",
+			expectError: false,
+		},
+		{
+			name: "explicit legacy validation",
+			config: `
+				text = ` + "`" + promtext + "`" + `
+				metric_name_validation_scheme = "legacy"
+			`,
+			expectError: false,
+		},
+		{
+			name: "utf8 validation",
+			config: `
+				text = ` + "`" + promtext + "`" + `
+				metric_name_validation_scheme = "utf8"
+			`,
+			expectError: false,
+		},
+		{
+			name: "invalid validation scheme",
+			config: `
+				text = ` + "`" + promtext + "`" + `
+				metric_name_validation_scheme = "invalid"
+			`,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.config), &args)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

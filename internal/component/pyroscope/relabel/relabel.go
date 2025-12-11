@@ -124,7 +124,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	newRCS := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	newRCS := alloy_relabel.ComponentToPromRelabelConfigsLegacy(newArgs.RelabelConfigs)
 
 	// If relabeling rules changed, purge the cache
 	if relabelingChanged(c.rcs, newRCS) {

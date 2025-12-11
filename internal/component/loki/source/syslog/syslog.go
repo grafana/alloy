@@ -154,7 +154,7 @@ func (c *Component) reloadTargets() {
 	c.mut.RLock()
 	var rcs []*relabel.Config
 	if len(c.args.RelabelRules) > 0 {
-		rcs = alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigsLegacy(c.args.RelabelRules)
 	}
 	targetsToStop := make([]*st.SyslogTarget, len(c.targets))
 	copy(targetsToStop, c.targets)

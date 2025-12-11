@@ -199,9 +199,9 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 	c.mut.RLock()
 	var targetToStop *target.JournalTarget
 	if c.t != nil {
-		targetToStop = c.t
-	}
-	rcs := alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
+	targetToStop = c.t
+}
+rcs := alloy_relabel.ComponentToPromRelabelConfigsLegacy(c.args.RelabelRules)
 	c.mut.RUnlock()
 
 	// Stop existing target

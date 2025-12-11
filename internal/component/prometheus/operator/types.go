@@ -52,14 +52,21 @@ type ScrapeOptions struct {
 
 	// ScrapeNativeHistograms enables scraping of Prometheus native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+
+	// MetricNameValidationScheme controls how metric names are validated.
+	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
 	cfg := promconfig.DefaultGlobalConfig
 	cfg.ScrapeInterval = model.Duration(s.DefaultScrapeInterval)
 	cfg.ScrapeTimeout = model.Duration(s.DefaultScrapeTimeout)
-	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
-	cfg.MetricNameValidationScheme = model.LegacyValidation
+
+	validationScheme := model.LegacyValidation
+	if s.MetricNameValidationScheme == model.UTF8Validation.String() {
+		validationScheme = model.UTF8Validation
+	}
+	cfg.MetricNameValidationScheme = validationScheme
 	cfg.MetricNameEscapingScheme = model.EscapeUnderscores
 	return cfg
 }
@@ -85,6 +92,17 @@ func (args *Arguments) Validate() error {
 	if args.KubernetesRole != string(promk8s.RoleEndpointSlice) && args.KubernetesRole != string(promk8s.RoleEndpoint) {
 		return fmt.Errorf("only endpoints and endpointslice are supported")
 	}
+
+	if args.Scrape.MetricNameValidationScheme == "" {
+		args.Scrape.MetricNameValidationScheme = model.LegacyValidation.String()
+	}
+
+	if args.Scrape.MetricNameValidationScheme != model.LegacyValidation.String() &&
+		args.Scrape.MetricNameValidationScheme != model.UTF8Validation.String() {
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q",
+			args.Scrape.MetricNameValidationScheme, model.LegacyValidation.String(), model.UTF8Validation.String())
+	}
+
 	return nil
 }
 

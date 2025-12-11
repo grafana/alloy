@@ -171,7 +171,6 @@ func (rc *Config) Validate() error {
 	if (rc.Action == Replace || rc.Action == HashMod || rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && rc.TargetLabel == "" {
 		return fmt.Errorf("relabel configuration for %s action requires 'target_label' value", rc.Action)
 	}
-	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if rc.Action == Replace && !strings.Contains(rc.TargetLabel, "$") && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
@@ -179,7 +178,6 @@ func (rc *Config) Validate() error {
 	if rc.Action == Replace && strings.Contains(rc.TargetLabel, "$") && !relabelTarget.MatchString(rc.TargetLabel) {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
-	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
@@ -190,7 +188,6 @@ func (rc *Config) Validate() error {
 	if rc.Action == LabelMap && !relabelTarget.MatchString(rc.Replacement) {
 		return fmt.Errorf("%q is invalid 'replacement' for %s action", rc.Replacement, rc.Action)
 	}
-	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if rc.Action == HashMod && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
@@ -267,7 +264,6 @@ func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
 			break
 		}
 		target := model.LabelName(cfg.Regex.ExpandString([]byte{}, cfg.TargetLabel, val, indexes))
-		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !target.IsValid() {
 			break
@@ -315,7 +311,14 @@ func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
 
 // ComponentToPromRelabelConfigs bridges the Component-based configuration of
 // relabeling steps to the Prometheus implementation.
-func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
+// The validationScheme parameter specifies the validation scheme to use for metric names.
+// If empty, defaults to LegacyValidation.
+func ComponentToPromRelabelConfigs(rcs []*Config, validationScheme string) []*relabel.Config {
+	scheme := model.LegacyValidation
+	if validationScheme == model.UTF8Validation.String() {
+		scheme = model.UTF8Validation
+	}
+
 	res := make([]*relabel.Config, len(rcs))
 	for i, rc := range rcs {
 		var sourceLabels []model.LabelName
@@ -334,11 +337,17 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 			Replacement:          rc.Replacement,
 			Action:               relabel.Action(rc.Action),
 			Regex:                relabel.Regexp{Regexp: rc.Regex.Regexp},
-			NameValidationScheme: model.LegacyValidation,
+			NameValidationScheme: scheme,
 		}
 	}
 
 	return res
+}
+
+// ComponentToPromRelabelConfigsLegacy is a backward-compatible wrapper that uses
+// LegacyValidation scheme by default.
+func ComponentToPromRelabelConfigsLegacy(rcs []*Config) []*relabel.Config {
+	return ComponentToPromRelabelConfigs(rcs, model.LegacyValidation.String())
 }
 
 // Rules returns the relabel configs in use for a relabeling component.

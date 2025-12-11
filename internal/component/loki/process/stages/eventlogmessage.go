@@ -20,7 +20,6 @@ type EventLogMessageConfig struct {
 }
 
 func (e *EventLogMessageConfig) Validate() error {
-	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if !model.LabelName(e.Source).IsValidLegacy() {
 		return fmt.Errorf(ErrInvalidLabelName, e.Source)
@@ -83,7 +82,6 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 			continue
 		}
 		mkey := parts[0]
-		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(mkey).IsValidLegacy() {
 			if m.cfg.DropInvalidLabels {

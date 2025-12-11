@@ -217,7 +217,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.defaultLabels = defaultLabels
 
 	if len(newArgs.RelabelRules) > 0 {
-		c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		c.rcs = alloy_relabel.ComponentToPromRelabelConfigsLegacy(newArgs.RelabelRules)
 	} else {
 		c.rcs = []*relabel.Config{}
 	}

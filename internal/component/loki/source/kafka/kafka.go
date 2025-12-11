@@ -189,9 +189,9 @@ func (args *Arguments) Convert() kt.Config {
 			Topics:               args.Topics,
 			Version:              args.Version,
 			Assignor:             args.Assignor,
-			Authentication:       args.Authentication.Convert(),
-		},
-		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(args.RelabelRules),
+		Authentication:       args.Authentication.Convert(),
+	},
+	RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigsLegacy(args.RelabelRules),
 	}
 }
 

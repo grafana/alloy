@@ -25,11 +25,17 @@ prometheus.exporter.static "<LABEL>" {
 
 ## Arguments
 
-You can use the following argument with `prometheus.exporter.static`:
+You can use the following arguments with `prometheus.exporter.static`:
 
-| Name   | Type     | Description                           | Default | Required |
-| ------ | -------- | ------------------------------------- | ------- | -------- |
-| `text` | `string` | Text in Prometheus exposition format. | `""`    | no       |
+| Name                           | Type     | Description                                                    | Default    | Required |
+| ------------------------------ | -------- | -------------------------------------------------------------- | ---------- | -------- |
+| `text`                         | `string` | Text in Prometheus exposition format.                          | `""`       | no       |
+| `metric_name_validation_scheme` | `string` | The validation scheme to use for metric names. See below for available values. | `"legacy"` | no       |
+
+The `metric_name_validation_scheme` controls how metric names are validated. The following values are supported:
+
+* `"legacy"` - Uses legacy validation scheme which was default in Prometheus v2 (default).
+* `"utf8"` - Uses UTF-8 validation scheme.
 
 ## Exported fields
 

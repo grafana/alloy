@@ -164,7 +164,7 @@ func (a *Arguments) Convert() (kt.Config, error) {
 	}
 
 	cfg := kt.Config{
-		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(a.RelabelRules),
+		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigsLegacy(a.RelabelRules),
 		KafkaConfig: kt.TargetConfig{
 			Brokers:              []string{a.FullyQualifiedNamespace},
 			Topics:               a.EventHubs,

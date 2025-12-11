@@ -120,12 +120,11 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interfa
 		if i != 0 && name != "" {
 			extracted[name] = match[i]
 			if r.config.LabelsFromGroups {
-				labelName := model.LabelName(name)
-				labelValue := model.LabelValue(match[i])
+			labelName := model.LabelName(name)
+			labelValue := model.LabelValue(match[i])
 
-				// TODO: add support for different validation schemes.
-				//nolint:staticcheck
-				if !labelName.IsValid() {
+			//nolint:staticcheck
+			if !labelName.IsValid() {
 					if Debug {
 						level.Debug(r.logger).Log("msg", "invalid label name from regex capture group", "labelName", labelName)
 					}

@@ -22,7 +22,6 @@ type WindowsEventConfig struct {
 }
 
 func (e *WindowsEventConfig) Validate() error {
-	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if !model.LabelName(e.Source).IsValid() {
 		return fmt.Errorf(ErrInvalidLabelName, e.Source)
@@ -167,7 +166,6 @@ func (w *WindowsEventStage) processEntry(extracted map[string]interface{}, key s
 
 func (w *WindowsEventStage) sanitizeKey(ekey string, extracted map[string]interface{}) (string, error) {
 	k := w.keyReplacer.Replace(ekey)
-	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if !model.LabelName(k).IsValid() {
 		if w.cfg.DropInvalidLabels {

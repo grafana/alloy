@@ -868,7 +868,7 @@ func TestComponentToPromRelabelConfigs(t *testing.T) {
 	var cfg Config
 	require.NoError(t, syntax.Unmarshal([]byte(rule), &cfg))
 
-	converted := ComponentToPromRelabelConfigs([]*Config{&cfg})
+	converted := ComponentToPromRelabelConfigsLegacy([]*Config{&cfg})
 	for _, r := range converted {
 		require.NoError(t, r.Validate(model.LegacyValidation))
 	}

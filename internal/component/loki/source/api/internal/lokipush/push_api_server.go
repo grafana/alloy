@@ -173,7 +173,7 @@ func (s *PushAPIServer) getKeepTimestamp() bool {
 func (s *PushAPIServer) SetRelabelRules(rules frelabel.Rules) {
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
-	s.relabelRules = frelabel.ComponentToPromRelabelConfigs(rules)
+	s.relabelRules = frelabel.ComponentToPromRelabelConfigsLegacy(rules)
 }
 
 func (s *PushAPIServer) getRelabelRules() []*relabel.Config {

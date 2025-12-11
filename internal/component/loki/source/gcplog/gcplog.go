@@ -122,7 +122,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if len(newArgs.RelabelRules) > 0 {
-		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigsLegacy(newArgs.RelabelRules)
 	}
 
 	if c.target != nil {

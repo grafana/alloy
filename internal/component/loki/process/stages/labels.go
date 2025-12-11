@@ -30,7 +30,6 @@ func validateLabelsConfig(c map[string]*string) (map[string]string, error) {
 		return nil, errors.New(ErrEmptyLabelStageConfig)
 	}
 	for labelName, labelSrc := range c {
-		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
 			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)

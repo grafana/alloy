@@ -239,7 +239,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 	c.clearCache(newArgs.CacheSize)
-	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
+	c.mrc = alloy_relabel.ComponentToPromRelabelConfigsLegacy(newArgs.MetricRelabelConfigs)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.MetricRelabelConfigs})

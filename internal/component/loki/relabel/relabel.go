@@ -165,7 +165,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	newRCS := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	newRCS := alloy_relabel.ComponentToPromRelabelConfigsLegacy(newArgs.RelabelConfigs)
 	if relabelingChanged(c.rcs, newRCS) {
 		level.Debug(c.opts.Logger).Log("msg", "received new relabel configs, purging cache")
 		c.cache.Purge()

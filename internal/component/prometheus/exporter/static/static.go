@@ -36,10 +36,13 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 }
 
 type Arguments struct {
-	Text string `alloy:"text,attr"`
+	Text                       string `alloy:"text,attr"`
+	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
 }
 
-var DefaultArguments = Arguments{}
+var DefaultArguments = Arguments{
+	MetricNameValidationScheme: model.LegacyValidation.String(),
+}
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
@@ -48,8 +51,18 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
-	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
-	p := expfmt.NewTextParser(model.LegacyValidation)
+	validationScheme := model.LegacyValidation
+	switch a.MetricNameValidationScheme {
+	case model.LegacyValidation.String():
+		validationScheme = model.LegacyValidation
+	case model.UTF8Validation.String():
+		validationScheme = model.UTF8Validation
+	default:
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", 
+			a.MetricNameValidationScheme, model.LegacyValidation.String(), model.UTF8Validation.String())
+	}
+
+	p := expfmt.NewTextParser(validationScheme)
 	_, err := p.TextToMetricFamilies(strings.NewReader(a.Text))
 	if err != nil {
 		return fmt.Errorf("failed to parse prom text: %w", err)
@@ -58,13 +71,17 @@ func (a *Arguments) Validate() error {
 }
 
 func (a *Arguments) Convert() *Config {
-	return &Config{a.Text}
+	return &Config{
+		text:             a.Text,
+		validationScheme: a.MetricNameValidationScheme,
+	}
 }
 
 var _ integrations.Config = (*Config)(nil)
 
 type Config struct {
-	text string
+	text             string
+	validationScheme string
 }
 
 func (c *Config) InstanceKey(key string) (string, error) {
@@ -85,8 +102,12 @@ type Integration struct {
 }
 
 func (i *Integration) MetricsHandler() (http.Handler, error) {
-	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
-	p := expfmt.NewTextParser(model.LegacyValidation)
+	validationScheme := model.LegacyValidation
+	if i.cfg.validationScheme == model.UTF8Validation.String() {
+		validationScheme = model.UTF8Validation
+	}
+
+	p := expfmt.NewTextParser(validationScheme)
 	mf, err := p.TextToMetricFamilies(strings.NewReader(i.cfg.text))
 	// This should not happen because we have already validated that it is possible to parse it.
 	if err != nil {

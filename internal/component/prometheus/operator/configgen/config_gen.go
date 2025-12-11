@@ -270,7 +270,7 @@ func (cg *ConfigGenerator) initRelabelings() relabeler {
 	r := relabeler{}
 	// first add any relabelings from the component config
 	if len(cg.AdditionalRelabelConfigs) > 0 {
-		for _, c := range alloy_relabel.ComponentToPromRelabelConfigs(cg.AdditionalRelabelConfigs) {
+		for _, c := range alloy_relabel.ComponentToPromRelabelConfigsLegacy(cg.AdditionalRelabelConfigs) {
 			r.add(c)
 		}
 	}

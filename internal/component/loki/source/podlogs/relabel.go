@@ -36,13 +36,12 @@ func convertRelabelConfig(in []*promv1.RelabelConfig) ([]*relabel.Config, error)
 			outRule.Replacement = *inRule.Replacement
 		}
 		if inRule.Action != "" {
-			outRule.Action = relabel.Action(strings.ToLower(inRule.Action))
-		}
+		outRule.Action = relabel.Action(strings.ToLower(inRule.Action))
+	}
 
-		// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
-		outRule.NameValidationScheme = model.LegacyValidation
+	outRule.NameValidationScheme = model.LegacyValidation
 
-		res = append(res, &outRule)
+	res = append(res, &outRule)
 	}
 
 	return res, nil

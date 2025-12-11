@@ -194,7 +194,6 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 		}
 
 		// ignore invalid labels
-		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
 			return
@@ -322,7 +321,6 @@ func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID st
 		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
 		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
 		labelName := model.LabelName(rawLabelName)
-		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !labelName.IsValidLegacy() {
 			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
@@ -330,7 +328,6 @@ func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID st
 			// try to sanitize label name
 			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
 			labelName = model.LabelName(sanitizedLabelName)
-			// TODO: add support for different validation schemes.
 			//nolint:staticcheck
 			if !labelName.IsValidLegacy() {
 				// This situation can happen when:
