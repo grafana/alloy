@@ -12,7 +12,7 @@ import (
 type Args struct {
 	Arg1       string            `alloy:"arg1,attr,optional"`
 	Arg2       string            `alloy:"arg2,attr"`
-	Capsure    alloytypes.Secret `alloy:"capsule,attr,optional"`
+	Capsule    alloytypes.Secret `alloy:"capsule,attr,optional"`
 	Block1     Block1            `alloy:"block1,block"`
 	Block2     []Block1          `alloy:"block2,block,optional"`
 	Block3     [2]Block1         `alloy:"block3,block,optional"`
@@ -307,6 +307,8 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 					arr = ["test", 1]
 					obj = { "key" = 1 }
+					capsule = 1
+
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -326,6 +328,7 @@ func TestBlock(t *testing.T) {
 				`3:13: "arg1" should be string, got bool`,
 				`6:21: "arr" should be string, got number`,
 				`7:22: "obj" should be string, got number`,
+				`8:16: "capsule" should be capsule, got number`,
 			},
 		},
 	}

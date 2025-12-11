@@ -246,6 +246,11 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 }
 
 func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics {
+	// If expected value can be of any type we don't have to check further.
+	if rv.Kind() == reflect.Interface {
+		return nil
+	}
+
 	// Check if the expected type is actually a slice or array before trying to make a slice
 	if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
 		expectedType := value.AlloyType(rv.Type())
@@ -261,6 +266,11 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 	rv.Set(reflect.MakeSlice(rv.Type(), 1, 1))
 	// Extract the expected item.
 	expected := reflectutil.DeferencePointer(rv.Index(0))
+
+	// If elements of array can be any type we don't have to check further.
+	if expected.Kind() == reflect.Interface {
+		return nil
+	}
 
 	var diags diag.Diagnostics
 	for _, e := range expr.Elements {
@@ -284,6 +294,11 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 }
 
 func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+	// If expected value can be of any type we don't have to check further.
+	if rv.Kind() == reflect.Interface {
+		return nil
+	}
+
 	// Check if the expected type is actually a map before trying to get its element type
 	if rv.Kind() != reflect.Map {
 		expectedType := value.AlloyType(rv.Type())
@@ -296,6 +311,11 @@ func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.D
 	}
 
 	expected := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
+
+	// If values of map can be any type we don't have to check further.
+	if expected.Kind() == reflect.Interface {
+		return nil
+	}
 
 	var diags diag.Diagnostics
 	for _, f := range expr.Fields {
@@ -321,6 +341,11 @@ func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.D
 }
 
 func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnostic {
+	// If value can be any type we don't have to check further.
+	if rv.Kind() == reflect.Interface {
+		return nil
+	}
+
 	have, err := transform.ValueFromLiteral(expr.Value, expr.Kind)
 
 	// We don't expect to get error here because parser always produce valid tokens.
