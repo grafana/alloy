@@ -58,6 +58,8 @@ With these practices you should be able to directly get the information you need
 
 When there is no specific tool, you can use these command snippets that are tried and tested to work well. Note that you may need to adapt them to your specific use case.
 
+#### GitHub API snippets
+
 - Find changes between two GitHub releases: `gh api repos/<owner>/<repo>/compare/<from>...<to> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
 - List changes in a fork branch compared to upstream base: `gh api repos/<owner>/<repo>/compare/<base_ref>...<fork_owner>:<fork_branch> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
 - Find PR details by number: `gh pr view <number> -R <owner>/<repo> --json title,body,url`
@@ -66,7 +68,25 @@ When there is no specific tool, you can use these command snippets that are trie
 - Find issue details by number: `gh issue view <number> -R <owner>/<repo> --json number,title,state,body,url,createdAt,closedAt`
 - Search for issues mentioning an error or keyword: `gh issue list -R <owner>/<repo> -S "<search terms>" -L 10`
 - Find commit details by SHA: `gh api repos/<owner>/<repo>/commits/<sha> --jq '{sha: .sha, author: .commit.author, date: .commit.author.date, message: .commit.message}'`
+
+#### Go module dependency snippets
+
 - View the `go.mod` file for a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && cat go.mod`
+- Convert a commit SHA to a proper go.mod version: Add a temporary replace like `replace <module> => <module> <commit-sha>` to go.mod, then run `go mod tidy` which will automatically fix the SHA to the correct version number
+- Download and compare a specific file between two module versions: `go mod download <module>@<old-version> <module>@<new-version> && diff -u "$(go env GOMODCACHE)/<module>@<old-version>/<file-path>" "$(go env GOMODCACHE)/<module>@<new-version>/<file-path>"`
+- Download and compare entire module directories between versions: `go mod download <module>@<old-version> <module>@<new-version> && diff -ur "$(go env GOMODCACHE)/<module>@<old-version>" "$(go env GOMODCACHE)/<module>@<new-version>" | head -200`
+
+#### Fork investigation snippets
+
+To determine if a fork is still needed, use these commands in sequence:
+
+1. Get fork commit message (may reference upstream issues/PRs): `gh api repos/grafana/<repo-name>/commits/<branch-or-sha> --jq '.commit.message'`
+2. Get fork PR description if commit was part of a PR: `gh api repos/grafana/<repo-name>/commits/<branch-or-sha>/pulls --jq '.[0] | .number, .title, .body'`
+3. Check upstream issue/PR status (extract numbers from step 1-2): `gh issue view <number> -R <upstream-org>/<repo-name> --json state,title,closedAt` or `gh pr view <number> -R <upstream-org>/<repo-name> --json state,title,mergedAt`
+4. Get list of files changed in fork: `gh api repos/grafana/<repo-name>/commits/<branch-or-sha> --jq '.files[] | .filename'`
+5. Compare those files between old and new upstream versions: `diff -u "$(go env GOMODCACHE)/<upstream-module>@<old-version>/<file-path>" "$(go env GOMODCACHE)/<upstream-module>@<new-version>/<file-path>"`
+6. Search recent commits in paths the fork modified: `gh api 'repos/<upstream-org>/<repo-name>/commits?path=<relevant-path>&sha=main' --jq '.[0:15] | .[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.message|split("\n")[0])"'`
+7. Search PRs with keywords from fork purpose: `gh pr list -R <upstream-org>/<repo-name> -S "<keywords>" --state merged -L 10`
 
 ## Key Dependency Relationships
 
@@ -266,87 +286,3 @@ Consider this step successful if all the tests pass and there were no big change
 If the tests pass, but we had to change the test expectations in a meaningful way that will impact end users, explain what is the breaking change.
 
 If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on. Provide description of what you think is failing and how does it relate to our dependency updates.
-
-### Tools
-
-#### Using a specific commit for a go.mod dependency
-
-Suppose you want to use `9cc36524215aaa92192ac3faf5c316a6b563818a` commit for `github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter`. It's hard to figure out the version name to use, so follow the following steps:
-
-Add a temporary replace:
-
-```go.mod
-replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter => github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter 9cc36524215aaa92192ac3faf5c316a6b563818a
-```
-
-Run `go mod tidy` and it will fix the raw commit sha with the correct version number corresponding to the commit you want!
-
-TODO: Write this as a Go tool as explained in `docs/developer/key-deps-update/README.md`.
-
-#### Inspecting upstream code changes between versions
-
-When dependencies introduce new features or breaking changes, you can inspect the changes directly without cloning repositories:
-
-```bash
-old=v0.138.0
-new=v0.139.0
-module=github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter
-go mod download ${module}@${old} ${module}@${new}
-
-# Inspect specific files (e.g., config structs, factory code, interfaces)
-diff -u \
-  "$(go env GOMODCACHE)/${module}@${old}/config.go" \
-  "$(go env GOMODCACHE)/${module}@${new}/config.go"
-
-# Or compare entire directories to spot new files or removed code
-diff -ur \
-  "$(go env GOMODCACHE)/${module}@${old}" \
-  "$(go env GOMODCACHE)/${module}@${new}" | head -200
-```
-
-TODO: Write this as a Go tool as explained in `docs/developer/key-deps-update/README.md`.
-
-#### Checking if a fork is still needed
-
-To determine if a fork can be removed, follow this investigation pattern:
-
-**1. Understand what the fork changes and check for upstream references:**
-
-```bash
-# Get fork commit message (may reference upstream issues/PRs)
-gh api repos/grafana/repo-name/commits/branch-or-sha --jq '.commit.message'
-
-# Get fork PR description if the commit was part of a PR
-gh api repos/grafana/repo-name/commits/branch-or-sha/pulls --jq '.[0] | .number, .title, .body'
-
-# Extract issue/PR numbers if present (look for #1234 or full URLs)
-# Then check their status:
-gh issue view 1234 -R upstream-org/repo-name --json state,title,closedAt
-gh pr view 5678 -R upstream-org/repo-name --json state,title,mergedAt
-```
-
-**2. Compare the files the fork modified with latest upstream:**
-
-```bash
-# Get list of changed files in the fork
-gh api repos/grafana/repo-name/commits/branch-or-sha --jq '.files[] | .filename'
-
-# Compare those same files between old and new upstream versions
-module=github.com/upstream-org/repo-name
-diff -u \
-  "$(go env GOMODCACHE)/${module}@old_version/path/to/file.go" \
-  "$(go env GOMODCACHE)/${module}@new_version/path/to/file.go"
-```
-
-**3. Search for related upstream activity if no direct references:**
-
-```bash
-# Search recent commits in the same paths the fork modified
-gh api 'repos/upstream-org/repo-name/commits?path=relevant/path&sha=main' --jq '.[0:15] | .[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.message|split("\n")[0])"'
-
-# Search PRs with keywords from fork purpose
-gh pr list -R upstream-org/repo-name -S "keywords from fork" --state merged -L 10
-```
-
-TODO: Write this as a Go tool as explained in `docs/developer/key-deps-update/README.md`.
-
