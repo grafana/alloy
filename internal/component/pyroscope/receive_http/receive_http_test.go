@@ -545,6 +545,10 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
+func (a *testAppender) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
+
+}
+
 // TestUpdateArgs verifies that the component can be updated with new arguments. This explicitly also makes sure that the server is restarted when the server configuration changes. And there are no metric registration conflicts.
 func TestUpdateArgs(t *testing.T) {
 	ports, err := freeport.GetFreePorts(2)

@@ -19,6 +19,7 @@ type metrics struct {
 	pprofSamplesTotal             *prometheus.CounterVec
 	ebpfMetrics                   *ebpfmetrics.Metrics
 	pprofsDroppedTotal            prometheus.Counter
+	//debugInfoUploadBytes          prometheus.Counter
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -51,6 +52,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Name: "pyroscope_ebpf_pprof_samples_total",
 			Help: "Total number of pprof profiles collected by the ebpf component",
 		}, []string{"service_name"}),
+		//debugInfoUploadBytes: prometheus.NewCounter(prometheus.CounterOpts{
+		//	Name: "pyroscope_ebpf_debug_info_upload_bytes_total",
+		//	Help: "Total number of bytes uploaded to the debug info endpoint",
+		//}),
 		ebpfMetrics: ebpfmetrics.New(reg),
 	}
 
@@ -62,6 +67,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		m.pprofBytesTotal = util.MustRegisterOrGet(reg, m.pprofBytesTotal).(*prometheus.CounterVec)
 		m.pprofSamplesTotal = util.MustRegisterOrGet(reg, m.pprofSamplesTotal).(*prometheus.CounterVec)
 		m.pprofsDroppedTotal = util.MustRegisterOrGet(reg, m.pprofsDroppedTotal).(prometheus.Counter)
+		//m.debugInfoUploadBytes = util.MustRegisterOrGet(reg, m.debugInfoUploadBytes).(prometheus.Counter)
 	}
 
 	return m

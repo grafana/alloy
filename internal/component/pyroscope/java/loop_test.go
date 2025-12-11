@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
 )
 
 type mockProfiler struct {
@@ -50,6 +49,10 @@ func (m *mockAppendable) Append(ctx context.Context, labels labels.Labels, sampl
 func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
 	args := m.Called(ctx, profile)
 	return args.Error(0)
+}
+
+func (m *mockAppendable) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
+
 }
 
 func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {

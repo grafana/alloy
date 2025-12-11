@@ -28,6 +28,7 @@ type Appendable interface {
 type Appender interface {
 	Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 	AppendIngest(ctx context.Context, profile *IncomingProfile) error
+	UploadDebugInfo(ctx context.Context, arg DebugInfoData)
 }
 
 type RawSample struct {
@@ -116,6 +117,12 @@ type appender struct {
 	writeLatency prometheus.Histogram
 }
 
+func (a *appender) UploadDebugInfo(ctx context.Context, arg DebugInfoData) {
+	for _, c := range a.children {
+		c.UploadDebugInfo(ctx, arg)
+	}
+}
+
 // Append satisfies the Appender interface.
 func (a *appender) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
 	now := time.Now()
@@ -154,35 +161,4 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 		}
 	}
 	return multiErr
-}
-
-type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-
-func (f AppendableFunc) Appender() Appender {
-	return f
-}
-
-func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
-	return f(ctx, labels, samples)
-}
-
-func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
-	// This is a no-op implementation
-	return nil
-}
-
-// For testing AppendIngest operations
-type AppendableIngestFunc func(ctx context.Context, profile *IncomingProfile) error
-
-func (f AppendableIngestFunc) Appender() Appender {
-	return f
-}
-
-func (f AppendableIngestFunc) AppendIngest(ctx context.Context, p *IncomingProfile) error {
-	return f(ctx, p)
-}
-
-func (f AppendableIngestFunc) Append(_ context.Context, _ labels.Labels, _ []*RawSample) error {
-	// This is a no-op implementation
-	return nil
 }

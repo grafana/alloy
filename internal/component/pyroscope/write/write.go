@@ -74,6 +74,17 @@ type EndpointOptions struct {
 	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
 	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
 	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+
+	DebugInfo DebugInfoOptions `alloy:"debug_info,block,optional"`
+}
+
+type DebugInfoOptions struct {
+	Enabled          bool   `alloy:"enabled,attr,optional"`
+	CacheSize        uint32 `alloy:"cache_size,attr,optional"`
+	StripTextSection bool   `alloy:"strip_text_section,attr,optional"`
+	QueueSize        uint32
+	WorkerNum        int
+	CachePath        string
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
@@ -83,6 +94,14 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoff:        5 * time.Minute,
 		MaxBackoffRetries: 10,
 		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
+		DebugInfo: DebugInfoOptions{
+			Enabled:          false,
+			CacheSize:        8 * 1024,
+			StripTextSection: true,
+			QueueSize:        256,
+			WorkerNum:        8,
+			CachePath:        "/tmp/symb-cache/parca-symbols-uploader",
+		},
 	}
 
 	return defaultEndpointOptions
@@ -112,6 +131,7 @@ type Component struct {
 	metrics       *metrics
 	userAgent     string
 	uid           string
+	receiver      *fanOutClient
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -145,6 +165,7 @@ func New(
 		metrics:       m,
 		userAgent:     userAgent,
 		uid:           uid,
+		receiver:      receiver,
 	}, nil
 }
 
@@ -162,25 +183,39 @@ func (c *Component) Update(newConfig Arguments) error {
 		return err
 	}
 	c.onStateChange(Exports{Receiver: receiver})
+	c.receiver = receiver
+	c.receiver.cancel()
 	return nil
 }
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
 	pushClients   []pushv1connect.PusherServiceClient
+	debugInfo     []debugInfoUploader
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
 	metrics       *metrics
 	tracer        trace.Tracer
 	logger        log.Logger
+	cancel        context.CancelFunc
+}
+
+type debugInfoUploader interface {
+	UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData)
+	Run(ctx context.Context) error
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
 func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
+	debugInfoClients := make([]debugInfoUploader, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for _, endpoint := range config.Endpoints {
+		u, err := url.Parse(endpoint.URL)
+		if err != nil {
+			return nil, err
+		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -196,14 +231,28 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
 		)
 		ingestClients[endpoint] = httpClient
+
+		if symbolsUploader, err := newDebugInfoUpload(u, metrics, endpoint); err != nil {
+			return nil, err
+		} else if symbolsUploader != nil {
+			debugInfoClients = append(debugInfoClients, symbolsUploader)
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	for _, c := range debugInfoClients {
+		go func() {
+			_ = c.Run(ctx)
+		}()
 	}
 	return &fanOutClient{
 		logger:        logger,
 		tracer:        tracer,
 		pushClients:   pushClients,
+		debugInfo:     debugInfoClients,
 		ingestClients: ingestClients,
 		config:        config,
 		metrics:       metrics,
+		cancel:        cancel,
 	}, nil
 }
 
@@ -574,6 +623,12 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+func (f *fanOutClient) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
+	for _, u := range f.debugInfo {
+		u.UploadDebugInfo(ctx, arg)
+	}
 }
 
 func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {

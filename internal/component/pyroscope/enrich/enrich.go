@@ -5,12 +5,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/prometheus/prometheus/model/labels"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/prometheus/prometheus/model/labels"
 )
 
 func init() {
@@ -105,6 +104,10 @@ func (e *enrichAppendable) AppendIngest(ctx context.Context, profile *pyroscope.
 	}
 
 	return e.component.fanout.Appender().AppendIngest(ctx, enrichedProfile)
+}
+
+func (e *enrichAppendable) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
+	e.component.fanout.Appender().UploadDebugInfo(ctx, arg)
 }
 
 // Run implements component.Component.

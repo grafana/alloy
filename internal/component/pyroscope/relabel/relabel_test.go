@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
@@ -445,6 +444,10 @@ func TestMetricsWithRelabeling(t *testing.T) {
 type TestAppender struct {
 	mu       sync.Mutex
 	profiles []*pyroscope.IncomingProfile
+}
+
+func (t *TestAppender) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
+
 }
 
 func NewTestAppender() *TestAppender {

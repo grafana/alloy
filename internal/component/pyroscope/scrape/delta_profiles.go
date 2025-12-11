@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/scrape/internal/fastdelta"
+
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -58,6 +59,10 @@ type deltaAppender struct {
 
 	// true if we have seen at least one sample
 	initialized bool
+}
+
+func (d *deltaAppender) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
+
 }
 
 type gzipBuffer struct {

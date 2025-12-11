@@ -205,6 +205,10 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	return c.fanout.Appender().AppendIngest(ctx, profile)
 }
 
+func (c *Component) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
+	c.fanout.Appender().UploadDebugInfo(ctx, arg)
+}
+
 func (c *Component) Appender() pyroscope.Appender {
 	return c
 }
