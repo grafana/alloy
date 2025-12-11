@@ -261,7 +261,7 @@ func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_SQLStateCategories(t *testing.T) {
+func TestErrorLogsCollector_SQLStateClass(t *testing.T) {
 	tests := []struct {
 		sqlstate string
 		category string

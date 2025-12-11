@@ -102,7 +102,7 @@ func GetSQLStateCategory(sqlstate string) string {
 	// Try to get the class (first 2 characters)
 	if len(sqlstate) >= 2 {
 		class := sqlstate[:2]
-		if category, ok := SQLStateCategories[class]; ok {
+		if category, ok := SQLStateClass[class]; ok {
 			return category
 		}
 	}
