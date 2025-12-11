@@ -203,10 +203,31 @@ jobs:
       contents: write
       id-token: write
     steps:
-    - name: Checkout code
+    # A GitHub App is used to create the release instead of github-actions so that
+    # submit-winget-manifest is triggered when the release is published
+    - name: Get GitHub app secrets 🔐
+      id: get-secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      with:
+        export_env: false
+        repo_secrets: |
+          ALLOYBOT_APP_ID=alloybot:app_id
+          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+    - name: Create GitHub app token 🔐
+      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      id: app-token
+      with:
+        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+        owner: grafana
+        repositories: alloy
+
+    - name: Checkout repository 🛎️
       uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         ref: ${{ github.event.release.tag_name }}
+        token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
 
     - name: Set ownership
@@ -239,4 +260,15 @@ jobs:
       run: ./tools/publish-release-assets.sh
       env:
         RELEASE_TAG: ${{ github.event.release.tag_name }}
-        GH_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  submit_winget_manifest:
+    name: Submit WinGet Manifest
+    needs:
+    - upload_release_assets
+    uses: ./.github/workflows/release-submit-winget-manifest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      release-tag: ${{ github.event.release.tag_name }}
