@@ -19,6 +19,8 @@ type Args struct {
 	Block4     Block2            `alloy:"block4,block,optional"`
 	InnerBlock InnerBlock        `alloy:",squash"`
 	EnumBlock  []EnumBlock       `alloy:"enum,enum,optional"`
+	Arr        []string          `alloy:"arr,attr,optional"`
+	ArrArr     [][]string        `alloy:"arrarr,attr,optional`
 }
 
 type Block1 struct {
@@ -47,7 +49,7 @@ func TestBlock(t *testing.T) {
 	type TestCase struct {
 		desc        string
 		src         []byte
-		expectedErr string
+		expectedErr []string
 	}
 
 	tests := []TestCase{
@@ -102,7 +104,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `2:5: missing required attribute "arg2"`,
+			expectedErr: []string{`2:5: missing required attribute "arg2"`},
 		},
 
 		{
@@ -120,7 +122,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `4:6: attribute "arg1" may only be provided once`,
+			expectedErr: []string{`4:6: attribute "arg1" may only be provided once`},
 		},
 		{
 			desc: "unknown attribute",
@@ -137,7 +139,7 @@ func TestBlock(t *testing.T) {
 						}
 					}
 				`),
-			expectedErr: `3:7: unrecognized attribute name "unknown"`,
+			expectedErr: []string{`3:7: unrecognized attribute name "unknown"`},
 		},
 		{
 			desc: "missing block",
@@ -148,7 +150,7 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 				}
 			`),
-			expectedErr: `2:5: missing required block "block1"`,
+			expectedErr: []string{`2:5: missing required block "block1"`},
 		},
 		{
 			desc: "missing required attribute in block",
@@ -163,7 +165,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `7:6: missing required attribute "arg2"`,
+			expectedErr: []string{`7:6: missing required attribute "arg2"`},
 		},
 		{
 			desc: "missing required attribute in slice block",
@@ -187,7 +189,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `16:6: missing required attribute "arg2"`,
+			expectedErr: []string{`16:6: missing required attribute "arg2"`},
 		},
 		{
 			desc: "to many blocks when type is array with 2 elements",
@@ -209,7 +211,11 @@ func TestBlock(t *testing.T) {
 					block3 {}
 				}
 			`),
-			expectedErr: `12:6: block "block3" must be specified exactly 2 times, but was specified 3 times (and 2 more diagnostics)`,
+			expectedErr: []string{
+				`12:6: block "block3" must be specified exactly 2 times, but was specified 3 times`,
+				`14:6: block "block3" must be specified exactly 2 times, but was specified 3 times`,
+				`16:6: block "block3" must be specified exactly 2 times, but was specified 3 times`,
+			},
 		},
 		{
 			desc: "enum block",
@@ -270,7 +276,7 @@ func TestBlock(t *testing.T) {
 					enum.block2 {}
 				}
 			`),
-			expectedErr: `24:6: missing required attribute "arg3"`,
+			expectedErr: []string{`24:6: missing required attribute "arg3"`},
 		},
 		{
 			desc: "missing required attribute nested block",
@@ -289,7 +295,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `12:7: missing required attribute "nested_arg"`,
+			expectedErr: []string{`12:7: missing required attribute "nested_arg"`},
 		},
 		{
 			desc: "wrong literal",
@@ -298,6 +304,7 @@ func TestBlock(t *testing.T) {
 					arg1 = true
 					arg2 = "test"	
 					arg3 = true
+					arr = ["test", 1]
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -313,7 +320,10 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `3:6: "arg1" should be string, got bool`,
+			expectedErr: []string{
+				`3:13: "arg1" should be string, got bool`,
+				`6:21: "arr" should be string, got number`,
+			},
 		},
 	}
 
@@ -321,11 +331,11 @@ func TestBlock(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			file, err := parser.ParseFile("", tt.src)
 			require.NoError(t, err)
-			diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
-			if tt.expectedErr == "" {
-				require.Len(t, diag, 0)
-			} else {
-				require.EqualError(t, diag, tt.expectedErr)
+			diags := Block(file.Body[0].(*ast.BlockStmt), &Args{})
+
+			require.Equal(t, len(tt.expectedErr), len(diags))
+			for i := range diags {
+				require.EqualError(t, diags[i], tt.expectedErr[i])
 			}
 		})
 	}
