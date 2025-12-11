@@ -53,7 +53,7 @@ func (d *FileHelper) TemplatePath(fileType types.FileType) (string, error) {
 	case types.FileTypeOCB:
 		templateName = "replaces-ocb.tpl"
 	default:
-		err = fmt.Errorf("Unknown file_type %q (expected %q or %q)", fileType, types.FileTypeMod, types.FileTypeOCB)
+		err = fmt.Errorf("unknown file_type %q (expected %q or %q)", fileType, types.FileTypeMod, types.FileTypeOCB)
 	}
 	return filepath.Join(d.ScriptDir, templateName), err
 }
