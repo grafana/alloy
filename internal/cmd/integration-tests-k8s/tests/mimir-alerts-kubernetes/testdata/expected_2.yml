@@ -14,8 +14,6 @@ alertmanager_config: |
       receiver: "null"
       routes:
       - receiver: testing/alertmgr-config1/null
-        matchers:
-        - namespace="testing"
         continue: true
         routes:
         - receiver: testing/alertmgr-config1/myamc

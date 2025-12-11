@@ -165,8 +165,6 @@ route:
   receiver: "null"
   routes:
   - receiver: mynamespace/alertmgr-config1/null
-    matchers:
-    - namespace="mynamespace"
     continue: true
     routes:
     - receiver: mynamespace/alertmgr-config1/myamc
@@ -203,15 +201,11 @@ route:
   receiver: "null"
   routes:
   - receiver: mynamespace/alertmgr-config1/null
-    matchers:
-    - namespace="mynamespace"
     continue: true
     routes:
     - receiver: mynamespace/alertmgr-config1/myamc
       continue: true
   - receiver: mynamespace/alertmgr-config2/null
-    matchers:
-    - namespace="mynamespace"
     continue: true
     routes:
     - receiver: mynamespace/alertmgr-config2/database-pager

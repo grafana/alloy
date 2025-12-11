@@ -10,7 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-- Support specifying DNS discovery mode prefixes in `--cluster.join-addresses` flag. (@x1unix)
+### Breaking changes
+
+- `mimir.alerts.kubernetes` no longer automatically includes `matchers` strategies in the final config.
+  Previously it would add matchers so only alerts coming from the namespace of the AlertmanagerConfig CRD are processed. (@ptodev)
 
 ### Features
 
@@ -52,6 +55,8 @@ Main (unreleased)
 - Updated Loki dependencies to v3.6.2. (@thampiotr)
 
 - Refactor tailer used in `loki.source.file` to reduce resource usage. (@kalleep)
+
+- Support specifying DNS discovery mode prefixes in `--cluster.join-addresses` flag. (@x1unix)
 
 ### Bugfixes
 

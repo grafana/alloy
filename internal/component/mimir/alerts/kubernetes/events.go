@@ -173,11 +173,20 @@ func (e *eventProcessor) enqueueSyncMimir() {
 func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 	amConfigs map[string]*promv1alpha1.AlertmanagerConfig, store *assets.StoreBuilder) (*alertmgr_cfg.Config, error) {
 
+	// TODO: Add an option to get an Alertmanager CRD through k8s informers?
+	//       When that is available, users will be able to set a matcher strategy in the Alertmanager CRD.
+	amCfg := monitoringv1.Alertmanager{
+		Spec: monitoringv1.AlertmanagerSpec{
+			AlertmanagerConfigMatcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
+				Type: monitoringv1.NoneConfigMatcherStrategyType,
+			},
+		},
+	}
+
 	var (
 		// TODO: Make this configurable?
 		version, _ = semver.New("0.29.0")
-		// TODO: Add an option to get an Alertmanager CRD through k8s informers.
-		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &monitoringv1.Alertmanager{})
+		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &amCfg)
 	)
 
 	convertedCfg, err := c.baseCfg.String()

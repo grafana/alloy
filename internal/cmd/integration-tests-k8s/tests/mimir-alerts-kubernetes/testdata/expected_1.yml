@@ -14,15 +14,11 @@ alertmanager_config: |
       receiver: "null"
       routes:
       - receiver: testing/alertmgr-config1/null
-        matchers:
-        - namespace="testing"
         continue: true
         routes:
         - receiver: testing/alertmgr-config1/myamc
           continue: true
       - receiver: testing/alertmgr-config2/null
-        matchers:
-        - namespace="testing"
         continue: true
         routes:
         - receiver: testing/alertmgr-config2/database-pager
