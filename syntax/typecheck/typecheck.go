@@ -301,6 +301,22 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 		return nil
 	}
 
+	// If we expect a capsule check if we can convert that one into a object.
+	if value.AlloyType(rv.Type()) == value.TypeCapsule {
+		capsule := value.FromRaw(rv)
+		_, ok := capsule.TryConvertToObject()
+		if !ok {
+			return diag.Diagnostics{{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(expr).Position(),
+				EndPos:   ast.EndPos(expr).Position(),
+				Message:  fmt.Sprintf("%q should be %s, got object", name, value.TypeCapsule),
+			}}
+		}
+		// FIXME(kallep): we should should type check further but it's not easy to exract the expected type.
+		return nil
+	}
+
 	// Check if the expected type is actually a map before trying to get its element type
 	if rv.Kind() != reflect.Map {
 		expectedType := value.AlloyType(rv.Type())
@@ -312,10 +328,10 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 		}}
 	}
 
-	expected := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
-
+	// Extract value from map.
+	expectedValue := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
 	// If values of map can be any type we don't have to check further.
-	if expected.Kind() == reflect.Interface {
+	if expectedValue.Kind() == reflect.Interface {
 		return nil
 	}
 
@@ -323,13 +339,13 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 	for _, f := range expr.Fields {
 		switch expr := f.Value.(type) {
 		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(name, expr, expected); d != nil {
+			if d := typecheckLiteralExpr(name, expr, expectedValue); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(name, expr, expected))
+			diags.Merge(typecheckArrayExpr(name, expr, expectedValue))
 		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(name, expr, expected))
+			diags.Merge(typecheckObjectExpr(name, expr, expectedValue))
 		default:
 			// ignore rest for now.
 		}
@@ -361,7 +377,6 @@ func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) 
 	}
 
 	expected := value.AlloyType(rv.Type())
-
 	if expected == value.TypeCapsule {
 		ok, _ := value.TryCapsuleConvert(have, rv, expected)
 		// FIXME(kalleep): We should probably unwrap the capsule type.

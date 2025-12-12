@@ -101,6 +101,15 @@ func Encapsulate(v interface{}) Value {
 	return Value{rv: rv, ty: TypeCapsule}
 }
 
+// EncapsulateWithRv creates a new Capsule value from rv. Encapsulate panics if rv does
+// not map to an Alloy capsule.
+func EncapsulateWithRv(rv reflect.Value) Value {
+	if AlloyType(rv.Type()) != TypeCapsule {
+		panic("syntax/value: Capsule called with non-capsule type")
+	}
+	return Value{rv: rv, ty: TypeCapsule}
+}
+
 // Encode creates a new Value from v. If v is a pointer, v must be considered
 // immutable and not change while the Value is used.
 func Encode(v interface{}) Value {

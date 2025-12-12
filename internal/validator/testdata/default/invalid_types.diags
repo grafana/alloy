@@ -1,13 +1,20 @@
-Error: main.alloy:2:2: "forward_to" should be array, got string
+Error: main.alloy:2:15: "forward_to" should be array, got string
 
 1 | loki.source.file "test" {
 2 |     forward_to = "wrong"
-  |     ^^^^^^^^^^^^^^^^^^^^
+  |                  ^^^^^^^
 3 |     targets = [10]
 
-Error: main.alloy:4:2: "encoding" should be string, got bool
+Error: main.alloy:3:13: "targets" should be capsule, got number
+
+2 |     forward_to = "wrong"
+3 |     targets = [10]
+  |                ^^
+4 |     encoding = true
+
+Error: main.alloy:4:13: "encoding" should be string, got bool
 
 3 |     targets = [10]
 4 |     encoding = true
-  |     ^^^^^^^^^^^^^^^
+  |                ^^^^
 5 | }
