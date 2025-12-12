@@ -90,7 +90,6 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock collector
 			entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 			collector, err := NewErrorLogs(ErrorLogsArguments{
 				Receiver:     loki.NewLogsReceiver(),
@@ -104,12 +103,10 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// Parse JSON log
 			var jsonLog PostgreSQLJSONLog
 			err = json.Unmarshal([]byte(tt.jsonLog), &jsonLog)
 			require.NoError(t, err)
 
-			// Build parsed error
 			parsed, err := collector.buildParsedError(&jsonLog)
 			if tt.expectedError {
 				require.Error(t, err)
@@ -118,10 +115,8 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, parsed)
 
-			// Extract insights (this is part of the full processing pipeline)
 			collector.extractInsights(parsed)
 
-			// Check fields
 			if tt.checkFields != nil {
 				tt.checkFields(t, parsed)
 			}
@@ -146,18 +141,14 @@ func TestErrorLogsCollector_StartStop(t *testing.T) {
 	require.NotNil(t, collector)
 	require.NotNil(t, collector.Receiver(), "receiver should be exported")
 
-	// Start collector
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	require.False(t, collector.Stopped())
 
-	// Give it a moment to start
 	time.Sleep(10 * time.Millisecond)
 
-	// Stop collector
 	collector.Stop()
 
-	// Give it a moment to stop
 	time.Sleep(10 * time.Millisecond)
 	require.True(t, collector.Stopped())
 }
@@ -178,7 +169,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Start collector
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	defer collector.Stop()
@@ -200,7 +190,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
 						found = true
 						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						// Verify sqlstate_class_code label exists
 						metric := mf.GetMetric()[0]
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
@@ -224,15 +213,13 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 					if mf.GetName() == "postgres_auth_failures_total" {
 						found = true
 						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						// Verify labels
 						metric := mf.GetMetric()[0]
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
 							labels[label.GetName()] = label.GetValue()
 						}
 						require.Equal(t, "app-user", labels["user"], "user label should be set")
-						// Note: auth method is extracted from message ("password authentication failed")
-						// not from detail where "md5" appears
+						// Auth method is extracted from message ("password authentication failed"), not from detail where "md5" appears
 						require.Equal(t, "password", labels["auth_method"], "auth method should be extracted from message")
 					}
 				}
@@ -251,7 +238,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
 						found = true
 						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						// Find the metric with sqlstate=57014
 						for _, metric := range mf.GetMetric() {
 							labels := make(map[string]string)
 							for _, label := range metric.GetLabel() {
@@ -280,7 +266,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
 						found = true
 						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						// Verify sqlstate_class_code label
 						metric := mf.GetMetric()[0]
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
@@ -314,7 +299,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Send log line to collector
 			collector.Receiver().Chan() <- loki.Entry{
 				Entry: push.Entry{
 					Line:      tt.logLine,
@@ -322,10 +306,8 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 				},
 			}
 
-			// Give it time to process
 			time.Sleep(100 * time.Millisecond)
 
-			// Check metric
 			tt.checkFunc(t, registry)
 		})
 	}

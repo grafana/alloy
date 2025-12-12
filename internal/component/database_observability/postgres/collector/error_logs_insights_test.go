@@ -65,7 +65,6 @@ func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create collector
 			entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 			collector, err := NewErrorLogs(ErrorLogsArguments{
 				Receiver:     loki.NewLogsReceiver(),
@@ -79,7 +78,6 @@ func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// Create parsed error
 			parsed := &ParsedError{
 				Message:       tt.message,
 				Detail:        tt.detail,
@@ -87,10 +85,8 @@ func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
 				SQLStateClass: tt.sqlstate[:2],
 			}
 
-			// Extract insights
 			collector.extractInsights(parsed)
 
-			// Check results
 			require.Equal(t, tt.expectedType, parsed.ConstraintType, "constraint type mismatch")
 			if tt.expectedConstraint != "" {
 				require.Equal(t, tt.expectedConstraint, parsed.ConstraintName, "constraint name mismatch")

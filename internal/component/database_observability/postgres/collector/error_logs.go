@@ -193,7 +193,6 @@ type ErrorLogs struct {
 func NewErrorLogs(args ErrorLogsArguments) (*ErrorLogs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Create severity map for fast lookup
 	severityMap := make(map[string]bool)
 	for _, s := range args.Severities {
 		severityMap[s] = true
@@ -281,7 +280,6 @@ func (c *ErrorLogs) initMetrics() {
 		},
 	)
 
-	// Register all metrics with the Prometheus registry
 	if c.registry != nil {
 		c.registry.MustRegister(
 			c.logsProcessed,
@@ -293,7 +291,6 @@ func (c *ErrorLogs) initMetrics() {
 			c.errorsByBackendType,
 			c.parseErrors,
 		)
-		level.Debug(c.logger).Log("msg", "registered 8 metrics with Prometheus registry")
 	} else {
 		level.Warn(c.logger).Log("msg", "no Prometheus registry provided, metrics will not be exposed")
 	}
@@ -317,7 +314,6 @@ func (c *ErrorLogs) Start(ctx context.Context) error {
 		"pass_through", c.passThroughLogs,
 	)
 
-	// Start goroutine to consume from the receiver
 	c.wg.Add(1)
 	go c.run()
 	return nil
@@ -345,12 +341,6 @@ func (c *ErrorLogs) run() {
 			return
 		case entry := <-c.receiver.Chan():
 			c.logsProcessed.Inc()
-			level.Debug(c.logger).Log(
-				"msg", "received log entry",
-				"timestamp", entry.Timestamp,
-				"line_length", len(entry.Line),
-				"line_preview", truncateString(entry.Line, 100),
-			)
 			if err := c.processLogLine(entry); err != nil {
 				level.Warn(c.logger).Log(
 					"msg", "failed to process log line",
@@ -372,20 +362,12 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 			"error", err,
 			"pass_through", c.passThroughLogs,
 		)
-		// Not JSON? Pass through if enabled
 		if c.passThroughLogs {
 			level.Debug(c.logger).Log("msg", "passing through non-JSON log line")
 			return c.passThrough(entry)
 		}
-		return nil // Silently drop non-JSON lines
+		return nil
 	}
-
-	level.Debug(c.logger).Log(
-		"msg", "parsed JSON log",
-		"severity", jsonLog.ErrorSeverity,
-		"pid", jsonLog.PID,
-		"message_preview", truncateString(jsonLog.Message, 50),
-	)
 
 	// 2. Check if we should process this severity
 	if !c.severities[jsonLog.ErrorSeverity] {
@@ -395,15 +377,12 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 			"configured_severities", fmt.Sprintf("%v", c.getSeverityList()),
 			"pass_through", c.passThroughLogs,
 		)
-		// Not an error we care about
 		if c.passThroughLogs {
 			level.Debug(c.logger).Log("msg", "passing through non-error log line")
 			return c.passThrough(entry)
 		}
 		return nil
 	}
-
-	level.Debug(c.logger).Log("msg", "severity matches, processing error log")
 
 	// 3. Build ParsedError
 	parsed, err := c.buildParsedError(&jsonLog)
@@ -415,30 +394,19 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 		return nil
 	}
 
-	level.Debug(c.logger).Log(
-		"msg", "built parsed error",
-		"sqlstate", parsed.SQLStateCode,
-		"category", parsed.ErrorCategory,
-	)
-
 	// 4. Extract insights
 	c.extractInsights(parsed)
 
 	// 5. Update metrics
 	c.updateMetrics(parsed)
-	level.Debug(c.logger).Log("msg", "updated metrics for error")
 
 	// 6. Emit to Loki
-	level.Debug(c.logger).Log("msg", "emitting error log to Loki")
 	return c.emitToLoki(parsed)
 }
 
 func (c *ErrorLogs) passThrough(entry loki.Entry) error {
-	// Forward unchanged via entry handler
-	level.Debug(c.logger).Log("msg", "passing through log entry unchanged")
 	select {
 	case c.entryHandler.Chan() <- entry:
-		level.Debug(c.logger).Log("msg", "successfully forwarded pass-through log")
 	case <-c.ctx.Done():
 		return nil
 	}
@@ -455,7 +423,6 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 		BackendType:   log.BackendType,
 	}
 
-	// Parse timestamps
 	// PostgreSQL JSON log format: "2024-11-28 10:15:30.123 UTC"
 	var err error
 	timestampFormats := []string{
@@ -483,11 +450,9 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 		}
 	}
 	if err != nil {
-		// Non-fatal, just log
 		level.Debug(c.logger).Log("msg", "failed to parse session_start", "error", err)
 	}
 
-	// Handle nullable fields
 	parsed.User = ptrToString(log.User)
 	parsed.DatabaseName = ptrToString(log.DBName)
 	parsed.RemoteHost = ptrToString(log.RemoteHost)
@@ -509,7 +474,6 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 	parsed.FileName = ptrToString(log.FileName)
 	parsed.FileLineNum = ptrToInt32(log.FileLineNum)
 
-	// SQLSTATE handling
 	if log.StateCode != nil {
 		parsed.SQLStateCode = *log.StateCode
 		if len(parsed.SQLStateCode) >= 2 {
@@ -522,21 +486,18 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 }
 
 func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
-	// Total errors
 	c.errorsTotal.WithLabelValues(
 		parsed.ErrorSeverity,
 		parsed.DatabaseName,
 		c.instanceKey,
 	).Inc()
 
-	// Errors by SQLSTATE with category, class code, and queryid
 	if parsed.SQLStateCode != "" {
 		queryIDStr := ""
 		if parsed.QueryID > 0 {
 			queryIDStr = fmt.Sprintf("%d", parsed.QueryID)
 		}
 
-		// Extract class code (first 2 characters)
 		classCode := parsed.SQLStateClass
 		if classCode == "" && len(parsed.SQLStateCode) >= 2 {
 			classCode = parsed.SQLStateCode[:2]
@@ -553,7 +514,6 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		).Inc()
 	}
 
-	// Connection errors (SQLSTATE class 08)
 	if IsConnectionError(parsed.SQLStateCode) {
 		c.connectionErrors.WithLabelValues(
 			parsed.SQLStateCode,
@@ -563,7 +523,6 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		).Inc()
 	}
 
-	// Authentication failures (SQLSTATE class 28)
 	if parsed.AuthMethod != "" {
 		c.authFailures.WithLabelValues(
 			parsed.User,
@@ -574,7 +533,6 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		).Inc()
 	}
 
-	// Errors by user
 	if parsed.User != "" {
 		c.errorsByUser.WithLabelValues(
 			parsed.User,
@@ -584,7 +542,6 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		).Inc()
 	}
 
-	// Errors by backend type
 	c.errorsByBackendType.WithLabelValues(
 		parsed.BackendType,
 		parsed.ErrorSeverity,
@@ -593,7 +550,6 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 }
 
 func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
-	// Build log line in logfmt style with key="value" pairs
 	logMessage := fmt.Sprintf(
 		`severity="%s" datname="%s" user="%s" pid="%d" backend_type="%s" message="%s"`,
 		parsed.ErrorSeverity,
@@ -604,7 +560,6 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		parsed.Message,
 	)
 
-	// Add optional fields
 	if parsed.QueryID > 0 {
 		logMessage += fmt.Sprintf(` queryid="%d"`, parsed.QueryID)
 	}
@@ -671,7 +626,6 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` cursor_position="%d"`, parsed.CursorPosition)
 	}
 
-	// Add extracted insights
 	if parsed.LockType != "" {
 		logMessage += fmt.Sprintf(` lock_type="%s"`, parsed.LockType)
 	}
@@ -712,21 +666,12 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` hba_line="%s"`, parsed.HBALineNumber)
 	}
 
-	// Emit to Loki with the PostgreSQL log line's timestamp
-	level.Debug(c.logger).Log(
-		"msg", "sending error log entry to Loki",
-		"timestamp", parsed.Timestamp,
-		"message_length", len(logMessage),
-	)
-
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		OP_ERROR_LOGS,
 		logMessage,
 		parsed.Timestamp.UnixNano(),
 	)
-
-	level.Debug(c.logger).Log("msg", "successfully emitted error log to Loki")
 
 	return nil
 }

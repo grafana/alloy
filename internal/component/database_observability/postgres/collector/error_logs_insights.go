@@ -52,7 +52,6 @@ var (
 
 // extractInsights extracts structured information from error messages.
 func (c *ErrorLogs) extractInsights(parsed *ParsedError) {
-	// Only extract insights for errors with SQLSTATE codes
 	if parsed.SQLStateCode == "" {
 		return
 	}
@@ -89,7 +88,6 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 	if strings.Contains(msg, "unique constraint") {
 		parsed.ConstraintType = "unique"
 
-		// Extract constraint name
 		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ConstraintName = match[1]
 
@@ -100,7 +98,6 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 			}
 		}
 
-		// Extract column from detail: "Key (email)=(user@example.com) already exists."
 		if detail != "" {
 			if match := detailKeyPattern.FindStringSubmatch(detail); len(match) > 1 {
 				parsed.ColumnName = match[1]
@@ -113,7 +110,6 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 	if strings.Contains(msg, "foreign key constraint") {
 		parsed.ConstraintType = "foreign_key"
 
-		// Extract constraint name
 		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ConstraintName = match[1]
 
@@ -123,9 +119,7 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 			}
 		}
 
-		// Extract referenced table and column from detail
 		if detail != "" {
-			// Pattern: Key (user_id)=(123) is not present in table "users".
 			if match := foreignKeyDetailPattern.FindStringSubmatch(detail); len(match) > 2 {
 				parsed.ColumnName = match[1]
 				parsed.ReferencedTable = match[2]
@@ -148,12 +142,10 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 	if strings.Contains(msg, "not-null constraint") || strings.Contains(msg, "violates not-null constraint") {
 		parsed.ConstraintType = "not_null"
 
-		// Extract column name
 		if match := notNullColumnPattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ColumnName = match[1]
 		}
 
-		// Extract table name
 		if match := notNullTablePattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.TableName = match[1]
 		}
@@ -164,7 +156,6 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 	if strings.Contains(msg, "check constraint") {
 		parsed.ConstraintType = "check"
 
-		// Extract constraint name
 		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ConstraintName = match[1]
 
@@ -174,7 +165,6 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 			}
 		}
 
-		// Try to extract table from message
 		if parsed.TableName == "" {
 			if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
 				parsed.TableName = match[1]
@@ -187,7 +177,6 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 	if strings.Contains(msg, "exclusion constraint") {
 		parsed.ConstraintType = "exclusion"
 
-		// Extract constraint name
 		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ConstraintName = match[1]
 
@@ -206,23 +195,18 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 	detail := parsed.Detail
 	context := parsed.Context
 
-	// Deadlock detected (SQLSTATE 40P01)
 	if strings.Contains(msg, "deadlock detected") {
-		// Extract tuple location from context: "while locking tuple (3,88) in relation \"books\""
-		// or from detail: "Process 12345 waits for ShareLock on tuple (0,1) of relation 12345..."
+		// Tuple location from context: "while locking tuple (3,88)..." or detail: "Process 12345 waits for ShareLock on tuple (0,1)..."
 		if match := tupleLocationPattern.FindStringSubmatch(context); len(match) > 1 {
 			parsed.TupleLocation = match[1]
 		} else if match := tupleLocationPattern.FindStringSubmatch(detail); len(match) > 1 {
 			parsed.TupleLocation = match[1]
 		}
 
-		// Extract lock type
 		if match := lockTypePattern.FindStringSubmatch(detail); len(match) > 1 {
 			parsed.LockType = match[1]
 		}
 
-		// Extract blocked and blocker PIDs
-		// Detail format: "Process 9185 waits for ShareLock on transaction 836; blocked by process 9184."
 		if match := blockedByPattern.FindStringSubmatch(detail); len(match) > 2 {
 			if blockedPID, err := strconv.ParseInt(match[1], 10, 32); err == nil {
 				parsed.BlockedPID = int32(blockedPID)
@@ -232,8 +216,6 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 			}
 		}
 
-		// Extract queries for blocked and blocker processes
-		// Detail format: "Process 9185: UPDATE books SET stock = stock WHERE id = 2;"
 		matches := processQueryPattern.FindAllStringSubmatch(detail, -1)
 		for _, match := range matches {
 			if len(match) > 2 {
@@ -256,7 +238,7 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 	msg := parsed.Message
 
-	// Column does not exist - check this BEFORE general "does not exist"
+	// Check column before general "does not exist" to avoid false matches
 	if strings.Contains(msg, "column") && strings.Contains(msg, "does not exist") {
 		if match := columnPattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ColumnName = match[1]
@@ -264,7 +246,6 @@ func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 		return
 	}
 
-	// Relation does not exist: "relation \"users\" does not exist"
 	if strings.Contains(msg, "does not exist") {
 		if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.TableName = match[1]
@@ -272,13 +253,10 @@ func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 		return
 	}
 
-	// Permission denied: "permission denied for table users" or "permission denied for table \"users\""
 	if strings.Contains(msg, "permission denied") {
-		// Try quoted table name first
 		if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.TableName = match[1]
 		} else {
-			// Try unquoted: "permission denied for table tablename"
 			tablePattern := regexp.MustCompile(`permission denied for table (\w+)`)
 			if match := tablePattern.FindStringSubmatch(msg); len(match) > 1 {
 				parsed.TableName = match[1]
@@ -292,10 +270,8 @@ func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 func (c *ErrorLogs) extractObjectState(parsed *ParsedError) {
 	msg := parsed.Message
 
-	// SQLSTATE 55P03 - lock_not_available
 	if parsed.SQLStateCode == "55P03" {
 		parsed.TimeoutType = "lock_timeout"
-		// Extract lock type: "could not obtain lock on relation"
 		if match := lockObtainPattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.LockType = match[1]
 		}
@@ -307,14 +283,12 @@ func (c *ErrorLogs) extractAuthFailure(parsed *ParsedError) {
 	msg := parsed.Message
 	detail := parsed.Detail
 
-	// Extract auth method from message
 	// Example: "password authentication failed for user \"myuser\""
 	if match := authMethodPattern.FindStringSubmatch(msg); len(match) > 1 {
-		parsed.AuthMethod = match[1] // e.g., "password", "md5", "scram-sha-256"
+		parsed.AuthMethod = match[1]
 	}
 
-	// Extract pg_hba.conf line number from detail
-	// Example detail: "Connection matched pg_hba.conf line 95: \"host all all 0.0.0.0/0 md5\""
+	// Example: "Connection matched pg_hba.conf line 95: \"host all all 0.0.0.0/0 md5\""
 	if match := hbaLinePattern.FindStringSubmatch(detail); len(match) > 1 {
 		parsed.HBALineNumber = match[1]
 	}
@@ -324,7 +298,6 @@ func (c *ErrorLogs) extractAuthFailure(parsed *ParsedError) {
 func (c *ErrorLogs) extractTimeoutError(parsed *ParsedError) {
 	msg := parsed.Message
 
-	// Determine timeout type based on message content
 	if strings.Contains(msg, "statement timeout") {
 		parsed.TimeoutType = "statement_timeout"
 	} else if strings.Contains(msg, "lock timeout") {
@@ -337,10 +310,8 @@ func (c *ErrorLogs) extractTimeoutError(parsed *ParsedError) {
 }
 
 // extractFunctionInfo extracts function names from PL/pgSQL error contexts.
+// Examples: "PL/pgSQL function my_function(integer) line 42 at RAISE" or "SQL function \"my_func\" statement 1"
 func (c *ErrorLogs) extractFunctionInfo(parsed *ParsedError) {
-	// Example context:
-	// "PL/pgSQL function my_function(integer) line 42 at RAISE"
-	// "SQL function \"my_func\" statement 1"
 	if match := functionPattern.FindStringSubmatch(parsed.Context); len(match) > 1 {
 		parsed.FunctionContext = match[1]
 	}
