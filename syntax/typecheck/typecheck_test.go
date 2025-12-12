@@ -12,6 +12,8 @@ import (
 type Args struct {
 	Arg1       string            `alloy:"arg1,attr,optional"`
 	Arg2       string            `alloy:"arg2,attr"`
+	Int        int               `alloy:"int,attr,optional"`
+	Int2       int               `alloy:"int2,attr,optional"`
 	Capsule    alloytypes.Secret `alloy:"capsule,attr,optional"`
 	Block1     Block1            `alloy:"block1,block"`
 	Block2     []Block1          `alloy:"block2,block,optional"`
@@ -62,6 +64,8 @@ func TestBlock(t *testing.T) {
 					arg2 = "test"	
 					arg3 = true
 					capsule = "secret"
+					int = -1
+					int2 = 1 + 1
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -308,6 +312,8 @@ func TestBlock(t *testing.T) {
 					arr = ["test", 1]
 					obj = { "key" = 1 }
 					capsule = 1
+					int = -"test"
+					int2 = 1 + "test"
 
 					block1 {
 						arg1 = "test"
@@ -325,10 +331,12 @@ func TestBlock(t *testing.T) {
 				}
 			`),
 			expectedErr: []string{
-				`3:13: "arg1" should be string, got bool`,
-				`6:21: "arr" should be string, got number`,
-				`7:22: "obj" should be string, got number`,
-				`8:16: "capsule" should be capsule, got number`,
+				`3:13: expected string, got bool`,
+				`6:21: expected string, got number`,
+				`7:22: expected string, got number`,
+				`8:16: expected capsule, got number`,
+				`9:13: expected number, got string`,
+				`10:17: expected number, got string`,
 			},
 		},
 	}

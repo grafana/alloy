@@ -227,11 +227,19 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 
 	switch expr := a.Value.(type) {
 	case *ast.ArrayExpr:
-		diags.Merge(typecheckArrayExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
+		diags.Merge(typecheckArrayExpr(expr, reflectutil.GetOrAlloc(rv, tf)))
 	case *ast.ObjectExpr:
-		diags.Merge(typecheckObjectExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
+		diags.Merge(typecheckObjectExpr(expr, reflectutil.GetOrAlloc(rv, tf)))
 	case *ast.LiteralExpr:
-		if d := typecheckLiteralExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+		if d := typecheckLiteralExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+			diags.Add(*d)
+		}
+	case *ast.UnaryExpr:
+		if d := typecheckUnaryExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+			diags.Add(*d)
+		}
+	case *ast.BinaryExpr:
+		if d := typecheckBinaryExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
 			diags.Add(*d)
 		}
 	default:
@@ -245,7 +253,7 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 	return nil
 }
 
-func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics {
+func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics {
 	// If expected value can be of any type we don't have to check further.
 	if rv.Kind() == reflect.Interface {
 		return nil
@@ -258,7 +266,7 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(expr).Position(),
 			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("%q should be %s, got array", name, expectedType),
+			Message:  fmt.Sprintf("expected %s, got array", expectedType),
 		}}
 	}
 
@@ -276,13 +284,21 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 	for _, e := range expr.Elements {
 		switch expr := e.(type) {
 		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(name, expr, expected); d != nil {
+			if d := typecheckLiteralExpr(expr, expected); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(name, expr, expected))
+			diags.Merge(typecheckArrayExpr(expr, expected))
 		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(name, expr, expected))
+			diags.Merge(typecheckObjectExpr(expr, expected))
+		case *ast.UnaryExpr:
+			if d := typecheckUnaryExpr(expr, expected); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.BinaryExpr:
+			if d := typecheckBinaryExpr(expr, expected); d != nil {
+				diags.Add(*d)
+			}
 		default:
 			// ignore rest for now.
 		}
@@ -295,7 +311,7 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 	return nil
 }
 
-func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
 	// If expected value can be of any type we don't have to check further.
 	if rv.Kind() == reflect.Interface {
 		return nil
@@ -310,10 +326,10 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 				Severity: diag.SeverityLevelError,
 				StartPos: ast.StartPos(expr).Position(),
 				EndPos:   ast.EndPos(expr).Position(),
-				Message:  fmt.Sprintf("%q should be %s, got object", name, value.TypeCapsule),
+				Message:  fmt.Sprintf("expected %s, got object", value.TypeCapsule),
 			}}
 		}
-		// FIXME(kallep): we should should type check further but it's not easy to exract the expected type.
+		// FIXME(kallep): we should type check further but it's not easy to exract the expected type.
 		return nil
 	}
 
@@ -324,7 +340,7 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(expr).Position(),
 			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("%q should be %s, got object", name, expectedType),
+			Message:  fmt.Sprintf("expected %s, got object", expectedType),
 		}}
 	}
 
@@ -339,13 +355,21 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 	for _, f := range expr.Fields {
 		switch expr := f.Value.(type) {
 		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(name, expr, expectedValue); d != nil {
+			if d := typecheckLiteralExpr(expr, expectedValue); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(name, expr, expectedValue))
+			diags.Merge(typecheckArrayExpr(expr, expectedValue))
 		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(name, expr, expectedValue))
+			diags.Merge(typecheckObjectExpr(expr, expectedValue))
+		case *ast.UnaryExpr:
+			if d := typecheckUnaryExpr(expr, expectedValue); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.BinaryExpr:
+			if d := typecheckBinaryExpr(expr, expectedValue); d != nil {
+				diags.Add(*d)
+			}
 		default:
 			// ignore rest for now.
 		}
@@ -358,23 +382,72 @@ func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) di
 	return nil
 }
 
-func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnostic {
+func typecheckUnaryExpr(expr *ast.UnaryExpr, rv reflect.Value) *diag.Diagnostic {
+	switch v := expr.Value.(type) {
+	case *ast.LiteralExpr:
+		// First we check that this is a valid unary expression.
+		_, err := transform.UnaryOp(expr.Kind, valueFromLiteralExpr(v))
+		if err != nil {
+			return &diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(v).Position(),
+				EndPos:   ast.EndPos(v).Position(),
+				Message:  err.Error(),
+			}
+		}
+
+		// Then we check that it's expected type.
+		return typecheckLiteralExpr(v, rv)
+	default:
+		// ignore rest for now.
+		return nil
+	}
+}
+
+func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnostic {
+	fmt.Println("Check binary op")
+	// We limit to only literal experssions for now.
+	lhs, lok := expr.Left.(*ast.LiteralExpr)
+	rhs, rok := expr.Right.(*ast.LiteralExpr)
+
+	fmt.Println(lok, rok)
+
+	// First we type check lhs.
+	if lok {
+		if d := typecheckLiteralExpr(lhs, rv); d != nil {
+			return d
+		}
+	}
+
+	// Then we type check rhs.
+	if rok {
+		if d := typecheckLiteralExpr(rhs, rv); d != nil {
+			return d
+		}
+	}
+
+	// Last we check if it's a valid binary operaiont.
+	if lok && rok {
+		if _, err := transform.BinaryOp(valueFromLiteralExpr(lhs), expr.Kind, valueFromLiteralExpr(rhs)); err != nil {
+			return &diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(expr).Position(),
+				EndPos:   ast.EndPos(expr).Position(),
+				Message:  err.Error(),
+			}
+		}
+	}
+
+	return nil
+}
+
+func typecheckLiteralExpr(expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnostic {
 	// If value can be any type we don't have to check further.
 	if rv.Kind() == reflect.Interface {
 		return nil
 	}
 
-	have, err := transform.ValueFromLiteral(expr.Value, expr.Kind)
-
-	// We don't expect to get error here because parser always produce valid tokens.
-	if err != nil {
-		return &diag.Diagnostic{
-			Severity: diag.SeverityLevelError,
-			StartPos: ast.StartPos(expr).Position(),
-			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("unexpected err: %s", err),
-		}
-	}
+	have := valueFromLiteralExpr(expr)
 
 	expected := value.AlloyType(rv.Type())
 	if expected == value.TypeCapsule {
@@ -388,7 +461,7 @@ func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) 
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(expr).Position(),
 			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("%q should be %s, got %s", name, expected, have.Type()),
+			Message:  fmt.Sprintf("expected %s, got %s", expected, have.Type()),
 		}
 	}
 
@@ -397,9 +470,18 @@ func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) 
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(expr).Position(),
 			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("%q should be %s, got %s", name, expected, have.Type()),
+			Message:  fmt.Sprintf("expected %s, got %s", expected, have.Type()),
 		}
 	}
 
 	return nil
+}
+
+func valueFromLiteralExpr(expr *ast.LiteralExpr) value.Value {
+	v, err := transform.ValueFromLiteral(expr.Value, expr.Kind)
+	// We don't expect to get error here because parser always produce valid tokens.
+	if err != nil {
+		panic(fmt.Sprintf("typecheck: unexpected error %s", err))
+	}
+	return v
 }
