@@ -28,6 +28,8 @@ Main (unreleased)
 
 - Add `prometheus.echo` component for local inspection of Prometheus metrics. The component writes received metrics to stdout in Prometheus exposition format, enabling easier debugging and testing of metrics flow. (@iamrajiv)
 
+- Add `alertmanagerconfig_matcher_strategy` to `mimir.alerts.kubernetes` component to change the matcher strategy. (@timonegk)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
