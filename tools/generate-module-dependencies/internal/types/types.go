@@ -10,6 +10,7 @@ type FileType string
 
 const (
 	FileTypeMod FileType = "mod"
+	FileTypeOCB FileType = "ocb"
 )
 
 func (ft FileType) String() string {
@@ -26,8 +27,11 @@ func (ft *FileType) UnmarshalYAML(value *yaml.Node) error {
 	case FileTypeMod:
 		*ft = FileTypeMod
 		return nil
+	case FileTypeOCB:
+		*ft = FileTypeOCB
+		return nil
 	default:
-		return fmt.Errorf("invalid Module.file_type %q (expected %q)", s, FileTypeMod)
+		return fmt.Errorf("invalid Module.file_type %q (expected %q or %q)", s, FileTypeMod, FileTypeOCB)
 	}
 }
 
