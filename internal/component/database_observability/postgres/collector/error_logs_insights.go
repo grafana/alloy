@@ -238,7 +238,6 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 	msg := parsed.Message
 
-	// Check column before general "does not exist" to avoid false matches
 	if strings.Contains(msg, "column") && strings.Contains(msg, "does not exist") {
 		if match := columnPattern.FindStringSubmatch(msg); len(match) > 1 {
 			parsed.ColumnName = match[1]
