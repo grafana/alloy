@@ -144,9 +144,7 @@ func checkStructBlock(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.D
 
 	switch field.Kind() {
 	case reflect.Slice:
-		// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot
-		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
-		return block(b, reflectutil.DeferencePointer(field.Index(0)))
+		return block(b, reflectutil.DeferencePointer(reflect.New(field.Type().Elem())))
 	case reflect.Array:
 		if field.Len() != s.blockCount[name] {
 			return diag.Diagnostics{{
@@ -161,8 +159,7 @@ func checkStructBlock(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.D
 				),
 			}}
 		}
-
-		return block(b, reflectutil.DeferencePointer(field.Index(0)))
+		return block(b, reflectutil.DeferencePointer(reflect.New(field.Type().Elem())))
 	default:
 		if s.blockCount[name] > 1 {
 			return diag.Diagnostics{{
@@ -271,10 +268,10 @@ func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics 
 		}}
 	}
 
-	expectedValue := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
+	expected := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
 
 	// If elements of array can be any type we don't have to check further.
-	if expectedValue.Kind() == reflect.Interface {
+	if expected.Kind() == reflect.Interface {
 		return nil
 	}
 
@@ -282,19 +279,19 @@ func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics 
 	for _, e := range expr.Elements {
 		switch expr := e.(type) {
 		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(expr, expectedValue); d != nil {
+			if d := typecheckLiteralExpr(expr, expected); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(expr, expectedValue))
+			diags.Merge(typecheckArrayExpr(expr, expected))
 		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(expr, expectedValue))
+			diags.Merge(typecheckObjectExpr(expr, expected))
 		case *ast.UnaryExpr:
-			if d := typecheckUnaryExpr(expr, expectedValue); d != nil {
+			if d := typecheckUnaryExpr(expr, expected); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.BinaryExpr:
-			if d := typecheckBinaryExpr(expr, expectedValue); d != nil {
+			if d := typecheckBinaryExpr(expr, expected); d != nil {
 				diags.Add(*d)
 			}
 		default:
