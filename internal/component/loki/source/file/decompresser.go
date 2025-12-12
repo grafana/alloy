@@ -339,8 +339,14 @@ func (d *decompressor) Key() positions.Entry {
 	return d.key
 }
 
-func (d *decompressor) IsRunning() bool {
-	return d.running.Load()
+func (d *decompressor) DebugInfo() any {
+	offset, _ := d.positions.Get(d.key.Path, d.key.Labels)
+	return sourceDebugInfo{
+		Path:       d.key.Path,
+		Labels:     d.key.Labels,
+		IsRunning:  d.running.Load(),
+		ReadOffset: offset,
+	}
 }
 
 // cleanupMetrics removes all metrics exported by this reader

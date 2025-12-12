@@ -1,26 +1,23 @@
-package dockertarget
-
-// NOTE: This code is adapted from Promtail (90a1d4593e2d690b37333386383870865fe177bf).
-// The dockertarget package is used to configure and run the targets that can
-// read logs from Docker containers and forward them to other loki components.
+package docker
 
 import (
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
-// Metrics holds a set of Docker target metrics.
-type Metrics struct {
+// metrics holds a set of Docker target metrics.
+type metrics struct {
 	reg prometheus.Registerer
 
 	dockerEntries prometheus.Counter
 	dockerErrors  prometheus.Counter
 }
 
-// NewMetrics creates a new set of Docker target metrics. If reg is non-nil, the
+// newMetrics creates a new set of Docker target metrics. If reg is non-nil, the
 // metrics will be registered.
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	var m Metrics
+func newMetrics(reg prometheus.Registerer) *metrics {
+	var m metrics
 	m.reg = reg
 
 	m.dockerEntries = prometheus.NewCounter(prometheus.CounterOpts{

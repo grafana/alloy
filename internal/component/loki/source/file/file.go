@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sync"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -144,7 +144,7 @@ type Component struct {
 	// new arguments.
 	resolver resolver
 	// scheduler owns the lifecycle of sources.
-	scheduler *Scheduler[positions.Entry]
+	scheduler *source.Scheduler[positions.Entry]
 
 	// watcher is a background trigger that periodically invokes
 	// scheduling when file matching is enabled.
@@ -153,8 +153,7 @@ type Component struct {
 	handler loki.LogsReceiver
 	posFile positions.Positions
 
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 
 	stopping atomic.Bool
 }
@@ -184,9 +183,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:      o,
 		metrics:   newMetrics(o.Registerer),
 		handler:   loki.NewLogsReceiver(),
-		receivers: args.ForwardTo,
+		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
-		scheduler: NewScheduler[positions.Entry](),
+		scheduler: source.NewScheduler[positions.Entry](),
 		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
@@ -202,49 +201,24 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping sources and positions file")
-
 		// We need to stop posFile first so we don't record entries we are draining
 		c.posFile.Stop()
-		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
-		drainCtx, cancelDrain := context.WithCancel(context.Background())
-		defer cancelDrain()
-		go func() {
-			for {
-				select {
-				case <-drainCtx.Done():
-					return
-				case <-c.handler.Chan(): // Ignore the remaining entries
-				}
-			}
-		}()
-		c.mut.Lock()
-		c.stopping.Store(true)
-		c.watcher.Stop()
-		c.scheduler.Stop()
-		close(c.handler.Chan())
-		c.mut.Unlock()
+
+		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
+		source.Drain(c.handler, func() {
+			c.mut.Lock()
+			c.stopping.Store(true)
+			c.watcher.Stop()
+			c.scheduler.Stop()
+			close(c.handler.Chan())
+			c.mut.Unlock()
+		})
 	}()
 
 	var wg sync.WaitGroup
-	wg.Go(func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case entry := <-c.handler.Chan():
-				c.receiversMut.RLock()
-				for _, receiver := range c.receivers {
-					select {
-					case <-ctx.Done():
-						c.receiversMut.RUnlock()
-						return
-					case receiver.Chan() <- entry:
-					}
-				}
-				c.receiversMut.RUnlock()
-			}
-		}
-	})
+
+	// Start consume and fanout loop
+	wg.Go(func() { source.Consume(ctx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		for {
@@ -276,16 +250,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.receiversMut.RLock()
-	if receiversChanged(c.receivers, newArgs.ForwardTo) {
-		// Upgrade lock to write.
-		c.receiversMut.RUnlock()
-		c.receiversMut.Lock()
-		c.receivers = newArgs.ForwardTo
-		c.receiversMut.Unlock()
-	} else {
-		c.receiversMut.RUnlock()
-	}
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
@@ -368,7 +333,7 @@ func (c *Component) scheduleSources() {
 		c.scheduler.ScheduleSource(source)
 	}
 
-	var toDelete []Source[positions.Entry]
+	var toDelete []source.Source[positions.Entry]
 
 	// Avoid mutating the scheduler state during iteration. Collect sources to
 	// remove and stop them in a separate loop.
@@ -385,10 +350,10 @@ func (c *Component) scheduleSources() {
 }
 
 type debugInfo struct {
-	TargetsInfo []targetInfo `alloy:"targets_info,block"`
+	TargetsInfo []sourceDebugInfo `alloy:"targets_info,block"`
 }
 
-type targetInfo struct {
+type sourceDebugInfo struct {
 	Path       string `alloy:"path,attr"`
 	Labels     string `alloy:"labels,attr"`
 	IsRunning  bool   `alloy:"is_running,attr"`
@@ -403,13 +368,10 @@ func (c *Component) DebugInfo() any {
 	defer c.mut.RUnlock()
 	var res debugInfo
 	for s := range c.scheduler.Sources() {
-		offset, _ := c.posFile.Get(s.Key().Path, s.Key().Labels)
-		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
-			Path:       s.Key().Path,
-			Labels:     s.Key().Labels,
-			IsRunning:  s.IsRunning(),
-			ReadOffset: offset,
-		})
+		ds, ok := s.(source.DebugSource)
+		if ok {
+			res.TargetsInfo = append(res.TargetsInfo, ds.DebugInfo().(sourceDebugInfo))
+		}
 	}
 	return res
 }
@@ -426,7 +388,7 @@ type sourceOptions struct {
 }
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.
-func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], error) {
+func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
 	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
 			c.metrics,
@@ -452,7 +414,7 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tailer %w", err)
 	}
-	return NewSourceWithRetry(tailer, backoff.Config{
+	return source.NewSourceWithRetry(tailer, backoff.Config{
 		MinBackoff: 1 * time.Second,
 		MaxBackoff: 10 * time.Second,
 	}), nil
@@ -460,16 +422,4 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 
 func (c *Component) IsStopping() bool {
 	return c.stopping.Load()
-}
-
-func receiversChanged(prev, next []loki.LogsReceiver) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	for i := range prev {
-		if !reflect.DeepEqual(prev[i], next[i]) {
-			return true
-		}
-	}
-	return false
 }
