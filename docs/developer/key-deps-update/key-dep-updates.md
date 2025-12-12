@@ -286,3 +286,25 @@ Consider this step successful if all the tests pass and there were no big change
 If the tests pass, but we had to change the test expectations in a meaningful way that will impact end users, explain what is the breaking change.
 
 If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on. Provide description of what you think is failing and how does it relate to our dependency updates.
+
+### Step 8: Inspect upstream changelogs and document user-impacting changes
+
+For **each key dependency that was updated**, inspect the upstream changelog/release notes between the old and new versions and extract:
+
+1. **Breaking changes** (anything that can change Alloy behavior, user configuration, defaults, metrics, logs, CLI flags, or compatibility)
+2. **New features relevant to Alloy** (short summary only; focus on features that Alloy can expose, embed, or that materially change its behavior)
+
+Use the `dependency-changelog` tool to fetch the changelog in a digestible form:
+
+- `go run -C tools ./dependency-changelog --dep <alias-or-module> --from <old> --to <new>`
+
+Notes:
+- For `github.com/prometheus/prometheus`, pass the **Go module version** (e.g. `v0.308.0`); the tool will map it to the upstream release tag (e.g. `v3.8.0`).
+- For forked key deps like `go.opentelemetry.io/obi` and `go.opentelemetry.io/ebpf-profiler`, the tool uses the **Grafana forks** that Alloy actually depends on.
+
+#### Required documentation updates (breaking changes only)
+
+For any breaking changes you identify:
+
+- Add a concise description under `CHANGELOG.md` in `Main (unreleased)` (create a `### Breaking changes` section if needed).
+- Add the same breaking change description to `docs/sources/release-notes.md` under the appropriate release section (create a new version section if needed).
