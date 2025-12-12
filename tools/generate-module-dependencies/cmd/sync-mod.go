@@ -9,27 +9,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var generateAndApplyReplaces = &cobra.Command{
-	Use:   "generate",
-	Short: "Generates replace directives as specified in the input dependency-replacements.yaml",
-	Run: func(cmd *cobra.Command, args []string) {
-		pathToYaml := cmd.Flag("dependency-yaml").Value.String()
-		pathToRoot := cmd.Flag("project-root").Value.String()
+func newGenerateCommand() *cobra.Command {
+	generateAndApplyReplaces := &cobra.Command{
+		Use:   "generate",
+		Short: "Generates replace directives as specified in the input dependency-replacements.yaml",
+		Run: func(cmd *cobra.Command, args []string) {
+			pathToYaml := cmd.Flag("dependency-yaml").Value.String()
+			pathToRoot := cmd.Flag("project-root").Value.String()
 
-		fileHelper, err := helpers.NewFileHelper(pathToYaml, pathToRoot)
-		if err != nil {
-			log.Fatalf("Failed to create file helper: %v", err)
-		}
+			fileHelper, err := helpers.NewFileHelper(pathToYaml, pathToRoot)
+			if err != nil {
+				log.Fatalf("Failed to create file helper: %v", err)
+			}
 
-		projectReplaces, err := fileHelper.LoadProjectReplaces()
-		if err != nil {
-			log.Fatalf("Failed to load project replaces: %v", err)
-		}
+			projectReplaces, err := fileHelper.LoadProjectReplaces()
+			if err != nil {
+				log.Fatalf("Failed to load project replaces: %v", err)
+			}
 
-		modByReplaceStr := internal.GenerateReplaces(fileHelper, projectReplaces)
-		internal.ApplyReplaces(fileHelper, projectReplaces, modByReplaceStr)
-		internal.TidyModules(fileHelper, projectReplaces)
-	},
+			modByReplaceStr := internal.GenerateReplaces(fileHelper, projectReplaces)
+			internal.ApplyReplaces(fileHelper, projectReplaces, modByReplaceStr)
+			internal.TidyModules(fileHelper, projectReplaces)
+		},
+	}
+
+	generateAndApplyReplaces.Flags().String("dependency-yaml", "", "Relative path to the dependency-replacements.yaml file")
+	generateAndApplyReplaces.Flags().String("project-root", "", "Relative path to the project root")
+
+	return generateAndApplyReplaces
 }
 
 func Execute() {
@@ -44,9 +51,7 @@ func NewRootCommand() *cobra.Command {
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 
-	rootCmd.AddCommand(generateAndApplyReplaces)
-	generateAndApplyReplaces.Flags().String("dependency-yaml", "", "Relative path to the dependency-replacements.yaml file")
-	generateAndApplyReplaces.Flags().String("project-root", "", "Relative path to the project root")
+	rootCmd.AddCommand(newGenerateCommand())
 
 	return rootCmd
 }
