@@ -29,8 +29,8 @@ This component requires [Role-based access control (RBAC)][] to be set up in Kub
 {{< /admonition >}}
 
 `mimir.alerts.kubernetes` doesn't support [clustering][clustered mode].
-[clustered mode]: ../../../../get-started/clustering/
 
+[clustered mode]: ../../../../get-started/clustering/
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 [prometheus-operator]: https://prometheus-operator.dev/
 [within a Pod]: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/
@@ -48,21 +48,22 @@ mimir.alerts.kubernetes "<LABEL>" {
 
 You can use the following arguments with `mimir.alerts.kubernetes`:
 
-| Name                     | Type                | Description                                                                                      | Default       | Required |
-| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------------- | -------- |
-| `address`                | `string`            | URL of the Mimir Alertmanager.                                                                   |               | yes      |
-| `global_config`          | `secret`            | [Alertmanager configuration][global-cfg] to be merged with AlertmanagerConfig CRDs.              |               | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no       |
-| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |               | no       |
-| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no       |
-| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no       |
-| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no       |
-| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no       |
-| `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | `"5m"`        | no       |
-| `template_files`         | `map(string)`       | A map of Alertmanager [template files][mimir-api-set-alertmgr-cfg].                              |  `{}`         | no       |
+| Name                                  | Type                | Description                                                                                                                                                                      | Default       | Required |
+| ------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `address`                             | `string`            | URL of the Mimir Alertmanager.                                                                                                                                                   |               | yes      |
+| `global_config`                       | `secret`            | [Alertmanager configuration][global-cfg] to be merged with AlertmanagerConfig CRDs.                                                                                              |               | yes      |
+| `alertmanagerconfig_matcher_strategy` | `string`            | [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] for adding matchers to AlertmanagerConfig CRDs. Currently only "None" and "OnNamespace" are supported. | `"None"`      | no       |
+| `bearer_token_file`                   | `string`            | File containing a bearer token to authenticate with.                                                                                                                             |               | no       |
+| `bearer_token`                        | `secret`            | Bearer token to authenticate with.                                                                                                                                               |               | no       |
+| `enable_http2`                        | `bool`              | Whether HTTP2 is supported for requests.                                                                                                                                         | `true`        | no       |
+| `follow_redirects`                    | `bool`              | Whether redirects returned by the server should be followed.                                                                                                                     | `true`        | no       |
+| `http_headers`                        | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                                                                                          |               | no       |
+| `no_proxy`                            | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                                                                                 |               | no       |
+| `proxy_connect_header`                | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                                                                                    |               | no       |
+| `proxy_from_environment`              | `bool`              | Use the proxy URL indicated by environment variables.                                                                                                                            | `false`       | no       |
+| `proxy_url`                           | `string`            | HTTP proxy to send requests through.                                                                                                                                             |               | no       |
+| `sync_interval`                       | `duration`          | Amount of time between reconciliations with Mimir.                                                                                                                               | `"5m"`        | no       |
+| `template_files`                      | `map(string)`       | A map of Alertmanager [template files][mimir-api-set-alertmgr-cfg].                                                                                                              |  `{}`         | no       |
 
 At most, one of the following can be provided:
 
@@ -78,6 +79,7 @@ At most, one of the following can be provided:
 
 [global-cfg]: https://prometheus.io/docs/alerting/latest/configuration/
 [mimir-api-set-alertmgr-cfg]: https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
+[alertmanager-config-matcher-strategy]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.AlertmanagerConfigMatcherStrategy
 
 ## Blocks
 

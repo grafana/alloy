@@ -241,6 +241,51 @@ receivers:
 - name: mynamespace/alertmgr-config2/database-pager
 templates: []`
 
+	final_amConf_1_and_2_matcher_none := `global:
+  resolve_timeout: 5m
+  http_config:
+    follow_redirects: true
+    enable_http2: true
+  smtp_hello: localhost
+  smtp_require_tls: true
+route:
+  receiver: "null"
+  routes:
+  - receiver: mynamespace/alertmgr-config1/null
+    continue: true
+    routes:
+    - receiver: mynamespace/alertmgr-config1/myamc
+      continue: true
+  - receiver: mynamespace/alertmgr-config2/null
+    continue: true
+    routes:
+    - receiver: mynamespace/alertmgr-config2/database-pager
+      matchers:
+      - "service=\"webapp\""
+      group_wait: 10s
+receivers:
+- name: "null"
+- name: mynamespace/alertmgr-config1/null
+- name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
+  webhook_configs:
+  - http_config:
+      follow_redirects: true
+    url: http://test.url
+- name: mynamespace/alertmgr-config2/null
+- name: mynamespace/alertmgr-config2/database-pager
+templates: []`
+
 	tests := []struct {
 		name              string
 		baseCfgStr        string
@@ -271,6 +316,18 @@ templates: []`
 				Type: "OnNamespace",
 			},
 			want: final_amConf_1_and_2,
+		},
+		{
+			name:       "2 AlertmanagerConfig CRDs - with NoneConfigMatcherStrategy",
+			baseCfgStr: baseCfg,
+			amConfig: []string{
+				amConfCrd1_mynamespace,
+				amConfCrd2_mynamespace,
+			},
+			matcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
+				Type: "None",
+			},
+			want: final_amConf_1_and_2_matcher_none,
 		},
 		{
 			name:       "2 AlertmanagerConfig CRDs and no base config",
@@ -408,6 +465,7 @@ spec:
 				namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
 				cfgLister:         promListers_v1alpha1.NewAlertmanagerConfigLister(amConfigsIndexer),
 				namespaceSelector: namespaceSelector,
+				matcherStrategy:   tt.matcherStrategy.Type,
 				cfgSelector:       cfgSelector,
 				metrics:           newMetrics(),
 				logger:            testLogger,

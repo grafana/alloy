@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
@@ -77,6 +78,8 @@ type Component struct {
 	namespaceSelector labels.Selector
 	// Selector for "AlertmanagerConfig" k8s resources which to watch.
 	cfgSelector labels.Selector
+	// Matcher strategy for "AlertmanagerConfig" resources.
+	matcherStrategy monitoringv1.AlertmanagerConfigMatcherStrategyType
 	// A Prometheus Operator client via which "AlertmanagerConfigs" are retrieved from the Kubernetes API.
 	promClient promVersioned.Interface
 	// The event processor that watches for changes in the Kubernetes API and updates the Mimir Alertmanager configs.
@@ -298,6 +301,12 @@ func (c *Component) init() error {
 		return err
 	}
 
+	c.matcherStrategy = monitoringv1.AlertmanagerConfigMatcherStrategyType(c.args.AlertmanagerConfigMatcherStrategy)
+	if c.matcherStrategy != monitoringv1.OnNamespaceConfigMatcherStrategyType &&
+		c.matcherStrategy != monitoringv1.NoneConfigMatcherStrategyType {
+		return fmt.Errorf("invalid alertmanagerconfig_matcher_strategy: %s", c.args.AlertmanagerConfigMatcherStrategy)
+	}
+
 	return nil
 }
 
@@ -364,6 +373,7 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		baseCfg:           baseCfg,
 		namespaceSelector: c.namespaceSelector,
 		cfgSelector:       c.cfgSelector,
+		matcherStrategy:   c.matcherStrategy,
 		metrics:           c.metrics,
 		logger:            c.log,
 		kclient:           c.k8sClient,
