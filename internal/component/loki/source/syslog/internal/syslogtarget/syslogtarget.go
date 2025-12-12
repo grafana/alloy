@@ -60,7 +60,6 @@ func NewSyslogTarget(
 	relabel []*relabel.Config,
 	config *scrapeconfig.SyslogTargetConfig,
 ) (*SyslogTarget, error) {
-
 	t := &SyslogTarget{
 		metrics:       metrics,
 		logger:        logger,
@@ -226,10 +225,18 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg syslog
 	t.messages <- message{filtered, m, timestamp}
 }
 
+func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg syslog.Message) {
+	// TODO: impl raw
+}
+
 func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Message) {
-	if t.config.IsRFC3164Message() {
+	switch t.config.SyslogFormat {
+	case scrapeconfig.SyslogFormatRFC3164:
 		t.handleMessageRFC3164(connLabels, msg)
-	} else {
+	case scrapeconfig.SyslogFormatRaw:
+		t.handleMessageRaw(connLabels, msg)
+	default:
+		// keep RFC5424 as default to keep compatibility with previous impl.
 		t.handleMessageRFC5424(connLabels, msg)
 	}
 }

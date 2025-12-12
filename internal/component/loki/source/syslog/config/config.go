@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
 	promconfig "github.com/prometheus/common/config"
@@ -10,11 +11,49 @@ import (
 type SyslogFormat string
 
 const (
-	// A modern Syslog RFC
+	// SyslogFormatRFC5424 is a modern Syslog RFC format.
 	SyslogFormatRFC5424 = "rfc5424"
-	// A legacy Syslog RFC also known as BSD-syslog
+	// SyslogFormatRFC3164 is a legacy Syslog RFC format, also known as BSD-syslog.
 	SyslogFormatRFC3164 = "rfc3164"
+
+	// SyslogFormatRaw is a raw format.
+	//
+	// Using this format, skips log label parsing.
+	SyslogFormatRaw = "raw"
 )
+
+// MarshalText implements encoding.TextMarshaler
+func (s SyslogFormat) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *SyslogFormat) UnmarshalText(text []byte) error {
+	str := SyslogFormat(text)
+	switch str {
+	case "rfc5424":
+		*s = SyslogFormatRFC5424
+	case "rfc3164":
+		*s = SyslogFormatRFC3164
+	case "raw":
+		*s = SyslogFormatRaw
+	default:
+		return fmt.Errorf("unknown syslog format: %s", str)
+	}
+
+	return nil
+}
+
+func (s SyslogFormat) Validate() error {
+	switch s {
+	case SyslogFormatRFC5424,
+		SyslogFormatRFC3164,
+		SyslogFormatRaw:
+		return nil
+	}
+
+	return fmt.Errorf("unknown syslog format: %q", s)
+}
 
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
 type SyslogTargetConfig struct {

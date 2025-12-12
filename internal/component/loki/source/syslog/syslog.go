@@ -222,6 +222,7 @@ type listenerInfo struct {
 func listenersChanged(prev, next []ListenerConfig) bool {
 	return !reflect.DeepEqual(prev, next)
 }
+
 func relabelRulesChanged(prev, next alloy_relabel.Rules) bool {
 	return !reflect.DeepEqual(prev, next)
 }
