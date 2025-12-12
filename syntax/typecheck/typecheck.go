@@ -425,7 +425,7 @@ func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnosti
 		}
 	}
 
-	// Last we check if it's a valid binary operaiont.
+	// Last we check if it's a valid binary operation.
 	if lok && rok {
 		if _, err := transform.BinaryOp(valueFromLiteralExpr(lhs), expr.Kind, valueFromLiteralExpr(rhs)); err != nil {
 			return &diag.Diagnostic{
