@@ -322,7 +322,7 @@ func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostic
 				Message:  fmt.Sprintf("expected %s, got object", value.TypeCapsule),
 			}}
 		}
-		// FIXME(kallep): we should type check further but it's not easy to extract the expected type.
+		// FIXME(kalleep): we should type check further but it's not easy to extract the expected type.
 		return nil
 	}
 
