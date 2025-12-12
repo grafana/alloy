@@ -1,8 +1,7 @@
-name: Publish alloy release containers
+name: Publish Alloy release artifacts
 on:
-  push:
-    tags:
-      - v*
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -45,6 +44,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
+        ref: ${{ github.event.release.tag_name }}
         persist-credentials: false
 
     - name: Set ownership
@@ -63,10 +63,9 @@ jobs:
       run: |
         RELEASE_BUILD=1 make -j4 dist
       env:
-        VERSION: ${{ github.ref_name }}
+        VERSION: ${{ github.event.release.tag_name }}
 
     - name: Publish dist
-      if: github.ref_type == 'tag'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: dist
@@ -74,7 +73,6 @@ jobs:
         if-no-files-found: error
 
     - name: Publish unsigned Windows executables
-      if: github.ref_type == 'tag'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: windows-executables
@@ -85,7 +83,6 @@ jobs:
 
   sign_alloy_windows:
     name: Sign Alloy executables for Windows
-    if: github.ref_type == 'tag'
     runs-on: windows-2025
     environment:
       name: azure-trusted-signing
@@ -127,6 +124,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
+        ref: ${{ github.event.release.tag_name }}
         persist-credentials: false
 
     - name: Set ownership
@@ -152,7 +150,7 @@ jobs:
       run: |
         RELEASE_BUILD=1 makensis -V4 -DVERSION=${VERSION} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
-        VERSION: ${{ github.ref_name }}
+        VERSION: ${{ github.event.release.tag_name }}
 
     - name: Publish unsigned Windows installer
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -193,38 +191,21 @@ jobs:
         azure-tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
         signed-artifact-name: 'windows-installer-signed'
 
-  publish_github_release:
-    name: Publish GitHub release
-    if: github.ref_type == 'tag'
-    container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
+  upload_release_assets:
+    name: Upload release assets
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
     - sign_alloy_windows_installer
     permissions:
-      # This job needs write access so it can create a draft GitHub release.
+      # This job needs write access to upload assets to the GitHub release.
       contents: write
       id-token: write
     steps:
-    - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      with:
-        persist-credentials: false
-
-    - name: Set ownership
-      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
-      run: |
-          # This is to fix Git not liking owner of the checkout directory
-          chown -R $(id -u):$(id -g) $PWD
-
-    - name: Set up Go
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
-      with:
-        go-version-file: go.mod
-        cache: false
-
-    # A GitHub App is used to create the release instead of github-actions so that submit-winget-manifest is triggered when the release is published
-    - name: Get GitHub app secrets
+    # A GitHub App is used to create the release instead of github-actions so that
+    # submit-winget-manifest is triggered when the release is published
+    - name: Get GitHub app secrets 🔐
       id: get-secrets
       uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
       with:
@@ -233,7 +214,7 @@ jobs:
           ALLOYBOT_APP_ID=alloybot:app_id
           ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
-    - name: Create GitHub app token
+    - name: Create GitHub app token 🔐
       uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
       id: app-token
       with:
@@ -242,12 +223,18 @@ jobs:
         owner: grafana
         repositories: alloy
 
-    - name: Checkout
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Checkout repository 🛎️
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
-        fetch-depth: 0
+        ref: ${{ github.event.release.tag_name }}
         token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # This is to fix Git not liking owner of the checkout directory
+          chown -R $(id -u):$(id -g) $PWD
 
     - name: Download dist
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
@@ -269,8 +256,19 @@ jobs:
         name: windows-installer-signed
         path: dist
 
-    - name: Publish
-      run: |
-        VERSION="${GITHUB_REF_NAME}" RELEASE_DOC_TAG=$(echo "${GITHUB_REF_NAME}" | awk -F '.' '{print $1"."$2}') ./tools/release
+    - name: Publish release assets
+      run: ./tools/publish-release-assets.sh
       env:
-        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  submit_winget_manifest:
+    name: Submit WinGet Manifest
+    needs:
+    - upload_release_assets
+    uses: ./.github/workflows/release-submit-winget-manifest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      release-tag: ${{ github.event.release.tag_name }}

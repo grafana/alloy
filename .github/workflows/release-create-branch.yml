@@ -1,0 +1,62 @@
+name: Create Release Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Source ref to branch from (default: main)'
+        required: false
+        default: 'main'
+        type: string
+      dry_run:
+        description: 'Dry run (do not create branch)'
+        type: boolean
+        default: true # For safety!
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub app secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Set up Go 🏗️
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+
+      - name: Run create-release-branch tool 🌿
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          cd tools
+          go run ./release/create-release-branch --source "${SOURCE_REF}" ${{ inputs.dry_run == true && '--dry-run' || '' }}
