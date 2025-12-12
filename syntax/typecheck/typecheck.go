@@ -229,7 +229,7 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 	case *ast.ArrayExpr:
 		diags.Merge(typecheckArrayExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
 	case *ast.ObjectExpr:
-		diags.Merge(typecheckObject(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
+		diags.Merge(typecheckObjectExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)))
 	case *ast.LiteralExpr:
 		if d := typecheckLiteralExpr(a.Name.Name, expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
 			diags.Add(*d)
@@ -281,6 +281,8 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 			}
 		case *ast.ArrayExpr:
 			diags.Merge(typecheckArrayExpr(name, expr, expected))
+		case *ast.ObjectExpr:
+			diags.Merge(typecheckObjectExpr(name, expr, expected))
 		default:
 			// ignore rest for now.
 		}
@@ -293,7 +295,7 @@ func typecheckArrayExpr(name string, expr *ast.ArrayExpr, rv reflect.Value) diag
 	return nil
 }
 
-func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+func typecheckObjectExpr(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
 	// If expected value can be of any type we don't have to check further.
 	if rv.Kind() == reflect.Interface {
 		return nil
@@ -327,7 +329,7 @@ func typecheckObject(name string, expr *ast.ObjectExpr, rv reflect.Value) diag.D
 		case *ast.ArrayExpr:
 			diags.Merge(typecheckArrayExpr(name, expr, expected))
 		case *ast.ObjectExpr:
-			diags.Merge(typecheckObject(name, expr, expected))
+			diags.Merge(typecheckObjectExpr(name, expr, expected))
 		default:
 			// ignore rest for now.
 		}
@@ -359,6 +361,7 @@ func typecheckLiteralExpr(name string, expr *ast.LiteralExpr, rv reflect.Value) 
 	}
 
 	expected := value.AlloyType(rv.Type())
+
 	if expected == value.TypeCapsule {
 		ok, _ := value.TryCapsuleConvert(have, rv, expected)
 		// FIXME(kalleep): We should probably unwrap the capsule type.
