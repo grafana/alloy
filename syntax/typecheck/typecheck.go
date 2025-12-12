@@ -183,10 +183,8 @@ func checkStructEnum(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.Di
 	if field.Kind() != reflect.Slice {
 		panic("checkEnum: enum field must be a slice kind, got " + field.Kind().String())
 	}
-
 	// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot
 	field.Set(reflect.MakeSlice(field.Type(), 1, 1))
-
 	elem := reflectutil.DeferencePointer(field.Index(0))
 
 	return block(b, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(elem, tf.BlockField)))
