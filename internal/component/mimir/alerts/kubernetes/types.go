@@ -20,6 +20,7 @@ type Arguments struct {
 	AlertmanagerConfigSelector          kubernetes.LabelSelector `alloy:"alertmanagerconfig_selector,block,optional"`
 	AlertmanagerConfigNamespaceSelector kubernetes.LabelSelector `alloy:"alertmanagerconfig_namespace_selector,block,optional"`
 	AlertmanagerConfigMatcherStrategy   string                   `alloy:"alertmanagerconfig_matcher_strategy,attr,optional"`
+	AlertmanagerNamespace               string                   `alloy:"alertmanager_namespace,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

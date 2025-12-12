@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promListers_v1alpha "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	go_k8s "k8s.io/client-go/kubernetes"
 	coreListers "k8s.io/client-go/listers/core/v1"
@@ -36,13 +37,14 @@ type eventProcessor struct {
 
 	mimirClient client.AlertmanagerInterface
 
-	namespaceLister   coreListers.NamespaceLister
-	cfgLister         promListers_v1alpha.AlertmanagerConfigLister
-	namespaceSelector labels.Selector
-	cfgSelector       labels.Selector
-	matcherStrategy   monitoringv1.AlertmanagerConfigMatcherStrategyType
-	kclient           go_k8s.Interface
-	storeBuilder      *assets.StoreBuilder
+	namespaceLister       coreListers.NamespaceLister
+	cfgLister             promListers_v1alpha.AlertmanagerConfigLister
+	namespaceSelector     labels.Selector
+	cfgSelector           labels.Selector
+	matcherStrategy       monitoringv1.AlertmanagerConfigMatcherStrategyType
+	alertmanagerNamespace string
+	kclient               go_k8s.Interface
+	storeBuilder          *assets.StoreBuilder
 
 	baseCfg       alertmgr_cfg.Config
 	templateFiles map[string]string
@@ -183,6 +185,9 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 				AlertmanagerConfigMatcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
 					Type: c.matcherStrategy,
 				},
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: c.alertmanagerNamespace,
 			},
 		})
 	)
