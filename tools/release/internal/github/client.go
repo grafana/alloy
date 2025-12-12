@@ -356,42 +356,6 @@ func (c *Client) CreateLabel(ctx context.Context, p CreateLabelParams) error {
 	return nil
 }
 
-// ListLabelsWithPrefix returns all labels that start with the given prefix.
-func (c *Client) ListLabelsWithPrefix(ctx context.Context, prefix string) ([]string, error) {
-	var result []string
-	opts := &github.ListOptions{PerPage: 100}
-
-	for {
-		labels, resp, err := c.api.Issues.ListLabels(ctx, c.owner, c.repo, opts)
-		if err != nil {
-			return nil, fmt.Errorf("listing labels: %w", err)
-		}
-
-		for _, label := range labels {
-			name := label.GetName()
-			if strings.HasPrefix(name, prefix) {
-				result = append(result, name)
-			}
-		}
-
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.Page = resp.NextPage
-	}
-
-	return result, nil
-}
-
-// DeleteLabel deletes a label from the repository.
-func (c *Client) DeleteLabel(ctx context.Context, name string) error {
-	_, err := c.api.Issues.DeleteLabel(ctx, c.owner, c.repo, name)
-	if err != nil {
-		return fmt.Errorf("deleting label %q: %w", name, err)
-	}
-	return nil
-}
-
 // GetReleaseByTag fetches a release by its tag name.
 func (c *Client) GetReleaseByTag(ctx context.Context, tag string) (*github.RepositoryRelease, error) {
 	release, _, err := c.api.Repositories.GetReleaseByTag(ctx, c.owner, c.repo, tag)

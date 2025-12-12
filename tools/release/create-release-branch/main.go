@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"sort"
-	"strings"
 
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/grafana/alloy/tools/release/internal/version"
@@ -15,10 +13,10 @@ import (
 const (
 	// backportLabelColor is the hex color for backport labels (without '#' prefix).
 	backportLabelColor = "63a504"
+	// releaseBranchPrefix is the prefix for release branches.
+	releaseBranchPrefix = "release/v"
 	// backportLabelPrefix is the prefix for backport labels.
 	backportLabelPrefix = "backport/v"
-	// maxBackportLabels is the maximum number of backport labels to keep.
-	maxBackportLabels = 3
 )
 
 func main() {
@@ -56,10 +54,10 @@ func main() {
 	}
 	fmt.Printf("Next minor version: %s\n", nextMinor)
 
-	branchName := fmt.Sprintf("release/v%s", nextMinor)
+	branchName := fmt.Sprintf("%s%s", releaseBranchPrefix, nextMinor)
 	fmt.Printf("Release branch: %s\n", branchName)
 
-	backportLabel := fmt.Sprintf("backport/v%s", nextMinor)
+	backportLabel := fmt.Sprintf("%s%s", backportLabelPrefix, nextMinor)
 	fmt.Printf("Backport label: %s\n", backportLabel)
 
 	// Check if branch already exists
@@ -109,66 +107,4 @@ func main() {
 	}
 
 	fmt.Printf("✅ Created label: %s\n", backportLabel)
-
-	// Clean up old backport labels (keep only the most recent maxBackportLabels)
-	if err := cleanupOldBackportLabels(ctx, client); err != nil {
-		log.Fatalf("Failed to clean up old backport labels: %v", err)
-	}
-}
-
-// cleanupOldBackportLabels removes backport labels older than n-2.
-func cleanupOldBackportLabels(ctx context.Context, client *gh.Client) error {
-	labels, err := client.ListLabelsWithPrefix(ctx, backportLabelPrefix)
-	if err != nil {
-		return err
-	}
-
-	if len(labels) <= maxBackportLabels {
-		return nil
-	}
-
-	// Sort labels by version (descending)
-	sort.Slice(labels, func(i, j int) bool {
-		majI, minI, err := parseBackportVersion(labels[i])
-		if err != nil {
-			return false
-		}
-		majJ, minJ, err := parseBackportVersion(labels[j])
-		if err != nil {
-			return false
-		}
-
-		if majI != majJ {
-			return majI > majJ
-		}
-		return minI > minJ
-	})
-
-	// Delete labels beyond the max count
-	for _, label := range labels[maxBackportLabels:] {
-		if err := client.DeleteLabel(ctx, label); err != nil {
-			return err
-		}
-		fmt.Printf("🗑️  Deleted old label: %s\n", label)
-	}
-
-	return nil
-}
-
-// parseBackportVersion extracts the major and minor version numbers from a backport label.
-// e.g., "backport/v1.9" -> (1, 9), "backport/v2.10" -> (2, 10)
-func parseBackportVersion(label string) (major int, minor int, err error) {
-	// Remove "backport/" prefix to get "vX.Y", append ".0" to make valid semver
-	v := strings.TrimPrefix(label, "backport/") + ".0"
-
-	// Use version package to extract major.minor string via semver
-	mm, err := version.MajorMinor(v)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	if _, err := fmt.Sscanf(mm, "%d.%d", &major, &minor); err != nil {
-		return 0, 0, fmt.Errorf("parsing major.minor from %s: %w", mm, err)
-	}
-	return major, minor, nil
 }

@@ -139,34 +139,3 @@ func Push(branch string) error {
 	}
 	return nil
 }
-
-// Checkout checks out an existing branch.
-func Checkout(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if err := run("git", "checkout", branch); err != nil {
-		return fmt.Errorf("checking out branch %s: %w", branch, err)
-	}
-	return nil
-}
-
-// Merge merges a branch into the current branch with a merge commit.
-// The message is used for the merge commit.
-func Merge(branch, message string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if err := run("git", "merge", "--no-ff", "-m", message, branch); err != nil {
-		return fmt.Errorf("merging branch %s: %w", branch, err)
-	}
-	return nil
-}
-
-// PushBranch pushes the current branch to origin with tracking.
-func PushBranch() error {
-	if err := run("git", "push", "-u", "origin", "HEAD"); err != nil {
-		return fmt.Errorf("pushing current branch: %w", err)
-	}
-	return nil
-}
