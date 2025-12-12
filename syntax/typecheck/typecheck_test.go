@@ -14,6 +14,7 @@ type Args struct {
 	Arg2       string            `alloy:"arg2,attr"`
 	Int        int               `alloy:"int,attr,optional"`
 	Int2       int               `alloy:"int2,attr,optional"`
+	Bool       bool              `alloy:"bool,attr,optional"`
 	Capsule    alloytypes.Secret `alloy:"capsule,attr,optional"`
 	Block1     Block1            `alloy:"block1,block"`
 	Block2     []Block1          `alloy:"block2,block,optional"`
@@ -66,6 +67,7 @@ func TestBlock(t *testing.T) {
 					capsule = "secret"
 					int = -1
 					int2 = 1 + 1
+					bool = 1 < 10
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -314,6 +316,7 @@ func TestBlock(t *testing.T) {
 					capsule = 1
 					int = -"test"
 					int2 = 1 + "test"
+					bool = 10 < "test"
 
 					block1 {
 						arg1 = "test"
@@ -336,7 +339,8 @@ func TestBlock(t *testing.T) {
 				`7:22: expected string, got number`,
 				`8:16: expected capsule, got number`,
 				`9:13: expected number, got string`,
-				`10:17: expected number, got string`,
+				`10:13: expected number, got string`,
+				`11:13: expected number, got string`,
 			},
 		},
 	}
