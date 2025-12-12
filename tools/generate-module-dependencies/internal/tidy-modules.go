@@ -11,6 +11,10 @@ import (
 
 func TidyModules(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces) {
 	for _, module := range projectReplaces.Modules {
+		if module.FileType != types.FileTypeMod {
+			continue
+		}
+
 		if err := runGoModTidy(fileHelper, module); err != nil {
 			log.Fatalf("Failed to run go mod tidy for module %q: %v", module.Name, err)
 		}
