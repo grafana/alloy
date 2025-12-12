@@ -409,8 +409,6 @@ func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnosti
 	lhs, lok := expr.Left.(*ast.LiteralExpr)
 	rhs, rok := expr.Right.(*ast.LiteralExpr)
 
-	fmt.Println(lok, rok)
-
 	// First we type check lhs.
 	if lok {
 		if d := typecheckLiteralExpr(lhs, rv); d != nil {
