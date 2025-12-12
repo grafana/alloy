@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -551,13 +552,13 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 
 func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	logMessage := fmt.Sprintf(
-		`severity="%s" datname="%s" user="%s" pid="%d" backend_type="%s" message="%s"`,
-		parsed.ErrorSeverity,
-		parsed.DatabaseName,
-		parsed.User,
+		`severity=%s datname=%s user=%s pid="%d" backend_type=%s message=%s`,
+		strconv.Quote(parsed.ErrorSeverity),
+		strconv.Quote(parsed.DatabaseName),
+		strconv.Quote(parsed.User),
 		parsed.PID,
-		parsed.BackendType,
-		parsed.Message,
+		strconv.Quote(parsed.BackendType),
+		strconv.Quote(parsed.Message),
 	)
 
 	if parsed.QueryID > 0 {
@@ -565,21 +566,21 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.SQLStateCode != "" {
-		logMessage += fmt.Sprintf(` sqlstate="%s"`, parsed.SQLStateCode)
+		logMessage += fmt.Sprintf(` sqlstate=%s`, strconv.Quote(parsed.SQLStateCode))
 		if parsed.ErrorCategory != "" {
-			logMessage += fmt.Sprintf(` sqlstate_class="%s"`, parsed.ErrorCategory)
+			logMessage += fmt.Sprintf(` sqlstate_class=%s`, strconv.Quote(parsed.ErrorCategory))
 		}
 		if parsed.SQLStateClass != "" {
-			logMessage += fmt.Sprintf(` sqlstate_class_code="%s"`, parsed.SQLStateClass)
+			logMessage += fmt.Sprintf(` sqlstate_class_code=%s`, strconv.Quote(parsed.SQLStateClass))
 		}
 	}
 
 	if parsed.SessionID != "" {
-		logMessage += fmt.Sprintf(` session_id="%s"`, parsed.SessionID)
+		logMessage += fmt.Sprintf(` session_id=%s`, strconv.Quote(parsed.SessionID))
 	}
 
 	if parsed.ApplicationName != "" {
-		logMessage += fmt.Sprintf(` app="%s"`, parsed.ApplicationName)
+		logMessage += fmt.Sprintf(` app=%s`, strconv.Quote(parsed.ApplicationName))
 	}
 
 	if parsed.RemoteHost != "" {
@@ -587,39 +588,39 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		if parsed.RemotePort > 0 {
 			client = fmt.Sprintf("%s:%d", parsed.RemoteHost, parsed.RemotePort)
 		}
-		logMessage += fmt.Sprintf(` client="%s"`, client)
+		logMessage += fmt.Sprintf(` client=%s`, strconv.Quote(client))
 	}
 
 	if parsed.TableName != "" {
-		logMessage += fmt.Sprintf(` table="%s"`, parsed.TableName)
+		logMessage += fmt.Sprintf(` table=%s`, strconv.Quote(parsed.TableName))
 	}
 
 	if parsed.ConstraintName != "" {
-		logMessage += fmt.Sprintf(` constraint="%s"`, parsed.ConstraintName)
+		logMessage += fmt.Sprintf(` constraint=%s`, strconv.Quote(parsed.ConstraintName))
 	}
 
 	if parsed.ConstraintType != "" {
-		logMessage += fmt.Sprintf(` constraint_type="%s"`, parsed.ConstraintType)
+		logMessage += fmt.Sprintf(` constraint_type=%s`, strconv.Quote(parsed.ConstraintType))
 	}
 
 	if parsed.ColumnName != "" {
-		logMessage += fmt.Sprintf(` column="%s"`, parsed.ColumnName)
+		logMessage += fmt.Sprintf(` column=%s`, strconv.Quote(parsed.ColumnName))
 	}
 
 	if parsed.Detail != "" {
-		logMessage += fmt.Sprintf(` detail="%s"`, parsed.Detail)
+		logMessage += fmt.Sprintf(` detail=%s`, strconv.Quote(parsed.Detail))
 	}
 
 	if parsed.Hint != "" {
-		logMessage += fmt.Sprintf(` hint="%s"`, parsed.Hint)
+		logMessage += fmt.Sprintf(` hint=%s`, strconv.Quote(parsed.Hint))
 	}
 
 	if parsed.Context != "" {
-		logMessage += fmt.Sprintf(` context="%s"`, parsed.Context)
+		logMessage += fmt.Sprintf(` context=%s`, strconv.Quote(parsed.Context))
 	}
 
 	if parsed.Statement != "" {
-		logMessage += fmt.Sprintf(` statement="%s"`, parsed.Statement)
+		logMessage += fmt.Sprintf(` statement=%s`, strconv.Quote(parsed.Statement))
 	}
 
 	if parsed.CursorPosition > 0 {
@@ -627,15 +628,15 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.LockType != "" {
-		logMessage += fmt.Sprintf(` lock_type="%s"`, parsed.LockType)
+		logMessage += fmt.Sprintf(` lock_type=%s`, strconv.Quote(parsed.LockType))
 	}
 
 	if parsed.TimeoutType != "" {
-		logMessage += fmt.Sprintf(` timeout_type="%s"`, parsed.TimeoutType)
+		logMessage += fmt.Sprintf(` timeout_type=%s`, strconv.Quote(parsed.TimeoutType))
 	}
 
 	if parsed.TupleLocation != "" {
-		logMessage += fmt.Sprintf(` tuple_location="%s"`, parsed.TupleLocation)
+		logMessage += fmt.Sprintf(` tuple_location=%s`, strconv.Quote(parsed.TupleLocation))
 	}
 
 	if parsed.BlockedPID > 0 {
@@ -647,23 +648,23 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.BlockedQuery != "" {
-		logMessage += fmt.Sprintf(` blocked_query="%s"`, parsed.BlockedQuery)
+		logMessage += fmt.Sprintf(` blocked_query=%s`, strconv.Quote(parsed.BlockedQuery))
 	}
 
 	if parsed.BlockerQuery != "" {
-		logMessage += fmt.Sprintf(` blocker_query="%s"`, parsed.BlockerQuery)
+		logMessage += fmt.Sprintf(` blocker_query=%s`, strconv.Quote(parsed.BlockerQuery))
 	}
 
 	if parsed.FunctionContext != "" {
-		logMessage += fmt.Sprintf(` function="%s"`, parsed.FunctionContext)
+		logMessage += fmt.Sprintf(` function=%s`, strconv.Quote(parsed.FunctionContext))
 	}
 
 	if parsed.AuthMethod != "" {
-		logMessage += fmt.Sprintf(` auth_method="%s"`, parsed.AuthMethod)
+		logMessage += fmt.Sprintf(` auth_method=%s`, strconv.Quote(parsed.AuthMethod))
 	}
 
 	if parsed.HBALineNumber != "" {
-		logMessage += fmt.Sprintf(` hba_line="%s"`, parsed.HBALineNumber)
+		logMessage += fmt.Sprintf(` hba_line=%s`, strconv.Quote(parsed.HBALineNumber))
 	}
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(

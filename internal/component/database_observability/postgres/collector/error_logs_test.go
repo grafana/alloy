@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"testing"
 	"time"
 
@@ -309,6 +310,62 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 
 			tt.checkFunc(t, registry)
+		})
+	}
+}
+
+func TestErrorLogsCollector_StrconvQuote(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no special characters",
+			input:    "simple text",
+			expected: `"simple text"`,
+		},
+		{
+			name:     "escaped quotes",
+			input:    `value with "quotes"`,
+			expected: `"value with \"quotes\""`,
+		},
+		{
+			name:     "escaped backslashes",
+			input:    `path\to\file`,
+			expected: `"path\\to\\file"`,
+		},
+		{
+			name:     "escaped newlines",
+			input:    "line1\nline2",
+			expected: `"line1\nline2"`,
+		},
+		{
+			name:     "escaped tabs",
+			input:    "column1\tcolumn2",
+			expected: `"column1\tcolumn2"`,
+		},
+		{
+			name:     "escaped carriage returns",
+			input:    "value\rwith\rcr",
+			expected: `"value\rwith\rcr"`,
+		},
+		{
+			name:     "complex SQL with quotes",
+			input:    `SQL statement "SELECT 1 FROM ONLY "public"."books" x WHERE "id" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"`,
+			expected: `"SQL statement \"SELECT 1 FROM ONLY \"public\".\"books\" x WHERE \"id\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x\""`,
+		},
+		{
+			name:     "multiple special characters",
+			input:    "line1\nwith \"quotes\"\tand\\backslash",
+			expected: `"line1\nwith \"quotes\"\tand\\backslash"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strconv.Quote(tt.input)
+			require.Equal(t, tt.expected, result, "strconv.Quote should properly escape special characters")
 		})
 	}
 }
