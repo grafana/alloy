@@ -1,5 +1,11 @@
 # Changelog
 
+## Main (unreleased)
+
+### Features
+
+- Add `alertmanagerconfig_matcher_strategy` to `mimir.alerts.kubernetes` component to change the matcher strategy. (@timonegk)
+
 ## [1.12.0](https://github.com/jharvey10/test-repo/compare/v1.11.3...v1.12.0) (2025-12-01)
 
 ### Breaking changes
