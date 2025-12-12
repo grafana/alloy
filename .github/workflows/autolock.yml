@@ -1,25 +1,35 @@
-name: Lock closed issues and PRs
+name: Auto-lock conversations
+
 on:
-  workflow_dispatch: {}
+  pull_request_target: # zizmor: ignore[dangerous-triggers] Only used to lock PRs from forks
+    types: [closed]
   schedule:
     - cron: '0 0 * * *'
-
-permissions:
-  issues: write
-  pull-requests: write
-  discussions: write
-
-concurrency:
-  group: lock-threads
+  workflow_dispatch:
 
 jobs:
-  action:
+  lock-pr-on-close:
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
-      - uses: dessant/lock-threads@1bf7ec25051fe7c00bdd17e6a7cf3d7bfb7dc771 # v5.0.1
+      - name: Lock PR conversation 🔏
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr lock "$PR_URL"
+    permissions:
+      pull-requests: write
+
+  lock-stale-issues:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lock stale issue conversations 🔏
+        uses: dessant/lock-threads@1bf7ec25051fe7c00bdd17e6a7cf3d7bfb7dc771 # v5.0.1
         with:
-          pr-inactive-days: 30
-          issue-inactive-days: 30
+          issue-inactive-days: 14
           add-issue-labels: 'frozen-due-to-age'
-          add-pr-labels: 'frozen-due-to-age'
-          process-only: 'issues, prs'
+          process-only: 'issues'
+    permissions:
+      issues: write

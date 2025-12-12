@@ -1,0 +1,58 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - 'release/v*'
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub app secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 🏗️
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: tools/release/release-please-runner/.nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies 📦
+        working-directory: tools/release/release-please-runner
+        run: npm install
+
+      - name: Run release-please 🚀
+        working-directory: tools/release/release-please-runner
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO_URL: ${{ github.repository }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+          CONFIG_FILE: release-please-config.json
+          MANIFEST_FILE: .release-please-manifest.json
+        run: node index.js

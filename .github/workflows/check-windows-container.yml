@@ -9,7 +9,7 @@ on:
       - '.github/workflows/check-windows-container.yml'
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
-      - '.github/workflows/publish-alloy-release.yml'
+      - '.github/workflows/release-publish-alloy-artifacts.yml'
   pull_request:
     paths:
       - 'Dockerfile.windows'
@@ -17,7 +17,7 @@ on:
       - '.github/workflows/check-windows-container.yml'
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
-      - '.github/workflows/publish-alloy-release.yml'
+      - '.github/workflows/release-publish-alloy-artifacts.yml'
 
 permissions:
   contents: read

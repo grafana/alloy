@@ -1,10 +1,9 @@
 <!--
 
-CONTRIBUTORS GUIDE: https://github.com/grafana/alloy/blob/main/docs/developer/contributing.md#updating-the-changelog
+CONTRIBUTORS GUIDE: https://github.com/grafana/alloy/blob/main/docs/developer/contributing.md
 
 If this is your first PR or you have not contributed in a while, we recommend
-taking the time to review the guide. It gives helpful instructions for
-contributors around things like how to update the changelog.
+taking the time to review the guide.
 
 -->
 
@@ -21,7 +20,6 @@ contributors around things like how to update the changelog.
 
 <!-- Remove items that do not apply. For completed items, change [ ] to [x]. -->
 
-- [ ] CHANGELOG.md updated
 - [ ] Documentation added
 - [ ] Tests updated
 - [ ] Config converters updated
