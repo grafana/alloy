@@ -1,0 +1,43 @@
+name: Check alloy-mixin rendered outputs
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-rendered:
+    name: Render and verify committed JSON
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Render dashboards and alerts
+        run: make alloy-mixin-render
+
+      - name: Verify rendered outputs are up to date
+        run: |
+          git --no-pager diff -- operations/alloy-mixin/rendered
+          # Also fail if generation produced untracked files (e.g., new dashboards/alerts).
+          untracked="$(git ls-files --others --exclude-standard -- operations/alloy-mixin/rendered)"
+          if [ -n "${untracked}" ]; then
+            echo "${untracked}"
+            echo "${untracked}" | while read -r f; do
+              git --no-pager diff --no-index -- /dev/null "${f}" || true
+            done
+            exit 1
+          fi
+          git diff --exit-code -- operations/alloy-mixin/rendered
+
