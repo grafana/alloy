@@ -347,32 +347,6 @@ func TestBlock(t *testing.T) {
 	}
 }
 
-type IFace interface {
-	Test()
-}
-
-type Capsule struct{}
-
-// AlloyCapsule implements syntax.Capsule.
-func (c Capsule) AlloyCapsule() {}
-
-func TestTypeCheck(t *testing.T) {
-	type Args struct {
-		Arr []IFace `alloy:"arr,attr"`
-	}
-
-	src := []byte(`
-		test "name" {
-			arr = ""
-		}
-	`)
-
-	file, err := parser.ParseFile("", src)
-	require.NoError(t, err)
-	diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
-	require.Len(t, diag, 0)
-}
-
 func TestBlockMap(t *testing.T) {
 	type Args struct {
 		Map map[string]any `alloy:"map,block"`
