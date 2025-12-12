@@ -69,42 +69,37 @@ func getMarkers(fileType types.FileType) (startMarker, endMarker string, err err
 
 // Upserts the generated block using the markers, or lack thereof, as a guide
 func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker string) (string, error) {
-	lineStart := strings.Index(targetContent, startMarker)
-	startFound := lineStart != -1
+	lines := strings.Split(targetContent, "\n")
 
-	if !startFound {
-		// No start marker: if the end marker exists anywhere, it's invalid.
-		if strings.Contains(targetContent, endMarker) {
-			return "", fmt.Errorf("found end marker without start marker")
+	startLineIdx := -1
+	endLineIdx := -1
+
+	for i, line := range lines {
+		if strings.Contains(line, startMarker) {
+			startLineIdx = i
 		}
-
-		// Neither start not end marker found, append to the end of the file
-		targetContent = strings.TrimRight(targetContent, "\n")
-		return targetContent + "\n" + replacement, nil
+		if strings.Contains(line, endMarker) {
+			endLineIdx = i
+		}
 	}
 
-	// Find the start of the line containing the start marker
-	for lineStart > 0 && targetContent[lineStart-1] != '\n' {
-		lineStart--
+	if startLineIdx == -1 && endLineIdx != -1 {
+		return "", fmt.Errorf("found end marker without start marker")
 	}
-
-	searchFrom := lineStart + len(startMarker)
-	endRel := strings.Index(targetContent[searchFrom:], endMarker)
-	if endRel == -1 {
-		// Start marker exists without an end marker, which is invalid
+	if startLineIdx != -1 && endLineIdx == -1 {
 		return "", fmt.Errorf("found start marker without end marker")
 	}
 
-	lineEnd := searchFrom + endRel + len(endMarker)
-
-	// Find the end of the line containing the end marker (or end of file)
-	for lineEnd < len(targetContent) && targetContent[lineEnd] != '\n' {
-		lineEnd++
-	}
-	// Include the newline if present
-	if lineEnd < len(targetContent) {
-		lineEnd++
+	// If no markers are found we optimistically append to the end of the file
+	if startLineIdx == -1 {
+		trimmed := strings.TrimRight(targetContent, "\n")
+		return trimmed + "\n" + replacement, nil
 	}
 
-	return targetContent[:lineStart] + replacement + targetContent[lineEnd:], nil
+	// Splice the replacement lines between the startLine and endLine
+	replacementLines := strings.Split(replacement, "\n")
+	newLines := append(lines[:startLineIdx], replacementLines...)
+	newLines = append(newLines, lines[endLineIdx+1:]...)
+
+	return strings.Join(newLines, "\n"), nil
 }
