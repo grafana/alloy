@@ -405,7 +405,6 @@ func typecheckUnaryExpr(expr *ast.UnaryExpr, rv reflect.Value) *diag.Diagnostic 
 }
 
 func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnostic {
-	fmt.Println("Check binary op")
 	// We limit to only literal experssions for now.
 	lhs, lok := expr.Left.(*ast.LiteralExpr)
 	rhs, rok := expr.Right.(*ast.LiteralExpr)
