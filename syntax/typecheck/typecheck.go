@@ -186,6 +186,7 @@ func checkStructEnum(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.Di
 	if field.Kind() != reflect.Slice {
 		panic("checkEnum: enum field must be a slice kind, got " + field.Kind().String())
 	}
+
 	// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot
 	field.Set(reflect.MakeSlice(field.Type(), 1, 1))
 
@@ -270,13 +271,10 @@ func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics 
 		}}
 	}
 
-	// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot.
-	rv.Set(reflect.MakeSlice(rv.Type(), 1, 1))
-	// Extract the expected item.
-	expected := reflectutil.DeferencePointer(rv.Index(0))
+	expectedValue := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
 
 	// If elements of array can be any type we don't have to check further.
-	if expected.Kind() == reflect.Interface {
+	if expectedValue.Kind() == reflect.Interface {
 		return nil
 	}
 
@@ -284,19 +282,19 @@ func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics 
 	for _, e := range expr.Elements {
 		switch expr := e.(type) {
 		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(expr, expected); d != nil {
+			if d := typecheckLiteralExpr(expr, expectedValue); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(expr, expected))
+			diags.Merge(typecheckArrayExpr(expr, expectedValue))
 		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(expr, expected))
+			diags.Merge(typecheckObjectExpr(expr, expectedValue))
 		case *ast.UnaryExpr:
-			if d := typecheckUnaryExpr(expr, expected); d != nil {
+			if d := typecheckUnaryExpr(expr, expectedValue); d != nil {
 				diags.Add(*d)
 			}
 		case *ast.BinaryExpr:
-			if d := typecheckBinaryExpr(expr, expected); d != nil {
+			if d := typecheckBinaryExpr(expr, expectedValue); d != nil {
 				diags.Add(*d)
 			}
 		default:
@@ -409,23 +407,19 @@ func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnosti
 	lhs, lok := expr.Left.(*ast.LiteralExpr)
 	rhs, rok := expr.Right.(*ast.LiteralExpr)
 
-	// First we type check lhs.
-	if lok {
-		if d := typecheckLiteralExpr(lhs, rv); d != nil {
-			return d
-		}
-	}
-
-	// Then we type check rhs.
-	if rok {
-		if d := typecheckLiteralExpr(rhs, rv); d != nil {
-			return d
-		}
-	}
-
-	// Last we check if it's a valid binary operation.
+	// We only perform type checking if both are *ast.LiteralExpr
 	if lok && rok {
-		if _, err := transform.BinaryOp(valueFromLiteralExpr(lhs), expr.Kind, valueFromLiteralExpr(rhs)); err != nil {
+		val, err := transform.BinaryOp(valueFromLiteralExpr(lhs), expr.Kind, valueFromLiteralExpr(rhs))
+		if err != nil {
+			return &diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(lhs).Position(),
+				EndPos:   ast.EndPos(rhs).Position(),
+				Message:  err.Error(),
+			}
+		}
+
+		if err := typecheckValue(val, rv); err != nil {
 			return &diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
 				StartPos: ast.StartPos(expr).Position(),
@@ -439,38 +433,38 @@ func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnosti
 }
 
 func typecheckLiteralExpr(expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnostic {
+	if err := typecheckValue(valueFromLiteralExpr(expr), rv); err != nil {
+		return &diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  err.Error(),
+		}
+	}
+	return nil
+}
+
+func typecheckValue(have value.Value, want reflect.Value) error {
 	// If value can be any type we don't have to check further.
-	if rv.Kind() == reflect.Interface {
+	if want.Kind() == reflect.Interface {
 		return nil
 	}
 
-	have := valueFromLiteralExpr(expr)
+	expected := value.AlloyType(want.Type())
 
-	expected := value.AlloyType(rv.Type())
 	if expected == value.TypeCapsule {
-		ok, _ := value.TryCapsuleConvert(have, rv, expected)
+		ok, _ := value.TryCapsuleConvert(have, want, expected)
 		// FIXME(kalleep): We should probably unwrap the capsule type.
 		if ok {
 			return nil
 		}
 
-		return &diag.Diagnostic{
-			Severity: diag.SeverityLevelError,
-			StartPos: ast.StartPos(expr).Position(),
-			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("expected %s, got %s", expected, have.Type()),
-		}
+		return value.TypeError{Value: have, Expected: expected}
 	}
 
 	if have.Type() != expected {
-		return &diag.Diagnostic{
-			Severity: diag.SeverityLevelError,
-			StartPos: ast.StartPos(expr).Position(),
-			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("expected %s, got %s", expected, have.Type()),
-		}
+		return value.TypeError{Value: have, Expected: expected}
 	}
-
 	return nil
 }
 
