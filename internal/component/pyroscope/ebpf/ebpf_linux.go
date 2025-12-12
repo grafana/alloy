@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	reporter3 "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -39,6 +40,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			arguments := args.(Arguments)
+
 			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
@@ -83,35 +85,57 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	}, discovery, func(ctx context.Context, ps []reporter.PPROF) {
 		res.sendProfiles(ctx, ps)
 	})
+	uploader, err := reporter3.NewParcaSymbolUploader(
+		//debuginfogrpc.NewDebuginfoServiceClient(cc),
+		args.DebugInfo.CacheSize,
+		args.DebugInfo.StripTextSection,
+		args.DebugInfo.QueueSize,
+		args.DebugInfo.WorkerNum,
+		args.DebugInfo.CachePath,
+		ms.debugInfoUploadBytes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	go func() { //todo move to run
+		uploader.Run(context.Background())
+	}()
 	cfg.Reporter = r
 	cfg.ExecutableReporter = ExecutableReporterFunc(func(args *reporter2.ExecutableMetadata) {
 		if !args.MappingFile.Valid() {
 			return
 		}
 		mf := args.MappingFile.Value()
-		arg := pyroscope.DebugInfoData{
-			FileID:   mf.FileID,
-			FileName: mf.FileName.String(),
-			BuildID:  mf.GnuBuildID,
-			Open: func() (process.ReadAtCloser, error) {
-				fallback := func() (process.ReadAtCloser, error) {
-					return args.Process.OpenMappingFile(args.Mapping)
-				}
-				if args.DebuglinkFileName == "" {
-					return fallback()
-				}
-				if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+		client := appendable.DebugInfoClient()
+		if client == nil {
+			return
+		}
+		open := func() (process.ReadAtCloser, error) {
+			fallback := func() (process.ReadAtCloser, error) {
+				return args.Process.OpenMappingFile(args.Mapping)
+			}
+			if args.DebuglinkFileName == "" {
+				return fallback()
+			}
+			if file, err := args.Process.ExtractAsFile(args.DebuglinkFileName); err != nil {
+				return fallback()
+			} else {
+				if f, err := os.Open(file); err != nil {
 					return fallback()
 				} else {
-					if f, err := os.Open(file); err != nil {
-						return fallback()
-					} else {
-						return f, nil
-					}
+					return f, nil
 				}
-			},
+			}
 		}
-		res.appendable.Appender().UploadDebugInfo(context.Background(), arg)
+
+		uploader.Upload(context.Background(), client, mf.FileID, mf.FileName.String(), mf.GnuBuildID, open)
+		//arg := pyroscope.DebugInfoData{
+		//	FileID:   mf.FileID,
+		//	FileName: mf.FileName.String(),
+		//	BuildID:  mf.GnuBuildID,
+		//	Open:     open,
+		//}
+		//res.appendable.Appender().UploadDebugInfo(context.Background(), arg)
 	})
 	// todo, should we keep the ontarget lidia symbolizer for a while?
 	if cfg.VerboseMode {
@@ -294,6 +318,15 @@ func NewDefaultArguments() Arguments {
 		UProbeLinks:     []string{},
 		VerboseMode:     false,
 		LazyMode:        false,
+
+		DebugInfo: DebugInfoOptions{
+			Enabled:          false, // todo consider making this true by default and add an extra knob to the ebpf component?
+			CacheSize:        8 * 1024,
+			StripTextSection: true,
+			QueueSize:        256,
+			WorkerNum:        8,
+			CachePath:        "/tmp/symb-cache/parca-symbols-uploader",
+		},
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,

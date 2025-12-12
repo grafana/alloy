@@ -446,10 +446,6 @@ type TestAppender struct {
 	profiles []*pyroscope.IncomingProfile
 }
 
-func (t *TestAppender) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
-
-}
-
 func NewTestAppender() *TestAppender {
 	return &TestAppender{
 		profiles: make([]*pyroscope.IncomingProfile, 0),

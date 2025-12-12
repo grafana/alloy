@@ -81,6 +81,10 @@ type Component struct {
 	exited       atomic.Bool
 }
 
+func (c *Component) DebugInfoClient() pyroscope.DebuginfoServiceClient {
+	return c.fanout.DebugInfoClient()
+}
+
 var (
 	_ component.Component = (*Component)(nil)
 )
@@ -203,10 +207,6 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	profile.Labels = newLabels
 	c.metrics.profilesOutgoing.Inc()
 	return c.fanout.Appender().AppendIngest(ctx, profile)
-}
-
-func (c *Component) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
-	c.fanout.Appender().UploadDebugInfo(ctx, arg)
 }
 
 func (c *Component) Appender() pyroscope.Appender {

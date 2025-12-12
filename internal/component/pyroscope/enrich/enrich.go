@@ -83,6 +83,10 @@ type enrichAppendable struct {
 	component *Component
 }
 
+func (e *enrichAppendable) DebugInfoClient() pyroscope.DebuginfoServiceClient {
+	return e.component.fanout.DebugInfoClient()
+}
+
 func (e *enrichAppendable) Appender() pyroscope.Appender {
 	return e
 }
@@ -104,10 +108,6 @@ func (e *enrichAppendable) AppendIngest(ctx context.Context, profile *pyroscope.
 	}
 
 	return e.component.fanout.Appender().AppendIngest(ctx, enrichedProfile)
-}
-
-func (e *enrichAppendable) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
-	e.component.fanout.Appender().UploadDebugInfo(ctx, arg)
 }
 
 // Run implements component.Component.

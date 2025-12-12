@@ -61,10 +61,6 @@ type deltaAppender struct {
 	initialized bool
 }
 
-func (d *deltaAppender) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
-
-}
-
 type gzipBuffer struct {
 	gzr gzip.Reader
 	gzw *gzip.Writer

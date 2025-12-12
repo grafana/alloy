@@ -51,10 +51,6 @@ func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.In
 	return args.Error(0)
 }
 
-func (m *mockAppendable) UploadDebugInfo(_ context.Context, _ pyroscope.DebugInfoData) {
-
-}
-
 func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
 	reg := prometheus.NewRegistry()
 	output := pyroscope.NewFanout([]pyroscope.Appendable{appendable}, "test-appendable", reg)

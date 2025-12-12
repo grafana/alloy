@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -21,14 +22,18 @@ const (
 
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
 
+type DebugInfoAppender interface {
+	DirectClient() debuginfogrpc.DebuginfoServiceClient
+}
+
 type Appendable interface {
 	Appender() Appender
+	DebugInfoAppender() DebugInfoAppender
 }
 
 type Appender interface {
 	Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 	AppendIngest(ctx context.Context, profile *IncomingProfile) error
-	UploadDebugInfo(ctx context.Context, arg DebugInfoData)
 }
 
 type RawSample struct {
@@ -56,6 +61,16 @@ type Fanout struct {
 	// ComponentID is what component this belongs to.
 	componentID  string
 	writeLatency prometheus.Histogram
+}
+
+func (f *Fanout) DebugInfoAppender() DebugInfoAppender {
+	for _, c := range f.children {
+		client := c.DebugInfoClient()
+		if client != nil {
+			return client
+		}
+	}
+	return nil
 }
 
 // NewFanout creates a fanout appendable.
@@ -115,12 +130,6 @@ type appender struct {
 	children     []Appender
 	componentID  string
 	writeLatency prometheus.Histogram
-}
-
-func (a *appender) UploadDebugInfo(ctx context.Context, arg DebugInfoData) {
-	for _, c := range a.children {
-		c.UploadDebugInfo(ctx, arg)
-	}
 }
 
 // Append satisfies the Appender interface.

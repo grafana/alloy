@@ -7,9 +7,8 @@ import (
 )
 
 type AppenderMock struct {
-	AppendIngestFunc    func(ctx context.Context, profile *IncomingProfile) error
-	AppendFunc          func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-	UploadDebugInfoFunc func(ctx context.Context, arg DebugInfoData)
+	AppendIngestFunc func(ctx context.Context, profile *IncomingProfile) error
+	AppendFunc       func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 }
 
 func (a AppenderMock) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
@@ -18,10 +17,6 @@ func (a AppenderMock) Append(ctx context.Context, labels labels.Labels, samples 
 
 func (a AppenderMock) AppendIngest(ctx context.Context, profile *IncomingProfile) error {
 	return a.AppendIngestFunc(ctx, profile)
-}
-
-func (a AppenderMock) UploadDebugInfo(ctx context.Context, arg DebugInfoData) {
-	a.UploadDebugInfoFunc(ctx, arg)
 }
 
 func (a AppenderMock) Appender() Appender {

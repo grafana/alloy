@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"reflect"
 	"sync"
 
+	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
+	"github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/trace"
@@ -134,6 +137,11 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 	c.server = srv
 	c.serverConfig = newArgs.Server.HTTP
 
+	grpcConfig := server.Config{}
+	grpcConfig.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	grpcServer := NewGrpcServer(grpcConfig)
+	debuginfov1alpha1grpc.RegisterDebuginfoServiceServer(grpcServer, c)
+
 	return shutdown, c.server.MountAndRun(func(router *mux.Router) {
 		// this mounts the og pyroscope ingest API, mostly used by SDKs
 		router.HandleFunc("/ingest", c.handleIngest).Methods(http.MethodPost)
@@ -141,6 +149,17 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 		// mount connect go pushv1
 		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
 		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
+
+		const (
+			DebuginfoService_Upload_FullMethodName               = "/parca.debuginfo.v1alpha1.DebuginfoService/Upload"
+			DebuginfoService_ShouldInitiateUpload_FullMethodName = "/parca.debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
+			DebuginfoService_InitiateUpload_FullMethodName       = "/parca.debuginfo.v1alpha1.DebuginfoService/InitiateUpload"
+			DebuginfoService_MarkUploadFinished_FullMethodName   = "/parca.debuginfo.v1alpha1.DebuginfoService/MarkUploadFinished"
+		)
+		router.PathPrefix(DebuginfoService_Upload_FullMethodName).Handler(grpcServer)
+		router.PathPrefix(DebuginfoService_ShouldInitiateUpload_FullMethodName).Handler(grpcServer)
+		router.PathPrefix(DebuginfoService_InitiateUpload_FullMethodName).Handler(grpcServer)
+		router.PathPrefix(DebuginfoService_MarkUploadFinished_FullMethodName).Handler(grpcServer)
 	})
 }
 

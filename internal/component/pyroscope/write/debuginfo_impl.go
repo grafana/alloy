@@ -12,19 +12,13 @@ import (
 	"strings"
 
 	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 	commonconfig "github.com/prometheus/common/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (debugInfoUploader, error) {
-	if !e.DebugInfo.Enabled {
-		return nil, nil
-	}
-
+func newDebugInfoUpload(u *url.URL, e *EndpointOptions) (debuginfogrpc.DebuginfoServiceClient, error) {
 	var creds credentials.TransportCredentials
 	switch u.Scheme {
 	case "http":
@@ -56,19 +50,8 @@ func newDebugInfoUpload(u *url.URL, metrics *metrics, e *EndpointOptions) (debug
 		return nil, err
 	}
 
-	impl, err := reporter.NewParcaSymbolUploader(
-		debuginfogrpc.NewDebuginfoServiceClient(cc),
-		e.DebugInfo.CacheSize,
-		e.DebugInfo.StripTextSection,
-		e.DebugInfo.QueueSize,
-		e.DebugInfo.WorkerNum,
-		e.DebugInfo.CachePath,
-		metrics.debugInfoUploadBytes,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &debugInfoUploaderImpl{impl}, nil
+	client := debuginfogrpc.NewDebuginfoServiceClient(cc)
+	return client, nil
 }
 
 func newGrpcBasicAuthCredentials(e *EndpointOptions) (*basicAuthCredential, error) {
@@ -110,12 +93,4 @@ func (b *basicAuthCredential) GetRequestMetadata(ctx context.Context, uri ...str
 
 func (b *basicAuthCredential) RequireTransportSecurity() bool {
 	return true
-}
-
-type debugInfoUploaderImpl struct {
-	*reporter.ParcaSymbolUploader
-}
-
-func (r *debugInfoUploaderImpl) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
-	r.ParcaSymbolUploader.Upload(ctx, arg.FileID, arg.FileName, arg.BuildID, arg.Open)
 }

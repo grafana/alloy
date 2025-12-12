@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -75,16 +76,6 @@ type EndpointOptions struct {
 	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
 	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
 
-	DebugInfo DebugInfoOptions `alloy:"debug_info,block,optional"`
-}
-
-type DebugInfoOptions struct {
-	Enabled          bool   `alloy:"enabled,attr,optional"`
-	CacheSize        uint32 `alloy:"cache_size,attr,optional"`
-	StripTextSection bool   `alloy:"strip_text_section,attr,optional"`
-	QueueSize        uint32
-	WorkerNum        int
-	CachePath        string
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
@@ -94,14 +85,6 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoff:        5 * time.Minute,
 		MaxBackoffRetries: 10,
 		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
-		DebugInfo: DebugInfoOptions{
-			Enabled:          false,
-			CacheSize:        8 * 1024,
-			StripTextSection: true,
-			QueueSize:        256,
-			WorkerNum:        8,
-			CachePath:        "/tmp/symb-cache/parca-symbols-uploader",
-		},
 	}
 
 	return defaultEndpointOptions
@@ -184,31 +167,31 @@ func (c *Component) Update(newConfig Arguments) error {
 	}
 	c.onStateChange(Exports{Receiver: receiver})
 	c.receiver = receiver
-	c.receiver.cancel()
 	return nil
 }
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
 	pushClients   []pushv1connect.PusherServiceClient
-	debugInfo     []debugInfoUploader
+	debugInfo     []debuginfogrpc.DebuginfoServiceClient
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
 	metrics       *metrics
 	tracer        trace.Tracer
 	logger        log.Logger
-	cancel        context.CancelFunc
 }
 
-type debugInfoUploader interface {
-	UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData)
-	Run(ctx context.Context) error
+func (f *fanOutClient) DebugInfoClient() pyroscope.DebuginfoServiceClient {
+	if len(f.debugInfo) == 0 {
+		return nil
+	}
+	return f.debugInfo[0]
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
 func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
-	debugInfoClients := make([]debugInfoUploader, 0, len(config.Endpoints))
+	debugInfoClients := make([]debuginfogrpc.DebuginfoServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for _, endpoint := range config.Endpoints {
@@ -232,18 +215,13 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		)
 		ingestClients[endpoint] = httpClient
 
-		if symbolsUploader, err := newDebugInfoUpload(u, metrics, endpoint); err != nil {
+		if symbolsUploader, err := newDebugInfoUpload(u, endpoint); err != nil {
 			return nil, err
 		} else if symbolsUploader != nil {
 			debugInfoClients = append(debugInfoClients, symbolsUploader)
 		}
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	for _, c := range debugInfoClients {
-		go func() {
-			_ = c.Run(ctx)
-		}()
-	}
+
 	return &fanOutClient{
 		logger:        logger,
 		tracer:        tracer,
@@ -252,7 +230,6 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		ingestClients: ingestClients,
 		config:        config,
 		metrics:       metrics,
-		cancel:        cancel,
 	}, nil
 }
 
@@ -623,12 +600,6 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
-}
-
-func (f *fanOutClient) UploadDebugInfo(ctx context.Context, arg pyroscope.DebugInfoData) {
-	for _, u := range f.debugInfo {
-		u.UploadDebugInfo(ctx, arg)
-	}
 }
 
 func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {

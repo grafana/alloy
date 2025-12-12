@@ -17,7 +17,6 @@ func CreateWriteComponent(l log.Logger, reg prometheus.Registerer, endpoint stri
 	var receiver pyroscope.Appendable
 	e := write.GetDefaultEndpointOptions()
 	e.URL = endpoint
-	e.DebugInfo.Enabled = true
 
 	_, err := write.New(
 		log.With(l, "component", "pyroscope.write"),

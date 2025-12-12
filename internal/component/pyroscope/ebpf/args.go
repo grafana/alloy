@@ -28,11 +28,22 @@ type Arguments struct {
 	LazyMode            bool                   `alloy:"lazy_mode,attr,optional"`
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
+	DebugInfo DebugInfoOptions `alloy:"debug_info,block,optional"`
+
 	// undocumented
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
 	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
+}
+
+type DebugInfoOptions struct {
+	Enabled          bool   `alloy:"enabled,attr,optional"`
+	CacheSize        uint32 `alloy:"cache_size,attr,optional"`
+	StripTextSection bool   `alloy:"strip_text_section,attr,optional"`
+	QueueSize        uint32
+	WorkerNum        int
+	CachePath        string
 }
 
 type DeprecatedArguments struct {
