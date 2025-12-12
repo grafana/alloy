@@ -67,9 +67,8 @@ version. If it doesn't you'll need to do this manually._**
 You did it! Now it's time to celebrate by announcing the Alloy release in the following Slack
 channels:
 
-[#alloy (internal slack)](https://grafanalabs.enterprise.slack.com/archives/CSN5HV0CQ)
-
-[#alloy (community slack)](https://grafana.slack.com/archives/C01050C3D8F)
+- #alloy (internal slack)
+- #alloy (community slack)
 
 **Message format:**
 
@@ -128,3 +127,14 @@ against the appropriate release branch. Merge it in and you're done!
 
 If there's no other pending content on the release branch, you'll see a new release-please PR get
 created for the next release.
+
+## Recreating the release-please PR
+
+If things get stuck and it seems like the solution might just be to regenerate the release-please
+PR, follow these steps:
+
+1. Remove the `autorelease: pending` label from the existing PR.
+2. Close the PR and delete the head branch.
+3. Go go the Actions page, find the release-please workflow, find the most recent entry for the
+   target branch (e.g. `release/v.1.12`), and re-run it.
+4. (The PR will automatically get recreated.)
