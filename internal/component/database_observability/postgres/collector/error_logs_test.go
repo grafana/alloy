@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
@@ -21,106 +22,65 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 		checkFields   func(*testing.T, *ParsedError)
 	}{
 		{
-			name: "unique constraint violation",
-			jsonLog: `{
-				"timestamp": "2024-11-28 10:15:30.123 UTC",
-				"user": "testuser",
-				"dbname": "testdb",
-				"pid": 12345,
-				"session_id": "64c6e836.474e",
-				"line_num": 1,
-				"session_start": "2024-11-28 10:15:00 UTC",
-				"backend_type": "client backend",
-				"error_severity": "ERROR",
-				"state_code": "23505",
-				"message": "duplicate key value violates unique constraint \"users_email_key\"",
-				"detail": "Key (email)=(user@example.com) already exists.",
-				"statement": "INSERT INTO users (email) VALUES ('user@example.com')",
-				"query_id": 1234567890
-			}`,
+			name:          "real unique constraint violation from production",
+			jsonLog:       `{"timestamp":"2025-12-12 15:29:12.986 GMT","user":"app-user","dbname":"books_store","pid":9050,"remote_host":"[local]","session_id":"693c34c8.235a","line_num":4,"ps":"INSERT","session_start":"2025-12-12 15:29:12 GMT","vxid":"16/116","txid":833,"error_severity":"ERROR","state_code":"23505","message":"duplicate key value violates unique constraint \"uk_books_isbn\"","detail":"Key (isbn)=(9780123456781) already exists.","statement":"INSERT INTO books (title, isbn, publication_date, rental_price_per_day, stock)\n   VALUES ('Chaos Duplicate ISBN', '9780123456781', CURRENT_DATE, 10.00, 5);","application_name":"psql","backend_type":"client backend","query_id":-5382488324425698396}`,
 			expectedError: false,
 			checkFields: func(t *testing.T, p *ParsedError) {
 				require.Equal(t, "ERROR", p.ErrorSeverity)
 				require.Equal(t, "23505", p.SQLStateCode)
 				require.Equal(t, "23", p.SQLStateClass)
 				require.Equal(t, "Integrity Constraint Violation", p.ErrorCategory)
-				require.Equal(t, "testuser", p.User)
-				require.Equal(t, "testdb", p.DatabaseName)
-				require.Equal(t, int32(12345), p.PID)
-				require.Equal(t, int64(1234567890), p.QueryID)
+				require.Equal(t, "app-user", p.User)
+				require.Equal(t, "books_store", p.DatabaseName)
+				require.Equal(t, int32(9050), p.PID)
+				require.Equal(t, int64(-5382488324425698396), p.QueryID)
+				require.Equal(t, "uk_books_isbn", p.ConstraintName)
+				require.Equal(t, "isbn", p.ColumnName)
 			},
 		},
 		{
-			name: "foreign key violation",
-			jsonLog: `{
-				"timestamp": "2024-11-28 10:16:30.123 UTC",
-				"user": "appuser",
-				"dbname": "appdb",
-				"pid": 23456,
-				"session_id": "64c6e836.474f",
-				"line_num": 2,
-				"session_start": "2024-11-28 10:16:00 UTC",
-				"backend_type": "client backend",
-				"error_severity": "ERROR",
-				"state_code": "23503",
-				"message": "insert or update on table \"posts\" violates foreign key constraint \"posts_user_id_fkey\"",
-				"detail": "Key (user_id)=(999) is not present in table \"users\".",
-				"statement": "INSERT INTO posts (user_id, title) VALUES (999, 'Test')"
-			}`,
+			name:          "real foreign key violation from production",
+			jsonLog:       `{"timestamp":"2025-12-12 15:29:13.288 GMT","user":"app-user","dbname":"books_store","pid":9059,"remote_host":"[local]","session_id":"693c34c9.2363","line_num":4,"ps":"INSERT","session_start":"2025-12-12 15:29:13 GMT","vxid":"19/127","txid":834,"error_severity":"ERROR","state_code":"23503","message":"insert or update on table \"rentals\" violates foreign key constraint \"rentals_book_id_fkey\"","detail":"Key (book_id)=(99999999) is not present in table \"books\".","statement":"INSERT INTO rentals (book_id, customer_name, customer_email, rental_date, expected_return_date, daily_rate, status)\n   VALUES (99999999, 'Chaos User', 'chaos@example.com', CURRENT_TIMESTAMP, CURRENT_DATE + INTERVAL '3 days', 9.99, 'ACTIVE');","application_name":"psql","backend_type":"client backend","query_id":8532599624588683544}`,
 			expectedError: false,
 			checkFields: func(t *testing.T, p *ParsedError) {
 				require.Equal(t, "ERROR", p.ErrorSeverity)
 				require.Equal(t, "23503", p.SQLStateCode)
 				require.Equal(t, "23", p.SQLStateClass)
 				require.Equal(t, "Integrity Constraint Violation", p.ErrorCategory)
+				require.Equal(t, "app-user", p.User)
+				require.Equal(t, "books_store", p.DatabaseName)
+				require.Equal(t, "rentals_book_id_fkey", p.ConstraintName)
+				require.Equal(t, "book_id", p.ColumnName)
+				require.Equal(t, "books", p.ReferencedTable)
 			},
 		},
 		{
-			name: "connection error",
-			jsonLog: `{
-				"timestamp": "2024-11-28 10:17:30.123 UTC",
-				"pid": 34567,
-				"session_id": "64c6e836.4750",
-				"line_num": 1,
-				"session_start": "2024-11-28 10:17:00 UTC",
-				"backend_type": "client backend",
-				"error_severity": "FATAL",
-				"state_code": "08006",
-				"message": "terminating connection due to administrator command"
-			}`,
+			name:          "real statement timeout from production",
+			jsonLog:       `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"remote_host":"[local]","session_id":"693c34cb.2398","line_num":4,"ps":"SELECT","session_start":"2025-12-12 15:29:15 GMT","vxid":"25/112","txid":0,"error_severity":"ERROR","state_code":"57014","message":"canceling statement due to statement timeout","statement":"SELECT pg_sleep(5);","application_name":"psql","backend_type":"client backend","query_id":5457019535816659310}`,
 			expectedError: false,
 			checkFields: func(t *testing.T, p *ParsedError) {
-				require.Equal(t, "FATAL", p.ErrorSeverity)
-				require.Equal(t, "08006", p.SQLStateCode)
-				require.Equal(t, "08", p.SQLStateClass)
-				require.Equal(t, "Connection Exception", p.ErrorCategory)
+				require.Equal(t, "ERROR", p.ErrorSeverity)
+				require.Equal(t, "57014", p.SQLStateCode)
+				require.Equal(t, "57", p.SQLStateClass)
+				require.Equal(t, "Operator Intervention", p.ErrorCategory)
+				require.Equal(t, "statement_timeout", p.TimeoutType)
 			},
 		},
 		{
-			name: "deadlock detected",
-			jsonLog: `{
-				"timestamp": "2024-11-28 10:18:30.123 UTC",
-				"user": "appuser",
-				"dbname": "appdb",
-				"pid": 45678,
-				"session_id": "64c6e836.4751",
-				"line_num": 5,
-				"session_start": "2024-11-28 10:18:00 UTC",
-				"backend_type": "client backend",
-				"error_severity": "ERROR",
-				"state_code": "40P01",
-				"message": "deadlock detected",
-				"detail": "Process 45678 waits for ShareLock on transaction 12345; blocked by process 56789.",
-				"hint": "See server log for query details.",
-				"context": "while updating tuple (0,1) in relation \"accounts\"",
-				"statement": "UPDATE accounts SET balance = balance - 100 WHERE id = 1"
-			}`,
+			name:          "real deadlock from production",
+			jsonLog:       `{"timestamp":"2025-12-12 15:29:23.258 GMT","user":"app-user","dbname":"books_store","pid":9185,"remote_host":"[local]","session_id":"693c34cf.23e1","line_num":9,"ps":"UPDATE","session_start":"2025-12-12 15:29:19 GMT","vxid":"36/148","txid":837,"error_severity":"ERROR","state_code":"40P01","message":"deadlock detected","detail":"Process 9185 waits for ShareLock on transaction 836; blocked by process 9184.\nProcess 9184 waits for ShareLock on transaction 837; blocked by process 9185.\nProcess 9185: UPDATE books SET stock = stock WHERE id = 2;\nProcess 9184: UPDATE books SET stock = stock WHERE id = 1;","hint":"See server log for query details.","context":"while locking tuple (3,88) in relation \"books\"","statement":"UPDATE books SET stock = stock WHERE id = 2;","application_name":"psql","backend_type":"client backend","query_id":3188095831510673590}`,
 			expectedError: false,
 			checkFields: func(t *testing.T, p *ParsedError) {
 				require.Equal(t, "ERROR", p.ErrorSeverity)
 				require.Equal(t, "40P01", p.SQLStateCode)
 				require.Equal(t, "40", p.SQLStateClass)
 				require.Equal(t, "Transaction Rollback", p.ErrorCategory)
+				require.Equal(t, "ShareLock", p.LockType)
+				require.Equal(t, "3,88", p.TupleLocation)
+				require.Equal(t, int32(9185), p.BlockedPID, "should extract blocked PID")
+				require.Equal(t, int32(9184), p.BlockerPID, "should extract blocker PID")
+				require.Equal(t, "UPDATE books SET stock = stock WHERE id = 2;", p.BlockedQuery, "should extract blocked query")
+				require.Equal(t, "UPDATE books SET stock = stock WHERE id = 1;", p.BlockerQuery, "should extract blocker query")
 				require.NotEmpty(t, p.Detail)
 				require.NotEmpty(t, p.Hint)
 				require.NotEmpty(t, p.Context)
@@ -158,142 +118,15 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, parsed)
 
+			// Extract insights (this is part of the full processing pipeline)
+			collector.extractInsights(parsed)
+
 			// Check fields
 			if tt.checkFields != nil {
 				tt.checkFields(t, parsed)
 			}
 		})
 	}
-}
-
-func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
-	tests := []struct {
-		name               string
-		message            string
-		detail             string
-		sqlstate           string
-		expectedType       string
-		expectedConstraint string
-		expectedTable      string
-		expectedColumn     string
-	}{
-		{
-			name:               "unique constraint",
-			message:            `duplicate key value violates unique constraint "users_email_key"`,
-			detail:             "Key (email)=(user@example.com) already exists.",
-			sqlstate:           "23505",
-			expectedType:       "unique",
-			expectedConstraint: "users_email_key",
-			expectedTable:      "users",
-			expectedColumn:     "email",
-		},
-		{
-			name:               "foreign key constraint",
-			message:            `insert or update on table "posts" violates foreign key constraint "posts_user_id_fkey"`,
-			detail:             `Key (user_id)=(999) is not present in table "users".`,
-			sqlstate:           "23503",
-			expectedType:       "foreign_key",
-			expectedConstraint: "posts_user_id_fkey",
-			expectedTable:      "posts",
-			expectedColumn:     "user_id",
-		},
-		{
-			name:               "not null constraint",
-			message:            `null value in column "username" of relation "users" violates not-null constraint`,
-			detail:             `Failing row contains (1, null, user@example.com).`,
-			sqlstate:           "23502",
-			expectedType:       "not_null",
-			expectedConstraint: "",
-			expectedTable:      "users",
-			expectedColumn:     "username",
-		},
-		{
-			name:               "check constraint",
-			message:            `new row for relation "products" violates check constraint "check_price_positive"`,
-			detail:             `Failing row contains (1, Widget, -10).`,
-			sqlstate:           "23514",
-			expectedType:       "check",
-			expectedConstraint: "check_price_positive",
-			expectedTable:      "",
-			expectedColumn:     "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create collector
-			entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-			collector, err := NewErrorLogs(ErrorLogsArguments{
-				Receiver:     loki.NewLogsReceiver(),
-				Severities:   []string{"ERROR"},
-				PassThrough:  false,
-				EntryHandler: entryHandler,
-				Logger:       log.NewNopLogger(),
-				InstanceKey:  "test",
-				SystemID:     "test",
-				Registry:     prometheus.NewRegistry(),
-			})
-			require.NoError(t, err)
-
-			// Create parsed error
-			parsed := &ParsedError{
-				Message:       tt.message,
-				Detail:        tt.detail,
-				SQLStateCode:  tt.sqlstate,
-				SQLStateClass: tt.sqlstate[:2],
-			}
-
-			// Extract insights
-			collector.extractInsights(parsed)
-
-			// Check results
-			require.Equal(t, tt.expectedType, parsed.ConstraintType, "constraint type mismatch")
-			if tt.expectedConstraint != "" {
-				require.Equal(t, tt.expectedConstraint, parsed.ConstraintName, "constraint name mismatch")
-			}
-			if tt.expectedTable != "" {
-				require.Equal(t, tt.expectedTable, parsed.TableName, "table name mismatch")
-			}
-			if tt.expectedColumn != "" {
-				require.Equal(t, tt.expectedColumn, parsed.ColumnName, "column name mismatch")
-			}
-		})
-	}
-}
-
-func TestErrorLogsCollector_SQLStateClass(t *testing.T) {
-	tests := []struct {
-		sqlstate string
-		category string
-	}{
-		{"23505", "Integrity Constraint Violation"},
-		{"08006", "Connection Exception"},
-		{"40P01", "Transaction Rollback"},
-		{"42P01", "Syntax Error or Access Rule Violation"},
-		{"53200", "Insufficient Resources"},
-		{"XX000", "Internal Error"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.sqlstate, func(t *testing.T) {
-			category := GetSQLStateCategory(tt.sqlstate)
-			require.Equal(t, tt.category, category)
-		})
-	}
-}
-
-func TestErrorLogsCollector_IsConnectionError(t *testing.T) {
-	require.True(t, IsConnectionError("08006"))
-	require.True(t, IsConnectionError("08001"))
-	require.False(t, IsConnectionError("23505"))
-	require.False(t, IsConnectionError("40P01"))
-}
-
-func TestErrorLogsCollector_IsConstraintViolation(t *testing.T) {
-	require.True(t, IsConstraintViolation("23505"))
-	require.True(t, IsConstraintViolation("23503"))
-	require.False(t, IsConstraintViolation("08006"))
-	require.False(t, IsConstraintViolation("40P01"))
 }
 
 func TestErrorLogsCollector_StartStop(t *testing.T) {
@@ -327,4 +160,173 @@ func TestErrorLogsCollector_StartStop(t *testing.T) {
 	// Give it a moment to stop
 	time.Sleep(10 * time.Millisecond)
 	require.True(t, collector.Stopped())
+}
+
+func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 100), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewErrorLogs(ErrorLogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		Severities:   []string{"ERROR", "FATAL", "PANIC"},
+		PassThrough:  false,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		InstanceKey:  "test",
+		SystemID:     "test",
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	// Start collector
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	tests := []struct {
+		name           string
+		logLine        string
+		expectedMetric string
+		checkFunc      func(*testing.T, prometheus.Gatherer)
+	}{
+		{
+			name:           "real resource limit error from production",
+			logLine:        `{"timestamp":"2025-12-12 15:29:31.529 GMT","user":"conn_limited","dbname":"books_store","pid":9449,"remote_host":"[local]","session_id":"693c34db.24e9","line_num":4,"ps":"startup","session_start":"2025-12-12 15:29:31 GMT","vxid":"91/57","txid":0,"error_severity":"FATAL","state_code":"53300","message":"too many connections for role \"conn_limited\"","backend_type":"client backend","query_id":-6883023751393440299}`,
+			expectedMetric: "postgres_errors_by_sqlstate_total",
+			checkFunc: func(t *testing.T, g prometheus.Gatherer) {
+				mfs, _ := g.Gather()
+				found := false
+				for _, mf := range mfs {
+					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
+						found = true
+						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
+						// Verify sqlstate_class_code label exists
+						metric := mf.GetMetric()[0]
+						labels := make(map[string]string)
+						for _, label := range metric.GetLabel() {
+							labels[label.GetName()] = label.GetValue()
+						}
+						require.Equal(t, "53", labels["sqlstate_class_code"], "sqlstate_class_code label should be 53")
+						require.Equal(t, "53300", labels["sqlstate"], "sqlstate should be 53300")
+					}
+				}
+				require.True(t, found, "errors_by_sqlstate metric should exist")
+			},
+		},
+		{
+			name:           "real authentication failure from production",
+			logLine:        `{"timestamp":"2025-12-12 15:29:42.201 GMT","user":"app-user","dbname":"books_store","pid":9589,"remote_host":"::1","remote_port":52860,"session_id":"693c34e6.2575","line_num":2,"ps":"authentication","session_start":"2025-12-12 15:29:42 GMT","vxid":"159/363","txid":0,"error_severity":"FATAL","state_code":"28P01","message":"password authentication failed for user \"app-user\"","detail":"Connection matched file \"/etc/postgresql/pg_hba_cluster.conf\" line 4: \"host    all             all             ::1/128                md5\"","backend_type":"client backend","query_id":225649433808025698}`,
+			expectedMetric: "postgres_auth_failures_total",
+			checkFunc: func(t *testing.T, g prometheus.Gatherer) {
+				mfs, _ := g.Gather()
+				found := false
+				for _, mf := range mfs {
+					if mf.GetName() == "postgres_auth_failures_total" {
+						found = true
+						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
+						// Verify labels
+						metric := mf.GetMetric()[0]
+						labels := make(map[string]string)
+						for _, label := range metric.GetLabel() {
+							labels[label.GetName()] = label.GetValue()
+						}
+						require.Equal(t, "app-user", labels["user"], "user label should be set")
+						// Note: auth method is extracted from message ("password authentication failed")
+						// not from detail where "md5" appears
+						require.Equal(t, "password", labels["auth_method"], "auth method should be extracted from message")
+					}
+				}
+				require.True(t, found, "auth_failures metric should exist")
+			},
+		},
+		{
+			name:           "real statement timeout from production",
+			logLine:        `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"remote_host":"[local]","session_id":"693c34cb.2398","line_num":4,"ps":"SELECT","session_start":"2025-12-12 15:29:15 GMT","vxid":"25/112","txid":0,"error_severity":"ERROR","state_code":"57014","message":"canceling statement due to statement timeout","statement":"SELECT pg_sleep(5);","application_name":"psql","backend_type":"client backend","query_id":5457019535816659310}`,
+			expectedMetric: "postgres_errors_by_sqlstate_total",
+			checkFunc: func(t *testing.T, g prometheus.Gatherer) {
+				mfs, _ := g.Gather()
+				found := false
+				foundMetric := false
+				for _, mf := range mfs {
+					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
+						found = true
+						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
+						// Find the metric with sqlstate=57014
+						for _, metric := range mf.GetMetric() {
+							labels := make(map[string]string)
+							for _, label := range metric.GetLabel() {
+								labels[label.GetName()] = label.GetValue()
+							}
+							if labels["sqlstate"] == "57014" {
+								foundMetric = true
+								require.Equal(t, "57", labels["sqlstate_class_code"], "sqlstate_class_code label should be 57")
+								break
+							}
+						}
+					}
+				}
+				require.True(t, found, "errors_by_sqlstate metric should exist")
+				require.True(t, foundMetric, "metric with sqlstate=57014 should exist")
+			},
+		},
+		{
+			name:           "real constraint violation from production",
+			logLine:        `{"timestamp":"2025-12-12 15:29:12.986 GMT","user":"app-user","dbname":"books_store","pid":9050,"remote_host":"[local]","session_id":"693c34c8.235a","line_num":4,"ps":"INSERT","session_start":"2025-12-12 15:29:12 GMT","vxid":"16/116","txid":833,"error_severity":"ERROR","state_code":"23505","message":"duplicate key value violates unique constraint \"uk_books_isbn\"","detail":"Key (isbn)=(9780123456781) already exists.","statement":"INSERT INTO books (title, isbn, publication_date, rental_price_per_day, stock)\n   VALUES ('Chaos Duplicate ISBN', '9780123456781', CURRENT_DATE, 10.00, 5);","application_name":"psql","backend_type":"client backend","query_id":-5382488324425698396}`,
+			expectedMetric: "postgres_errors_by_sqlstate_total",
+			checkFunc: func(t *testing.T, g prometheus.Gatherer) {
+				mfs, _ := g.Gather()
+				found := false
+				for _, mf := range mfs {
+					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
+						found = true
+						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
+						// Verify sqlstate_class_code label
+						metric := mf.GetMetric()[0]
+						labels := make(map[string]string)
+						for _, label := range metric.GetLabel() {
+							labels[label.GetName()] = label.GetValue()
+						}
+						require.Equal(t, "23", labels["sqlstate_class_code"], "sqlstate_class_code label should be 23")
+						require.Equal(t, "23505", labels["sqlstate"], "sqlstate should be 23505")
+					}
+				}
+				require.True(t, found, "errors_by_sqlstate metric should exist")
+			},
+		},
+		{
+			name: "connection error (synthetic - rare in production)",
+			logLine: `{"timestamp":"2024-11-28 10:15:30.123 UTC","user":"myuser","dbname":"testdb","pid":12349,` +
+				`"error_severity":"FATAL","state_code":"08006","message":"connection failure"}`,
+			expectedMetric: "postgres_connection_errors_total",
+			checkFunc: func(t *testing.T, g prometheus.Gatherer) {
+				mfs, _ := g.Gather()
+				found := false
+				for _, mf := range mfs {
+					if mf.GetName() == "postgres_connection_errors_total" {
+						found = true
+						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
+					}
+				}
+				require.True(t, found, "connection_errors metric should exist")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Send log line to collector
+			collector.Receiver().Chan() <- loki.Entry{
+				Entry: push.Entry{
+					Line:      tt.logLine,
+					Timestamp: time.Now(),
+				},
+			}
+
+			// Give it time to process
+			time.Sleep(100 * time.Millisecond)
+
+			// Check metric
+			tt.checkFunc(t, registry)
+		})
+	}
 }

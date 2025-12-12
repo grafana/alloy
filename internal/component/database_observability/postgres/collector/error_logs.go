@@ -130,6 +130,22 @@ type ParsedError struct {
 	ConstraintName  string
 	ConstraintType  string
 	ReferencedTable string
+
+	// Lock and timeout insights
+	LockType      string // e.g., "ShareLock", "ExclusiveLock"
+	TimeoutType   string // "statement_timeout" or "lock_timeout"
+	TupleLocation string // e.g., "(0,1)" for deadlock victims
+	BlockedPID    int32  // PID of the process that's waiting (deadlocks)
+	BlockerPID    int32  // PID of the process causing the block (deadlocks)
+	BlockedQuery  string // Query from the blocked process (deadlocks)
+	BlockerQuery  string // Query from the blocker process (deadlocks)
+
+	// Function insights (PL/pgSQL errors)
+	FunctionContext string // Extracted function name from context
+
+	// Authentication insights
+	AuthMethod    string // e.g., "md5", "scram-sha-256"
+	HBALineNumber string // pg_hba.conf line number
 }
 
 type ErrorLogsArguments struct {
@@ -158,14 +174,14 @@ type ErrorLogs struct {
 	passThroughLogs bool
 
 	// Metrics
-	logsProcessed        prometheus.Counter
-	errorsTotal          *prometheus.CounterVec
-	errorsBySQLState     *prometheus.CounterVec
-	constraintViolations *prometheus.CounterVec
-	connectionErrors     *prometheus.CounterVec
-	errorsByUser         *prometheus.CounterVec
-	errorsByBackendType  *prometheus.CounterVec
-	parseErrors          prometheus.Counter
+	logsProcessed       prometheus.Counter
+	errorsTotal         *prometheus.CounterVec
+	errorsBySQLState    *prometheus.CounterVec
+	connectionErrors    *prometheus.CounterVec
+	authFailures        *prometheus.CounterVec
+	errorsByUser        *prometheus.CounterVec
+	errorsByBackendType *prometheus.CounterVec
+	parseErrors         prometheus.Counter
 
 	// Lifecycle
 	ctx     context.Context
@@ -218,21 +234,12 @@ func (c *ErrorLogs) initMetrics() {
 		[]string{"severity", "database", "instance"},
 	)
 
-	// Single metric with sqlstate_class and queryid labels
 	c.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "postgres_errors_by_sqlstate_queryid_total",
-			Help: "Errors by SQLSTATE code with category and query ID",
+			Name: "postgres_errors_by_sqlstate_total",
+			Help: "PostgreSQL errors by SQLSTATE code with category, class, and query tracking",
 		},
-		[]string{"sqlstate", "sqlstate_class", "severity", "database", "queryid", "instance"},
-	)
-
-	c.constraintViolations = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "postgres_constraint_violations_total",
-			Help: "Constraint violations by type",
-		},
-		[]string{"constraint_type", "table", "severity", "database", "instance"},
+		[]string{"sqlstate", "sqlstate_class", "sqlstate_class_code", "severity", "database", "queryid", "instance"},
 	)
 
 	c.connectionErrors = prometheus.NewCounterVec(
@@ -241,6 +248,14 @@ func (c *ErrorLogs) initMetrics() {
 			Help: "Connection-related errors",
 		},
 		[]string{"sqlstate", "severity", "database", "instance"},
+	)
+
+	c.authFailures = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "postgres_auth_failures_total",
+			Help: "Authentication failures by user and method",
+		},
+		[]string{"user", "remote_host", "auth_method", "database", "instance"},
 	)
 
 	c.errorsByUser = prometheus.NewCounterVec(
@@ -272,8 +287,8 @@ func (c *ErrorLogs) initMetrics() {
 			c.logsProcessed,
 			c.errorsTotal,
 			c.errorsBySQLState,
-			c.constraintViolations,
 			c.connectionErrors,
+			c.authFailures,
 			c.errorsByUser,
 			c.errorsByBackendType,
 			c.parseErrors,
@@ -514,25 +529,26 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		c.instanceKey,
 	).Inc()
 
-	// Errors by SQLSTATE with category
+	// Errors by SQLSTATE with category, class code, and queryid
 	if parsed.SQLStateCode != "" {
+		queryIDStr := ""
+		if parsed.QueryID > 0 {
+			queryIDStr = fmt.Sprintf("%d", parsed.QueryID)
+		}
+
+		// Extract class code (first 2 characters)
+		classCode := parsed.SQLStateClass
+		if classCode == "" && len(parsed.SQLStateCode) >= 2 {
+			classCode = parsed.SQLStateCode[:2]
+		}
+
 		c.errorsBySQLState.WithLabelValues(
 			parsed.SQLStateCode,
 			parsed.ErrorCategory,
+			classCode,
 			parsed.ErrorSeverity,
 			parsed.DatabaseName,
-			fmt.Sprintf("%d", parsed.QueryID),
-			c.instanceKey,
-		).Inc()
-	}
-
-	// Constraint violations
-	if parsed.ConstraintType != "" {
-		c.constraintViolations.WithLabelValues(
-			parsed.ConstraintType,
-			parsed.TableName,
-			parsed.ErrorSeverity,
-			parsed.DatabaseName,
+			queryIDStr,
 			c.instanceKey,
 		).Inc()
 	}
@@ -542,6 +558,17 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		c.connectionErrors.WithLabelValues(
 			parsed.SQLStateCode,
 			parsed.ErrorSeverity,
+			parsed.DatabaseName,
+			c.instanceKey,
+		).Inc()
+	}
+
+	// Authentication failures (SQLSTATE class 28)
+	if parsed.AuthMethod != "" {
+		c.authFailures.WithLabelValues(
+			parsed.User,
+			parsed.RemoteHost,
+			parsed.AuthMethod,
 			parsed.DatabaseName,
 			c.instanceKey,
 		).Inc()
@@ -586,6 +613,9 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` sqlstate="%s"`, parsed.SQLStateCode)
 		if parsed.ErrorCategory != "" {
 			logMessage += fmt.Sprintf(` sqlstate_class="%s"`, parsed.ErrorCategory)
+		}
+		if parsed.SQLStateClass != "" {
+			logMessage += fmt.Sprintf(` sqlstate_class_code="%s"`, parsed.SQLStateClass)
 		}
 	}
 
@@ -639,6 +669,47 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 
 	if parsed.CursorPosition > 0 {
 		logMessage += fmt.Sprintf(` cursor_position="%d"`, parsed.CursorPosition)
+	}
+
+	// Add extracted insights
+	if parsed.LockType != "" {
+		logMessage += fmt.Sprintf(` lock_type="%s"`, parsed.LockType)
+	}
+
+	if parsed.TimeoutType != "" {
+		logMessage += fmt.Sprintf(` timeout_type="%s"`, parsed.TimeoutType)
+	}
+
+	if parsed.TupleLocation != "" {
+		logMessage += fmt.Sprintf(` tuple_location="%s"`, parsed.TupleLocation)
+	}
+
+	if parsed.BlockedPID > 0 {
+		logMessage += fmt.Sprintf(` blocked_pid=%d`, parsed.BlockedPID)
+	}
+
+	if parsed.BlockerPID > 0 {
+		logMessage += fmt.Sprintf(` blocker_pid=%d`, parsed.BlockerPID)
+	}
+
+	if parsed.BlockedQuery != "" {
+		logMessage += fmt.Sprintf(` blocked_query="%s"`, parsed.BlockedQuery)
+	}
+
+	if parsed.BlockerQuery != "" {
+		logMessage += fmt.Sprintf(` blocker_query="%s"`, parsed.BlockerQuery)
+	}
+
+	if parsed.FunctionContext != "" {
+		logMessage += fmt.Sprintf(` function="%s"`, parsed.FunctionContext)
+	}
+
+	if parsed.AuthMethod != "" {
+		logMessage += fmt.Sprintf(` auth_method="%s"`, parsed.AuthMethod)
+	}
+
+	if parsed.HBALineNumber != "" {
+		logMessage += fmt.Sprintf(` hba_line="%s"`, parsed.HBALineNumber)
 	}
 
 	// Emit to Loki with the PostgreSQL log line's timestamp

@@ -134,11 +134,11 @@ func IsTransactionRollback(sqlstate string) bool {
 	return false
 }
 
-// IsResourceError returns true if the SQLSTATE code represents a resource error.
-func IsResourceError(sqlstate string) bool {
+// IsResourceLimitError returns true if the SQLSTATE code represents a resource limit error.
+// Class 53 = Insufficient Resources (out of memory, disk full, too many connections, etc.)
+func IsResourceLimitError(sqlstate string) bool {
 	if len(sqlstate) >= 2 {
-		class := sqlstate[:2]
-		return class == "53" || class == "54"
+		return sqlstate[:2] == "53"
 	}
 	return false
 }

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +32,22 @@ var (
 
 	// Column name in various error contexts
 	columnPattern = regexp.MustCompile(`column "([^"]+)"`)
+
+	// Lock and deadlock patterns
+	tupleLocationPattern = regexp.MustCompile(`tuple \((\d+,\d+)\)`)
+	lockTypePattern      = regexp.MustCompile(`waits for (\w+) on`)
+	lockObtainPattern    = regexp.MustCompile(`could not obtain lock on (\w+)`)
+
+	// Deadlock process patterns
+	blockedByPattern    = regexp.MustCompile(`Process (\d+) waits for .+; blocked by process (\d+)`)
+	processQueryPattern = regexp.MustCompile(`Process (\d+): (.+)(?:\n|$)`)
+
+	// Authentication patterns
+	authMethodPattern = regexp.MustCompile(`(\w+) authentication failed`)
+	hbaLinePattern    = regexp.MustCompile(`pg_hba\.conf line (\d+)`)
+
+	// Function patterns (PL/pgSQL and SQL)
+	functionPattern = regexp.MustCompile(`(?:PL/pgSQL|SQL) function (?:")?([^"(\s]+)`)
 )
 
 // extractInsights extracts structured information from error messages.
@@ -45,10 +62,21 @@ func (c *ErrorLogs) extractInsights(parsed *ParsedError) {
 	switch class {
 	case "23": // Constraint violations
 		c.extractConstraintViolation(parsed)
+	case "28": // Invalid authorization specification (auth failures)
+		c.extractAuthFailure(parsed)
 	case "40": // Transaction rollback (deadlocks, etc.)
 		c.extractTransactionRollback(parsed)
 	case "42": // Syntax errors or access violations
 		c.extractSyntaxError(parsed)
+	case "55": // Object not in prerequisite state (includes lock_not_available)
+		c.extractObjectState(parsed)
+	case "57": // Operator intervention (includes query cancellation/timeout)
+		c.extractTimeoutError(parsed)
+	}
+
+	// Extract function context if present (PL/pgSQL errors) - multiple classes
+	if parsed.Context != "" {
+		c.extractFunctionInfo(parsed)
 	}
 }
 
@@ -176,21 +204,50 @@ func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
 func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 	msg := parsed.Message
 	detail := parsed.Detail
+	context := parsed.Context
 
-	// Deadlock detected
+	// Deadlock detected (SQLSTATE 40P01)
 	if strings.Contains(msg, "deadlock detected") {
-		// Deadlock information is usually in the detail field
-		// Example: Process 12345 waits for ShareLock on transaction 67890; blocked by process 23456.
-		if detail != "" {
-			// We could extract process IDs and lock types here if needed
-			// For now, the message and detail are sufficient
+		// Extract tuple location from context: "while locking tuple (3,88) in relation \"books\""
+		// or from detail: "Process 12345 waits for ShareLock on tuple (0,1) of relation 12345..."
+		if match := tupleLocationPattern.FindStringSubmatch(context); len(match) > 1 {
+			parsed.TupleLocation = match[1]
+		} else if match := tupleLocationPattern.FindStringSubmatch(detail); len(match) > 1 {
+			parsed.TupleLocation = match[1]
 		}
-		return
-	}
 
-	// Serialization failure
-	if strings.Contains(msg, "could not serialize access") {
-		// These usually don't have additional structured info to extract
+		// Extract lock type
+		if match := lockTypePattern.FindStringSubmatch(detail); len(match) > 1 {
+			parsed.LockType = match[1]
+		}
+
+		// Extract blocked and blocker PIDs
+		// Detail format: "Process 9185 waits for ShareLock on transaction 836; blocked by process 9184."
+		if match := blockedByPattern.FindStringSubmatch(detail); len(match) > 2 {
+			if blockedPID, err := strconv.ParseInt(match[1], 10, 32); err == nil {
+				parsed.BlockedPID = int32(blockedPID)
+			}
+			if blockerPID, err := strconv.ParseInt(match[2], 10, 32); err == nil {
+				parsed.BlockerPID = int32(blockerPID)
+			}
+		}
+
+		// Extract queries for blocked and blocker processes
+		// Detail format: "Process 9185: UPDATE books SET stock = stock WHERE id = 2;"
+		matches := processQueryPattern.FindAllStringSubmatch(detail, -1)
+		for _, match := range matches {
+			if len(match) > 2 {
+				if pid, err := strconv.ParseInt(match[1], 10, 32); err == nil {
+					query := strings.TrimSpace(match[2])
+					if int32(pid) == parsed.BlockedPID {
+						parsed.BlockedQuery = query
+					} else if int32(pid) == parsed.BlockerPID {
+						parsed.BlockerQuery = query
+					}
+				}
+			}
+		}
+
 		return
 	}
 }
@@ -198,6 +255,14 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 // extractSyntaxError extracts information about syntax errors and access violations.
 func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 	msg := parsed.Message
+
+	// Column does not exist - check this BEFORE general "does not exist"
+	if strings.Contains(msg, "column") && strings.Contains(msg, "does not exist") {
+		if match := columnPattern.FindStringSubmatch(msg); len(match) > 1 {
+			parsed.ColumnName = match[1]
+		}
+		return
+	}
 
 	// Relation does not exist: "relation \"users\" does not exist"
 	if strings.Contains(msg, "does not exist") {
@@ -207,19 +272,76 @@ func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
 		return
 	}
 
-	// Column does not exist
-	if strings.Contains(msg, "column") && strings.Contains(msg, "does not exist") {
-		if match := columnPattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ColumnName = match[1]
+	// Permission denied: "permission denied for table users" or "permission denied for table \"users\""
+	if strings.Contains(msg, "permission denied") {
+		// Try quoted table name first
+		if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
+			parsed.TableName = match[1]
+		} else {
+			// Try unquoted: "permission denied for table tablename"
+			tablePattern := regexp.MustCompile(`permission denied for table (\w+)`)
+			if match := tablePattern.FindStringSubmatch(msg); len(match) > 1 {
+				parsed.TableName = match[1]
+			}
 		}
 		return
 	}
+}
 
-	// Permission denied: "permission denied for table users"
-	if strings.Contains(msg, "permission denied") {
-		if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.TableName = match[1]
+// extractObjectState extracts details from object state errors (Class 55).
+func (c *ErrorLogs) extractObjectState(parsed *ParsedError) {
+	msg := parsed.Message
+
+	// SQLSTATE 55P03 - lock_not_available
+	if parsed.SQLStateCode == "55P03" {
+		parsed.TimeoutType = "lock_timeout"
+		// Extract lock type: "could not obtain lock on relation"
+		if match := lockObtainPattern.FindStringSubmatch(msg); len(match) > 1 {
+			parsed.LockType = match[1]
 		}
-		return
+	}
+}
+
+// extractAuthFailure extracts details from authentication failures.
+func (c *ErrorLogs) extractAuthFailure(parsed *ParsedError) {
+	msg := parsed.Message
+	detail := parsed.Detail
+
+	// Extract auth method from message
+	// Example: "password authentication failed for user \"myuser\""
+	if match := authMethodPattern.FindStringSubmatch(msg); len(match) > 1 {
+		parsed.AuthMethod = match[1] // e.g., "password", "md5", "scram-sha-256"
+	}
+
+	// Extract pg_hba.conf line number from detail
+	// Example detail: "Connection matched pg_hba.conf line 95: \"host all all 0.0.0.0/0 md5\""
+	if match := hbaLinePattern.FindStringSubmatch(detail); len(match) > 1 {
+		parsed.HBALineNumber = match[1]
+	}
+}
+
+// extractTimeoutError extracts timeout type from query cancellation errors.
+func (c *ErrorLogs) extractTimeoutError(parsed *ParsedError) {
+	msg := parsed.Message
+
+	// Determine timeout type based on message content
+	if strings.Contains(msg, "statement timeout") {
+		parsed.TimeoutType = "statement_timeout"
+	} else if strings.Contains(msg, "lock timeout") {
+		parsed.TimeoutType = "lock_timeout"
+	} else if strings.Contains(msg, "canceling statement due to user request") {
+		parsed.TimeoutType = "user_cancel"
+	} else if strings.Contains(msg, "idle_in_transaction_session_timeout") {
+		parsed.TimeoutType = "idle_in_transaction_timeout"
+	}
+}
+
+// extractFunctionInfo extracts function names from PL/pgSQL error contexts.
+func (c *ErrorLogs) extractFunctionInfo(parsed *ParsedError) {
+	// Example context:
+	// "PL/pgSQL function my_function(integer) line 42 at RAISE"
+	// "SQL function \"my_func\" statement 1"
+	if match := functionPattern.FindStringSubmatch(parsed.Context); len(match) > 1 {
+		parsed.FunctionContext = match[1]
 	}
 }
