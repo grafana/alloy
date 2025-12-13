@@ -91,7 +91,7 @@ type Component struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 
 	cacheMut sync.RWMutex
-	cache    *lru.Cache[storage.SeriesRef, labels.Labels]
+	cache    *lru.Cache[string, labels.Labels]
 }
 
 var (
@@ -101,7 +101,7 @@ var (
 
 // New creates a new prometheus.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	cache, err := lru.New[storage.SeriesRef, labels.Labels](args.CacheSize)
+	cache, err := lru.New[string, labels.Labels](args.CacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			newLbl := c.relabel(ref, v, l)
+			newLbl := c.relabel(v, l)
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
@@ -176,7 +176,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			newLbl := c.relabel(ref, 0, l)
+			newLbl := c.relabel(0, l)
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
@@ -189,7 +189,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			newLbl := c.relabel(ref, 0, l)
+			newLbl := c.relabel(0, l)
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
@@ -202,7 +202,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			newLbl := c.relabel(ref, 0, l)
+			newLbl := c.relabel(0, l)
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
@@ -247,7 +247,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) relabel(ref storage.SeriesRef, val float64, lbls labels.Labels) labels.Labels {
+func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
@@ -257,7 +257,7 @@ func (c *Component) relabel(ref storage.SeriesRef, val float64, lbls labels.Labe
 		relabelled labels.Labels
 		keep       bool
 	)
-	newLbls, found := c.getFromCache(ref)
+	newLbls, found := c.getFromCache(lbls)
 	if found {
 		c.cacheHits.Inc()
 		// If newLbls is empty but cache entry was found then we want to keep the value empty, if it's not we want to reuse the labels
@@ -269,12 +269,12 @@ func (c *Component) relabel(ref storage.SeriesRef, val float64, lbls labels.Labe
 		// slice.
 		relabelled, keep = relabel.Process(lbls.Copy(), c.mrc...)
 		c.cacheMisses.Inc()
-		c.addToCache(ref, relabelled, keep)
+		c.addToCache(lbls, relabelled, keep)
 	}
 
 	// If stale remove from the cache, the reason we don't exit early is so the stale value can propagate.
 	if value.IsStaleNaN(val) {
-		c.deleteFromCache(ref)
+		c.deleteFromCache(lbls)
 	}
 	// Set the cache size to the cache.len
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
@@ -297,37 +297,41 @@ func (c *Component) relabel(ref storage.SeriesRef, val float64, lbls labels.Labe
 	return relabelled
 }
 
-func (c *Component) getFromCache(id storage.SeriesRef) (labels.Labels, bool) {
+// TODO create benchmark to show cache key options, string was better than bytes
+
+func (c *Component) getFromCache(lbls labels.Labels) (labels.Labels, bool) {
 	c.cacheMut.RLock()
 	defer c.cacheMut.RUnlock()
 
-	fm, found := c.cache.Get(id)
+	fm, found := c.cache.Get(lbls.StringNoSpace())
+
 	return fm, found
 }
 
-func (c *Component) deleteFromCache(id storage.SeriesRef) {
+func (c *Component) deleteFromCache(lbls labels.Labels) {
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
 	c.cacheDeletes.Inc()
-	c.cache.Remove(id)
+
+	c.cache.Remove(lbls.StringNoSpace())
 }
 
 func (c *Component) clearCache(cacheSize int) {
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
-	cache, _ := lru.New[storage.SeriesRef, labels.Labels](cacheSize)
+	cache, _ := lru.New[string, labels.Labels](cacheSize)
 	c.cache = cache
 }
 
-func (c *Component) addToCache(originalID storage.SeriesRef, lbls labels.Labels, keep bool) {
+func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep bool) {
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
 
 	if !keep {
-		c.cache.Add(originalID, labels.EmptyLabels())
+		c.cache.Add(lbls.StringNoSpace(), labels.EmptyLabels())
 		return
 	}
-	c.cache.Add(originalID, lbls)
+	c.cache.Add(lbls.StringNoSpace(), relabeled)
 }
 
 func (c *Component) LiveDebugging() {}
