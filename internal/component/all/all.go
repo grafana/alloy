@@ -137,6 +137,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"           // Import prometheus.exporter.catchpoint
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"           // Import prometheus.exporter.cloudwatch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/consul"               // Import prometheus.exporter.consul
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"           // Import prometheus.exporter.databricks
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"              // Import prometheus.exporter.dnsmasq
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"        // Import prometheus.exporter.elasticsearch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/gcp"                  // Import prometheus.exporter.gcp
