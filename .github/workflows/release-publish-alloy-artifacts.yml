@@ -191,8 +191,8 @@ jobs:
         azure-tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
         signed-artifact-name: 'windows-installer-signed'
 
-  upload_release_assets:
-    name: Upload release assets
+  upload_release_artifacts:
+    name: Upload release artifacts
     container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
     runs-on:
       labels: github-hosted-ubuntu-x64-large
@@ -256,8 +256,8 @@ jobs:
         name: windows-installer-signed
         path: dist
 
-    - name: Publish release assets
-      run: ./tools/publish-release-assets.sh
+    - name: Publish release artifacts
+      run: ./tools/publish-release-artifacts.sh
       env:
         RELEASE_TAG: ${{ github.event.release.tag_name }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -265,7 +265,7 @@ jobs:
   submit_winget_manifest:
     name: Submit WinGet Manifest
     needs:
-    - upload_release_assets
+    - upload_release_artifacts
     uses: ./.github/workflows/release-submit-winget-manifest.yml
     permissions:
       contents: read
