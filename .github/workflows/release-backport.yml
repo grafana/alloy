@@ -67,7 +67,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true # Needed for subsequent git operations
 
       - name: Set up Go 🏗️
         if: steps.check.outputs.should_backport == 'true'
