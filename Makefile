@@ -83,6 +83,8 @@ ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
+JSONNET              ?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+JB                   ?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GOOS                 ?= $(shell go env GOOS)
 GOARCH               ?= $(shell go env GOARCH)
 GOARM                ?= $(shell go env GOARM)
@@ -283,6 +285,18 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	go generate ./internal/winmanifest
+endif
+
+.PHONY: alloy-mixin-render
+alloy-mixin-render:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	rm -rf operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	mkdir -p operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	cd operations/alloy-mixin && $(JB) install
+	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
+	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".json"]: { groups: [g] } for g in mixin.prometheusAlerts.groups }'
 endif
 
 generate-snmp:
