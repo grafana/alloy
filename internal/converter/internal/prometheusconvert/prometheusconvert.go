@@ -63,15 +63,15 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 // builder. Exports from other components are correctly referenced to build the
 // Alloy pipeline.
 func AppendAll(f *builder.File, promConfig *prom_config.Config) diag.Diagnostics {
-	return AppendAllNested(f, promConfig, nil, []discovery.Target{}, nil)
+	return AppendAllNested(f, promConfig, nil, []discovery.Target{}, nil, nil)
 }
 
 // AppendAllNested analyzes the entire prometheus config in memory and transforms it
 // into Alloy component Arguments. It then appends each argument to the file builder.
 // Exports from other components are correctly referenced to build the Alloy
 // pipeline. Additional options can be provided overriding the job name, extra
-// scrape targets, and predefined remote write exports.
-func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToCompLabelsFunc func(string) string, extraScrapeTargets []discovery.Target, remoteWriteExports *remotewrite.Exports) diag.Diagnostics {
+// scrape targets, predefined remote write exports, and WAL options.
+func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToCompLabelsFunc func(string) string, extraScrapeTargets []discovery.Target, remoteWriteExports *remotewrite.Exports, walOptions *remotewrite.WALOptions) diag.Diagnostics {
 	pb := build.NewPrometheusBlocks()
 
 	if remoteWriteExports == nil {
@@ -82,7 +82,7 @@ func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToC
 				labelPrefix = common.SanitizeIdentifierPanics(labelPrefix)
 			}
 		}
-		remoteWriteExports = component.AppendPrometheusRemoteWrite(pb, promConfig.GlobalConfig, promConfig.RemoteWriteConfigs, labelPrefix)
+		remoteWriteExports = component.AppendPrometheusRemoteWrite(pb, promConfig.GlobalConfig, promConfig.RemoteWriteConfigs, labelPrefix, walOptions)
 	}
 	remoteWriteForwardTo := []storage.Appendable{remoteWriteExports.Receiver}
 
