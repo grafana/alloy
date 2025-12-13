@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-13)
+
+
+### Bug Fixes 🐛
+
+* update to Beyla 2.7.10 ([#5019](https://github.com/grafana/alloy/issues/5019)) ([c149393](https://github.com/grafana/alloy/commit/c149393881e8c155681de9c03f8701b1fdbc6ea4))
+
+## Changelog
+
 v1.12.0
 -----------------
 
