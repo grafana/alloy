@@ -1,0 +1,11 @@
+// Simple expressions
+password = env("PASSWORD")
+targets  = discovery.kubernetes.pods.targets
+computed = (base + 100) * factor
+
+// Multi-line expression (formatted in Alloy but should be single line in YAML)
+config = array.concat(
+  [1, 2, 3],
+  [4, 5, 6],
+)
+
