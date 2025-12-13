@@ -4,7 +4,7 @@ title: Grafana Alloy
 description: Grafana Alloy is a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: v1.12.0
+  ALLOY_RELEASE: v1.12.0 # x-release-please-version
   OTEL_VERSION: v0.139.0
   PROM_WIN_EXP_VERSION: v0.31.3
   SNMP_VERSION: v0.29.0
@@ -18,7 +18,7 @@ hero:
   width: 110
   height: 110
   description: >-
-    Grafana Alloy combines the strengths of the leading collectors into one place. Whether observing applications, infrastructure, or both, Grafana Alloy can collect, process, and export telemetry signals to scale and future-proof your observability approach. 
+    Grafana Alloy combines the strengths of the leading collectors into one place. Whether observing applications, infrastructure, or both, Grafana Alloy can collect, process, and export telemetry signals to scale and future-proof your observability approach.
 cards:
   title_class: pt-0 lh-1
   items:
