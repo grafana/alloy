@@ -11,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	"github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -269,6 +270,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				EntryHandler:          lokiClient,
 				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				DisableQueryRedaction: tc.disableQueryRedaction,
+				Registry:              prometheus.NewRegistry(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
@@ -354,6 +356,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -403,6 +406,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 
 		require.NoError(t, err)
@@ -461,6 +465,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -520,6 +525,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -579,6 +585,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -659,6 +666,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -717,6 +725,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -775,6 +784,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 
@@ -833,6 +843,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 

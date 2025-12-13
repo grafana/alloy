@@ -11,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,13 +132,14 @@ func TestQuerySamples(t *testing.T) {
 			logBuffer := syncbuffer.Buffer{}
 			lokiClient := loki.NewCollectingHandler()
 
-			collector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:              db,
-				EngineVersion:   latestCompatibleVersion,
-				CollectInterval: time.Second,
-				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			})
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Registry:        prometheus.NewRegistry(),
+		})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
@@ -237,6 +239,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -332,6 +335,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -499,6 +503,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -619,6 +624,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -736,6 +742,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
 			DisableQueryRedaction: true,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -844,6 +851,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
 			DisableQueryRedaction: false,
+			Registry:              prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1098,13 +1106,14 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 
 			lokiClient := loki.NewCollectingHandler()
 
-			collector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:              db,
-				EngineVersion:   semver.MustParse(tc.mysqlVersion),
-				CollectInterval: time.Second,
-				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
-			})
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:              db,
+			EngineVersion:   semver.MustParse(tc.mysqlVersion),
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
+		})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
@@ -1173,6 +1182,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1301,6 +1311,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1427,6 +1438,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Registry:        prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1547,7 +1559,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Registry: prometheus.NewRegistry()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1566,7 +1578,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Registry: prometheus.NewRegistry()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1955,7 +1967,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Registry: prometheus.NewRegistry()})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -2113,6 +2125,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			Logger:                      log.NewLogfmtLogger(os.Stderr),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
+			Registry:                    prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2222,6 +2235,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			Logger:                      log.NewLogfmtLogger(os.Stderr),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
+			Registry:                    prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)

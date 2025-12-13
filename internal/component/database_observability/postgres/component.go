@@ -417,6 +417,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
+			Registry:              c.registry,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
