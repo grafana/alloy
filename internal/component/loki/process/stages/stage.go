@@ -44,6 +44,7 @@ const (
 	StageTypeTenant                 = "tenant"
 	StageTypeTimestamp              = "timestamp"
 	StageTypeTruncate               = "truncate"
+	StageTypeUserAgent              = "useragent"
 	StageTypeWindowsEvent           = "windowsevent"
 )
 
@@ -226,6 +227,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		}
 	case cfg.TruncateConfig != nil:
 		s, err = newTruncateStage(logger, *cfg.TruncateConfig, registerer)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.UserAgentConfig != nil:
+		s, err = newUserAgentStage(logger, *cfg.UserAgentConfig)
 		if err != nil {
 			return nil, err
 		}
