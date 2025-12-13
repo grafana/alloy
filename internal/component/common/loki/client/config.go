@@ -33,11 +33,11 @@ type Config struct {
 	// prevent HOL blocking in multitenant deployments.
 	DropRateLimitedBatches bool
 
-	// Queue controls configuration parameters specific to the queue client
-	Queue QueueConfig
+	// QueueConfig controls how shards and queues are configured for endpoint.
+	QueueConfig QueueConfig
 }
 
-// QueueConfig holds configurations for the queue-based remote-write client.
+// QueueConfig controls how shards and queues are configured for endpoints.
 type QueueConfig struct {
 	// Capacity is the worst case size in bytes desired for the send queue. This value is used to calculate the size of
 	// the buffered channel used underneath. The worst case scenario assumed is that every batch buffered in full, hence
@@ -47,6 +47,9 @@ type QueueConfig struct {
 	// is the 1 MiB default, and a capacity of 100 MiB, the underlying buffered channel would buffer up to 100 batches.
 	Capacity int
 
-	// DrainTimeout controls the maximum time that draining the send queue can take.
+	// MinShards is the minimum number of concurrent shards sending batches to the endpoint.
+	MinShards int
+
+	// DrainTimeout controls the maximum time that draining the queue can take.
 	DrainTimeout time.Duration
 }
