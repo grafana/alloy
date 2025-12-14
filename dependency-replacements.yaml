@@ -28,6 +28,14 @@ modules:
     path: go.mod
     file_type: mod
 
+  - name: extension
+    path: extension/alloyengine/go.mod
+    file_type: mod
+
+  - name: collector
+    path: collector/builder-config.yaml
+    file_type: ocb
+
 replaces:
   - comment: >
       TODO: remove this replace directive once the upstream issue is fixed:

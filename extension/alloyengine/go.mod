@@ -1,6 +1,6 @@
 module github.com/grafana/alloy/otelcol/extension/alloyengine
 
-go 1.25.1
+go 1.25.5
 
 replace github.com/grafana/alloy => ../..
 
@@ -183,7 +183,6 @@ require (
 	github.com/PuerkitoBio/rehttp v1.4.0 // indirect
 	github.com/Shopify/sarama v1.38.1 // indirect
 	github.com/Showmax/go-fqdn v1.0.0 // indirect
-	github.com/Workiva/go-datastructures v1.1.6 // indirect
 	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/participle/v2 v2.1.4 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
@@ -198,14 +197,14 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4 // indirect
 	github.com/aws/aws-sdk-go v1.55.7 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.39.4 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.39.6 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.2 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.31.15 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.18.19 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.11 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.31.17 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.21 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.13 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.11 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.13 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/amp v1.30.5 // indirect
@@ -215,32 +214,30 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.45.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.58.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.45.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.259.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.262.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.67.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.38.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/lightsail v1.49.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/lightsail v1.50.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.25.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/shield v1.29.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.29.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.34.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.38.9 // indirect
-	github.com/aws/smithy-go v1.23.1 // indirect
-	github.com/axiomhq/hyperloglog v0.2.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.39.1 // indirect
+	github.com/aws/smithy-go v1.23.2 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bboreham/go-loser v0.0.0-20230920113527-fcc2c21820a3 // indirect
 	github.com/beevik/ntp v1.3.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.22.0 // indirect
-	github.com/bits-and-blooms/bloom/v3 v3.7.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
@@ -277,18 +274,17 @@ require (
 	github.com/dennwc/ioctl v1.0.0 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
-	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/digitalocean/go-metadata v0.0.0-20250129100319-e3650a3df44b // indirect
-	github.com/digitalocean/godo v1.165.1 // indirect
+	github.com/digitalocean/godo v1.168.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/docker v28.5.1+incompatible // indirect
+	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
+	github.com/dvsekhvalnov/jose2go v1.7.0 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -396,7 +392,7 @@ require (
 	github.com/gosnmp/gosnmp v1.41.0 // indirect
 	github.com/grafana/alloy-remote-config v0.0.12 // indirect
 	github.com/grafana/alloy/syntax v0.1.0 // indirect
-	github.com/grafana/beyla/v2 v2.7.8 // indirect
+	github.com/grafana/beyla/v2 v2.7.10 // indirect
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 // indirect
 	github.com/grafana/ckit v0.0.0-20251024151910-87043f5a3cf7 // indirect
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 // indirect
@@ -410,8 +406,8 @@ require (
 	github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675 // indirect
 	github.com/grafana/jvmtools v0.0.3 // indirect
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a // indirect
-	github.com/grafana/loki/pkg/push v0.0.0-20251021174646-053429db2124 // indirect
-	github.com/grafana/loki/v3 v3.0.0-20251021174646-053429db2124 // indirect
+	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf // indirect
+	github.com/grafana/loki/v3 v3.6.2 // indirect
 	github.com/grafana/otel-profiling-go v0.5.1 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
 	github.com/grafana/pyroscope/api v1.2.0 // indirect
@@ -420,9 +416,8 @@ require (
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251023151319-9baba332b98a // indirect
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 // indirect
-	github.com/grafana/walqueue v0.0.0-20251021201828-bb0dba7569b6 // indirect
+	github.com/grafana/walqueue v0.0.0-20251208180146-d055c488ffd1 // indirect
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/hashicorp/consul/api v1.32.1 // indirect
@@ -463,7 +458,7 @@ require (
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb // indirect
 	github.com/heroku/x v0.5.2 // indirect
-	github.com/hetznercloud/hcloud-go/v2 v2.28.0 // indirect
+	github.com/hetznercloud/hcloud-go/v2 v2.29.0 // indirect
 	github.com/hodgesds/perf-utils v0.7.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
@@ -475,7 +470,6 @@ require (
 	github.com/influxdata/influxdb-observability/common v0.5.12 // indirect
 	github.com/influxdata/influxdb-observability/influx2otel v0.5.12 // indirect
 	github.com/influxdata/line-protocol/v2 v2.2.1 // indirect
-	github.com/influxdata/tdigest v0.0.2-0.20210216194612-fc98d27c9e8b // indirect
 	github.com/influxdata/telegraf v1.35.2 // indirect
 	github.com/ionos-cloud/sdk-go/v6 v6.3.4 // indirect
 	github.com/itchyny/timefmt-go v0.1.7 // indirect
@@ -504,8 +498,6 @@ require (
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/jsimonetti/rtnetlink v1.4.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/julienschmidt/httprouter v1.3.0 // indirect
-	github.com/kamstrup/intmap v0.5.1 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
@@ -522,7 +514,7 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/linode/go-metadata v0.2.2 // indirect
-	github.com/linode/linodego v1.59.0 // indirect
+	github.com/linode/linodego v1.60.0 // indirect
 	github.com/lufia/iostat v1.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250827001030-24949be3fa54 // indirect
 	github.com/mackerelio/go-osstat v0.2.5 // indirect
@@ -578,11 +570,14 @@ require (
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/oliver006/redis_exporter v1.74.0 // indirect
+	github.com/open-telemetry/opamp-go v0.22.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0 // indirect
@@ -597,6 +592,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.139.0 // indirect
@@ -643,6 +639,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.139.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.139.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.139.0 // indirect
@@ -711,17 +708,18 @@ require (
 	github.com/prometheus/alertmanager v0.28.1 // indirect
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
+	github.com/prometheus/client_golang/exp v0.0.0-20250914183048-a974e0d45e0a // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.1 // indirect
+	github.com/prometheus/common v0.67.4 // indirect
 	github.com/prometheus/consul_exporter v0.8.0 // indirect
-	github.com/prometheus/exporter-toolkit v0.14.1 // indirect
+	github.com/prometheus/exporter-toolkit v0.15.0 // indirect
 	github.com/prometheus/memcached_exporter v0.13.0 // indirect
 	github.com/prometheus/mysqld_exporter v0.17.2 // indirect
 	github.com/prometheus/node_exporter v1.9.1 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
-	github.com/prometheus/prometheus v0.305.1-0.20250818080900-0a40df33fb4e // indirect
-	github.com/prometheus/sigv4 v0.2.1 // indirect
+	github.com/prometheus/prometheus v0.308.0 // indirect
+	github.com/prometheus/sigv4 v0.3.0 // indirect
 	github.com/prometheus/snmp_exporter v0.29.0 // indirect
 	github.com/prometheus/statsd_exporter v0.28.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
@@ -813,7 +811,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
-	go.etcd.io/etcd/api/v3 v3.6.4 // indirect
+	go.etcd.io/etcd/api/v3 v3.6.6 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.6.4 // indirect
 	go.etcd.io/etcd/client/v3 v3.6.4 // indirect
 	go.mongodb.org/mongo-driver v1.17.4 // indirect
@@ -936,17 +934,17 @@ require (
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.design/x/chann v0.1.2 // indirect
 	golang.org/x/arch v0.22.0 // indirect
-	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.29.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
-	golang.org/x/term v0.36.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
@@ -963,7 +961,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -983,14 +980,9 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-// TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/prometheus/issues/13842 feature-gate-registration-error-handler branch
+// BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
+// TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/prometheus/issues/13842
 replace go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
-
-// Replace directives from Prometheus
-replace github.com/fsnotify/fsnotify v1.8.0 => github.com/fsnotify/fsnotify v1.7.0
-
-// TODO: remove replace directive once there is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049, for example, via this implementation: https://github.com/grafana/prometheus/pull/34 staleness_disabling_v3.7.3 branch
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20251030104821-c9e0b31e9aeb
 
 // Replace yaml.v2 with fork
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
@@ -1016,23 +1008,23 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 // Replace thanos-io/objstore with Grafana fork
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-// TODO: remove forks when changes are merged upstream — non-singleton cadvisor. This is to remove global instantiation of plugins and allow non-singleton components. https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
+// TODO - remove forks when changes are merged upstream — non-singleton cadvisor
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
 
-// TODO: track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream. This tracks the exporter-package-v0.18.1 branch of the grafana fork, which we could get rid of once the changes are merged upstream.
+// TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
 
-// TODO: remove once PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
+// TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
 
-// TODO: replace node_exporter with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812 This commit is on the refactor_collectors branch in the grafana fork.
+// TODO: replace node_exporter with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89
 
 // Use Grafana fork of smimesign
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
 // Replace OpenTelemetry OBI with Grafana fork
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.10
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
 
 // Replace OpenTelemetry eBPF profiler with Grafana fork
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c
@@ -1040,7 +1032,7 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 // Update openshift/client-go to version compatible with structured-merge-diff v6
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-// Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1. Adds RunWithContext and AddEventHandlerWithOptions methods to fake informers
+// Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor => github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
 
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
@@ -1051,3 +1043,5 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
+
+// END GENERATED REPLACES
