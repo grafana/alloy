@@ -77,10 +77,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Finalize Group Aggregate"),
@@ -194,10 +195,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_join_with_aggregate_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Simple Hashed Aggregate"),
@@ -339,10 +341,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_query_with_multiple_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Incremental Sort"),
@@ -526,10 +529,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_subquery_in_select_clause",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Index Scan"),
@@ -588,10 +592,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "conditional_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Finalize Group Aggregate"),
@@ -648,10 +653,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "correlated_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
@@ -774,10 +780,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "date_manipulation_with_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Gather"),
@@ -805,10 +812,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "derived_table_with_aggregates",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
@@ -1028,10 +1036,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "distinct_with_multiple_joins",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Unique"),
@@ -1145,10 +1154,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "group_by_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Finalize Group Aggregate"),
@@ -1235,10 +1245,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "join_and_order",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Gather Merge"),
@@ -1332,10 +1343,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "multiple_aggregate_functions_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Finalize Group Aggregate"),
@@ -1423,10 +1435,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "multiple_joins_with_date_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Gather"),
@@ -1511,10 +1524,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "nested_subqueries_with_exists",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Gather"),
@@ -1598,10 +1612,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "self_join_with_date_comparison",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Limit"),
@@ -1714,10 +1729,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "string_functions_with_grouping",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Sort"),
@@ -1774,10 +1790,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "subquery_with_aggregate",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Gather"),
@@ -1868,10 +1885,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "union_with_different_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Sort"),
@@ -1993,10 +2011,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "window_functions_with_partitioning",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("WindowAgg"),
@@ -2128,10 +2147,11 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "window_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "PostgreSQL",
-					DatabaseVersion: "14.1",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperation("Limit"),
@@ -2219,12 +2239,9 @@ func TestExplainPlanOutput(t *testing.T) {
 			jsonFile := archive.Files[0]
 			require.Equal(t, fmt.Sprintf("%s.json", tt.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
-			output, err := newExplainPlanOutput(tt.engineVersion, tt.queryid, jsonData, currentTime)
+			output, err := newExplainPlanOutput(jsonData)
 			require.NoError(t, err, "Failed generate explain plan output: %s", tt.fname)
-			// Override the generated at time to ensure the test is deterministic
-			output.Metadata.GeneratedAt = currentTime
-			require.Equal(t, tt.result.Metadata, output.Metadata)
-			validatePlan(t, tt.result.Plan, output.Plan)
+			validatePlan(t, tt.result.Plan, *output)
 		})
 	}
 }
@@ -2432,37 +2449,28 @@ func TestPlanNode_ExplainPlanNodeOperation(t *testing.T) {
 }
 
 func TestNewExplainPlanOutput(t *testing.T) {
-	dbVersion := "14.1"
-	queryId := "123456789"
-	generatedAt := time.Now().Format(time.RFC3339)
-
 	explainJSON := []byte(`[{"Plan": {"Node Type": "Seq Scan", "Total Cost": 100.5, "Plan Rows": 1000, "Plan Width": 50}}]`)
 
-	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
+	output, err := newExplainPlanOutput(explainJSON)
 
 	require.NoError(t, err)
 	require.NotNil(t, output)
-	assert.Equal(t, "PostgreSQL", output.Metadata.DatabaseEngine)
-	assert.Equal(t, dbVersion, output.Metadata.DatabaseVersion)
-	assert.Equal(t, queryId, output.Metadata.QueryIdentifier)
-	assert.Equal(t, generatedAt, output.Metadata.GeneratedAt)
-	assert.Equal(t, database_observability.ExplainPlanOutputOperation("Seq Scan"), output.Plan.Operation)
+	assert.Equal(t, database_observability.ExplainPlanOutputOperation("Seq Scan"), output.Operation)
 }
 
 func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
-	dbVersion := "14.1"
-	queryId := "123456789"
-	generatedAt := time.Now().Format(time.RFC3339)
-
 	explainJSON := []byte(`invalid json`)
 
-	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
+	output, err := newExplainPlanOutput(explainJSON)
 
 	require.Error(t, err)
 	assert.Nil(t, output)
 }
 
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
 	logger := log.NewNopLogger()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
@@ -2486,6 +2494,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				excludeSchemas:     []string{},
 				perScrapeRatio:     1.0,
 				logger:             logger,
+				entryHandler:       lokiClient,
 			}
 
 			resetTime := time.Now().Add(-time.Hour)
@@ -2525,6 +2534,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				excludeSchemas:     []string{"information_schema"},
 				perScrapeRatio:     0.5,
 				logger:             logger,
+				entryHandler:       lokiClient,
 			}
 
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
@@ -2559,6 +2569,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection: db,
 				dbVersion:    post17ver,
 				logger:       logger,
+				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
 				finishedQueryCache: map[string]*queryInfo{
 					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
@@ -2584,6 +2595,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection: db,
 				dbVersion:    post17ver,
 				logger:       logger,
+				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
 				finishedQueryCache: map[string]*queryInfo{
 					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now().Add(-time.Hour)),
@@ -2610,6 +2622,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection: db,
 				dbVersion:    post17ver,
 				logger:       logger,
+				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
 				finishedQueryCache: map[string]*queryInfo{
 					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
@@ -2636,6 +2649,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			dbConnection: db,
 			dbVersion:    pre17ver,
 			logger:       logger,
+			entryHandler: lokiClient,
 		}
 
 		mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").
@@ -2734,6 +2748,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		logBuffer := syncbuffer.Buffer{}
 
 		t.Run("skips truncated queries", func(t *testing.T) {
+			lokiClient.Clear()
 			logBuffer.Reset()
 			explainPlan = &ExplainPlan{
 				dbConnection:        db,
@@ -2753,15 +2768,24 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				excludeSchemas:     []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				entryHandler:       lokiClient,
 				currentBatchSize:   1,
 			}
 
 			assert.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
-
+			require.Eventually(
+				t,
+				func() bool { return len(lokiClient.Received()) == 1 },
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 0, len(lokiEntries))
-
-			require.Contains(t, logBuffer.String(), "skipping truncated query")
+			require.Equal(t, 1, len(lokiEntries))
+			ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntries[0])
+			require.NoError(t, err)
+			require.Equal(t, database_observability.ExplainProcessingResultSkipped, ep.Metadata.ProcessingResult)
+			require.Equal(t, "query is truncated", ep.Metadata.ProcessingResultReason)
 			require.NotContains(t, logBuffer.String(), "error")
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
@@ -2799,15 +2823,23 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				excludeSchemas:     []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				entryHandler:       lokiClient,
 				currentBatchSize:   3,
 			}
 
 			err = explainPlan.fetchExplainPlans(t.Context())
 
 			require.NoError(t, err)
+			require.Eventually(
+				t,
+				func() bool { return len(lokiClient.Received()) == 3 },
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 0, len(lokiEntries))
+			require.Equal(t, 3, len(lokiEntries))
 
 			require.NotContains(t, logBuffer.String(), "error")
 			assert.NoError(t, mock.ExpectationsWereMet())

@@ -1,0 +1,274 @@
+name: Publish Alloy release artifacts
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish_linux_container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy
+
+  publish_linux_boringcrypto_container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-boringcrypto
+
+  publish_windows_container:
+    uses: ./.github/workflows/publish-alloy-windows.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy
+
+  build_alloy:
+    name: Build Alloy
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    needs:
+    - publish_linux_container
+    - publish_linux_boringcrypto_container
+    - publish_windows_container
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        ref: ${{ github.event.release.tag_name }}
+        persist-credentials: false
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # This is to fix Git not liking owner of the checkout directory
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Build
+      run: |
+        RELEASE_BUILD=1 make -j4 dist
+      env:
+        VERSION: ${{ github.event.release.tag_name }}
+
+    - name: Publish dist
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: dist
+        path: ./dist
+        if-no-files-found: error
+
+    - name: Publish unsigned Windows executables
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: windows-executables
+        path: |
+          ./dist/alloy-windows-amd64.exe
+          ./dist.temp/alloy-service-windows-amd64.exe
+        if-no-files-found: error
+
+  sign_alloy_windows:
+    name: Sign Alloy executables for Windows
+    runs-on: windows-2025
+    environment:
+      name: azure-trusted-signing
+    needs:
+    - build_alloy
+    permissions:
+      # This job needs OIDC to be able to sign the Windows executables
+      contents: read
+      id-token: write
+    steps:
+    - uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      id: get-signing-secrets
+      with:
+        export_env: false
+        repo_secrets: |
+          client-id=azure-trusted-signing:client-id
+          subscription-id=azure-trusted-signing:subscription-id
+          tenant-id=azure-trusted-signing:tenant-id
+
+    - name: Sign Windows binaries
+      uses: grafana/shared-workflows/actions/azure-trusted-signing@e86cdb1c0a8cf5df57d3078f285261f7c9577174 # azure-trusted-signing/v1.0.0
+      id: sign-artifacts
+      with:
+        application-description: 'Grafana Alloy'
+        artifact-to-sign: 'windows-executables'
+        azure-client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
+        azure-subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
+        azure-tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
+        signed-artifact-name: 'windows-executables-signed'
+
+  build_alloy_windows_installer:
+    name: Build Alloy Windows installer with signed executables
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    needs:
+    - sign_alloy_windows
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        ref: ${{ github.event.release.tag_name }}
+        persist-credentials: false
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # This is to fix Git not liking owner of the checkout directory
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Download signed Windows executables
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: windows-executables-signed
+        path: .
+
+    # This step bypasses make so that Go does not rebuild the executables and lose the signed files from the previous job
+    - name: Build unsigned Windows installer containing signed files
+      run: |
+        RELEASE_BUILD=1 makensis -V4 -DVERSION=${VERSION} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
+      env:
+        VERSION: ${{ github.event.release.tag_name }}
+
+    - name: Publish unsigned Windows installer
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: windows-installer-unsigned
+        path: ./dist/alloy-installer-windows-amd64.exe
+        if-no-files-found: error
+
+  sign_alloy_windows_installer:
+    name: Sign Alloy installer for Windows
+    runs-on: windows-2025
+    environment:
+      name: azure-trusted-signing
+    needs:
+    - build_alloy_windows_installer
+    permissions:
+      # This job needs OIDC to be able to sign the Windows installer
+      contents: read
+      id-token: write
+    steps:
+    - uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      id: get-signing-secrets
+      with:
+        export_env: false
+        repo_secrets: |
+          client-id=azure-trusted-signing:client-id
+          subscription-id=azure-trusted-signing:subscription-id
+          tenant-id=azure-trusted-signing:tenant-id
+
+    - name: Sign Windows installer
+      uses: grafana/shared-workflows/actions/azure-trusted-signing@e86cdb1c0a8cf5df57d3078f285261f7c9577174 # azure-trusted-signing/v1.0.0
+      id: sign-artifacts
+      with:
+        application-description: 'Grafana Alloy'
+        artifact-to-sign: 'windows-installer-unsigned'
+        azure-client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
+        azure-subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
+        azure-tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
+        signed-artifact-name: 'windows-installer-signed'
+
+  upload_release_artifacts:
+    name: Upload release artifacts
+    container: grafana/alloy-build-image:v0.1.23@sha256:89dad4df5afe167898860bfa06c2eea290f4da0c2cff668fdf43299ddca867dc
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    needs:
+    - sign_alloy_windows_installer
+    permissions:
+      # This job needs write access to upload assets to the GitHub release.
+      contents: write
+      id-token: write
+    steps:
+    # A GitHub App is used to create the release instead of github-actions so that
+    # submit-winget-manifest is triggered when the release is published
+    - name: Get GitHub app secrets 🔐
+      id: get-secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      with:
+        export_env: false
+        repo_secrets: |
+          ALLOYBOT_APP_ID=alloybot:app_id
+          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+    - name: Create GitHub app token 🔐
+      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      id: app-token
+      with:
+        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+        owner: grafana
+        repositories: alloy
+
+    - name: Checkout repository 🛎️
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        ref: ${{ github.event.release.tag_name }}
+        token: ${{ steps.app-token.outputs.token }}
+        persist-credentials: false
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # This is to fix Git not liking owner of the checkout directory
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Download dist
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: dist
+        path: dist
+
+    # Overwrite the original Windows Alloy executable with the signed version
+    - name: Download signed Windows executable
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: windows-executables-signed
+        path: .
+
+    # Overwrite the original Windows Alloy installer with the signed version
+    - name: Download signed Windows installer
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: windows-installer-signed
+        path: dist
+
+    - name: Publish release artifacts
+      run: ./tools/publish-release-artifacts.sh
+      env:
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  submit_winget_manifest:
+    name: Submit WinGet Manifest
+    needs:
+    - upload_release_artifacts
+    uses: ./.github/workflows/release-submit-winget-manifest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      release-tag: ${{ github.event.release.tag_name }}

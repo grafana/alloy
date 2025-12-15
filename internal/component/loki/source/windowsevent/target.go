@@ -1,5 +1,4 @@
 //go:build windows
-// +build windows
 
 // This code is adapted from loki/promtail. Last revision used to port changes to Alloy was v1.6.2-0.20231004111112-07cbef92268a.
 
