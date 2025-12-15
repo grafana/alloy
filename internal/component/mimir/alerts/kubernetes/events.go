@@ -180,7 +180,7 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 		// TODO: Make this configurable?
 		version, _ = semver.New("0.29.0")
 		// TODO: Add an option to get an Alertmanager CRD through k8s informers.
-		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &monitoringv1.Alertmanager{
+		am = monitoringv1.Alertmanager{
 			Spec: monitoringv1.AlertmanagerSpec{
 				AlertmanagerConfigMatcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
 					Type: c.matcherStrategy,
@@ -189,7 +189,8 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: c.alertmanagerNamespace,
 			},
-		})
+		}
+		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &am)
 	)
 
 	convertedCfg, err := c.baseCfg.String()
