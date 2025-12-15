@@ -1,0 +1,424 @@
+{
+   "annotations": {
+      "list": [
+         {
+            "datasource": "$loki_datasource",
+            "enable": true,
+            "expr": "{cluster=~\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"alloy\" | name_extracted=~\"alloy.*\"",
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "instant": false,
+            "name": "Deployments",
+            "titleFormat": "{{cluster}}/{{namespace}}"
+         }
+      ]
+   },
+   "graphTooltip": 1,
+   "links": [
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [
+            "alloy-mixin"
+         ],
+         "targetBlank": false,
+         "title": "Dashboards",
+         "type": "dashboards"
+      }
+   ],
+   "panels": [
+      {
+         "collapsed": false,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+         },
+         "title": "loki.source.file",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Active files being tailed.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "files"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 1
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by(instance) (loki_source_file_files_active_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Active files count $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Successful file reads.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "cps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 1
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance) (rate(loki_source_file_read_lines_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Lines read in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 11
+         },
+         "title": "loki.source.journal",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Successful journal reads.\t\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "cps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 12
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance) (rate(loki_source_journal_target_lines_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Journal lines read in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 22
+         },
+         "title": "loki.write",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Percentage of logs sent by loki.write that succeeded.\n",
+         "fieldConfig": {
+            "defaults": {
+               "max": 100,
+               "unit": "%"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 23
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by(instance) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n/\nsum by(instance) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])) * 100 \n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Write requests success rate in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Bytes dropped per second.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 23
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(\n  0.99,\n  sum by (le, instance) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} p99",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(\n  0.95,\n  sum by (le, instance) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} p95",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(\n  0.50,\n  sum by (le, instance) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} p50",
+               "range": true
+            }
+         ],
+         "title": "Write latency in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Bytes sent per second.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "Bps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 23
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance) (rate(loki_write_sent_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Bytes sent in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Bytes dropped per second.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "Bps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 23
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by(instance) (rate(loki_write_dropped_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Bytes dropped in $cluster",
+         "type": "timeseries"
+      }
+   ],
+   "refresh": "10s",
+   "schemaVersion": 36,
+   "tags": [
+      "alloy-mixin"
+   ],
+   "templating": {
+      "list": [
+         {
+            "label": "Data Source",
+            "name": "datasource",
+            "query": "prometheus",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "label": "Loki Data Source",
+            "name": "loki_datasource",
+            "query": "loki",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "cluster",
+            "name": "cluster",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components, cluster)\n",
+               "refId": "cluster"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "namespace",
+            "name": "namespace",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\"}, namespace)\n",
+               "refId": "namespace"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "job",
+            "name": "job",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)\n",
+               "refId": "job"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "instance",
+            "multi": true,
+            "name": "instance",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}, instance)\n",
+               "refId": "instance"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "url",
+            "multi": true,
+            "name": "url",
+            "query": {
+               "query": "label_values(loki_write_sent_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=\"$job\", instance=~\"$instance\"}, host)\n",
+               "refId": "url"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-1h",
+      "to": "now"
+   },
+   "timepicker": {
+      "refresh_intervals": [
+         "5s",
+         "10s",
+         "30s",
+         "1m",
+         "5m",
+         "15m",
+         "30m",
+         "1h",
+         "2h",
+         "1d"
+      ],
+      "time_options": [
+         "5m",
+         "15m",
+         "1h",
+         "6h",
+         "12h",
+         "24h",
+         "2d",
+         "7d",
+         "30d",
+         "90d"
+      ]
+   },
+   "timezone": "utc",
+   "title": "Alloy / Loki Components",
+   "uid": "73e5f8ebc2c6a45cee18dc2a0066c125"
+}
