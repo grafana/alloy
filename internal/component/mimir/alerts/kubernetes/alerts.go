@@ -303,19 +303,19 @@ func (c *Component) init() error {
 		return err
 	}
 
-	c.matcherStrategy = monitoringv1.AlertmanagerConfigMatcherStrategyType(c.args.AlertmanagerConfigMatcherStrategy)
+	c.matcherStrategy = monitoringv1.AlertmanagerConfigMatcherStrategyType(c.args.AlertmanagerConfigMatcher.Strategy)
 	switch c.matcherStrategy {
 	case monitoringv1.OnNamespaceConfigMatcherStrategyType: // Valid strategy, continue
 	case monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType: // Valid strategy, continue
 	case monitoringv1.NoneConfigMatcherStrategyType: // Valid strategy, continue
 	default:
-		return fmt.Errorf("invalid alertmanagerconfig_matcher_strategy: %s", c.args.AlertmanagerConfigMatcherStrategy)
+		return fmt.Errorf("invalid strategy in alertmanagerconfig_matcher: %s", c.args.AlertmanagerConfigMatcher.Strategy)
 	}
 
-	c.alertmanagerNamespace = c.args.AlertmanagerNamespace
+	c.alertmanagerNamespace = c.args.AlertmanagerConfigMatcher.AlertmanagerNamespace
 	if c.matcherStrategy == monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType &&
 		c.alertmanagerNamespace == "" {
-		return fmt.Errorf("when alertmanagerconfig_matcher_strategy is set to OnNamespaceExceptForAlertmanagerNamespace, alertmanager_namespace has to be set")
+		return fmt.Errorf("alertmanagerconfig_matcher: when strategy is set to OnNamespaceExceptForAlertmanagerNamespace, alertmanager_namespace has to be set")
 	}
 
 	return nil
