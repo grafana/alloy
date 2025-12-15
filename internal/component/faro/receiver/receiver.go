@@ -274,7 +274,10 @@ func (c *Component) startCleanup(args Arguments, s *sourceMapsStoreImpl) {
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	cr := &cleanupRoutines{cancel: cleanupCancel}
 
-	if d := args.SourceMaps.CacheCleanupCheckInterval; d > 0 {
+	// Get cache config or use defaults if not specified
+	var cacheConfig = *args.SourceMaps.Cache
+
+	if d := cacheConfig.CleanupCheckInterval; d > 0 {
 		cr.wg.Add(1)
 		go func(interval time.Duration) {
 			defer cr.wg.Done()
@@ -292,7 +295,7 @@ func (c *Component) startCleanup(args Arguments, s *sourceMapsStoreImpl) {
 		}(d)
 	}
 
-	if d := args.SourceMaps.CacheErrorCleanupInterval; d > 0 {
+	if d := cacheConfig.ErrorCleanupInterval; d > 0 {
 		cr.wg.Add(1)
 		go func(interval time.Duration) {
 			defer cr.wg.Done()

@@ -208,8 +208,9 @@ func (store *sourceMapsStoreImpl) CleanOldCacheEntries() {
 	store.cacheMut.Lock()
 	defer store.cacheMut.Unlock()
 
+	ttl := store.args.Cache.Ttl
 	for key, cached := range store.cache {
-		if cached != nil && cached.lastUsed.Before(store.timeSource.Now().Add(-store.args.CacheMinimumTtl)) {
+		if cached != nil && cached.lastUsed.Before(store.timeSource.Now().Add(-ttl)) {
 			srcUrl := strings.SplitN(key, "__", 2)[0]
 			origin := getOrigin(srcUrl)
 			store.metrics.cacheSize.WithLabelValues(origin).Dec()

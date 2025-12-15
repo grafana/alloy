@@ -26,6 +26,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add `cache` block to `faro.receiver.sourcemaps` block to configure sourcemap caching behavior. The `cache` block contains three optional attributes: `ttl` to specify the duration after which unused sourcemaps are cleared from cache, `error_cleanup_interval` to specify the duration after which cached sourcemap errors are removed, and `cleanup_check_interval` to specify how often to check if any sourcemaps need to be cleared. (@mgluhak)
+
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
 - Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)

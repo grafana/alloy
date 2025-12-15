@@ -61,11 +61,13 @@ You can use the following blocks with `faro.receiver`:
 | [`server`][server]                           | Configures the HTTP server.                          | no       |
 | `server` >  [`rate_limiting`][rate_limiting] | Configures rate limiting for the HTTP server.        | no       |
 | [`sourcemaps`][sourcemaps]                   | Configures sourcemap retrieval.                      | no       |
+| `sourcemaps` > [`cache`][cache]              | Configures sourcemap caching behavior.               | no       |
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
 
+[cache]: #cache
 [location]: #location
 [output]: #output
 [rate_limiting]: #rate_limiting
@@ -148,14 +150,11 @@ Configuring the `rate` argument determines how fast the bucket refills, and conf
 The `sourcemaps` block configures how to retrieve sourcemaps.
 Sourcemaps are then used to transform file and line information from minified code into the file and line information from the original source code.
 
-| Name                           | Type           | Description                                                                        | Default | Required |
-| ------------------------------ | -------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
-| `cache_cleanup_check_interval` | `duration`     | How often should cached sourcemaps be checked for cleanup.                         | `"1h"`  | no       |
-| `cache_error_cleanup_interval` | `duration`     | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
-| `cache_minimum_ttl`            | `duration`     | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
-| `download_from_origins`        | `list(string)` | Which origins to download sourcemaps from.                                         | `["*"]` | no       |
-| `download_timeout`             | `duration`     | Timeout when downloading sourcemaps.                                               | `"1s"`  | no       |
-| `download`                     | `bool`         | Whether to download sourcemaps.                                                    | `true`  | no       |
+| Name                    | Type           | Description                                | Default | Required |
+| ----------------------- | -------------- | ------------------------------------------ | ------- | -------- |
+| `download`              | `bool`         | Whether to download sourcemaps.            | `true`  | no       |
+| `download_from_origins` | `list(string)` | Which origins to download sourcemaps from. | `["*"]` | no       |
+| `download_timeout`      | `duration`     | Timeout when downloading sourcemaps.       | `"1s"`  | no       |
 
 When exceptions are sent to the `faro.receiver` component, it can download sourcemaps from the web application.
 You can disable this behavior by setting the `download` argument to `false`.
@@ -168,17 +167,28 @@ The `*` character indicates a wildcard.
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.
 
-By default, sourcemaps are held in memory indefinitely.
-You can set `cache_minimum_ttl` to clear sourcemaps that aren't used during the specified duration.
-
-By default, if there's an error while downloading or parsing a sourcemap, the error is cached.
-After the duration specified by `cache_error_cleanup_interval`, all errors are cleared from the cache.
-
-By default, cached sourcemaps are checked for cleanup every 30 seconds.
-You can modify the frequency by setting the `cache_cleanup_check_interval` argument.
-
 To retrieve sourcemaps from disk instead of the network, specify one or more [`location` blocks][location].
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
+
+#### `cache`
+
+The `cache` block configures sourcemap caching behavior.
+All cache settings are optional with sensible defaults.
+
+| Name                     | Type       | Description                                                                        | Default | Required |
+| ------------------------ | ---------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `ttl`                    | `duration` | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
+| `error_cleanup_interval` | `duration` | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
+| `cleanup_check_interval` | `duration` | How often cached sourcemaps are checked for cleanup.                               | `"30s"` | no       |
+
+By default, sourcemaps are held in memory indefinitely.
+You can set `ttl` to clear sourcemaps that aren't used during the specified duration.
+
+By default, if there's an error while downloading or parsing a sourcemap, the error is cached.
+After the duration specified by `error_cleanup_interval`, all errors are cleared from the cache.
+
+By default, cached sourcemaps are checked for cleanup every 30 seconds.
+You can modify the frequency by setting the `cleanup_check_interval` argument.
 
 #### `location`
 
