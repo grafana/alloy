@@ -326,7 +326,7 @@ func Test_addLokiLabels(t *testing.T) {
 			"instance":  model.LabelValue("some-instance-key"),
 			"server_id": model.LabelValue("some-system-id"),
 		}, handler.Received()[0].Labels)
-		assert.Equal(t, "some-message", handler.Received()[0].Line)
+		assert.Equal(t, "some-message", handler.Received()[0].Entry.Line)
 	})
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -334,7 +335,7 @@ func (c *ErrorLogs) run() {
 				level.Warn(c.logger).Log(
 					"msg", "failed to process log line",
 					"error", err,
-					"line_preview", truncateString(entry.Line, 100),
+					"line_preview", truncateString(entry.Entry.Line, 100),
 				)
 			}
 		}
@@ -344,7 +345,7 @@ func (c *ErrorLogs) run() {
 func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 	// 1. Parse JSON
 	var jsonLog PostgreSQLJSONLog
-	if err := json.Unmarshal([]byte(entry.Line), &jsonLog); err != nil {
+	if err := json.Unmarshal([]byte(entry.Entry.Line), &jsonLog); err != nil {
 		c.parseErrors.Inc()
 		level.Debug(c.logger).Log(
 			"msg", "failed to parse JSON log line",
@@ -450,12 +451,12 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 	parsed.PS = ptrToString(log.PS)
 	parsed.VXID = ptrToString(log.VXID)
 	parsed.TXID = ptrInt64ToString(log.TXID)
-	parsed.Detail = ptrToString(log.Detail)
-	parsed.Hint = ptrToString(log.Hint)
-	parsed.Context = ptrToString(log.Context)
-	parsed.Statement = ptrToString(log.Statement)
+	parsed.Detail = strings.TrimSpace(ptrToString(log.Detail))
+	parsed.Hint = strings.TrimSpace(ptrToString(log.Hint))
+	parsed.Context = strings.TrimSpace(ptrToString(log.Context))
+	parsed.Statement = strings.TrimSpace(ptrToString(log.Statement))
 	parsed.CursorPosition = ptrToInt32(log.CursorPosition)
-	parsed.InternalQuery = ptrToString(log.InternalQuery)
+	parsed.InternalQuery = strings.TrimSpace(ptrToString(log.InternalQuery))
 	parsed.InternalPosition = ptrToInt32(log.InternalPosition)
 	parsed.LeaderPID = ptrToInt32(log.LeaderPID)
 	parsed.QueryID = ptrToInt64(log.QueryID)

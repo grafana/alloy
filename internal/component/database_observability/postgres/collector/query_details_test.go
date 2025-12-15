@@ -463,7 +463,7 @@ func TestQueryDetails(t *testing.T) {
 			require.Equal(t, len(tc.logsLines), len(lokiEntries))
 			for i, entry := range lokiEntries {
 				require.Equal(t, tc.logsLabels[i], entry.Labels)
-				require.Equal(t, tc.logsLines[i], entry.Line)
+				require.Equal(t, tc.logsLines[i], entry.Entry.Line)
 			}
 		})
 	}
@@ -532,9 +532,9 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Entry.Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Entry.Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -591,9 +591,9 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Entry.Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Entry.Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -648,8 +648,8 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Entry.Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Entry.Line)
 	})
 }
