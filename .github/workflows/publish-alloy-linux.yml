@@ -26,7 +26,7 @@ permissions:
 jobs:
   publish_linux_container:
     name: Publish Alloy Linux container
-    container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
+    container: grafana/alloy-build-image:v0.1.24@sha256:b9e3a399fbe04179cf26896c8efdc65ad294a425e955a3be1cbd0885d87d7025
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
