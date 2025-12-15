@@ -241,7 +241,7 @@ receivers:
 - name: mynamespace/alertmgr-config2/database-pager
 templates: []`
 
-	final_amConf_1_and_2_matcher_none := `global:
+	final_amConf_1_and_2_other_namespace := `global:
   resolve_timeout: 5m
   http_config:
     follow_redirects: true
@@ -251,20 +251,26 @@ templates: []`
 route:
   receiver: "null"
   routes:
+  - receiver: myOtherNamespace/alertmgr-config2/null
+    matchers:
+    - namespace="myOtherNamespace"
+    continue: true
+    routes:
+    - receiver: myOtherNamespace/alertmgr-config2/database-pager
+      matchers:
+      - "service=\"webapp\""
+      group_wait: 10s
   - receiver: mynamespace/alertmgr-config1/null
+    matchers:
+    - namespace="mynamespace"
     continue: true
     routes:
     - receiver: mynamespace/alertmgr-config1/myamc
       continue: true
-  - receiver: mynamespace/alertmgr-config2/null
-    continue: true
-    routes:
-    - receiver: mynamespace/alertmgr-config2/database-pager
-      matchers:
-      - "service=\"webapp\""
-      group_wait: 10s
 receivers:
 - name: "null"
+- name: myOtherNamespace/alertmgr-config2/null
+- name: myOtherNamespace/alertmgr-config2/database-pager
 - name: mynamespace/alertmgr-config1/null
 - name: mynamespace/alertmgr-config1/myamc
   slack_configs:
@@ -282,8 +288,98 @@ receivers:
   - http_config:
       follow_redirects: true
     url: http://test.url
-- name: mynamespace/alertmgr-config2/null
-- name: mynamespace/alertmgr-config2/database-pager
+templates: []`
+
+	final_amConf_1_and_2_matcher_none := `global:
+  resolve_timeout: 5m
+  http_config:
+    follow_redirects: true
+    enable_http2: true
+  smtp_hello: localhost
+  smtp_require_tls: true
+route:
+  receiver: "null"
+  routes:
+  - receiver: myOtherNamespace/alertmgr-config2/null
+    continue: true
+    routes:
+    - receiver: myOtherNamespace/alertmgr-config2/database-pager
+      matchers:
+      - "service=\"webapp\""
+      group_wait: 10s
+  - receiver: mynamespace/alertmgr-config1/null
+    continue: true
+    routes:
+    - receiver: mynamespace/alertmgr-config1/myamc
+      continue: true
+receivers:
+- name: "null"
+- name: myOtherNamespace/alertmgr-config2/null
+- name: myOtherNamespace/alertmgr-config2/database-pager
+- name: mynamespace/alertmgr-config1/null
+- name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
+  webhook_configs:
+  - http_config:
+      follow_redirects: true
+    url: http://test.url
+templates: []`
+
+	final_amConf_1_and_2_matcher_on_namespace_except_for_alertmanager_namespace := `global:
+  resolve_timeout: 5m
+  http_config:
+    follow_redirects: true
+    enable_http2: true
+  smtp_hello: localhost
+  smtp_require_tls: true
+route:
+  receiver: "null"
+  routes:
+  - receiver: myOtherNamespace/alertmgr-config2/null
+    matchers:
+    - namespace="myOtherNamespace"
+    continue: true
+    routes:
+    - receiver: myOtherNamespace/alertmgr-config2/database-pager
+      matchers:
+      - "service=\"webapp\""
+      group_wait: 10s
+  - receiver: mynamespace/alertmgr-config1/null
+    continue: true
+    routes:
+    - receiver: mynamespace/alertmgr-config1/myamc
+      continue: true
+receivers:
+- name: "null"
+- name: myOtherNamespace/alertmgr-config2/null
+- name: myOtherNamespace/alertmgr-config2/database-pager
+- name: mynamespace/alertmgr-config1/null
+- name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
+  webhook_configs:
+  - http_config:
+      follow_redirects: true
+    url: http://test.url
 templates: []`
 
 	tests := []struct {
@@ -322,7 +418,7 @@ templates: []`
 			baseCfgStr: baseCfg,
 			amConfig: []string{
 				amConfCrd1_mynamespace,
-				amConfCrd2_mynamespace,
+				amConfCrd2_myOtherNamespace,
 			},
 			matcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
 				Type: "None",
@@ -352,7 +448,19 @@ templates: []`
 			matcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
 				Type: "OnNamespace",
 			},
-			want: final_amConf_1,
+			want: final_amConf_1_and_2_other_namespace,
+		},
+		{
+			name:       "2 AlertmanagerConfig CRDs - with OnNamespaceExceptForAlertmanagerNamespace",
+			baseCfgStr: baseCfg,
+			amConfig: []string{
+				amConfCrd1_mynamespace,
+				amConfCrd2_myOtherNamespace,
+			},
+			matcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
+				Type: "OnNamespaceExceptForAlertmanagerNamespace",
+			},
+			want: final_amConf_1_and_2_matcher_on_namespace_except_for_alertmanager_namespace,
 		},
 		{
 			name:       "With selectors",
@@ -423,6 +531,11 @@ spec:
 					},
 				},
 			}
+			ns_other := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "myOtherNamespace",
+				},
+			}
 
 			namespaceSelector := labels.Everything()
 			if tt.namespaceSelector != "" {
@@ -457,19 +570,20 @@ spec:
 			store := assets.NewStoreBuilder(c.CoreV1(), c.CoreV1())
 
 			processor := &eventProcessor{
-				queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
-				stopChan:          make(chan struct{}),
-				health:            &fakeHealthReporter{},
-				mimirClient:       mimirClient,
-				baseCfg:           convertToAlertmanagerType(t, tt.baseCfgStr),
-				namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-				cfgLister:         promListers_v1alpha1.NewAlertmanagerConfigLister(amConfigsIndexer),
-				namespaceSelector: namespaceSelector,
-				matcherStrategy:   tt.matcherStrategy.Type,
-				cfgSelector:       cfgSelector,
-				metrics:           newMetrics(),
-				logger:            testLogger,
-				storeBuilder:      store,
+				queue:                 workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+				stopChan:              make(chan struct{}),
+				health:                &fakeHealthReporter{},
+				mimirClient:           mimirClient,
+				baseCfg:               convertToAlertmanagerType(t, tt.baseCfgStr),
+				namespaceLister:       coreListers.NewNamespaceLister(nsIndexer),
+				cfgLister:             promListers_v1alpha1.NewAlertmanagerConfigLister(amConfigsIndexer),
+				namespaceSelector:     namespaceSelector,
+				matcherStrategy:       tt.matcherStrategy.Type,
+				alertmanagerNamespace: ns.Name,
+				cfgSelector:           cfgSelector,
+				metrics:               newMetrics(),
+				logger:                testLogger,
+				storeBuilder:          store,
 			}
 
 			ctx := t.Context()
@@ -482,10 +596,11 @@ spec:
 
 			eventHandler := kubernetes.NewQueuedEventHandler(processor.logger, processor.queue)
 
-			// Add a namespace to kubernetes
+			// Add the namespaces to kubernetes
 			require.NoError(t, nsIndexer.Add(ns))
+			require.NoError(t, nsIndexer.Add(ns_other))
 
-			// Add a AlertmanagerConfigs to kubernetes
+			// Add AlertmanagerConfigs to kubernetes
 			for _, amConfigStr := range tt.amConfig {
 				var amConfig monitoringv1alpha1.AlertmanagerConfig
 				err := yaml.Unmarshal([]byte(amConfigStr), &amConfig)
