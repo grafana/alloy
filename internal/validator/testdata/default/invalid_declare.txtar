@@ -5,7 +5,7 @@ invalid declare
 argument "root" {}
 
 export "root" {
-	value = []
+	value = ""
 }
 
 declare "module" {
@@ -15,7 +15,7 @@ declare "module" {
 	}
 
 	export "invalid_expr" {
-		value = []
+		value = ""
 		test = ""
 	}
 	
@@ -30,7 +30,7 @@ declare "module" {
 	// missing labels
 	argument {}
 	export {
-		value = []
+		value = ""
 	}
 
 	// Unknown component.
