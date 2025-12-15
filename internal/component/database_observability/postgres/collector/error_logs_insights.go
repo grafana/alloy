@@ -66,24 +66,23 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 			parsed.LockType = match[1]
 		}
 
+		// Extract blocker PID from "blocked by process XXXX"
 		if match := blockedByPattern.FindStringSubmatch(detail); len(match) > 2 {
-			if blockedPID, err := strconv.ParseInt(match[1], 10, 32); err == nil {
-				parsed.BlockedPID = int32(blockedPID)
-			}
 			if blockerPID, err := strconv.ParseInt(match[2], 10, 32); err == nil {
 				parsed.BlockerPID = int32(blockerPID)
 			}
 		}
 
-		matches := processQueryPattern.FindAllStringSubmatch(detail, -1)
-		for _, match := range matches {
-			if len(match) > 2 {
-				if pid, err := strconv.ParseInt(match[1], 10, 32); err == nil {
-					query := strings.TrimSpace(match[2])
-					if int32(pid) == parsed.BlockedPID {
-						parsed.BlockedQuery = query
-					} else if int32(pid) == parsed.BlockerPID {
-						parsed.BlockerQuery = query
+		// Extract blocker query from detail (Process XXX: query)
+		if parsed.BlockerPID > 0 {
+			matches := processQueryPattern.FindAllStringSubmatch(detail, -1)
+			for _, match := range matches {
+				if len(match) > 2 {
+					if pid, err := strconv.ParseInt(match[1], 10, 32); err == nil {
+						if int32(pid) == parsed.BlockerPID {
+							parsed.BlockerQuery = strings.TrimSpace(match[2])
+							break
+						}
 					}
 				}
 			}

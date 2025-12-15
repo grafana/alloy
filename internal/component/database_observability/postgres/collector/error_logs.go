@@ -125,20 +125,11 @@ type ParsedError struct {
 	// Parallel query context
 	LeaderPID int32
 
-	// Extracted insights (computed)
-	TableName       string
-	ColumnName      string
-	ConstraintName  string
-	ConstraintType  string
-	ReferencedTable string
-
 	// Lock and timeout insights
 	LockType      string // e.g., "ShareLock", "ExclusiveLock"
 	TimeoutType   string // "statement_timeout", "lock_timeout", "user_cancel", "idle_in_transaction_timeout"
 	TupleLocation string // e.g., "(0,1)" for deadlock victims
-	BlockedPID    int32  // PID of the process that's waiting (deadlocks)
 	BlockerPID    int32  // PID of the process causing the block (deadlocks)
-	BlockedQuery  string // Query from the blocked process (deadlocks)
 	BlockerQuery  string // Query from the blocker process (deadlocks)
 
 	// Authentication insights
@@ -576,6 +567,26 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` session_id=%s`, strconv.Quote(parsed.SessionID))
 	}
 
+	if parsed.LineNum > 0 {
+		logMessage += fmt.Sprintf(` line_num=%d`, parsed.LineNum)
+	}
+
+	if parsed.PS != "" {
+		logMessage += fmt.Sprintf(` ps=%s`, strconv.Quote(parsed.PS))
+	}
+
+	if parsed.VXID != "" {
+		logMessage += fmt.Sprintf(` vxid=%s`, strconv.Quote(parsed.VXID))
+	}
+
+	if parsed.TXID != "" {
+		logMessage += fmt.Sprintf(` txid=%s`, strconv.Quote(parsed.TXID))
+	}
+
+	if !parsed.SessionStart.IsZero() {
+		logMessage += fmt.Sprintf(` session_start=%s`, strconv.Quote(parsed.SessionStart.Format(time.RFC3339)))
+	}
+
 	if parsed.ApplicationName != "" {
 		logMessage += fmt.Sprintf(` app=%s`, strconv.Quote(parsed.ApplicationName))
 	}
@@ -605,7 +616,31 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.CursorPosition > 0 {
-		logMessage += fmt.Sprintf(` cursor_position="%d"`, parsed.CursorPosition)
+		logMessage += fmt.Sprintf(` cursor_position=%d`, parsed.CursorPosition)
+	}
+
+	if parsed.InternalQuery != "" {
+		logMessage += fmt.Sprintf(` internal_query=%s`, strconv.Quote(parsed.InternalQuery))
+	}
+
+	if parsed.InternalPosition > 0 {
+		logMessage += fmt.Sprintf(` internal_position=%d`, parsed.InternalPosition)
+	}
+
+	if parsed.FuncName != "" {
+		logMessage += fmt.Sprintf(` func_name=%s`, strconv.Quote(parsed.FuncName))
+	}
+
+	if parsed.FileName != "" {
+		logMessage += fmt.Sprintf(` file_name=%s`, strconv.Quote(parsed.FileName))
+	}
+
+	if parsed.FileLineNum > 0 {
+		logMessage += fmt.Sprintf(` file_line_num=%d`, parsed.FileLineNum)
+	}
+
+	if parsed.LeaderPID > 0 {
+		logMessage += fmt.Sprintf(` leader_pid=%d`, parsed.LeaderPID)
 	}
 
 	if parsed.LockType != "" {
@@ -620,16 +655,8 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` tuple_location=%s`, strconv.Quote(parsed.TupleLocation))
 	}
 
-	if parsed.BlockedPID > 0 {
-		logMessage += fmt.Sprintf(` blocked_pid=%d`, parsed.BlockedPID)
-	}
-
 	if parsed.BlockerPID > 0 {
 		logMessage += fmt.Sprintf(` blocker_pid=%d`, parsed.BlockerPID)
-	}
-
-	if parsed.BlockedQuery != "" {
-		logMessage += fmt.Sprintf(` blocked_query=%s`, strconv.Quote(parsed.BlockedQuery))
 	}
 
 	if parsed.BlockerQuery != "" {

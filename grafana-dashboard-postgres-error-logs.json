@@ -929,93 +929,6 @@
       "gridPos": {
         "h": 6,
         "w": 8,
-        "x": 8,
-        "y": 31
-      },
-      "id": 10,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum by(instance, sqlstate) (rate(postgres_errors_by_sqlstate_total{instance=~\"$instance\",sqlstate_class_code=\"23\"}[5m])) * 60",
-          "legendFormat": "{{instance}} - {{sqlstate}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Constraint Violations (Class 23)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 8,
         "x": 16,
         "y": 31
       },
@@ -1222,7 +1135,7 @@
             "type": "loki",
             "uid": "${loki_datasource}"
           },
-          "expr": "{op=\"error_logs\", instance=~\"$instance\"} | logfmt | severity=~\"$severity\" | datname=~\"$database\" | line_format \"{{.severity}}\t{{.sqlstate}}\t{{.sqlstate_class}}\t{{.user}}\t{{.datname}}\t{{.pid}}\t{{.backend_type}}\t{{.message}}\t{{.table}}\t{{.constraint}}\t{{.constraint_type}}\t{{.column}}\t{{.detail}}\"",
+          "expr": "{op=\"error_logs\", instance=~\"$instance\"} | logfmt | severity=~\"$severity\" | datname=~\"$database\" | line_format \"{{.severity}}\t{{.sqlstate}}\t{{.sqlstate_class}}\t{{.user}}\t{{.datname}}\t{{.pid}}\t{{.backend_type}}\t{{.message}}\t{{.detail}}\"",
           "refId": "A"
         }
       ],
@@ -1255,11 +1168,7 @@
               "Field 6": 6,
               "Field 7": 7,
               "Field 8": 8,
-              "Field 9": 9,
-              "Field 10": 10,
-              "Field 11": 11,
-              "Field 12": 12,
-              "Field 13": 13
+              "Field 9": 9
             },
             "renameByName": {
               "Field 1": "Severity",
@@ -1270,82 +1179,11 @@
               "Field 6": "PID",
               "Field 7": "Backend Type",
               "Field 8": "Message",
-              "Field 9": "Table",
-              "Field 10": "Constraint",
-              "Field 11": "Constraint Type",
-              "Field 12": "Column",
-              "Field 13": "Detail"
+              "Field 9": "Detail"
             }
           }
         }
       ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "${loki_datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 61
-      },
-      "id": 14,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Value"
-          }
-        ]
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "${loki_datasource}"
-          },
-          "expr": "topk(20, sum by(constraint_type, table, constraint) (count_over_time({op=\"error_logs\", instance=~\"$instance\"} | logfmt | constraint_type != \"\" [$__range])))",
-          "refId": "A"
-        }
-      ],
-      "title": "Top Constraint Violations",
-      "transformations": [],
       "type": "table"
     },
     {
