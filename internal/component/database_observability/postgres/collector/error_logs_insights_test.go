@@ -10,97 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-func TestErrorLogsCollector_ExtractConstraintViolation(t *testing.T) {
-	tests := []struct {
-		name               string
-		message            string
-		detail             string
-		sqlstate           string
-		expectedType       string
-		expectedConstraint string
-		expectedTable      string
-		expectedColumn     string
-	}{
-		{
-			name:               "unique constraint",
-			message:            `duplicate key value violates unique constraint "users_email_key"`,
-			detail:             "Key (email)=(user@example.com) already exists.",
-			sqlstate:           "23505",
-			expectedType:       "unique",
-			expectedConstraint: "users_email_key",
-			expectedTable:      "users",
-			expectedColumn:     "email",
-		},
-		{
-			name:               "foreign key constraint",
-			message:            `insert or update on table "posts" violates foreign key constraint "posts_user_id_fkey"`,
-			detail:             `Key (user_id)=(999) is not present in table "users".`,
-			sqlstate:           "23503",
-			expectedType:       "foreign_key",
-			expectedConstraint: "posts_user_id_fkey",
-			expectedTable:      "posts",
-			expectedColumn:     "user_id",
-		},
-		{
-			name:               "not null constraint",
-			message:            `null value in column "username" of relation "users" violates not-null constraint`,
-			detail:             `Failing row contains (1, null, user@example.com).`,
-			sqlstate:           "23502",
-			expectedType:       "not_null",
-			expectedConstraint: "",
-			expectedTable:      "users",
-			expectedColumn:     "username",
-		},
-		{
-			name:               "check constraint",
-			message:            `new row for relation "products" violates check constraint "check_price_positive"`,
-			detail:             `Failing row contains (1, Widget, -10).`,
-			sqlstate:           "23514",
-			expectedType:       "check",
-			expectedConstraint: "check_price_positive",
-			expectedTable:      "",
-			expectedColumn:     "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-			collector, err := NewErrorLogs(ErrorLogsArguments{
-				Receiver:     loki.NewLogsReceiver(),
-				Severities:   []string{"ERROR"},
-				PassThrough:  false,
-				EntryHandler: entryHandler,
-				Logger:       log.NewNopLogger(),
-				InstanceKey:  "test",
-				SystemID:     "test",
-				Registry:     prometheus.NewRegistry(),
-			})
-			require.NoError(t, err)
-
-			parsed := &ParsedError{
-				Message:       tt.message,
-				Detail:        tt.detail,
-				SQLStateCode:  tt.sqlstate,
-				SQLStateClass: tt.sqlstate[:2],
-			}
-
-			collector.extractInsights(parsed)
-
-			require.Equal(t, tt.expectedType, parsed.ConstraintType, "constraint type mismatch")
-			if tt.expectedConstraint != "" {
-				require.Equal(t, tt.expectedConstraint, parsed.ConstraintName, "constraint name mismatch")
-			}
-			if tt.expectedTable != "" {
-				require.Equal(t, tt.expectedTable, parsed.TableName, "table name mismatch")
-			}
-			if tt.expectedColumn != "" {
-				require.Equal(t, tt.expectedColumn, parsed.ColumnName, "column name mismatch")
-			}
-		})
-	}
-}
-
 func TestErrorLogsCollector_ExtractTransactionRollback(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	collector, err := NewErrorLogs(ErrorLogsArguments{
@@ -179,67 +88,6 @@ func TestErrorLogsCollector_ExtractTransactionRollback(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_ExtractSyntaxError(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-	collector, err := NewErrorLogs(ErrorLogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"ERROR"},
-		PassThrough:  false,
-		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
-		Registry:     prometheus.NewRegistry(),
-	})
-	require.NoError(t, err)
-
-	tests := []struct {
-		name          string
-		sqlstate      string
-		message       string
-		expectedTable string
-		expectedCol   string
-	}{
-		{
-			name:          "relation does not exist",
-			sqlstate:      "42P01",
-			message:       `relation "users" does not exist`,
-			expectedTable: "users",
-		},
-		{
-			name:        "column does not exist",
-			sqlstate:    "42703",
-			message:     `column "email" does not exist`,
-			expectedCol: "email",
-		},
-		{
-			name:          "permission denied",
-			sqlstate:      "42501",
-			message:       `permission denied for table orders`,
-			expectedTable: "orders",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parsed := &ParsedError{
-				SQLStateCode:  tt.sqlstate,
-				SQLStateClass: tt.sqlstate[:2],
-				Message:       tt.message,
-			}
-
-			collector.extractInsights(parsed)
-
-			if tt.expectedTable != "" {
-				require.Equal(t, tt.expectedTable, parsed.TableName, "table name should be extracted")
-			}
-			if tt.expectedCol != "" {
-				require.Equal(t, tt.expectedCol, parsed.ColumnName, "column name should be extracted")
-			}
-		})
-	}
-}
-
 func TestErrorLogsCollector_ExtractAuthFailure(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	collector, err := NewErrorLogs(ErrorLogsArguments{
@@ -277,6 +125,22 @@ func TestErrorLogsCollector_ExtractAuthFailure(t *testing.T) {
 			detail:          `Connection matched pg_hba.conf line 10: "local all all md5"`,
 			expectedAuth:    "md5",
 			expectedHBALine: "10",
+		},
+		{
+			name:            "scram-sha-256 auth failed",
+			sqlstate:        "28P01",
+			message:         `scram-sha-256 authentication failed for user "testuser"`,
+			detail:          `Connection matched pg_hba.conf line 5: "hostssl all all 0.0.0.0/0 scram-sha-256"`,
+			expectedAuth:    "scram-sha-256",
+			expectedHBALine: "5",
+		},
+		{
+			name:            "custom hba file with full path",
+			sqlstate:        "28P01",
+			message:         `password authentication failed for user "dbuser"`,
+			detail:          `Connection matched file "/etc/postgresql/pg_hba_cluster.conf" line 42: "host all all 0.0.0.0/0 md5"`,
+			expectedAuth:    "password",
+			expectedHBALine: "42",
 		},
 	}
 
@@ -359,64 +223,6 @@ func TestErrorLogsCollector_ExtractTimeoutError(t *testing.T) {
 
 			if tt.expectedTimeout != "" {
 				require.Equal(t, tt.expectedTimeout, parsed.TimeoutType, "timeout type should be extracted")
-			}
-		})
-	}
-}
-
-func TestErrorLogsCollector_ExtractFunctionInfo(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-	collector, err := NewErrorLogs(ErrorLogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"ERROR"},
-		PassThrough:  false,
-		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
-		Registry:     prometheus.NewRegistry(),
-	})
-	require.NoError(t, err)
-
-	tests := []struct {
-		name             string
-		context          string
-		expectedFunction string
-	}{
-		{
-			name:             "PL/pgSQL function with arguments",
-			context:          "PL/pgSQL function my_function(integer) line 42 at RAISE",
-			expectedFunction: "my_function",
-		},
-		{
-			name:             "PL/pgSQL function without arguments",
-			context:          "PL/pgSQL function calculate_total line 10 at assignment",
-			expectedFunction: "calculate_total",
-		},
-		{
-			name:             "SQL function with quotes",
-			context:          `SQL function "my_func" statement 1`,
-			expectedFunction: "my_func",
-		},
-		{
-			name:             "SQL function without quotes",
-			context:          "SQL function process_order statement 2",
-			expectedFunction: "process_order",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parsed := &ParsedError{
-				SQLStateCode:  "42883", // function does not exist
-				SQLStateClass: "42",
-				Context:       tt.context,
-			}
-
-			collector.extractInsights(parsed)
-
-			if tt.expectedFunction != "" {
-				require.Equal(t, tt.expectedFunction, parsed.FunctionContext, "function name should be extracted")
 			}
 		})
 	}

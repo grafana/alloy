@@ -23,39 +23,6 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 		checkFields   func(*testing.T, *ParsedError)
 	}{
 		{
-			name:          "real unique constraint violation from production",
-			jsonLog:       `{"timestamp":"2025-12-12 15:29:12.986 GMT","user":"app-user","dbname":"books_store","pid":9050,"remote_host":"[local]","session_id":"693c34c8.235a","line_num":4,"ps":"INSERT","session_start":"2025-12-12 15:29:12 GMT","vxid":"16/116","txid":833,"error_severity":"ERROR","state_code":"23505","message":"duplicate key value violates unique constraint \"uk_books_isbn\"","detail":"Key (isbn)=(9780123456781) already exists.","statement":"INSERT INTO books (title, isbn, publication_date, rental_price_per_day, stock)\n   VALUES ('Chaos Duplicate ISBN', '9780123456781', CURRENT_DATE, 10.00, 5);","application_name":"psql","backend_type":"client backend","query_id":-5382488324425698396}`,
-			expectedError: false,
-			checkFields: func(t *testing.T, p *ParsedError) {
-				require.Equal(t, "ERROR", p.ErrorSeverity)
-				require.Equal(t, "23505", p.SQLStateCode)
-				require.Equal(t, "23", p.SQLStateClass)
-				require.Equal(t, "Integrity Constraint Violation", p.ErrorCategory)
-				require.Equal(t, "app-user", p.User)
-				require.Equal(t, "books_store", p.DatabaseName)
-				require.Equal(t, int32(9050), p.PID)
-				require.Equal(t, int64(-5382488324425698396), p.QueryID)
-				require.Equal(t, "uk_books_isbn", p.ConstraintName)
-				require.Equal(t, "isbn", p.ColumnName)
-			},
-		},
-		{
-			name:          "real foreign key violation from production",
-			jsonLog:       `{"timestamp":"2025-12-12 15:29:13.288 GMT","user":"app-user","dbname":"books_store","pid":9059,"remote_host":"[local]","session_id":"693c34c9.2363","line_num":4,"ps":"INSERT","session_start":"2025-12-12 15:29:13 GMT","vxid":"19/127","txid":834,"error_severity":"ERROR","state_code":"23503","message":"insert or update on table \"rentals\" violates foreign key constraint \"rentals_book_id_fkey\"","detail":"Key (book_id)=(99999999) is not present in table \"books\".","statement":"INSERT INTO rentals (book_id, customer_name, customer_email, rental_date, expected_return_date, daily_rate, status)\n   VALUES (99999999, 'Chaos User', 'chaos@example.com', CURRENT_TIMESTAMP, CURRENT_DATE + INTERVAL '3 days', 9.99, 'ACTIVE');","application_name":"psql","backend_type":"client backend","query_id":8532599624588683544}`,
-			expectedError: false,
-			checkFields: func(t *testing.T, p *ParsedError) {
-				require.Equal(t, "ERROR", p.ErrorSeverity)
-				require.Equal(t, "23503", p.SQLStateCode)
-				require.Equal(t, "23", p.SQLStateClass)
-				require.Equal(t, "Integrity Constraint Violation", p.ErrorCategory)
-				require.Equal(t, "app-user", p.User)
-				require.Equal(t, "books_store", p.DatabaseName)
-				require.Equal(t, "rentals_book_id_fkey", p.ConstraintName)
-				require.Equal(t, "book_id", p.ColumnName)
-				require.Equal(t, "books", p.ReferencedTable)
-			},
-		},
-		{
 			name:          "real statement timeout from production",
 			jsonLog:       `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"remote_host":"[local]","session_id":"693c34cb.2398","line_num":4,"ps":"SELECT","session_start":"2025-12-12 15:29:15 GMT","vxid":"25/112","txid":0,"error_severity":"ERROR","state_code":"57014","message":"canceling statement due to statement timeout","statement":"SELECT pg_sleep(5);","application_name":"psql","backend_type":"client backend","query_id":5457019535816659310}`,
 			expectedError: false,
@@ -254,29 +221,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 				}
 				require.True(t, found, "errors_by_sqlstate metric should exist")
 				require.True(t, foundMetric, "metric with sqlstate=57014 should exist")
-			},
-		},
-		{
-			name:           "real constraint violation from production",
-			logLine:        `{"timestamp":"2025-12-12 15:29:12.986 GMT","user":"app-user","dbname":"books_store","pid":9050,"remote_host":"[local]","session_id":"693c34c8.235a","line_num":4,"ps":"INSERT","session_start":"2025-12-12 15:29:12 GMT","vxid":"16/116","txid":833,"error_severity":"ERROR","state_code":"23505","message":"duplicate key value violates unique constraint \"uk_books_isbn\"","detail":"Key (isbn)=(9780123456781) already exists.","statement":"INSERT INTO books (title, isbn, publication_date, rental_price_per_day, stock)\n   VALUES ('Chaos Duplicate ISBN', '9780123456781', CURRENT_DATE, 10.00, 5);","application_name":"psql","backend_type":"client backend","query_id":-5382488324425698396}`,
-			expectedMetric: "postgres_errors_by_sqlstate_total",
-			checkFunc: func(t *testing.T, g prometheus.Gatherer) {
-				mfs, _ := g.Gather()
-				found := false
-				for _, mf := range mfs {
-					if mf.GetName() == "postgres_errors_by_sqlstate_total" {
-						found = true
-						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						metric := mf.GetMetric()[0]
-						labels := make(map[string]string)
-						for _, label := range metric.GetLabel() {
-							labels[label.GetName()] = label.GetValue()
-						}
-						require.Equal(t, "23", labels["sqlstate_class_code"], "sqlstate_class_code label should be 23")
-						require.Equal(t, "23505", labels["sqlstate"], "sqlstate should be 23505")
-					}
-				}
-				require.True(t, found, "errors_by_sqlstate metric should exist")
 			},
 		},
 		{

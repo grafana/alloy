@@ -134,18 +134,15 @@ type ParsedError struct {
 
 	// Lock and timeout insights
 	LockType      string // e.g., "ShareLock", "ExclusiveLock"
-	TimeoutType   string // "statement_timeout" or "lock_timeout"
+	TimeoutType   string // "statement_timeout", "lock_timeout", "user_cancel", "idle_in_transaction_timeout"
 	TupleLocation string // e.g., "(0,1)" for deadlock victims
 	BlockedPID    int32  // PID of the process that's waiting (deadlocks)
 	BlockerPID    int32  // PID of the process causing the block (deadlocks)
 	BlockedQuery  string // Query from the blocked process (deadlocks)
 	BlockerQuery  string // Query from the blocker process (deadlocks)
 
-	// Function insights (PL/pgSQL errors)
-	FunctionContext string // Extracted function name from context
-
 	// Authentication insights
-	AuthMethod    string // e.g., "md5", "scram-sha-256"
+	AuthMethod    string // e.g., "md5", "scram-sha-256", "password"
 	HBALineNumber string // pg_hba.conf line number
 }
 
@@ -591,22 +588,6 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` client=%s`, strconv.Quote(client))
 	}
 
-	if parsed.TableName != "" {
-		logMessage += fmt.Sprintf(` table=%s`, strconv.Quote(parsed.TableName))
-	}
-
-	if parsed.ConstraintName != "" {
-		logMessage += fmt.Sprintf(` constraint=%s`, strconv.Quote(parsed.ConstraintName))
-	}
-
-	if parsed.ConstraintType != "" {
-		logMessage += fmt.Sprintf(` constraint_type=%s`, strconv.Quote(parsed.ConstraintType))
-	}
-
-	if parsed.ColumnName != "" {
-		logMessage += fmt.Sprintf(` column=%s`, strconv.Quote(parsed.ColumnName))
-	}
-
 	if parsed.Detail != "" {
 		logMessage += fmt.Sprintf(` detail=%s`, strconv.Quote(parsed.Detail))
 	}
@@ -653,10 +634,6 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 
 	if parsed.BlockerQuery != "" {
 		logMessage += fmt.Sprintf(` blocker_query=%s`, strconv.Quote(parsed.BlockerQuery))
-	}
-
-	if parsed.FunctionContext != "" {
-		logMessage += fmt.Sprintf(` function=%s`, strconv.Quote(parsed.FunctionContext))
 	}
 
 	if parsed.AuthMethod != "" {

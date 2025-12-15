@@ -8,31 +8,6 @@ import (
 
 // Regular expressions for extracting insights from error messages
 var (
-	// Constraint name pattern: matches quoted constraint names
-	constraintNamePattern = regexp.MustCompile(`constraint "([^"]+)"`)
-
-	// Detail key pattern: matches Key (column_name)=(value) in DETAIL
-	detailKeyPattern = regexp.MustCompile(`Key \(([^)]+)\)`)
-
-	// Foreign key detail pattern: matches foreign key violation details
-	foreignKeyDetailPattern = regexp.MustCompile(`Key \(([^)]+)\)=\([^)]+\) is not present in table "([^"]+)"`)
-
-	// Not null patterns
-	notNullColumnPattern = regexp.MustCompile(`null value in column "([^"]+)"`)
-	notNullTablePattern  = regexp.MustCompile(`of relation "([^"]+)"`)
-
-	// Table name from constraint: users_email_key -> users
-	tableFromConstraintPattern = regexp.MustCompile(`^([^_]+)`)
-
-	// Deadlock pattern from detail field
-	deadlockProcessPattern = regexp.MustCompile(`Process (\d+) waits for (\w+) on transaction (\d+); blocked by process (\d+)`)
-
-	// Relation (table) name patterns
-	relationPattern = regexp.MustCompile(`relation "([^"]+)"`)
-
-	// Column name in various error contexts
-	columnPattern = regexp.MustCompile(`column "([^"]+)"`)
-
 	// Lock and deadlock patterns
 	tupleLocationPattern = regexp.MustCompile(`tuple \((\d+,\d+)\)`)
 	lockTypePattern      = regexp.MustCompile(`waits for (\w+) on`)
@@ -43,11 +18,14 @@ var (
 	processQueryPattern = regexp.MustCompile(`Process (\d+): (.+)(?:\n|$)`)
 
 	// Authentication patterns
-	authMethodPattern = regexp.MustCompile(`(\w+) authentication failed`)
-	hbaLinePattern    = regexp.MustCompile(`pg_hba\.conf line (\d+)`)
-
-	// Function patterns (PL/pgSQL and SQL)
-	functionPattern = regexp.MustCompile(`(?:PL/pgSQL|SQL) function (?:")?([^"(\s]+)`)
+	// Matches methods like "password", "md5", "scram-sha-256", "gss-krb5", etc.
+	authMethodPattern = regexp.MustCompile(`([\w-]+) authentication failed`)
+	// Matches HBA config file line numbers from various formats:
+	// - "Connection matched pg_hba.conf line 95: ..."
+	// - "Connection matched file \"/etc/postgresql/pg_hba.conf\" line 4: ..."
+	// - "Connection matched file \"/custom/pg_hba_cluster.conf\" line 123: ..."
+	// Flexible pattern works with any HBA file name/path
+	hbaLinePattern = regexp.MustCompile(`line (\d+):`)
 )
 
 // extractInsights extracts structured information from error messages.
@@ -59,137 +37,18 @@ func (c *ErrorLogs) extractInsights(parsed *ParsedError) {
 	class := parsed.SQLStateClass
 
 	switch class {
-	case "23": // Constraint violations
-		c.extractConstraintViolation(parsed)
 	case "28": // Invalid authorization specification (auth failures)
 		c.extractAuthFailure(parsed)
 	case "40": // Transaction rollback (deadlocks, etc.)
 		c.extractTransactionRollback(parsed)
-	case "42": // Syntax errors or access violations
-		c.extractSyntaxError(parsed)
 	case "55": // Object not in prerequisite state (includes lock_not_available)
 		c.extractObjectState(parsed)
 	case "57": // Operator intervention (includes query cancellation/timeout)
 		c.extractTimeoutError(parsed)
 	}
-
-	// Extract function context if present (PL/pgSQL errors) - multiple classes
-	if parsed.Context != "" {
-		c.extractFunctionInfo(parsed)
-	}
 }
 
-// extractConstraintViolation extracts constraint violation details.
-func (c *ErrorLogs) extractConstraintViolation(parsed *ParsedError) {
-	msg := parsed.Message
-	detail := parsed.Detail
-
-	// Unique constraint: "duplicate key value violates unique constraint \"users_email_key\""
-	if strings.Contains(msg, "unique constraint") {
-		parsed.ConstraintType = "unique"
-
-		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ConstraintName = match[1]
-
-			// Try to extract table name from constraint name pattern
-			// Common pattern: tablename_columnname_key or tablename_columnname_idx
-			if tableMatch := tableFromConstraintPattern.FindStringSubmatch(parsed.ConstraintName); len(tableMatch) > 1 {
-				parsed.TableName = tableMatch[1]
-			}
-		}
-
-		if detail != "" {
-			if match := detailKeyPattern.FindStringSubmatch(detail); len(match) > 1 {
-				parsed.ColumnName = match[1]
-			}
-		}
-		return
-	}
-
-	// Foreign key: "violates foreign key constraint \"posts_user_id_fkey\""
-	if strings.Contains(msg, "foreign key constraint") {
-		parsed.ConstraintType = "foreign_key"
-
-		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ConstraintName = match[1]
-
-			// Extract table name from constraint name
-			if tableMatch := tableFromConstraintPattern.FindStringSubmatch(parsed.ConstraintName); len(tableMatch) > 1 {
-				parsed.TableName = tableMatch[1]
-			}
-		}
-
-		if detail != "" {
-			if match := foreignKeyDetailPattern.FindStringSubmatch(detail); len(match) > 2 {
-				parsed.ColumnName = match[1]
-				parsed.ReferencedTable = match[2]
-			}
-		}
-
-		// Also check message for table names
-		if parsed.TableName == "" {
-			// Message might be: update or delete on table "users" violates foreign key constraint
-			if strings.Contains(msg, "on table") {
-				if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
-					parsed.TableName = match[1]
-				}
-			}
-		}
-		return
-	}
-
-	// Not null: "null value in column \"username\" violates not-null constraint"
-	if strings.Contains(msg, "not-null constraint") || strings.Contains(msg, "violates not-null constraint") {
-		parsed.ConstraintType = "not_null"
-
-		if match := notNullColumnPattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ColumnName = match[1]
-		}
-
-		if match := notNullTablePattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.TableName = match[1]
-		}
-		return
-	}
-
-	// Check constraint: "violates check constraint \"check_age_positive\""
-	if strings.Contains(msg, "check constraint") {
-		parsed.ConstraintType = "check"
-
-		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ConstraintName = match[1]
-
-			// Extract table name from constraint name
-			if tableMatch := tableFromConstraintPattern.FindStringSubmatch(parsed.ConstraintName); len(tableMatch) > 1 {
-				parsed.TableName = tableMatch[1]
-			}
-		}
-
-		if parsed.TableName == "" {
-			if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
-				parsed.TableName = match[1]
-			}
-		}
-		return
-	}
-
-	// Exclusion constraint (PostgreSQL-specific): "violates exclusion constraint"
-	if strings.Contains(msg, "exclusion constraint") {
-		parsed.ConstraintType = "exclusion"
-
-		if match := constraintNamePattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ConstraintName = match[1]
-
-			// Extract table name from constraint name
-			if tableMatch := tableFromConstraintPattern.FindStringSubmatch(parsed.ConstraintName); len(tableMatch) > 1 {
-				parsed.TableName = tableMatch[1]
-			}
-		}
-		return
-	}
-}
-
-// extractTransactionRollback extracts information about transaction rollbacks.
+// extractTransactionRollback extracts information about transaction rollbacks (deadlocks).
 func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 	msg := parsed.Message
 	detail := parsed.Detail
@@ -234,37 +93,6 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 	}
 }
 
-// extractSyntaxError extracts information about syntax errors and access violations.
-func (c *ErrorLogs) extractSyntaxError(parsed *ParsedError) {
-	msg := parsed.Message
-
-	if strings.Contains(msg, "column") && strings.Contains(msg, "does not exist") {
-		if match := columnPattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.ColumnName = match[1]
-		}
-		return
-	}
-
-	if strings.Contains(msg, "does not exist") {
-		if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.TableName = match[1]
-		}
-		return
-	}
-
-	if strings.Contains(msg, "permission denied") {
-		if match := relationPattern.FindStringSubmatch(msg); len(match) > 1 {
-			parsed.TableName = match[1]
-		} else {
-			tablePattern := regexp.MustCompile(`permission denied for table (\w+)`)
-			if match := tablePattern.FindStringSubmatch(msg); len(match) > 1 {
-				parsed.TableName = match[1]
-			}
-		}
-		return
-	}
-}
-
 // extractObjectState extracts details from object state errors (Class 55).
 func (c *ErrorLogs) extractObjectState(parsed *ParsedError) {
 	msg := parsed.Message
@@ -305,13 +133,5 @@ func (c *ErrorLogs) extractTimeoutError(parsed *ParsedError) {
 		parsed.TimeoutType = "user_cancel"
 	} else if strings.Contains(msg, "idle_in_transaction_session_timeout") {
 		parsed.TimeoutType = "idle_in_transaction_timeout"
-	}
-}
-
-// extractFunctionInfo extracts function names from PL/pgSQL error contexts.
-// Examples: "PL/pgSQL function my_function(integer) line 42 at RAISE" or "SQL function \"my_func\" statement 1"
-func (c *ErrorLogs) extractFunctionInfo(parsed *ParsedError) {
-	if match := functionPattern.FindStringSubmatch(parsed.Context); len(match) > 1 {
-		parsed.FunctionContext = match[1]
 	}
 }
