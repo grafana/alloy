@@ -284,12 +284,12 @@ func (c *Component) scheduleSources() {
 			fi, err := os.Stat(target.Path)
 			if err != nil {
 				c.metrics.totalBytes.DeleteLabelValues(target.Path)
-				return nil, fmt.Errorf("failed to tail file, stat filed: %w", err)
+				return nil, fmt.Errorf("failed to tail file, stat failed: %w", err)
 			}
 
 			if fi.IsDir() {
 				c.metrics.totalBytes.DeleteLabelValues(target.Path)
-				return nil, errors.New("failed to tail file, is director")
+				return nil, errors.New("failed to tail file, is directory")
 			}
 
 			if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
