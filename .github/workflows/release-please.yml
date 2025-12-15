@@ -51,13 +51,15 @@ jobs:
       - name: Determine config file 🔍
         id: config
         run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             echo "config_file=release-please-config-main.json" >> $GITHUB_OUTPUT
             echo "skip_release=true" >> $GITHUB_OUTPUT
           else
             echo "config_file=release-please-config.json" >> $GITHUB_OUTPUT
             echo "skip_release=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Run release-please 🚀
         working-directory: tools/release/release-please-runner
