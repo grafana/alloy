@@ -16,6 +16,8 @@
   ],
   "always-update": true,
   "draft-pull-request": true,
+  "pull-request-title-pattern": "[DO NOT MERGE] chore${scope}: release${component} ${version}",
+  "pull-request-header": "🚫 **DO NOT MERGE - This PR is for tracking purposes only**\n\nThis draft PR tracks the changes that will be included in the next minor release. It updates automatically with each push to main.\n\nWhen ready to cut a release:\n1. Create a release branch (e.g., `release/v1.13`)\n2. The release-please automation will take over on that branch\n3. This PR will remain on main to track the next release\n\n---",
   "packages": {
     ".": {
       "release-type": "go",

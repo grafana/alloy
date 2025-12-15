@@ -3,6 +3,7 @@ name: Release Please
 on:
   push:
     branches:
+      - main
       - 'release/v*'
 
 permissions:
@@ -47,12 +48,24 @@ jobs:
         working-directory: tools/release/release-please-runner
         run: npm install
 
+      - name: Determine config file 🔍
+        id: config
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "config_file=release-please-config-main.json" >> $GITHUB_OUTPUT
+            echo "skip_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "config_file=release-please-config.json" >> $GITHUB_OUTPUT
+            echo "skip_release=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run release-please 🚀
         working-directory: tools/release/release-please-runner
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_URL: ${{ github.repository }}
           TARGET_BRANCH: ${{ github.ref_name }}
-          CONFIG_FILE: release-please-config.json
+          CONFIG_FILE: ${{ steps.config.outputs.config_file }}
           MANIFEST_FILE: .release-please-manifest.json
+          SKIP_GITHUB_RELEASE: ${{ steps.config.outputs.skip_release }}
         run: node index.js
