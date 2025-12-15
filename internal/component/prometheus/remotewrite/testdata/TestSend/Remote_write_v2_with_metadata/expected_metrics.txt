@@ -16,7 +16,7 @@ prometheus_remote_storage_metadata_failed_total{remote_name="test-url",url="__MI
 prometheus_remote_storage_metadata_retried_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
 # HELP prometheus_remote_storage_metadata_total Total number of metadata entries sent to remote storage.
 # TYPE prometheus_remote_storage_metadata_total counter
-prometheus_remote_storage_metadata_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 6
+prometheus_remote_storage_metadata_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} __EXPECTED_SAMPLES__
 # HELP prometheus_remote_storage_samples_failed_total Total number of samples which failed on send to remote storage, non-recoverable errors.
 # TYPE prometheus_remote_storage_samples_failed_total counter
 prometheus_remote_storage_samples_failed_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
@@ -31,7 +31,7 @@ prometheus_remote_storage_samples_retried_total{remote_name="test-url",url="__MI
 prometheus_remote_storage_samples_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 2
 # HELP prometheus_remote_write_wal_metadata_updates_total Total number of metadata updates sent through the WAL
 # TYPE prometheus_remote_write_wal_metadata_updates_total counter
-prometheus_remote_write_wal_metadata_updates_total 6
+prometheus_remote_write_wal_metadata_updates_total __EXPECTED_SAMPLES__
 # HELP prometheus_remote_write_wal_samples_appended_total Total number of samples appended to the WAL
 # TYPE prometheus_remote_write_wal_samples_appended_total counter
-prometheus_remote_write_wal_samples_appended_total 6
+prometheus_remote_write_wal_samples_appended_total __EXPECTED_SAMPLES__

@@ -47,13 +47,15 @@ func TestSend(t *testing.T) {
 	sampleTimestamp := time.Now().Add(time.Hour).UnixMilli()
 
 	tests := []struct {
-		name      string
-		rwVersion RemoteWriteVersion
-		metrics   []Appendable
+		name            string
+		rwVersion       RemoteWriteVersion
+		metrics         []Appendable
+		expectedSamples int
 	}{
 		{
-			name:      "Remote write v1",
-			rwVersion: RemoteWriteVersionV1,
+			name:            "Remote write v1",
+			rwVersion:       RemoteWriteVersionV1,
+			expectedSamples: 2,
 			metrics: []Appendable{
 				&Sample{
 					Labels: labels.FromStrings("foo", "bar"),
@@ -68,8 +70,9 @@ func TestSend(t *testing.T) {
 			},
 		},
 		{
-			name:      "Remote write v2 with metadata",
-			rwVersion: RemoteWriteVersionV2,
+			name:            "Remote write v2 with metadata",
+			expectedSamples: 6,
+			rwVersion:       RemoteWriteVersionV2,
 			metrics: []Appendable{
 				// TODO: Add exemplars
 				&Sample{
@@ -169,6 +172,7 @@ func TestSend(t *testing.T) {
 			expectedMetricsBytes, err := os.ReadFile(filepath.Join(testdataDir, "expected_metrics.txt"))
 			require.NoError(t, err)
 			expectedMetrics := strings.ReplaceAll(string(expectedMetricsBytes), "__MIMIR_RW_URL__", srv.URL)
+			expectedMetrics = strings.ReplaceAll(expectedMetrics, "__EXPECTED_SAMPLES__", strconv.Itoa(test.expectedSamples))
 
 			cfgProtobufMessageAttr := ""
 			if test.rwVersion == RemoteWriteVersionV2 {
@@ -180,13 +184,22 @@ func TestSend(t *testing.T) {
 						cluster = "local",
 					}
 					endpoint {
-						name           = "test-url"
-						url            = "%s/api/v1/write"
-				        send_native_histograms = true
+						name                   = "test-url"
+						url                    = "%s/api/v1/write"
+						send_native_histograms = true
 						%s
+
+						queue_config {
+							// The WAL watcher should send the expected number of samples as soon as it gets them.
+							// That way all samples are sent in one batch and the RW request can be tested for all samples.
+							// Also, the test is not slowed down by the WAL watcher sending samples due to a timeout
+							// caused by waiting for an unnecessarily large number of samples.
+							max_samples_per_send = %d
+							batch_send_deadline = "1m"
+						}
 					}
 				`,
-				srv.URL, cfgProtobufMessageAttr)
+				srv.URL, cfgProtobufMessageAttr, test.expectedSamples)
 
 			// Create our component and wait for it to start running, so we can write
 			// metrics to the WAL.
@@ -276,7 +289,16 @@ func TestMetadataResend_V2(t *testing.T) {
 		url            = "%s/api/v1/write"
 		send_native_histograms = true
 		protobuf_message = "io.prometheus.write.v2.Request"
-	}
+
+		queue_config {
+			// The WAL watcher should send the expected number of samples as soon as it gets them.
+			// That way all samples are sent in one batch and the RW request can be tested for all samples.
+			// Also, the test is not slowed down by the WAL watcher sending samples due to a timeout
+			// caused by waiting for an unnecessarily large number of samples.
+			max_samples_per_send = 1
+			batch_send_deadline = "1m"
+		}
+}
 `,
 		srv.URL)
 
@@ -366,7 +388,12 @@ func TestUpdate(t *testing.T) {
 		remote_timeout = "100ms"
 
 		queue_config {
-			batch_send_deadline = "100ms"
+			// The WAL watcher should send the expected number of samples as soon as it gets them.
+			// That way all samples are sent in one batch and the RW request can be tested for all samples.
+			// Also, the test is not slowed down by the WAL watcher sending samples due to a timeout
+			// caused by waiting for an unnecessarily large number of samples.
+			max_samples_per_send = 1
+			batch_send_deadline = "1m"
 		}
 	}
 `, srv.URL))
@@ -430,7 +457,8 @@ func TestUpdate(t *testing.T) {
 		remote_timeout = "100ms"
 
 		queue_config {
-			batch_send_deadline = "100ms"
+			max_samples_per_send = 2
+			batch_send_deadline = "1m"
 		}
 	}
 `, srv.URL))
