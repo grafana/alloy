@@ -10,6 +10,7 @@ import (
 
 func TestReconcile(t *testing.T) {
 	s := NewScheduler[int]()
+	defer s.Stop()
 
 	t.Run("should reconcile all new sources", func(t *testing.T) {
 		Reconcile(
