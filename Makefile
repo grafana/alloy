@@ -287,8 +287,8 @@ else
 	go generate ./internal/winmanifest
 endif
 
-.PHONY: alloy-mixin-render
-alloy-mixin-render:
+.PHONY: generate-rendered-mixin
+generate-rendered-mixin:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
