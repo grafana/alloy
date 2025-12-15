@@ -54,7 +54,7 @@ func Reconcile[Key comparable, Input any](
 		source, err := sourceFactoryFn(key, i)
 		if err != nil {
 			if !errors.Is(err, ErrSkip) {
-				level.Error(logger).Log("msg", "failed to create source", "error", err)
+				level.Error(logger).Log("msg", "failed to create source, skipping", "error", err, "key", key)
 			}
 			delete(shouldRun, key)
 			continue
