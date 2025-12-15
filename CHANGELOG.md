@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.12.0](https://github.com/jharvey10/test-repo/compare/v1.11.3...v1.12.0) (2025-12-01)
+## [1.12.0](https://github.com/grafana/alloy/compare/v1.11.3...v1.12.0) (2025-12-01)
 
 ### Breaking changes
 
