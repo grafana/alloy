@@ -111,8 +111,6 @@
 
 - Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
-- Add basic support to perform type checking when using validate command. (@kalleep)
-
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
