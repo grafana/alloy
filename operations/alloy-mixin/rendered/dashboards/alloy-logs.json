@@ -141,24 +141,26 @@
          },
          "gridPos": {
             "h": 6,
-            "w": 24
+            "w": 24,
+            "x": 0,
+            "y": 0
          },
          "id": 1,
-         "interval": "30s",
+         "maxDataPoints": 100,
          "options": {
             "tooltip": {
                "mode": "multi",
                "sort": "desc"
             }
          },
-         "pluginVersion": "v10.0.0",
+         "pluginVersion": "v11.0.0",
          "targets": [
             {
                "datasource": {
                   "type": "loki",
                   "uid": "${loki_datasource}"
                },
-               "expr": "sum by (level) (count_over_time({,cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\",level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__interval]))\n",
+               "expr": "sum by (level) (count_over_time({cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\",level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__auto]))\n",
                "legendFormat": "{{ level }}"
             }
          ],
@@ -181,7 +183,9 @@
          },
          "gridPos": {
             "h": 18,
-            "w": 24
+            "w": 24,
+            "x": 0,
+            "y": 18
          },
          "id": 2,
          "options": {
@@ -191,14 +195,14 @@
             "showTime": false,
             "wrapLogMessage": true
          },
-         "pluginVersion": "v10.0.0",
+         "pluginVersion": "v11.0.0",
          "targets": [
             {
                "datasource": {
                   "type": "loki",
                   "uid": "${loki_datasource}"
                },
-               "expr": "{,cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\",level=~\"$level\"} \n|~ \"$regex_search\"\n\n\n"
+               "expr": "{cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\",level=~\"$level\"} \n|~ \"$regex_search\"\n\n\n"
             }
          ],
          "title": "Logs",
@@ -206,7 +210,7 @@
       }
    ],
    "refresh": "10s",
-   "schemaVersion": 36,
+   "schemaVersion": 39,
    "tags": [
       "alloy-mixin"
    ],
