@@ -304,9 +304,11 @@ func (c *Component) init() error {
 	}
 
 	c.matcherStrategy = monitoringv1.AlertmanagerConfigMatcherStrategyType(c.args.AlertmanagerConfigMatcherStrategy)
-	if c.matcherStrategy != monitoringv1.OnNamespaceConfigMatcherStrategyType &&
-		c.matcherStrategy != monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType &&
-		c.matcherStrategy != monitoringv1.NoneConfigMatcherStrategyType {
+	switch c.matcherStrategy {
+	case monitoringv1.OnNamespaceConfigMatcherStrategyType: // Valid strategy, continue
+	case monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType: // Valid strategy, continue
+	case monitoringv1.NoneConfigMatcherStrategyType: // Valid strategy, continue
+	default:
 		return fmt.Errorf("invalid alertmanagerconfig_matcher_strategy: %s", c.args.AlertmanagerConfigMatcherStrategy)
 	}
 
