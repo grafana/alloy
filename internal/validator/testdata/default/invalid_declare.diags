@@ -7,7 +7,7 @@ Error: main.alloy:12:3: unrecognized attribute name "test"
 
 Error: main.alloy:17:3: unrecognized attribute name "test"
 
-16 |         value = []
+16 |         value = ""
 17 |         test = ""
    |         ^^^^^^^^^
 18 |     }
@@ -59,7 +59,7 @@ Error: main.alloy:30:2: export block must have a label
 29 |     argument {}
 30 |     export {
    |     ^^^^^^
-31 |         value = []
+31 |         value = ""
 
 Error: main.alloy:48:2: logging not allowed in module
 
@@ -108,7 +108,7 @@ Error: main.alloy:5:1: export blocks only allowed inside a module
 4 |   
 5 |   export "root" {
   |  _^^^^^^^^^^^^^^^
-6 | |     value = []
+6 | |     value = ""
 7 | | }
   | |_^
 8 |   

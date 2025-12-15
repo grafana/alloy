@@ -3,7 +3,7 @@ stdlib references
 
 declare "sys" {
 	export "env" {
-		value = []
+		value = "test"
 	}
 }
 
