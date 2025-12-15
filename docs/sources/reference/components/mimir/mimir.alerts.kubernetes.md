@@ -52,8 +52,6 @@ You can use the following arguments with `mimir.alerts.kubernetes`:
 | ------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------- | -------- |
 | `address`                             | `string`            | URL of the Mimir Alertmanager.                                                                                            |                 | yes      |
 | `global_config`                       | `secret`            | [Alertmanager configuration][global-cfg] to be merged with AlertmanagerConfig CRDs.                                       |                 | yes      |
-| `alertmanagerconfig_matcher_strategy` | `string`            | [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] for adding matchers to AlertmanagerConfig CRDs. | `"OnNamespace"` | no       |
-| `alertmanager_namespace`              | `string`            | Namespace to use when alertmanagerconfig_matcher_strategy is set to `"OnNamespaceExceptForAlertmanagerNamespace"`         |                 | no       |
 | `bearer_token_file`                   | `string`            | File containing a bearer token to authenticate with.                                                                      |                 | no       |
 | `bearer_token`                        | `secret`            | Bearer token to authenticate with.                                                                                        |                 | no       |
 | `enable_http2`                        | `bool`              | Whether HTTP2 is supported for requests.                                                                                  | `true`          | no       |
@@ -80,24 +78,24 @@ At most, one of the following can be provided:
 
 [global-cfg]: https://prometheus.io/docs/alerting/latest/configuration/
 [mimir-api-set-alertmgr-cfg]: https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
-[alertmanager-config-matcher-strategy]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.AlertmanagerConfigMatcherStrategy
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `mimir.alerts.kubernetes`:
 
-| Block                                                                            | Description                                                | Required |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
-| [`authorization`][authorization]                                                 | Configure generic authorization to the endpoint.           | no       |
-| [`basic_auth`][basic_auth]                                                       | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| [`oauth2`][oauth2]                                                               | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
-| `oauth2` > [`tls_config`][tls_config]                                            | Configure TLS settings for connecting to the endpoint.     | no       |
-| [`alertmanagerconfig_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
-| `alertmanagerconfig_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no       |
-| [`alertmanagerconfig_selector`][label_selector]                                  | Label selector for `AlertmanagerConfig` resources.         | no       |
-| `alertmanagerconfig_selector` > [`match_expression`][match_expression]           | Label match expression for `AlertmanagerConfig` resources. | no       |
-| [`tls_config`][tls_config]                                                       | Configure TLS settings for connecting to the endpoint.     | no       |
+| Block                                                                            | Description                                                 | Required |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------- |
+| [`authorization`][authorization]                                                 | Configure generic authorization to the endpoint.            | no       |
+| [`basic_auth`][basic_auth]                                                       | Configure `basic_auth` for authenticating to the endpoint.  | no       |
+| [`oauth2`][oauth2]                                                               | Configure OAuth 2.0 for authenticating to the endpoint.     | no       |
+| `oauth2` > [`tls_config`][tls_config]                                            | Configure TLS settings for connecting to the endpoint.      | no       |
+| [`alertmanagerconfig_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                   | no       |
+| `alertmanagerconfig_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.           | no       |
+| [`alertmanagerconfig_selector`][label_selector]                                  | Label selector for `AlertmanagerConfig` resources.          | no       |
+| `alertmanagerconfig_selector` > [`match_expression`][match_expression]           | Label match expression for `AlertmanagerConfig` resources.  | no       |
+| `alertmanagerconfig_matcher`                                                     | Strategy to match alerts to `AlertmanagerConfig` resources. | no       |
+| [`tls_config`][tls_config]                                                       | Configure TLS settings for connecting to the endpoint.      | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
@@ -149,6 +147,25 @@ The `operator` argument should be one of the following strings:
 * `"DoesNotExist"`
 
 The `values` argument must not be provided when `operator` is set to `"Exists"` or `"DoesNotExist"`.
+
+### `alertmanagerconfig_matcher`
+
+The `alertmanagerconfig_matcher` block describes the strategy used by AlertmanagerConfig objects to match alerts in the routes and inhibition rules.
+
+The following arguments are supported:
+
+| Name                     | Type     | Description                                                                                                               | Default         | Required |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------- | --------------- | -------- |
+| `strategy`               | `string` | [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] for adding matchers to AlertmanagerConfig CRDs. | `"OnNamespace"` | no       |
+| `alertmanager_namespace` | `string` | Namespace to use when alertmanagerconfig_matcher_strategy is set to `"OnNamespaceExceptForAlertmanagerNamespace"`         |                 | no       |
+
+The `strategy` argument should be one of the following strings:
+
+* `"OnNamespace"`: Each AlertmanagerConfig object only matches alerts that have the `namespace` label set to the same namespace as the AlertmanagerConfig object.
+* `"OnNamespaceExceptForAlertmanagerNamespace"`: The same as `"OnNamespace"`, except for AlertmanagerConfigs in the namespace given by `alertmanager_namespace`, which apply to all alerts.
+* `"None"`: Every AlertmanagerConfig object applies to all alerts
+
+[alertmanager-config-matcher-strategy]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.AlertmanagerConfigMatcherStrategy
 
 ### `oauth2`
 

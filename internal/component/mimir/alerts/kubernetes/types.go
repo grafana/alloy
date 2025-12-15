@@ -19,14 +19,21 @@ type Arguments struct {
 
 	AlertmanagerConfigSelector          kubernetes.LabelSelector `alloy:"alertmanagerconfig_selector,block,optional"`
 	AlertmanagerConfigNamespaceSelector kubernetes.LabelSelector `alloy:"alertmanagerconfig_namespace_selector,block,optional"`
-	AlertmanagerConfigMatcherStrategy   string                   `alloy:"alertmanagerconfig_matcher_strategy,attr,optional"`
-	AlertmanagerNamespace               string                   `alloy:"alertmanager_namespace,attr,optional"`
+
+	AlertmanagerConfigMatcher AlertmanagerConfigMatcher `alloy:"alertmanagerconfig_matcher,block,optional"`
+}
+
+type AlertmanagerConfigMatcher struct {
+	Strategy              string `alloy:"strategy,attr"`
+	AlertmanagerNamespace string `alloy:"alertmanager_namespace,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	SyncInterval:                      5 * time.Minute,
-	HTTPClientConfig:                  config.DefaultHTTPClientConfig,
-	AlertmanagerConfigMatcherStrategy: string(monitoringv1.OnNamespaceConfigMatcherStrategyType),
+	SyncInterval:     5 * time.Minute,
+	HTTPClientConfig: config.DefaultHTTPClientConfig,
+	AlertmanagerConfigMatcher: AlertmanagerConfigMatcher{
+		Strategy: string(monitoringv1.OnNamespaceConfigMatcherStrategyType),
+	},
 }
 
 // SetToDefault implements syntax.Defaulter.
