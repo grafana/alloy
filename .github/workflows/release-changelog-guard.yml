@@ -13,12 +13,18 @@ permissions:
 
 jobs:
   check_changelog:
-    name: Check CHANGELOG.md modifications 🔎
+    name: Check CHANGELOG.md modifications
     runs-on: ubuntu-latest
     steps:
-    - name: Fail if CHANGELOG.md was modified
+    - name: Fail if CHANGELOG.md was modified 🚫
       run: |
-        echo "ERROR: CHANGELOG.md has been modified in this PR."
-        echo "The CHANGELOG.md file should not be manually edited."
-        echo "It is automatically managed by the release process."
+        echo "❌ ERROR: CHANGELOG.md has been modified in this PR."
+        echo ""
+        echo "The CHANGELOG.md file should not be manually edited. It is automatically generated "
+        echo "from Pull Request titles using Conventional Commits and release-please."
+        echo ""
+        echo "To ensure your PR appears correctly in the changelog:"
+        echo "  1. Format your PR title following Conventional Commits (e.g., 'feat: add new feature')"
+        echo "  2. See docs/developer/contributing.md for detailed guidelines"
+        echo ""
         exit 1
