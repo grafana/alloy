@@ -1,4 +1,4 @@
-# Changelog this is a test
+# Changelog
 
 > _Contributors should read our [contributors guide][] for instructions on how
 > to update the changelog._
