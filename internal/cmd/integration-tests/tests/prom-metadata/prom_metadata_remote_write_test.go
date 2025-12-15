@@ -7,8 +7,8 @@ import (
 	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
-func TestOtlpMetadata(t *testing.T) {
-	testName := "otlp_metadata"
+func TestPromMetadataRemoteWriteV2(t *testing.T) {
+	testName := "prom_metadata_remote_write_v2"
 	toTestMetric := func(metricName string) string {
 		return fmt.Sprintf("%s_%s", testName, metricName)
 	}
@@ -19,18 +19,10 @@ func TestOtlpMetadata(t *testing.T) {
 		metadataTestMetrics = append(metadataTestMetrics, toTestMetric(metricName))
 	}
 
-	metadataTestHistogram := make([]string, 0, len(common.PromDefaultNativeHistogramMetrics))
-	for _, metricName := range common.PromDefaultNativeHistogramMetrics {
-		metadataTestHistogram = append(metadataTestHistogram, toTestMetric(metricName))
-	}
-
 	// Make sure we got the expected metrics before checking metadata
-	common.MimirMetricsTest(t, metadataTestMetrics, metadataTestHistogram, testName)
+	common.MimirMetricsTest(t, metadataTestMetrics, nil, testName)
 	expectedMetadata := make(map[string]common.Metadata, len(common.PromDefaultMetricMetadata)+len(common.PromDefaultNativeHistogramMetadata))
 	for k, v := range common.PromDefaultMetricMetadata {
-		expectedMetadata[toTestMetric(k)] = v
-	}
-	for k, v := range common.PromDefaultNativeHistogramMetadata {
 		expectedMetadata[toTestMetric(k)] = v
 	}
 	common.MimirMetadataTest(t, expectedMetadata)
