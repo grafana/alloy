@@ -29,15 +29,9 @@ jobs:
 
       - name: Verify rendered outputs are up to date
         run: |
-          git --no-pager diff -- operations/alloy-mixin/rendered
-          # Also fail if generation produced untracked files (e.g., new dashboards/alerts).
-          untracked="$(git ls-files --others --exclude-standard -- operations/alloy-mixin/rendered)"
-          if [ -n "${untracked}" ]; then
-            echo "${untracked}"
-            echo "${untracked}" | while read -r f; do
-              git --no-pager diff --no-index -- /dev/null "${f}" || true
-            done
+          if [ -n "$(git status --porcelain -- operations/alloy-mixin/rendered)" ]; then
+            echo "Error: rendered outputs are not up to date"
+            git status -- operations/alloy-mixin/rendered
+            git diff -- operations/alloy-mixin/rendered
             exit 1
           fi
-          git diff --exit-code -- operations/alloy-mixin/rendered
-
