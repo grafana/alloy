@@ -1,4 +1,4 @@
-package file
+package source
 
 import (
 	"context"
@@ -86,10 +86,20 @@ func (s *Scheduler[K]) Len() int {
 }
 
 // Stop will stop all running sources and wait for them to finish.
+// Scheduler should not be reused after Stop is called.
 func (s *Scheduler[K]) Stop() {
 	s.cancel()
 	s.running.Wait()
 	s.sources = make(map[K]scheduledSource[K])
+}
+
+// Reset will stop all running sources and wait for them to finish and reset
+// Scheduler to a usable state.
+func (s *Scheduler[K]) Reset() {
+	s.cancel()
+	s.running.Wait()
+	s.sources = make(map[K]scheduledSource[K])
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 type Source[K comparable] interface {
@@ -98,8 +108,11 @@ type Source[K comparable] interface {
 	Run(ctx context.Context)
 	// Key is used to uniquely identify the source.
 	Key() K
-	// IsRunning reports if source is still running.
-	IsRunning() bool
+}
+
+// DebugSource is an optional interface with debug information.
+type DebugSource interface {
+	DebugInfo() any
 }
 
 func NewSourceWithRetry[K comparable](source Source[K], config backoff.Config) *SourceWithRetry[K] {
@@ -126,8 +139,12 @@ func (s *SourceWithRetry[K]) Key() K {
 	return s.source.Key()
 }
 
-func (s *SourceWithRetry[K]) IsRunning() bool {
-	return s.source.IsRunning()
+func (s *SourceWithRetry[K]) DebugInfo() any {
+	ss, ok := s.source.(DebugSource)
+	if !ok {
+		return nil
+	}
+	return ss.DebugInfo()
 }
 
 // scheduledSource is a source that is already scheduled.
