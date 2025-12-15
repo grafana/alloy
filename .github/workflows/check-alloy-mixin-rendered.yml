@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   check-rendered:
-    name: Render and verify committed JSON
+    name: Render and verify rendered mixin files
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,12 +25,12 @@ jobs:
           cache: true
 
       - name: Render dashboards and alerts
-        run: make alloy-mixin-render
+        run: make generate-rendered-mixin
 
       - name: Verify rendered outputs are up to date
         run: |
           if [ -n "$(git status --porcelain -- operations/alloy-mixin/rendered)" ]; then
-            echo "Error: rendered outputs are not up to date"
+            echo "Error: rendered outputs are not up to date. Make sure to run 'make generate-rendered-mixin' and commit the changes."
             git status -- operations/alloy-mixin/rendered
             git diff -- operations/alloy-mixin/rendered
             exit 1
