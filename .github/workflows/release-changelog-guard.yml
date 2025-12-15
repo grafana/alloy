@@ -1,0 +1,24 @@
+name: Changelog Guard
+on:
+  pull_request:
+    paths:
+      - 'CHANGELOG.md'
+
+concurrency:
+  group: "${{ github.ref_name }}-${{ github.head_ref }}-changelog-guard"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check_changelog:
+    name: Check CHANGELOG.md modifications 🔎
+    runs-on: ubuntu-latest
+    steps:
+    - name: Fail if CHANGELOG.md was modified
+      run: |
+        echo "ERROR: CHANGELOG.md has been modified in this PR."
+        echo "The CHANGELOG.md file should not be manually edited."
+        echo "It is automatically managed by the release process."
+        exit 1
