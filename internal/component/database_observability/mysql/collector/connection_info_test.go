@@ -58,6 +58,17 @@ func TestConnectionInfo(t *testing.T) {
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "some-account-123", "aws", "us-east-1"),
 		},
 		{
+			name:          "Azure with cloud provider info supplied",
+			dsn:           "user:pass@tcp(products-db.mysql.database.azure.com:3306)/schema",
+			engineVersion: "15.4",
+			cloudProvider: &database_observability.CloudProvider{
+				Azure: &database_observability.AzureCloudProviderInfo{
+					Resource: "products-db",
+				},
+			},
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "15.4", "unknown", "azure", "unknown"),
+		},
+		{
 			name:            "Azure flexibleservers dsn",
 			dsn:             "user:pass@tcp(products-db.mysql.database.azure.com:3306)/schema",
 			engineVersion:   "8.0.32",

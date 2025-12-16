@@ -49,8 +49,10 @@ func getCommentMarker(fileType types.FileType) (string, error) {
 	switch fileType {
 	case types.FileTypeMod:
 		return "//", nil
+	case types.FileTypeOCB:
+		return "#", nil
 	default:
-		return "", fmt.Errorf("unknown file_type %q", fileType)
+		return "", fmt.Errorf("unknown file_type %q (expected %q or %q)", fileType, types.FileTypeMod, types.FileTypeOCB)
 	}
 }
 
@@ -67,30 +69,37 @@ func getMarkers(fileType types.FileType) (startMarker, endMarker string, err err
 
 // Upserts the generated block using the markers, or lack thereof, as a guide
 func upsertGeneratedBlock(targetContent, replacement, startMarker, endMarker string) (string, error) {
-	startIdx := strings.Index(targetContent, startMarker)
-	startFound := startIdx != -1
+	lines := strings.Split(targetContent, "\n")
 
-	if !startFound {
-		// No start marker: if the end marker exists anywhere, it's invalid.
-		if strings.Contains(targetContent, endMarker) {
-			return "", fmt.Errorf("found end marker without start marker")
+	startLineIdx := -1
+	endLineIdx := -1
+
+	for i, line := range lines {
+		if strings.Contains(line, startMarker) {
+			startLineIdx = i
 		}
-
-		// Neither start not end marker found, append to the end of the file
-		targetContent = strings.TrimRight(targetContent, "\n")
-		return targetContent + "\n" + replacement, nil
+		if strings.Contains(line, endMarker) {
+			endLineIdx = i
+		}
 	}
 
-	searchFrom := startIdx + len(startMarker)
-	endRel := strings.Index(targetContent[searchFrom:], endMarker)
-	if endRel == -1 {
-		// Start marker exists without an end marker, which is invalid
+	if startLineIdx == -1 && endLineIdx != -1 {
+		return "", fmt.Errorf("found end marker without start marker")
+	}
+	if startLineIdx != -1 && endLineIdx == -1 {
 		return "", fmt.Errorf("found start marker without end marker")
 	}
 
-	endIdx := searchFrom + endRel
-	endOfMarker := endIdx + len(endMarker)
+	// If no markers are found we optimistically append to the end of the file
+	if startLineIdx == -1 {
+		trimmed := strings.TrimRight(targetContent, "\n")
+		return trimmed + "\n" + replacement, nil
+	}
 
-	// Replace [startIdx, endOfMarker) with replacement.
-	return targetContent[:startIdx] + replacement + targetContent[endOfMarker:], nil
+	// Splice the replacement lines between the startLine and endLine
+	replacementLines := strings.Split(replacement, "\n")
+	newLines := append(lines[:startLineIdx], replacementLines...)
+	newLines = append(newLines, lines[endLineIdx+1:]...)
+
+	return strings.Join(newLines, "\n"), nil
 }
