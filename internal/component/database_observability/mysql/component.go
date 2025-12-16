@@ -474,6 +474,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
 			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			Registry:                    c.registry,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
