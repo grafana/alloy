@@ -186,7 +186,7 @@ func (c *Client) CreateBranch(ctx context.Context, p CreateBranchParams) error {
 func (c *Client) ReadManifest(ctx context.Context, ref string) (map[string]string, error) {
 	fileContent, _, _, err := c.api.Repositories.GetContents(
 		ctx, c.owner, c.repo,
-		".release-please-manifest.json",
+		"flowcmd/.release-please-manifest.json",
 		&github.RepositoryContentGetOptions{Ref: ref},
 	)
 	if err != nil {

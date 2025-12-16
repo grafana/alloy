@@ -13,7 +13,7 @@ import { MinorBreakingVersioningStrategy } from './minor-breaking-versioning.js'
 registerVersioningStrategy('minor-breaking', (options) => new MinorBreakingVersioningStrategy(options));
 
 const DEFAULT_CONFIG_FILE = 'release-please-config.json';
-const DEFAULT_MANIFEST_FILE = '.release-please-manifest.json';
+const DEFAULT_MANIFEST_FILE = 'flowcmd/.release-please-manifest.json';
 
 function parseInputs() {
   const token = process.env.GITHUB_TOKEN;
