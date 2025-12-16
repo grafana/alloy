@@ -29,9 +29,10 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			checkFields: func(t *testing.T, p *ParsedError) {
 				require.Equal(t, "ERROR", p.ErrorSeverity)
 				require.Equal(t, "57014", p.SQLStateCode)
-				require.Equal(t, "57", p.SQLStateClass)
+				require.Equal(t, "57", p.SQLStateCodeClass)
 				require.Equal(t, "Operator Intervention", p.ErrorCategory)
-				require.Equal(t, "statement_timeout", p.TimeoutType)
+				require.Equal(t, "query_canceled", p.ErrorName, "should extract error name from SQLSTATE")
+				require.Equal(t, "query_canceled", p.TimeoutType)
 			},
 		},
 		{
@@ -41,12 +42,10 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			checkFields: func(t *testing.T, p *ParsedError) {
 				require.Equal(t, "ERROR", p.ErrorSeverity)
 				require.Equal(t, "40P01", p.SQLStateCode)
-				require.Equal(t, "40", p.SQLStateClass)
+				require.Equal(t, "40", p.SQLStateCodeClass)
 				require.Equal(t, "Transaction Rollback", p.ErrorCategory)
-				require.Equal(t, "ShareLock", p.LockType)
-				require.Equal(t, "3,88", p.TupleLocation)
-				require.Equal(t, int32(9184), p.BlockerPID, "should extract blocker PID")
-				require.Equal(t, "UPDATE books SET stock = stock WHERE id = 1;", p.BlockerQuery, "should extract blocker query")
+				require.Equal(t, "deadlock_detected", p.ErrorName, "should extract error name from SQLSTATE")
+				require.Equal(t, "deadlock", p.TimeoutType, "should identify deadlock from SQLSTATE")
 				require.NotEmpty(t, p.Detail)
 				require.NotEmpty(t, p.Hint)
 				require.NotEmpty(t, p.Context)
@@ -79,7 +78,7 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, parsed)
 
-			collector.extractInsights(parsed)
+			collector.setTimeoutType(parsed)
 
 			if tt.checkFields != nil {
 				tt.checkFields(t, parsed)
@@ -155,8 +154,9 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 						for _, label := range metric.GetLabel() {
 							labels[label.GetName()] = label.GetValue()
 						}
-						require.Equal(t, "53", labels["sqlstate_class_code"], "sqlstate_class_code label should be 53")
-						require.Equal(t, "53300", labels["sqlstate"], "sqlstate should be 53300")
+						require.Equal(t, "53", labels["sqlstate_code_class"], "sqlstate_code_class label should be 53")
+						require.Equal(t, "53300", labels["sqlstate_code"], "sqlstate_code should be 53300")
+						require.Equal(t, "too_many_connections", labels["error_name"], "error_name label should be too_many_connections")
 					}
 				}
 				require.True(t, found, "errors_by_sqlstate metric should exist")
@@ -179,8 +179,7 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 							labels[label.GetName()] = label.GetValue()
 						}
 						require.Equal(t, "app-user", labels["user"], "user label should be set")
-						// Auth method is extracted from message ("password authentication failed"), not from detail where "md5" appears
-						require.Equal(t, "password", labels["auth_method"], "auth method should be extracted from message")
+						require.Equal(t, "::1", labels["remote_host"], "remote_host label should be set")
 					}
 				}
 				require.True(t, found, "auth_failures metric should exist")
@@ -203,9 +202,10 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 							for _, label := range metric.GetLabel() {
 								labels[label.GetName()] = label.GetValue()
 							}
-							if labels["sqlstate"] == "57014" {
+							if labels["sqlstate_code"] == "57014" {
 								foundMetric = true
-								require.Equal(t, "57", labels["sqlstate_class_code"], "sqlstate_class_code label should be 57")
+								require.Equal(t, "57", labels["sqlstate_code_class"], "sqlstate_code_class label should be 57")
+								require.Equal(t, "query_canceled", labels["error_name"], "error_name label should be query_canceled")
 								break
 							}
 						}

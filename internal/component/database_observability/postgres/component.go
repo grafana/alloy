@@ -476,20 +476,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		c.collectors = append(c.collectors, epCollector)
 	}
 
-	// Error Logs Collector - always started (passive log receiver)
-	// Use configured values if available, otherwise use defaults
-	errorLogArgs := c.args.ErrorLogArguments
-	if errorLogArgs == nil {
-		level.Debug(c.opts.Logger).Log("msg", "error_logs collector arguments not configured, using defaults")
-		errorLogArgs = DefaultArguments.ErrorLogArguments
-	}
-
-	level.Debug(c.opts.Logger).Log(
-		"msg", "starting error_logs collector (always enabled)",
-		"severities", fmt.Sprintf("%v", errorLogArgs.Severities),
-		"pass_through", errorLogArgs.PassThrough,
-	)
-
 	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
 		Receiver:     c.errorLogsReceiver,
 		EntryHandler: entryHandler,

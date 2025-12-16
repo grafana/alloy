@@ -23,7 +23,11 @@ const ErrorLogsCollector = "error_logs"
 const OP_ERROR_LOGS = "error_logs"
 
 // Supported error severities that will be processed
-var supportedSeverities = []string{"ERROR", "FATAL", "PANIC"}
+var supportedSeverities = map[string]bool{
+	"ERROR": true,
+	"FATAL": true,
+	"PANIC": true,
+}
 
 // PostgreSQLJSONLog represents the structure of a PostgreSQL JSON log entry.
 // See: https://www.postgresql.org/docs/current/runtime-config-logging.html
@@ -80,19 +84,17 @@ type PostgreSQLJSONLog struct {
 
 // ParsedError represents a fully parsed and enriched PostgreSQL error.
 type ParsedError struct {
-	// Core fields
 	Timestamp time.Time
 	PID       int32
 	SessionID string
 	LineNum   int32
 
-	// Severity and classification
-	ErrorSeverity string
-	SQLStateCode  string
-	SQLStateClass string
-	ErrorCategory string
+	ErrorSeverity     string
+	SQLStateCode      string
+	ErrorName         string
+	SQLStateCodeClass string
+	ErrorCategory     string
 
-	// User/Database context
 	User            string
 	DatabaseName    string
 	RemoteHost      string
@@ -101,44 +103,29 @@ type ParsedError struct {
 	BackendType     string
 	PS              string
 
-	// Transaction context
 	SessionStart time.Time
 	VXID         string
 	TXID         string
 
-	// Error details
 	Message string
 	Detail  string
 	Hint    string
 	Context string
 
-	// Query information
 	Statement      string
 	CursorPosition int32
 	QueryID        int64
 
-	// Internal query info (for PL/pgSQL errors)
 	InternalQuery    string
 	InternalPosition int32
 
-	// Error location (for internal errors)
 	FuncName    string
 	FileName    string
 	FileLineNum int32
 
-	// Parallel query context
 	LeaderPID int32
 
-	// Lock and timeout insights
-	LockType      string // e.g., "ShareLock", "ExclusiveLock"
-	TimeoutType   string // "statement_timeout", "lock_timeout", "user_cancel", "idle_in_transaction_timeout"
-	TupleLocation string // e.g., "(0,1)" for deadlock victims
-	BlockerPID    int32  // PID of the process causing the block (deadlocks)
-	BlockerQuery  string // Query from the blocker process (deadlocks)
-
-	// Authentication insights
-	AuthMethod    string // e.g., "md5", "scram-sha-256", "password"
-	HBALineNumber string // pg_hba.conf line number
+	TimeoutType string // "deadlock", "lock_timeout", "query_canceled", "idle_in_transaction_timeout"
 }
 
 type ErrorLogsArguments struct {
@@ -157,10 +144,8 @@ type ErrorLogs struct {
 	systemID     string
 	registry     *prometheus.Registry
 
-	// Input receiver (exported for loki.source.* to forward to)
 	receiver loki.LogsReceiver
 
-	// Metrics
 	logsProcessed       prometheus.Counter
 	errorsTotal         *prometheus.CounterVec
 	errorsBySQLState    *prometheus.CounterVec
@@ -170,7 +155,6 @@ type ErrorLogs struct {
 	errorsByBackendType *prometheus.CounterVec
 	parseErrors         prometheus.Counter
 
-	// Lifecycle
 	ctx     context.Context
 	cancel  context.CancelFunc
 	stopped *atomic.Bool
@@ -218,7 +202,7 @@ func (c *ErrorLogs) initMetrics() {
 			Name: "postgres_errors_by_sqlstate_total",
 			Help: "PostgreSQL errors by SQLSTATE code with category, class, and query tracking",
 		},
-		[]string{"sqlstate", "sqlstate_class", "sqlstate_class_code", "severity", "database", "queryid", "instance"},
+		[]string{"sqlstate_code", "error_name", "sqlstate_code_class", "error_category", "severity", "database", "queryid", "instance"},
 	)
 
 	c.connectionErrors = prometheus.NewCounterVec(
@@ -226,15 +210,15 @@ func (c *ErrorLogs) initMetrics() {
 			Name: "postgres_connection_errors_total",
 			Help: "Connection-related errors",
 		},
-		[]string{"sqlstate", "severity", "database", "instance"},
+		[]string{"sqlstate_code", "severity", "database", "instance"},
 	)
 
 	c.authFailures = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "postgres_auth_failures_total",
-			Help: "Authentication failures by user and method",
+			Help: "Authentication failures by user",
 		},
-		[]string{"user", "remote_host", "auth_method", "database", "instance"},
+		[]string{"user", "remote_host", "database", "instance"},
 	)
 
 	c.errorsByUser = prometheus.NewCounterVec(
@@ -286,12 +270,7 @@ func (c *ErrorLogs) Receiver() loki.LogsReceiver {
 }
 
 func (c *ErrorLogs) Start(ctx context.Context) error {
-	level.Info(c.logger).Log(
-		"msg", "starting error_logs collector",
-		"instance", c.instanceKey,
-		"system_id", c.systemID,
-		"severities", strings.Join(supportedSeverities, ","),
-	)
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.wg.Add(1)
 	go c.run()
@@ -311,12 +290,12 @@ func (c *ErrorLogs) Stopped() bool {
 func (c *ErrorLogs) run() {
 	defer c.wg.Done()
 
-	level.Info(c.logger).Log("msg", "error_logs collector started, waiting for log entries")
+	level.Debug(c.logger).Log("msg", "collector running, waiting for log entries")
 
 	for {
 		select {
 		case <-c.ctx.Done():
-			level.Info(c.logger).Log("msg", "error_logs collector stopping")
+			level.Debug(c.logger).Log("msg", "collector stopping")
 			return
 		case entry := <-c.receiver.Chan():
 			c.logsProcessed.Inc()
@@ -332,51 +311,25 @@ func (c *ErrorLogs) run() {
 }
 
 func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
-	// 1. Parse JSON
 	var jsonLog PostgreSQLJSONLog
 	if err := json.Unmarshal([]byte(entry.Entry.Line), &jsonLog); err != nil {
 		c.parseErrors.Inc()
-		level.Debug(c.logger).Log(
-			"msg", "failed to parse JSON log line",
-			"error", err,
-		)
+		return fmt.Errorf("failed to parse JSON log line: %w", err)
+	}
+
+	if !supportedSeverities[jsonLog.ErrorSeverity] {
 		return nil
 	}
 
-	// 2. Check if we should process this severity
-	isSupportedSeverity := false
-	for _, sev := range supportedSeverities {
-		if jsonLog.ErrorSeverity == sev {
-			isSupportedSeverity = true
-			break
-		}
-	}
-	if !isSupportedSeverity {
-		level.Debug(c.logger).Log(
-			"msg", "severity not supported, skipping",
-			"severity", jsonLog.ErrorSeverity,
-			"supported_severities", strings.Join(supportedSeverities, ","),
-		)
-		return nil
-	}
-
-	// 3. Build ParsedError
 	parsed, err := c.buildParsedError(&jsonLog)
 	if err != nil {
-		level.Warn(c.logger).Log(
-			"msg", "failed to build parsed error",
-			"error", err,
-		)
-		return nil
+		return fmt.Errorf("failed to parse error: %w", err)
 	}
 
-	// 4. Extract insights
-	c.extractInsights(parsed)
+	c.setTimeoutType(parsed)
 
-	// 5. Update metrics
 	c.updateMetrics(parsed)
 
-	// 6. Emit to Loki
 	return c.emitToLoki(parsed)
 }
 
@@ -390,7 +343,6 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 		BackendType:   log.BackendType,
 	}
 
-	// PostgreSQL JSON log format: "2024-11-28 10:15:30.123 UTC"
 	var err error
 	timestampFormats := []string{
 		"2006-01-02 15:04:05.999999 MST", // With microseconds
@@ -410,14 +362,13 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 		return nil, fmt.Errorf("failed to parse timestamp: %w", err)
 	}
 
-	for _, format := range timestampFormats {
-		parsed.SessionStart, err = time.Parse(format, log.SessionStart)
-		if err == nil {
-			break
+	if log.SessionStart != "" {
+		for _, format := range timestampFormats {
+			parsed.SessionStart, err = time.Parse(format, log.SessionStart)
+			if err == nil {
+				break
+			}
 		}
-	}
-	if err != nil {
-		level.Debug(c.logger).Log("msg", "failed to parse session_start", "error", err)
 	}
 
 	parsed.User = ptrToString(log.User)
@@ -443,10 +394,9 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 
 	if log.StateCode != nil {
 		parsed.SQLStateCode = *log.StateCode
-		if len(parsed.SQLStateCode) >= 2 {
-			parsed.SQLStateClass = parsed.SQLStateCode[:2]
-			parsed.ErrorCategory = GetSQLStateCategory(parsed.SQLStateCode)
-		}
+		parsed.ErrorName = GetSQLStateErrorName(parsed.SQLStateCode)
+		parsed.SQLStateCodeClass = parsed.SQLStateCode[:2]
+		parsed.ErrorCategory = GetSQLStateCategory(parsed.SQLStateCode)
 	}
 
 	return parsed, nil
@@ -465,15 +415,11 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 			queryIDStr = fmt.Sprintf("%d", parsed.QueryID)
 		}
 
-		classCode := parsed.SQLStateClass
-		if classCode == "" && len(parsed.SQLStateCode) >= 2 {
-			classCode = parsed.SQLStateCode[:2]
-		}
-
 		c.errorsBySQLState.WithLabelValues(
 			parsed.SQLStateCode,
+			parsed.ErrorName,
+			parsed.SQLStateCodeClass,
 			parsed.ErrorCategory,
-			classCode,
 			parsed.ErrorSeverity,
 			parsed.DatabaseName,
 			queryIDStr,
@@ -490,11 +436,10 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		).Inc()
 	}
 
-	if parsed.AuthMethod != "" {
+	if IsAuthenticationError(parsed.SQLStateCode) {
 		c.authFailures.WithLabelValues(
 			parsed.User,
 			parsed.RemoteHost,
-			parsed.AuthMethod,
 			parsed.DatabaseName,
 			c.instanceKey,
 		).Inc()
@@ -533,11 +478,14 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 
 	if parsed.SQLStateCode != "" {
 		logMessage += fmt.Sprintf(` sqlstate=%s`, strconv.Quote(parsed.SQLStateCode))
+		if parsed.ErrorName != "" {
+			logMessage += fmt.Sprintf(` error_name=%s`, strconv.Quote(parsed.ErrorName))
+		}
 		if parsed.ErrorCategory != "" {
 			logMessage += fmt.Sprintf(` sqlstate_class=%s`, strconv.Quote(parsed.ErrorCategory))
 		}
-		if parsed.SQLStateClass != "" {
-			logMessage += fmt.Sprintf(` sqlstate_class_code=%s`, strconv.Quote(parsed.SQLStateClass))
+		if parsed.SQLStateCodeClass != "" {
+			logMessage += fmt.Sprintf(` sqlstate_class_code=%s`, strconv.Quote(parsed.SQLStateCodeClass))
 		}
 	}
 
@@ -621,32 +569,8 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` leader_pid=%d`, parsed.LeaderPID)
 	}
 
-	if parsed.LockType != "" {
-		logMessage += fmt.Sprintf(` lock_type=%s`, strconv.Quote(parsed.LockType))
-	}
-
 	if parsed.TimeoutType != "" {
 		logMessage += fmt.Sprintf(` timeout_type=%s`, strconv.Quote(parsed.TimeoutType))
-	}
-
-	if parsed.TupleLocation != "" {
-		logMessage += fmt.Sprintf(` tuple_location=%s`, strconv.Quote(parsed.TupleLocation))
-	}
-
-	if parsed.BlockerPID > 0 {
-		logMessage += fmt.Sprintf(` blocker_pid=%d`, parsed.BlockerPID)
-	}
-
-	if parsed.BlockerQuery != "" {
-		logMessage += fmt.Sprintf(` blocker_query=%s`, strconv.Quote(parsed.BlockerQuery))
-	}
-
-	if parsed.AuthMethod != "" {
-		logMessage += fmt.Sprintf(` auth_method=%s`, strconv.Quote(parsed.AuthMethod))
-	}
-
-	if parsed.HBALineNumber != "" {
-		logMessage += fmt.Sprintf(` hba_line=%s`, strconv.Quote(parsed.HBALineNumber))
 	}
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
