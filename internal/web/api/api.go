@@ -57,6 +57,11 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager, a.logger))
 	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
+
+	// Targets endpoints for scrape target status
+	r.Handle(path.Join(urlPrefix, "/targets"), httputil.CompressionHandler{Handler: getTargetsHandler(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/targets"), httputil.CompressionHandler{Handler: getTargetsHandlerRemoteCfg(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/targets"), httputil.CompressionHandler{Handler: getTargetsHandler(a.alloy)})
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
