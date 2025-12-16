@@ -150,8 +150,8 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 						for _, label := range metric.GetLabel() {
 							labels[label.GetName()] = label.GetValue()
 						}
-						require.Equal(t, "53", labels["sqlstate_code_class"], "sqlstate_code_class label should be 53")
-						require.Equal(t, "53300", labels["sqlstate_code"], "sqlstate_code should be 53300")
+						require.Equal(t, "53", labels["sqlstate_class"], "sqlstate_class label should be 53")
+						require.Equal(t, "53300", labels["sqlstate"], "sqlstate_code should be 53300")
 						require.Equal(t, "too_many_connections", labels["error_name"], "error_name label should be too_many_connections")
 						require.Equal(t, "conn_limited", labels["user"], "user label should be conn_limited")
 					}
@@ -170,13 +170,13 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 					if mf.GetName() == "postgres_errors_by_sqlstate_query_user_total" {
 						found = true
 						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						// Find the metric with sqlstate_code_class="28" (auth errors)
+						// Find the metric with sqlstate_class="28" (auth errors)
 						for _, metric := range mf.GetMetric() {
 							labels := make(map[string]string)
 							for _, label := range metric.GetLabel() {
 								labels[label.GetName()] = label.GetValue()
 							}
-							if labels["sqlstate_code_class"] == "28" {
+							if labels["sqlstate_class"] == "28" {
 								require.Equal(t, "app-user", labels["user"], "user label should be set")
 								require.Equal(t, "invalid_password", labels["error_name"], "error_name should be invalid_password")
 								break
@@ -204,9 +204,9 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 							for _, label := range metric.GetLabel() {
 								labels[label.GetName()] = label.GetValue()
 							}
-							if labels["sqlstate_code"] == "57014" {
+							if labels["sqlstate"] == "57014" {
 								foundMetric = true
-								require.Equal(t, "57", labels["sqlstate_code_class"], "sqlstate_code_class label should be 57")
+								require.Equal(t, "57", labels["sqlstate_class"], "sqlstate_class label should be 57")
 								require.Equal(t, "query_canceled", labels["error_name"], "error_name label should be query_canceled")
 								require.Equal(t, "app-user", labels["user"], "user label should be app-user")
 								break
@@ -230,13 +230,13 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 					if mf.GetName() == "postgres_errors_by_sqlstate_query_user_total" {
 						found = true
 						require.Greater(t, len(mf.GetMetric()), 0, "should have at least one metric")
-						// Find the metric with sqlstate_code_class="08" (connection errors)
+						// Find the metric with sqlstate_class="08" (connection errors)
 						for _, metric := range mf.GetMetric() {
 							labels := make(map[string]string)
 							for _, label := range metric.GetLabel() {
 								labels[label.GetName()] = label.GetValue()
 							}
-							if labels["sqlstate_code_class"] == "08" {
+							if labels["sqlstate_class"] == "08" {
 								require.Equal(t, "myuser", labels["user"], "user label should be set")
 								require.Equal(t, "connection_failure", labels["error_name"], "error_name should be connection_failure")
 								break
