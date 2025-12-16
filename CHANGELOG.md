@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- `prometheus.exporter.cloudwatch` now has job level `period`, `length`, and `add_cloudwatch_timestamp` options for both discovery and custom namespace jobs. Furthermore it exposes a top level `labels_snake_case` option. (@tmeijn)
+
 ## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
 

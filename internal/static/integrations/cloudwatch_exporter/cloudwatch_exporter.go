@@ -33,7 +33,7 @@ type exporter struct {
 	logger               *slog.Logger
 	cachingClientFactory cachingFactory
 	scrapeConf           yaceModel.JobsConfig
-	labelsSnakeCase    bool
+	labelsSnakeCase      bool
 }
 
 // NewCloudwatchExporter creates a new YACE wrapper, that implements Integration
@@ -58,7 +58,7 @@ func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsCo
 		logger:               l,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
-		labelsSnakeCase:    labelsSnakeCase,
+		labelsSnakeCase:      labelsSnakeCase,
 	}, nil
 }
 

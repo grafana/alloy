@@ -26,7 +26,7 @@ var defaults = Arguments{
 		Enabled:        false,
 		ScrapeInterval: 5 * time.Minute,
 	},
-	LabelsSnakeCase: false,
+	LabelsSnakeCase:   false,
 	UseAWSSDKVersion2: false,
 }
 
@@ -40,7 +40,7 @@ type Arguments struct {
 	Static                []StaticJob           `alloy:"static,block,optional"`
 	CustomNamespace       []CustomNamespaceJob  `alloy:"custom_namespace,block,optional"`
 	DecoupledScrape       DecoupledScrapeConfig `alloy:"decoupled_scraping,block,optional"`
-	LabelsSnakeCase     bool                  `alloy:"labels_snake_case,attr,optional"`
+	LabelsSnakeCase       bool                  `alloy:"labels_snake_case,attr,optional"`
 	UseAWSSDKVersion2     bool                  `alloy:"aws_sdk_version_v2,attr,optional"`
 }
 
@@ -273,10 +273,10 @@ func toYACEMetrics(ms []Metric, jobPeriod time.Duration, jobLength time.Duration
 		}
 
 		/* Scenarios:
-			- Period and length are zero (not set) -> Period = "5m", Length = "5m". These defaults are set by YACE.
-			- Period = 1m, Length = 0m -> Period = "1m", Length = "1m". Length is set equal to Period by this function.
-			- Period = 0, Length = 10m -> Period = "5m", Length = "10m". Period is set to the default value by YACE.
-			- Period = 10m, Length = 2m -> Period = "10m", Length = "2m". This is not a valid configuration and will cause an error produced by YACE. See https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/292db29c1537af84a5e831b007bc9ff501708eaa/pkg/config/config.go#L390
+		- Period and length are zero (not set) -> Period = "5m", Length = "5m". These defaults are set by YACE.
+		- Period = 1m, Length = 0m -> Period = "1m", Length = "1m". Length is set equal to Period by this function.
+		- Period = 0, Length = 10m -> Period = "5m", Length = "10m". Period is set to the default value by YACE.
+		- Period = 10m, Length = 2m -> Period = "10m", Length = "2m". This is not a valid configuration and will cause an error produced by YACE. See https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/292db29c1537af84a5e831b007bc9ff501708eaa/pkg/config/config.go#L390
 		*/
 		yaceMetrics = append(yaceMetrics, &yaceConf.Metric{
 			Name:       m.Name,
@@ -343,7 +343,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		CustomTags:                rj.CustomTags.toYACE(),
 		SearchTags:                rj.SearchTags.toYACE(),
 		DimensionNameRequirements: rj.DimensionNameRequirements,
-		RecentlyActiveOnly: rj.RecentlyActiveOnly,
+		RecentlyActiveOnly:        rj.RecentlyActiveOnly,
 		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
 			AddCloudwatchTimestamp: rj.AddCloudwatchTimestamp,
 			Period:                 int64(rj.Period.Seconds()),
@@ -369,7 +369,7 @@ func toYACECustomNamespaceJob(cn CustomNamespaceJob) *yaceConf.CustomNamespace {
 		Roles:                     toYACERoles(cn.Auth.Roles),
 		CustomTags:                cn.CustomTags.toYACE(),
 		DimensionNameRequirements: cn.DimensionNameRequirements,
-		RecentlyActiveOnly: cn.RecentlyActiveOnly,
+		RecentlyActiveOnly:        cn.RecentlyActiveOnly,
 		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
 			AddCloudwatchTimestamp: cn.AddCloudwatchTimestamp,
 			Period:                 int64(cn.Period.Seconds()),

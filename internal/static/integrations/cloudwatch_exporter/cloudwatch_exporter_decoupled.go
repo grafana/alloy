@@ -26,7 +26,7 @@ type asyncExporter struct {
 	cachingClientFactory cachingFactory
 	scrapeConf           yaceModel.JobsConfig
 	registry             atomic.Pointer[prometheus.Registry]
-	labelsSnakeCase    bool
+	labelsSnakeCase      bool
 	// scrapeInterval is the frequency in which a background go-routine collects new AWS metrics via YACE.
 	scrapeInterval time.Duration
 }
@@ -54,7 +54,7 @@ func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceMod
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		registry:             atomic.Pointer[prometheus.Registry]{},
-		labelsSnakeCase:    labelsSnakeCase,
+		labelsSnakeCase:      labelsSnakeCase,
 		scrapeInterval:       scrapeInterval,
 	}, nil
 }
