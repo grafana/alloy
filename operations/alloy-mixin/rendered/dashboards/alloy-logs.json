@@ -146,15 +146,12 @@
             "x": 0,
             "y": 0
          },
-         "id": 1,
-         "maxDataPoints": 100,
          "options": {
             "tooltip": {
                "mode": "multi",
                "sort": "desc"
             }
          },
-         "pluginVersion": "v11.0.0",
          "targets": [
             {
                "datasource": {
@@ -188,7 +185,6 @@
             "x": 0,
             "y": 6
          },
-         "id": 2,
          "options": {
             "dedupStrategy": "exact",
             "enableLogDetails": true,
@@ -196,7 +192,6 @@
             "showTime": false,
             "wrapLogMessage": true
          },
-         "pluginVersion": "v11.0.0",
          "targets": [
             {
                "datasource": {
@@ -312,7 +307,7 @@
       ]
    },
    "time": {
-      "from": "now-6h",
+      "from": "now-1h",
       "to": "now"
    },
    "timepicker": {

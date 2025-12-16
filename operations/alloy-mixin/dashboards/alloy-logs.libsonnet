@@ -157,13 +157,6 @@ local filename = 'alloy-logs.json';
         dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
         dashboard.withUID(std.md5(filename)) +
         dashboard.withTemplateVariablesMixin(lokiTemplateVariables) +
-        {
-          // Override time range to 6h instead of default 1h
-          time: {
-            from: 'now-6h',
-            to: 'now',
-          },
-        } +
         dashboard.withPanelsMixin([
           // Logs volume panel
           (
@@ -187,9 +180,6 @@ local filename = 'alloy-logs.json';
               },
             ]) +
             {
-              id: 1,
-              maxDataPoints: 100,
-              pluginVersion: 'v11.0.0',
               fieldConfig: {
                 defaults: {
                   custom: {
@@ -346,8 +336,6 @@ local filename = 'alloy-logs.json';
               },
             ]) +
             {
-              id: 2,
-              pluginVersion: 'v11.0.0',
               options: {
                 dedupStrategy: 'exact',
                 enableLogDetails: true,
