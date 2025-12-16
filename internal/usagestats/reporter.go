@@ -8,8 +8,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/dskit/multierror"
 )
 
 var (
@@ -56,9 +54,8 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]in
 				continue
 			}
 			level.Info(rep.logger).Log("msg", "reporting Alloy stats", "date", time.Now())
-			if err := rep.reportUsage(ctx, next, metricsFunc()); err != nil {
+			if err := sendReport(ctx, rep.seed, next, metricsFunc()); err != nil {
 				level.Info(rep.logger).Log("msg", "failed to report usage", "err", err)
-				continue
 			}
 			rep.lastReport = next
 			next = next.Add(reportInterval)
@@ -66,27 +63,6 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]in
 			return ctx.Err()
 		}
 	}
-}
-
-// reportUsage reports the usage to grafana.com.
-func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metrics map[string]interface{}) error {
-	backoff := backoff.New(ctx, backoff.Config{
-		MinBackoff: time.Second,
-		MaxBackoff: 30 * time.Second,
-		MaxRetries: 5,
-	})
-	var errs multierror.MultiError
-	for backoff.Ongoing() {
-		if err := sendReport(ctx, rep.seed, interval, metrics); err != nil {
-			level.Info(rep.logger).Log("msg", "failed to send usage report", "retries", backoff.NumRetries(), "err", err)
-			errs.Add(err)
-			backoff.Wait()
-			continue
-		}
-		level.Info(rep.logger).Log("msg", "usage report sent with success")
-		return nil
-	}
-	return errs.Err()
 }
 
 // nextReport compute the next report time based on the interval. The interval
