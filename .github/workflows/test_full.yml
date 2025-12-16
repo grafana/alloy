@@ -15,7 +15,7 @@ jobs:
     name: Test (Full)
     runs-on: ubuntu-latest-8-cores
     container:
-      image: grafana/alloy-build-image:v0.1.24@sha256:b9e3a399fbe04179cf26896c8efdc65ad294a425e955a3be1cbd0885d87d7025
+      image: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
       volumes:
         - /var/run/docker.sock
     steps:
