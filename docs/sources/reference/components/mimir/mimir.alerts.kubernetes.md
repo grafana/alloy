@@ -170,7 +170,6 @@ The `strategy` argument should be one of the following strings:
 * `"OnNamespaceExceptForAlertmanagerNamespace"`: The same as `"OnNamespace"`, except for AlertmanagerConfigs in the namespace given by `alertmanager_namespace`, which apply to all alerts.
 * `"None"`: Every AlertmanagerConfig object applies to all alerts
 
-
 `strategy` is similar to the [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] in Prometheus Operator, but it is configured in Alloy instead of in an Alertmanager CRD.
 Alloy does not require an Alertmanager CRD.
 
@@ -494,6 +493,70 @@ alertmanager_config: |
       - receiver: testing/alertmgr-config2/null
         matchers:
         - namespace="testing"
+        continue: true
+        routes:
+        - receiver: testing/alertmgr-config2/database-pager
+          matchers:
+          - service="webapp"
+          continue: false
+          group_wait: 10s
+    receivers:
+    - name: "null"
+    - name: alloy-namespace/global-config/myreceiver
+    - name: testing/alertmgr-config1/null
+    - name: testing/alertmgr-config1/myamc
+      webhook_configs:
+      - send_resolved: false
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+        url: <secret>
+        url_file: ""
+        max_alerts: 0
+        timeout: 0s
+    - name: testing/alertmgr-config2/null
+    - name: testing/alertmgr-config2/database-pager
+    templates:
+    - default_template
+```
+
+{{< /collapse >}}
+
+You can add the `alertmanagerconfig_matcher` block to Alloy's config to remove the added namespace matchers:
+
+```
+alertmanagerconfig_matcher {
+  strategy = "None"
+}
+```
+
+This results in the following final configuration:
+
+{{< collapse title="Example merged configuration sent to Mimir." >}}
+
+```yaml
+template_files:
+    default_template: |-
+        {{ define "__alertmanager" }}AlertManager{{ end }}
+        {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}
+alertmanager_config: |
+    global:
+      resolve_timeout: 5m
+      http_config:
+        follow_redirects: true
+        enable_http2: true
+      smtp_hello: localhost
+      smtp_require_tls: true
+    route:
+      receiver: "null"
+      continue: false
+      routes:
+      - receiver: testing/alertmgr-config1/null
+        continue: true
+        routes:
+        - receiver: testing/alertmgr-config1/myamc
+          continue: true
+      - receiver: testing/alertmgr-config2/null
         continue: true
         routes:
         - receiver: testing/alertmgr-config2/database-pager
