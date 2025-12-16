@@ -170,8 +170,8 @@ The `strategy` argument should be one of the following strings:
 * `"OnNamespaceExceptForAlertmanagerNamespace"`: The same as `"OnNamespace"`, except for AlertmanagerConfigs in the namespace given by `alertmanager_namespace`, which apply to all alerts.
 * `"None"`: Every AlertmanagerConfig object applies to all alerts
 
-`strategy` is similar to the [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] in Prometheus Operator, but it is configured in Alloy instead of in an Alertmanager CRD.
-Alloy does not require an Alertmanager CRD.
+`strategy` is similar to the [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] in Prometheus Operator, but it is configured in {{< param "PRODUCT_NAME" >}} instead of in an Alertmanager CRD.
+{{< param "PRODUCT_NAME" >}} doesn't require an Alertmanager CRD.
 
 [alertmanager-config-matcher-strategy]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.AlertmanagerConfigMatcherStrategy
 
