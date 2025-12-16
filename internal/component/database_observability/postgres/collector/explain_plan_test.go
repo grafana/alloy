@@ -2255,7 +2255,8 @@ func TestNewExplainPlan(t *testing.T) {
 	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
-	pre17ver, err := semver.ParseTolerant("14.1")
+	pre17ver := "14.1"
+	pre17semver, err := semver.ParseTolerant(pre17ver)
 	require.NoError(t, err)
 
 	args := ExplainPlanArguments{
@@ -2276,7 +2277,7 @@ func TestNewExplainPlan(t *testing.T) {
 	require.NotNil(t, explainPlan)
 	assert.Equal(t, db, explainPlan.dbConnection)
 	assert.Equal(t, args.DSN, explainPlan.dbDSN)
-	assert.Equal(t, args.DBVersion, explainPlan.dbVersion)
+	assert.Equal(t, pre17semver, explainPlan.dbVersion)
 	assert.Equal(t, args.ScrapeInterval, explainPlan.scrapeInterval)
 	assert.Equal(t, args.PerScrapeRatio, explainPlan.perScrapeRatio)
 	assert.Equal(t, args.ExcludeSchemas, explainPlan.excludeSchemas)
