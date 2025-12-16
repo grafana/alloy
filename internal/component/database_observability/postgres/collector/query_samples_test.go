@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -30,6 +29,14 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 	xactStartTime := now.Add(-2 * time.Minute)    // 2 minutes ago
 	backendStartTime := now.Add(-1 * time.Hour)   // 1 hour ago
 
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+	}
+
 	testCases := []struct {
 		name                  string
 		setupMock             func(mock sqlmock.Sqlmock)
@@ -42,13 +49,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			name: "active query without wait event",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}).AddRow(
+					WillReturnRows(sqlmock.NewRows(columns).AddRow(
 						now, "testdb", 100, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{Int32: 500, Valid: true}, sql.NullInt32{Int32: 400, Valid: true},
@@ -57,13 +58,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}))
+					WillReturnRows(sqlmock.NewRows(columns))
 			},
 
 			expectedLabels: []model.LabelSet{
@@ -77,13 +72,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			name: "parallel query with leader PID",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}).AddRow(
+					WillReturnRows(sqlmock.NewRows(columns).AddRow(
 						now, "testdb", 101, sql.NullInt64{Int64: 100, Valid: true},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"parallel worker", now, sql.NullInt32{}, sql.NullInt32{},
@@ -92,13 +81,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}))
+					WillReturnRows(sqlmock.NewRows(columns))
 			},
 
 			expectedLabels: []model.LabelSet{
@@ -112,13 +95,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			name: "query with wait event",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}).AddRow(
+					WillReturnRows(sqlmock.NewRows(columns).AddRow(
 						now, "testdb", 102, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
@@ -127,13 +104,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}))
+					WillReturnRows(sqlmock.NewRows(columns))
 			},
 
 			expectedLabels: []model.LabelSet{
@@ -149,14 +120,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			name: "insufficient privilege query - no loki entries expected",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-						"query",
-					}).AddRow(
+					WillReturnRows(sqlmock.NewRows(append(columns, "query")).AddRow(
 						now, "testdb", 103, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
@@ -166,14 +130,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					))
 				// Second scrape: empty to complete cycle
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-						"query",
-					}))
+					WillReturnRows(sqlmock.NewRows(append(columns, "query")))
 			},
 			disableQueryRedaction: true,
 			expectedErrorLine:     `err="insufficient privilege to access query`,
@@ -184,13 +141,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			name: "null database name - no loki entries expected",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}).AddRow(
+					WillReturnRows(sqlmock.NewRows(columns).AddRow(
 						now, sql.NullString{Valid: false}, 104, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
@@ -199,13 +150,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					))
 				// Second scrape: empty to complete cycle
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-					}))
+					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedErrorLine: `err="database name is not valid`,
 			expectedLabels:    []model.LabelSet{}, // No Loki entries expected
@@ -215,14 +160,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			name: "query with redaction disabled",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-						"query",
-					}).AddRow(
+					WillReturnRows(sqlmock.NewRows(append(columns, "query")).AddRow(
 						now, "testdb", 106, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
@@ -232,14 +170,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, excludeCurrentUserClause)).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{
-						"now", "datname", "pid", "leader_pid",
-						"usename", "application_name", "client_addr", "client_port",
-						"backend_type", "backend_start", "backend_xid", "backend_xmin",
-						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
-						"query",
-					}))
+					WillReturnRows(sqlmock.NewRows(append(columns, "query")))
 			},
 			disableQueryRedaction: true,
 			expectedLabels: []model.LabelSet{
@@ -265,7 +196,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:                    db,
-				CollectInterval:       10 * time.Millisecond,
+				CollectInterval:       time.Millisecond,
 				EntryHandler:          lokiClient,
 				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				DisableQueryRedaction: tc.disableQueryRedaction,
@@ -274,51 +205,40 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
 
-			// Setup mock expectations
 			tc.setupMock(mock)
 
-			err = sampleCollector.Start(t.Context())
-			require.NoError(t, err)
+			require.NoError(t, sampleCollector.Start(t.Context()))
 
-			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
-			require.EventuallyWithT(t, func(t *assert.CollectT) {
-				entries := lokiClient.Received()
-				require.Len(t, entries, len(tc.expectedLines))
+			// For error cases, wait for error message in logs
+			if tc.expectedErrorLine != "" {
+				require.Eventually(t, func() bool {
+					return strings.Contains(logBuffer.String(), tc.expectedErrorLine)
+				}, 5*time.Second, 100*time.Millisecond)
+			}
 
-				require.Contains(t, logBuffer.String(), tc.expectedErrorLine)
-
-				for i, entry := range entries {
-					if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
-						t.Errorf("expected label %v, got %v", tc.expectedLabels[i], entry.Labels)
-					}
-					require.Contains(t, entry.Line, tc.expectedLines[i])
-					// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
-					expectedTimestamp := time.Unix(0, now.UnixNano())
-					require.True(t, entry.Timestamp.Equal(expectedTimestamp))
-				}
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == len(tc.expectedLines)
 			}, 5*time.Second, 100*time.Millisecond)
 
-			sampleCollector.Stop()
+			entries := lokiClient.Received()
+			for i, entry := range entries {
+				if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
+					t.Errorf("expected label %v, got %v", tc.expectedLabels[i], entry.Labels)
+				}
+				require.Equal(t, entry.Line, tc.expectedLines[i])
+				// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
+				expectedTimestamp := time.Unix(0, now.UnixNano())
+				require.True(t, entry.Timestamp.Equal(expectedTimestamp))
+			}
 
-			// Wait for the collector to stop
+			sampleCollector.Stop()
 			require.Eventually(t, func() bool {
 				return sampleCollector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
-			lokiClient.Stop()
-
-			// Give time for goroutines to clean up
-			time.Sleep(100 * time.Millisecond)
-			// Run this after Stop() to avoid race conditions
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
-
-			lokiEntries := lokiClient.Received()
-			require.Equal(t, len(tc.expectedLines), len(lokiEntries))
-			for i, entry := range lokiEntries {
-				require.Equal(t, tc.expectedLabels[i], entry.Labels)
-				require.Equal(t, tc.expectedLines[i], entry.Line)
-			}
+			require.Eventually(t, func() bool {
+				return mock.ExpectationsWereMet() == nil
+			}, 5*time.Second, 100*time.Millisecond)
 		})
 	}
 }
@@ -342,16 +262,19 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 	}
 
 	t.Run("finalize on disappear after active scrape", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -375,33 +298,41 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 1)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
-			expectedTimestamp := time.Unix(0, now.UnixNano())
-			require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 1)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
+		expectedTimestamp := time.Unix(0, now.UnixNano())
+		require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("wait-event merges across scrapes with normalized PID set", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -435,32 +366,40 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 2)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="12s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[1].Line)
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="12s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[1].Line)
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("wait-event closes on no-wait row; single occurrence emitted", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -494,33 +433,41 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 2)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'"`, entries[0].Line)
-			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Line)
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'"`, entries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Line)
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("cpu persists across waits", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -554,33 +501,41 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 2)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9002" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
-			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[1].Line)
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9002" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[1].Line)
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("wait-event starts new occurrence on set change", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -614,22 +569,27 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 3)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9003" query="UPDATE t SET c=1"`, entries[0].Line)
-			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003"`, entries[1].Line)
-			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="8s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003"`, entries[2].Line)
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 3)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9003" query="UPDATE t SET c=1"`, entries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003"`, entries[1].Line)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
+		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="8s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003"`, entries[2].Line)
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
 
@@ -652,16 +612,19 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 	}
 
 	t.Run("emit at idle state with end at state_change", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -692,35 +655,42 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 1)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Line, `query_time="20s"`)
-			require.Contains(t, entries[0].Line, `cpu_time="10s"`)
-			expectedTs := time.Unix(0, stateChangeTime.UnixNano())
-			require.True(t, entries[0].Timestamp.Equal(expectedTs))
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
 
-		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+		entries := lokiClient.Received()
+		require.Len(t, entries, 1)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Contains(t, entries[0].Line, `query_time="20s"`)
+		require.Contains(t, entries[0].Line, `cpu_time="10s"`)
+		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
+		require.True(t, entries[0].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("idle-only emitted once and deduped across scrapes", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -751,35 +721,41 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 1)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Line, `query_time="20s"`)
-			expectedTs := time.Unix(0, stateChangeTime.UnixNano())
-			require.True(t, entries[0].Timestamp.Equal(expectedTs))
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
 
-		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+		entries := lokiClient.Received()
+		require.Len(t, entries, 1)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Contains(t, entries[0].Line, `query_time="20s"`)
+		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
+		require.True(t, entries[0].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("idle in transaction (aborted) emitted once and deduped across scrapes", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -810,35 +786,41 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 1)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			// End timestamp should match state_change
-			expectedTs := time.Unix(0, stateChangeTime.UnixNano())
-			require.True(t, entries[0].Timestamp.Equal(expectedTs))
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
 
-		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+		entries := lokiClient.Received()
+		require.Len(t, entries, 1)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		// End timestamp should match state_change
+		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
+		require.True(t, entries[0].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("two idle-only keys emit separately and dedup individually", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       10 * time.Millisecond,
+			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -887,33 +869,36 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 2)
-			// Both entries should be OP_QUERY_SAMPLE
-			for _, e := range entries {
-				require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, e.Labels)
-			}
-			// Ensure both queryids are present among the two entries
-			var seen22002, seen23002 bool
-			for _, e := range entries {
-				if strings.Contains(e.Line, `queryid="22002"`) {
-					seen22002 = true
-				}
-				if strings.Contains(e.Line, `queryid="23002"`) {
-					seen23002 = true
-				}
-			}
-			require.True(t, seen22002 && seen23002)
-		}, 5*time.Second, 50*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
 
-		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		// Both entries should be OP_QUERY_SAMPLE
+		for _, e := range entries {
+			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, e.Labels)
+		}
+		// Ensure both queryids are present among the two entries
+		var seen22002, seen23002 bool
+		for _, e := range entries {
+			if strings.Contains(e.Line, `queryid="22002"`) {
+				seen22002 = true
+			}
+			if strings.Contains(e.Line, `queryid="23002"`) {
+				seen23002 = true
+			}
+		}
+		require.True(t, seen22002 && seen23002)
 
 		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
 
@@ -965,7 +950,7 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:                 db,
-				CollectInterval:    10 * time.Millisecond,
+				CollectInterval:    time.Millisecond,
 				EntryHandler:       lokiClient,
 				Logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				ExcludeCurrentUser: tc.excludeCurrentUser,
@@ -990,27 +975,21 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 			err = sampleCollector.Start(t.Context())
 			require.NoError(t, err)
 
-			// Wait for collector to process queries
-			require.EventuallyWithT(t, func(t *assert.CollectT) {
-				entries := lokiClient.Received()
-				require.Len(t, entries, 1)
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == 1
 			}, 5*time.Second, 100*time.Millisecond)
 
-			sampleCollector.Stop()
+			entries := lokiClient.Received()
+			require.Len(t, entries, 1)
 
-			// Wait for the collector to stop
+			sampleCollector.Stop()
 			require.Eventually(t, func() bool {
 				return sampleCollector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
-			lokiClient.Stop()
-
-			// Give time for goroutines to clean up
-			time.Sleep(100 * time.Millisecond)
-
-			// Verify mock expectations were met (verifies correct SQL query was used)
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				return mock.ExpectationsWereMet() == nil
+			}, 5*time.Second, 100*time.Millisecond)
 		})
 	}
 }
