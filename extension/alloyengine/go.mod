@@ -1,4 +1,4 @@
-module github.com/grafana/alloy/otelcol/extension/alloyengine
+module github.com/grafana/alloy/extension/alloyengine
 
 go 1.25.5
 
@@ -9,7 +9,9 @@ replace github.com/grafana/alloy/syntax => ../../syntax
 require (
 	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.10.1
+	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.45.0
+	go.opentelemetry.io/collector/component/componenttest v0.139.0
 	go.opentelemetry.io/collector/extension v1.45.0
 	go.uber.org/zap v1.27.0
 )
@@ -760,7 +762,6 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stackitcloud/stackit-sdk-go/core v0.17.3 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.480 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cvm v1.0.480 // indirect
@@ -821,7 +822,6 @@ require (
 	go.opentelemetry.io/collector v0.139.0 // indirect
 	go.opentelemetry.io/collector/client v1.45.0 // indirect
 	go.opentelemetry.io/collector/component/componentstatus v0.139.0 // indirect
-	go.opentelemetry.io/collector/component/componenttest v0.139.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v1.45.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.45.0 // indirect
 	go.opentelemetry.io/collector/config/configgrpc v0.139.0 // indirect
