@@ -87,6 +87,7 @@ ALLOYLINT_BINARY     		?= build/alloylint
 BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -244,7 +245,7 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro test-mixin
 generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
 
 generate-helm-docs:
@@ -307,6 +308,28 @@ else
 	cd operations/alloy-mixin && $(JB) install
 	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
 	$(JSONNET) -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
+	@$(MAKE) test-mixin
+endif
+
+.PHONY: test-mixin
+test-mixin:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@echo "Running Jsonnet tests..."
+	@for test in operations/alloy-mixin/test/*_test.jsonnet; do \
+		echo "Testing $$test..."; \
+		$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor "$$test" || exit 1; \
+		echo ""; \
+	done
+	@echo "✅ All Jsonnet tests passed!"
+	@echo "Validating dashboards with Grizzly..."
+	@for dashboard in operations/alloy-mixin/rendered/dashboards/*.json; do \
+		echo "  Validating $$dashboard..."; \
+		$(GRIZZLY) show "$$dashboard" > /dev/null || exit 1; \
+	done
+	@echo "Grizzly validation passed!"
+	@echo "All mixin tests passed!"
 endif
 
 generate-snmp:
