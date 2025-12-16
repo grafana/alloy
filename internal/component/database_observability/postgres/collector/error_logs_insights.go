@@ -75,10 +75,10 @@ func (c *ErrorLogs) extractTransactionRollback(parsed *ParsedError) {
 
 		// Extract blocker query from detail (Process XXX: query)
 		if parsed.BlockerPID > 0 {
-			matches := processQueryPattern.FindAllStringSubmatch(detail, -1)
-			for _, match := range matches {
-				if len(match) > 2 {
-					if pid, err := strconv.ParseInt(match[1], 10, 32); err == nil {
+		matches := processQueryPattern.FindAllStringSubmatch(detail, -1)
+		for _, match := range matches {
+			if len(match) > 2 {
+				if pid, err := strconv.ParseInt(match[1], 10, 32); err == nil {
 						if int32(pid) == parsed.BlockerPID {
 							parsed.BlockerQuery = strings.TrimSpace(match[2])
 							break

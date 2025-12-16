@@ -59,8 +59,6 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 			entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 			collector, err := NewErrorLogs(ErrorLogsArguments{
 				Receiver:     loki.NewLogsReceiver(),
-				Severities:   []string{"ERROR", "FATAL", "PANIC"},
-				PassThrough:  false,
 				EntryHandler: entryHandler,
 				Logger:       log.NewNopLogger(),
 				InstanceKey:  "test-instance",
@@ -95,8 +93,6 @@ func TestErrorLogsCollector_StartStop(t *testing.T) {
 
 	collector, err := NewErrorLogs(ErrorLogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"ERROR", "FATAL", "PANIC"},
-		PassThrough:  false,
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test",
@@ -125,8 +121,6 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 
 	collector, err := NewErrorLogs(ErrorLogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"ERROR", "FATAL", "PANIC"},
-		PassThrough:  false,
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test",

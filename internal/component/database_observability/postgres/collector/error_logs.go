@@ -22,6 +22,9 @@ import (
 const ErrorLogsCollector = "error_logs"
 const OP_ERROR_LOGS = "error_logs"
 
+// Supported error severities that will be processed
+var supportedSeverities = []string{"ERROR", "FATAL", "PANIC"}
+
 // PostgreSQLJSONLog represents the structure of a PostgreSQL JSON log entry.
 // See: https://www.postgresql.org/docs/current/runtime-config-logging.html
 type PostgreSQLJSONLog struct {
@@ -140,8 +143,6 @@ type ParsedError struct {
 
 type ErrorLogsArguments struct {
 	Receiver     loki.LogsReceiver
-	Severities   []string
-	PassThrough  bool
 	EntryHandler loki.EntryHandler
 	Logger       log.Logger
 	InstanceKey  string
@@ -158,10 +159,6 @@ type ErrorLogs struct {
 
 	// Input receiver (exported for loki.source.* to forward to)
 	receiver loki.LogsReceiver
-
-	// Configuration
-	severities      map[string]bool
-	passThroughLogs bool
 
 	// Metrics
 	logsProcessed       prometheus.Counter
@@ -183,23 +180,16 @@ type ErrorLogs struct {
 func NewErrorLogs(args ErrorLogsArguments) (*ErrorLogs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	severityMap := make(map[string]bool)
-	for _, s := range args.Severities {
-		severityMap[s] = true
-	}
-
 	e := &ErrorLogs{
-		logger:          log.With(args.Logger, "collector", ErrorLogsCollector),
-		entryHandler:    args.EntryHandler,
-		instanceKey:     args.InstanceKey,
-		systemID:        args.SystemID,
-		registry:        args.Registry,
-		receiver:        args.Receiver,
-		severities:      severityMap,
-		passThroughLogs: args.PassThrough,
-		ctx:             ctx,
-		cancel:          cancel,
-		stopped:         atomic.NewBool(false),
+		logger:       log.With(args.Logger, "collector", ErrorLogsCollector),
+		entryHandler: args.EntryHandler,
+		instanceKey:  args.InstanceKey,
+		systemID:     args.SystemID,
+		registry:     args.Registry,
+		receiver:     args.Receiver,
+		ctx:          ctx,
+		cancel:       cancel,
+		stopped:      atomic.NewBool(false),
 	}
 
 	e.initMetrics()
@@ -300,8 +290,7 @@ func (c *ErrorLogs) Start(ctx context.Context) error {
 		"msg", "starting error_logs collector",
 		"instance", c.instanceKey,
 		"system_id", c.systemID,
-		"severities", fmt.Sprintf("%v", c.getSeverityList()),
-		"pass_through", c.passThroughLogs,
+		"severities", strings.Join(supportedSeverities, ","),
 	)
 
 	c.wg.Add(1)
@@ -350,27 +339,24 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 		level.Debug(c.logger).Log(
 			"msg", "failed to parse JSON log line",
 			"error", err,
-			"pass_through", c.passThroughLogs,
 		)
-		if c.passThroughLogs {
-			level.Debug(c.logger).Log("msg", "passing through non-JSON log line")
-			return c.passThrough(entry)
-		}
 		return nil
 	}
 
 	// 2. Check if we should process this severity
-	if !c.severities[jsonLog.ErrorSeverity] {
-		level.Debug(c.logger).Log(
-			"msg", "severity not in configured list, skipping",
-			"severity", jsonLog.ErrorSeverity,
-			"configured_severities", fmt.Sprintf("%v", c.getSeverityList()),
-			"pass_through", c.passThroughLogs,
-		)
-		if c.passThroughLogs {
-			level.Debug(c.logger).Log("msg", "passing through non-error log line")
-			return c.passThrough(entry)
+	isSupportedSeverity := false
+	for _, sev := range supportedSeverities {
+		if jsonLog.ErrorSeverity == sev {
+			isSupportedSeverity = true
+			break
 		}
+	}
+	if !isSupportedSeverity {
+		level.Debug(c.logger).Log(
+			"msg", "severity not supported, skipping",
+			"severity", jsonLog.ErrorSeverity,
+			"supported_severities", strings.Join(supportedSeverities, ","),
+		)
 		return nil
 	}
 
@@ -392,15 +378,6 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 
 	// 6. Emit to Loki
 	return c.emitToLoki(parsed)
-}
-
-func (c *ErrorLogs) passThrough(entry loki.Entry) error {
-	select {
-	case c.entryHandler.Chan() <- entry:
-	case <-c.ctx.Done():
-		return nil
-	}
-	return nil
 }
 
 func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, error) {
@@ -717,13 +694,4 @@ func truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
-}
-
-// Helper function to get the list of configured severities
-func (c *ErrorLogs) getSeverityList() []string {
-	severities := make([]string, 0, len(c.severities))
-	for severity := range c.severities {
-		severities = append(severities, severity)
-	}
-	return severities
 }

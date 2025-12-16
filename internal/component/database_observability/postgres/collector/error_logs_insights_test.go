@@ -14,8 +14,6 @@ func TestErrorLogsCollector_ExtractTransactionRollback(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	collector, err := NewErrorLogs(ErrorLogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"ERROR"},
-		PassThrough:  false,
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test",
@@ -92,8 +90,6 @@ func TestErrorLogsCollector_ExtractAuthFailure(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	collector, err := NewErrorLogs(ErrorLogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"FATAL"},
-		PassThrough:  false,
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test",
@@ -169,8 +165,6 @@ func TestErrorLogsCollector_ExtractTimeoutError(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	collector, err := NewErrorLogs(ErrorLogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
-		Severities:   []string{"ERROR"},
-		PassThrough:  false,
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test",

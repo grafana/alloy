@@ -72,7 +72,6 @@ type Arguments struct {
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
-	ErrorLogArguments      *ErrorLogArguments     `alloy:"error_logs,block,optional"`
 }
 
 type CloudProvider struct {
@@ -117,24 +116,12 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 	},
-	ErrorLogArguments: &ErrorLogArguments{
-		Severities:  []string{"ERROR", "FATAL", "PANIC"},
-		PassThrough: true,
-	},
 }
 
 type ExplainPlanArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
-}
-
-type ErrorLogArguments struct {
-	// Only process specific severities
-	Severities []string `alloy:"severities,attr,optional"`
-
-	// Pass through non-error logs unchanged
-	PassThrough bool `alloy:"pass_through,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -505,8 +492,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
 		Receiver:     c.errorLogsReceiver,
-		Severities:   errorLogArgs.Severities,
-		PassThrough:  errorLogArgs.PassThrough,
 		EntryHandler: entryHandler,
 		Logger:       c.opts.Logger,
 		InstanceKey:  c.instanceKey,
