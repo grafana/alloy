@@ -17,7 +17,7 @@
           "subdir": "logs-lib/"
         }
       },
-      "version": "thampiotr/fix-logs-query"
+      "version": "master"
     },
     {
       "source": {
@@ -26,7 +26,7 @@
           "subdir": "logs-lib/logs"
         }
       },
-      "version": "thampiotr/fix-logs-query"
+      "version": "master"
     }
   ],
   "legacyImports": true
