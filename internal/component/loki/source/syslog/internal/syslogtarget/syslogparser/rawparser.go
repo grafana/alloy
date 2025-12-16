@@ -15,6 +15,7 @@ import (
 // ReadLineRaw reads a single syslog line without syslog contents parsing.
 //
 // Delimiter argument is used to determine line end for non-transparent framing.
+// Returns a nil value if line contents are empty.
 //
 // Meant to be used in UDP transport where a single syslog line is delivered per datagram.
 func ReadLineRaw(r io.Reader, delimiter byte) (*syslog.Base, error) {
@@ -29,7 +30,6 @@ func ReadLineRaw(r io.Reader, delimiter byte) (*syslog.Base, error) {
 	_ = buf.UnreadByte()
 	switch framingTypeFromFirstByte(b) {
 	case framingTypeNonTransparent:
-		// TODO: read until newline
 		buff, err := buf.ReadBytes(delimiter)
 		if err != nil {
 			// Ignore io.EOF if some data was returned
@@ -39,7 +39,7 @@ func ReadLineRaw(r io.Reader, delimiter byte) (*syslog.Base, error) {
 		}
 
 		if len(buff) == 0 {
-			return nil, io.EOF
+			return nil, nil
 		}
 
 		// trim potential newline leftovers if called sequentially inside TCP conn.
