@@ -248,7 +248,7 @@
             "label": "Namespace",
             "multi": true,
             "name": "namespace",
-            "query": "label_values({,cluster=~\"$cluster\"}, namespace)",
+            "query": "label_values({cluster=~\"$cluster\"}, namespace)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -263,7 +263,7 @@
             "label": "Job",
             "multi": true,
             "name": "job",
-            "query": "label_values({,cluster=~\"$cluster\",namespace=~\"$namespace\"}, job)",
+            "query": "label_values({cluster=~\"$cluster\",namespace=~\"$namespace\"}, job)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -278,7 +278,7 @@
             "label": "Instance",
             "multi": true,
             "name": "instance",
-            "query": "label_values({,cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\"}, instance)",
+            "query": "label_values({cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\"}, instance)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -293,7 +293,7 @@
             "label": "Level",
             "multi": true,
             "name": "level",
-            "query": "label_values({,cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\"}, level)",
+            "query": "label_values({cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\"}, level)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

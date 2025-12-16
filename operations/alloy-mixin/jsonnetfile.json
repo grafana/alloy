@@ -5,7 +5,7 @@
       "source": {
         "git": {
           "remote": "https://github.com/grafana/grafonnet.git",
-          "subdir": "gen/grafonnet-v11.0.0"
+          "subdir": "gen/grafonnet-latest"
         }
       },
       "version": "main"
@@ -17,7 +17,7 @@
           "subdir": "logs-lib/"
         }
       },
-      "version": "master"
+      "version": "thampiotr/fix-logs-query"
     },
     {
       "source": {
@@ -26,7 +26,7 @@
           "subdir": "logs-lib/logs"
         }
       },
-      "version": "master"
+      "version": "thampiotr/fix-logs-query"
     }
   ],
   "legacyImports": true
