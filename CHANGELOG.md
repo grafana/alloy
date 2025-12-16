@@ -26,8 +26,6 @@ Main (unreleased)
 
 ### Enhancements
 
-- Add `cache` block to `faro.receiver.sourcemaps` block to configure sourcemap caching behavior. The `cache` block contains three optional attributes: `ttl` to specify the duration after which unused sourcemaps are cleared from cache, `error_cleanup_interval` to specify the duration after which cached sourcemap errors are removed, and `cleanup_check_interval` to specify how often to check if any sourcemaps need to be cleared. (@mgluhak)
-
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
 - Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
@@ -366,12 +364,6 @@ v1.11.0
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
 - Remove unnecessary allocations in `stage.static_labels`. (@kalleep)
-  
-- Add `cache_minimum_ttl` argument to `faro.receiver.sourcemaps` block to optionally specify the duration after which the cache map clears itself if sourcemap was not used for the specified duration (@mateagluhak)
-  
-- Add `cache_error_cleanup_interval` argument to `faro.receiver.sourcemaps` block to specify the duration after which the cached sourcemap errors are removed from the cache (@mateagluhak)
-
-- Add `cache_cleanup_check_interval` argument to `faro.receiver.sourcemaps` block to specify how often to check if any sourcemaps need to be cleared from the cache (@mateagluhak)
 
 - Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
 
