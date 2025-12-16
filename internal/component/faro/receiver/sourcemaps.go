@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -121,6 +122,12 @@ type sourceMapsStoreImpl struct {
 	cacheMut   sync.Mutex
 	cache      map[string]*cachedSourceMap
 	timeSource timeSource
+
+	cleanupMut    sync.Mutex
+	cleanupCtx    context.Context
+	cleanupCancel context.CancelFunc
+	cleanupWg     sync.WaitGroup
+	isStarted     bool
 }
 
 type cachedSourceMap struct {
@@ -228,6 +235,79 @@ func (store *sourceMapsStoreImpl) CleanCachedErrors() {
 			delete(store.cache, key)
 		}
 	}
+}
+
+// Start begins the cleanup routines based on configured cache intervals.
+func (store *sourceMapsStoreImpl) Start() {
+	store.cleanupMut.Lock()
+	defer store.cleanupMut.Unlock()
+
+	if store.isStarted {
+		return
+	}
+	store.isStarted = true
+
+	cacheConfig := store.args.Cache
+	if cacheConfig == nil {
+		return
+	}
+
+	store.cleanupCtx, store.cleanupCancel = context.WithCancel(context.Background())
+
+	if d := cacheConfig.CleanupCheckInterval; d > 0 {
+		store.cleanupWg.Add(1)
+		go func(interval time.Duration) {
+			defer store.cleanupWg.Done()
+			store.CleanOldCacheEntries()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-store.cleanupCtx.Done():
+					return
+				case <-ticker.C:
+					store.CleanOldCacheEntries()
+				}
+			}
+		}(d)
+	}
+
+	if d := cacheConfig.ErrorCleanupInterval; d > 0 {
+		store.cleanupWg.Add(1)
+		go func(interval time.Duration) {
+			defer store.cleanupWg.Done()
+			store.CleanCachedErrors()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-store.cleanupCtx.Done():
+					return
+				case <-ticker.C:
+					store.CleanCachedErrors()
+				}
+			}
+		}(d)
+	}
+}
+
+// Stop terminates all cleanup goroutines and waits for them to finish.
+func (store *sourceMapsStoreImpl) Stop() {
+	store.cleanupMut.Lock()
+	defer store.cleanupMut.Unlock()
+
+	if !store.isStarted {
+		return
+	}
+	store.isStarted = false
+
+	if store.cleanupCancel != nil {
+		store.cleanupCancel()
+		store.cleanupCancel = nil
+	}
+
+	store.cleanupWg.Wait()
+	store.cleanupCtx = nil
 }
 
 func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
