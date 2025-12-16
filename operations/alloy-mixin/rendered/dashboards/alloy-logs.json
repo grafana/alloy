@@ -1,4 +1,5 @@
 {
+   "graphTooltip": 1,
    "links": [
       {
          "asDropdown": true,
@@ -185,7 +186,7 @@
             "h": 18,
             "w": 24,
             "x": 0,
-            "y": 18
+            "y": 6
          },
          "id": 2,
          "options": {
@@ -210,25 +211,31 @@
       }
    ],
    "refresh": "10s",
-   "schemaVersion": 39,
+   "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
    ],
    "templating": {
       "list": [
          {
-            "label": "Loki data source",
+            "label": "Data Source",
+            "name": "datasource",
+            "query": "prometheus",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "label": "Loki Data Source",
             "name": "loki_datasource",
             "query": "loki",
-            "regex": "",
+            "refresh": 1,
+            "sort": 2,
             "type": "datasource"
          },
          {
             "allValue": ".*",
-            "datasource": {
-               "type": "loki",
-               "uid": "${loki_datasource}"
-            },
+            "datasource": "${loki_datasource}",
             "includeAll": true,
             "label": "Cluster",
             "multi": true,
@@ -240,10 +247,7 @@
          },
          {
             "allValue": ".*",
-            "datasource": {
-               "type": "loki",
-               "uid": "${loki_datasource}"
-            },
+            "datasource": "${loki_datasource}",
             "includeAll": true,
             "label": "Namespace",
             "multi": true,
@@ -255,10 +259,7 @@
          },
          {
             "allValue": ".*",
-            "datasource": {
-               "type": "loki",
-               "uid": "${loki_datasource}"
-            },
+            "datasource": "${loki_datasource}",
             "includeAll": true,
             "label": "Job",
             "multi": true,
@@ -270,10 +271,7 @@
          },
          {
             "allValue": ".*",
-            "datasource": {
-               "type": "loki",
-               "uid": "${loki_datasource}"
-            },
+            "datasource": "${loki_datasource}",
             "includeAll": true,
             "label": "Instance",
             "multi": true,
@@ -285,10 +283,7 @@
          },
          {
             "allValue": ".*",
-            "datasource": {
-               "type": "loki",
-               "uid": "${loki_datasource}"
-            },
+            "datasource": "${loki_datasource}",
             "includeAll": true,
             "label": "Level",
             "multi": true,
@@ -321,6 +316,32 @@
    "time": {
       "from": "now-6h",
       "to": "now"
+   },
+   "timepicker": {
+      "refresh_intervals": [
+         "5s",
+         "10s",
+         "30s",
+         "1m",
+         "5m",
+         "15m",
+         "30m",
+         "1h",
+         "2h",
+         "1d"
+      ],
+      "time_options": [
+         "5m",
+         "15m",
+         "1h",
+         "6h",
+         "12h",
+         "24h",
+         "2d",
+         "7d",
+         "30d",
+         "90d"
+      ]
    },
    "timezone": "utc",
    "title": "Alloy / Logs Overview",
