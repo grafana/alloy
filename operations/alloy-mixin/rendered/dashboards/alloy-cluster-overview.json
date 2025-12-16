@@ -196,7 +196,7 @@
                "range": false
             }
          ],
-         "title": "Convergance state",
+         "title": "Convergence state",
          "type": "stat"
       },
       {
@@ -249,7 +249,7 @@
                "range": true
             }
          ],
-         "title": "Convergance state timeline",
+         "title": "Convergence state timeline",
          "type": "state-timeline"
       },
       {
