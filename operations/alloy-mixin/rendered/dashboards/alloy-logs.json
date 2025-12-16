@@ -161,7 +161,7 @@
                   "type": "loki",
                   "uid": "${loki_datasource}"
                },
-               "expr": "sum by (level) (count_over_time({cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\",level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__auto]))\n",
+               "expr": "sum by (level) (count_over_time({cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__auto]))\n",
                "legendFormat": "{{ level }}"
             }
          ],
@@ -203,7 +203,7 @@
                   "type": "loki",
                   "uid": "${loki_datasource}"
                },
-               "expr": "{cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\",level=~\"$level\"} \n|~ \"$regex_search\"\n\n\n"
+               "expr": "{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", level=~\"$level\"} \n|~ \"$regex_search\"\n\n\n"
             }
          ],
          "title": "Logs",
@@ -262,7 +262,7 @@
             "label": "Job",
             "multi": true,
             "name": "job",
-            "query": "label_values({cluster=~\"$cluster\",namespace=~\"$namespace\"}, job)",
+            "query": "label_values({cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -286,7 +286,7 @@
             "label": "Level",
             "multi": true,
             "name": "level",
-            "query": "label_values({cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\",instance=~\"$instance\"}, level)",
+            "query": "label_values({cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}, level)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

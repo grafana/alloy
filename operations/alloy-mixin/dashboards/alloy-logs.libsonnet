@@ -5,13 +5,13 @@ local filename = 'alloy-logs.json';
 {
   // Build the Loki label selector based on config
   local baseLabels = if $._config.enableK8sCluster then
-    'cluster=~"$cluster",namespace=~"$namespace",job=~"$job",instance=~"$instance",level=~"$level"'
+    'cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", level=~"$level"'
   else
-    'job=~"$job",instance=~"$instance",level=~"$level"',
+    'job=~"$job", instance=~"$instance", level=~"$level"',
   
   local logsSelector = 
     if std.length($._config.logsFilterSelector) > 0 then
-      '{%s,%s}' % [baseLabels, $._config.logsFilterSelector]
+      '{%s, %s}' % [baseLabels, $._config.logsFilterSelector]
     else
       '{%s}' % baseLabels,
 
@@ -44,7 +44,7 @@ local filename = 'alloy-logs.json';
         label: 'Job',
         type: 'query',
         datasource: '${loki_datasource}',
-        query: 'label_values({cluster=~"$cluster",namespace=~"$namespace"}, job)',
+        query: 'label_values({cluster=~"$cluster", namespace=~"$namespace"}, job)',
         refresh: 2,
         sort: 1,
         multi: true,
@@ -68,7 +68,7 @@ local filename = 'alloy-logs.json';
         label: 'Level',
         type: 'query',
         datasource: '${loki_datasource}',
-        query: 'label_values({cluster=~"$cluster",namespace=~"$namespace",job=~"$job",instance=~"$instance"}, level)',
+        query: 'label_values({cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"}, level)',
         refresh: 2,
         sort: 1,
         multi: true,
@@ -104,8 +104,7 @@ local filename = 'alloy-logs.json';
       refresh: 2,
       sort: 1,
       multi: true,
-      includeAll: true,
-      allValue: '.*',
+      includeAll: false,
     },
     {
       name: 'instance',
@@ -124,7 +123,7 @@ local filename = 'alloy-logs.json';
       label: 'Level',
       type: 'query',
       datasource: '${loki_datasource}',
-      query: 'label_values({job=~"$job",instance=~"$instance"}, level)',
+      query: 'label_values({job=~"$job", instance=~"$instance"}, level)',
       refresh: 2,
       sort: 1,
       multi: true,
