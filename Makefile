@@ -296,7 +296,7 @@ else
 	mkdir -p operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
 	cd operations/alloy-mixin && $(JB) install
 	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
-	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".json"]: { groups: [g] } for g in mixin.prometheusAlerts.groups }'
+	$(JSONNET) -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
 endif
 
 generate-snmp:

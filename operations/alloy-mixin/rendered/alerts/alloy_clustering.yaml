@@ -1,0 +1,58 @@
+"groups":
+- "name": "alloy_clustering"
+  "rules":
+  - "alert": "ClusterNotConverging"
+    "annotations":
+      "description": "Cluster is not converging: nodes report different number of peers in the cluster. Job is {{ $labels.job }}"
+      "summary": "Cluster is not converging."
+    "expr": "stddev by (cluster, namespace, job, cluster_name) (sum without (state) (cluster_node_peers)) != 0"
+    "for": "10m"
+    "labels":
+      "severity": "warning"
+  - "alert": "ClusterNodeCountMismatch"
+    "annotations":
+      "description": "Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state. Job is {{ $labels.job }}"
+      "summary": "Nodes report different number of peers vs. the count of observed Alloy metrics."
+    "expr": |
+      sum without (state) (cluster_node_peers) !=
+      on (cluster, namespace, job, cluster_name) group_left
+      count by (cluster, namespace, job, cluster_name) (cluster_node_info)
+    "for": "15m"
+    "labels":
+      "severity": "warning"
+  - "alert": "ClusterNodeUnhealthy"
+    "annotations":
+      "description": "Cluster node is reporting a gossip protocol health score > 0. Job is {{ $labels.job }}"
+      "summary": "Cluster unhealthy."
+    "expr": |
+      cluster_node_gossip_health_score > 0
+    "for": "10m"
+    "labels":
+      "severity": "warning"
+  - "alert": "ClusterNodeNameConflict"
+    "annotations":
+      "description": "A node tried to join the cluster with a name conflicting with an existing peer. Job is {{ $labels.job }}"
+      "summary": "Cluster Node Name Conflict."
+    "expr": "sum by (cluster, namespace, job, cluster_name) (rate(cluster_node_gossip_received_events_total{event=\"node_conflict\"}[2m])) > 0"
+    "for": "10m"
+    "labels":
+      "severity": "warning"
+  - "alert": "ClusterNodeStuckTerminating"
+    "annotations":
+      "description": "There is a node within the cluster that is stuck in Terminating state. Job is {{ $labels.job }}"
+      "summary": "Cluster node stuck in Terminating state."
+    "expr": "sum by (cluster, namespace, job, instance, cluster_name) (cluster_node_peers{state=\"terminating\"}) > 0"
+    "for": "10m"
+    "labels":
+      "severity": "warning"
+  - "alert": "ClusterConfigurationDrift"
+    "annotations":
+      "description": "Cluster nodes are not using the same configuration file. Job is {{ $labels.job }}"
+      "summary": "Cluster configuration drifting."
+    "expr": |
+      count without (sha256) (
+          max by (cluster, namespace, sha256, job, cluster_name) (alloy_config_hash and on(cluster, namespace, job, cluster_name) cluster_node_info)
+      ) > 1
+    "for": "5m"
+    "labels":
+      "severity": "warning"
