@@ -142,8 +142,6 @@ var SQLStateClass = map[string]string{
 	"XX": "Internal Error",
 }
 
-// GetSQLStateErrorName returns the specific error name for a given SQLSTATE code.
-// Returns empty string if the code is not found.
 func GetSQLStateErrorName(sqlstate string) string {
 	if sqlstate == "" {
 		return ""
@@ -154,8 +152,6 @@ func GetSQLStateErrorName(sqlstate string) string {
 	return ""
 }
 
-// GetSQLStateCategory returns the category for a given SQLSTATE code.
-// If the exact code is not found, it returns the category for the class (first 2 characters).
 func GetSQLStateCategory(sqlstate string) string {
 	if sqlstate == "" {
 		return ""
@@ -167,58 +163,4 @@ func GetSQLStateCategory(sqlstate string) string {
 	}
 
 	return "Unknown"
-}
-
-// IsConnectionError returns true if the SQLSTATE code represents a connection error.
-func IsConnectionError(sqlstate string) bool {
-	if len(sqlstate) >= 2 {
-		return sqlstate[:2] == "08"
-	}
-	return false
-}
-
-// IsAuthenticationError returns true if the SQLSTATE code represents an authentication error.
-// Class 28 = Invalid Authorization Specification (password failures, invalid credentials, etc.)
-func IsAuthenticationError(sqlstate string) bool {
-	if len(sqlstate) >= 2 {
-		return sqlstate[:2] == "28"
-	}
-	return false
-}
-
-// IsResourceLimitError returns true if the SQLSTATE code represents a resource limit error.
-// Class 53 = Insufficient Resources (out of memory, disk full, too many connections, etc.)
-func IsResourceLimitError(sqlstate string) bool {
-	if len(sqlstate) >= 2 {
-		return sqlstate[:2] == "53"
-	}
-	return false
-}
-
-// setTimeoutType sets the timeout type based on SQLSTATE code.
-// Reference: https://www.postgresql.org/docs/current/errcodes-appendix.html
-func (c *ErrorLogs) setTimeoutType(parsed *ParsedError) {
-	if parsed.SQLStateCode == "" {
-		return
-	}
-
-	// Map specific SQLSTATE codes to timeout types
-	switch parsed.SQLStateCode {
-	case "40P01":
-		// Deadlock detected
-		parsed.TimeoutType = "deadlock"
-	case "55P03":
-		// Lock not available (lock_timeout)
-		parsed.TimeoutType = "lock_timeout"
-	case "57014":
-		// Query canceled (can be statement_timeout, user cancel, etc.)
-		// Without parsing message text, we can't distinguish the specific reason
-		parsed.TimeoutType = "query_canceled"
-	case "25P03":
-		// Idle in transaction session timeout
-		parsed.TimeoutType = "idle_in_transaction_timeout"
-	case "57P05":
-		// Idle session timeout (PostgreSQL 14+)
-		parsed.TimeoutType = "idle_session_timeout"
-	}
 }

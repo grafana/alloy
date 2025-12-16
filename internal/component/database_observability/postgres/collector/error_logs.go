@@ -58,7 +58,7 @@ type PostgreSQLJSONLog struct {
 
 	// Error/Log information
 	ErrorSeverity string  `json:"error_severity"` // Error severity (LOG, ERROR, FATAL, etc.)
-	StateCode     *string `json:"state_code"`     // SQLSTATE code (nullable)
+	SqlState      *string `json:"state_code"`     // SQLSTATE code (nullable)
 	Message       string  `json:"message"`        // Error message
 	Detail        *string `json:"detail"`         // Error message detail (nullable)
 	Hint          *string `json:"hint"`           // Error message hint (nullable)
@@ -82,18 +82,17 @@ type PostgreSQLJSONLog struct {
 	LeaderPID *int32 `json:"leader_pid"` // Process ID of leader for active parallel workers (nullable)
 }
 
-// ParsedError represents a fully parsed and enriched PostgreSQL error.
 type ParsedError struct {
 	Timestamp time.Time
 	PID       int32
 	SessionID string
 	LineNum   int32
 
-	ErrorSeverity     string
-	SQLStateCode      string
-	ErrorName         string
-	SQLStateCodeClass string
-	ErrorCategory     string
+	ErrorSeverity string
+	SQLState      string
+	ErrorName     string
+	SQLStateClass string
+	ErrorCategory string
 
 	User            string
 	DatabaseName    string
@@ -124,8 +123,6 @@ type ParsedError struct {
 	FileLineNum int32
 
 	LeaderPID int32
-
-	TimeoutType string // "deadlock", "lock_timeout", "query_canceled", "idle_in_transaction_timeout"
 }
 
 type ErrorLogsArguments struct {
@@ -149,9 +146,6 @@ type ErrorLogs struct {
 	logsProcessed       prometheus.Counter
 	errorsTotal         *prometheus.CounterVec
 	errorsBySQLState    *prometheus.CounterVec
-	connectionErrors    *prometheus.CounterVec
-	authFailures        *prometheus.CounterVec
-	errorsByUser        *prometheus.CounterVec
 	errorsByBackendType *prometheus.CounterVec
 	parseErrors         prometheus.Counter
 
@@ -199,42 +193,18 @@ func (c *ErrorLogs) initMetrics() {
 
 	c.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "postgres_errors_by_sqlstate_total",
-			Help: "PostgreSQL errors by SQLSTATE code with category, class, and query tracking",
+			Name: "postgres_errors_by_sqlstate_query_user_total",
+			Help: "PostgreSQL errors by SQLSTATE code with database, user, queryid, and instance tracking",
 		},
-		[]string{"sqlstate_code", "error_name", "sqlstate_code_class", "error_category", "severity", "database", "queryid", "instance"},
-	)
-
-	c.connectionErrors = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "postgres_connection_errors_total",
-			Help: "Connection-related errors",
-		},
-		[]string{"sqlstate_code", "severity", "database", "instance"},
-	)
-
-	c.authFailures = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "postgres_auth_failures_total",
-			Help: "Authentication failures by user",
-		},
-		[]string{"user", "remote_host", "database", "instance"},
-	)
-
-	c.errorsByUser = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "postgres_errors_by_user_total",
-			Help: "Errors by database user",
-		},
-		[]string{"user", "severity", "database", "instance"},
+		[]string{"sqlstate", "error_name", "sqlstate_class", "error_category", "severity", "database", "user", "queryid", "instance"},
 	)
 
 	c.errorsByBackendType = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "postgres_errors_by_backend_type_total",
-			Help: "Errors by backend type",
+			Help: "Errors by backend type and database",
 		},
-		[]string{"backend_type", "severity", "instance"},
+		[]string{"backend_type", "severity", "database", "instance"},
 	)
 
 	c.parseErrors = prometheus.NewCounter(
@@ -249,9 +219,6 @@ func (c *ErrorLogs) initMetrics() {
 			c.logsProcessed,
 			c.errorsTotal,
 			c.errorsBySQLState,
-			c.connectionErrors,
-			c.authFailures,
-			c.errorsByUser,
 			c.errorsByBackendType,
 			c.parseErrors,
 		)
@@ -326,8 +293,6 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 		return fmt.Errorf("failed to parse error: %w", err)
 	}
 
-	c.setTimeoutType(parsed)
-
 	c.updateMetrics(parsed)
 
 	return c.emitToLoki(parsed)
@@ -392,11 +357,11 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 	parsed.FileName = ptrToString(log.FileName)
 	parsed.FileLineNum = ptrToInt32(log.FileLineNum)
 
-	if log.StateCode != nil {
-		parsed.SQLStateCode = *log.StateCode
-		parsed.ErrorName = GetSQLStateErrorName(parsed.SQLStateCode)
-		parsed.SQLStateCodeClass = parsed.SQLStateCode[:2]
-		parsed.ErrorCategory = GetSQLStateCategory(parsed.SQLStateCode)
+	if log.SqlState != nil {
+		parsed.SQLState = *log.SqlState
+		parsed.ErrorName = GetSQLStateErrorName(parsed.SQLState)
+		parsed.SQLStateClass = parsed.SQLState[:2]
+		parsed.ErrorCategory = GetSQLStateCategory(parsed.SQLState)
 	}
 
 	return parsed, nil
@@ -409,47 +374,21 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 		c.instanceKey,
 	).Inc()
 
-	if parsed.SQLStateCode != "" {
+	if parsed.SQLState != "" {
 		queryIDStr := ""
 		if parsed.QueryID > 0 {
 			queryIDStr = fmt.Sprintf("%d", parsed.QueryID)
 		}
 
 		c.errorsBySQLState.WithLabelValues(
-			parsed.SQLStateCode,
+			parsed.SQLState,
 			parsed.ErrorName,
-			parsed.SQLStateCodeClass,
+			parsed.SQLStateClass,
 			parsed.ErrorCategory,
 			parsed.ErrorSeverity,
 			parsed.DatabaseName,
+			parsed.User,
 			queryIDStr,
-			c.instanceKey,
-		).Inc()
-	}
-
-	if IsConnectionError(parsed.SQLStateCode) {
-		c.connectionErrors.WithLabelValues(
-			parsed.SQLStateCode,
-			parsed.ErrorSeverity,
-			parsed.DatabaseName,
-			c.instanceKey,
-		).Inc()
-	}
-
-	if IsAuthenticationError(parsed.SQLStateCode) {
-		c.authFailures.WithLabelValues(
-			parsed.User,
-			parsed.RemoteHost,
-			parsed.DatabaseName,
-			c.instanceKey,
-		).Inc()
-	}
-
-	if parsed.User != "" {
-		c.errorsByUser.WithLabelValues(
-			parsed.User,
-			parsed.ErrorSeverity,
-			parsed.DatabaseName,
 			c.instanceKey,
 		).Inc()
 	}
@@ -457,6 +396,7 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 	c.errorsByBackendType.WithLabelValues(
 		parsed.BackendType,
 		parsed.ErrorSeverity,
+		parsed.DatabaseName,
 		c.instanceKey,
 	).Inc()
 }
@@ -476,16 +416,16 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 		logMessage += fmt.Sprintf(` queryid="%d"`, parsed.QueryID)
 	}
 
-	if parsed.SQLStateCode != "" {
-		logMessage += fmt.Sprintf(` sqlstate=%s`, strconv.Quote(parsed.SQLStateCode))
+	if parsed.SQLState != "" {
+		logMessage += fmt.Sprintf(` sqlstate=%s`, strconv.Quote(parsed.SQLState))
 		if parsed.ErrorName != "" {
 			logMessage += fmt.Sprintf(` error_name=%s`, strconv.Quote(parsed.ErrorName))
 		}
-		if parsed.ErrorCategory != "" {
-			logMessage += fmt.Sprintf(` sqlstate_class=%s`, strconv.Quote(parsed.ErrorCategory))
+		if parsed.SQLStateClass != "" {
+			logMessage += fmt.Sprintf(` sqlstate_class=%s`, strconv.Quote(parsed.SQLStateClass))
 		}
-		if parsed.SQLStateCodeClass != "" {
-			logMessage += fmt.Sprintf(` sqlstate_class_code=%s`, strconv.Quote(parsed.SQLStateCodeClass))
+		if parsed.ErrorCategory != "" {
+			logMessage += fmt.Sprintf(` error_category=%s`, strconv.Quote(parsed.ErrorCategory))
 		}
 	}
 
@@ -567,10 +507,6 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 
 	if parsed.LeaderPID > 0 {
 		logMessage += fmt.Sprintf(` leader_pid=%d`, parsed.LeaderPID)
-	}
-
-	if parsed.TimeoutType != "" {
-		logMessage += fmt.Sprintf(` timeout_type=%s`, strconv.Quote(parsed.TimeoutType))
 	}
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
