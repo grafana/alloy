@@ -93,14 +93,14 @@ func (s *SourceMapsArguments) SetToDefault() {
 
 // CacheArguments configures sourcemap caching behavior.
 type CacheArguments struct {
-	Ttl                  time.Duration `alloy:"ttl,attr,optional"`
+	TTL                  time.Duration `alloy:"ttl,attr,optional"`
 	ErrorCleanupInterval time.Duration `alloy:"error_cleanup_interval,attr,optional"`
 	CleanupCheckInterval time.Duration `alloy:"cleanup_check_interval,attr,optional"`
 }
 
 func (c *CacheArguments) SetToDefault() {
 	*c = CacheArguments{
-		Ttl:                  time.Duration(math.MaxInt64),
+		TTL:                  time.Duration(math.MaxInt64),
 		ErrorCleanupInterval: time.Hour,
 		CleanupCheckInterval: time.Second * 30,
 	}

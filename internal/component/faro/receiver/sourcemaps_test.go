@@ -689,7 +689,7 @@ func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
 
 		store := &sourceMapsStoreImpl{
 			log:        logger,
-			args:       SourceMapsArguments{Cache: &CacheArguments{Ttl: 5 * time.Minute}},
+			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: 5 * time.Minute}},
 			metrics:    metrics,
 			cli:        &mockHTTPClient{},
 			fs:         newTestFileService(),
@@ -771,7 +771,7 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 
 		store := &sourceMapsStoreImpl{
 			log:        logger,
-			args:       SourceMapsArguments{Cache: &CacheArguments{Ttl: tc.cacheTimeout}},
+			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: tc.cacheTimeout}},
 			metrics:    metrics,
 			cli:        &mockHTTPClient{},
 			fs:         newTestFileService(),
