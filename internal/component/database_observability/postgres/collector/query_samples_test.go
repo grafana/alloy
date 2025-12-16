@@ -290,10 +290,10 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
 						t.Errorf("expected label %v, got %v", tc.expectedLabels[i], entry.Labels)
 					}
-					require.Contains(t, entry.Entry.Line, tc.expectedLines[i])
+					require.Contains(t, entry.Line, tc.expectedLines[i])
 					// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
 					expectedTimestamp := time.Unix(0, now.UnixNano())
-					require.True(t, entry.Entry.Timestamp.Equal(expectedTimestamp))
+					require.True(t, entry.Timestamp.Equal(expectedTimestamp))
 				}
 			}, 5*time.Second, 100*time.Millisecond)
 
@@ -316,7 +316,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			require.Equal(t, len(tc.expectedLines), len(lokiEntries))
 			for i, entry := range lokiEntries {
 				require.Equal(t, tc.expectedLabels[i], entry.Labels)
-				require.Equal(t, tc.expectedLines[i], entry.Entry.Line)
+				require.Equal(t, tc.expectedLines[i], entry.Line)
 			}
 		})
 	}
@@ -377,9 +377,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 1)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
 			expectedTimestamp := time.Unix(0, now.UnixNano())
-			require.True(t, entries[0].Entry.Timestamp.Equal(expectedTimestamp))
+			require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -437,7 +437,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			require.Len(t, entries, 2)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="12s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[1].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="12s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[1].Line)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -494,9 +494,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 2)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'"`, entries[0].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'"`, entries[0].Line)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Line)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -553,9 +553,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 2)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9002" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9002" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[1].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[1].Line)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -612,11 +612,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 3)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9003" query="UPDATE t SET c=1"`, entries[0].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9003" query="UPDATE t SET c=1"`, entries[0].Line)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003"`, entries[1].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003"`, entries[1].Line)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="8s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003"`, entries[2].Entry.Line)
+			require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="8s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003"`, entries[2].Line)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -689,10 +689,10 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 1)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Entry.Line, `query_time="20s"`)
-			require.Contains(t, entries[0].Entry.Line, `cpu_time="10s"`)
+			require.Contains(t, entries[0].Line, `query_time="20s"`)
+			require.Contains(t, entries[0].Line, `cpu_time="10s"`)
 			expectedTs := time.Unix(0, stateChangeTime.UnixNano())
-			require.True(t, entries[0].Entry.Timestamp.Equal(expectedTs))
+			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
@@ -747,9 +747,9 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 1)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Entry.Line, `query_time="20s"`)
+			require.Contains(t, entries[0].Line, `query_time="20s"`)
 			expectedTs := time.Unix(0, stateChangeTime.UnixNano())
-			require.True(t, entries[0].Entry.Timestamp.Equal(expectedTs))
+			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
@@ -807,7 +807,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			// End timestamp should match state_change
 			expectedTs := time.Unix(0, stateChangeTime.UnixNano())
-			require.True(t, entries[0].Entry.Timestamp.Equal(expectedTs))
+			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
@@ -887,10 +887,10 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			// Ensure both queryids are present among the two entries
 			var seen22002, seen23002 bool
 			for _, e := range entries {
-				if strings.Contains(e.Entry.Line, `queryid="22002"`) {
+				if strings.Contains(e.Line, `queryid="22002"`) {
 					seen22002 = true
 				}
-				if strings.Contains(e.Entry.Line, `queryid="23002"`) {
+				if strings.Contains(e.Line, `queryid="23002"`) {
 					seen23002 = true
 				}
 			}
