@@ -17,28 +17,49 @@ import (
 const delim = '\n'
 
 func TestReadLineRaw_OctetCounting(t *testing.T) {
-	inputs, err := os.Open("testdata/octetcount.txt")
-	require.NoError(t, err)
-	t.Cleanup(func() { inputs.Close() })
-
-	fexpects, err := os.Open("testdata/octetcount.json")
-	require.NoError(t, err)
-	t.Cleanup(func() { fexpects.Close() })
-
-	expects := []*syslog.Base{}
-	err = json.NewDecoder(fexpects).Decode(&expects)
-	require.NoError(t, err)
-
-	i := 0
-	for got, err := range IterStreamRaw(inputs, delim) {
-		require.NoErrorf(t, err, "item: %d", i)
-		expect := expects[i]
-		require.Equalf(t, expect, got, "mismatch at index %d", i)
-		i++
+	cases := []struct {
+		label      string
+		inputFile  string
+		expectFile string
+	}{
+		{
+			label:      "multiline",
+			inputFile:  "testdata/octetcount-multiline.txt",
+			expectFile: "testdata/octetcount-multiline.json",
+		},
+		{
+			label:      "singleline",
+			inputFile:  "testdata/octetcount-singleline.txt",
+			expectFile: "testdata/octetcount-singleline.json",
+		},
 	}
 
-	if i != len(expects) {
-		t.Errorf("expected %d items, got %d", len(expects), i)
+	for _, tc := range cases {
+		t.Run(tc.label, func(t *testing.T) {
+			inputs, err := os.Open(tc.inputFile)
+			require.NoError(t, err)
+			t.Cleanup(func() { inputs.Close() })
+
+			fexpects, err := os.Open(tc.expectFile)
+			require.NoError(t, err)
+			t.Cleanup(func() { fexpects.Close() })
+
+			expects := []*syslog.Base{}
+			err = json.NewDecoder(fexpects).Decode(&expects)
+			require.NoError(t, err)
+
+			i := 0
+			for got, err := range IterStreamRaw(inputs, delim) {
+				require.NoErrorf(t, err, "item: %d", i)
+				expect := expects[i]
+				require.Equalf(t, expect, got, "mismatch at index %d", i)
+				i++
+			}
+
+			if i != len(expects) {
+				t.Errorf("expected %d items, got %d", len(expects), i)
+			}
+		})
 	}
 }
 
