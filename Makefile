@@ -79,19 +79,20 @@
 
 include tools/make/*.mk
 
-ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
-ALLOY_BINARY         ?= build/alloy
-SERVICE_BINARY       ?= build/alloy-service
-ALLOYLINT_BINARY     ?= build/alloylint
-JSONNET              ?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
-JB                   ?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
-GOOS                 ?= $(shell go env GOOS)
-GOARCH               ?= $(shell go env GOARCH)
-GOARM                ?= $(shell go env GOARM)
-CGO_ENABLED          ?= 1
-RELEASE_BUILD        ?= 0
-GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
+ALLOY_BINARY         		?= build/alloy
+SERVICE_BINARY       		?= build/alloy-service
+ALLOYLINT_BINARY     		?= build/alloylint
+JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+GOOS                 		?= $(shell go env GOOS)
+GOARCH               		?= $(shell go env GOARCH)
+GOARM                		?= $(shell go env GOARM)
+CGO_ENABLED          		?= 1
+RELEASE_BUILD        		?= 0
+GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
+GENERATE_COLLECTOR_DISTRO  	?= 1
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -195,7 +196,16 @@ integration-test-k8s: alloy-image
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-otel-collector-distro
+# Only require generate-otel-collector-distro when running locally
+ifeq ($(CI),true)
+ALLOY_PREREQS :=
+else ifeq ($(GENERATE_COLLECTOR_DISTRO), 0)
+ALLOY_PREREQS := 
+else
+ALLOY_PREREQS := generate-otel-collector-distro
+endif
+
+alloy: $(ALLOY_PREREQS)
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -267,14 +277,7 @@ else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
 endif
 
-# Only require generate-module-dependencies when running locally (not in CI)
-ifeq ($(CI),true)
-GENERATE_OTEL_PREREQS :=
-else
-GENERATE_OTEL_PREREQS := generate-module-dependencies
-endif
-
-generate-otel-collector-distro: $(GENERATE_OTEL_PREREQS)
+generate-otel-collector-distro: generate-module-dependencies
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
