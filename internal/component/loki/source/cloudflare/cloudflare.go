@@ -17,7 +17,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	cft "github.com/grafana/alloy/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -44,18 +43,17 @@ type Arguments struct {
 	Labels           map[string]string   `alloy:"labels,attr,optional"`
 	Workers          int                 `alloy:"workers,attr,optional"`
 	PullRange        time.Duration       `alloy:"pull_range,attr,optional"`
-	FieldsType       string              `alloy:"fields_type,attr,optional"`
+	FieldsType       FieldsType          `alloy:"fields_type,attr,optional"`
 	AdditionalFields []string            `alloy:"additional_fields,attr,optional"`
 	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
-// Convert returns a cloudflaretarget Config struct from the Arguments.
-func (c Arguments) Convert() *cft.Config {
+func (c Arguments) tailerConfig() *tailerConfig {
 	lbls := make(model.LabelSet, len(c.Labels))
 	for k, v := range c.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
-	return &cft.Config{
+	return &tailerConfig{
 		APIToken:         string(c.APIToken),
 		ZoneID:           c.ZoneID,
 		Labels:           lbls,
@@ -70,7 +68,7 @@ func (c Arguments) Convert() *cft.Config {
 var DefaultArguments = Arguments{
 	Workers:    3,
 	PullRange:  1 * time.Minute,
-	FieldsType: string(cft.FieldsTypeDefault),
+	FieldsType: FieldsTypeDefault,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -83,21 +81,17 @@ func (c *Arguments) Validate() error {
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")
 	}
-	_, err := cft.Fields(cft.FieldsType(c.FieldsType), c.AdditionalFields)
-	if err != nil {
-		return fmt.Errorf("invalid fields_type set; the available values are 'default', 'minimal', 'extended', 'custom' and 'all'")
-	}
 	return nil
 }
 
 // Component implements the loki.source.cloudflare component.
 type Component struct {
 	opts    component.Options
-	metrics *cft.Metrics
+	metrics *metrics
 
 	mut    sync.RWMutex
 	fanout []loki.LogsReceiver
-	target *cft.Target
+	tailer *tailer
 
 	posFile positions.Positions
 	handler loki.LogsReceiver
@@ -121,7 +115,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:    o,
-		metrics: cft.NewMetrics(o.Registerer),
+		metrics: newMetrics(o.Registerer),
 		handler: loki.NewLogsReceiver(),
 		fanout:  args.ForwardTo,
 		posFile: positionsFile,
@@ -140,7 +134,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.mut.RLock()
 		level.Info(c.opts.Logger).Log("msg", "loki.source.cloudflare component shutting down, stopping the target")
-		c.target.Stop()
+		c.tailer.Stop()
 		c.mut.RUnlock()
 	}()
 
@@ -166,33 +160,28 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	c.fanout = newArgs.ForwardTo
 
-	if c.target != nil {
-		c.target.Stop()
+	if c.tailer != nil {
+		c.tailer.Stop()
 	}
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	t, err := cft.NewTarget(c.metrics, c.opts.Logger, entryHandler, c.posFile, newArgs.Convert())
+	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create cloudflare target with provided config", "err", err)
 		return err
 	}
-	c.target = t
+	c.tailer = t
 
 	return nil
 }
 
 // DebugInfo returns information about the status of targets.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	lbls := make(map[string]string, len(c.target.Labels()))
-	for k, v := range c.target.Labels() {
-		lbls[string(k)] = string(v)
-	}
 	return targetDebugInfo{
-		Ready:   c.target.Ready(),
-		Details: c.target.Details(),
+		Ready:   c.tailer.Ready(),
+		Details: c.tailer.Details(),
 	}
 }
 

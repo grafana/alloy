@@ -1,4 +1,4 @@
-package cloudflaretarget
+package cloudflare
 
 // This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
 // The cloudflaretarget package is used to configure and run a target that can
@@ -6,9 +6,10 @@ package cloudflaretarget
 // components.
 
 import (
+	"context"
 	"errors"
-	"os"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,18 +22,18 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/cloudflare-go"
 )
 
-func Test_CloudflareTarget(t *testing.T) {
+func TestTailer(t *testing.T) {
 	var (
-		w      = log.NewSyncWriter(os.Stderr)
-		logger = log.NewLogfmtLogger(w)
-		cfg    = &Config{
+		logger = log.NewNopLogger()
+		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
 			Labels:     model.LabelSet{"job": "cloudflare"},
 			PullRange:  model.Duration(time.Minute),
-			FieldsType: string(FieldsTypeDefault),
+			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
@@ -74,7 +75,7 @@ func Test_CloudflareTarget(t *testing.T) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, cfg)
+	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -106,10 +107,9 @@ func Test_CloudflareTarget(t *testing.T) {
 	require.Greater(t, newPos, end.UnixNano())
 }
 
-func Test_RetryErrorLogpullReceived(t *testing.T) {
+func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 	var (
-		w        = log.NewSyncWriter(os.Stderr)
-		logger   = log.NewLogfmtLogger(w)
+		logger   = log.NewNopLogger()
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
 		handler  = loki.NewCollectingHandler()
@@ -124,23 +124,22 @@ func Test_RetryErrorLogpullReceived(t *testing.T) {
 	}
 	defaultBackoff.MinBackoff = 0
 	defaultBackoff.MaxBackoff = 5
-	ta := &Target{
+	ta := &tailer{
 		logger:  logger,
-		handler: handler,
+		handler: handler.Receiver(),
 		client:  cfClient,
-		config: &Config{
+		config: &tailerConfig{
 			Labels: make(model.LabelSet),
 		},
-		metrics: NewMetrics(nil),
+		metrics: newMetrics(nil),
 	}
 
 	require.NoError(t, ta.pull(t.Context(), start, end))
 }
 
-func Test_RetryErrorIterating(t *testing.T) {
+func TestTailer_RetryErrorIterating(t *testing.T) {
 	var (
-		w        = log.NewSyncWriter(os.Stderr)
-		logger   = log.NewLogfmtLogger(w)
+		logger   = log.NewNopLogger()
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
 		handler  = loki.NewCollectingHandler()
@@ -170,12 +169,12 @@ func Test_RetryErrorIterating(t *testing.T) {
 	// retries as fast as possible.
 	defaultBackoff.MinBackoff = 0
 	defaultBackoff.MaxBackoff = 0
-	metrics := NewMetrics(prometheus.NewRegistry())
-	ta := &Target{
+	metrics := newMetrics(prometheus.NewRegistry())
+	ta := &tailer{
 		logger:  logger,
-		handler: handler,
+		handler: handler.Receiver(),
 		client:  cfClient,
-		config: &Config{
+		config: &tailerConfig{
 			Labels: make(model.LabelSet),
 		},
 		metrics: metrics,
@@ -187,16 +186,15 @@ func Test_RetryErrorIterating(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func Test_CloudflareTargetError(t *testing.T) {
+func TestTailer_CloudflareTargetError(t *testing.T) {
 	var (
-		w      = log.NewSyncWriter(os.Stderr)
-		logger = log.NewLogfmtLogger(w)
-		cfg    = &Config{
+		logger = log.NewNopLogger()
+		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
 			Labels:     model.LabelSet{"job": "cloudflare"},
 			PullRange:  model.Duration(time.Minute),
-			FieldsType: string(FieldsTypeDefault),
+			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
@@ -222,7 +220,7 @@ func Test_CloudflareTargetError(t *testing.T) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, cfg)
+	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -242,16 +240,15 @@ func Test_CloudflareTargetError(t *testing.T) {
 	require.Equal(t, newEnd, end.UnixNano())
 }
 
-func Test_CloudflareTargetError168h(t *testing.T) {
+func TestTailer_CloudflareTargetError168h(t *testing.T) {
 	var (
-		w      = log.NewSyncWriter(os.Stderr)
-		logger = log.NewLogfmtLogger(w)
-		cfg    = &Config{
+		logger = log.NewNopLogger()
+		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
 			Labels:     model.LabelSet{"job": "cloudflare"},
 			PullRange:  model.Duration(time.Minute),
-			FieldsType: string(FieldsTypeDefault),
+			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
@@ -273,11 +270,11 @@ func Test_CloudflareTargetError168h(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("HTTP status 400: bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available"))
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(_, _ string, _ []string) (Client, error) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, cfg)
+	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -296,14 +293,15 @@ func Test_CloudflareTargetError168h(t *testing.T) {
 	require.Greater(t, newEnd, end.UnixNano())
 }
 
-func Test_splitRequests(t *testing.T) {
+func TestTailer_SplitRequests(t *testing.T) {
 	tests := []struct {
+		name  string
 		start time.Time
 		end   time.Time
 		want  []pullRequest
 	}{
-		// perfectly divisible
 		{
+			"perfectly divisible",
 			time.Unix(0, 0),
 			time.Unix(0, int64(time.Minute)),
 			[]pullRequest{
@@ -312,8 +310,8 @@ func Test_splitRequests(t *testing.T) {
 				{start: time.Unix(0, int64(time.Minute*2/3)), end: time.Unix(0, int64(time.Minute))},
 			},
 		},
-		// not divisible
 		{
+			"not divisible",
 			time.Unix(0, 0),
 			time.Unix(0, int64(time.Minute+1)),
 			[]pullRequest{
@@ -324,7 +322,7 @@ func Test_splitRequests(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run("", func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			got := splitRequests(tt.start, tt.end, 3)
 			if !assert.Equal(t, tt.want, got) {
 				for i := range got {
@@ -338,4 +336,71 @@ func Test_splitRequests(t *testing.T) {
 			}
 		})
 	}
+}
+
+var ErrorLogpullReceived = errors.New("error logpull received")
+
+type fakeCloudflareClient struct {
+	mut sync.RWMutex
+	mock.Mock
+}
+
+func (f *fakeCloudflareClient) CallCount() int {
+	var actualCalls int
+	f.mut.RLock()
+	for _, call := range f.Calls {
+		if call.Method == "LogpullReceived" {
+			actualCalls++
+		}
+	}
+	f.mut.RUnlock()
+	return actualCalls
+}
+
+type fakeLogIterator struct {
+	logs    []string
+	current string
+
+	err error
+}
+
+func (f *fakeLogIterator) Next() bool {
+	if len(f.logs) == 0 {
+		return false
+	}
+	f.current = f.logs[0]
+	if f.current == `error` {
+		f.err = errors.New("error")
+		return false
+	}
+	f.logs = f.logs[1:]
+	return true
+}
+func (f *fakeLogIterator) Err() error                         { return f.err }
+func (f *fakeLogIterator) Line() []byte                       { return []byte(f.current) }
+func (f *fakeLogIterator) Fields() (map[string]string, error) { return nil, nil }
+func (f *fakeLogIterator) Close() error {
+	if f.err == ErrorLogpullReceived {
+		f.err = nil
+	}
+	return nil
+}
+
+func newFakeCloudflareClient() *fakeCloudflareClient {
+	return &fakeCloudflareClient{}
+}
+
+func (f *fakeCloudflareClient) LogpullReceived(ctx context.Context, start, end time.Time) (cloudflare.LogpullReceivedIterator, error) {
+	f.mut.Lock()
+	defer f.mut.Unlock()
+
+	r := f.Called(ctx, start, end)
+	if r.Get(0) != nil {
+		it := r.Get(0).(cloudflare.LogpullReceivedIterator)
+		if it.Err() == ErrorLogpullReceived {
+			return it, it.Err()
+		}
+		return it, nil
+	}
+	return nil, r.Error(1)
 }
