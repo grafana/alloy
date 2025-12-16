@@ -522,7 +522,7 @@ alertmanager_config: |
 
 {{< /collapse >}}
 
-You can add the `alertmanagerconfig_matcher` block to Alloy's config to remove the added namespace matchers:
+You can add the `alertmanagerconfig_matcher` block to your {{< param "PRODUCT_NAME" >}} configuration to remove the namespace matchers:
 
 ```
 alertmanagerconfig_matcher {
