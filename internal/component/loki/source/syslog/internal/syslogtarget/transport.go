@@ -336,18 +336,13 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
 		delim := t.config.RawOptions.Delimiter()
 		for msg, err := range syslogparser.IterStreamRaw(c, delim) {
-			if err != nil && errors.Is(err, io.EOF) {
-				level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
-				return
-			}
-
 			cb(&syslog.Result{
 				Message: msg,
 				Error:   err,
 			})
 		}
 
-		return
+		level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
 	}
 
 	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, cb, t.maxMessageLength())
