@@ -159,10 +159,10 @@ Depending on how this block is configured, the final Alertmanger config will hav
 
 The following arguments are supported:
 
-| Name                     | Type     | Description                                                                                                               | Default         | Required |
-| ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------- | --------------- | -------- |
-| `strategy`               | `string` | [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] for adding matchers to AlertmanagerConfig CRDs. | `"OnNamespace"` | no       |
-| `alertmanager_namespace` | `string` | Namespace to use when alertmanagerconfig_matcher_strategy is set to `"OnNamespaceExceptForAlertmanagerNamespace"`         |                 | no       |
+| Name                     | Type     | Description                                                                                                        | Default         | Required                                                              |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------ | --------------- | --------------------------------------------------------------------- |
+| `strategy`               | `string` | Strategy for adding matchers to AlertmanagerConfig CRDs.                                                           | `"OnNamespace"` | no                                                                    |
+| `alertmanager_namespace` | `string` | Namespace to use when alertmanagerconfig_matcher_strategy is set to `"OnNamespaceExceptForAlertmanagerNamespace"`. |                 | only when `strategy` is `"OnNamespaceExceptForAlertmanagerNamespace"` |
 
 The `strategy` argument should be one of the following strings:
 
