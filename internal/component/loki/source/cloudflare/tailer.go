@@ -98,49 +98,50 @@ func newTailer(metrics *metrics, logger log.Logger, handler loki.LogsReceiver, p
 		to:      to,
 		running: atomic.NewBool(false),
 	}
-	t.start()
+
+	t.wg.Go(t.start)
+
 	return t, nil
 }
 
 func (t *tailer) start() {
 	t.running.Store(true)
-	t.wg.Go(func() {
-		defer t.running.Store(false)
-		for t.ctx.Err() == nil {
-			end := t.to
-			maxEnd := time.Now().Add(-minDelay)
-			if end.After(maxEnd) {
-				end = maxEnd
-			}
-			start := end.Add(-time.Duration(t.config.PullRange))
-			requests := splitRequests(start, end, t.config.Workers)
-			// Use background context for workers as we don't want to cancel halfway through.
-			// In case of errors we stop the target, each worker has its own retry logic.
-			if err := concurrency.ForEachJob(context.Background(), len(requests), t.config.Workers, func(ctx context.Context, idx int) error {
-				request := requests[idx]
-				return t.pull(ctx, request.start, request.end)
-			}); err != nil {
-				level.Error(t.logger).Log("msg", "failed to pull logs", "err", err, "start", start, "end", end)
-				t.err = err
-				return
-			}
+	defer t.running.Store(false)
 
-			// Sets current timestamp metrics, move to the next interval and saves the position.
-			t.metrics.LastEnd.Set(float64(end.UnixNano()) / 1e9)
-			t.to = end.Add(time.Duration(t.config.PullRange))
-			t.positions.Put(positions.CursorKey(t.config.ZoneID), t.config.Labels.String(), t.to.UnixNano())
+	for t.ctx.Err() == nil {
+		end := t.to
+		maxEnd := time.Now().Add(-minDelay)
+		if end.After(maxEnd) {
+			end = maxEnd
+		}
+		start := end.Add(-time.Duration(t.config.PullRange))
+		requests := splitRequests(start, end, t.config.Workers)
+		// Use background context for workers as we don't want to cancel halfway through.
+		// In case of errors we stop the target, each worker has its own retry logic.
+		if err := concurrency.ForEachJob(context.Background(), len(requests), t.config.Workers, func(ctx context.Context, idx int) error {
+			request := requests[idx]
+			return t.pull(ctx, request.start, request.end)
+		}); err != nil {
+			level.Error(t.logger).Log("msg", "failed to pull logs", "err", err, "start", start, "end", end)
+			t.err = err
+			return
+		}
 
-			// If the next window can be fetched do it, if not sleep for a while.
-			// This is because Cloudflare logs should never be pulled between now-1m and now.
-			diff := t.to.Sub(time.Now().Add(-minDelay))
-			if diff > 0 {
-				select {
-				case <-time.After(diff):
-				case <-t.ctx.Done():
-				}
+		// Sets current timestamp metrics, move to the next interval and saves the position.
+		t.metrics.LastEnd.Set(float64(end.UnixNano()) / 1e9)
+		t.to = end.Add(time.Duration(t.config.PullRange))
+		t.positions.Put(positions.CursorKey(t.config.ZoneID), t.config.Labels.String(), t.to.UnixNano())
+
+		// If the next window can be fetched do it, if not sleep for a while.
+		// This is because Cloudflare logs should never be pulled between now-1m and now.
+		diff := t.to.Sub(time.Now().Add(-minDelay))
+		if diff > 0 {
+			select {
+			case <-time.After(diff):
+			case <-t.ctx.Done():
 			}
 		}
-	})
+	}
 }
 
 // pull pulls logs from cloudflare for a given time range.
@@ -200,19 +201,19 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	return errs.Err()
 }
 
-// Stop shuts down the target.
-func (t *tailer) Stop() {
+// stop shuts down the target.
+func (t *tailer) stop() {
 	t.cancel()
 	t.wg.Wait()
 }
 
-// Ready reports whether the target is ready.
-func (t *tailer) Ready() bool {
+// ready reports whether the target is ready.
+func (t *tailer) ready() bool {
 	return t.running.Load()
 }
 
-// Details returns debug details about the Cloudflare target.
-func (t *tailer) Details() map[string]string {
+// details returns debug details about the Cloudflare target.
+func (t *tailer) details() map[string]string {
 	fields, _ := fieldsForType(t.config.FieldsType, t.config.AdditionalFields)
 	var errMsg string
 	if t.err != nil {

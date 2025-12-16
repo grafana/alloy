@@ -141,8 +141,7 @@ func (c *Component) Run(ctx context.Context) error {
 		source.Drain(c.handler, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
-			c.tailer.Stop()
-
+			c.tailer.stop()
 		})
 	}()
 
@@ -160,7 +159,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.tailer != nil {
-		c.tailer.Stop()
+		c.tailer.stop()
 	}
 
 	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
@@ -179,8 +178,8 @@ func (c *Component) DebugInfo() any {
 	defer c.mut.RUnlock()
 
 	return targetDebugInfo{
-		Ready:   c.tailer.Ready(),
-		Details: c.tailer.Details(),
+		Ready:   c.tailer.ready(),
+		Details: c.tailer.details(),
 	}
 }
 

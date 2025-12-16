@@ -77,7 +77,7 @@ func TestTailer(t *testing.T) {
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
-	require.True(t, ta.Ready())
+	require.True(t, ta.ready())
 
 	require.Eventually(t, func() bool {
 		return len(handler.Received()) == 4
@@ -100,7 +100,7 @@ func TestTailer(t *testing.T) {
 	require.Equal(t, `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`, received[3].Line)
 	require.Equal(t, time.Unix(0, 1), received[3].Timestamp)
 	cfClient.AssertExpectations(t)
-	ta.Stop()
+	ta.stop()
 	ps.Stop()
 	// Make sure we save the last position.
 	newPos, _ := ps.Get(positions.CursorKey(cfg.ZoneID), cfg.Labels.String())
@@ -222,17 +222,17 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
-	require.True(t, ta.Ready())
+	require.True(t, ta.ready())
 
 	// wait for the target to be stopped.
 	require.Eventually(t, func() bool {
-		return !ta.Ready()
+		return !ta.ready()
 	}, 5*time.Second, 100*time.Millisecond)
 
 	require.Len(t, handler.Received(), 0)
 	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
-	require.NotEmpty(t, ta.Details()["error"])
-	ta.Stop()
+	require.NotEmpty(t, ta.details()["error"])
+	ta.stop()
 	ps.Stop()
 
 	// Make sure we save the last position.
@@ -276,7 +276,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
-	require.True(t, ta.Ready())
+	require.True(t, ta.ready())
 
 	// wait for the target to be stopped.
 	require.Eventually(t, func() bool {
@@ -285,7 +285,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 
 	require.Len(t, handler.Received(), 0)
 	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
-	ta.Stop()
+	ta.stop()
 	ps.Stop()
 
 	// Make sure we move on from the save the last position.
