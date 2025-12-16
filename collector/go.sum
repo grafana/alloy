@@ -1719,8 +1719,6 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancing
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.138.0/go.mod h1:8b+5kIk92O+ezzsR25VXYU68m6d0LNS75wdbaSmTMZ8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0 h1:uH6IZcNNwYxLr3QshnsBdyC+B5xQlYfqeROvnSqDYFE=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0/go.mod h1:R+yjL64rqkiJD+7qK8W3/0nCNDkaTC6Mwc/es31qqe4=
-github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.139.0 h1:S84fD652MHuGgGB43OrXG116f18U0Ny3YZGvXj8P84s=
-github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.139.0/go.mod h1:E2C1/NLcvBdfBF8NAFljTegtwNdru2j9NE4TcbAXCX8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0 h1:2wa0+KJbl0Q2YWT2EhRBu0ZQ1Co07LCFyVZhVpRH58M=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0/go.mod h1:oQDGoH289a5XADpayJy4OyYYU/dHlqRIdvu4DyMVkF8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.139.0 h1:4MVJ5n299cbzJfLwRcnbzEx6yngd+gYRxF/fFOZcnlE=
@@ -1817,8 +1815,6 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencen
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencensus v0.139.0/go.mod h1:56AGqfnkJIkT04mInP/dDGpyucN+Ne4BQbkFpsrGsX0=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.139.0 h1:Pj303TPLuZ8Q8+ZhPlbbQqEoiYiiVxu/UQTRCr0vc3Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.139.0/go.mod h1:/NDwJwHP4yBFL4B+vDah49ROKH1cro8BS7ThezFZinA=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.139.0 h1:GzBM1jKDppa1hf51p2Ng19ZMKLoHXk8gbA1s8Me2OPA=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.139.0/go.mod h1:OG+ymqao7MiVkbgjx1NohVADe7Tkq3by4bOctOd+810=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.139.0 h1:ctfs8S1cQuhbXJVqSlAx8SxPmgFq2eOcllc7Pdpr9RE=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.139.0/go.mod h1:BduGmN98+nV2KObW0woovcuNwkSvSVLiPG6+Ww95uSk=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.138.0 h1:Fec1dyH3wRPjrvGN5qYLwkuXCAk4cAUcS5qGgDmT5OM=
