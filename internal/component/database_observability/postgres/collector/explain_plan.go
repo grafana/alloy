@@ -50,6 +50,7 @@ var unrecoverablePostgresSQLErrors = []string{
 }
 
 var paramCountRegex = regexp.MustCompile(`\$\d+`)
+var versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
 
 type PgSQLExplainplan struct {
 	Plan PlanNode `json:"Plan"`
@@ -253,9 +254,11 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
 	}
-	engineSemver, err := semver.ParseTolerant(args.DBVersion)
+	// Pre-sanitize the version a bit before semver gets it
+	foundVers := versSanitizeRegex.FindString(args.DBVersion)
+	engineSemver, err := semver.ParseTolerant(foundVers)
 	if err != nil {
-		return ep, fmt.Errorf("failed to parse database engine version: %w", err)
+		return ep, fmt.Errorf("failed to parse database engine version: %s: %w", args.DBVersion, err)
 	}
 	ep.dbVersion = engineSemver
 

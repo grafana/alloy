@@ -2255,38 +2255,53 @@ func TestNewExplainPlan(t *testing.T) {
 	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
-	pre17ver := "14.1"
-	pre17semver, err := semver.ParseTolerant(pre17ver)
-	require.NoError(t, err)
+	t.Run("pre17 version", func(t *testing.T) {
+		pre17ver := "14.1"
+		pre17semver, err := semver.ParseTolerant(pre17ver)
+		require.NoError(t, err)
 
-	args := ExplainPlanArguments{
-		DB:              db,
-		DSN:             "postgres://user:pass@localhost:5432/testdb",
-		ScrapeInterval:  time.Minute,
-		PerScrapeRatio:  0.1,
-		ExcludeSchemas:  []string{"information_schema", "pg_catalog"},
-		EntryHandler:    entryHandler,
-		InitialLookback: time.Now().Add(-time.Hour),
-		DBVersion:       pre17ver,
-		Logger:          logger,
-	}
+		args := ExplainPlanArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
+			ScrapeInterval:  time.Minute,
+			PerScrapeRatio:  0.1,
+			ExcludeSchemas:  []string{"information_schema", "pg_catalog"},
+			EntryHandler:    entryHandler,
+			InitialLookback: time.Now().Add(-time.Hour),
+			DBVersion:       pre17ver,
+			Logger:          logger,
+		}
 
-	explainPlan, err := NewExplainPlan(args)
+		explainPlan, err := NewExplainPlan(args)
 
-	require.NoError(t, err)
-	require.NotNil(t, explainPlan)
-	assert.Equal(t, db, explainPlan.dbConnection)
-	assert.Equal(t, args.DSN, explainPlan.dbDSN)
-	assert.Equal(t, pre17semver, explainPlan.dbVersion)
-	assert.Equal(t, args.ScrapeInterval, explainPlan.scrapeInterval)
-	assert.Equal(t, args.PerScrapeRatio, explainPlan.perScrapeRatio)
-	assert.Equal(t, args.ExcludeSchemas, explainPlan.excludeSchemas)
-	assert.Equal(t, entryHandler, explainPlan.entryHandler)
-	assert.NotNil(t, explainPlan.queryCache)
-	assert.NotNil(t, explainPlan.queryDenylist)
-	assert.NotNil(t, explainPlan.finishedQueryCache)
-	assert.NotNil(t, explainPlan.running)
-	assert.False(t, explainPlan.running.Load())
+		require.NoError(t, err)
+		require.NotNil(t, explainPlan)
+		assert.Equal(t, db, explainPlan.dbConnection)
+		assert.Equal(t, args.DSN, explainPlan.dbDSN)
+		assert.Equal(t, pre17semver, explainPlan.dbVersion)
+		assert.Equal(t, args.ScrapeInterval, explainPlan.scrapeInterval)
+		assert.Equal(t, args.PerScrapeRatio, explainPlan.perScrapeRatio)
+		assert.Equal(t, args.ExcludeSchemas, explainPlan.excludeSchemas)
+		assert.Equal(t, entryHandler, explainPlan.entryHandler)
+		assert.NotNil(t, explainPlan.queryCache)
+		assert.NotNil(t, explainPlan.queryDenylist)
+		assert.NotNil(t, explainPlan.finishedQueryCache)
+		assert.NotNil(t, explainPlan.running)
+		assert.False(t, explainPlan.running.Load())
+	})
+
+	t.Run("version with trailing characters", func(t *testing.T) {
+		args := ExplainPlanArguments{
+			DBVersion: "16.10 (Debian 16.10-1.pgdg13+1)",
+		}
+
+		ep, err := NewExplainPlan(args)
+		require.NoError(t, err)
+
+		assert.Equal(t, ep.dbVersion.Major, uint64(16))
+		assert.Equal(t, ep.dbVersion.Minor, uint64(10))
+		assert.Equal(t, ep.dbVersion.Patch, uint64(0))
+	})
 }
 
 func TestExplainPlan_Name(t *testing.T) {
