@@ -6,11 +6,35 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"strconv"
 	"unicode"
 
 	"github.com/leodido/go-syslog/v4"
 )
+
+// IterStreamRaw returns an iterator to read syslog lines from a stream without contents parsing.
+//
+// Delimiter argument is used to determine line end for non-transparent framing.
+func IterStreamRaw(r io.Reader, delimiter byte) iter.Seq2[*syslog.Base, error] {
+	return func(yield func(*syslog.Base, error) bool) {
+		buf := bufio.NewReaderSize(r, 1<<10)
+		for {
+			r, err := parseLineRaw(buf, delimiter)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					yield(nil, err)
+				}
+
+				return
+			}
+
+			if !yield(r, nil) {
+				return
+			}
+		}
+	}
+}
 
 // ReadLineRaw reads a single syslog line without syslog contents parsing.
 //
@@ -20,7 +44,10 @@ import (
 // Meant to be used in UDP transport where a single syslog line is delivered per datagram.
 func ReadLineRaw(r io.Reader, delimiter byte) (*syslog.Base, error) {
 	buf := bufio.NewReaderSize(r, 1<<10)
+	return parseLineRaw(buf, delimiter)
+}
 
+func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 	b, err := buf.ReadByte()
 	if err != nil {
 		return nil, err
@@ -128,8 +155,4 @@ func readFrameLength(r *bufio.Reader) (flen int, err error) {
 	}
 
 	return int(c), nil
-}
-
-func ParseStreamRaw(r io.Reader) error {
-	return nil
 }
