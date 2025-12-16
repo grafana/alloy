@@ -55,6 +55,22 @@ func (s SyslogFormat) Validate() error {
 	return fmt.Errorf("unknown syslog format: %q", s)
 }
 
+// RawFormatOptions are options for raw syslog format processing.
+type RawFormatOptions struct {
+	// UseNullTerminatorDelimiter sets null terminator ('\0') as a log line delimiter for non-transparent framed messages.
+	//
+	// When set to false, new line character ('\n') is used instead.
+	UseNullTerminatorDelimiter bool `yaml:"delimiter"`
+}
+
+func (opts RawFormatOptions) Delimiter() byte {
+	if opts.UseNullTerminatorDelimiter {
+		return 0
+	}
+
+	return '\n'
+}
+
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
 type SyslogTargetConfig struct {
 	// ListenAddress is the address to listen on for syslog messages.
@@ -86,6 +102,11 @@ type SyslogTargetConfig struct {
 	// Syslog format used at the target. Acceptable value is rfc5424 or rfc3164.
 	// Default is rfc5424.
 	SyslogFormat SyslogFormat `yaml:"syslog_format"`
+
+	// RawOptions are options for processing syslog messages in raw mode.
+	//
+	// Takes effect only if "syslog_format" is set to "raw".
+	RawOptions RawFormatOptions `yaml:"raw_options"`
 
 	// MaxMessageLength sets the maximum limit to the length of syslog messages
 	MaxMessageLength int `yaml:"max_message_length"`
