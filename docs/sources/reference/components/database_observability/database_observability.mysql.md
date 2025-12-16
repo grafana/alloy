@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
-  stage: public_preview
+  stage: public-preview
   products:
     - oss
 ---

@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.postgres
 title: database_observability.postgres
 labels:
-  stage: public_preview
+  stage: public-preview
   products:
     - oss
 ---

@@ -148,6 +148,7 @@ type HTTPClientArguments struct {
 	DisableKeepAlives    bool              `alloy:"disable_keep_alives,attr,optional"`
 	HTTP2ReadIdleTimeout time.Duration     `alloy:"http2_read_idle_timeout,attr,optional"`
 	HTTP2PingTimeout     time.Duration     `alloy:"http2_ping_timeout,attr,optional"`
+	ForceAttemptHTTP2    bool              `alloy:"force_attempt_http2,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
@@ -198,6 +199,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		DisableKeepAlives:    args.DisableKeepAlives,
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
+		ForceAttemptHTTP2:    args.ForceAttemptHTTP2,
 
 		Auth: authentication,
 

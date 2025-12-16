@@ -80,6 +80,10 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 				dbInstanceIdentifier = strings.TrimPrefix(resource, "db:")
 			}
 		}
+		if c.CloudProvider.Azure != nil {
+			providerName = "azure"
+			dbInstanceIdentifier = c.CloudProvider.Azure.Resource
+		}
 	} else {
 		parts, err := ParseURL(c.DSN)
 		if err != nil {

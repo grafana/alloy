@@ -92,6 +92,7 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,
+		ForceAttemptHTTP2:    cfg.ForceAttemptHTTP2,
 
 		Authentication: a,
 	}

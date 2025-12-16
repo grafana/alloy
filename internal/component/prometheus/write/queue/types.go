@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/grafana/walqueue/types"
+	"github.com/prometheus/client_golang/exp/api/remote"
 	"github.com/prometheus/common/version"
-	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -54,7 +54,7 @@ func defaultEndpointConfig() EndpointConfig {
 		FlushInterval:        1 * time.Second,
 		MetadataCacheEnabled: false,
 		MetadataCacheSize:    1000,
-		ProtobufMessage:      RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1),
+		ProtobufMessage:      RemoteWriteProtoMsg(remote.WriteV1MessageType),
 		Parallelism: ParallelismConfig{
 			DriftScaleUp:                60 * time.Second,
 			DriftScaleDown:              30 * time.Second,
@@ -97,7 +97,7 @@ func (r *Arguments) Validate() error {
 		if conn.Parallelism.AllowedNetworkErrorFraction < 0 || conn.Parallelism.AllowedNetworkErrorFraction > 1 {
 			return fmt.Errorf("allowed_network_error_percent must be between 0.00 and 1.00")
 		}
-		if conn.ProtobufMessage == RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV2) {
+		if conn.ProtobufMessage == RemoteWriteProtoMsg(remote.WriteV2MessageType) {
 			if conn.MetadataCacheSize <= 0 {
 				return fmt.Errorf("metadata_cache_size must be greater than 0 when using Remote Write V2")
 			}
@@ -144,8 +144,8 @@ type EndpointConfig struct {
 	MetadataCacheSize int `alloy:"metadata_cache_size,attr,optional"`
 }
 
-// Wrapper is required to unmarshal the config.RemoteWriteProtoMsg type
-type RemoteWriteProtoMsg config.RemoteWriteProtoMsg
+// Wrapper is required to unmarshal the remote.WriteMessageType type
+type RemoteWriteProtoMsg remote.WriteMessageType
 
 // MarshalText implements encoding.TextMarshaler
 func (s RemoteWriteProtoMsg) MarshalText() (text []byte, err error) {
@@ -156,10 +156,10 @@ func (s RemoteWriteProtoMsg) MarshalText() (text []byte, err error) {
 func (s *RemoteWriteProtoMsg) UnmarshalText(text []byte) error {
 	str := string(text)
 	switch str {
-	case string(config.RemoteWriteProtoMsgV1):
-		*s = RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1)
-	case string(config.RemoteWriteProtoMsgV2):
-		*s = RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV2)
+	case string(remote.WriteV1MessageType):
+		*s = RemoteWriteProtoMsg(remote.WriteV1MessageType)
+	case string(remote.WriteV2MessageType):
+		*s = RemoteWriteProtoMsg(remote.WriteV2MessageType)
 	default:
 		return fmt.Errorf("unknown remote write proto message: %s", str)
 	}
@@ -215,7 +215,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		ProxyURL:             cc.ProxyURL,
 		ProxyFromEnvironment: cc.ProxyFromEnvironment,
 		ProxyConnectHeaders:  proxyConnectHeaders,
-		ProtobufMessage:      config.RemoteWriteProtoMsg(cc.ProtobufMessage),
+		ProtobufMessage:      remote.WriteMessageType(cc.ProtobufMessage),
 		EnableMetadataCache:  cc.MetadataCacheEnabled,
 		MetadataCacheSize:    cc.MetadataCacheSize,
 		Parallelism: types.ParallelismConfig{

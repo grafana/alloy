@@ -1,53 +1,13 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
-> to update the changelog._
+## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
-This document contains a historical list of changes between releases. Only
-changes that impact end-user behavior are listed; changes to documentation or
-internal API changes are not present.
 
-Main (unreleased)
------------------
+### Bug Fixes 🐛
 
-### Features
+* update to Beyla 2.7.10 ([#5019](https://github.com/grafana/alloy/issues/5019)) ([c149393](https://github.com/grafana/alloy/commit/c149393881e8c155681de9c03f8701b1fdbc6ea4))
 
-- (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
-
-- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
-
-- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
-
-### Enhancements
-
-- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
-
-- Add `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
-
-- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
-
-- Add `delay` option to `prometheus.exporter.cloudwatch` component to delay scraping of metrics to account for CloudWatch ingestion latency. (@tmeijn)
-
-- Export `yace_.*` metrics from the underlying YACE Exporter to `prometheus.exporter.cloudwatch`. (@tmeijn)
-
-- (_Public Preview_) Additions to `database_observability.mysql` and `database_observability.postgres` components:
-  - `explain_plans`
-    - always send an explain plan log message for each query, even skipped or errored queries. (@rgeyer)
-
-### Bugfixes
-
-- (_Public Preview_) Additions to `database_observability.postgres` component:
-  - `schema_details`
-    - fixes collection of schema details for mixed case table names (@fridgepoet)
-
-- (_Public Preview_) Additions to `database_observability.mysql` component:
-  - replace the internal `server_id` label attribution in favor of a hash composed from `@@server_uuid` and `@@hostname`
-  - add `setup_actors` collector that checks and optionally updates settings to avoid tracking queries for the currently connected user (@cristiangreco)
-
-- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
-
-v1.12.0
------------------
+## [1.12.0](https://github.com/grafana/alloy/compare/v1.11.3...v1.12.0) (2025-12-01)
 
 ### Breaking changes
 
@@ -57,6 +17,8 @@ v1.12.0
   set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
 
 ### Features
+
+- Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
 
 - (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
   logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
