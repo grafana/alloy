@@ -41,17 +41,6 @@ func IterStreamRaw(r io.Reader, delimiter byte) iter.Seq2[*syslog.Base, error] {
 	}
 }
 
-// ReadLineRaw reads a single syslog line without syslog contents parsing.
-//
-// Delimiter argument is used to determine line end for non-transparent framing.
-// Returns a nil value if line contents are empty.
-//
-// Meant to be used in UDP transport where a single syslog line is delivered per datagram.
-func ReadLineRaw(r io.Reader, delimiter byte) (*syslog.Base, error) {
-	buf := bufio.NewReaderSize(r, 1<<10)
-	return parseLineRaw(buf, delimiter)
-}
-
 func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 	b, err := buf.ReadByte()
 	if err != nil {
