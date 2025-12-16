@@ -234,25 +234,23 @@
             "type": "datasource"
          },
          {
-            "allValue": ".*",
-            "datasource": "${loki_datasource}",
-            "includeAll": true,
+            "datasource": "${datasource}",
+            "includeAll": false,
             "label": "Cluster",
             "multi": true,
             "name": "cluster",
-            "query": "label_values({}, cluster)",
+            "query": "label_values(alloy_build_info, cluster)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
          },
          {
-            "allValue": ".*",
-            "datasource": "${loki_datasource}",
-            "includeAll": true,
+            "datasource": "${datasource}",
+            "includeAll": false,
             "label": "Namespace",
             "multi": true,
             "name": "namespace",
-            "query": "label_values({cluster=~\"$cluster\"}, namespace)",
+            "query": "label_values(alloy_build_info{cluster=~\"$cluster\"}, namespace)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
