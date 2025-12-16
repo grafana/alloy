@@ -54,5 +54,5 @@ jobs:
           REPO_URL: ${{ github.repository }}
           TARGET_BRANCH: ${{ github.ref_name }}
           CONFIG_FILE: release-please-config.json
-          MANIFEST_FILE: .release-please-manifest.json
+          MANIFEST_FILE: flowcmd/.release-please-manifest.json
         run: node index.js
