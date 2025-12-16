@@ -15,6 +15,7 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
     otelCmd.Long = "Use Alloy with OpenTelemetry Collector runtime"
 
     flowCmd := flowcmd.RootCommand()
-    flowCmd.AddCommand(otelCmd)
+    // TODO: Officially add this command to expose in a follow up PR
+    // flowCmd.AddCommand(otelCmd)
     return flowCmd
 }

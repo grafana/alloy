@@ -20,7 +20,7 @@ func main() {
 	log.Printf("otelGeneratedMain: %v", otelGeneratedMain)
 	log.Printf("alloyMain: %v", alloyMain)
 
-	templatePath := filepath.Join(dir, "generator", "main_allloy.tpl")
+	templatePath := filepath.Join(dir, "generator", "main_alloy.tpl")
 	if err := copyAlloyMainTemplateFromFile(templatePath, alloyMain); err != nil {
 		log.Fatalf("failed to copy alloy main template: %v", err)
 	}
