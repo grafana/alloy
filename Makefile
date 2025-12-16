@@ -267,14 +267,18 @@ else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
 endif
 
+# Only require generate-module-dependencies when running locally (not in CI)
+ifeq ($(CI),true)
+GENERATE_OTEL_PREREQS :=
+else
+GENERATE_OTEL_PREREQS := generate-module-dependencies
+endif
 
-generate-otel-collector-distro:
+generate-otel-collector-distro: $(GENERATE_OTEL_PREREQS)
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./collector && builder --config ./builder-config.yaml --skip-compilation
-	cd ./collector && go mod tidy
-	cd ./collector && go run ./generator/generator.go -- ./main.go ./main_alloy.go
+	cd ./collector && go generate
 endif
 
 generate-ui:
