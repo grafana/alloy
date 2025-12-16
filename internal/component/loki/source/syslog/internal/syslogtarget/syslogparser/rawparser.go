@@ -29,6 +29,11 @@ func IterStreamRaw(r io.Reader, delimiter byte) iter.Seq2[*syslog.Base, error] {
 				return
 			}
 
+			// skip empty lines
+			if r == nil {
+				continue
+			}
+
 			if !yield(r, nil) {
 				return
 			}
@@ -71,6 +76,10 @@ func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 
 		// trim potential newline leftovers if called sequentially inside TCP conn.
 		buff = bytes.TrimFunc(buff, unicode.IsSpace)
+		if len(buff) == 0 {
+			return nil, nil
+		}
+
 		return readLogLine(buff), nil
 
 	case framingTypeOctetCounting:
@@ -79,8 +88,6 @@ func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 			return nil, fmt.Errorf("failed to read octet length header: %w", err)
 		}
 
-		// Skip space after octet length. Octet counting refers to length after a space.
-		_, _ = buf.ReadByte()
 		buff := make([]byte, contentLength)
 		n, err := buf.Read(buff)
 		if err != nil {
@@ -149,6 +156,12 @@ func readFrameLength(r *bufio.Reader) (flen int, err error) {
 		return 0, fmt.Errorf("%w (read: %q)", err, part)
 	}
 
+	if len(part) == 0 {
+		return 0, errors.New("missing octet length")
+	}
+
+	// ReadString returns value with its delimiter
+	part = part[:len(part)-1]
 	c, err := strconv.ParseInt(part, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse octet length from %q: %w", part, err)
