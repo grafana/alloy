@@ -103,13 +103,9 @@ func newTailer(metrics *metrics, logger log.Logger, handler loki.LogsReceiver, p
 }
 
 func (t *tailer) start() {
-	t.wg.Add(1)
 	t.running.Store(true)
-	go func() {
-		defer func() {
-			t.wg.Done()
-			t.running.Store(false)
-		}()
+	t.wg.Go(func() {
+		defer t.running.Store(false)
 		for t.ctx.Err() == nil {
 			end := t.to
 			maxEnd := time.Now().Add(-minDelay)
@@ -144,7 +140,7 @@ func (t *tailer) start() {
 				}
 			}
 		}
-	}()
+	})
 }
 
 // pull pulls logs from cloudflare for a given time range.
@@ -217,7 +213,7 @@ func (t *tailer) Ready() bool {
 
 // Details returns debug details about the Cloudflare target.
 func (t *tailer) Details() map[string]string {
-	fields, _ := fieldsForType(FieldsType(t.config.FieldsType), t.config.AdditionalFields)
+	fields, _ := fieldsForType(t.config.FieldsType, t.config.AdditionalFields)
 	var errMsg string
 	if t.err != nil {
 		errMsg = t.err.Error()

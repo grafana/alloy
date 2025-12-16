@@ -17,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -87,14 +88,15 @@ func (c *Arguments) Validate() error {
 // Component implements the loki.source.cloudflare component.
 type Component struct {
 	opts    component.Options
-	metrics *metrics
-
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
-	tailer *tailer
-
 	posFile positions.Positions
 	handler loki.LogsReceiver
+	metrics *metrics
+
+	// mut is used to protect access to tailer.
+	mut    sync.RWMutex
+	tailer *tailer
+
+	fanout *loki.Fanout
 }
 
 // New creates a new loki.source.cloudflare component.
@@ -117,7 +119,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:    o,
 		metrics: newMetrics(o.Registerer),
 		handler: loki.NewLogsReceiver(),
-		fanout:  args.ForwardTo,
+		fanout:  loki.NewFanout(args.ForwardTo),
 		posFile: positionsFile,
 	}
 
@@ -132,24 +134,20 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.mut.RLock()
-		level.Info(c.opts.Logger).Log("msg", "loki.source.cloudflare component shutting down, stopping the target")
-		c.tailer.Stop()
-		c.mut.RUnlock()
+		level.Info(c.opts.Logger).Log("msg", "loki.source.cloudflare component shutting down")
+
+		// NOTE: We need to stop posFile first so we don't record entries we are draining.
+		c.posFile.Stop()
+		source.Drain(c.handler, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			c.tailer.Stop()
+
+		})
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	source.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
@@ -158,7 +156,8 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.tailer != nil {
 		c.tailer.Stop()
