@@ -81,7 +81,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
-	github.com/grafana/pyroscope/lidia v0.0.0-20250716102313-506840f4afcd
+	github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251023151319-9baba332b98a
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
@@ -1061,7 +1061,7 @@ replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.202
 replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
 
 // Replace OpenTelemetry eBPF profiler with Grafana fork
-replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c
+replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
 
 // Update openshift/client-go to version compatible with structured-merge-diff v6
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
