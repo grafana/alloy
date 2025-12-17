@@ -1,4 +1,4 @@
-package cloudflaretarget
+package cloudflare
 
 // This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
 // The cloudflaretarget package is used to configure and run a target that can
@@ -6,6 +6,7 @@ package cloudflaretarget
 // components.
 
 import (
+	"encoding"
 	"fmt"
 
 	"golang.org/x/exp/slices"
@@ -13,6 +14,27 @@ import (
 
 // FieldsType defines the set of fields to fetch alongside logs.
 type FieldsType string
+
+var (
+	_ encoding.TextMarshaler   = (FieldsType)(0)
+	_ encoding.TextUnmarshaler = (*FieldsType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (ft FieldsType) MarshalText() (text []byte, err error) {
+	return []byte(ft), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (ft *FieldsType) UnmarshalText(text []byte) error {
+	switch FieldsType(text) {
+	case FieldsTypeDefault, FieldsTypeMinimal, FieldsTypeExtended, FieldsTypeAll, FieldsTypeCustom:
+		*ft = FieldsType(text)
+	default:
+		return fmt.Errorf("unknown fields type: %s", string(text))
+	}
+	return nil
+}
 
 // Valid FieldsType values.
 const (
@@ -45,8 +67,8 @@ var (
 	}...)
 )
 
-// Fields returns the union of a set of fields represented by the Fieldtype and the given additional fields. The returned slice will contain no duplicates.
-func Fields(t FieldsType, additionalFields []string) ([]string, error) {
+// fieldsForType returns the union of a set of fields represented by the Fieldtype and the given additional fields. The returned slice will contain no duplicates.
+func fieldsForType(t FieldsType, additionalFields []string) ([]string, error) {
 	var fields []string
 	switch t {
 	case FieldsTypeDefault:
