@@ -49,29 +49,8 @@ func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 
 	// TODO: use bytebufferpool?
 	_ = buf.UnreadByte()
-	switch framingTypeFromFirstByte(b) {
-	case framingTypeNonTransparent:
-		buff, err := buf.ReadBytes(delimiter)
-		if err != nil {
-			// Ignore io.EOF if some data was returned
-			if !errors.Is(err, io.EOF) || len(buff) == 0 {
-				return nil, err
-			}
-		}
-
-		if len(buff) == 0 {
-			return nil, nil
-		}
-
-		// trim potential newline leftovers if called sequentially inside TCP conn.
-		buff = bytes.TrimFunc(buff, unicode.IsSpace)
-		if len(buff) == 0 {
-			return nil, nil
-		}
-
-		return readLogLine(buff), nil
-
-	case framingTypeOctetCounting:
+	ftype := framingTypeFromFirstByte(b)
+	if ftype == framingTypeOctetCounting {
 		contentLength, err := readFrameLength(buf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read octet length header: %w", err)
@@ -89,9 +68,28 @@ func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 
 		buff = buff[:n]
 		return readLogLine(buff), nil
-	default:
-		return nil, fmt.Errorf("invalid or unsupported framing. first byte: %q", b)
 	}
+
+	// NOTE: CEF logs don't have log priority prefix and will be detected as [framingTypeUnknown], but logic still the same.
+	buff, err := buf.ReadBytes(delimiter)
+	if err != nil {
+		// Ignore io.EOF if some data was returned
+		if !errors.Is(err, io.EOF) || len(buff) == 0 {
+			return nil, err
+		}
+	}
+
+	if len(buff) == 0 {
+		return nil, nil
+	}
+
+	// trim potential newline leftovers if called sequentially inside TCP conn.
+	buff = bytes.TrimFunc(buff, unicode.IsSpace)
+	if len(buff) == 0 {
+		return nil, nil
+	}
+
+	return readLogLine(buff), nil
 }
 
 func readLogLine(line []byte) *syslog.Base {

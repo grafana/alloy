@@ -26,6 +26,8 @@ const (
 // Returns [framingTypeNonTransparent] on failure.
 //
 // See https://datatracker.ietf.org/doc/html/rfc6587 for details on message framing.
+//
+// Note: this method doesn't support CEF logs as they don't have syslog priority prefix.
 func framingTypeFromFirstByte(b byte) framingType {
 	if b == '<' {
 		// Message starts with log severity and no length, should be consumed until '\n' or '\0' character.

@@ -1,0 +1,16 @@
+[
+  {
+    "Message": "Dec 17 12:23:16 Dream-Router CEF:0|Ubiquiti|UniFi Network|10.0.162|544|Admin Accessed UniFi Network|1|src=192.168.1.101 UNIFIcategory=System UNIFIsubCategory=Admin UNIFIhost=Dream Router UNIFIaccessMethod=web UNIFIadmin=UniFi User UNIFIutcTime=2025-12-17T17:23:16.904Z msg=UniFi User accessed UniFi Network using the web. Source IP: 192.168.1.101"
+  },
+  {
+    "Severity": 5,
+    "Priority": 13,
+    "Message": "Dec 17 12:23:16 Dream-Router [LAN_LOCAL-RET-2147483647] DESCR=\"no rule description\" IN=br0 OUT= MAC=9c:05:d6:be:5c:5c:74:56:3c:b6:54:9e:08:00 SRC=192.168.1.101 DST=192.168.1.1 LEN=60 TOS=00 PREC=0x00 TTL=64 ID=18845 DF PROTO=TCP SPT=56616 DPT=443 SEQ=2900430094 ACK=0 WINDOW=64240 SYN URGP=0 MARK=1a0000"
+  },
+  {
+    "Message": "Dec 17 12:22:08 Dream-Router CEF:0|Ubiquiti|UniFi Network|10.0.162|546|Admin Made Config Changes|2|src=192.168.1.101 UNIFIcategory=System UNIFIsubCategory=Admin UNIFIhost=Dream Router UNIFIsettingsChanges=debug: false UNIFIaccessMethod=web UNIFIsettingsSection=System UNIFIsettingsEntry=rsyslogd UNIFIadmin=UniFi User UNIFIutcTime=2025-12-17T17:22:08.921Z msg=UniFi User made a change to  in System settings. Source IP: 192.168.1.101"
+  },
+  {
+    "Message": "Dec 17 12:22:11 Dream-Router CEF:0|Ubiquiti|UniFi Network|10.0.162|546|Admin Made Config Changes|2|src=192.168.1.101 UNIFIcategory=System UNIFIsubCategory=Admin UNIFIhost=Dream Router UNIFIsettingsChanges=debug: true UNIFIaccessMethod=web UNIFIsettingsSection=System UNIFIsettingsEntry=rsyslogd UNIFIadmin=UniFi User UNIFIutcTime=2025-12-17T17:22:11.170Z msg=UniFi User made a change to  in System settings. Source IP: 192.168.1.101"
+  }
+]
