@@ -84,7 +84,7 @@ type StaticJob struct {
 	Period     time.Duration  `alloy:"period,attr,optional"`
 	Length     time.Duration  `alloy:"length,attr,optional"`
 	Delay      time.Duration  `alloy:"delay,attr,optional"`
-	// NOTE: This field is actually not supported as a configuration option in YACE!
+	// NOTE: This field is actually not supported as a job level configuration option in YACE!
 	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/0c9677d91836f0a4150a55172a0ce5081574b407/docs/configuration.md?plain=1#L177
 	// It should either be removed from Alloy in some major release, or
 	// contributed to YACE.
@@ -287,7 +287,6 @@ func toYACEMetrics(ms []Metric, jobPeriod time.Duration, jobLength time.Duration
 			// by Alloy every so often, dictated by the scrapedInterval, CloudWatch should return a single datapoint
 			// for each requested metric. That is if Period >= Length, but is Period > Length, we will be getting not enough
 			// data to fill the whole aggregation bucket. Therefore, Period == Length.
-			// NOTE: Period > Length is not a valid configuration and will cause an error. See https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/292db29c1537af84a5e831b007bc9ff501708eaa/pkg/config/config.go#L390
 			Period: periodSeconds,
 			Length: lengthSeconds,
 
@@ -307,8 +306,8 @@ func toYACEStaticJob(sj StaticJob) *yaceConf.Static {
 		})
 	}
 
-	// For each metric in sj.Metrics, if the NilToZero is not set, set the NilToZero to the job level NilToZero or DefaultNilToZero.
-	// This is needed to make the `nil_to_zero` option work in static jobs as this is not natively supported by YACE.
+	// For each metric in sj.Metrics, if NilToZero is not set, set the NilToZero to the job level NilToZero or DefaultNilToZero.
+	// This is needed to make the `nil_to_zero` job level option work in static jobs as this is not natively supported by YACE.
 	for i, m := range sj.Metrics {
 		if m.NilToZero == nil {
 			if sj.NilToZero == nil {
