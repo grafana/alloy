@@ -48,18 +48,25 @@ jobs:
         working-directory: tools/release/release-please-runner
         run: npm install
 
-      - name: Determine config file 🔍
-        id: config
+      - name: Set main branch overrides 🔧
+        if: github.ref_name == 'main'
         run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            echo "config_file=release-please-config-main.json" >> $GITHUB_OUTPUT
-            echo "skip_release=true" >> $GITHUB_OUTPUT
-          else
-            echo "config_file=release-please-config.json" >> $GITHUB_OUTPUT
-            echo "skip_release=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          echo "SKIP_GITHUB_RELEASE=true" >> $GITHUB_ENV
+          echo "PULL_REQUEST_TITLE=Unreleased Changes" >> $GITHUB_ENV
+          {
+            echo "PULL_REQUEST_HEADER<<EOF"
+            echo '🚫 **DO NOT MERGE - This PR is for tracking purposes only**'
+            echo ''
+            echo 'This draft PR tracks the changes that will be included in the next minor release. It updates automatically with each push to main.'
+            echo ''
+            echo 'When ready to cut a release:'
+            echo '1. Create a release branch (e.g., `release/v1.13`)'
+            echo '2. The release-please automation will take over on that branch'
+            echo '3. This PR will remain on main to track changes'
+            echo ''
+            echo '---'
+            echo "EOF"
+          } >> $GITHUB_ENV
 
       - name: Run release-please 🚀
         working-directory: tools/release/release-please-runner
@@ -67,7 +74,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_URL: ${{ github.repository }}
           TARGET_BRANCH: ${{ github.ref_name }}
-          CONFIG_FILE: ${{ steps.config.outputs.config_file }}
-          MANIFEST_FILE: .release-please-manifest.json
-          SKIP_GITHUB_RELEASE: ${{ steps.config.outputs.skip_release }}
+          SKIP_GITHUB_RELEASE: ${{ env.SKIP_GITHUB_RELEASE }}
+          PULL_REQUEST_TITLE: ${{ env.PULL_REQUEST_TITLE }}
+          PULL_REQUEST_HEADER: ${{ env.PULL_REQUEST_HEADER }}
         run: node index.js
