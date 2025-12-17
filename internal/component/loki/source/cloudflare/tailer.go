@@ -146,7 +146,6 @@ func (t *tailer) start() {
 			}
 		}
 	})
-
 }
 
 // pull pulls logs from cloudflare for a given time range.
