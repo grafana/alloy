@@ -1,4 +1,4 @@
-package cloudflaretarget
+package cloudflare
 
 // This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
 // The cloudflaretarget package is used to configure and run a target that can
@@ -38,25 +38,25 @@ var defaultBackoff = backoff.Config{
 	MaxRetries: 5,
 }
 
-// Config defines how to connect to Cloudflare's Logpull API.
-type Config struct {
+// tailerConfig defines how to connect to Cloudflare's Logpull API.
+type tailerConfig struct {
 	APIToken         string
 	ZoneID           string
 	Labels           model.LabelSet
 	Workers          int
 	PullRange        model.Duration
-	FieldsType       string
+	FieldsType       FieldsType
 	AdditionalFields []string
+	Backoff          backoff.Config
 }
 
-// Target enables pulling HTTP log messages from Cloudflare using the Logpull
-// API.
-type Target struct {
+// tailer is responsible to pull log messages from cloudflare using Logpull API.
+type tailer struct {
 	logger    log.Logger
-	handler   loki.EntryHandler
+	handler   loki.LogsReceiver
 	positions positions.Positions
-	config    *Config
-	metrics   *Metrics
+	config    *tailerConfig
+	metrics   *metrics
 
 	client  Client
 	ctx     context.Context
@@ -67,9 +67,9 @@ type Target struct {
 	err     error
 }
 
-// NewTarget creates and runs a Cloudflare target.
-func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, position positions.Positions, config *Config) (*Target, error) {
-	fields, err := Fields(FieldsType(config.FieldsType), config.AdditionalFields)
+// newTailer creates and runs a Cloudflare target.
+func newTailer(metrics *metrics, logger log.Logger, handler loki.LogsReceiver, position positions.Positions, config *tailerConfig) (*tailer, error) {
+	fields, err := fieldsForType(config.FieldsType, config.AdditionalFields)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		to = time.Unix(0, pos)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	t := &Target{
+	t := &tailer{
 		logger:    logger,
 		handler:   handler,
 		positions: position,
@@ -99,18 +99,18 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		to:      to,
 		running: atomic.NewBool(false),
 	}
+
 	t.start()
+
 	return t, nil
 }
 
-func (t *Target) start() {
-	t.wg.Add(1)
+func (t *tailer) start() {
 	t.running.Store(true)
-	go func() {
-		defer func() {
-			t.wg.Done()
-			t.running.Store(false)
-		}()
+
+	t.wg.Go(func() {
+		defer t.running.Store(false)
+
 		for t.ctx.Err() == nil {
 			end := t.to
 			maxEnd := time.Now().Add(-minDelay)
@@ -133,7 +133,7 @@ func (t *Target) start() {
 			// Sets current timestamp metrics, move to the next interval and saves the position.
 			t.metrics.LastEnd.Set(float64(end.UnixNano()) / 1e9)
 			t.to = end.Add(time.Duration(t.config.PullRange))
-			t.positions.Put(positions.CursorKey(t.config.ZoneID), t.Labels().String(), t.to.UnixNano())
+			t.positions.Put(positions.CursorKey(t.config.ZoneID), t.config.Labels.String(), t.to.UnixNano())
 
 			// If the next window can be fetched do it, if not sleep for a while.
 			// This is because Cloudflare logs should never be pulled between now-1m and now.
@@ -145,14 +145,14 @@ func (t *Target) start() {
 				}
 			}
 		}
-	}()
+	})
 }
 
 // pull pulls logs from cloudflare for a given time range.
 // It will retry on errors.
-func (t *Target) pull(ctx context.Context, start, end time.Time) error {
+func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
-		backoff = backoff.New(ctx, defaultBackoff)
+		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
 		it      cloudflare.LogpullReceivedIterator
 		err     error
@@ -205,26 +205,20 @@ func (t *Target) pull(ctx context.Context, start, end time.Time) error {
 	return errs.Err()
 }
 
-// Stop shuts down the target.
-func (t *Target) Stop() {
+// stop shuts down the target.
+func (t *tailer) stop() {
 	t.cancel()
 	t.wg.Wait()
-	t.handler.Stop()
 }
 
-// Labels returns the custom labels attached to log entries.
-func (t *Target) Labels() model.LabelSet {
-	return t.config.Labels
-}
-
-// Ready reports whether the target is ready.
-func (t *Target) Ready() bool {
+// ready reports whether the target is ready.
+func (t *tailer) ready() bool {
 	return t.running.Load()
 }
 
-// Details returns debug details about the Cloudflare target.
-func (t *Target) Details() map[string]string {
-	fields, _ := Fields(FieldsType(t.config.FieldsType), t.config.AdditionalFields)
+// details returns debug details about the Cloudflare target.
+func (t *tailer) details() map[string]string {
+	fields, _ := fieldsForType(t.config.FieldsType, t.config.AdditionalFields)
 	var errMsg string
 	if t.err != nil {
 		errMsg = t.err.Error()
@@ -246,7 +240,7 @@ type pullRequest struct {
 func splitRequests(start, end time.Time, workers int) []pullRequest {
 	perWorker := end.Sub(start) / time.Duration(workers)
 	var requests []pullRequest
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		r := pullRequest{
 			start: start.Add(time.Duration(i) * perWorker),
 			end:   start.Add(time.Duration(i+1) * perWorker),

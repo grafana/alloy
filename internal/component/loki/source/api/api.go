@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/api/internal/lokipush"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
@@ -63,18 +64,16 @@ type Component struct {
 	serverMut sync.Mutex
 	server    *lokipush.PushAPIServer
 
-	// Use separate receivers mutex to address potential deadlock when Update drains the current server.
-	// e.g. https://github.com/grafana/agent/issues/3391
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               opts,
 		handler:            loki.NewLogsBatchReceiver(),
-		receivers:          args.ForwardTo,
 		uncheckedCollector: util.NewUncheckedCollector(nil),
+
+		fanout: loki.NewFanout(args.ForwardTo),
 	}
 	opts.Registerer.MustRegister(c.uncheckedCollector)
 	err := c.Update(args)
@@ -86,34 +85,17 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func (c *Component) Run(ctx context.Context) (err error) {
 	defer func() {
+		// NOTE: We don't have to drain here because we force cancel all in-flight request.
 		c.serverMut.Lock()
 		defer c.serverMut.Unlock()
 		if c.server != nil {
-			// We want to cancel all in-flight request when component stops.
 			c.server.ForceShutdown()
 			c.server = nil
 		}
 	}()
 
-	for {
-		select {
-		case entries := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			for _, entry := range entries {
-				for _, receiver := range c.receivers {
-					select {
-					case receiver.Chan() <- entry:
-					case <-ctx.Done():
-						c.receiversMut.RUnlock()
-						return
-					}
-				}
-			}
-			c.receiversMut.RUnlock()
-		case <-ctx.Done():
-			return
-		}
-	}
+	source.ConsumeBatch(ctx, c.handler, c.fanout)
+	return
 }
 
 func (c *Component) Update(args component.Arguments) error {
@@ -135,9 +117,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.serverMut.Lock()
 	defer c.serverMut.Unlock()
