@@ -67,6 +67,10 @@ type File struct {
 
 	lastOffset int64
 
+	// bufferedLines stores lines that were read from an old file handle before
+	// it was closed during file rotation.
+	bufferedLines []Line
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -85,6 +89,15 @@ func (f *File) Next() (*Line, error) {
 	defer f.mu.Unlock()
 
 read:
+	// If we have buffered lines from a previous file rotation, return them first.
+	// These are lines that were read from the old file handle before it was closed,
+	// ensuring we don't lose any data during file rotation.
+	if len(f.bufferedLines) > 0 {
+		line := f.bufferedLines[0]
+		f.bufferedLines = f.bufferedLines[1:]
+		return &line, nil
+	}
+
 	text, err := f.readLine()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -154,6 +167,10 @@ func (f *File) wait(partial bool) error {
 		// We need to reopen the file when it was truncated.
 		return f.reopen(true)
 	case eventDeleted:
+		// if a file is deleted we want to make sure we drain what's remaninng in the open file.
+		f.drain()
+
+		f.lastOffset = 0
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -170,6 +187,44 @@ func (f *File) readLine() (string, error) {
 		return line, err
 	}
 	return strings.TrimRight(line, "\r\n"), err
+}
+
+// drain reads all remaining complete lines from the current file handle and stores
+// them in bufferedLines. This is called when a file deletion/rotation is detected
+// to ensure we don't lose any data from the old file before switching to the new one.
+func (f *File) drain() {
+	f.file.Seek(f.lastOffset, io.SeekStart)
+	f.reader.Reset(f.file)
+
+	for {
+		text, err := f.readLine()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// If we hit EOF and have a partial line, add it and terminate
+				if text != "" {
+					offset, _ := f.offset()
+					f.bufferedLines = append(f.bufferedLines, Line{
+						Text:   text,
+						Offset: offset,
+						Time:   time.Now(),
+					})
+				}
+			}
+			return
+		}
+
+		if text == "" {
+			return
+		}
+
+		offset, _ := f.offset()
+
+		f.bufferedLines = append(f.bufferedLines, Line{
+			Text:   text,
+			Offset: offset,
+			Time:   time.Now(),
+		})
+	}
 }
 
 // offset returns the current byte offset in the file where the next read will occur.
