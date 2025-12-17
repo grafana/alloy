@@ -154,8 +154,8 @@ func (f *File) wait(partial bool) error {
 		// We need to reopen the file when it was truncated.
 		return f.reopen(true)
 	case eventDeleted:
-		// File was rotated/deleted. The fix in blockUntilEvent ensures we've read all
-		// data from the open file before detecting rotation. Now reopen to follow the new file.
+		// In polling mode we could miss events when a file is deleted, so before we give up
+		// we try to reopen the file.
 		return f.reopen(false)
 	default:
 		return err

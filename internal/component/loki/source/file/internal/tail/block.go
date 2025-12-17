@@ -77,35 +77,6 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 			return eventDeleted, nil
 		}
 
-		// Check current open file descriptor FIRST before checking the file at the configured path.
-		// After rename / file rotation, the path points to a NEW file, but we're still reading from
-		// the OLD file (via current open file descriptor). We must read all data from the current
-		// old file before detecting rename / rotation, to avoid losing data.
-		currentFi, err := f.Stat()
-		if err != nil {
-			// If we can't stat our open file, treat it as deleted.
-			return eventDeleted, nil
-		}
-
-		currentSize := currentFi.Size()
-
-		// Check if our open file got truncated
-		if prevSize > 0 && prevSize > currentSize {
-			return eventTruncated, nil
-		}
-
-		// Check if our open file got bigger - this takes priority over rotation detection
-		// as we want to read the remaining data from it first.
-		if prevSize < currentSize {
-			return eventModified, nil
-		}
-
-		// Check if our open file was modified (by mod time)
-		if currentFi.ModTime() != prevModTime {
-			return eventModified, nil
-		}
-
-		// Only now, after confirming our file has no new data, check if path was rotated
 		fi, err := os.Stat(cfg.Filename)
 		if err != nil {
 			// Windows cannot delete a file if a handle is still open (tail keeps one open)
@@ -117,9 +88,25 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 			return eventNone, err
 		}
 
-		// File got moved/renamed? Only report this if our open file has no more data.
+		// File got moved/renamed?
 		if !os.SameFile(origFi, fi) {
 			return eventDeleted, nil
+		}
+
+		// File got truncated?
+		currentSize := fi.Size()
+		if prevSize > 0 && prevSize > currentSize {
+			return eventTruncated, nil
+		}
+
+		// File got bigger?
+		if prevSize < currentSize {
+			return eventModified, nil
+		}
+
+		// File was appended to (changed)?
+		if fi.ModTime() != prevModTime {
+			return eventModified, nil
 		}
 
 		// File hasn't changed so wait until next retry.
