@@ -630,24 +630,25 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 
 // TestFileRotationStress_QuickSmoke is a quick smoke test that runs even in short mode
 func TestFileRotationStress_QuickSmoke(t *testing.T) {
-	// TODO: Increase this threshold to 100% as we fix remaining issues
-	const minSuccessRate = 0.95 // 95%
-
 	testCases := []struct {
-		name         string
-		rotationType rotationType
+		name           string
+		rotationType   rotationType
+		minSuccessRate float64
 	}{
 		{
-			name:         "rename",
-			rotationType: rotationTypeRename,
+			name:           "rename",
+			rotationType:   rotationTypeRename,
+			minSuccessRate: 0.985, // TODO: Increase to 100% after fixing remaining race conditions
 		},
 		{
-			name:         "copytruncate",
-			rotationType: rotationTypeCopyTruncate,
+			name:           "copytruncate",
+			rotationType:   rotationTypeCopyTruncate,
+			minSuccessRate: 0.99, // TODO: Increase to 100% after fixing truncation detection timing
 		},
 		{
-			name:         "delete",
-			rotationType: rotationTypeDelete,
+			name:           "delete",
+			rotationType:   rotationTypeDelete,
+			minSuccessRate: 0.98, // TODO: Increase to 100% after improving deletion detection and recovery
 		},
 	}
 
@@ -662,7 +663,7 @@ func TestFileRotationStress_QuickSmoke(t *testing.T) {
 				rotationType:     tc.rotationType,
 			}
 
-			runStressTest(t, cfg, minSuccessRate)
+			runStressTest(t, cfg, tc.minSuccessRate)
 		})
 	}
 }
@@ -672,24 +673,25 @@ func TestFileRotationStress_HighVolume(t *testing.T) {
 		t.Skip("Skipping stress test in short mode")
 	}
 
-	// TODO: Increase this threshold to 100% as we fix remaining issues
-	const minSuccessRate = 0.95 // 95%
-
 	testCases := []struct {
-		name         string
-		rotationType rotationType
+		name           string
+		rotationType   rotationType
+		minSuccessRate float64
 	}{
 		{
-			name:         "rename",
-			rotationType: rotationTypeRename,
+			name:           "rename",
+			rotationType:   rotationTypeRename,
+			minSuccessRate: 0.97, // TODO: Increase to 100% after fixing remaining race conditions
 		},
 		{
-			name:         "copytruncate",
-			rotationType: rotationTypeCopyTruncate,
+			name:           "copytruncate",
+			rotationType:   rotationTypeCopyTruncate,
+			minSuccessRate: 0.97, // TODO: Increase to 100% after fixing truncation detection timing
 		},
 		{
-			name:         "delete",
-			rotationType: rotationTypeDelete,
+			name:           "delete",
+			rotationType:   rotationTypeDelete,
+			minSuccessRate: 0.95, // TODO: Increase to 100% after improving deletion detection and recovery
 		},
 	}
 
@@ -704,7 +706,7 @@ func TestFileRotationStress_HighVolume(t *testing.T) {
 				rotationType:     tc.rotationType,
 			}
 
-			runStressTest(t, cfg, minSuccessRate)
+			runStressTest(t, cfg, tc.minSuccessRate)
 		})
 	}
 }
