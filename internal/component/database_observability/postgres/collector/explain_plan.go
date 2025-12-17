@@ -254,7 +254,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
 	}
-	// Pre-sanitize the version a bit before semver gets it
+	// Pre-sanitize the version by removing any trailing characters before semver gets it
 	foundVers := versSanitizeRegex.FindString(args.DBVersion)
 	engineSemver, err := semver.ParseTolerant(foundVers)
 	if err != nil {
