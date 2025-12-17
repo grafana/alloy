@@ -15,7 +15,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -496,8 +495,6 @@ func reportValidationResult(t *testing.T, result validationResult) {
 func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 	t.Helper()
 
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-
 	// Create test directory
 	testDir := filepath.Join(os.TempDir(), fmt.Sprintf("alloy-stress-test-%d", time.Now().UnixNano()))
 	require.NoError(t, os.MkdirAll(testDir, 0755))
@@ -611,7 +608,9 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 
 	// Calculate success rate
 	successRate := float64(result.totalReceived) / float64(result.totalWritten)
-	t.Logf("Success rate: %.2f%% (%d/%d lines); Required success rate: %.1f%%", successRate*100, result.totalReceived, result.totalWritten, minSuccessRate*100)
+	dropped := result.totalWritten - result.totalReceived
+	t.Logf("[%s] Success rate: %.2f%% (%d/%d lines, %d dropped) | Required: %.1f%%",
+		t.Name(), successRate*100, result.totalReceived, result.totalWritten, dropped, minSuccessRate*100)
 
 	// Assert we meet the minimum success rate
 	assert.GreaterOrEqual(t, successRate, minSuccessRate,
@@ -622,11 +621,8 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 	assert.Empty(t, result.duplicateLines, "Some log lines were duplicated")
 }
 
-// Test scenarios with increasing volume and complexity
-//
-// These tests validate file rotation handling under stress with different rotation strategies.
-// We currently expect 95% of log lines to be successfully processed.
-// This threshold should be increased as we add more fixes to improve reliability.
+// For summary of all the tests success rates, run:
+// go test -v -run "TestFileRotationStress" ./internal/component/loki/source/file/ 2>&1 | grep "Success rate"
 
 // TestFileRotationStress_QuickSmoke is a quick smoke test that runs even in short mode
 func TestFileRotationStress_QuickSmoke(t *testing.T) {
@@ -654,6 +650,7 @@ func TestFileRotationStress_QuickSmoke(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := testConfig{
 				numFiles:         2,
 				rotationInterval: 500 * time.Millisecond,
@@ -697,6 +694,7 @@ func TestFileRotationStress_HighVolume(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := testConfig{
 				numFiles:         5,
 				rotationInterval: 500 * time.Millisecond,
