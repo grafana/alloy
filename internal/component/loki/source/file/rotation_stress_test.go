@@ -425,24 +425,6 @@ func validateLogs(t *testing.T, writers []*logWriter, handler *loki.CollectingHa
 		}
 	}
 
-	// Check for duplicate lines we haven't already found
-	for line, count := range seenLines {
-		if count > 1 {
-			// Check if we already reported this
-			alreadyReported := false
-			for _, dup := range result.duplicateLines {
-				if dup == line {
-					alreadyReported = true
-					break
-				}
-			}
-			if !alreadyReported {
-				result.duplicateLines = append(result.duplicateLines, line)
-				result.passed = false
-			}
-		}
-	}
-
 	return result
 }
 
