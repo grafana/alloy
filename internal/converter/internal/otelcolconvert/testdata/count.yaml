@@ -1,0 +1,41 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
+
+connectors:
+  count:
+    spans:
+      my.span.count:
+        description: "Total spans"
+      http.span.count:
+        description: "HTTP GET requests"
+        conditions:
+          - 'attributes["http.method"] == "GET"'
+        attributes:
+          - key: service.name
+            default_value: "unknown"
+    logs:
+      my.log.count:
+        description: "Total logs"
+
+exporters:
+  otlp:
+    endpoint: "localhost:4317"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [count]
+    logs:
+      receivers: [otlp]
+      exporters: [count]
+    metrics:
+      receivers: [count]
+      exporters: [otlp]

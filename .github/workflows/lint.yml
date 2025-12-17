@@ -55,7 +55,7 @@ jobs:
           packaging,\
           production,\
           tools/ci,\
-          tools/release,\
+          tools/publish-release-assets.sh,\
           docs/sources/tutorials/assets\
           "
 

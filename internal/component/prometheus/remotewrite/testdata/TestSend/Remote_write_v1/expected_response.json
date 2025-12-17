@@ -1,0 +1,45 @@
+{
+    "timeseries": [
+        {
+            "labels": [
+                {
+                    "name": "cluster",
+                    "value": "local"
+                },
+                {
+                    "name": "foo",
+                    "value": "bar"
+                }
+            ],
+            "samples": [
+                {
+                    "value": 12,
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "exemplars": null,
+            "histograms": null
+        },
+        {
+            "labels": [
+                {
+                    "name": "cluster",
+                    "value": "local"
+                },
+                {
+                    "name": "fizz",
+                    "value": "baz"
+                }
+            ],
+            "samples": [
+                {
+                    "value": 34,
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "exemplars": null,
+            "histograms": null
+        }
+    ],
+    "metadata": null
+}

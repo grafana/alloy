@@ -1,0 +1,10 @@
+modules:
+  - name: test-module
+    path: go.mod
+    file_type: mod
+
+replaces:
+  - comment: Updated replace
+    dependency: example.com/package
+    replacement: example.com/fork v1.1.0
+

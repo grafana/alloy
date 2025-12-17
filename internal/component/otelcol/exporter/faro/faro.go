@@ -99,11 +99,12 @@ type HTTPClientArguments otelcol.HTTPClientArguments
 // SetToDefault implements syntax.Defaulter.
 func (args *HTTPClientArguments) SetToDefault() {
 	*args = HTTPClientArguments{
-		Timeout:         30 * time.Second,
-		MaxIdleConns:    100,
-		IdleConnTimeout: 90 * time.Second,
-		Headers:         map[string]string{},
-		Compression:     otelcol.CompressionTypeGzip,
-		WriteBufferSize: 512 * 1024,
+		Timeout:           30 * time.Second,
+		MaxIdleConns:      100,
+		IdleConnTimeout:   90 * time.Second,
+		Headers:           map[string]string{},
+		Compression:       otelcol.CompressionTypeGzip,
+		WriteBufferSize:   512 * 1024,
+		ForceAttemptHTTP2: true,
 	}
 }

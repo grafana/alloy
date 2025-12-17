@@ -41,6 +41,7 @@ type eventProcessor struct {
 	namespaceSelector labels.Selector
 	cfgSelector       labels.Selector
 	kclient           go_k8s.Interface
+	storeBuilder      *assets.StoreBuilder
 
 	baseCfg       alertmgr_cfg.Config
 	templateFiles map[string]string
@@ -253,7 +254,7 @@ func (e *eventProcessor) desiredStateFromKubernetes(ctx context.Context) (*alert
 		}
 	}
 
-	cfg, err := e.provisionAlertmanagerConfiguration(ctx, amConfigs, nil)
+	cfg, err := e.provisionAlertmanagerConfiguration(ctx, amConfigs, e.storeBuilder)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provision Alertmanager configuration: %w", err)
 	}

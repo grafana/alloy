@@ -66,7 +66,10 @@ const selectPgStatActivity = `
 				s.query_id != 0
 			)
 		)
+		%s
 `
+
+const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
 
 type QuerySamplesInfo struct {
 	DatabaseName    sql.NullString
@@ -100,6 +103,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	ExcludeCurrentUser    bool
 }
 
 type QuerySamples struct {
@@ -107,6 +111,7 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	excludeCurrentUser    bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -204,7 +209,7 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	const emittedCacheSize = 1000 //pg_stat_statements default max number of statements to track
+	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
 	const emittedCacheTTL = 10 * time.Minute
 
 	return &QuerySamples{
@@ -212,6 +217,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
+		excludeCurrentUser:    args.ExcludeCurrentUser,
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
@@ -275,7 +281,11 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		queryTextField = queryTextClause
 	}
 
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField)
+	excludeCurrentUserClauseField := ""
+	if c.excludeCurrentUser {
+		excludeCurrentUserClauseField = excludeCurrentUserClause
+	}
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludeCurrentUserClauseField)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)

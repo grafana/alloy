@@ -23,6 +23,7 @@ import (
 var _ storage.Appendable = (*Fanout)(nil)
 
 // Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
+// It also maintains the responsibility of assigning global ref IDs to a series via the label store.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.

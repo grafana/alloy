@@ -1,0 +1,22 @@
+receivers:
+  filelog:
+    include:
+      - /var/log/*.log
+    exclude:
+      - /var/log/excluded.log
+
+exporters:
+  file:
+    path: /var/log/otel-logs-*.log
+    append: true
+    compression: zstd
+    group_by:
+      enabled: true
+      resource_attribute: svc.name
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: []
+      exporters: [file]

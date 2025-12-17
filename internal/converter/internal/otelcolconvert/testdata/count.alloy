@@ -1,0 +1,66 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "127.0.0.1:4317"
+	}
+
+	http {
+		endpoint = "127.0.0.1:4318"
+	}
+
+	output {
+		logs   = [otelcol.connector.count.default.input]
+		traces = [otelcol.connector.count.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "localhost:4317"
+
+		tls {
+			insecure = true
+		}
+	}
+}
+
+otelcol.connector.count "default" {
+	spans {
+		name        = "http.span.count"
+		description = "HTTP GET requests"
+		conditions  = ["attributes[\"http.method\"] == \"GET\""]
+
+		attributes {
+			key           = "service.name"
+			default_value = "unknown"
+		}
+	}
+
+	spans {
+		name        = "my.span.count"
+		description = "Total spans"
+	}
+
+	spanevents {
+		name        = "trace.span.event.count"
+		description = "The number of span events observed."
+	}
+
+	metrics {
+		name        = "metric.count"
+		description = "The number of metrics observed."
+	}
+
+	datapoints {
+		name        = "metric.datapoint.count"
+		description = "The number of data points observed."
+	}
+
+	logs {
+		name        = "my.log.count"
+		description = "Total logs"
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}

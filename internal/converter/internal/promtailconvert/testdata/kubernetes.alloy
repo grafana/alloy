@@ -15,11 +15,21 @@ discovery.kubernetes "fun" {
 		server_name          = "example.local"
 		insecure_skip_verify = true
 	}
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
 }
 
 discovery.kubernetes "fun_2" {
 	role            = "pod"
 	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
 }
 
 discovery.kubernetes "fun_3" {
@@ -30,6 +40,11 @@ discovery.kubernetes "fun_3" {
 		type             = "Bearer"
 		credentials_file = "/home/robin/.special_token"
 	}
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
 }
 
 discovery.kubernetes "fun_4" {
@@ -39,6 +54,11 @@ discovery.kubernetes "fun_4" {
 	authorization {
 		type             = "Bearer"
 		credentials_file = "/home/toby/.token"
+	}
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
 	}
 }
 

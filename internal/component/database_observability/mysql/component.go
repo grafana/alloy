@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -345,11 +344,28 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
+	var cp *database_observability.CloudProvider
+	if c.args.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+		if err != nil {
+			c.reportError("failed to collect cloud provider information from config", err)
+			return nil
+		}
+		cp = cloudProvider
+	} else {
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		if err != nil {
+			c.reportError("failed to collect cloud provider information from DSN", err)
+			return nil
+		}
+		cp = cloudProvider
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -363,7 +379,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion); err != nil {
+	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion, cp); err != nil {
 		c.reportError("failed to start collectors", err)
 		return nil
 	}
@@ -399,7 +415,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(serverID string, engineVersion string, parsedEngineVersion semver.Version) error {
+func (c *Component) startCollectors(serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -407,20 +423,6 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		level.Error(c.opts.Logger).Log("msg", errorString)
 		startErrors = append(startErrors, errorString)
 	}
-
-	var cloudProviderInfo *database_observability.CloudProvider
-	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
-		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
-		}
-		cloudProviderInfo = &database_observability.CloudProvider{
-			AWS: &database_observability.AWSCloudProviderInfo{
-				ARN: arn,
-			},
-		}
-	}
-
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverID)
 
 	collectors := enableOrDisableCollectors(c.args)

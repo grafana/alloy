@@ -351,7 +351,7 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 				return
 			}
 
-			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels)
+			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels, preserveMetaLabels)
 			if processedLabels.Len() != 0 {
 				targets = append(targets, target)
 			}

@@ -1,38 +1,35 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	_ "embed"
-	"strings"
+	"encoding/json"
 
 	"github.com/grafana/alloy/internal/build"
 )
 
-//go:embed VERSION
-var fallbackVersionText []byte
+//go:embed .release-please-manifest.json
+var fallbackVersionJSON []byte
 
 // fallbackVersion returns a version string to use for when the version isn't
 // explicitly set at build time. The version string will always have -devel
 // appended to it.
 func fallbackVersion() string {
-	return fallbackVersionFromText(fallbackVersionText)
+	return fallbackVersionFromJSON(fallbackVersionJSON)
 }
 
-func fallbackVersionFromText(text []byte) string {
-	// Find the first line in fallbackVersionText which isn't a blank line or a
-	// line starting with #.
-	scanner := bufio.NewScanner(bytes.NewReader(text))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if len(line) == 0 || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		return line + "-devel"
+func fallbackVersionFromJSON(data []byte) string {
+	var manifest map[string]string
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		// We shouldn't hit this case since we always control the contents of the
+		// manifest file, but just in case we'll return the existing version.
+		return build.Version
 	}
 
-	// We shouldn't hit this case since we always control the contents of the
-	// VERSION file, but just in case we'll return the existing version.
-	return build.Version
+	version, ok := manifest["."]
+	if !ok || version == "" {
+		return build.Version
+	}
+
+	// The manifest stores versions without the "v" prefix, so add it
+	return "v" + version + "-devel"
 }

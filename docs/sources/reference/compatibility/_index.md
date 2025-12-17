@@ -187,6 +187,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.echo](../components/prometheus/prometheus.echo)
 - [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
@@ -309,6 +310,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 <!-- START GENERATED SECTION: EXPORTERS OF OpenTelemetry `otelcol.Consumer` -->
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
@@ -317,6 +319,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
+- [otelcol.exporter.file](../components/otelcol/otelcol.exporter.file)
 - [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
 - [otelcol.exporter.googlecloudpubsub](../components/otelcol/otelcol.exporter.googlecloudpubsub)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
@@ -363,6 +366,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 {{< /collapse >}}
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)

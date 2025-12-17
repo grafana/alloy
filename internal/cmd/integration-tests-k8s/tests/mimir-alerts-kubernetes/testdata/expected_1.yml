@@ -34,6 +34,17 @@ alertmanager_config: |
     - name: alloy-namespace/global-config/myreceiver
     - name: testing/alertmgr-config1/null
     - name: testing/alertmgr-config1/myamc
+      slack_configs:
+      - api_url: https://val1.com
+        fields:
+        - title: title
+          value: value`
+        actions:
+        - type: type
+          text: text
+          name: my-action
+          confirm:
+            text: text
       webhook_configs:
       - url: http://test.url
         http_config:

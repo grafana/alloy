@@ -1,0 +1,21 @@
+dist:
+  module: github.com/test
+  name: test
+  description: test distribution
+  version: v1.0.0
+
+extensions:
+  - gomod: go.opentelemetry.io/collector/extension/zpagesextension v0.139.0
+
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.139.0
+
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.139.0
+
+replaces:
+  # local replacements
+  - github.com/some-dependencys/some-dep => ./some-dep
+  # BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
+
+  # END GENERATED REPLACES

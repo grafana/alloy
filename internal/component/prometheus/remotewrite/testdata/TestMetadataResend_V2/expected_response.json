@@ -1,0 +1,32 @@
+{
+    "symbols": [
+        "",
+        "test metric foo",
+        "cluster",
+        "local",
+        "foo",
+        "bar"
+    ],
+    "timeseries": [
+        {
+            "labels_refs": [
+                2,
+                3,
+                4,
+                5
+            ],
+            "samples": [
+                {
+                    "value": "__VALUE__",
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "histograms": null,
+            "exemplars": null,
+            "metadata": {
+                "type": 1,
+                "help_ref": 1
+            }
+        }
+    ]
+}
