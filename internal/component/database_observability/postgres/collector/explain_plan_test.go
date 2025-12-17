@@ -2290,7 +2290,7 @@ func TestNewExplainPlan(t *testing.T) {
 		assert.False(t, explainPlan.running.Load())
 	})
 
-	t.Run("version with trailing characters", func(t *testing.T) {
+	t.Run("version with trailing characters from docker image", func(t *testing.T) {
 		args := ExplainPlanArguments{
 			DBVersion: "16.10 (Debian 16.10-1.pgdg13+1)",
 		}
@@ -2300,6 +2300,19 @@ func TestNewExplainPlan(t *testing.T) {
 
 		assert.Equal(t, ep.dbVersion.Major, uint64(16))
 		assert.Equal(t, ep.dbVersion.Minor, uint64(10))
+		assert.Equal(t, ep.dbVersion.Patch, uint64(0))
+	})
+
+	t.Run("version with trailing characters from percona helm", func(t *testing.T) {
+		args := ExplainPlanArguments{
+			DBVersion: "17.7 - Percona Server for PostgreSQL 17.7.1",
+		}
+
+		ep, err := NewExplainPlan(args)
+		require.NoError(t, err)
+
+		assert.Equal(t, ep.dbVersion.Major, uint64(17))
+		assert.Equal(t, ep.dbVersion.Minor, uint64(7))
 		assert.Equal(t, ep.dbVersion.Patch, uint64(0))
 	})
 }
