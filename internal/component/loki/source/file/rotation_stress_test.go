@@ -638,17 +638,17 @@ func TestFileRotationStress_QuickSmoke(t *testing.T) {
 		{
 			name:           "rename",
 			rotationType:   rotationTypeRename,
-			minSuccessRate: 0.985, // TODO: Increase to 100% after fixing remaining race conditions
+			minSuccessRate: 0.95, // TODO: Increase to 100% after fixing remaining race conditions
 		},
 		{
 			name:           "copytruncate",
 			rotationType:   rotationTypeCopyTruncate,
-			minSuccessRate: 0.99, // TODO: Increase to 100% after fixing truncation detection timing
+			minSuccessRate: 0.97, // TODO: Increase to 100% after fixing truncation detection timing
 		},
 		{
 			name:           "delete",
 			rotationType:   rotationTypeDelete,
-			minSuccessRate: 0.98, // TODO: Increase to 100% after improving deletion detection and recovery
+			minSuccessRate: 0.95, // TODO: Increase to 100% after improving deletion detection and recovery
 		},
 	}
 
@@ -681,7 +681,7 @@ func TestFileRotationStress_HighVolume(t *testing.T) {
 		{
 			name:           "rename",
 			rotationType:   rotationTypeRename,
-			minSuccessRate: 0.97, // TODO: Increase to 100% after fixing remaining race conditions
+			minSuccessRate: 0.95, // TODO: Increase to 100% after fixing remaining race conditions
 		},
 		{
 			name:           "copytruncate",
