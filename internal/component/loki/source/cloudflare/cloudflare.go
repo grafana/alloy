@@ -62,6 +62,7 @@ func (c Arguments) tailerConfig() *tailerConfig {
 		PullRange:        model.Duration(c.PullRange),
 		FieldsType:       c.FieldsType,
 		AdditionalFields: c.AdditionalFields,
+		Backoff:          defaultBackoff,
 	}
 }
 

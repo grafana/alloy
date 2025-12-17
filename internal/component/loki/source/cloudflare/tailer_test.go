@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/cloudflare-go"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +24,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/cloudflare-go"
 )
 
 func TestTailer(t *testing.T) {
@@ -35,6 +36,7 @@ func TestTailer(t *testing.T) {
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
+			Backoff:    defaultBackoff,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, time.Hour.Nanoseconds()-int64(cfg.PullRange))
@@ -122,14 +124,17 @@ func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
-	defaultBackoff.MinBackoff = 0
-	defaultBackoff.MaxBackoff = 5
 	ta := &tailer{
 		logger:  logger,
 		handler: handler.Receiver(),
 		client:  cfClient,
 		config: &tailerConfig{
 			Labels: make(model.LabelSet),
+			Backoff: backoff.Config{
+				MinBackoff: 0,
+				MaxBackoff: 0,
+				MaxRetries: 5,
+			},
 		},
 		metrics: newMetrics(nil),
 	}
@@ -175,7 +180,8 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 		handler: handler.Receiver(),
 		client:  cfClient,
 		config: &tailerConfig{
-			Labels: make(model.LabelSet),
+			Labels:  make(model.LabelSet),
+			Backoff: defaultBackoff,
 		},
 		metrics: metrics,
 	}
@@ -196,6 +202,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
+			Backoff:    defaultBackoff,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		handler  = loki.NewCollectingHandler()
@@ -250,6 +257,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
+			Backoff:    defaultBackoff,
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		handler  = loki.NewCollectingHandler()
