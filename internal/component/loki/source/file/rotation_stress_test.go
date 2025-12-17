@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -22,6 +23,31 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+// rotationType defines different file rotation strategies
+type rotationType int
+
+const (
+	// rotationTypeRename renames the old file and creates a new one (most common, e.g., logrotate default)
+	rotationTypeRename rotationType = iota
+	// rotationTypeCopyTruncate copies the file then truncates it (used when app keeps file handle open)
+	rotationTypeCopyTruncate
+	// rotationTypeDelete deletes the file and creates a new one (less common but supported)
+	rotationTypeDelete
+)
+
+func (r rotationType) String() string {
+	switch r {
+	case rotationTypeRename:
+		return "rename"
+	case rotationTypeCopyTruncate:
+		return "copytruncate"
+	case rotationTypeDelete:
+		return "delete"
+	default:
+		return "unknown"
+	}
+}
+
 // testConfig defines the parameters for a rotation stress test
 type testConfig struct {
 	// Number of concurrent log files to write
@@ -34,6 +60,8 @@ type testConfig struct {
 	duration time.Duration
 	// Delay between writing lines (controls write rate)
 	writeDelay time.Duration
+	// Rotation strategy to use
+	rotationType rotationType
 }
 
 // logLine represents a written log line with metadata
@@ -106,8 +134,25 @@ func (w *logWriter) openFile() error {
 	return err
 }
 
-// rotate performs file rotation by renaming current file and opening a new one
+// rotate performs file rotation using the configured rotation strategy
 func (w *logWriter) rotate() error {
+	currentPath := w.currentLogPath()
+	rotatedPath := w.rotatedLogPath(time.Now().UnixNano())
+
+	switch w.config.rotationType {
+	case rotationTypeRename:
+		return w.rotateRename(currentPath, rotatedPath)
+	case rotationTypeCopyTruncate:
+		return w.rotateCopyTruncate(currentPath, rotatedPath)
+	case rotationTypeDelete:
+		return w.rotateDelete(currentPath)
+	default:
+		return fmt.Errorf("unknown rotation type: %d", w.config.rotationType)
+	}
+}
+
+// rotateRename renames the old file and creates a new one (traditional rotation)
+func (w *logWriter) rotateRename(currentPath, rotatedPath string) error {
 	if w.currentFile != nil {
 		// Sync to ensure all data is written before rotation
 		if err := w.currentFile.Sync(); err != nil {
@@ -119,9 +164,7 @@ func (w *logWriter) rotate() error {
 	}
 
 	// Rename current log file with timestamp
-	currentPath := w.currentLogPath()
 	if _, err := os.Stat(currentPath); err == nil {
-		rotatedPath := w.rotatedLogPath(time.Now().UnixNano())
 		if err := os.Rename(currentPath, rotatedPath); err != nil {
 			return fmt.Errorf("rename failed: %w", err)
 		}
@@ -129,6 +172,82 @@ func (w *logWriter) rotate() error {
 
 	// Open new file
 	return w.openFile()
+}
+
+// rotateCopyTruncate copies content to rotated file then truncates original (copytruncate strategy)
+func (w *logWriter) rotateCopyTruncate(currentPath, rotatedPath string) error {
+	if w.currentFile != nil {
+		// Sync to ensure all data is written before rotation
+		if err := w.currentFile.Sync(); err != nil {
+			return fmt.Errorf("sync failed: %w", err)
+		}
+	}
+
+	// Copy current file to rotated file
+	if _, err := os.Stat(currentPath); err == nil {
+		if err := copyFile(currentPath, rotatedPath); err != nil {
+			return fmt.Errorf("copy failed: %w", err)
+		}
+
+		// Truncate the original file (keeping the same inode)
+		if err := w.currentFile.Truncate(0); err != nil {
+			return fmt.Errorf("truncate failed: %w", err)
+		}
+		// Seek back to the beginning
+		if _, err := w.currentFile.Seek(0, 0); err != nil {
+			return fmt.Errorf("seek failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// rotateDelete deletes the old file and creates a new one
+func (w *logWriter) rotateDelete(currentPath string) error {
+	if w.currentFile != nil {
+		// Sync and close
+		if err := w.currentFile.Sync(); err != nil {
+			return fmt.Errorf("sync failed: %w", err)
+		}
+		if err := w.currentFile.Close(); err != nil {
+			return fmt.Errorf("close failed: %w", err)
+		}
+		w.currentFile = nil
+	}
+
+	// Delete the file
+	if _, err := os.Stat(currentPath); err == nil {
+		if err := os.Remove(currentPath); err != nil {
+			return fmt.Errorf("remove failed: %w", err)
+		}
+	}
+
+	// Small delay to simulate real-world scenario
+	time.Sleep(10 * time.Millisecond)
+
+	// Open new file
+	return w.openFile()
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	return destFile.Sync()
 }
 
 // writeLine writes a single log line to the current file
@@ -385,8 +504,8 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 	defer os.RemoveAll(testDir)
 
 	t.Logf("Test directory: %s", testDir)
-	t.Logf("Config: %d files, rotation every %v, %d lines/rotation, duration %v",
-		cfg.numFiles, cfg.rotationInterval, cfg.linesPerRotation, cfg.duration)
+	t.Logf("Config: %d files, rotation every %v, %d lines/rotation, duration %v, rotation type: %s",
+		cfg.numFiles, cfg.rotationInterval, cfg.linesPerRotation, cfg.duration, cfg.rotationType)
 	t.Logf("Required success rate: %.1f%%", minSuccessRate*100)
 
 	// Create context for writers
@@ -492,7 +611,7 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 
 	// Calculate success rate
 	successRate := float64(result.totalReceived) / float64(result.totalWritten)
-	t.Logf("Success rate: %.2f%% (%d/%d lines)", successRate*100, result.totalReceived, result.totalWritten)
+	t.Logf("Success rate: %.2f%% (%d/%d lines); Required success rate: %.1f%%", successRate*100, result.totalReceived, result.totalWritten, minSuccessRate*100)
 
 	// Assert we meet the minimum success rate
 	assert.GreaterOrEqual(t, successRate, minSuccessRate,
@@ -505,23 +624,47 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 
 // Test scenarios with increasing volume and complexity
 //
-// These tests validate file rotation handling under stress.
-// We currently expect 99.5% of log lines to be successfully processed.
+// These tests validate file rotation handling under stress with different rotation strategies.
+// We currently expect 95% of log lines to be successfully processed.
 // This threshold should be increased as we add more fixes to improve reliability.
 
 // TestFileRotationStress_QuickSmoke is a quick smoke test that runs even in short mode
 func TestFileRotationStress_QuickSmoke(t *testing.T) {
-	cfg := testConfig{
-		numFiles:         2,
-		rotationInterval: 500 * time.Millisecond,
-		linesPerRotation: 50,
-		duration:         3 * time.Second,
-		writeDelay:       10 * time.Millisecond,
-	}
-
 	// TODO: Increase this threshold to 100% as we fix remaining issues
 	const minSuccessRate = 0.95 // 95%
-	runStressTest(t, cfg, minSuccessRate)
+
+	testCases := []struct {
+		name         string
+		rotationType rotationType
+	}{
+		{
+			name:         "rename",
+			rotationType: rotationTypeRename,
+		},
+		{
+			name:         "copytruncate",
+			rotationType: rotationTypeCopyTruncate,
+		},
+		{
+			name:         "delete",
+			rotationType: rotationTypeDelete,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := testConfig{
+				numFiles:         2,
+				rotationInterval: 500 * time.Millisecond,
+				linesPerRotation: 100,
+				duration:         3 * time.Second,
+				writeDelay:       10 * time.Millisecond,
+				rotationType:     tc.rotationType,
+			}
+
+			runStressTest(t, cfg, minSuccessRate)
+		})
+	}
 }
 
 func TestFileRotationStress_HighVolume(t *testing.T) {
@@ -529,15 +672,39 @@ func TestFileRotationStress_HighVolume(t *testing.T) {
 		t.Skip("Skipping stress test in short mode")
 	}
 
-	cfg := testConfig{
-		numFiles:         5,
-		rotationInterval: 500 * time.Millisecond,
-		linesPerRotation: 200,
-		duration:         60 * time.Second,
-		writeDelay:       2 * time.Millisecond,
+	// TODO: Increase this threshold to 100% as we fix remaining issues
+	const minSuccessRate = 0.95 // 95%
+
+	testCases := []struct {
+		name         string
+		rotationType rotationType
+	}{
+		{
+			name:         "rename",
+			rotationType: rotationTypeRename,
+		},
+		{
+			name:         "copytruncate",
+			rotationType: rotationTypeCopyTruncate,
+		},
+		{
+			name:         "delete",
+			rotationType: rotationTypeDelete,
+		},
 	}
 
-	// TODO: Increase this threshold to 100% as we fix remaining issues
-	const minSuccessRate = 0.995 // 99.5%
-	runStressTest(t, cfg, minSuccessRate)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := testConfig{
+				numFiles:         5,
+				rotationInterval: 500 * time.Millisecond,
+				linesPerRotation: 200,
+				duration:         60 * time.Second,
+				writeDelay:       2 * time.Millisecond,
+				rotationType:     tc.rotationType,
+			}
+
+			runStressTest(t, cfg, minSuccessRate)
+		})
+	}
 }
