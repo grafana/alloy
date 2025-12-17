@@ -68,7 +68,7 @@ RUN rm -f /etc/apt/sources.list \
 RUN apt-get update                                \
  && apt-get install -qy                           \
       build-essential file zip unzip gettext git  \
-      musl libsystemd-dev nsis                    \
+      jq musl libsystemd-dev nsis                 \
       rpm ruby ruby-dev rubygems                  \
       protobuf-compiler libprotobuf-dev yamllint  \
  && gem install --no-document fpm                 \

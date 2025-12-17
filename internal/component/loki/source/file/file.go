@@ -254,7 +254,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
-		c.resolver = newGlobResolver()
+		c.resolver = newGlobResolver(c.opts.Logger)
 	} else {
 		c.resolver = newStaticResolver()
 	}
@@ -273,80 +273,43 @@ func (c *Component) Update(args component.Arguments) error {
 // match the desired state.
 // Caller must hold write lock on c.mut before calling this function.
 func (c *Component) scheduleSources() {
-	// shouldRun tracks the set of unique (path, labels) pairs that should be
-	// active after this reconciliation pass, used to identify stale sources.
-	shouldRun := make(map[positions.Entry]struct{}, len(c.args.Targets))
+	source.Reconcile(
+		c.opts.Logger,
+		c.scheduler,
+		c.resolver.Resolve(c.args.Targets),
+		func(target resolvedTarget) positions.Entry {
+			return positions.Entry{Path: target.Path, Labels: target.Labels.String()}
+		},
+		func(_ positions.Entry, target resolvedTarget) (source.Source[positions.Entry], error) {
+			fi, err := os.Stat(target.Path)
+			if err != nil {
+				c.metrics.totalBytes.DeleteLabelValues(target.Path)
+				return nil, fmt.Errorf("failed to tail file, stat failed: %w", err)
+			}
 
-	for target, err := range c.resolver.Resolve(c.args.Targets) {
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to resolve target", "error", err)
-			continue
-		}
+			if fi.IsDir() {
+				c.metrics.totalBytes.DeleteLabelValues(target.Path)
+				return nil, errors.New("failed to tail file, is directory")
+			}
 
-		// Deduplicate targets which have the same public label set.
-		key := positions.Entry{Path: target.Path, Labels: target.Labels.String()}
-		if _, ok := shouldRun[key]; ok {
-			continue
-		}
+			if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
+				return nil, source.ErrSkip
+			}
 
-		shouldRun[key] = struct{}{}
+			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
-		// Task is already scheduled
-		if c.scheduler.Contains(key) {
-			continue
-		}
-
-		fi, err := os.Stat(target.Path)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", target.Path)
-			c.metrics.totalBytes.DeleteLabelValues(target.Path)
-			continue
-		}
-
-		if fi.IsDir() {
-			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", target.Path)
-			c.metrics.totalBytes.DeleteLabelValues(target.Path)
-			continue
-		}
-
-		if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
-			continue
-		}
-
-		c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
-
-		source, err := c.newSource(sourceOptions{
-			path:                 target.Path,
-			labels:               target.Labels,
-			encoding:             c.args.Encoding,
-			decompressionConfig:  c.args.DecompressionConfig,
-			fileWatch:            c.args.FileWatch,
-			tailFromEnd:          c.args.TailFromEnd,
-			onPositionsFileError: c.args.OnPositionsFileError,
-			legacyPositionUsed:   c.args.LegacyPositionsFile != "",
-		})
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create file source", "error", err, "filename", target.Path)
-			continue
-		}
-
-		c.scheduler.ScheduleSource(source)
-	}
-
-	var toDelete []source.Source[positions.Entry]
-
-	// Avoid mutating the scheduler state during iteration. Collect sources to
-	// remove and stop them in a separate loop.
-	for source := range c.scheduler.Sources() {
-		if _, ok := shouldRun[source.Key()]; ok {
-			continue
-		}
-		toDelete = append(toDelete, source)
-	}
-
-	for _, s := range toDelete {
-		c.scheduler.StopSource(s) // stops without blocking
-	}
+			return c.newSource(sourceOptions{
+				path:                 target.Path,
+				labels:               target.Labels,
+				encoding:             c.args.Encoding,
+				decompressionConfig:  c.args.DecompressionConfig,
+				fileWatch:            c.args.FileWatch,
+				tailFromEnd:          c.args.TailFromEnd,
+				onPositionsFileError: c.args.OnPositionsFileError,
+				legacyPositionUsed:   c.args.LegacyPositionsFile != "",
+			})
+		},
+	)
 }
 
 type debugInfo struct {

@@ -136,9 +136,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
           ],
         )
       ),
-      // Convergance state
+      // Convergence state
       (
-        panel.new('Convergance state', 'stat') +
+        panel.new('Convergence state', 'stat') +
         panel.withDescription(|||
           Whether the cluster state has converged.
 
@@ -204,9 +204,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         ]) +
         panel.withUnit('suffix:nodes')
       ),
-      // Convergance state timeline
+      // Convergence state timeline
       (
-        panel.new('Convergance state timeline', 'state-timeline') {
+        panel.new('Convergence state timeline', 'state-timeline') {
           fieldConfig: {
             defaults: {
               custom: {
