@@ -122,9 +122,9 @@ read:
 
 	f.lastOffset = offset
 
-	// We only recompute signature once we have read past the target size and it's not already
-	// complete.
-	if f.lastOffset >= signatureSize && !f.signature.completed() {
+	// Recompute signature if we've crossed a threshold and haven't reached it yet.
+	// This progressively builds a more complete signature as the file grows.
+	if f.signature.shouldRecompute(f.lastOffset) {
 		if _, err := f.file.Seek(0, io.SeekStart); err != nil {
 			return nil, err
 		}

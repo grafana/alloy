@@ -17,6 +17,10 @@ type signature struct {
 // signatureSize is the target size for a complete signature.
 const signatureSize = 512
 
+// signatureThresholds defines the byte offsets at which we should recompute the signature
+// as the file grows. This allows us to progressively build a more complete signature.
+var signatureThresholds = []int{64, 128, 256, 512}
+
 // newSignatureFromFile reads up to signatureSize bytes from the beginning of the file
 // to create a signature. If the file is smaller, the signature will be incomplete.
 func newSignatureFromFile(f *os.File) (*signature, error) {
@@ -52,4 +56,22 @@ func (s *signature) equal(other *signature) bool {
 	}
 
 	return len1 == len2 && bytes.Equal(s.d, other.d)
+}
+
+// shouldRecompute returns true if we have read past a signature threshold and
+// the current signature is smaller than that threshold. This allows us to
+// progressively update the signature as the file grows.
+func (s *signature) shouldRecompute(at int64) bool {
+	if s.completed() {
+		return false
+	}
+
+	currentSize := len(s.d)
+	for _, threshold := range signatureThresholds {
+		if at >= int64(threshold) && currentSize < threshold {
+			return true
+		}
+	}
+
+	return false
 }
