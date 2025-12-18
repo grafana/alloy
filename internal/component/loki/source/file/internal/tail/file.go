@@ -67,6 +67,10 @@ type File struct {
 
 	lastOffset int64
 
+	// bufferedLines stores lines that were read from an old file handle before
+	// it was closed during file rotation.
+	bufferedLines []Line
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -85,6 +89,15 @@ func (f *File) Next() (*Line, error) {
 	defer f.mu.Unlock()
 
 read:
+	// If we have buffered lines from a previous file rotation, return them first.
+	// These are lines that were read from the old file handle before it was closed,
+	// ensuring we don't lose any data during file rotation.
+	if len(f.bufferedLines) > 0 {
+		line := f.bufferedLines[0]
+		f.bufferedLines = f.bufferedLines[1:]
+		return &line, nil
+	}
+
 	text, err := f.readLine()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -144,6 +157,7 @@ func (f *File) wait(partial bool) error {
 	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
 	switch event {
 	case eventModified:
+		level.Debug(f.logger).Log("msg", "file modified")
 		if partial {
 			// We need to reset to last successful offset because we consumed a partial line.
 			f.file.Seek(f.lastOffset, io.SeekStart)
@@ -151,9 +165,15 @@ func (f *File) wait(partial bool) error {
 		}
 		return nil
 	case eventTruncated:
+		level.Debug(f.logger).Log("msg", "file truncated")
 		// We need to reopen the file when it was truncated.
 		return f.reopen(true)
 	case eventDeleted:
+		level.Debug(f.logger).Log("msg", "file deleted")
+		// if a file is deleted we want to make sure we drain what's remaining in the open file.
+		f.drain()
+
+		f.lastOffset = 0
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -170,6 +190,46 @@ func (f *File) readLine() (string, error) {
 		return line, err
 	}
 	return strings.TrimRight(line, "\r\n"), err
+}
+
+// drain reads all remaining complete lines from the current file handle and stores
+// them in bufferedLines. This is called when a file deletion/rotation is detected
+// to ensure we don't lose any data from the old file before switching to the new one.
+// drain is best effort and will stop if it encounters any errors.
+func (f *File) drain() {
+	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
+		return
+	}
+	f.reader.Reset(f.file)
+
+	for {
+		text, err := f.readLine()
+		if err != nil {
+			if text != "" {
+				offset, err := f.offset()
+				if err != nil {
+					return
+				}
+				f.bufferedLines = append(f.bufferedLines, Line{
+					Text:   text,
+					Offset: offset,
+					Time:   time.Now(),
+				})
+			}
+			return
+		}
+
+		offset, err := f.offset()
+		if err != nil {
+			return
+		}
+
+		f.bufferedLines = append(f.bufferedLines, Line{
+			Text:   text,
+			Offset: offset,
+			Time:   time.Now(),
+		})
+	}
 }
 
 // offset returns the current byte offset in the file where the next read will occur.
