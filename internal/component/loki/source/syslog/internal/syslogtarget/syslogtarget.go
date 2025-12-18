@@ -222,7 +222,7 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc31
 }
 
 func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Base) {
-	if msg.Message == nil {
+	if msg.Message == nil || *msg.Message == "" {
 		t.metrics.syslogEmptyMessages.Inc()
 		return
 	}
