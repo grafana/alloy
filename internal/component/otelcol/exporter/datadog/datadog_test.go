@@ -11,6 +11,7 @@ import (
 	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/config/configoptional"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ func TestConfigConversion(t *testing.T) {
 	var (
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeout       = 15 * time.Second
-		defaultQueueConfig   = exporterhelper.NewDefaultQueueConfig()
+		defaultQueueConfig   = configoptional.Some(exporterhelper.NewDefaultQueueConfig())
 
 		// Until logs get added, our default config is not equal to the default factory config
 		// from the official exporter; as such as need to init it all here

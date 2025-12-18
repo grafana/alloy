@@ -31,11 +31,12 @@ type Exports struct {
 }
 
 type Routes struct {
-	Unmatch        string   `alloy:"unmatched,attr,optional"`
-	Patterns       []string `alloy:"patterns,attr,optional"`
-	IgnorePatterns []string `alloy:"ignored_patterns,attr,optional"`
-	IgnoredEvents  string   `alloy:"ignore_mode,attr,optional"`
-	WildcardChar   string   `alloy:"wildcard_char,attr,optional"`
+	Unmatch                   string   `alloy:"unmatched,attr,optional"`
+	Patterns                  []string `alloy:"patterns,attr,optional"`
+	IgnorePatterns            []string `alloy:"ignored_patterns,attr,optional"`
+	IgnoredEvents             string   `alloy:"ignore_mode,attr,optional"`
+	WildcardChar              string   `alloy:"wildcard_char,attr,optional"`
+	MaxPathSegmentCardinality int      `alloy:"max_path_segment_cardinality,attr,optional"`
 }
 
 type Attributes struct {
