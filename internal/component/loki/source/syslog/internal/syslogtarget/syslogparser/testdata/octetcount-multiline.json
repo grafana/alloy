@@ -1,17 +1,20 @@
 [
   {
-    "Severity": 6,
     "Priority": 46,
+    "Severity": 6,
+    "Facility": 5,
     "Message": "Apr 28 11:53:44 syslogd[18823]: start"
   },
   {
-    "Severity": 7,
     "Priority": 47,
+    "Severity": 7,
+    "Facility": 5,
     "Message": "Apr 28 11:53:44 syslogd[18823]: running"
   },
   {
-    "Severity": 6,
     "Priority": 86,
+    "Severity": 6,
+    "Facility": 10,
     "Message": "Apr 28 11:53:46 doas: catap ran command ls / as root from /home/catap/src/go-syslog"
   }
 ]

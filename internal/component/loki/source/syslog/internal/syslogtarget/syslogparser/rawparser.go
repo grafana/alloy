@@ -115,11 +115,7 @@ func readSeverity(line []byte, dst *syslog.Base) (next []byte) {
 				return line
 			}
 
-			severity := uint8(priority % 8)
-			dst.Severity = &severity
-			dst.Priority = new(uint8)
-			*dst.Priority = uint8(priority)
-
+			dst.ComputeFromPriority(uint8(priority))
 			buff = buff[i+1:]
 			return buff
 		}
