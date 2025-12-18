@@ -153,7 +153,19 @@ type BatchConfig struct {
 	Sizer        string        `alloy:"sizer,attr,optional"`
 }
 
+var _ syntax.Defaulter = (*BatchConfig)(nil)
+
 var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
+
+// SetToDefault implements syntax.Defaulter.
+func (args *BatchConfig) SetToDefault() {
+	*args = BatchConfig{
+		FlushTimeout: 200 * time.Millisecond,
+		MinSize:      2000,
+		MaxSize:      3000,
+		Sizer:        "items",
+	}
+}
 
 // Validate returns an error if args is invalid.
 func (args *BatchConfig) Validate() error {
