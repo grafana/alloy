@@ -315,6 +315,7 @@ func (c *Component) init() error {
 	c.alertmanagerNamespace = c.args.AlertmanagerConfigMatcher.AlertmanagerNamespace
 	if c.matcherStrategy == monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType &&
 		c.alertmanagerNamespace == "" {
+
 		return fmt.Errorf("alertmanagerconfig_matcher: when strategy is set to OnNamespaceExceptForAlertmanagerNamespace, alertmanager_namespace has to be set")
 	}
 
