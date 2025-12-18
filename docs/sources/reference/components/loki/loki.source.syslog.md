@@ -17,7 +17,7 @@ The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc
 For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-syslog-messages/) scenario.
 
 {{< admonition type="note" >}}
-If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with [`loki.process`](./loki.process.md) component.
+If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](./loki.process.md) component.
 {{< /admonition >}}
 
 The component starts a new syslog listener for each of the given `config` blocks and fans out incoming entries to the list of receivers in `forward_to`.
@@ -132,18 +132,17 @@ Setting `rfc3164_default_to_current_year` to `true` sets the year of the incomin
 The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424_message` fields cannot be used when `syslog_format` is set to `raw`.
 {{< /admonition >}}
 
-
 #### Supported formats
 
-* **`rfc3164`** \
-A legacy syslog format, also known as BSD syslog.\
-Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`
-* **`rfc5424`** \
-A modern, structured syslog format. Uses ISO 8601 for timestamps.\
-Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
-* **`raw`** \
-Disables log line parsing. This format allows to receive non-RFC5424 compliant logs, such as [CEF][cef].\
-Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
+* **`rfc3164`**
+  A legacy syslog format, also known as BSD syslog.
+  Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`
+* **`rfc5424`**
+  A modern, structured syslog format. Uses ISO 8601 for timestamps.
+  Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
+* **`raw`**
+  Disables log line parsing. This format allows to receive non-RFC5424 compliant logs, such as [CEF][cef].
+  Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
 
 [cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
 
@@ -152,15 +151,14 @@ Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for p
 The `raw_format_options` block configures the `raw` syslog format behavior.
 
 {{< admonition type="note" >}}
-This block can only be used when `syslog_format` is set to `raw`.
+This block can only be used when you set `syslog_format` to `raw`.
 {{< /admonition >}}
 
-The following arguments are supported:
+The following argument is supported:
 
 | Name                            | Type   | Description                                                                 | Default | Required |
 |---------------------------------|--------|-----------------------------------------------------------------------------|---------|----------|
 | `use_null_terminator_delimiter` | `bool` | Use null-terminator (`\0`) instead of line break (`\n`) to split log lines. | `false` | no       |
-
 
 ### `tls_config`
 
