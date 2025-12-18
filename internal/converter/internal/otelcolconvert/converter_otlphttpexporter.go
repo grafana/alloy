@@ -41,7 +41,8 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*otlphttpexporter.Config).QueueConfig.StorageID)
+			queue := cfg.(*otlphttpexporter.Config).QueueConfig.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)

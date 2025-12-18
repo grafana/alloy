@@ -78,7 +78,7 @@ func (b *ProfileBuilders) BuilderForSample(
 	case support.TraceOriginOffCPU:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	case support.TraceOriginUProbe:
+	case support.TraceOriginProbe:
 		sampleType = []*profile.ValueType{{Type: "uprobe", Unit: "count"}}
 		periodType = &profile.ValueType{Type: "uprobe", Unit: "count"}
 		period = 1

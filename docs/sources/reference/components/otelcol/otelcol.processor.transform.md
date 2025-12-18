@@ -20,17 +20,27 @@ A path is a reference to a telemetry data such as:
 * Instrumentation scope name.
 * Span attributes.
 
-In addition to the [standard OTTL functions][OTTL functions], there is also a set of metrics-only functions:
+In addition to the [standard OTTL functions][OTTL functions], the processor defines its own functions to help with transformations specific to this processor.
+
+Metrics-only functions:
 
 * [`convert_sum_to_gauge`][convert_sum_to_gauge]
 * [`convert_gauge_to_sum`][convert_gauge_to_sum]
+* [`extract_count_metric`][extract_count_metric]
+* [`extract_sum_metric`][extract_sum_metric]
 * [`convert_summary_count_val_to_sum`][convert_summary_count_val_to_sum]
+* [`convert_summary_quantile_val_to_gauge`][convert_summary_quantile_val_to_gauge]
 * [`convert_summary_sum_val_to_sum`][convert_summary_sum_val_to_sum]
 * [`copy_metric`][copy_metric]
 * [`scale_metric`][scale_metric]
 * [`aggregate_on_attributes`][aggregate_on_attributes]
 * [`convert_exponential_histogram_to_histogram`][convert_exponential_histogram_to_histogram]
 * [`aggregate_on_attribute_value`][aggregate_on_attribute_value]
+* [`merge_histogram_buckets`][merge_histogram_buckets]
+
+Traces-only functions:
+
+* [`set_semconv_span_name`][set_semconv_span_name]
 
 [OTTL][] statements can also contain constructs such as:
 
@@ -674,11 +684,16 @@ otelcol.processor.transform "default" {
 [OTTL functions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md
 [convert_sum_to_gauge]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_sum_to_gauge
 [convert_gauge_to_sum]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_gauge_to_sum
+[extract_count_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#extract_count_metric
+[extract_sum_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#extract_sum_metric
 [convert_summary_count_val_to_sum]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_summary_count_val_to_sum
+[convert_summary_quantile_val_to_gauge]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_summary_quantile_val_to_gauge
 [convert_summary_sum_val_to_sum]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_summary_sum_val_to_sum
 [copy_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#copy_metric
 [scale_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#scale_metric
 [aggregate_on_attributes]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#aggregate_on_attributes
+[merge_histogram_buckets]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#merge_histogram_buckets
+[set_semconv_span_name]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#set_semconv_span_name
 [convert_exponential_histogram_to_histogram]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_exponential_histogram_to_histogram
 [aggregate_on_attribute_value]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#aggregate_on_attribute_value
 [OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#booleans

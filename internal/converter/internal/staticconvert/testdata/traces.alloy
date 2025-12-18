@@ -140,6 +140,8 @@ otelcol.exporter.loadbalancing "_0_default" {
 			hostnames = ["tempo1.example.com", "tempo2.example.com"]
 		}
 	}
+
+	sending_queue { }
 }
 
 otelcol.exporter.debug "_0_default" {
