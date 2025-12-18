@@ -35,6 +35,13 @@ const (
 	rotationTypeDelete
 )
 
+// allRotationTypes contains all rotation types for test iteration
+var allRotationTypes = []rotationType{
+	rotationTypeRename,
+	rotationTypeCopyTruncate,
+	rotationTypeDelete,
+}
+
 func (r rotationType) String() string {
 	switch r {
 	case rotationTypeRename:
@@ -692,40 +699,19 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 // TestFileRotationStress_QuickSmoke is a quick smoke test that runs even in short mode
 func TestFileRotationStress_QuickSmoke(t *testing.T) {
 	t.Skip("These tests are still failing and require more debuggingto fix")
-	testCases := []struct {
-		name           string
-		rotationType   rotationType
-		minSuccessRate float64
-	}{
-		{
-			name:           "rename",
-			rotationType:   rotationTypeRename,
-			minSuccessRate: 1.0,
-		},
-		{
-			name:           "copytruncate",
-			rotationType:   rotationTypeCopyTruncate,
-			minSuccessRate: 1.0,
-		},
-		{
-			name:           "delete",
-			rotationType:   rotationTypeDelete,
-			minSuccessRate: 1.0,
-		},
-	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, rt := range allRotationTypes {
+		t.Run(rt.String(), func(t *testing.T) {
 			cfg := testConfig{
 				numFiles:         2,
 				rotationInterval: 500 * time.Millisecond,
 				linesPerRotation: 100,
 				duration:         3 * time.Second,
 				writeDelay:       10 * time.Millisecond,
-				rotationType:     tc.rotationType,
+				rotationType:     rt,
 			}
 
-			runStressTest(t, cfg, tc.minSuccessRate)
+			runStressTest(t, cfg, 1.0)
 		})
 	}
 }
@@ -734,35 +720,13 @@ func TestFileRotationStress_QuickSmoke(t *testing.T) {
 // is detected, with a maximum total runtime of 30 seconds. This is useful for reproducing
 // intermittent failures.
 func TestFileRotationStress_TillFirstFailure(t *testing.T) {
-	// t.Skip("These tests are still failing and require more debugging to fix")
-
-	testCases := []struct {
-		name           string
-		rotationType   rotationType
-		minSuccessRate float64
-	}{
-		{
-			name:           "rename",
-			rotationType:   rotationTypeRename,
-			minSuccessRate: 1.0,
-		},
-		{
-			name:           "copytruncate",
-			rotationType:   rotationTypeCopyTruncate,
-			minSuccessRate: 1.0,
-		},
-		{
-			name:           "delete",
-			rotationType:   rotationTypeDelete,
-			minSuccessRate: 1.0,
-		},
-	}
+	t.Skip("These tests are still failing and require more debugging to fix")
 
 	maxTotalDuration := 30 * time.Second
 	singleTestDuration := 5 * time.Second
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, rt := range allRotationTypes {
+		t.Run(rt.String(), func(t *testing.T) {
 			startTime := time.Now()
 			iteration := 0
 
@@ -776,12 +740,12 @@ func TestFileRotationStress_TillFirstFailure(t *testing.T) {
 					linesPerRotation: 100,
 					duration:         singleTestDuration,
 					writeDelay:       10 * time.Millisecond,
-					rotationType:     tc.rotationType,
+					rotationType:     rt,
 				}
 
 				// Run the test and check if it failed
 				failed := t.Run(fmt.Sprintf("iteration_%d", iteration), func(t *testing.T) {
-					runStressTest(t, cfg, tc.minSuccessRate)
+					runStressTest(t, cfg, 1.0)
 				})
 
 				if !failed {
@@ -796,44 +760,19 @@ func TestFileRotationStress_TillFirstFailure(t *testing.T) {
 
 func TestFileRotationStress_HighVolume(t *testing.T) {
 	t.Skip("These tests are still failing and require more debuggingto fix")
-	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
-	}
 
-	testCases := []struct {
-		name           string
-		rotationType   rotationType
-		minSuccessRate float64
-	}{
-		{
-			name:           "rename",
-			rotationType:   rotationTypeRename,
-			minSuccessRate: 1.0,
-		},
-		{
-			name:           "copytruncate",
-			rotationType:   rotationTypeCopyTruncate,
-			minSuccessRate: 1.0,
-		},
-		{
-			name:           "delete",
-			rotationType:   rotationTypeDelete,
-			minSuccessRate: 1.0,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, rt := range allRotationTypes {
+		t.Run(rt.String(), func(t *testing.T) {
 			cfg := testConfig{
 				numFiles:         5,
 				rotationInterval: 500 * time.Millisecond,
 				linesPerRotation: 200,
 				duration:         60 * time.Second,
 				writeDelay:       2 * time.Millisecond,
-				rotationType:     tc.rotationType,
+				rotationType:     rt,
 			}
 
-			runStressTest(t, cfg, tc.minSuccessRate)
+			runStressTest(t, cfg, 1.0)
 		})
 	}
 }
