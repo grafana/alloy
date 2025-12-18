@@ -150,5 +150,5 @@ func readFrameLength(r *bufio.Reader) (flen int, err error) {
 		return 0, fmt.Errorf("failed to parse octet length from %q: %w", part, err)
 	}
 
-	return int(c), nil
+	return c, nil
 }

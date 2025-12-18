@@ -53,13 +53,7 @@ type message struct {
 }
 
 // NewSyslogTarget configures a new SyslogTarget.
-func NewSyslogTarget(
-	metrics *Metrics,
-	logger log.Logger,
-	handler loki.EntryHandler,
-	relabel []*relabel.Config,
-	config *scrapeconfig.SyslogTargetConfig,
-) (*SyslogTarget, error) {
+func NewSyslogTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, relabel []*relabel.Config, config *scrapeconfig.SyslogTargetConfig) (*SyslogTarget, error) {
 	t := &SyslogTarget{
 		metrics:       metrics,
 		logger:        logger,
