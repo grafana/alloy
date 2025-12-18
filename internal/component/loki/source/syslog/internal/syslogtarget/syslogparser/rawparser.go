@@ -145,7 +145,7 @@ func readFrameLength(r *bufio.Reader) (flen int, err error) {
 
 	// ReadString returns value with its delimiter
 	part = part[:len(part)-1]
-	c, err := strconv.ParseInt(part, 10, 64)
+	c, err := strconv.Atoi(part)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse octet length from %q: %w", part, err)
 	}
