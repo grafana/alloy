@@ -108,36 +108,34 @@ func (t *SyslogTarget) handleMessageError(err error) {
 	t.metrics.syslogParsingErrors.Inc()
 }
 
-func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg syslog.Message) {
-	rfc5424Msg := msg.(*rfc5424.SyslogMessage)
-
-	if rfc5424Msg.Message == nil {
+func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc5424.SyslogMessage) {
+	if msg.Message == nil {
 		t.metrics.syslogEmptyMessages.Inc()
 		return
 	}
 
 	lb := labels.NewBuilder(connLabels)
-	if v := rfc5424Msg.SeverityLevel(); v != nil {
+	if v := msg.SeverityLevel(); v != nil {
 		lb.Set("__syslog_message_severity", *v)
 	}
-	if v := rfc5424Msg.FacilityLevel(); v != nil {
+	if v := msg.FacilityLevel(); v != nil {
 		lb.Set("__syslog_message_facility", *v)
 	}
-	if v := rfc5424Msg.Hostname; v != nil {
+	if v := msg.Hostname; v != nil {
 		lb.Set("__syslog_message_hostname", *v)
 	}
-	if v := rfc5424Msg.Appname; v != nil {
+	if v := msg.Appname; v != nil {
 		lb.Set("__syslog_message_app_name", *v)
 	}
-	if v := rfc5424Msg.ProcID; v != nil {
+	if v := msg.ProcID; v != nil {
 		lb.Set("__syslog_message_proc_id", *v)
 	}
-	if v := rfc5424Msg.MsgID; v != nil {
+	if v := msg.MsgID; v != nil {
 		lb.Set("__syslog_message_msg_id", *v)
 	}
 
-	if t.config.LabelStructuredData && rfc5424Msg.StructuredData != nil {
-		for id, params := range *rfc5424Msg.StructuredData {
+	if t.config.LabelStructuredData && msg.StructuredData != nil {
+		for id, params := range *msg.StructuredData {
 			id = strings.ReplaceAll(id, "@", "_")
 			for name, value := range params {
 				key := "__syslog_message_sd_" + id + "_" + name
@@ -157,15 +155,15 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg syslog
 	})
 
 	var timestamp time.Time
-	if t.config.UseIncomingTimestamp && rfc5424Msg.Timestamp != nil {
-		timestamp = *rfc5424Msg.Timestamp
+	if t.config.UseIncomingTimestamp && msg.Timestamp != nil {
+		timestamp = *msg.Timestamp
 	} else {
 		timestamp = time.Now()
 	}
 
-	m := *rfc5424Msg.Message
+	m := *msg.Message
 	if t.config.UseRFC5424Message {
-		fullMsg, err := rfc5424Msg.String()
+		fullMsg, err := msg.String()
 		if err != nil {
 			level.Debug(t.logger).Log("msg", "failed to convert rfc5424 message to string; using message field instead", "err", err)
 		} else {
@@ -175,31 +173,29 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg syslog
 	t.messages <- message{filtered, m, timestamp}
 }
 
-func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg syslog.Message) {
-	rfc3164Msg := msg.(*rfc3164.SyslogMessage)
-
-	if rfc3164Msg.Message == nil {
+func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc3164.SyslogMessage) {
+	if msg.Message == nil {
 		t.metrics.syslogEmptyMessages.Inc()
 		return
 	}
 
 	lb := labels.NewBuilder(connLabels)
-	if v := rfc3164Msg.SeverityLevel(); v != nil {
+	if v := msg.SeverityLevel(); v != nil {
 		lb.Set("__syslog_message_severity", *v)
 	}
-	if v := rfc3164Msg.FacilityLevel(); v != nil {
+	if v := msg.FacilityLevel(); v != nil {
 		lb.Set("__syslog_message_facility", *v)
 	}
-	if v := rfc3164Msg.Hostname; v != nil {
+	if v := msg.Hostname; v != nil {
 		lb.Set("__syslog_message_hostname", *v)
 	}
-	if v := rfc3164Msg.Appname; v != nil {
+	if v := msg.Appname; v != nil {
 		lb.Set("__syslog_message_app_name", *v)
 	}
-	if v := rfc3164Msg.ProcID; v != nil {
+	if v := msg.ProcID; v != nil {
 		lb.Set("__syslog_message_proc_id", *v)
 	}
-	if v := rfc3164Msg.MsgID; v != nil {
+	if v := msg.MsgID; v != nil {
 		lb.Set("__syslog_message_msg_id", *v)
 	}
 
@@ -214,30 +210,58 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg syslog
 	})
 
 	var timestamp time.Time
-	if t.config.UseIncomingTimestamp && rfc3164Msg.Timestamp != nil {
-		timestamp = *rfc3164Msg.Timestamp
+	if t.config.UseIncomingTimestamp && msg.Timestamp != nil {
+		timestamp = *msg.Timestamp
 	} else {
 		timestamp = time.Now()
 	}
 
-	m := *rfc3164Msg.Message
+	m := *msg.Message
 
 	t.messages <- message{filtered, m, timestamp}
 }
 
-func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg syslog.Message) {
-	// TODO: impl raw
+func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Base) {
+	if msg.Message == nil {
+		t.metrics.syslogEmptyMessages.Inc()
+		return
+	}
+
+	lb := labels.NewBuilder(connLabels)
+	if v := msg.SeverityLevel(); v != nil {
+		lb.Set("__syslog_message_severity", *v)
+	}
+	if v := msg.FacilityLevel(); v != nil {
+		lb.Set("__syslog_message_facility", *v)
+	}
+
+	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
+	filtered := make(model.LabelSet)
+	processed.Range(func(lbl labels.Label) {
+		if strings.HasPrefix(lbl.Name, "__") {
+			return
+		}
+		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
+	})
+
+	// Timestamp isn't available during raw parse.
+	t.messages <- message{
+		labels:    filtered,
+		message:   *msg.Message,
+		timestamp: time.Now(),
+	}
 }
 
 func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Message) {
-	switch t.config.SyslogFormat {
-	case scrapeconfig.SyslogFormatRFC3164:
-		t.handleMessageRFC3164(connLabels, msg)
-	case scrapeconfig.SyslogFormatRaw:
-		t.handleMessageRaw(connLabels, msg)
+	switch m := msg.(type) {
+	case *rfc3164.SyslogMessage:
+		t.handleMessageRFC3164(connLabels, m)
+	case *rfc5424.SyslogMessage:
+		t.handleMessageRFC5424(connLabels, m)
+	case *syslog.Base:
+		t.handleMessageRaw(connLabels, m)
 	default:
-		// keep RFC5424 as default to keep compatibility with previous impl.
-		t.handleMessageRFC5424(connLabels, msg)
+		level.Error(t.logger).Log("msg", fmt.Sprintf("handleMessage: unsupported message type %T", m))
 	}
 }
 
