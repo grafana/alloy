@@ -82,7 +82,7 @@ replaces:
   # Replace OpenTelemetry OBI with Grafana fork
   - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
   # Replace OpenTelemetry eBPF profiler with Grafana fork
-  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c
+  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
   # Update openshift/client-go to version compatible with structured-merge-diff v6
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
   # Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
