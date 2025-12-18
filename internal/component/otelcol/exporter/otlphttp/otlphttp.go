@@ -82,7 +82,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 	return &otlphttpexporter.Config{
 		ClientConfig:    *convertedClientArgs,
-		QueueConfig:     *q,
+		QueueConfig:     q,
 		RetryConfig:     *args.Retry.Convert(),
 		TracesEndpoint:  args.TracesEndpoint,
 		MetricsEndpoint: args.MetricsEndpoint,

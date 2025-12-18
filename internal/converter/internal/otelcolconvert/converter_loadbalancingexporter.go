@@ -40,7 +40,8 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componen
 			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*loadbalancingexporter.Config).QueueSettings.StorageID)
+			queue := cfg.(*loadbalancingexporter.Config).QueueSettings.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
