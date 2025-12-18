@@ -194,7 +194,7 @@ func (c *Component) reloadTargets() {
 }
 
 // DebugInfo returns information about the status of listeners.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	var res readerDebugInfo

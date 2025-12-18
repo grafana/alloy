@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 )
 
 func TestValidate(t *testing.T) {
@@ -52,4 +55,39 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateRawOnlyOpts(t *testing.T) {
+	t.Run("RFCFieldsWithNoEffect", func(t *testing.T) {
+		sc := &ListenerConfig{
+			ListenProtocol: "udp",
+			SyslogFormat:   config.SyslogFormatRaw,
+		}
+
+		mappings := map[string]*bool{
+			"use_rfc5424_message":             &sc.UseRFC5424Message,
+			"rfc3164_default_to_current_year": &sc.RFC3164DefaultToCurrentYear,
+			"use_incoming_timestamp":          &sc.UseIncomingTimestamp,
+		}
+
+		for prop, ptr := range mappings {
+			*ptr = true
+			err := sc.Validate()
+			require.ErrorContains(t, err, prop)
+			*ptr = false
+		}
+	})
+
+	t.Run("RawFormatOptsRequresSyslogFormat", func(t *testing.T) {
+		sc := &ListenerConfig{
+			ListenProtocol: "udp",
+			SyslogFormat:   config.SyslogFormatRFC5424,
+			RawFormatOptions: &RawFormatOptions{
+				UseNullTerminatorDelimiter: true,
+			},
+		}
+
+		err := sc.Validate()
+		require.ErrorContains(t, err, "raw_format_options has no effect")
+	})
 }

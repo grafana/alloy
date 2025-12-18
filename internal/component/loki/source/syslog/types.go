@@ -24,6 +24,12 @@ type ListenerConfig struct {
 	MaxMessageLength            int                       `alloy:"max_message_length,attr,optional"`
 	TLSConfig                   config.TLSConfig          `alloy:"tls_config,block,optional"`
 	SyslogFormat                scrapeconfig.SyslogFormat `alloy:"syslog_format,attr,optional"`
+	RawFormatOptions            *RawFormatOptions         `alloy:"raw_format_options,block,optional"`
+}
+
+// RawFormatOptions is alloy syntax mapping to [scrapeconfig.RawFormatOptions] struct.
+type RawFormatOptions struct {
+	UseNullTerminatorDelimiter bool `alloy:"use_null_terminator_delimiter,attr,optional"`
 }
 
 // DefaultListenerConfig provides the default arguments for a syslog listener.
@@ -49,6 +55,27 @@ func (sc *ListenerConfig) Validate() error {
 		return err
 	}
 
+	if sc.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+		// mention fields that has no effect for better UX
+		if sc.UseRFC5424Message {
+			return fmt.Errorf(`"use_rfc5424_message" has no effect when syslog format is set to %q`, sc.SyslogFormat)
+		}
+
+		if sc.RFC3164DefaultToCurrentYear {
+			return fmt.Errorf(`"rfc3164_default_to_current_year" has no effect when syslog format is set to %q`, sc.SyslogFormat)
+		}
+
+		if sc.UseIncomingTimestamp {
+			return fmt.Errorf(`"use_incoming_timestamp" has no effect when syslog format is set to %q`, sc.SyslogFormat)
+		}
+
+		return nil
+	}
+
+	if sc.RawFormatOptions != nil {
+		return fmt.Errorf("raw_format_options has no effect when syslog format is not %q", scrapeconfig.SyslogFormatRaw)
+	}
+
 	return nil
 }
 
@@ -59,7 +86,7 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	return &scrapeconfig.SyslogTargetConfig{
+	cfg := &scrapeconfig.SyslogTargetConfig{
 		ListenAddress:               sc.ListenAddress,
 		ListenProtocol:              sc.ListenProtocol,
 		IdleTimeout:                 sc.IdleTimeout,
@@ -71,5 +98,11 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 		MaxMessageLength:            sc.MaxMessageLength,
 		TLSConfig:                   *sc.TLSConfig.Convert(),
 		SyslogFormat:                sc.SyslogFormat,
-	}, nil
+	}
+
+	if sc.RawFormatOptions != nil {
+		cfg.RawFormatOptions.UseNullTerminatorDelimiter = sc.RawFormatOptions.UseNullTerminatorDelimiter
+	}
+
+	return cfg, nil
 }

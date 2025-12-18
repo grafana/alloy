@@ -334,7 +334,7 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 	}
 
 	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
-		delim := t.config.RawOptions.Delimiter()
+		delim := t.config.RawFormatOptions.Delimiter()
 		for msg, err := range syslogparser.IterStreamRaw(c, delim) {
 			cb(&syslog.Result{
 				Message: msg,
@@ -475,7 +475,7 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 		}
 
 		if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
-			delim := t.config.RawOptions.Delimiter()
+			delim := t.config.RawFormatOptions.Delimiter()
 			for msg, err := range syslogparser.IterStreamRaw(c, delim) {
 				cb(&syslog.Result{
 					Message: msg,
