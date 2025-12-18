@@ -160,6 +160,7 @@ func (w *logWriter) rotateRename(currentPath, rotatedPath string) error {
 		if err := w.currentFile.Close(); err != nil {
 			return fmt.Errorf("close failed: %w", err)
 		}
+		w.currentFile = nil
 	}
 
 	// Rename current log file with timestamp
@@ -183,21 +184,38 @@ func (w *logWriter) rotateCopyTruncate(currentPath, rotatedPath string) error {
 	}
 
 	// Copy current file to rotated file
-	if _, err := os.Stat(currentPath); err == nil {
-		if err := copyFile(currentPath, rotatedPath); err != nil {
-			return fmt.Errorf("copy failed: %w", err)
+	info, err := os.Stat(currentPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File no longer exists; ensure current file handle state is clean.
+			if w.currentFile != nil {
+				if cerr := w.currentFile.Close(); cerr != nil {
+					return fmt.Errorf("close failed: %w", cerr)
+				}
+				w.currentFile = nil
+			}
+			return nil
 		}
+		return fmt.Errorf("stat failed: %w", err)
+	}
+	_ = info
 
-		// Truncate the original file (keeping the same inode)
-		if err := w.currentFile.Truncate(0); err != nil {
-			return fmt.Errorf("truncate failed: %w", err)
-		}
-		// Seek back to the beginning
-		if _, err := w.currentFile.Seek(0, 0); err != nil {
-			return fmt.Errorf("seek failed: %w", err)
-		}
+	if err := copyFile(currentPath, rotatedPath); err != nil {
+		return fmt.Errorf("copy failed: %w", err)
 	}
 
+	if w.currentFile == nil {
+		return fmt.Errorf("truncate failed: current file is nil")
+	}
+
+	// Truncate the original file (keeping the same inode)
+	if err := w.currentFile.Truncate(0); err != nil {
+		return fmt.Errorf("truncate failed: %w", err)
+	}
+	// Seek back to the beginning
+	if _, err := w.currentFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek failed: %w", err)
+	}
 	return nil
 }
 
@@ -588,6 +606,9 @@ func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
 	result := validateLogs(t, writers, handler)
 	reportValidationResult(t, result)
 
+	if result.totalWritten == 0 {
+		t.Fatalf("[%s] No log lines were written; cannot compute success rate", t.Name())
+	}
 	// Calculate success rate
 	successRate := float64(result.totalReceived) / float64(result.totalWritten)
 	dropped := result.totalWritten - result.totalReceived
