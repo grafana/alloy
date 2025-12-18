@@ -67,7 +67,7 @@ func newTailer(
 
 	tailer := &tailer{
 		metrics:              metrics,
-		logger:               log.With(logger, "component", "tailer"),
+		logger:               log.With(logger, "component", "tailer", "path", opts.path),
 		receiver:             receiver,
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
@@ -158,7 +158,7 @@ func (t *tailer) Run(ctx context.Context) {
 		// We are mostly interested in this log if this happens directly when
 		// the tailer is scheduled and not on retries.
 		t.report.Do(func() {
-			level.Error(t.logger).Log("msg", "failed to run tailer", "err", err)
+			level.Error(t.logger).Log("msg", "failed to run tailer", "error", err)
 		})
 		return
 	}
@@ -231,7 +231,7 @@ func (t *tailer) initRun() error {
 	if pos == 0 && t.tailFromEnd {
 		pos, err = getLastLinePosition(t.key.Path)
 		if err != nil {
-			level.Error(t.logger).Log("msg", "failed to get a position from the end of the file, default to start of file", err)
+			level.Error(t.logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
 		} else {
 			t.positions.Put(t.key.Path, t.key.Labels, pos)
 			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line")
@@ -271,7 +271,7 @@ func getDecoder(encoding string) (*encoding.Decoder, error) {
 // position tracking periodically. It exits when Next() returns an error,
 // this happens when the tail.File is stopped or or we have a unrecoverable error.
 func (t *tailer) readLines(done chan struct{}) {
-	level.Info(t.logger).Log("msg", "tail routine: started", "path", t.key.Path)
+	level.Info(t.logger).Log("msg", "tail routine: started")
 	var (
 		entries             = t.receiver.Chan()
 		lastOffset          = int64(0)
@@ -280,7 +280,7 @@ func (t *tailer) readLines(done chan struct{}) {
 	)
 
 	defer func() {
-		level.Info(t.logger).Log("msg", "tail routine: exited", "path", t.key.Path)
+		level.Info(t.logger).Log("msg", "tail routine: exited")
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
 		close(done)
@@ -291,7 +291,7 @@ func (t *tailer) readLines(done chan struct{}) {
 		if err != nil {
 			// We get context.Canceled if tail.File was stopped so we don't have to log it.
 			if !errors.Is(err, context.Canceled) {
-				level.Error(t.logger).Log("msg", "tail routine: stopping tailer", "path", t.key.Path, "err", err)
+				level.Error(t.logger).Log("msg", "tail routine: stopping tailer", "err", err)
 			}
 			return
 		}
@@ -326,10 +326,10 @@ func (t *tailer) stop(done chan struct{}) {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
-			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "path", t.key.Path, "error", err)
+			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "error", err)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// Log as error for other reasons, as a resource leak may have happened.
-			level.Error(t.logger).Log("msg", "error stopping tailer", "path", t.key.Path, "error", err)
+			level.Error(t.logger).Log("msg", "error stopping tailer", "error", err)
 		}
 	}
 

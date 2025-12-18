@@ -230,6 +230,37 @@ func TestFile(t *testing.T) {
 
 		verify(t, file, nil, context.Canceled)
 	})
+
+	t.Run("file rotation drains remaining lines from old file", func(t *testing.T) {
+		name := createFile(t, "rotation", "line1\nline2\nline3\nline4\npartial")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		// Read first two lines
+		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+
+		// Rotate the file
+		rotateFile(t, name, "newline1\nnewline2\n")
+
+		// After rotation is detected, drain() should read all remaining
+		// lines from the old file (line3, line4, partial) before reading from the new file.
+		// Verify we get the remaining old lines first, then new lines
+		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
+		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verify(t, file, &Line{Text: "partial", Offset: 31}, nil)
+		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
+		verify(t, file, &Line{Text: "newline2", Offset: 18}, nil)
+	})
 }
 
 func createFile(t *testing.T, name, content string) string {
@@ -256,4 +287,14 @@ func truncateFile(t *testing.T, name, content string) {
 
 func removeFile(t *testing.T, name string) {
 	require.NoError(t, os.Remove(name))
+}
+
+func rotateFile(t *testing.T, name, newContent string) {
+	// Rename the old file
+	rotatedName := name + ".rotated"
+	require.NoError(t, os.Rename(name, rotatedName))
+	defer removeFile(t, rotatedName)
+
+	// Create new file with same name
+	require.NoError(t, os.WriteFile(name, []byte(newContent), 0600))
 }
