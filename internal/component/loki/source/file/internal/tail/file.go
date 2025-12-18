@@ -195,32 +195,34 @@ func (f *File) readLine() (string, error) {
 // drain reads all remaining complete lines from the current file handle and stores
 // them in bufferedLines. This is called when a file deletion/rotation is detected
 // to ensure we don't lose any data from the old file before switching to the new one.
+// drain is best effort and will stop if it encounters any errors.
 func (f *File) drain() {
-	f.file.Seek(f.lastOffset, io.SeekStart)
+	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
+		return
+	}
 	f.reader.Reset(f.file)
 
 	for {
 		text, err := f.readLine()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				// If we hit EOF and have a partial line, add it and terminate
-				if text != "" {
-					offset, _ := f.offset()
-					f.bufferedLines = append(f.bufferedLines, Line{
-						Text:   text,
-						Offset: offset,
-						Time:   time.Now(),
-					})
+			if text != "" {
+				offset, err := f.offset()
+				if err != nil {
+					return
 				}
+				f.bufferedLines = append(f.bufferedLines, Line{
+					Text:   text,
+					Offset: offset,
+					Time:   time.Now(),
+				})
 			}
 			return
 		}
 
-		if text == "" {
+		offset, err := f.offset()
+		if err != nil {
 			return
 		}
-
-		offset, _ := f.offset()
 
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,

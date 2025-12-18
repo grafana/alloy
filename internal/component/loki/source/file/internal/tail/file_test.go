@@ -290,11 +290,7 @@ func removeFile(t *testing.T, name string) {
 }
 
 func rotateFile(t *testing.T, name, newContent string) {
-	// Rename the old file
-	rotatedName := name + ".rotated"
-	require.NoError(t, os.Rename(name, rotatedName))
-	defer removeFile(t, rotatedName)
-
+	removeFile(t, name)
 	// Create new file with same name
 	require.NoError(t, os.WriteFile(name, []byte(newContent), 0600))
 }
