@@ -17,7 +17,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "lloki.source.syslogoki.source.syslog",
+		Name:      "loki.source.syslog",
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
