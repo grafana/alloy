@@ -170,7 +170,7 @@ func (f *File) wait(partial bool) error {
 		return f.reopen(true)
 	case eventDeleted:
 		level.Debug(f.logger).Log("msg", "file deleted")
-		// if a file is deleted we want to make sure we drain what's remaninng in the open file.
+		// if a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
 
 		f.lastOffset = 0
