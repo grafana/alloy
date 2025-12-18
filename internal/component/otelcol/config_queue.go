@@ -60,15 +60,15 @@ func (args *QueueArguments) Extensions() map[otelcomponent.ID]otelcomponent.Comp
 }
 
 // Convert converts args into the upstream type.
-func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, error) {
-	if args == nil {
-		return nil, nil
+func (args *QueueArguments) Convert() (configoptional.Optional[otelexporterhelper.QueueBatchConfig], error) {
+	if args == nil || !args.Enabled {
+		return configoptional.None[otelexporterhelper.QueueBatchConfig](), nil
 	}
 
 	sizer, err := convertSizer(args.Sizer)
 	if err != nil {
 		if args.Enabled {
-			return nil, err
+			return configoptional.None[otelexporterhelper.QueueBatchConfig](), err
 		} else {
 			// This is a workaround for components which have queue arguments,
 			// but don't use them in some cases. For example, the loadbalancing exporter
@@ -82,10 +82,9 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 
 	batch, err := args.Batch.Convert()
 	if err != nil {
-		return nil, err
+		return configoptional.None[otelexporterhelper.QueueBatchConfig](), err
 	}
 	q := otelexporterhelper.NewDefaultQueueConfig()
-	q.Enabled = args.Enabled
 	q.NumConsumers = args.NumConsumers
 	q.QueueSize = args.QueueSize
 	q.BlockOnOverflow = args.BlockOnOverflow
@@ -96,13 +95,13 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 	// Configure storage if args.Storage is set.
 	if args.Storage != nil {
 		if args.Storage.Extension == nil {
-			return nil, fmt.Errorf("missing storage extension")
+			return configoptional.None[otelexporterhelper.QueueBatchConfig](), fmt.Errorf("missing storage extension")
 		}
 
 		q.StorageID = &args.Storage.ID
 	}
 
-	return &q, nil
+	return configoptional.Some(q), nil
 }
 
 // Validate returns an error if args is invalid.

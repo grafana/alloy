@@ -4,21 +4,6 @@ otelcol.receiver.kafka "default" {
 	session_timeout    = "11s"
 	heartbeat_interval = "4s"
 
-	logs {
-		topic    = "otlp_logs"
-		encoding = "otlp_proto"
-	}
-
-	metrics {
-		topic    = "otlp_metrics"
-		encoding = "otlp_proto"
-	}
-
-	traces {
-		topic    = "otlp_spans"
-		encoding = "otlp_proto"
-	}
-
 	authentication {
 		plaintext {
 			username = "fakeusername"

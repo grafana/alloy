@@ -5,7 +5,6 @@ import (
 	"time"
 
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -50,15 +49,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				GroupRebalanceStrategy: "range",
 			},
 			Logs: kafkareceiver.TopicEncodingConfig{
-				Topic:    "otlp_logs",
+				Topics:   []string{"otlp_logs"},
 				Encoding: "otlp_proto",
 			},
 			Metrics: kafkareceiver.TopicEncodingConfig{
-				Topic:    "otlp_metrics",
+				Topics:   []string{"otlp_metrics"},
 				Encoding: "otlp_proto",
 			},
 			Traces: kafkareceiver.TopicEncodingConfig{
-				Topic:    "otlp_spans",
+				Topics:   []string{"otlp_spans"},
 				Encoding: "otlp_proto",
 			},
 			HeaderExtraction: kafkareceiver.HeaderExtraction{
@@ -90,86 +89,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: defaultExpected(),
 		},
-
-		{
-			testName: "Deprecated topic",
-			cfg: `
-				brokers = ["10.10.10.10:9092"]
-				protocol_version = "2.0.0"
-				topic = "test_default_topic"
-				metrics {
-					topic = "test_metrics_topic"
-				}
-				output {}
-			`,
-			expected: func() kafkareceiver.Config {
-				cfg := defaultExpected()
-
-				cfg.Topic = ""
-				cfg.Encoding = ""
-
-				cfg.Logs.Topic = "test_default_topic"
-				cfg.Logs.Encoding = "otlp_proto"
-
-				cfg.Metrics.Topic = "test_metrics_topic"
-				cfg.Metrics.Encoding = "otlp_proto"
-
-				cfg.Traces.Topic = "test_default_topic"
-				cfg.Traces.Encoding = "otlp_proto"
-
-				return cfg
-			}(),
-		},
-		{
-			testName: "Deprecated topic and encoding and empty blocks",
-			cfg: `
-				brokers = ["10.10.10.10:9092"]
-				protocol_version = "2.0.0"
-
-				// Neither "topic" nor "encoding" will be used,
-				// because the default values from the enpty blocks should be used.
-				// Making those blocks empty means their thefault values should be used,
-				// and they have precedence over those deprecared arguments.
-				topic = "test_default_topic"
-				encoding = "otlp_json"
-
-				metrics {}
-				logs {}
-				traces {}
-
-				output {}
-			`,
-			expected: defaultExpected(),
-		},
-		{
-			testName: "Deprecated encoding",
-			cfg: `
-				brokers = ["10.10.10.10:9092"]
-				protocol_version = "2.0.0"
-				encoding = "otlp_json"
-				traces {
-					encoding = "zipkin_thrift"
-				}
-				output {}
-			`,
-			expected: func() kafkareceiver.Config {
-				cfg := defaultExpected()
-
-				cfg.Topic = ""
-				cfg.Encoding = ""
-
-				cfg.Logs.Topic = "otlp_logs"
-				cfg.Logs.Encoding = "otlp_json"
-
-				cfg.Metrics.Topic = "otlp_metrics"
-				cfg.Metrics.Encoding = "otlp_json"
-
-				cfg.Traces.Topic = "otlp_spans"
-				cfg.Traces.Encoding = "zipkin_thrift"
-
-				return cfg
-			}(),
-		},
 		{
 			testName: "ExplicitValues_AuthPlaintext",
 			cfg: `
@@ -183,16 +102,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				group_rebalance_strategy = "roundrobin"
 				max_fetch_wait = "2s"
 				logs {
-					topic = "test_logs_topic"
+					topics = ["^logs-.*"]
 					encoding = "raw"
+					exclude_topics = ["^logs-(test|dev)$"]
 				}
 				metrics {
-					topic = "test_metrics_topic"
+					topics = ["^metrics-.*"]
 					encoding = "otlp_json"
+					exclude_topics = ["^metrics-internal-.*$"]
 				}
 				traces {
-					topic = "test_spans_topic"
+					topics = ["^traces-.*"]
 					encoding = "zipkin_json"
+					exclude_topics = ["^traces-debug-.*$"]
 				}
 				metadata {
 					retry {
@@ -229,16 +151,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: kafkareceiver.Config{
 				Logs: kafkareceiver.TopicEncodingConfig{
-					Topic:    "test_logs_topic",
-					Encoding: "raw",
+					Topics:        []string{"^logs-.*"},
+					Encoding:      "raw",
+					ExcludeTopics: []string{"^logs-(test|dev)$"},
 				},
 				Metrics: kafkareceiver.TopicEncodingConfig{
-					Topic:    "test_metrics_topic",
-					Encoding: "otlp_json",
+					Topics:        []string{"^metrics-.*"},
+					Encoding:      "otlp_json",
+					ExcludeTopics: []string{"^metrics-internal-.*$"},
 				},
 				Traces: kafkareceiver.TopicEncodingConfig{
-					Topic:    "test_spans_topic",
-					Encoding: "zipkin_json",
+					Topics:        []string{"^traces-.*"},
+					Encoding:      "zipkin_json",
+					ExcludeTopics: []string{"^traces-debug-.*$"},
 				},
 				ClientConfig: configkafka.ClientConfig{
 					Brokers:         []string{"10.10.10.10:9092"},
@@ -354,15 +279,15 @@ func TestArguments_Auth(t *testing.T) {
 					},
 				},
 				"logs": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_logs",
+					Topics:   []string{"otlp_logs"},
 					Encoding: "otlp_proto",
 				},
 				"metrics": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_metrics",
+					Topics:   []string{"otlp_metrics"},
 					Encoding: "otlp_proto",
 				},
 				"traces": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_spans",
+					Topics:   []string{"otlp_spans"},
 					Encoding: "otlp_proto",
 				},
 				"autocommit": configkafka.AutoCommitConfig{
@@ -435,15 +360,15 @@ func TestArguments_Auth(t *testing.T) {
 					},
 				},
 				"logs": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_logs",
+					Topics:   []string{"otlp_logs"},
 					Encoding: "otlp_proto",
 				},
 				"metrics": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_metrics",
+					Topics:   []string{"otlp_metrics"},
 					Encoding: "otlp_proto",
 				},
 				"traces": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_spans",
+					Topics:   []string{"otlp_spans"},
 					Encoding: "otlp_proto",
 				},
 				"autocommit": configkafka.AutoCommitConfig{
@@ -522,15 +447,15 @@ func TestArguments_Auth(t *testing.T) {
 					},
 				},
 				"logs": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_logs",
+					Topics:   []string{"otlp_logs"},
 					Encoding: "otlp_proto",
 				},
 				"metrics": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_metrics",
+					Topics:   []string{"otlp_metrics"},
 					Encoding: "otlp_proto",
 				},
 				"traces": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_spans",
+					Topics:   []string{"otlp_spans"},
 					Encoding: "otlp_proto",
 				},
 				"autocommit": configkafka.AutoCommitConfig{
@@ -610,15 +535,15 @@ func TestArguments_Auth(t *testing.T) {
 					},
 				},
 				"logs": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_logs",
+					Topics:   []string{"otlp_logs"},
 					Encoding: "otlp_proto",
 				},
 				"metrics": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_metrics",
+					Topics:   []string{"otlp_metrics"},
 					Encoding: "otlp_proto",
 				},
 				"traces": kafkareceiver.TopicEncodingConfig{
-					Topic:    "otlp_spans",
+					Topics:   []string{"otlp_spans"},
 					Encoding: "otlp_proto",
 				},
 				"autocommit": configkafka.AutoCommitConfig{
@@ -733,29 +658,4 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
 		})
 	}
-}
-
-func TestArguments_Validate(t *testing.T) {
-	cfg := `
-		brokers = ["10.10.10.10:9092"]
-		protocol_version = "2.0.0"
-		topic = "traces"
-		output {
-		}
-	`
-	var args kafka.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-	// Adding two traces consumer, expect no error
-	args.Output.Traces = append(args.Output.Traces, &fakeconsumer.Consumer{})
-	args.Output.Traces = append(args.Output.Traces, &fakeconsumer.Consumer{})
-	require.NoError(t, args.Validate())
-
-	// Adding another signal type
-	args.Output.Logs = append(args.Output.Logs, &fakeconsumer.Consumer{})
-	require.ErrorContains(t, args.Validate(), "only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: logs, traces")
-
-	// Adding another signal type
-	args.Output.Metrics = append(args.Output.Metrics, &fakeconsumer.Consumer{})
-	require.ErrorContains(t, args.Validate(), "only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: logs, metrics, traces")
 }
