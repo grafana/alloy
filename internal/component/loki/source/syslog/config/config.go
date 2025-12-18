@@ -103,10 +103,10 @@ type SyslogTargetConfig struct {
 	// Default is rfc5424.
 	SyslogFormat SyslogFormat `yaml:"syslog_format"`
 
-	// RawOptions are options for processing syslog messages in raw mode.
+	// RawFormatOptions are options for processing syslog messages in raw mode.
 	//
 	// Takes effect only if "syslog_format" is set to "raw".
-	RawOptions RawFormatOptions `yaml:"raw_options"`
+	RawFormatOptions RawFormatOptions `yaml:"raw_format_options"`
 
 	// MaxMessageLength sets the maximum limit to the length of syslog messages
 	MaxMessageLength int `yaml:"max_message_length"`
