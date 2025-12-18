@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,22 +11,25 @@ import (
 
 func main() {
 	log.Println("Generating Alloy OTel Collector main file...")
+
+	otelGeneratedMain := flag.String("main-path", "", "Path to the OTel-generated main.go file")
+	alloyMain := flag.String("main-alloy-path", "", "Path to the generated main_alloy.go file")
+	flag.Parse()
+
+	log.Printf("otelGeneratedMain: %v", *otelGeneratedMain)
+	log.Printf("alloyMain: %v", *alloyMain)
+
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("failed to get working directory: %v", err)
 	}
-	log.Printf("working dir: %v", dir)
-	otelGeneratedMain := os.Args[2]
-	alloyMain := os.Args[3]
-	log.Printf("otelGeneratedMain: %v", otelGeneratedMain)
-	log.Printf("alloyMain: %v", alloyMain)
 
 	templatePath := filepath.Join(dir, "generator", "main_alloy.tpl")
-	if err := copyAlloyMainTemplateFromFile(templatePath, alloyMain); err != nil {
+	if err := copyAlloyMainTemplateFromFile(templatePath, *alloyMain); err != nil {
 		log.Fatalf("failed to copy alloy main template: %v", err)
 	}
 
-	if err := replaceCmdFactory(otelGeneratedMain); err != nil {
+	if err := replaceCmdFactory(*otelGeneratedMain); err != nil {
 		log.Fatalf("failed to replace command factory: %v", err)
 	}
 
