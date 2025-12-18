@@ -63,6 +63,9 @@ type testConfig struct {
 	rotationType rotationType
 }
 
+// logLinePattern is the regex pattern for parsing log lines formatted by formatLogLine
+var logLinePattern = regexp.MustCompile(`^file(\d+)-line(\d+)$`)
+
 // logLine represents a written log line with metadata
 type logLine struct {
 	fileID   int
@@ -100,8 +103,7 @@ func formatLogLine(fileID, sequence int) string {
 
 // parseLogLine extracts file ID and sequence from a log line
 func parseLogLine(line string) (fileID, sequence int, err error) {
-	re := regexp.MustCompile(`^file(\d+)-line(\d+)$`)
-	matches := re.FindStringSubmatch(line)
+	matches := logLinePattern.FindStringSubmatch(line)
 	if len(matches) != 3 {
 		return 0, 0, fmt.Errorf("invalid log line format: %s", line)
 	}
@@ -127,6 +129,7 @@ func (w *logWriter) rotatedLogPath(timestamp int64) string {
 }
 
 // openFile opens the current log file for writing
+// Must be called with w.mu held
 func (w *logWriter) openFile() error {
 	var err error
 	w.currentFile, err = os.OpenFile(w.currentLogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -135,6 +138,9 @@ func (w *logWriter) openFile() error {
 
 // rotate performs file rotation using the configured rotation strategy
 func (w *logWriter) rotate() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	currentPath := w.currentLogPath()
 	rotatedPath := w.rotatedLogPath(time.Now().UnixNano())
 
@@ -151,6 +157,7 @@ func (w *logWriter) rotate() error {
 }
 
 // rotateRename renames the old file and creates a new one (traditional rotation)
+// Must be called with w.mu held
 func (w *logWriter) rotateRename(currentPath, rotatedPath string) error {
 	if w.currentFile != nil {
 		// Sync to ensure all data is written before rotation
@@ -175,6 +182,7 @@ func (w *logWriter) rotateRename(currentPath, rotatedPath string) error {
 }
 
 // rotateCopyTruncate copies content to rotated file then truncates original (copytruncate strategy)
+// Must be called with w.mu held
 func (w *logWriter) rotateCopyTruncate(currentPath, rotatedPath string) error {
 	if w.currentFile != nil {
 		// Sync to ensure all data is written before rotation
@@ -220,6 +228,7 @@ func (w *logWriter) rotateCopyTruncate(currentPath, rotatedPath string) error {
 }
 
 // rotateDelete deletes the old file and creates a new one
+// Must be called with w.mu held
 func (w *logWriter) rotateDelete(currentPath string) error {
 	if w.currentFile != nil {
 		// Sync and close
@@ -247,24 +256,36 @@ func (w *logWriter) rotateDelete(currentPath string) error {
 }
 
 // copyFile copies a file from src to dst
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (retErr error) {
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		if err := sourceFile.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close source file: %w", err)
+		}
+	}()
 
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() {
+		if err := destFile.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close destination file: %w", err)
+		}
+	}()
 
 	if _, err := io.Copy(destFile, sourceFile); err != nil {
 		return err
 	}
 
-	return destFile.Sync()
+	if err := destFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync destination file: %w", err)
+	}
+
+	return nil
 }
 
 // writeLine writes a single log line to the current file
@@ -291,7 +312,10 @@ func (w *logWriter) writeLine() error {
 // run is the main goroutine that writes logs and rotates files
 func (w *logWriter) run() error {
 	// Open initial file
-	if err := w.openFile(); err != nil {
+	w.mu.Lock()
+	err := w.openFile()
+	w.mu.Unlock()
+	if err != nil {
 		return fmt.Errorf("failed to open initial file: %w", err)
 	}
 
@@ -308,10 +332,18 @@ func (w *logWriter) run() error {
 		select {
 		case <-w.ctx.Done():
 			// Final sync before stopping
+			w.mu.Lock()
 			if w.currentFile != nil {
-				w.currentFile.Sync()
-				w.currentFile.Close()
+				if err := w.currentFile.Sync(); err != nil {
+					w.mu.Unlock()
+					return fmt.Errorf("failed to sync during context cancellation: %w", err)
+				}
+				if err := w.currentFile.Close(); err != nil {
+					w.mu.Unlock()
+					return fmt.Errorf("failed to close during context cancellation: %w", err)
+				}
 			}
+			w.mu.Unlock()
 			return nil
 
 		case <-rotationTicker.C:
@@ -324,10 +356,18 @@ func (w *logWriter) run() error {
 		case <-writeTicker.C:
 			if time.Now().After(endTime) {
 				// Test duration completed
+				w.mu.Lock()
 				if w.currentFile != nil {
-					w.currentFile.Sync()
-					w.currentFile.Close()
+					if err := w.currentFile.Sync(); err != nil {
+						w.mu.Unlock()
+						return fmt.Errorf("failed to sync at test completion: %w", err)
+					}
+					if err := w.currentFile.Close(); err != nil {
+						w.mu.Unlock()
+						return fmt.Errorf("failed to close at test completion: %w", err)
+					}
 				}
+				w.mu.Unlock()
 				return nil
 			}
 
