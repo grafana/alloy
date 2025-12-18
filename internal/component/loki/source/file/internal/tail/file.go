@@ -157,6 +157,7 @@ func (f *File) wait(partial bool) error {
 	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
 	switch event {
 	case eventModified:
+		level.Debug(f.logger).Log("msg", "file modified")
 		if partial {
 			// We need to reset to last successful offset because we consumed a partial line.
 			f.file.Seek(f.lastOffset, io.SeekStart)
@@ -164,9 +165,11 @@ func (f *File) wait(partial bool) error {
 		}
 		return nil
 	case eventTruncated:
+		level.Debug(f.logger).Log("msg", "file truncated")
 		// We need to reopen the file when it was truncated.
 		return f.reopen(true)
 	case eventDeleted:
+		level.Debug(f.logger).Log("msg", "file deleted")
 		// if a file is deleted we want to make sure we drain what's remaninng in the open file.
 		f.drain()
 
