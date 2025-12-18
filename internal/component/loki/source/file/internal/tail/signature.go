@@ -38,15 +38,18 @@ func (s *signature) completed() bool {
 // equal compares two signatures. For incomplete signatures, it compares only
 // the overlapping bytes. For complete signatures, both must be the same length and content.
 func (s *signature) equal(other *signature) bool {
-	if !s.completed() {
-		len1 := len(s.d)
-		len2 := len(other.d)
+	len1 := len(s.d)
+	if len1 == 0 {
+		return false
+	}
 
+	len2 := len(other.d)
+	if !s.completed() {
 		if len1 > len2 {
 			return false
 		}
 		return bytes.Equal(s.d[:len1], other.d[:len1])
 	}
 
-	return len(s.d) == len(other.d) && bytes.Equal(s.d, other.d)
+	return len1 == len2 && bytes.Equal(s.d, other.d)
 }

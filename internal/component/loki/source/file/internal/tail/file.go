@@ -332,7 +332,6 @@ func (f *File) reopen(truncated bool) error {
 		sig, err := newSignatureFromFile(file)
 		if err != nil {
 			return err
-
 		}
 
 		if f.signature.equal(sig) {
