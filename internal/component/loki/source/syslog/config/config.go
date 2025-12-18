@@ -60,7 +60,7 @@ type RawFormatOptions struct {
 	// UseNullTerminatorDelimiter sets null terminator ('\0') as a log line delimiter for non-transparent framed messages.
 	//
 	// When set to false, new line character ('\n') is used instead.
-	UseNullTerminatorDelimiter bool `yaml:"delimiter"`
+	UseNullTerminatorDelimiter bool `yaml:"use_null_terminator_delimiter"`
 }
 
 func (opts RawFormatOptions) Delimiter() byte {
