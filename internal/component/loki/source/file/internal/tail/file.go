@@ -28,11 +28,14 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Offset != 0 {
-		// Seek to provided offset
-		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-			return nil, err
-		}
+	sig, err := newSignatureFromFile(f)
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE: we always need to seek because newSignatureFromFile will read from file.
+	if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
+		return nil, err
 	}
 
 	if cfg.WatcherConfig == (WatcherConfig{}) {
@@ -44,12 +47,14 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:    cfg,
-		logger: logger,
-		file:   f,
-		reader: newReader(f, cfg),
-		ctx:    ctx,
-		cancel: cancel,
+		cfg:        cfg,
+		logger:     logger,
+		file:       f,
+		reader:     newReader(f, cfg),
+		ctx:        ctx,
+		cancel:     cancel,
+		signature:  sig,
+		lastOffset: cfg.Offset,
 	}, nil
 }
 
@@ -66,6 +71,7 @@ type File struct {
 	reader *bufio.Reader
 
 	lastOffset int64
+	signature  *signature
 
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
@@ -115,6 +121,25 @@ read:
 	}
 
 	f.lastOffset = offset
+
+	// We only recompute signature once we have read past the target size and it's not already
+	// complete.
+	if f.lastOffset >= signatureSize && !f.signature.completed() {
+		if _, err := f.file.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+
+		sig, err := newSignatureFromFile(f.file)
+		if err != nil {
+			return nil, err
+		}
+
+		f.signature = sig
+		if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
+			return nil, err
+		}
+		f.reader.Reset(f.file)
+	}
 
 	return &Line{
 		Text:   text,
@@ -172,8 +197,6 @@ func (f *File) wait(partial bool) error {
 		level.Debug(f.logger).Log("msg", "file deleted")
 		// if a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
-
-		f.lastOffset = 0
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -210,6 +233,8 @@ func (f *File) drain() {
 				if err != nil {
 					return
 				}
+
+				f.lastOffset = offset
 				f.bufferedLines = append(f.bufferedLines, Line{
 					Text:   text,
 					Offset: offset,
@@ -224,6 +249,7 @@ func (f *File) drain() {
 			return
 		}
 
+		f.lastOffset = offset
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,
 			Offset: offset,
@@ -260,6 +286,7 @@ func (f *File) reopen(truncated bool) error {
 		level.Debug(f.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 	}
 
+	offset, _ := f.offset()
 	f.file.Close()
 
 	backoff := backoff.New(f.ctx, backoff.Config{
@@ -297,8 +324,28 @@ func (f *File) reopen(truncated bool) error {
 			continue
 		}
 
+		// Compute a new signature and compare it with the previous one to detect atomic writes.
+		// When a file is replaced atomically, the file handle changes but the
+		// initial content may be the same. If signatures match, it's the same file content,
+		// so we continue from the previous offset. If they differ, it's a different
+		// file, so we start from the beginning.
+		sig, err := newSignatureFromFile(file)
+		if err != nil {
+			return err
+
+		}
+
+		if f.signature.equal(sig) {
+			f.lastOffset = offset
+		} else {
+			f.lastOffset = 0
+		}
+
+		f.signature = sig
 		f.file = file
+		f.file.Seek(f.lastOffset, io.SeekStart)
 		f.reader.Reset(f.file)
+
 		break
 	}
 

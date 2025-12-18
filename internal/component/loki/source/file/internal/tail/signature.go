@@ -1,0 +1,52 @@
+package tail
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+)
+
+// signature represents the first N bytes of a file, used to detect atomic writes
+// where a file is replaced but may have the same initial content.
+type signature struct {
+	d []byte
+}
+
+// signatureSize is the target size for a complete signature.
+const signatureSize = 512
+
+// newSignatureFromFile reads up to signatureSize bytes from the beginning of the file
+// to create a signature. If the file is smaller, the signature will be incomplete.
+func newSignatureFromFile(f *os.File) (*signature, error) {
+	buf := make([]byte, signatureSize)
+	n, err := f.Read(buf)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("failed to compute signature for file: %w", err)
+	}
+	return &signature{
+		d: buf[:n],
+	}, nil
+}
+
+// completed returns true if the signature has reached the target size.
+func (s *signature) completed() bool {
+	return len(s.d) == signatureSize
+}
+
+// equal compares two signatures. For incomplete signatures, it compares only
+// the overlapping bytes. For complete signatures, both must be the same length and content.
+func (s *signature) equal(other *signature) bool {
+	if !s.completed() {
+		len1 := len(s.d)
+		len2 := len(other.d)
+
+		if len1 > len2 {
+			return false
+		}
+		return bytes.Equal(s.d[:len1], other.d[:len1])
+	}
+
+	return len(s.d) == len(other.d) && bytes.Equal(s.d, other.d)
+}
