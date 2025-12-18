@@ -540,6 +540,59 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 	}
 }
 
+func TestSyslogTarget_CEFRawMessages(t *testing.T) {
+	messages := []string{
+		`Dec 17 12:23:16 Dream-Router CEF:0|Ubiquiti`,
+		`<13>Dec 17 12:23:16 Dream-Router [LAN_LOCAL-RET-2147483647] DESCR="no rule description"`,
+		`Dec 17 12:22:08 Dream-Router CEF:0|Ubiquiti|UniFi Network`,
+	}
+
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(metrics, logger, handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+		ListenAddress:       "127.0.0.1:0",
+		ListenProtocol:      "udp",
+		LabelStructuredData: true,
+		SyslogFormat:        scrapeconfig.SyslogFormatRaw,
+		RawFormatOptions: scrapeconfig.RawFormatOptions{
+			UseNullTerminatorDelimiter: false,
+		},
+		Labels: model.LabelSet{
+			"test": "syslog_target",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+	defer func() {
+		require.NoError(t, tgt.Stop())
+	}()
+
+	addr := tgt.ListenAddress().String()
+	c, err := net.Dial("udp", addr)
+	require.NoError(t, err)
+
+	err = writeMessagesToStream(c, messages, fmtNewline)
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	require.Eventuallyf(t, func() bool {
+		return len(handler.Received()) == len(messages)
+	}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
+
+	for i := range messages {
+		require.Equal(t, model.LabelSet{
+			"test": "syslog_target",
+		}, handler.Received()[i].Labels)
+		require.Contains(t, messages, handler.Received()[i].Line)
+		require.NotZero(t, handler.Received()[i].Timestamp)
+	}
+}
+
 func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
