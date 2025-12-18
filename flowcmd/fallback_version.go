@@ -1,20 +1,23 @@
 package flowcmd
 
 import (
-	_ "embed"
 	"encoding/json"
+	"os"
 
 	"github.com/grafana/alloy/internal/build"
 )
-
-//go:embed .release-please-manifest.json
-var fallbackVersionJSON []byte
 
 // fallbackVersion returns a version string to use for when the version isn't
 // explicitly set at build time. The version string will always have -devel
 // appended to it.
 func fallbackVersion() string {
-	return fallbackVersionFromJSON(fallbackVersionJSON)
+	manifestPath := "../.release-please-manifest.json"
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		panic(err)
+	}
+
+	return fallbackVersionFromJSON(data)
 }
 
 func fallbackVersionFromJSON(data []byte) string {

@@ -11,9 +11,9 @@
 set -o errexit
 set -o pipefail
 
-VERSION=$(jq -r '.["."] // empty | "v" + .' flowcmd/.release-please-manifest.json 2>/dev/null || echo "")
+VERSION=$(jq -r '.["."] // empty | "v" + .' .release-please-manifest.json 2>/dev/null || echo "")
 if [ -z "$VERSION" ]; then
-  echo "Error: Could not read version from flowcmd/.release-please-manifest.json" >&2
+  echo "Error: Could not read version from .release-please-manifest.json" >&2
   exit 1
 fi
 
