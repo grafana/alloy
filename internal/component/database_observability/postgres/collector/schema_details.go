@@ -67,7 +67,8 @@ const (
 		pg_attribute: stores column information
 		pg_attrdef: stores default values for columns
 		pg_constraint: stores primary key information
-		attr.attrelid = $1::regclass -- filter by the table name
+		JOIN pg_class to filter by table name
+		JOIN pg_namespace to filter by schema name
 		AND attr.attnum > 0  -- no system columns
 		AND NOT attr.attisdropped -- no dropped columns`
 	*/
@@ -84,10 +85,13 @@ const (
 		END as is_primary_key
 	FROM
 		pg_attribute attr
+		JOIN pg_catalog.pg_class pg_class ON attr.attrelid = pg_class.oid
+		JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
 		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum
 		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p'
 	WHERE
-		attr.attrelid = $1::regclass
+		pg_namespace.nspname = $1
+		AND pg_class.relname = $2
 		AND attr.attnum > 0
 		AND NOT attr.attisdropped`
 
@@ -577,8 +581,7 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 }
 
 func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName database, schemaName schema, tableName table, dbConnection *sql.DB) (*tableSpec, error) {
-	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
-	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
+	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
