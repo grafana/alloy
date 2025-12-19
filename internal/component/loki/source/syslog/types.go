@@ -101,7 +101,9 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 	}
 
 	if sc.RawFormatOptions != nil {
-		cfg.RawFormatOptions.UseNullTerminatorDelimiter = sc.RawFormatOptions.UseNullTerminatorDelimiter
+		cfg.RawFormatOptions = scrapeconfig.RawFormatOptions{
+			UseNullTerminatorDelimiter: sc.RawFormatOptions.UseNullTerminatorDelimiter,
+		}
 	}
 
 	return cfg, nil

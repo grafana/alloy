@@ -78,7 +78,7 @@ func TestValidateRawOnlyOpts(t *testing.T) {
 		}
 	})
 
-	t.Run("RawFormatOptsRequresSyslogFormat", func(t *testing.T) {
+	t.Run("RawFormatOptsRequiresSyslogFormat", func(t *testing.T) {
 		sc := &ListenerConfig{
 			ListenProtocol: "udp",
 			SyslogFormat:   config.SyslogFormatRFC5424,

@@ -13,7 +13,7 @@ title: loki.source.syslog
 # `loki.source.syslog`
 
 `loki.source.syslog` listens for syslog messages over TCP or UDP connections and forwards them to other `loki.*` components.
-The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) syslog protocol or the [*RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) BSD syslog protocol.
+The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) syslog protocol or the [RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) BSD syslog protocol.
 For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-syslog-messages/) scenario.
 
 {{< admonition type="note" >}}
