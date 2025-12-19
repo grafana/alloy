@@ -68,12 +68,14 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	require.NoError(t, e.Shutdown(shutdownCtx))
 
 	// Verify the run goroutine has exited and state is terminated.
-	select {
-	case <-e.runExited:
-		// ok
-	case <-time.After(2 * time.Second):
-		t.Fatal("run command did not exit in time")
-	}
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
 	require.Equal(t, stateTerminated, e.state)
 }
 
@@ -97,12 +99,14 @@ func TestRunCommandUnexpectedError(t *testing.T) {
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
 
 	// Wait for the command to exit and extension to transition to terminated.
-	select {
-	case <-e.runExited:
-		// ok
-	case <-time.After(2 * time.Second):
-		t.Fatal("run command did not exit in time")
-	}
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
 
 	require.Equal(t, stateTerminated, e.state)
 	require.Error(t, e.Ready())
@@ -122,11 +126,14 @@ func TestShutdownWithRunCommandError(t *testing.T) {
 	require.NoError(t, e.Shutdown(shutdownCtx))
 
 	// The internal goroutine should have transitioned to terminated even on error during shutdown.
-	select {
-	case <-e.runExited:
-		// ok
-	case <-time.After(2 * time.Second):
-		t.Fatal("run command did not exit in time")
-	}
+
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
 	require.Equal(t, stateTerminated, e.state)
 }
