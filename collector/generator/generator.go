@@ -44,7 +44,10 @@ func copyAlloyMainTemplateFromFile(templatePath, dstPath string) error {
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return fmt.Errorf("create dst dir: %w", err)
 	}
-	if err := os.WriteFile(dstPath, data, 0o644); err != nil {
+
+	withGeneratedWarningHeader := append([]byte("// GENERATED CODE: DO NOT EDIT\n"), data...)
+
+	if err := os.WriteFile(dstPath, withGeneratedWarningHeader, 0o644); err != nil {
 		return fmt.Errorf("write template to %s: %w", dstPath, err)
 	}
 	return nil

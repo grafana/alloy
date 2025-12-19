@@ -1,4 +1,3 @@
-// GENERATED CODE: DO NOT EDIT (the .go file, editing the .tpl file is okay)
 package main
 
 import (
