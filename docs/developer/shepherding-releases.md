@@ -138,3 +138,27 @@ PR, follow these steps:
 3. Go go the Actions page, find the release-please workflow, find the most recent entry for the
    target branch (e.g. `release/v.1.12`), and re-run it.
 4. (The PR will automatically get recreated.)
+
+## Manually forwardporting a release branch to `main`
+
+The forwardport PRs are what allow the changelog, manifest, and related files to be kept up to date
+on the main branch so that subsequent releases have an appropriate starting point when looking for
+changes.
+
+If this job should happen to fail when a release-please PR gets merged into a release branch, here
+are the steps you can take to do it manually:
+
+1. `git checkout` and `git pull` both the release branch and the main branch
+2. Run `git checkout main`
+3. Run `git log -1 release/vA.B` and retain the commit hash
+4. Add a Bypass to the `Important branches require pull requests (except trusted apps)` Ruleset for
+   the `Repository admin` role.
+5. Run the following commands:
+   ```bash
+   git merge --strategy ours origin/release/vN.M --message "chore: forwardport release A.B.C to main"
+   git cherry-pick --no-commit <release_please_commit_hash_from_earlier>
+   git commit --amend --no-edit
+   git push
+   ```
+6. **Delete the Bypass** from `Important branches require pull requests (except trusted apps)` for
+   the `Repository admin` role.

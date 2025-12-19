@@ -1,0 +1,78 @@
+name: Announce Release to Slack
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  announce-release:
+    runs-on: ubuntu-latest
+    env:
+      SLACK_MESSAGE: |
+        :alloy: *Grafana Alloy ${{ github.event.release.tag_name }} is now available!* :alloy:
+
+        *Release:* <${{ github.event.release.html_url }}|${{ github.event.release.tag_name }}>
+        *Full changelog:* <https://github.com/${{ github.repository }}/blob/${{ github.event.release.tag_name }}/CHANGELOG.md|CHANGELOG.md>
+    steps:
+      - name: Get GitHub app secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            SLACK_CHANNEL_ID_ALLOY_INTERNAL=slack:channel_id_alloy_internal
+            SLACK_CHANNEL_ID_ALLOY_COMMUNITY=slack:channel_id_alloy_community
+
+      - name: Determine release type 🏷️
+        id: release-type
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [[ "$TAG" == *"-rc"* ]]; then
+            echo "is_rc=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_rc=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify internal alloy channel 📢
+        if: steps.release-type.outputs.is_rc == 'false'
+        uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
+        with:
+          method: chat.postMessage
+          payload: |
+            {
+              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_INTERNAL }}",
+              "text": ${{ toJSON(env.SLACK_MESSAGE) }},
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ${{ toJSON(env.SLACK_MESSAGE) }}
+                  }
+                }
+              ]
+            }
+
+      - name: Notify alloy community channel 📢
+        if: steps.release-type.outputs.is_rc == 'false'
+        uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
+        with:
+          method: chat.postMessage
+          payload: |
+            {
+              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_COMMUNITY }}",
+              "text": ${{ toJSON(env.SLACK_MESSAGE) }},
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ${{ toJSON(env.SLACK_MESSAGE) }}
+                  }
+                }
+              ]
+            }

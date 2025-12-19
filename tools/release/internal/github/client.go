@@ -359,3 +359,15 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 	}
 	return nil
 }
+
+// CreateIssueComment adds a comment to an issue or pull request.
+func (c *Client) CreateIssueComment(ctx context.Context, issueNumber int, body string) error {
+	comment := &github.IssueComment{
+		Body: github.String(body),
+	}
+	_, _, err := c.api.Issues.CreateComment(ctx, c.owner, c.repo, issueNumber, comment)
+	if err != nil {
+		return fmt.Errorf("creating comment on issue #%d: %w", issueNumber, err)
+	}
+	return nil
+}
