@@ -336,6 +336,8 @@ func (f *File) reopen(truncated bool) error {
 
 		if !f.signature.equal(sig) {
 			f.lastOffset = 0
+		} else {
+			f.lastOffset = min(f.lastOffset, nf.Size())
 		}
 
 		f.signature = sig
