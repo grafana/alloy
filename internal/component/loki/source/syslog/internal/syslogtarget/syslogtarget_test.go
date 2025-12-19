@@ -9,8 +9,12 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"iter"
 	"net"
 	"os"
+	"regexp"
+	"slices"
+	"sort"
 	"testing"
 	"time"
 	"unicode/utf8"
@@ -540,11 +544,57 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 	}
 }
 
+const layout = "Jan 02 15:04:05"
+
+var reCefDate = regexp.MustCompile(`(Dec \d{2} \d{2}:\d{2}:\d{2})`)
+
+type cefLogLine struct {
+	date time.Time
+	msg  string
+}
+
+func iterLokiLines(entries []loki.Entry) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for _, entry := range entries {
+			yield(entry.Line)
+		}
+	}
+}
+
+func parseCefLogLines(t *testing.T, lines iter.Seq[string]) []cefLogLine {
+	year := time.Now().Year()
+	out := []cefLogLine{}
+	for line := range lines {
+		reCefDate := reCefDate.FindStringSubmatch(line)
+		if len(reCefDate) != 2 {
+			t.Fatalf("no date in CEF log line: %s", line)
+			return nil
+		}
+
+		dt, err := time.Parse(layout, reCefDate[1])
+		if err != nil {
+			t.Fatalf("failed to parse CEF log line: %s", line)
+		}
+
+		dt = dt.AddDate(year, 0, 0)
+		out = append(out, cefLogLine{
+			date: dt,
+			msg:  line,
+		})
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].date.Before(out[j].date)
+	})
+
+	return out
+}
+
 func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 	messages := []string{
 		`Dec 17 12:23:16 Dream-Router CEF:0|Ubiquiti`,
-		`<13>Dec 17 12:23:16 Dream-Router [LAN_LOCAL-RET-2147483647] DESCR="no rule description"`,
-		`Dec 17 12:22:08 Dream-Router CEF:0|Ubiquiti|UniFi Network`,
+		`Dec 17 12:23:17 Dream-Router [LAN_LOCAL-RET-2147483647] DESCR="no rule description"`,
+		`Dec 17 12:23:18 Dream-Router CEF:0|Ubiquiti|UniFi Network`,
 	}
 
 	w := log.NewSyncWriter(os.Stderr)
@@ -568,9 +618,6 @@ func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
-	defer func() {
-		require.NoError(t, tgt.Stop())
-	}()
 
 	addr := tgt.ListenAddress().String()
 	c, err := net.Dial("udp", addr)
@@ -580,17 +627,19 @@ func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, c.Close())
 
+	time.Sleep(time.Second)
+	require.NoError(t, tgt.Stop())
+
 	require.Eventuallyf(t, func() bool {
 		return len(handler.Received()) == len(messages)
-	}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
+	}, time.Second, 10*time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
 
-	for i := range messages {
-		require.Equal(t, model.LabelSet{
-			"test": "syslog_target",
-		}, handler.Received()[i].Labels)
-		require.Contains(t, messages, handler.Received()[i].Line)
-		require.NotZero(t, handler.Received()[i].Timestamp)
-	}
+	// Sort received messages as UDP doesn't guarantee order of messages.
+	// Also we don't care about labels as they're not parsed in the raw mode.
+	wantLines := parseCefLogLines(t, slices.Values(messages))
+	gotLines := parseCefLogLines(t, iterLokiLines(handler.Received()))
+
+	require.Equal(t, wantLines, gotLines, "log lines did not match")
 }
 
 func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {

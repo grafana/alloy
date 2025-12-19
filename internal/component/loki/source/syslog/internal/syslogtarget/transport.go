@@ -477,7 +477,7 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 
 		if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
 			delim := t.config.RawFormatOptions.Delimiter()
-			for msg, err := range syslogparser.IterStreamRaw(c, delim) {
+			for msg, err := range syslogparser.IterStreamRaw(r, delim) {
 				cb(&syslog.Result{
 					Message: msg,
 					Error:   err,
