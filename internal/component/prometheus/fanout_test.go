@@ -5,9 +5,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/alloy/internal/service/labelstore"
-
 	"github.com/prometheus/prometheus/storage"
+
+	"github.com/grafana/alloy/internal/service/labelstore"
 
 	"github.com/stretchr/testify/require"
 )
