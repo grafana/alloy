@@ -126,24 +126,17 @@ function outputReleases(releases) {
   releases = releases.filter(release => release !== undefined);
   const pathsReleased = [];
   console.log(`releases_created=${releases.length > 0}`);
-  if (releases.length) {
-    for (const release of releases) {
-      if (!release) {
-        continue;
-      }
-      const path = release.path || '.';
-      if (path) {
-        pathsReleased.push(path);
-      }
-      console.log(`Created release: ${release.tagName}`);
-      for (const [rawKey, value] of Object.entries(release)) {
-        let key = rawKey;
-        if (key === 'tagName') key = 'tag_name';
-        if (key === 'uploadUrl') key = 'upload_url';
-        if (key === 'notes') key = 'body';
-        if (key === 'url') key = 'html_url';
-        console.log(`  ${key}=${value}`);
-      }
+  for (const release of releases) {
+    const path = release.path || '.';
+    pathsReleased.push(path);
+    console.log(`Created release: ${release.tagName}`);
+    for (const [rawKey, value] of Object.entries(release)) {
+      let key = rawKey;
+      if (key === 'tagName') key = 'tag_name';
+      if (key === 'uploadUrl') key = 'upload_url';
+      if (key === 'notes') key = 'body';
+      if (key === 'url') key = 'html_url';
+      console.log(`  ${key}=${value}`);
     }
   }
   console.log(`paths_released=${JSON.stringify(pathsReleased)}`);

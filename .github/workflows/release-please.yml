@@ -62,7 +62,7 @@ jobs:
             echo 'When ready to cut a release:'
             echo '1. Create a release branch (e.g., `release/v1.13`)'
             echo '2. The release-please automation will take over on that branch'
-            echo '3. This PR will remain on main to track changes'
+            echo '3. This PR will remain on main to track the next release'
             echo ''
             echo '---'
             echo "EOF"
@@ -74,6 +74,8 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_URL: ${{ github.repository }}
           TARGET_BRANCH: ${{ github.ref_name }}
+          CONFIG_FILE: release-please-config.json
+          MANIFEST_FILE: .release-please-manifest.json
           SKIP_GITHUB_RELEASE: ${{ env.SKIP_GITHUB_RELEASE }}
           PULL_REQUEST_TITLE: ${{ env.PULL_REQUEST_TITLE }}
           PULL_REQUEST_HEADER: ${{ env.PULL_REQUEST_HEADER }}
