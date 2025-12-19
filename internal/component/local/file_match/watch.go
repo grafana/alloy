@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -23,7 +23,7 @@ type watch struct {
 func (w *watch) getPaths() ([]discovery.Target, error) {
 	allMatchingPaths := make([]discovery.Target, 0)
 
-	matches, err := doublestar.Glob(w.getPath())
+	matches, err := doublestar.FilepathGlob(w.getPath())
 	if err != nil {
 		return nil, err
 	}
