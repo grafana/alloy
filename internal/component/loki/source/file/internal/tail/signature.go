@@ -15,7 +15,7 @@ type signature struct {
 }
 
 // signatureSize is the target size for a complete signature.
-const signatureSize = 512
+const signatureSize = 1024
 
 // signatureThresholds defines the byte offsets at which we should recompute the signature
 // as the file grows. This allows us to progressively build a more complete signature.
