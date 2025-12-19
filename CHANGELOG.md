@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.2](https://github.com/grafana/alloy/compare/v1.12.1...v1.12.2) (2025-12-19)
+
+
+### Bug Fixes 🐛
+
+* **database_observability:** fix schema_details collector to fetch column definitions with case sensitive table names ([#4872](https://github.com/grafana/alloy/issues/4872)) ([560dff4](https://github.com/grafana/alloy/commit/560dff4ccef090e2db85ef6dd9e59aeacf54e3f2))
+* show correct fallback alloy version instead of v1.13.0 ([#5110](https://github.com/grafana/alloy/issues/5110)) ([b72be99](https://github.com/grafana/alloy/commit/b72be995908ac761c0ea9a4f881367dc6ec6da13))
+
 ## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
 
