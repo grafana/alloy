@@ -5,7 +5,6 @@ module github.com/grafana/alloy/otel_engine
 go 1.25.5
 
 require (
-	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
 	github.com/grafana/alloy/extension/alloyengine v0.1.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0
@@ -18,7 +17,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.139.0
-	github.com/spf13/cobra v1.10.1
 	go.opentelemetry.io/collector/component v1.45.0
 	go.opentelemetry.io/collector/confmap v1.45.0
 	go.opentelemetry.io/collector/confmap/provider/envprovider v1.45.0
@@ -420,6 +418,7 @@ require (
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/gosnmp/gosnmp v1.41.0 // indirect
+	github.com/grafana/alloy v0.0.0-00010101000000-000000000000 // indirect
 	github.com/grafana/alloy-remote-config v0.0.12 // indirect
 	github.com/grafana/alloy/syntax v0.1.0 // indirect
 	github.com/grafana/beyla/v2 v2.7.10 // indirect
@@ -780,6 +779,7 @@ require (
 	github.com/sony/gobreaker/v2 v2.3.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
+	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stackitcloud/stackit-sdk-go/core v0.17.3 // indirect
