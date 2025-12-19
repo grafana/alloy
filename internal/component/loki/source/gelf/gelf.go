@@ -12,7 +12,6 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 func init() {
@@ -85,7 +84,6 @@ func (c *Component) Run(ctx context.Context) error {
 				c.target.stop()
 			}
 		})
-
 	}()
 
 	source.ConsumeAndProccess(ctx, c.handler, c.fanout, func(e loki.Entry) loki.Entry {
@@ -128,12 +126,4 @@ func (c *Component) Update(args component.Arguments) error {
 	c.target = t
 
 	return nil
-}
-
-func convertConfig(a Arguments) *scrapeconfig.GelfTargetConfig {
-	return &scrapeconfig.GelfTargetConfig{
-		ListenAddress:        a.ListenAddress,
-		Labels:               nil,
-		UseIncomingTimestamp: a.UseIncomingTimestamp,
-	}
 }

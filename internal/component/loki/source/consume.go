@@ -21,6 +21,7 @@ func ConsumeAndProccess(
 	f *loki.Fanout,
 	processFn func(e loki.Entry) loki.Entry,
 ) {
+
 	consume(ctx, recv, f, processFn)
 }
 
@@ -40,6 +41,7 @@ func consume(
 	f *loki.Fanout,
 	processFn func(e loki.Entry) loki.Entry,
 ) {
+
 	for {
 		select {
 		case <-ctx.Done():
