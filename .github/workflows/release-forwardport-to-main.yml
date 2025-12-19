@@ -52,6 +52,7 @@ jobs:
       - name: Forwardport to main 🔀
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           cd tools
           go run ./release/forwardport-release-to-main --pr "${{ github.event.pull_request.number }}"

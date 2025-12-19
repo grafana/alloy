@@ -54,13 +54,6 @@ type FindCommitParams struct {
 	Pattern string
 }
 
-// MergeBranchParams holds parameters for MergeBranch.
-type MergeBranchParams struct {
-	Base          string // Target branch to merge into
-	Head          string // Source branch to merge from
-	CommitMessage string // Commit message for the merge
-}
-
 // CreateLabelParams holds parameters for CreateLabel.
 type CreateLabelParams struct {
 	Name        string // Label name
@@ -207,19 +200,21 @@ func (c *Client) ReadManifest(ctx context.Context, ref string) (map[string]strin
 }
 
 // GetAppIdentity returns the GitHub App's identity for use in git commits.
-// It checks for APP_SLUG environment variable and fetches the app ID from the public API.
-// Falls back to the authenticated Apps API if APP_SLUG is not set (requires JWT authentication).
+// It checks for APP_SLUG environment variable and fetches the bot user ID from the API.
+// The bot user ID is required for GitHub to properly attribute commits.
 func (c *Client) GetAppIdentity(ctx context.Context) (AppIdentity, error) {
-	// Prefer APP_SLUG env var - fetch ID from public API (works with installation tokens)
+	// Prefer APP_SLUG env var - fetch bot user ID from users API
 	appSlug := os.Getenv("APP_SLUG")
 	if appSlug != "" {
-		app, _, err := c.api.Apps.Get(ctx, appSlug)
+		botUsername := fmt.Sprintf("%s[bot]", appSlug)
+		// Look up the bot user to get its actual user ID
+		botUser, _, err := c.api.Users.Get(ctx, botUsername)
 		if err != nil {
-			return AppIdentity{}, fmt.Errorf("getting app info for slug %q: %w", appSlug, err)
+			return AppIdentity{}, fmt.Errorf("getting bot user %q: %w", botUsername, err)
 		}
 		return AppIdentity{
-			Name:  fmt.Sprintf("%s[bot]", appSlug),
-			Email: fmt.Sprintf("%d+%s[bot]@users.noreply.github.com", app.GetID(), appSlug),
+			Name:  botUsername,
+			Email: fmt.Sprintf("%d+%s@users.noreply.github.com", botUser.GetID(), botUsername),
 		}, nil
 	}
 
@@ -230,11 +225,17 @@ func (c *Client) GetAppIdentity(ctx context.Context) (AppIdentity, error) {
 	}
 
 	slug := app.GetSlug()
-	id := app.GetID()
+	botUsername := fmt.Sprintf("%s[bot]", slug)
+
+	// Look up the bot user to get its actual user ID
+	botUser, _, err := c.api.Users.Get(ctx, botUsername)
+	if err != nil {
+		return AppIdentity{}, fmt.Errorf("getting bot user %q: %w", botUsername, err)
+	}
 
 	return AppIdentity{
-		Name:  fmt.Sprintf("%s[bot]", slug),
-		Email: fmt.Sprintf("%d+%s[bot]@users.noreply.github.com", id, slug),
+		Name:  botUsername,
+		Email: fmt.Sprintf("%d+%s@users.noreply.github.com", botUser.GetID(), botUsername),
 	}, nil
 }
 
@@ -321,23 +322,6 @@ func (c *Client) IsBranchMergedInto(ctx context.Context, source, target string) 
 	// If source is "behind" or "identical" to target, it means target already has all of source's commits
 	status := comparison.GetStatus()
 	return status == "behind" || status == "identical", nil
-}
-
-// MergeBranch merges the head branch into the base branch directly (no PR).
-// This uses GitHub's merge API to create a merge commit.
-func (c *Client) MergeBranch(ctx context.Context, p MergeBranchParams) (*github.RepositoryCommit, error) {
-	req := &github.RepositoryMergeRequest{
-		Base:          github.String(p.Base),
-		Head:          github.String(p.Head),
-		CommitMessage: github.String(p.CommitMessage),
-	}
-
-	commit, _, err := c.api.Repositories.Merge(ctx, c.owner, c.repo, req)
-	if err != nil {
-		return nil, fmt.Errorf("merging %s into %s: %w", p.Head, p.Base, err)
-	}
-
-	return commit, nil
 }
 
 // CreateLabel creates a new label in the repository.

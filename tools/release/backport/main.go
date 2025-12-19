@@ -132,7 +132,7 @@ func main() {
 	}
 
 	// Cherry-pick the commit
-	if err := git.CherryPick(commitSHA); err != nil {
+	if err := git.CherryPick(commitSHA, true); err != nil {
 		log.Fatalf("Failed to cherry-pick commit: %v\n\nThis may be due to conflicts. Please create the backport manually.", err)
 	}
 
