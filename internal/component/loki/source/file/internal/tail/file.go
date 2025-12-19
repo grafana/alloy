@@ -197,6 +197,7 @@ func (f *File) wait(partial bool) error {
 		level.Debug(f.logger).Log("msg", "file deleted")
 		// if a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
+
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -286,7 +287,6 @@ func (f *File) reopen(truncated bool) error {
 		level.Debug(f.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 	}
 
-	offset, _ := f.offset()
 	f.file.Close()
 
 	backoff := backoff.New(f.ctx, backoff.Config{
@@ -334,15 +334,16 @@ func (f *File) reopen(truncated bool) error {
 			return err
 		}
 
-		if f.signature.equal(sig) {
-			f.lastOffset = offset
-		} else {
+		if !f.signature.equal(sig) {
 			f.lastOffset = 0
 		}
 
 		f.signature = sig
 		f.file = file
-		f.file.Seek(f.lastOffset, io.SeekStart)
+		if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
+			return err
+		}
+
 		f.reader.Reset(f.file)
 
 		break
