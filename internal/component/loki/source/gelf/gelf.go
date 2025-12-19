@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source"
-	"github.com/grafana/alloy/internal/component/loki/source/gelf/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
@@ -28,9 +27,26 @@ func init() {
 	})
 }
 
+// Arguments are the arguments for the component.
+type Arguments struct {
+	// ListenAddress only supports UDP.
+	ListenAddress        string              `alloy:"listen_address,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
+	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (r *Arguments) SetToDefault() {
+	*r = Arguments{
+		ListenAddress:        "0.0.0.0:12201",
+		UseIncomingTimestamp: false,
+	}
+}
+
 // New creates a new gelf component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	metrics := target.NewMetrics(o.Registerer)
+	metrics := NewMetrics(o.Registerer)
 	c := &Component{
 		o:       o,
 		metrics: metrics,
@@ -50,11 +66,11 @@ var _ component.Component = (*Component)(nil)
 // Component is a receiver for graylog formatted log files.
 type Component struct {
 	o       component.Options
-	metrics *target.Metrics
+	metrics *metrics
 	handler loki.LogsReceiver
 
 	mut    sync.RWMutex
-	target *target.Target
+	target *tailer
 
 	fanout *loki.Fanout
 }
@@ -66,7 +82,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			if c.target != nil {
-				c.target.Stop()
+				c.target.stop()
 			}
 		})
 
@@ -92,7 +108,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.target != nil {
-		c.target.Stop()
+		c.target.stop()
 	}
 
 	var rcs []*relabel.Config
@@ -100,34 +116,18 @@ func (c *Component) Update(args component.Arguments) error {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
-	t, err := target.NewTarget(c.metrics, c.o.Logger, c.handler, rcs, convertConfig(newArgs))
+	t, err := newTailer(c.metrics, c.o.Logger, c.handler, tailerConfig{
+		addr:                 newArgs.ListenAddress,
+		relabel:              rcs,
+		useIncomingTimestamp: newArgs.UseIncomingTimestamp,
+	})
+
 	if err != nil {
 		return err
 	}
 	c.target = t
 
 	return nil
-}
-
-// Arguments are the arguments for the component.
-type Arguments struct {
-	// ListenAddress only supports UDP.
-	ListenAddress        string              `alloy:"listen_address,attr,optional"`
-	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
-	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
-}
-
-func defaultArgs() Arguments {
-	return Arguments{
-		ListenAddress:        "0.0.0.0:12201",
-		UseIncomingTimestamp: false,
-	}
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (r *Arguments) SetToDefault() {
-	*r = defaultArgs()
 }
 
 func convertConfig(a Arguments) *scrapeconfig.GelfTargetConfig {
