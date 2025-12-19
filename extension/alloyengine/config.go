@@ -5,10 +5,17 @@ import (
 	"os"
 )
 
+type Format string
+
+const (
+	FormatFile Format = "file"
+)
+
 // Config represents the configuration for the alloyflow extension.
 type Config struct {
-	ConfigPath string            `mapstructure:"config_path"`
-	Flags      map[string]string `mapstructure:"flags"`
+	Format Format            `mapstructure:"format"`
+	Value  string            `mapstructure:"value"`
+	Flags  map[string]string `mapstructure:"flags"`
 }
 
 func (cfg *Config) flagsAsSlice() []string {
@@ -19,15 +26,29 @@ func (cfg *Config) flagsAsSlice() []string {
 	return flags
 }
 
+func (f Format) validFormat() bool {
+	switch f {
+	case FormatFile:
+		return true
+	default:
+		return false
+	}
+}
+
 // Validate checks if the extension configuration is valid.
 func (cfg *Config) Validate() error {
-	if cfg.ConfigPath == "" {
-		return fmt.Errorf("config_path is required")
+	if !cfg.Format.validFormat() {
+		return fmt.Errorf("unsupported format: %q", cfg.Format)
 	}
+
+	if cfg.Value == "" {
+		return fmt.Errorf("config value is required")
+	}
+
 	// Check if the config path exists and can be read
-	_, err := os.Stat(cfg.ConfigPath)
+	_, err := os.Stat(cfg.Value)
 	if err != nil {
-		return fmt.Errorf("config_path %s does not exist or is not readable: %w", cfg.ConfigPath, err)
+		return fmt.Errorf("provided config path %s does not exist or is not readable: %w", cfg.Value, err)
 	}
 
 	return nil

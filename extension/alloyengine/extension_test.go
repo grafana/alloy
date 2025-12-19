@@ -16,7 +16,7 @@ import (
 // newTestExtension creates an extension with injectable runCommandFactory and a nop logger.
 func newTestExtension(t *testing.T, factory func() *cobra.Command) *alloyEngineExtension {
 	t.Helper()
-	cfg := &Config{ConfigPath: "testdata/config.alloy", Flags: map[string]string{}}
+	cfg := &Config{Format: FormatFile, Value: "testdata/config.alloy", Flags: map[string]string{}}
 	e := newAlloyEngineExtension(cfg, component.TelemetrySettings{Logger: zap.NewNop()})
 	e.runCommandFactory = factory
 	return e
@@ -49,6 +49,12 @@ func shutdownErrorCommand(err error) *cobra.Command {
 			return err
 		},
 	}
+}
+
+func TestConfig_InvalidFormat(t *testing.T) {
+	t.Helper()
+	cfg := &Config{Format: "invalid_format", Value: "testdata/config.alloy", Flags: map[string]string{}}
+	require.Error(t, cfg.Validate())
 }
 
 func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
