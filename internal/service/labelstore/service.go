@@ -55,6 +55,7 @@ func New(l log.Logger, r prometheus.Registerer) *Service {
 			Help: "Last time stale check was ran expressed in unix timestamp.",
 		}),
 	}
+
 	_ = r.Register(s.lastStaleCheck)
 	_ = r.Register(s)
 	return s
@@ -259,6 +260,16 @@ func (s *Service) CheckAndRemoveStaleMarkers() {
 			mapping.deleteStaleIDs(marker.globalID)
 		}
 	}
+}
+
+func (s *Service) Clear() {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+
+	s.globalRefID = 0
+	s.mappings = make(map[string]*remoteWriteMapping)
+	s.labelsHashToGlobal = make(map[uint64]uint64)
+	s.staleGlobals = make(map[uint64]*staleMarker)
 }
 
 func (rw *remoteWriteMapping) deleteStaleIDs(globalID uint64) {

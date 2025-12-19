@@ -21,6 +21,9 @@ type LabelStore interface {
 
 	// ReplaceLocalLink updates an existing local to global mapping for a component.
 	ReplaceLocalLink(componentID string, globalRefID uint64, cachedLocalRef uint64, newLocalRef uint64)
+
+	// Clear removes all mappings from the label store. Only used for testing.
+	Clear()
 }
 
 type StalenessTracker struct {
