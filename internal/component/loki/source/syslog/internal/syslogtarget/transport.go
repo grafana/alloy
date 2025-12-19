@@ -343,6 +343,7 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 		}
 
 		level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		return
 	}
 
 	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, cb, t.maxMessageLength())
@@ -482,7 +483,7 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 					Error:   err,
 				})
 			}
-			return
+			continue
 		}
 
 		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, r, func(result *syslog.Result) {
