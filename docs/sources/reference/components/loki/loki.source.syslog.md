@@ -84,16 +84,18 @@ loki.relabel "syslog" {
 
 You can use the following blocks with `loki.source.syslog`:
 
-| Name                                    | Description                                                                 | Required |
-|-----------------------------------------|-----------------------------------------------------------------------------|----------|
-| [`listener`][listener]                  | Configures a listener for Syslog messages.                                  | no       |
-| `listener` > [`tls_config`][tls_config] | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
+| Name                                                    | Description                                                                 | Required |
+|---------------------------------------------------------|-----------------------------------------------------------------------------|----------|
+| [`listener`][listener]                                  | Configures a listener for Syslog messages.                                  | no       |
+| `listener` > [`raw_format_options`][raw_format_options] | Configures `raw` syslog format behavior.                                    | no       |
+| `listener` > [`tls_config`][tls_config]                 | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `listener` > `tls_config` refers to a `tls_config` block defined inside a `listener` block.
 
 [listener]: #listener
 [tls_config]: #tls_config
+[raw_format_options]: #raw_format_options
 
 ### `listener`
 
