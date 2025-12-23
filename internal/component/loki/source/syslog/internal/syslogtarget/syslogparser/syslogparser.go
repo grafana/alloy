@@ -23,7 +23,7 @@ const (
 )
 
 // framingTypeFromFirstByte detects framing type from a first byte of syslog line.
-// Returns [framingTypeNonTransparent] on failure.
+// Returns [framingTypeUnknown] on failure.
 //
 // See https://datatracker.ietf.org/doc/html/rfc6587 for details on message framing.
 //
