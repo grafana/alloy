@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/featuregate"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -277,4 +280,26 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	case err := <-done2:
 		require.NoError(t, err)
 	}
+}
+
+func TestRawFormatRequiresExperimentalStabilityLevel(t *testing.T) {
+	opts := component.Options{
+		Logger:        util.TestAlloyLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+		MinStability:  featuregate.StabilityGenerallyAvailable,
+	}
+
+	ch1 := loki.NewLogsReceiver()
+	args1 := Arguments{}
+	l1 := DefaultListenerConfig
+	l1.ListenAddress = "127.0.0.1:1234"
+	l1.ListenProtocol = syslogtarget.ProtocolTCP
+	l1.SyslogFormat = scrapeconfig.SyslogFormatRaw
+	args1.SyslogListeners = []ListenerConfig{l1}
+	args1.ForwardTo = []loki.LogsReceiver{ch1}
+
+	_, err := New(opts, args1)
+	require.Error(t, err)
+	require.Error(t, err, "syslog format requires experimental stability level")
 }

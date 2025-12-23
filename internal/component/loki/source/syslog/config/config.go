@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
 	promconfig "github.com/prometheus/common/config"
@@ -10,11 +11,65 @@ import (
 type SyslogFormat string
 
 const (
-	// A modern Syslog RFC
+	// SyslogFormatRFC5424 is a modern Syslog RFC format.
 	SyslogFormatRFC5424 = "rfc5424"
-	// A legacy Syslog RFC also known as BSD-syslog
+	// SyslogFormatRFC3164 is a legacy Syslog RFC format, also known as BSD-syslog.
 	SyslogFormatRFC3164 = "rfc3164"
+
+	// SyslogFormatRaw is a raw format.
+	//
+	// Using this format, skips log label parsing.
+	SyslogFormatRaw = "raw"
 )
+
+// MarshalText implements encoding.TextMarshaler
+func (s SyslogFormat) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *SyslogFormat) UnmarshalText(text []byte) error {
+	str := SyslogFormat(text)
+	switch str {
+	case "rfc5424":
+		*s = SyslogFormatRFC5424
+	case "rfc3164":
+		*s = SyslogFormatRFC3164
+	case "raw":
+		*s = SyslogFormatRaw
+	default:
+		return fmt.Errorf("unknown syslog format: %s", str)
+	}
+
+	return nil
+}
+
+func (s SyslogFormat) Validate() error {
+	switch s {
+	case SyslogFormatRFC5424,
+		SyslogFormatRFC3164,
+		SyslogFormatRaw:
+		return nil
+	}
+
+	return fmt.Errorf("unknown syslog format: %q", s)
+}
+
+// RawFormatOptions are options for raw syslog format processing.
+type RawFormatOptions struct {
+	// UseNullTerminatorDelimiter sets null terminator ('\0') as a log line delimiter for non-transparent framed messages.
+	//
+	// When set to false, new line character ('\n') is used instead.
+	UseNullTerminatorDelimiter bool `yaml:"use_null_terminator_delimiter"`
+}
+
+func (opts RawFormatOptions) Delimiter() byte {
+	if opts.UseNullTerminatorDelimiter {
+		return 0
+	}
+
+	return '\n'
+}
 
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
 type SyslogTargetConfig struct {
@@ -47,6 +102,11 @@ type SyslogTargetConfig struct {
 	// Syslog format used at the target. Acceptable value is rfc5424 or rfc3164.
 	// Default is rfc5424.
 	SyslogFormat SyslogFormat `yaml:"syslog_format"`
+
+	// RawFormatOptions are options for processing syslog messages in raw mode.
+	//
+	// Takes effect only if "syslog_format" is set to "raw".
+	RawFormatOptions RawFormatOptions `yaml:"raw_format_options"`
 
 	// MaxMessageLength sets the maximum limit to the length of syslog messages
 	MaxMessageLength int `yaml:"max_message_length"`

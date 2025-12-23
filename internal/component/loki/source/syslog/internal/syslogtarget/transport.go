@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -43,8 +44,10 @@ type Transport interface {
 	Wait()
 }
 
-type handleMessage func(labels.Labels, syslog.Message)
-type handleMessageError func(error)
+type (
+	handleMessage      func(labels.Labels, syslog.Message)
+	handleMessageError func(error)
+)
 
 type baseTransport struct {
 	config *scrapeconfig.SyslogTargetConfig
@@ -322,16 +325,30 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 
 	lbs := t.connectionLabels(ipFromConn(c).String())
 
-	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, func(result *syslog.Result) {
+	cb := func(result *syslog.Result) {
 		if err := result.Error; err != nil {
 			t.handleMessageError(err)
 			return
 		}
 		t.handleMessage(lbs.Copy(), result.Message)
-	}, t.maxMessageLength())
+	}
 
+	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+		delim := t.config.RawFormatOptions.Delimiter()
+		for msg, err := range syslogparser.IterStreamRaw(c, delim) {
+			cb(&syslog.Result{
+				Message: msg,
+				Error:   err,
+			})
+		}
+
+		level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		return
+	}
+
+	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, cb, t.maxMessageLength())
 	if err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
 		} else {
 			level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
@@ -450,6 +467,24 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 		}
 
 		r := bytes.NewReader(datagram[:n])
+		cb := func(result *syslog.Result) {
+			if err := result.Error; err != nil {
+				t.handleMessageError(err)
+			} else {
+				t.handleMessage(lbs.Copy(), result.Message)
+			}
+		}
+
+		if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+			delim := t.config.RawFormatOptions.Delimiter()
+			for msg, err := range syslogparser.IterStreamRaw(r, delim) {
+				cb(&syslog.Result{
+					Message: msg,
+					Error:   err,
+				})
+			}
+			continue
+		}
 
 		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, r, func(result *syslog.Result) {
 			if err := result.Error; err != nil {
@@ -458,7 +493,6 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 				t.handleMessage(lbs.Copy(), result.Message)
 			}
 		}, t.maxMessageLength())
-
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 		}

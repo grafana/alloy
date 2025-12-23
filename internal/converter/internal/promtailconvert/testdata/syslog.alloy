@@ -60,6 +60,23 @@ loki.source.syslog "test_rfc5424" {
 	relabel_rules = null
 }
 
+loki.source.syslog "test_raw" {
+	listener {
+		address            = "localhost:4000"
+		protocol           = "udp"
+		idle_timeout       = "1m0s"
+		labels             = {}
+		max_message_length = 0
+		syslog_format      = "raw"
+
+		raw_format_options {
+			use_null_terminator_delimiter = true
+		}
+	}
+	forward_to    = [loki.write.default.receiver]
+	relabel_rules = null
+}
+
 loki.write "default" {
 	endpoint {
 		url = "http://localhost/loki/api/v1/push"

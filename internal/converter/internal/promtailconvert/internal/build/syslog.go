@@ -3,9 +3,9 @@ package build
 import (
 	"fmt"
 
-	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog"
+	syslogconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
@@ -40,6 +40,12 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		listenerConfig.SyslogFormat = syslog.DefaultListenerConfig.SyslogFormat
 	}
 
+	if fmtOpts := s.cfg.SyslogConfig.RawFormatOptions; fmtOpts != nil {
+		listenerConfig.RawFormatOptions = &syslog.RawFormatOptions{
+			UseNullTerminatorDelimiter: fmtOpts.UseNullTerminatorDelimiter,
+		}
+	}
+
 	args := syslog.Arguments{
 		SyslogListeners: []syslog.ListenerConfig{
 			listenerConfig,
@@ -48,7 +54,7 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		RelabelRules: make(relabel.Rules, 0),
 	}
 
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}
@@ -65,14 +71,16 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 	))
 }
 
-func convertSyslogFormat(format scrapeconfig.SyslogFormat) (config.SysLogFormat, error) {
+func convertSyslogFormat(format scrapeconfig.SyslogFormat) (syslogconfig.SyslogFormat, error) {
 	switch format {
 	case "":
 		return syslog.DefaultListenerConfig.SyslogFormat, nil
 	case scrapeconfig.SyslogFormatRFC3164:
-		return config.SyslogFormatRFC3164, nil
+		return syslogconfig.SyslogFormatRFC3164, nil
 	case scrapeconfig.SyslogFormatRFC5424:
-		return config.SyslogFormatRFC5424, nil
+		return syslogconfig.SyslogFormatRFC5424, nil
+	case scrapeconfig.SyslogFormatRaw:
+		return syslogconfig.SyslogFormatRaw, nil
 	default:
 		return "", fmt.Errorf("unknown syslog format %q", format)
 	}
