@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blang/semver/v4"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -447,17 +446,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
-		engineSemver, err := semver.ParseTolerant(engineVersion)
-		if err != nil {
-			logStartError(collector.ExplainPlanCollector, "parse version", err)
-		}
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
 			DB:             c.dbConnection,
 			DSN:            string(c.args.DataSourceName),
 			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
 			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
 			Logger:         c.opts.Logger,
-			DBVersion:      engineSemver,
+			DBVersion:      engineVersion,
 			EntryHandler:   entryHandler,
 		})
 		if err != nil {

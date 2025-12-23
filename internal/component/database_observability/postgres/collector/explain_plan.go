@@ -50,6 +50,7 @@ var unrecoverablePostgresSQLErrors = []string{
 }
 
 var paramCountRegex = regexp.MustCompile(`\$\d+`)
+var versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
 
 type PgSQLExplainplan struct {
 	Plan PlanNode `json:"Plan"`
@@ -214,7 +215,7 @@ type ExplainPlanArguments struct {
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 	InitialLookback time.Time
-	DBVersion       semver.Version
+	DBVersion       string
 
 	Logger log.Logger
 }
@@ -239,10 +240,9 @@ type ExplainPlan struct {
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	return &ExplainPlan{
+	ep := &ExplainPlan{
 		dbConnection:        args.DB,
 		dbDSN:               args.DSN,
-		dbVersion:           args.DBVersion,
 		dbConnectionFactory: defaultDbConnectionFactory,
 		scrapeInterval:      args.ScrapeInterval,
 		queryCache:          make(map[string]*queryInfo),
@@ -253,7 +253,16 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		entryHandler:        args.EntryHandler,
 		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
-	}, nil
+	}
+	// Pre-sanitize the version by removing any trailing characters before semver gets it
+	foundVers := versSanitizeRegex.FindString(args.DBVersion)
+	engineSemver, err := semver.ParseTolerant(foundVers)
+	if err != nil {
+		return ep, fmt.Errorf("failed to parse database engine version: %s: %w", args.DBVersion, err)
+	}
+	ep.dbVersion = engineSemver
+
+	return ep, nil
 }
 
 func (c *ExplainPlan) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
