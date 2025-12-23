@@ -56,7 +56,7 @@ func (sc *ListenerConfig) Validate() error {
 	}
 
 	if sc.SyslogFormat == scrapeconfig.SyslogFormatRaw {
-		// mention fields that has no effect for better UX
+		// mention fields that have no effect for better UX
 		if sc.UseRFC5424Message {
 			return fmt.Errorf(`"use_rfc5424_message" has no effect when syslog format is set to %q`, sc.SyslogFormat)
 		}

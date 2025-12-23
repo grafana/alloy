@@ -143,7 +143,7 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
   Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
 * **`raw`**
-  Disables log line parsing. This format allows to receive non-RFC5424 compliant logs, such as [CEF][cef].
+  Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
 
 [cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html

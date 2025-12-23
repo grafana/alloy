@@ -565,13 +565,13 @@ func parseCefLogLines(t *testing.T, lines iter.Seq[string]) []cefLogLine {
 	year := time.Now().Year()
 	out := []cefLogLine{}
 	for line := range lines {
-		reCefDate := reCefDate.FindStringSubmatch(line)
-		if len(reCefDate) != 2 {
+		matches := reCefDate.FindStringSubmatch(line)
+		if len(matches) != 2 {
 			t.Fatalf("no date in CEF log line: %s", line)
 			return nil
 		}
 
-		dt, err := time.Parse(layout, reCefDate[1])
+		dt, err := time.Parse(layout, matches[1])
 		if err != nil {
 			t.Fatalf("failed to parse CEF log line: %s", line)
 		}
