@@ -47,6 +47,7 @@ type Config struct {
 type StatStatementFlags struct {
 	IncludeQuery bool
 	QueryLength  uint
+	Limit        uint
 }
 
 // Name returns the name of the integration this config is for.
@@ -193,12 +194,23 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 
 		err := includeQueryFlag.Model().Value.Set("true")
 		if err != nil {
-			return nil, fmt.Errorf("failed to set include query flag using Kingpin : %w", err)
+			return nil, fmt.Errorf("failed to set include query flag using Kingpin: %w", err)
 		}
 
 		err = queryLengthFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.QueryLength))
 		if err != nil {
-			return nil, fmt.Errorf("failed to set query length flag using Kingpin : %w", err)
+			return nil, fmt.Errorf("failed to set query length flag using Kingpin: %w", err)
+		}
+	}
+	if cfg.StatStatementFlags != nil && cfg.StatStatementFlags.Limit != 0 {
+		limitFlag := kingpin.CommandLine.GetFlag("collector.stat_statements.limit")
+		if limitFlag == nil {
+			return nil, fmt.Errorf("failed to find collector.stat_statements.limit in postgres_exporter")
+		}
+
+		err := limitFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.Limit))
+		if err != nil {
+			return nil, fmt.Errorf("failed to set limit flag using Kingpin: %w", err)
 		}
 	}
 
