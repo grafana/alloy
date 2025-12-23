@@ -1,5 +1,12 @@
 # Changelog
 
+Main (unreleased)
+-----------------
+
+### Features
+
+- (_Experimental_) A new `otelcol.receiver.github` component which collects data from Github. (@matt-gp) 
+
 ## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
 
