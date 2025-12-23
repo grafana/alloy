@@ -62,6 +62,7 @@ You can use the following blocks with `database_observability.mysql`:
 | [`explain_plans`][explain_plans]     | Configure the explain plans collector.            | no       |
 | [`locks`][locks]                     | Configure the locks collector.                    | no       |
 | [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
+| [`health_check`][health_check]       | Configure the health check collector.             | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
@@ -75,6 +76,7 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [locks]: #locks
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
+[health_check]: #health_check
 
 ### `cloud_provider`
 
@@ -144,6 +146,13 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
 | `auto_update_setup_actors` | `boolean`  | Whether to enable updating `performance_schema.setup_actors` settings. | `false` | no       |
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
+
+
+### `health_checks`
+
+| Name                       | Type       | Description                                                            | Default | Required |
+| -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
+| `collect_interval`         | `duration` | How frequently to run health checks.                                   | `"1h"`  | no       |
 
 
 ## Example
