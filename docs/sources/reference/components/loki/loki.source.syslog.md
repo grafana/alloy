@@ -18,7 +18,11 @@ For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages 
 
 {{< admonition type="note" >}}
 If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](./loki.process.md) component.
+
+Please note, that the `raw` syslog format is an [experimental][] feature.
 {{< /admonition >}}
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
 
 The component starts a new syslog listener for each of the given `config` blocks and fans out incoming entries to the list of receivers in `forward_to`.
 
@@ -146,9 +150,20 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
 
+{{< admonition type="note" >}}
+The `raw` format is an [experimental][] feature.
+Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+{{< /admonition >}}
+
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
+[experimental]: https://grafana.com/docs/release-life-cycle/
+
 [cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
 
 ### `raw_format_options`
+
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `raw_format_options` block configures the `raw` syslog format behavior.
 
