@@ -7,28 +7,25 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/config/configoptional"
-	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
-		expected otelexporterhelper.QueueBatchConfig
+		expected otelcol.QueueArguments
 		errorMsg string
 	}{
 		{
 			testName: "default queue arguments",
 			cfg:      ``,
-			expected: otelexporterhelper.QueueBatchConfig{
+			expected: otelcol.QueueArguments{
 				Enabled:         true,
 				NumConsumers:    10,
 				QueueSize:       1000,
 				BlockOnOverflow: false,
-				Sizer:           otelexporterhelper.RequestSizerTypeRequests,
+				Sizer:           "requests",
 				WaitForResult:   false,
-				Batch:           otelexporterhelper.NewDefaultQueueConfig().Batch,
 			},
 		},
 		{
@@ -41,14 +38,13 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				sizer = "bytes"
 				wait_for_result = true
 			`,
-			expected: otelexporterhelper.QueueBatchConfig{
+			expected: otelcol.QueueArguments{
 				Enabled:         true,
 				NumConsumers:    5,
 				QueueSize:       2000,
 				BlockOnOverflow: true,
-				Sizer:           otelexporterhelper.RequestSizerTypeBytes,
+				Sizer:           "bytes",
 				WaitForResult:   true,
-				Batch:           otelexporterhelper.NewDefaultQueueConfig().Batch,
 			},
 		},
 		{
@@ -68,19 +64,19 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 					sizer = "bytes"
 				}
 			`,
-			expected: otelexporterhelper.QueueBatchConfig{
+			expected: otelcol.QueueArguments{
 				Enabled:         true,
 				NumConsumers:    8,
 				QueueSize:       1500,
 				BlockOnOverflow: false,
-				Sizer:           otelexporterhelper.RequestSizerTypeItems,
+				Sizer:           "items",
 				WaitForResult:   false,
-				Batch: configoptional.Some(otelexporterhelper.BatchConfig{
+				Batch: &otelcol.BatchConfig{
 					FlushTimeout: 5 * time.Second,
 					MinSize:      100,
 					MaxSize:      500,
-					Sizer:        otelexporterhelper.RequestSizerTypeBytes,
-				}),
+					Sizer:        "bytes",
+				},
 			},
 		},
 		{
@@ -90,14 +86,13 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				num_consumers = 5
 				queue_size = 100
 			`,
-			expected: otelexporterhelper.QueueBatchConfig{
+			expected: otelcol.QueueArguments{
 				Enabled:         false,
 				NumConsumers:    5,
 				QueueSize:       100,
 				BlockOnOverflow: false,
-				Sizer:           otelexporterhelper.RequestSizerTypeRequests,
+				Sizer:           "requests",
 				WaitForResult:   false,
-				Batch:           otelexporterhelper.NewDefaultQueueConfig().Batch,
 			},
 		},
 		{
@@ -196,16 +191,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-
-			actualPtr, err := args.Convert()
-			if tc.errorMsg != "" {
-				require.ErrorContains(t, err, tc.errorMsg)
-				return
-			}
-			require.NoError(t, err)
-
-			actual := actualPtr
-			require.Equal(t, tc.expected, *actual)
+			require.Equal(t, tc.expected, args)
 		})
 	}
 }

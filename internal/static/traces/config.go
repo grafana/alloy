@@ -24,7 +24,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"github.com/prometheus/client_golang/prometheus"
 	prom_config "github.com/prometheus/common/config"
@@ -891,7 +890,6 @@ func tracingFactories() (otelcol.Factories, error) {
 		jaegerreceiver.NewFactory(),
 		zipkinreceiver.NewFactory(),
 		otlpreceiver.NewFactory(),
-		opencensusreceiver.NewFactory(),
 		kafkareceiver.NewFactory(),
 		noopreceiver.NewFactory(),
 		pushreceiver.NewFactory(),

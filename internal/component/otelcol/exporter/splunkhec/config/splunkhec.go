@@ -331,7 +331,7 @@ func (args SplunkHecArguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.QueueSettings = *q
+	cfg.QueueSettings = q
 
 	cfg.OtelAttrsToHec.Source = args.OtelAttrsToHec.Source
 	cfg.OtelAttrsToHec.SourceType = args.OtelAttrsToHec.SourceType
