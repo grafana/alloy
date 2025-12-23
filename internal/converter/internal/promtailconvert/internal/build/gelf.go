@@ -15,7 +15,7 @@ func (s *ScrapeConfigBuilder) AppendGelfConfig() {
 		ListenAddress:        gCfg.ListenAddress,
 		UseIncomingTimestamp: gCfg.UseIncomingTimestamp,
 		RelabelRules:         relabel.Rules{},
-		Receivers:            s.getOrNewProcessStageReceivers(),
+		ForwardTo:            s.getOrNewProcessStageReceivers(),
 	}
 	override := func(val interface{}) interface{} {
 		switch val.(type) {
