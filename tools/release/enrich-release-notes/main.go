@@ -15,10 +15,12 @@ import (
 
 func main() {
 	var (
-		tag    string
-		dryRun bool
+		tag        string
+		footerFile string
+		dryRun     bool
 	)
 	flag.StringVar(&tag, "tag", "", "Release tag to enrich (e.g., v1.15.0)")
+	flag.StringVar(&footerFile, "footer", "", "Path to footer template file (optional)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Dry run (do not update release)")
 	flag.Parse()
 
@@ -47,10 +49,12 @@ func main() {
 	// Add contributor information to each PR line
 	newBody = addContributorInfo(ctx, client, newBody)
 
-	// Append the release notes footer
-	newBody, err = appendFooter(newBody, tag)
-	if err != nil {
-		log.Fatalf("Failed to append footer: %v", err)
+	// Append the release notes footer if provided
+	if footerFile != "" {
+		newBody, err = appendFooter(newBody, tag, footerFile)
+		if err != nil {
+			log.Fatalf("Failed to append footer: %v", err)
+		}
 	}
 
 	if dryRun {
@@ -104,9 +108,7 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 }
 
 // appendFooter reads the release notes footer template and appends it with version substitution.
-func appendFooter(body, tag string) (string, error) {
-	// Read footer template - path is relative to tools directory (where go run is executed from)
-	footerPath := "release/release-notes-footer.md"
+func appendFooter(body, tag, footerPath string) (string, error) {
 	footer, err := os.ReadFile(footerPath)
 	if err != nil {
 		return "", fmt.Errorf("reading footer template: %w", err)
@@ -130,8 +132,8 @@ func appendFooter(body, tag string) (string, error) {
 func deriveDocTag(tag string) (string, error) {
 	// Strip any prerelease suffix first (e.g., -rc.0)
 	baseTag := tag
-	if idx := strings.Index(tag, "-"); idx != -1 {
-		baseTag = tag[:idx]
+	if before, _, ok := strings.Cut(tag, "-"); ok {
+		baseTag = before
 	}
 
 	// Use the version package to get major.minor

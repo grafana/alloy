@@ -121,9 +121,9 @@ title** must adhere to Conventional Commit style.
 When a maintainer goes to merge your PR, the prompt they get will contain the PR title as the squash
 commit's title and all of the individual commit details as the squashed commit's body.
 
-> **NOTE TO MAINTAINERS:** PR merge time is the point at which you can modify the commit details to
-> get the desired changelog entry, should it be needed. This can also be fixed after the fact, but
-> it's easiest to address it at this point.
+> **MAINTAINERS:** PR merge time is the point at which you can modify the commit details to get the
+> desired changelog entry, should it be needed. This can also be fixed after the fact, but it's
+> easiest to address it at this point.
 
 PR titles (and by extension CHANGELOG entries) should:
 
@@ -138,6 +138,19 @@ For example: `feat: increase config file read speed by 1500%`
 >
 > - Vague: `fix: fix issue with metric names`
 > - Explicit: `fix: fix 's' getting replaced by 'z' in metric names`
+
+## (Maintainers) Should you backport?
+
+You should consider backporting a PR if it meets any of the following criteria.
+
+- It fixes a bug, security vulnerability, or other critical issue that affects users on the current
+  release branch
+- It contains CI and/or build infrastructure changes which help keep releases healthy
+
+For details on how to backport, see
+[Backporting a fix to a release branch](./shepherding-releases.md#backporting-a-fix-to-a-release-branch)
+
+If you're unsure whether your change warrants a backport, ask in `#alloy`.
 
 ## Dependency management
 
