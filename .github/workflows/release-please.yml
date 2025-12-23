@@ -3,6 +3,7 @@ name: Release Please
 on:
   push:
     branches:
+      - main
       - 'release/v*'
 
 permissions:
@@ -47,6 +48,26 @@ jobs:
         working-directory: tools/release/release-please-runner
         run: npm install
 
+      - name: Set main branch overrides 🔧
+        if: github.ref_name == 'main'
+        run: |
+          echo "SKIP_GITHUB_RELEASE=true" >> $GITHUB_ENV
+          echo "PULL_REQUEST_TITLE=Unreleased Changes" >> $GITHUB_ENV
+          {
+            echo "PULL_REQUEST_HEADER<<EOF"
+            echo '🚫 **DO NOT MERGE - This PR is for tracking purposes only**'
+            echo ''
+            echo 'This draft PR tracks the changes that will be included in the next minor release. It updates automatically with each push to main.'
+            echo ''
+            echo 'When ready to cut a release:'
+            echo '1. Create a release branch (e.g., `release/v1.13`)'
+            echo '2. The release-please automation will take over on that branch'
+            echo '3. This PR will remain on main to track the next release'
+            echo ''
+            echo '---'
+            echo "EOF"
+          } >> $GITHUB_ENV
+
       - name: Run release-please 🚀
         working-directory: tools/release/release-please-runner
         env:
@@ -55,4 +76,7 @@ jobs:
           TARGET_BRANCH: ${{ github.ref_name }}
           CONFIG_FILE: release-please-config.json
           MANIFEST_FILE: .release-please-manifest.json
+          SKIP_GITHUB_RELEASE: ${{ env.SKIP_GITHUB_RELEASE }}
+          PULL_REQUEST_TITLE: ${{ env.PULL_REQUEST_TITLE }}
+          PULL_REQUEST_HEADER: ${{ env.PULL_REQUEST_HEADER }}
         run: node index.js

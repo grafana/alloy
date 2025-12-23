@@ -6,6 +6,7 @@
  */
 
 import { GitHub, Manifest, VERSION } from 'release-please';
+import { Octokit } from '@octokit/rest';
 import { registerVersioningStrategy } from 'release-please/build/src/factories/versioning-strategy-factory.js';
 import { MinorBreakingVersioningStrategy } from './minor-breaking-versioning.js';
 
@@ -34,6 +35,8 @@ function parseInputs() {
     manifestFile: process.env.MANIFEST_FILE || DEFAULT_MANIFEST_FILE,
     skipGitHubRelease: process.env.SKIP_GITHUB_RELEASE === 'true',
     skipGitHubPullRequest: process.env.SKIP_GITHUB_PULL_REQUEST === 'true',
+    pullRequestTitle: process.env.PULL_REQUEST_TITLE || '',
+    pullRequestHeader: process.env.PULL_REQUEST_HEADER || '',
   };
 }
 
@@ -61,7 +64,51 @@ async function main() {
   if (!inputs.skipGitHubPullRequest) {
     const manifest = await loadManifest(github, inputs);
     console.log('Creating pull requests');
-    outputPRs(await manifest.createPullRequests());
+
+    const prs = await manifest.createPullRequests();
+    outputPullRequests(prs);
+
+    await applyPullRequestCustomizations(inputs, prs);
+  }
+}
+
+/**
+ * Update PR title/body after release-please creates them.
+ *
+ * @param {GitHub} github - The GitHub instance
+ * @param {Object} inputs - The input parameters
+ * @param {PullRequest[]} prs - The pull requests to update
+ */
+async function applyPullRequestCustomizations(inputs, prs) {
+  const definedPrs = prs.filter(pr => pr !== undefined);
+  if (definedPrs.length === 0) {
+    return;
+  }
+
+  if (!inputs.pullRequestTitle && !inputs.pullRequestHeader) {
+    return;
+  }
+
+  const [owner, repo] = inputs.repoUrl.split('/');
+  const octokit = new Octokit({ auth: inputs.token });
+
+  for (const pr of definedPrs) {
+    const updates = {};
+    if (inputs.pullRequestTitle) {
+      updates.title = inputs.pullRequestTitle;
+    }
+
+    if (inputs.pullRequestHeader) {
+      updates.body = `${inputs.pullRequestHeader}\n\n${pr.body}`;
+    }
+
+    console.log(`Customizing PR #${pr.number} title/body`);
+    await octokit.pulls.update({
+      owner,
+      repo,
+      pull_number: pr.number,
+      ...updates,
+    });
   }
 }
 
@@ -79,30 +126,23 @@ function outputReleases(releases) {
   releases = releases.filter(release => release !== undefined);
   const pathsReleased = [];
   console.log(`releases_created=${releases.length > 0}`);
-  if (releases.length) {
-    for (const release of releases) {
-      if (!release) {
-        continue;
-      }
-      const path = release.path || '.';
-      if (path) {
-        pathsReleased.push(path);
-      }
-      console.log(`Created release: ${release.tagName}`);
-      for (const [rawKey, value] of Object.entries(release)) {
-        let key = rawKey;
-        if (key === 'tagName') key = 'tag_name';
-        if (key === 'uploadUrl') key = 'upload_url';
-        if (key === 'notes') key = 'body';
-        if (key === 'url') key = 'html_url';
-        console.log(`  ${key}=${value}`);
-      }
+  for (const release of releases) {
+    const path = release.path || '.';
+    pathsReleased.push(path);
+    console.log(`Created release: ${release.tagName}`);
+    for (const [rawKey, value] of Object.entries(release)) {
+      let key = rawKey;
+      if (key === 'tagName') key = 'tag_name';
+      if (key === 'uploadUrl') key = 'upload_url';
+      if (key === 'notes') key = 'body';
+      if (key === 'url') key = 'html_url';
+      console.log(`  ${key}=${value}`);
     }
   }
   console.log(`paths_released=${JSON.stringify(pathsReleased)}`);
 }
 
-function outputPRs(prs) {
+function outputPullRequests(prs) {
   prs = prs.filter(pr => pr !== undefined);
   console.log(`prs_created=${prs.length > 0}`);
   if (prs.length) {
