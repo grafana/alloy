@@ -27,9 +27,9 @@ func NewMarkerMetrics(reg prometheus.Registerer) *MarkerMetrics {
 	return m
 }
 
-// WithCurriedId returns a curried version of MarkerMetrics, with the id label pre-filled. This is a helper that avoids
+// CurryWithId returns a curried version of MarkerMetrics, with the id label pre-filled. This is a helper that avoids
 // having to move the id around where it's unnecessary, and won't change inside the consumer of the metrics.
-func (m *MarkerMetrics) WithCurriedId(id string) *MarkerMetrics {
+func (m *MarkerMetrics) CurryWithId(id string) *MarkerMetrics {
 	return &MarkerMetrics{
 		lastMarkedSegment: m.lastMarkedSegment.MustCurryWith(map[string]string{
 			"id": id,
