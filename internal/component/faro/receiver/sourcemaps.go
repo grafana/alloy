@@ -30,6 +30,8 @@ import (
 // transforming minified source locations to the original source location.
 type sourceMapsStore interface {
 	GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error)
+	Start()
+	Stop()
 }
 
 // Stub interfaces for easier mocking.
@@ -119,11 +121,9 @@ type sourceMapsStoreImpl struct {
 	metrics *sourceMapMetrics
 	locs    []*sourcemapFileLocation
 
-	cacheMut   sync.Mutex
-	cache      map[string]*cachedSourceMap
-	timeSource timeSource
-
-	cleanupMut    sync.Mutex
+	cacheMut      sync.RWMutex
+	cache         map[string]*cachedSourceMap
+	timeSource    timeSource
 	cleanupCtx    context.Context
 	cleanupCancel context.CancelFunc
 	cleanupWg     sync.WaitGroup
@@ -239,8 +239,8 @@ func (store *sourceMapsStoreImpl) CleanCachedErrors() {
 
 // Start begins the cleanup routines based on configured cache intervals.
 func (store *sourceMapsStoreImpl) Start() {
-	store.cleanupMut.Lock()
-	defer store.cleanupMut.Unlock()
+	store.cacheMut.Lock()
+	defer store.cacheMut.Unlock()
 
 	if store.isStarted {
 		return
@@ -293,8 +293,8 @@ func (store *sourceMapsStoreImpl) Start() {
 
 // Stop terminates all cleanup goroutines and waits for them to finish.
 func (store *sourceMapsStoreImpl) Stop() {
-	store.cleanupMut.Lock()
-	defer store.cleanupMut.Unlock()
+	store.cacheMut.Lock()
+	defer store.cacheMut.Unlock()
 
 	if !store.isStarted {
 		return
