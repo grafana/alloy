@@ -125,10 +125,12 @@ type JournalTargetConfig struct {
 type SyslogFormat string
 
 const (
-	// A modern Syslog RFC
+	// SyslogFormatRFC5424 is a modern Syslog RFC
 	SyslogFormatRFC5424 = "rfc5424"
-	// A legacy Syslog RFC also known as BSD-syslog
+	// SyslogFormatRFC3164 is legacy Syslog RFC also known as BSD-syslog
 	SyslogFormatRFC3164 = "rfc3164"
+	// SyslogFormatRaw disables syslog message parsing.
+	SyslogFormatRaw = "raw"
 )
 
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
@@ -167,6 +169,12 @@ type SyslogTargetConfig struct {
 	MaxMessageLength int `yaml:"max_message_length"`
 
 	TLSConfig promconfig.TLSConfig `yaml:"tls_config,omitempty"`
+
+	RawFormatOptions *SyslogRawFormatOptions `yaml:"raw_format_options"`
+}
+
+type SyslogRawFormatOptions struct {
+	UseNullTerminatorDelimiter bool `yaml:"use_null_terminator_delimiter"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
@@ -175,7 +183,6 @@ func (config SyslogTargetConfig) IsRFC3164Message() bool {
 
 // WindowsEventsTargetConfig describes a scrape config that listen for windows event logs.
 type WindowsEventsTargetConfig struct {
-
 	// LCID (Locale ID) for event rendering
 	// - 1033 to force English language
 	// -  0 to use default Windows locale
