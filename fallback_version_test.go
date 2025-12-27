@@ -1,4 +1,4 @@
-package flowcmd
+package alloy
 
 import (
 	"testing"

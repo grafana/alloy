@@ -1,11 +1,11 @@
 package flowcmd
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/cobra"
-
+	"github.com/grafana/alloy"
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
 
 	// Register Prometheus SD components
 	_ "github.com/grafana/alloy/internal/loki/promtail/discovery/consulagent"
@@ -26,7 +26,7 @@ func init() {
 	// If the build version wasn't set by the build process, we'll set it based
 	// on the version in .release-please-manifest.json.
 	if build.Version == "" || build.Version == "v0.0.0" {
-		build.Version = fallbackVersion()
+		build.Version = alloy.FallbackVersion()
 	}
 
 	prometheus.MustRegister(build.NewCollector("alloy"))
