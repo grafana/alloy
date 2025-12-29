@@ -3,7 +3,9 @@ package alloyengine
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -72,6 +74,10 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", e.state.String())
 	}
 
+	runCtx, runCancel := context.WithCancel(context.Background())
+	e.runCancel = runCancel
+	e.runExited = make(chan struct{})
+
 	runCommand := e.runCommandFactory()
 	runCommand.SetArgs([]string{e.config.Value})
 	err := runCommand.ParseFlags(e.config.flagsAsSlice())
@@ -79,13 +85,10 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	runCtx, runCancel := context.WithCancel(context.Background())
-	e.runCancel = runCancel
-	e.runExited = make(chan struct{})
-
 	go func() {
 		defer close(e.runExited)
-		err := runCommand.ExecuteContext(runCtx)
+
+		err := e.runWithBackoffRetry(runCommand, runCtx)
 
 		e.stateMutex.Lock()
 		previousState := e.state
@@ -96,14 +99,45 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 			e.settings.Logger.Debug("run command exited successfully without error")
 		} else if previousState == stateShuttingDown {
 			e.settings.Logger.Warn("run command exited with an error during shutdown", zap.Error(err))
-		} else {
-			e.settings.Logger.Error("run command exited unexpectedly with an error", zap.Error(err))
 		}
 	}()
 
 	e.state = stateRunning
 	e.settings.Logger.Info("alloyengine extension started successfully")
 	return nil
+}
+
+func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ctx context.Context) error {
+	var lastError error
+	baseDelay := 1 * time.Second
+	i := 1
+
+	for {
+		err := runCommand.ExecuteContext(ctx)
+
+		if err == nil {
+			return nil
+		}
+
+		lastError = err
+
+		// exponential backoff until 15s
+		delay := 15 * time.Second
+		if i < 4 {
+			delay = time.Duration(math.Pow(2, float64(i))) * baseDelay
+		}
+
+		e.settings.Logger.Warn("run command failed, will retry", zap.Error(err), zap.Duration("retry_delay", delay), zap.Int("attempt", i))
+
+		i++
+
+		select {
+		case <-time.After(delay):
+			// continue to next iteration
+		case <-ctx.Done():
+			return lastError
+		}
+	}
 }
 
 // Shutdown is called when the extension is being stopped.

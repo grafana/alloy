@@ -19,6 +19,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -278,7 +279,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// registry that we want to keep can be given a custom registry so desired
 	// metrics are still exposed.
 	reg := prometheus.DefaultRegisterer
-	reg.MustRegister(newResourcesCollector(l))
+	_ = util.MustRegisterOrGet(reg, newResourcesCollector(l))
 
 	// There's a cyclic dependency between the definition of the Alloy controller,
 	// the reload/ready functions, and the HTTP service.

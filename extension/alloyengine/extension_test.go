@@ -13,11 +13,19 @@ import (
 	"go.uber.org/zap"
 )
 
+// defaultTestConfig returns a default test configuration.
+func defaultTestConfig() *Config {
+	return &Config{
+		Format: FormatFile,
+		Value:  "testdata/config.alloy",
+		Flags:  map[string]string{},
+	}
+}
+
 // newTestExtension creates an extension with injectable runCommandFactory and a nop logger.
-func newTestExtension(t *testing.T, factory func() *cobra.Command) *alloyEngineExtension {
+func newTestExtension(t *testing.T, factory func() *cobra.Command, config *Config) *alloyEngineExtension {
 	t.Helper()
-	cfg := &Config{Format: FormatFile, Value: "testdata/config.alloy", Flags: map[string]string{}}
-	e := newAlloyEngineExtension(cfg, component.TelemetrySettings{Logger: zap.NewNop()})
+	e := newAlloyEngineExtension(config, component.TelemetrySettings{Logger: zap.NewNop()})
 	e.runCommandFactory = factory
 	return e
 }
@@ -32,15 +40,6 @@ func blockingCommand() *cobra.Command {
 	}
 }
 
-// errorCommand returns a cobra command that immediately returns the provided error.
-func errorCommand(err error) *cobra.Command {
-	return &cobra.Command{
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return err
-		},
-	}
-}
-
 // shutdownErrorCommand blocks until context cancellation, then returns the provided error.
 func shutdownErrorCommand(err error) *cobra.Command {
 	return &cobra.Command{
@@ -51,6 +50,35 @@ func shutdownErrorCommand(err error) *cobra.Command {
 	}
 }
 
+// retryTrackingState holds state for tracking retry attempts across command instances.
+type retryTrackingState struct {
+	attempts    int
+	succeededAt int
+	failCount   int
+	err         error
+}
+
+func newRetryTrackingCommand(failCount int, err error) (func() *cobra.Command, *retryTrackingState) {
+	state := &retryTrackingState{
+		failCount: failCount,
+		err:       err,
+	}
+	factory := func() *cobra.Command {
+		return &cobra.Command{
+			RunE: func(cmd *cobra.Command, args []string) error {
+				state.attempts++
+				if state.attempts <= state.failCount {
+					return state.err
+				}
+
+				state.succeededAt = state.attempts
+				return nil
+			},
+		}
+	}
+	return factory, state
+}
+
 func TestConfig_InvalidFormat(t *testing.T) {
 	t.Helper()
 	cfg := &Config{Format: "invalid_format", Value: "testdata/config.alloy", Flags: map[string]string{}}
@@ -58,7 +86,7 @@ func TestConfig_InvalidFormat(t *testing.T) {
 }
 
 func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
-	e := newTestExtension(t, blockingCommand)
+	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 
 	ctx := context.Background()
 	host := componenttest.NewNopHost()
@@ -86,44 +114,21 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 }
 
 func TestStartTwiceFails(t *testing.T) {
-	e := newTestExtension(t, blockingCommand)
+	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
 	err := e.Start(context.Background(), componenttest.NewNopHost())
 	require.Error(t, err)
 }
 
 func TestReadyWhenNotStarted(t *testing.T) {
-	e := newTestExtension(t, blockingCommand)
+	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 	require.Error(t, e.Ready())
 	require.Error(t, e.NotReady())
 }
 
-func TestRunCommandUnexpectedError(t *testing.T) {
-	expected := errors.New("boom")
-	e := newTestExtension(t, func() *cobra.Command { return errorCommand(expected) })
-
-	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
-
-	// Wait for the command to exit and extension to transition to terminated.
-	require.Eventually(t, func() bool {
-		select {
-		case <-e.runExited:
-			return true
-		default:
-			return false
-		}
-	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
-
-	require.Equal(t, stateTerminated, e.state)
-	require.Error(t, e.Ready())
-
-	// Shutdown after termination should be a no-op and not error.
-	require.NoError(t, e.Shutdown(context.Background()))
-}
-
 func TestShutdownWithRunCommandError(t *testing.T) {
 	expected := errors.New("shutdown error")
-	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) })
+	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
 
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
 
@@ -132,7 +137,6 @@ func TestShutdownWithRunCommandError(t *testing.T) {
 	require.NoError(t, e.Shutdown(shutdownCtx))
 
 	// The internal goroutine should have transitioned to terminated even on error during shutdown.
-
 	require.Eventually(t, func() bool {
 		select {
 		case <-e.runExited:
@@ -141,5 +145,29 @@ func TestShutdownWithRunCommandError(t *testing.T) {
 			return false
 		}
 	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
+	require.Equal(t, stateTerminated, e.state)
+}
+
+func Test_RunSucceedsAfterRetries(t *testing.T) {
+	testErr := errors.New("temporary failure")
+	factory, state := newRetryTrackingCommand(2, testErr) // Fail 2 times, succeed on 3rd attempt
+	cfg := defaultTestConfig()
+	e := newTestExtension(t, factory, cfg)
+
+	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+
+	// Wait for the command to eventually exit
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, 10*time.Second, 100*time.Millisecond, "extension did not exit in time")
+
+	// Verify it succeeded after 3 attempts (2 failures + 1 success)
+	require.Equal(t, 3, state.attempts)
+	require.Equal(t, 3, state.succeededAt)
 	require.Equal(t, stateTerminated, e.state)
 }
