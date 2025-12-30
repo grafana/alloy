@@ -249,7 +249,7 @@ require (
 	go.opentelemetry.io/collector/config/configretry v1.45.0
 	go.opentelemetry.io/collector/config/configtelemetry v0.139.0
 	go.opentelemetry.io/collector/config/configtls v1.45.0
-	go.opentelemetry.io/collector/confmap v1.45.0
+	go.opentelemetry.io/collector/confmap v1.49.0
 	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.45.0
 	go.opentelemetry.io/collector/confmap/xconfmap v0.139.0
 	go.opentelemetry.io/collector/connector v0.139.0
@@ -265,7 +265,7 @@ require (
 	go.opentelemetry.io/collector/extension/extensionauth v1.45.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.139.0
 	go.opentelemetry.io/collector/extension/xextension v0.139.0
-	go.opentelemetry.io/collector/featuregate v1.45.0
+	go.opentelemetry.io/collector/featuregate v1.49.0
 	go.opentelemetry.io/collector/otelcol v0.139.0
 	go.opentelemetry.io/collector/pdata v1.45.0
 	go.opentelemetry.io/collector/pipeline v1.45.0
@@ -294,7 +294,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.45.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
@@ -675,7 +675,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	github.com/hashicorp/go-version v1.7.0 // indirect
+	github.com/hashicorp/go-version v1.8.0 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-7 // indirect
 	github.com/hashicorp/mdns v1.0.5 // indirect
 	github.com/hashicorp/memberlist v0.5.3 // indirect

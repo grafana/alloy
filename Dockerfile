@@ -20,7 +20,6 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG RELEASE_BUILD=1
-ARG GENERATE_COLLECTOR_DISTRO=0
 ARG VERSION
 ARG GOEXPERIMENT
 
@@ -32,7 +31,7 @@ COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
-    RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GENERATE_COLLECTOR_DISTRO=${GENERATE_COLLECTOR_DISTRO} \
+    RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
     GO_TAGS="netgo builtinassets promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
     make alloy
