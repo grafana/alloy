@@ -32,7 +32,6 @@ func main() {
 	if err := replaceCmdFactory(*otelGeneratedMain); err != nil {
 		log.Fatalf("failed to replace command factory: %v", err)
 	}
-
 }
 
 // copyAlloyMainTemplateFromFile copies the template from templatePath to dstPath.
