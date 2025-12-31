@@ -83,23 +83,31 @@ func ParseStream(cfg StreamParseConfig, r io.Reader, callback func(res *syslog.R
 	// See https://datatracker.ietf.org/doc/html/rfc6587 for details on message framing
 	// If a syslog message starts with '<' the first piece of the message is the priority, which means it must use
 	// an explicit framing character.
+	opts := []syslog.ParserOption{
+		syslog.WithListener(cb),
+		syslog.WithMaxMessageLength(cfg.MaxMessageLength),
+		syslog.WithBestEffort(),
+	}
+
+	var parserFunc func(args ...syslog.ParserOption) syslog.Parser
 	switch framingTypeFromFirstByte(b) {
 	case framingTypeNonTransparent:
 		if cfg.IsRFC3164Message {
-			nontransparent.NewParserRFC3164(syslog.WithListener(cb), syslog.WithMaxMessageLength(cfg.MaxMessageLength), syslog.WithBestEffort()).Parse(buf)
+			parserFunc = nontransparent.NewParserRFC3164
 		} else {
-			nontransparent.NewParser(syslog.WithListener(cb), syslog.WithMaxMessageLength(cfg.MaxMessageLength), syslog.WithBestEffort()).Parse(buf)
+			parserFunc = nontransparent.NewParser
 		}
 	case framingTypeOctetCounting:
 		// If a syslog message starts with a digit, it must use octet counting, and the first piece of the message is the length
 		if cfg.IsRFC3164Message {
-			octetcounting.NewParserRFC3164(syslog.WithListener(cb), syslog.WithMaxMessageLength(cfg.MaxMessageLength), syslog.WithBestEffort()).Parse(buf)
+			parserFunc = octetcounting.NewParserRFC3164
 		} else {
-			octetcounting.NewParser(syslog.WithListener(cb), syslog.WithMaxMessageLength(cfg.MaxMessageLength), syslog.WithBestEffort()).Parse(buf)
+			parserFunc = octetcounting.NewParser
 		}
 	default:
 		return fmt.Errorf("invalid or unsupported framing. first byte: %q", b)
 	}
 
+	parserFunc(opts...).Parse(r)
 	return nil
 }
