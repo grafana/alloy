@@ -95,10 +95,10 @@ func (t *baseTransport) streamParseConfig() syslogparser.StreamParseConfig {
 
 	if ciscoCfg != nil {
 		parseCfg.RFC3164CiscoComponents = &syslogparser.RFC3164CiscoComponents{
-			MessageCounter:  ciscoCfg.EnableAllComponents || ciscoCfg.MessageCounter,
-			SequenceNumber:  ciscoCfg.EnableAllComponents || ciscoCfg.SequenceNumber,
-			CiscoHostname:   ciscoCfg.EnableAllComponents || ciscoCfg.Hostname,
-			SecondFractions: ciscoCfg.EnableAllComponents || ciscoCfg.SecondFractions,
+			MessageCounter:  ciscoCfg.EnableAll || ciscoCfg.MessageCounter,
+			SequenceNumber:  ciscoCfg.EnableAll || ciscoCfg.SequenceNumber,
+			CiscoHostname:   ciscoCfg.EnableAll || ciscoCfg.Hostname,
+			SecondFractions: ciscoCfg.EnableAll || ciscoCfg.SecondFractions,
 		}
 	}
 

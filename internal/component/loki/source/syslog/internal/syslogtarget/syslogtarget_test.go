@@ -27,6 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
+	"github.com/grafana/loki/pkg/push"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
@@ -590,6 +592,88 @@ func parseCefLogLines(t *testing.T, lines iter.Seq[string]) []cefLogLine {
 	return out
 }
 
+func TestSyslogTarget_RFC3136CiscoComponents(t *testing.T) {
+	currentYear := time.Now().Year()
+	parseDate := func(layout, value string) time.Time {
+		r, err := time.Parse(layout, value)
+		require.NoError(t, err, "failed to parse date")
+		return r.AddDate(currentYear, 0, 0)
+	}
+
+	cases := []struct {
+		label           string
+		logLine         string
+		expect          loki.Entry
+		ciscoComponents scrapeconfig.RFC3164CiscoComponents
+	}{
+		{
+			label:   "all components",
+			logLine: "<189>643: *Jan  8 19:46:03.295: %LINEPROTO-5-UPDOWN: Line protocol on Interface Loopback100, changed state to up",
+			ciscoComponents: scrapeconfig.RFC3164CiscoComponents{
+				EnableAll: true,
+			},
+			expect: loki.Entry{
+				Labels: model.LabelSet{
+					"__syslog_message_severity": "notice",
+					"__syslog_message_facility": "local7",
+					"__syslog_message_app_name": "%LINEPROTO-5-UPDOWN",
+				},
+				Entry: push.Entry{
+					Timestamp: parseDate(time.StampMilli, "Jan  8 19:46:03.295"),
+					Line:      "Line protocol on Interface Loopback100, changed state to up",
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.label, func(t *testing.T) {
+			w := log.NewSyncWriter(os.Stderr)
+			logger := log.NewLogfmtLogger(w)
+			handler := loki.NewCollectingHandler()
+			defer handler.Stop()
+
+			metrics := NewMetrics(nil)
+			tgt, err := NewSyslogTarget(metrics, logger, handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+				ListenAddress:               "127.0.0.1:0",
+				ListenProtocol:              "udp",
+				LabelStructuredData:         true,
+				SyslogFormat:                scrapeconfig.SyslogFormatRFC3164,
+				RFC3164CiscoComponents:      &tc.ciscoComponents,
+				RFC3164DefaultToCurrentYear: true,
+				Labels: model.LabelSet{
+					"test": "syslog_target",
+				},
+			})
+
+			require.NoError(t, err)
+			require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+
+			addr := tgt.ListenAddress().String()
+			c, err := net.Dial("udp", addr)
+			require.NoError(t, err)
+
+			_, err = fmt.Fprintln(c, tc.logLine)
+			require.NoError(t, err)
+			require.NoError(t, c.Close())
+
+			time.Sleep(time.Second)
+			require.NoError(t, tgt.Stop())
+
+			require.Eventually(t, func() bool {
+				return len(handler.Received()) > 0
+			}, time.Second, 10*time.Millisecond, "handler didn't receive any message")
+
+			// TODO: cmp messages
+			received := handler.Received()
+			require.NotEmpty(t, received)
+
+			msg := received[0]
+			t.Logf("%#v", msg)
+		})
+	}
+}
+
 func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 	messages := []string{
 		`Dec 17 12:23:16 Dream-Router CEF:0|Ubiquiti`,
@@ -1097,7 +1181,11 @@ func TestParseStream_WithAsyncPipe(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(false, false, pipe, cb, DefaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{
+		MaxMessageLength:      DefaultMaxMessageLength,
+		IsRFC3164Message:      false,
+		UseRFC3164DefaultYear: false,
+	}, pipe, cb)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(results))
 }
