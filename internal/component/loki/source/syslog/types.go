@@ -36,19 +36,19 @@ type RawFormatOptions struct {
 
 // RFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
 type RFC3164CiscoComponents struct {
-	EnableAllComponents bool `alloy:"enable_all_components"`
-	MessageCounter      bool `alloy:"disable_message_counter"`
-	SequenceNumber      bool `alloy:"disable_sequence_number"`
-	Hostname            bool `alloy:"disable_hostname"`
-	SecondFractions     bool `alloy:"disable_second_fractions"`
+	EnableAll       bool `alloy:"enable_all"`
+	MessageCounter  bool `alloy:"message_counter"`
+	SequenceNumber  bool `alloy:"sequence_number"`
+	Hostname        bool `alloy:"hostname"`
+	SecondFractions bool `alloy:"second_fractions"`
 }
 
 func (sc *RFC3164CiscoComponents) Validate() error {
-	if sc == nil {
+	if sc == nil || sc.EnableAll {
 		return nil
 	}
 
-	isEmpty := !sc.EnableAllComponents && !sc.Hostname && !sc.MessageCounter && !sc.SecondFractions && !sc.SequenceNumber
+	isEmpty := !sc.Hostname && !sc.MessageCounter && !sc.SecondFractions && !sc.SequenceNumber
 	if isEmpty {
 		return errors.New("at least one option in rfc3164_cisco_components has to be enabled")
 	}
@@ -142,7 +142,7 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 
 	if cmp := sc.RFC3164CiscoComponents; cmp != nil {
 		cfg.RFC3164CiscoComponents = &scrapeconfig.RFC3164CiscoComponents{
-			EnableAllComponents: cmp.EnableAllComponents,
+			EnableAllComponents: cmp.EnableAll,
 			MessageCounter:      cmp.MessageCounter,
 			SequenceNumber:      cmp.SequenceNumber,
 			Hostname:            cmp.Hostname,
