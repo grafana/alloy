@@ -1007,93 +1007,14 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
 
-require (
-	github.com/go-openapi/swag/cmdutils v0.25.1 // indirect
-	github.com/go-openapi/swag/conv v0.25.1 // indirect
-	github.com/go-openapi/swag/fileutils v0.25.1 // indirect
-	github.com/go-openapi/swag/jsonname v0.25.1 // indirect
-	github.com/go-openapi/swag/jsonutils v0.25.1 // indirect
-	github.com/go-openapi/swag/loading v0.25.1 // indirect
-	github.com/go-openapi/swag/mangling v0.25.1 // indirect
-	github.com/go-openapi/swag/netutils v0.25.1 // indirect
-	github.com/go-openapi/swag/stringutils v0.25.1 // indirect
-	github.com/go-openapi/swag/typeutils v0.25.1 // indirect
-	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.138.0 // indirect
-)
-
-require github.com/bougou/go-ipmi v0.7.7 // indirect
+require github.com/bougou/go-ipmi v0.8.0
 
 require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/olekukonko/errors v1.1.0 // indirect
+	github.com/olekukonko/ll v0.0.9 // indirect
 )
-
-// NOTE: replace directives below must always be *temporary*.
-//
-// Adding a replace directive to change a module to a fork of a module will
-// only be accepted when a PR upstream has been opened to accept the new
-// change.
-//
-// Contributors are expected to work with upstream to make their changes
-// acceptable, and remove the `replace` directive as soon as possible.
-//
-// If upstream is unresponsive, you should consider making a hard fork
-// (i.e., creating a new Go module with the same source) or picking a different
-// dependency.
-
-// TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/prometheus/issues/13842
-replace go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 // feature-gate-registration-error-handler branch
-
-// Replace directives from Prometheus
-replace github.com/fsnotify/fsnotify v1.8.0 => github.com/fsnotify/fsnotify v1.7.0
-
-// TODO: remove replace directive once:
-// * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
-// for example, via this implementation: https://github.com/grafana/prometheus/pull/34
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20251030104821-c9e0b31e9aeb // staleness_disabling_v3.7.3 branch
-
-replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
-
-// Replace directives from Loki
-replace (
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
-	github.com/Azure/azure-storage-blob-go => github.com/MasslessParticle/azure-storage-blob-go v0.14.1-0.20240322194317-344980fda573
-	// Use fork of gocql that has gokit logs and Prometheus metrics.
-	github.com/gocql/gocql => github.com/grafana/gocql v0.0.0-20200605141915-ba5dc39ece85
-	// Insist on the optimised version of grafana/regexp
-	github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
-	// Replace memberlist with our fork which includes some fixes that haven't been
-	// merged upstream yet.
-	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
-	// leodido fork his project to continue support
-	github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.2.0
-	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
-)
-
-// TODO(rfratto): remove forks when changes are merged upstream
-replace (
-	// TODO(tpaschalis) this is to remove global instantiation of plugins
-	// and allow non-singleton components.
-	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
-	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
-
-	// TODO(dehaansa,cristiangreco): this tracks the exporter-package-v0.18.1 branch of the grafana fork,
-	// which we could get rid of once the changes are merged upstream.
-	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
-
-	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
-	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
-
-	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
-	// this commit is on the refactor_collectors branch in the grafana fork.
-	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 //refactor_collectors
-)
-
-replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
-
-// Submodules.
-replace github.com/grafana/alloy/syntax => ./syntax
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
 // versions.
@@ -1166,5 +1087,4 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
-replace github.com/olekukonko/tablewriter => github.com/olekukonko/tablewriter v0.0.5
 // END GENERATED REPLACES
