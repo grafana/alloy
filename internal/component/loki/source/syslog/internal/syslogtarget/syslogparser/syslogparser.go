@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/leodido/go-syslog/v4"
-	"github.com/leodido/go-syslog/v4/ciscoios"
 	"github.com/leodido/go-syslog/v4/nontransparent"
 	"github.com/leodido/go-syslog/v4/octetcounting"
 	"github.com/leodido/go-syslog/v4/rfc3164"
@@ -47,12 +46,44 @@ func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
+type RFC3164CiscoComponents struct {
+	MessageCounter  bool
+	SequenceNumber  bool
+	CiscoHostname   bool
+	SecondFractions bool
+}
+
 type StreamParseConfig struct {
 	MaxMessageLength       int
 	IsRFC3164Message       bool
 	UseRFC3164DefaultYear  bool
-	RFC3164CiscoEnabled    bool
-	RFC3164CiscoComponents ciscoios.Component
+	RFC3164CiscoComponents *RFC3164CiscoComponents
+}
+
+func (cfg StreamParseConfig) ciscoComponentOptions() []syslog.MachineOption {
+	cmps := cfg.RFC3164CiscoComponents
+	if cmps == nil {
+		return nil
+	}
+
+	opts := make([]syslog.MachineOption, 0, 4) // max number of cisco components
+	if cmps.MessageCounter {
+		opts = append(opts, rfc3164.WithMessageCounter())
+	}
+
+	if cmps.SequenceNumber {
+		opts = append(opts, rfc3164.WithSequenceNumber())
+	}
+
+	if cmps.CiscoHostname {
+		opts = append(opts, rfc3164.WithCiscoHostname())
+	}
+
+	if cmps.SecondFractions {
+		opts = append(opts, rfc3164.WithSecondFractions())
+	}
+
+	return opts
 }
 
 // ParseStream parses a rfc5424 syslog stream from the given Reader, calling
@@ -80,15 +111,20 @@ func ParseStream(cfg StreamParseConfig, r io.Reader, callback func(res *syslog.R
 		}
 	}
 
-	// See https://datatracker.ietf.org/doc/html/rfc6587 for details on message framing
-	// If a syslog message starts with '<' the first piece of the message is the priority, which means it must use
-	// an explicit framing character.
 	opts := []syslog.ParserOption{
 		syslog.WithListener(cb),
 		syslog.WithMaxMessageLength(cfg.MaxMessageLength),
 		syslog.WithBestEffort(),
 	}
 
+	if cfg.IsRFC3164Message && cfg.RFC3164CiscoComponents != nil {
+		machineOpts := cfg.ciscoComponentOptions()
+		opts = append(opts, syslog.WithMachineOptions(machineOpts...))
+	}
+
+	// See https://datatracker.ietf.org/doc/html/rfc6587 for details on message framing
+	// If a syslog message starts with '<' the first piece of the message is the priority, which means it must use
+	// an explicit framing character.
 	var parserFunc func(args ...syslog.ParserOption) syslog.Parser
 	switch framingTypeFromFirstByte(b) {
 	case framingTypeNonTransparent:
