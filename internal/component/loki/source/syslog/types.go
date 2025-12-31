@@ -36,11 +36,11 @@ type RawFormatOptions struct {
 
 // RFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
 type RFC3164CiscoComponents struct {
-	EnableAllComponents    bool `alloy:"enable_all_components"`
-	DisableMessageCounter  bool `alloy:"disable_message_counter"`
-	DisableSequenceNumber  bool `alloy:"disable_sequence_number"`
-	DisableHostname        bool `alloy:"disable_hostname"`
-	DisableSecondFractions bool `alloy:"disable_second_fractions"`
+	EnableAllComponents bool `alloy:"enable_all_components"`
+	MessageCounter      bool `alloy:"disable_message_counter"`
+	SequenceNumber      bool `alloy:"disable_sequence_number"`
+	Hostname            bool `alloy:"disable_hostname"`
+	SecondFractions     bool `alloy:"disable_second_fractions"`
 }
 
 func (sc *RFC3164CiscoComponents) Validate() error {
@@ -48,12 +48,9 @@ func (sc *RFC3164CiscoComponents) Validate() error {
 		return nil
 	}
 
-	if !sc.EnableAllComponents &&
-		!sc.DisableHostname &&
-		!sc.DisableMessageCounter &&
-		!sc.DisableSecondFractions &&
-		!sc.DisableSequenceNumber {
-		return errors.New("all rfc3164_cisco_components fields are empty")
+	isEmpty := !sc.EnableAllComponents && !sc.Hostname && !sc.MessageCounter && !sc.SecondFractions && !sc.SequenceNumber
+	if isEmpty {
+		return errors.New("at least one option in rfc3164_cisco_components has to be enabled")
 	}
 
 	return nil
@@ -145,11 +142,11 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 
 	if cmp := sc.RFC3164CiscoComponents; cmp != nil {
 		cfg.RFC3164CiscoComponents = &scrapeconfig.RFC3164CiscoComponents{
-			EnableAllComponents:    cmp.EnableAllComponents,
-			DisableMessageCounter:  cmp.DisableMessageCounter,
-			DisableSequenceNumber:  cmp.DisableSequenceNumber,
-			DisableHostname:        cmp.DisableHostname,
-			DisableSecondFractions: cmp.DisableSecondFractions,
+			EnableAllComponents: cmp.EnableAllComponents,
+			MessageCounter:      cmp.MessageCounter,
+			SequenceNumber:      cmp.SequenceNumber,
+			Hostname:            cmp.Hostname,
+			SecondFractions:     cmp.SecondFractions,
 		}
 	}
 

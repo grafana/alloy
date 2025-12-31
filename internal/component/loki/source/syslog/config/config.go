@@ -57,11 +57,11 @@ func (s SyslogFormat) Validate() error {
 
 // RFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
 type RFC3164CiscoComponents struct {
-	EnableAllComponents    bool
-	DisableMessageCounter  bool
-	DisableSequenceNumber  bool
-	DisableHostname        bool
-	DisableSecondFractions bool
+	EnableAllComponents bool
+	MessageCounter      bool
+	SequenceNumber      bool
+	Hostname            bool
+	SecondFractions     bool
 }
 
 // RawFormatOptions are options for raw syslog format processing.
