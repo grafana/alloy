@@ -81,6 +81,8 @@
 
 - Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
 
+- Add `prometheus.exporter.smartctl` component to monitor S.M.A.R.T. disk health metrics from storage devices. Collects temperature, power-on hours, error rates, and detailed SMART attributes for ATA/SATA and NVMe drives. (@parsa97)
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
