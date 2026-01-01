@@ -129,6 +129,14 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 		lb.Set("__syslog_message_msg_id", *v)
 	}
 
+	// cisco-specific fields
+	if v := msg.MessageCounter; v != nil {
+		lb.Set("__syslog_message_msg_counter", strconv.Itoa(int(*v)))
+	}
+	if v := msg.Sequence; v != nil {
+		lb.Set("__syslog_message_sequence", strconv.Itoa(int(*v)))
+	}
+
 	if t.config.LabelStructuredData && msg.StructuredData != nil {
 		for id, params := range *msg.StructuredData {
 			id = strings.ReplaceAll(id, "@", "_")
