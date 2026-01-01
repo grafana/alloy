@@ -144,6 +144,6 @@ func ParseStream(cfg StreamParseConfig, r io.Reader, callback func(res *syslog.R
 		return fmt.Errorf("invalid or unsupported framing. first byte: %q", b)
 	}
 
-	parserFunc(opts...).Parse(r)
+	parserFunc(opts...).Parse(buf)
 	return nil
 }
