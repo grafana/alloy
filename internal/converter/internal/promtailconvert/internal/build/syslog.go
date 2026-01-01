@@ -46,6 +46,16 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		}
 	}
 
+	if ciscoOpts := s.cfg.SyslogConfig.RFC3164CiscoComponents; ciscoOpts != nil {
+		listenerConfig.RFC3164CiscoComponents = &syslog.RFC3164CiscoComponents{
+			EnableAll:       ciscoOpts.EnableAll,
+			MessageCounter:  ciscoOpts.MessageCounter,
+			SequenceNumber:  ciscoOpts.SequenceNumber,
+			Hostname:        ciscoOpts.Hostname,
+			SecondFractions: ciscoOpts.SecondFractions,
+		}
+	}
+
 	args := syslog.Arguments{
 		SyslogListeners: []syslog.ListenerConfig{
 			listenerConfig,

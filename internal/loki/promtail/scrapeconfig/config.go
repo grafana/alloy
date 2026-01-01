@@ -170,7 +170,8 @@ type SyslogTargetConfig struct {
 
 	TLSConfig promconfig.TLSConfig `yaml:"tls_config,omitempty"`
 
-	RawFormatOptions *SyslogRawFormatOptions `yaml:"raw_format_options"`
+	RawFormatOptions       *SyslogRawFormatOptions       `yaml:"raw_format_options"`
+	RFC3164CiscoComponents *SyslogRFC3164CiscoComponents `yaml:"rfc3164_cisco_components"`
 }
 
 type SyslogRawFormatOptions struct {
@@ -179,6 +180,15 @@ type SyslogRawFormatOptions struct {
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
 	return config.SyslogFormat == SyslogFormatRFC3164
+}
+
+// SyslogRFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
+type SyslogRFC3164CiscoComponents struct {
+	EnableAll       bool `yaml:"enable_all"`
+	MessageCounter  bool `yaml:"message_counter"`
+	SequenceNumber  bool `yaml:"sequence_number"`
+	Hostname        bool `yaml:"hostname"`
+	SecondFractions bool `yaml:"second_fractions"`
 }
 
 // WindowsEventsTargetConfig describes a scrape config that listen for windows event logs.
