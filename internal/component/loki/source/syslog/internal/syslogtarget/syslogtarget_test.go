@@ -12,7 +12,6 @@ import (
 	"iter"
 	"net"
 	"os"
-	"regexp"
 	"slices"
 	"sort"
 	"testing"
@@ -20,6 +19,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
+	"github.com/grafana/regexp"
 	"github.com/leodido/go-syslog/v4"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -27,9 +28,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/loki/pkg/push"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 )
@@ -463,9 +463,12 @@ func relabelConfig(t *testing.T) []*relabel.Config {
 - source_labels: ['__syslog_message_sd_custom_32473_exkey']
   target_label: 'sd_custom_exkey'
 `
+	return unmarshalRelabelCfg(t, relabelCfg)
+}
 
+func unmarshalRelabelCfg(t *testing.T, cfg string) []*relabel.Config {
 	var relabels []*relabel.Config
-	err := yaml.Unmarshal([]byte(relabelCfg), &relabels)
+	err := yaml.Unmarshal([]byte(cfg), &relabels)
 	require.NoError(t, err)
 
 	// Set the validation scheme for all relabel configs
@@ -605,18 +608,20 @@ func TestSyslogTarget_RFC3136CiscoComponents(t *testing.T) {
 		logLine         string
 		expect          loki.Entry
 		ciscoComponents scrapeconfig.RFC3164CiscoComponents
+		relabelRules    alloy_relabel.Rules
 	}{
 		{
-			label:   "all components",
+			label:   "message with appname",
 			logLine: "<189>643: *Jan  8 19:46:03.295: %LINEPROTO-5-UPDOWN: Line protocol on Interface Loopback100, changed state to up",
 			ciscoComponents: scrapeconfig.RFC3164CiscoComponents{
 				EnableAll: true,
 			},
 			expect: loki.Entry{
 				Labels: model.LabelSet{
-					"__syslog_message_severity": "notice",
-					"__syslog_message_facility": "local7",
-					"__syslog_message_app_name": "%LINEPROTO-5-UPDOWN",
+					"severity":    "notice",
+					"facility":    "local7",
+					"app_name":    "%LINEPROTO-5-UPDOWN",
+					"msg_counter": "643",
 				},
 				Entry: push.Entry{
 					Timestamp: parseDate(time.StampMilli, "Jan  8 19:46:03.295"),
@@ -624,8 +629,52 @@ func TestSyslogTarget_RFC3136CiscoComponents(t *testing.T) {
 				},
 			},
 		},
+		{
+			label:   "message with hostname",
+			logLine: "<189>269614: myhostname: Apr 11 10:02:08: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet7/0/34, changed state to up",
+			ciscoComponents: scrapeconfig.RFC3164CiscoComponents{
+				Hostname:        true,
+				SequenceNumber:  true,
+				MessageCounter:  true,
+				SecondFractions: false,
+			},
+			expect: loki.Entry{
+				Labels: model.LabelSet{
+					"severity":    "notice",
+					"facility":    "local7",
+					"hostname":    "myhostname",
+					"app_name":    "%LINEPROTO-5-UPDOWN",
+					"msg_counter": "269614",
+				},
+				Entry: push.Entry{
+					Timestamp: parseDate(time.Stamp, "Apr 11 10:02:08"),
+					Line:      "Line protocol on Interface GigabitEthernet7/0/34, changed state to up",
+				},
+			},
+		},
 	}
 
+	// config should be unmarshaled to autoinitialize regex, and defaults.
+	rawRelabelCfg := `
+- source_labels: ['__syslog_message_severity']
+  target_label: 'severity'
+- source_labels: ['__syslog_message_facility']
+  target_label: 'facility'
+- source_labels: ['__syslog_message_hostname']
+  target_label: 'hostname'
+- source_labels: ['__syslog_message_app_name']
+  target_label: 'app_name'
+- source_labels: ['__syslog_message_proc_id']
+  target_label: 'proc_id'
+- source_labels: ['__syslog_message_msg_id']
+  target_label: 'msg_id'
+- source_labels: ['__syslog_message_msg_counter']
+  target_label: 'msg_counter'
+- source_labels: ['__syslog_message_sequence']
+  target_label: 'sequence'
+`
+
+	relabelCfg := unmarshalRelabelCfg(t, rawRelabelCfg)
 	for _, tc := range cases {
 		t.Run(tc.label, func(t *testing.T) {
 			w := log.NewSyncWriter(os.Stderr)
@@ -634,16 +683,14 @@ func TestSyslogTarget_RFC3136CiscoComponents(t *testing.T) {
 			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
-			tgt, err := NewSyslogTarget(metrics, logger, handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+			tgt, err := NewSyslogTarget(metrics, logger, handler, relabelCfg, &scrapeconfig.SyslogTargetConfig{
 				ListenAddress:               "127.0.0.1:0",
 				ListenProtocol:              "udp",
 				LabelStructuredData:         true,
 				SyslogFormat:                scrapeconfig.SyslogFormatRFC3164,
 				RFC3164CiscoComponents:      &tc.ciscoComponents,
 				RFC3164DefaultToCurrentYear: true,
-				Labels: model.LabelSet{
-					"test": "syslog_target",
-				},
+				UseIncomingTimestamp:        true,
 			})
 
 			require.NoError(t, err)
@@ -664,12 +711,11 @@ func TestSyslogTarget_RFC3136CiscoComponents(t *testing.T) {
 				return len(handler.Received()) > 0
 			}, time.Second, 10*time.Millisecond, "handler didn't receive any message")
 
-			// TODO: cmp messages
 			received := handler.Received()
 			require.NotEmpty(t, received)
 
 			msg := received[0]
-			t.Logf("%#v", msg)
+			require.Equal(t, tc.expect, msg)
 		})
 	}
 }
