@@ -65,6 +65,8 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 * `__syslog_message_app_name`
 * `__syslog_message_proc_id`
 * `__syslog_message_msg_id`
+* `__syslog_message_msg_counter`
+* `__syslog_message_sequence`
 
 If there is [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) compliant structured data in the parsed message, it will be applied to the log entry as a label with prefix `__syslog_message_sd_`.
 For example, if the structured data provided is `[example@99999 test="value"]`, the log entry will have the label `__syslog_message_sd_example_99999_test` with a value of `value`.
@@ -88,11 +90,12 @@ loki.relabel "syslog" {
 
 You can use the following blocks with `loki.source.syslog`:
 
-| Name                                                    | Description                                                                 | Required |
-|---------------------------------------------------------|-----------------------------------------------------------------------------|----------|
-| [`listener`][listener]                                  | Configures a listener for Syslog messages.                                  | no       |
-| `listener` > [`raw_format_options`][raw_format_options] | Configures `raw` syslog format behavior.                                    | no       |
-| `listener` > [`tls_config`][tls_config]                 | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
+| Name                                                        | Description                                                                 | Required |
+|-------------------------------------------------------------|-----------------------------------------------------------------------------|----------|
+| [`listener`][listener]                                      | Configures a listener for Syslog messages.                                  | no       |
+| `listener` > [`raw_format_options`][raw_format_options]     | Configures `raw` syslog format behavior.                                    | no       |
+| `listener` > [`rfc3164_cisco_components`][cisco_components] | Configures parsing of non-standard Cisco IOS syslog extensions.             | no       |
+| `listener` > [`tls_config`][tls_config]                     | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `listener` > `tls_config` refers to a `tls_config` block defined inside a `listener` block.
@@ -100,6 +103,7 @@ For example, `listener` > `tls_config` refers to a `tls_config` block defined in
 [listener]: #listener
 [tls_config]: #tls_config
 [raw_format_options]: #raw_format_options
+[cisco_components]: #rfc3164_cisco_components
 
 ### `listener`
 
@@ -176,6 +180,65 @@ The following argument is supported:
 | Name                            | Type   | Description                                                                 | Default | Required |
 |---------------------------------|--------|-----------------------------------------------------------------------------|---------|----------|
 | `use_null_terminator_delimiter` | `bool` | Use null-terminator (`\0`) instead of line break (`\n`) to split log lines. | `false` | no       |
+
+### `rfc3164_cisco_components`
+
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+The `rfc3164_cisco_components` configures parsing of non-standard Cisco IOS syslog extensions. 
+
+{{< admonition type="note" >}}
+This block can only be used when you set `syslog_format` to `rfc3164`.
+{{< /admonition >}}
+
+The following argument is supported:
+
+| Name               | Type   | Description                                     | Default | Required |
+|--------------------|--------|-------------------------------------------------|---------|----------|
+| `enable_all`       | `bool` | Enables all components below.                   | `false` | no       |
+| `message_counter`  | `bool` | Enables syslog message counter field parsing.   | `false` | no       |
+| `sequence_number`  | `bool` | Enables service sequence number field parsing.  | `false` | no       |
+| `hostname`         | `bool` | Enables origin hostname fleld parsing.          | `false` | no       |
+| `second_fractions` | `bool` | Enables miliseconds parsing in timestamp field. | `false` | no       |
+
+{{< admonition type="note" >}}
+At-least one option has to be enabled if `enable_all` is set to `false`.
+{{< /admonition >}}
+
+{{< admonition type="caution" >}}
+The `rfc3164_cisco_components` configuration must match your Cisco device configuration. 
+The `loki.source.syslog` component cannot auto-detect which components are present because they share similar formats.
+{{< /admonition >}}
+
+#### Cisco Device Configuration
+
+```
+conf t
+
+! Enable message counter (on by default for remote logging)
+logging host 10.0.0.10
+
+! Add service sequence numbers
+service sequence-numbers
+
+! Add origin hostname
+logging origin-id hostname
+
+! Enable millisecond timestamps
+service timestamps log datetime msec localtime
+
+! Recommended: Enable NTP to remove asterisk
+ntp server <your-ntp-server>
+```
+
+#### Current Limitations
+
+* **Component Ordering**: When Cisco components are selectively disabled on the device but the parser expects them, parsing will fail or produce incorrect results. 
+  Always match your parser configuration to your device configuration.
+* **Structured Data**: Messages with RFC5424-style structured data blocks (from `logging host X session-id` or `sequence-num-session`) are not currently supported.
+  See the [upstream issue][go-syslog-issue] for details.
+
+[go-syslog-issue]: https://github.com/leodido/go-syslog/issues/35
 
 ### `tls_config`
 
