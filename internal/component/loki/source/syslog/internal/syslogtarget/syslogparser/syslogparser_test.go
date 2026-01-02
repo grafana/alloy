@@ -137,13 +137,13 @@ func TestParseStream_RFC3164TimestampWithYear(t *testing.T) {
 	// Manually calculate the expected year based on the edge case logic (SetYearForLimitedTimeFormat)
 	now := time.Now()
 	expectedYear := now.Year()
-	if now.Month() == 1 {
+	if now.Month() == time.January {
 		expectedYear = now.Year() - 1
-	} else if now.Month() == 12 {
+	} else if now.Month() == time.December {
 		expectedYear = now.Year() + 1
 	}
 
-	require.Equal(t, time.Date(expectedYear, 12, 1, 0, 0, 0, 0, time.UTC), *results[0].Message.(*rfc3164.SyslogMessage).Timestamp)
+	require.Equal(t, time.Date(expectedYear, time.December, 1, 0, 0, 0, 0, time.UTC), *results[0].Message.(*rfc3164.SyslogMessage).Timestamp)
 }
 
 // Tests the edge case where a December log is parsed in January, which should use the previous year.
