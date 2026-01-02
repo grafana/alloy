@@ -6,17 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
+	"github.com/grafana/alloy/internal/util"
 )
 
-var (
-	defaultMaxMessageLength = 8192
-)
+var defaultMaxMessageLength = 8192
 
 func TestParseStream_OctetCounting(t *testing.T) {
 	r := strings.NewReader("23 <13>1 - - - - - - First24 <13>1 - - - - - - Second")
