@@ -20,9 +20,9 @@ For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages 
 If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](./loki.process.md) component.
 
 Please note, that the `raw` syslog format is an [experimental][] feature.
-{{< /admonition >}}
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
+{{< /admonition >}}
 
 The component starts a new syslog listener for each of the given `config` blocks and fans out incoming entries to the list of receivers in `forward_to`.
 
