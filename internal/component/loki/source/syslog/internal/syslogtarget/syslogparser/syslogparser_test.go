@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"
@@ -132,5 +133,49 @@ func TestParseStream_RFC3164TimestampWithYear(t *testing.T) {
 	require.NoError(t, results[0].Error)
 	require.Equal(t, "Message", *results[0].Message.(*rfc3164.SyslogMessage).Message)
 	require.Equal(t, "host", *results[0].Message.(*rfc3164.SyslogMessage).Hostname)
-	require.Equal(t, time.Date(time.Now().Year(), 12, 1, 0, 0, 0, 0, time.UTC), *results[0].Message.(*rfc3164.SyslogMessage).Timestamp)
+
+	// Manually calculate the expected year based on the edge case logic (SetYearForLimitedTimeFormat)
+	now := time.Now()
+	expectedYear := now.Year()
+	if now.Month() == 1 {
+		expectedYear = now.Year() - 1
+	} else if now.Month() == 12 {
+		expectedYear = now.Year() + 1
+	}
+
+	require.Equal(t, time.Date(expectedYear, 12, 1, 0, 0, 0, 0, time.UTC), *results[0].Message.(*rfc3164.SyslogMessage).Timestamp)
+}
+
+// Tests the edge case where a December log is parsed in January, which should use the previous year.
+func TestParseStream_SetYearForLimitedTimeFormat_DecemberInJanuary(t *testing.T) {
+	parsedTime := time.Date(0, time.December, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, time.January, 15, 12, 0, 0, 0, time.UTC)
+
+	util.SetYearForLimitedTimeFormat(&parsedTime, now)
+
+	expected := time.Date(2025, time.December, 1, 0, 0, 0, 0, time.UTC)
+	require.Equal(t, expected, parsedTime)
+}
+
+// tests the edge case where a January log is parsed in December, which should use the next year.
+func TestParseStream_SetYearForLimitedTimeFormat_JanuaryInDecember(t *testing.T) {
+	parsedTime := time.Date(0, time.January, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2025, time.December, 15, 12, 0, 0, 0, time.UTC)
+
+	util.SetYearForLimitedTimeFormat(&parsedTime, now)
+
+	// January log seen in December should be from the next year
+	expected := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	require.Equal(t, expected, parsedTime)
+}
+
+// Tests the "normal" case where the parsed month doesn't trigger the New Year's edge case logic.
+func TestParseStream_SetYearForLimitedTimeFormat_NormalCase(t *testing.T) {
+	parsedTime := time.Date(0, time.June, 15, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, time.June, 20, 12, 0, 0, 0, time.UTC)
+
+	util.SetYearForLimitedTimeFormat(&parsedTime, now)
+
+	expected := time.Date(2026, time.June, 15, 0, 0, 0, 0, time.UTC)
+	require.Equal(t, expected, parsedTime)
 }
