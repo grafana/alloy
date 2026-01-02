@@ -78,12 +78,14 @@ body:
       - loki.source.syslog
       - loki.source.windowsevent
       - loki.write
+      - mimir.alerts.kubernetes
       - mimir.rules.kubernetes
       - otelcol.auth.basic
       - otelcol.auth.bearer
       - otelcol.auth.headers
       - otelcol.auth.oauth2
       - otelcol.auth.sigv4
+      - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
       - otelcol.connector.spanlogs
@@ -92,6 +94,7 @@ body:
       - otelcol.exporter.datadog
       - otelcol.exporter.debug
       - otelcol.exporter.faro
+      - otelcol.exporter.file
       - otelcol.exporter.googlecloud
       - otelcol.exporter.googlecloudpubsub
       - otelcol.exporter.kafka
@@ -119,6 +122,9 @@ body:
       - otelcol.processor.tail_sampling
       - otelcol.processor.transform
       - otelcol.receiver.awscloudwatch
+      - otelcol.receiver.awsecscontainermetrics
+      - otelcol.receiver.awss3
+      - otelcol.receiver.cloudflare
       - otelcol.receiver.datadog
       - otelcol.receiver.faro
       - otelcol.receiver.file_stats
@@ -139,6 +145,7 @@ body:
       - otelcol.receiver.vcenter
       - otelcol.receiver.zipkin
       - otelcol.storage.file
+      - prometheus.echo
       - prometheus.enrich
       - prometheus.exporter.apache
       - prometheus.exporter.azure
@@ -178,6 +185,7 @@ body:
       - prometheus.scrape
       - prometheus.write.queue
       - pyroscope.ebpf
+      - pyroscope.enrich
       - pyroscope.java
       - pyroscope.receive_http
       - pyroscope.relabel

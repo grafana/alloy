@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -74,6 +73,8 @@ type reconciler struct {
 	nodeFilterEnabled        bool
 	nodeFilterName           string
 
+	preserveMetaLabels bool
+
 	debugMut  sync.RWMutex
 	debugInfo []DiscoveredPodLogs
 }
@@ -135,6 +136,14 @@ func (r *reconciler) SetDistribute(distribute bool) {
 	r.shouldDistribute = distribute
 }
 
+// UpdatePreserveMetaLabels configures whether to preserve meta labels in targets.
+func (r *reconciler) UpdatePreserveMetaLabels(preserveMetaLabels bool) {
+	r.reconcileMut.Lock()
+	defer r.reconcileMut.Unlock()
+
+	r.preserveMetaLabels = preserveMetaLabels
+}
+
 func (r *reconciler) getShouldDistribute() bool {
 	r.reconcileMut.RLock()
 	defer r.reconcileMut.RUnlock()
@@ -192,14 +201,15 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 }
 
 func filterLabels(lbls promlabels.Labels, keysToKeep []string) promlabels.Labels {
-	var res promlabels.Labels
-	for _, k := range lbls {
-		if slices.Contains(keysToKeep, k.Name) {
-			res = append(res, promlabels.Label{Name: k.Name, Value: k.Value})
+	builder := promlabels.NewScratchBuilder(lbls.Len())
+	lbls.Range(func(l promlabels.Label) {
+		if slices.Contains(keysToKeep, l.Name) {
+			builder.Add(l.Name, l.Value)
 		}
-	}
-	sort.Sort(res)
-	return res
+	})
+
+	builder.Sort()
+	return builder.Labels()
 }
 
 func distributeTargets(c cluster.Cluster, targets []*kubetail.Target) []*kubetail.Target {
@@ -324,8 +334,14 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 			processedLabels, _ := relabel.Process(targetLabels.Copy(), relabelRules...)
 
 			defaultJob := fmt.Sprintf("%s/%s:%s", podLogs.Namespace, podLogs.Name, container.Name)
-			finalLabels, err := kubetail.PrepareLabels(processedLabels, defaultJob)
 
+			// Check if we should preserve meta labels for downstream components
+			r.reconcileMut.RLock()
+			preserveMetaLabels := r.preserveMetaLabels
+			r.reconcileMut.RUnlock()
+
+			// Use the updated PrepareLabels function with meta label preservation option
+			finalLabels, err := kubetail.PrepareLabelsWithMetaPreservation(processedLabels, defaultJob, preserveMetaLabels)
 			if err != nil {
 				discoveredPod.Containers = append(discoveredPod.Containers, DiscoveredContainer{
 					DiscoveredLabels: targetLabels.Map(),
@@ -335,8 +351,8 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 				return
 			}
 
-			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels)
-			if len(processedLabels) != 0 {
+			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels, preserveMetaLabels)
+			if processedLabels.Len() != 0 {
 				targets = append(targets, target)
 			}
 
@@ -369,7 +385,7 @@ func (r *reconciler) DebugInfo() []DiscoveredPodLogs {
 
 // buildPodLogsTargetLabels builds the target labels for a PodLogs object.
 func buildPodLogsTargetLabels(podLogs *monitoringv1alpha2.PodLogs) promlabels.Labels {
-	podLogsTargetLabels := promlabels.NewBuilder(nil)
+	podLogsTargetLabels := promlabels.NewBuilder(promlabels.EmptyLabels())
 	podLogsTargetLabels.Set(kubePodlogsNamespace, podLogs.Namespace)
 	podLogsTargetLabels.Set(kubePodlogsName, podLogs.Name)
 	for key, value := range podLogs.Labels {
@@ -463,7 +479,8 @@ func buildContainerTargetLabels(opts discoveredContainer, prediscoveredLabels pr
 	targetLabels.Set(model.JobLabel, fmt.Sprintf("%s/%s", opts.PodLogs.Namespace, opts.PodLogs.Name))
 
 	res := targetLabels.Labels()
-	sort.Sort(res)
+
+	// label Builder is inherently sorted, so no need to sort here
 	return res
 }
 

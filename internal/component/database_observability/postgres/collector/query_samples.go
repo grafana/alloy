@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -24,7 +25,11 @@ const (
 )
 
 const (
-	stateActive = "active"
+	queryTextClause     = ", s.query"
+	stateActive         = "active"
+	stateIdle           = "idle"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -48,21 +53,23 @@ const selectPgStatActivity = `
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
-		s.query_id,
-		s.query
+		s.query_id
+		%s
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
 		s.pid != pg_backend_pid() AND
-		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
-			(				
+			(
 				coalesce(TRIM(s.query), '') != '' AND
 				s.query_id != 0
 			)
 		)
+		%s
 `
+
+const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
 
 type QuerySamplesInfo struct {
 	DatabaseName    sql.NullString
@@ -96,6 +103,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	ExcludeCurrentUser    bool
 }
 
 type QuerySamples struct {
@@ -103,6 +111,7 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	excludeCurrentUser    bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -111,6 +120,8 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
+	// keep track of idle keys that were already emitted to avoid duplicates
+	idleEmitted *expirable.LRU[SampleKey, struct{}]
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -136,6 +147,26 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
+	// EndAt is the time we determined the sample ended (idle transition
+	// or when it was only observed idle), used to compute durations/timestamps.
+	EndAt sql.NullTime
+}
+
+func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// setEndedAt sets EndAt and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) setEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndAt = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndAt = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
 }
 
 // WaitEventTracker coalesces consecutive identical wait events
@@ -178,14 +209,19 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
+	const emittedCacheTTL = 10 * time.Minute
+
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
+		excludeCurrentUser:    args.ExcludeCurrentUser,
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
+		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 	}, nil
 }
 
@@ -194,7 +230,11 @@ func (c *QuerySamples) Name() string {
 }
 
 func (c *QuerySamples) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -236,7 +276,17 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
+	queryTextField := ""
+	if c.disableQueryRedaction {
+		queryTextField = queryTextClause
+	}
+
+	excludeCurrentUserClauseField := ""
+	if c.excludeCurrentUser {
+		excludeCurrentUserClauseField = excludeCurrentUserClause
+	}
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludeCurrentUserClauseField)
+	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
@@ -258,8 +308,27 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
+		// Handle idle states specially: emit finalized sample once
+		if isIdleState(sample.State.String) {
+			if st, hadActive := c.samples[key]; hadActive {
+				st.setEndedAt(sample)
+				st.LastRow.State = sample.State
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			} else if _, already := c.idleEmitted.Get(key); !already {
+				// new idle sample not yet seen -> create a new sample state to track and emit it
+				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+				newIdleState.setEndedAt(sample)
+				newIdleState.LastRow.State = sample.State
+				c.samples[key] = newIdleState
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			}
+			continue
+		}
+
+		// Non-idle: keep tracking as active
 		c.upsertActiveSample(key, sample)
 		activeKeys[key] = struct{}{}
+		continue
 	}
 
 	if err := rows.Err(); err != nil {
@@ -267,9 +336,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-	// finalize samples that are no longer active
-	for key := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive {
+	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndAt.Valid {
 			continue
 		}
 		c.emitAndDeleteSample(key)
@@ -279,7 +348,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	sample := QuerySamplesInfo{}
-	err := rows.Scan(
+	scanArgs := []interface{}{
 		&sample.Now,
 		&sample.DatabaseName,
 		&sample.PID,
@@ -300,8 +369,11 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-		&sample.Query,
-	)
+	}
+	if c.disableQueryRedaction {
+		scanArgs = append(scanArgs, &sample.Query)
+	}
+	err := rows.Scan(scanArgs...)
 	return sample, err
 }
 
@@ -314,8 +386,10 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 }
 
 func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
-	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-		return fmt.Errorf("insufficient privilege to access query. sample set: %+v", sample)
+	if c.disableQueryRedaction {
+		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
+			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
+		}
 	}
 
 	if !sample.DatabaseName.Valid {
@@ -333,7 +407,8 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
-	state.updateCpuTimeIfActive(sample)
+	state.updateCpuTime(sample)
+	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -380,12 +455,16 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	sampleLabels := c.buildQuerySampleLabels(state)
+	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
+	ts := state.LastSeenAt.UnixNano()
+	if state.EndAt.Valid {
+		ts = state.EndAt.Time.UnixNano()
+	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		OP_QUERY_SAMPLE,
 		sampleLabels,
-		state.LastSeenAt.UnixNano(),
+		ts,
 	)
 
 	for _, we := range state.tracker.WaitEvents() {
@@ -404,19 +483,18 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
-		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-}
-
-func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
+func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
-	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
+	end := state.LastRow.Now
+	if endAt.Valid {
+		end = endAt.Time
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
 
 	clientAddr := ""
 	if state.LastRow.ClientAddr.Valid {
@@ -426,13 +504,8 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		}
 	}
 
-	queryText := state.LastRow.Query.String
-	if !c.disableQueryRedaction {
-		queryText = redact(queryText)
-	}
-
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -446,10 +519,12 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		xactDuration,
 		queryDuration,
 		state.LastRow.QueryID.Int64,
-		queryText,
 	)
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction && state.LastRow.Query.Valid {
+		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
 	return labels
 }
@@ -460,18 +535,14 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	queryText := state.LastRow.Query.String
-	if !c.disableQueryRedaction {
-		queryText = redact(queryText)
-	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
+		we.LastState,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
@@ -480,7 +551,6 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		waitEventFullName,
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
-		queryText,
 	)
 }
 
@@ -515,4 +585,11 @@ func equalPIDSets(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+func isIdleState(state string) bool {
+	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
 }

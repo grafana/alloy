@@ -1,4 +1,4 @@
-import { AttrStmt, Body as AlloyBody } from '../alloy-syntax-js/types';
+import { type AttrStmt, type Body as AlloyBody } from '../alloy-syntax-js/types';
 
 /**
  * ComponentInfo is high-level information for a component.

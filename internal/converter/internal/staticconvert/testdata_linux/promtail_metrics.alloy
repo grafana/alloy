@@ -1,9 +1,10 @@
 discovery.kubernetes "logs_config_with_metrics" {
 	role = "pod"
-}
 
-local.file_match "logs_config_with_metrics" {
-	path_targets = discovery.kubernetes.logs_config_with_metrics.targets
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
 }
 
 loki.process "logs_config_with_metrics" {
@@ -22,8 +23,12 @@ loki.process "logs_config_with_metrics" {
 }
 
 loki.source.file "logs_config_with_metrics" {
-	targets               = local.file_match.logs_config_with_metrics.targets
-	forward_to            = [loki.process.logs_config_with_metrics.receiver]
+	targets    = discovery.kubernetes.logs_config_with_metrics.targets
+	forward_to = [loki.process.logs_config_with_metrics.receiver]
+
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/path/config.yml"
 }
 

@@ -97,10 +97,9 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		}
 	}
 
-	c.fanout = prometheus.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls, prometheus.NoopMetadataStore{})
+	c.fanout = prometheus.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
-		ls,
 		prometheus.WithComponentID(c.opts.ID),
 		prometheus.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {

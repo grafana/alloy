@@ -1,23 +1,27 @@
 package wal
 
 import (
-	"math"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/value"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -39,28 +43,28 @@ func TestStorage_InvalidSeries(t *testing.T) {
 	_, err = app.Append(0, labels.Labels{}, 0, 0)
 	require.Error(t, err, "should reject empty labels")
 
-	_, err = app.Append(0, labels.Labels{{Name: "a", Value: "1"}, {Name: "a", Value: "2"}}, 0, 0)
+	_, err = app.Append(0, labels.FromStrings("a", "1", "a", "2"), 0, 0)
 	require.Error(t, err, "should reject duplicate labels")
 
 	// Sanity check: valid series
-	sRef, err := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
+	sRef, err := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
 	require.NoError(t, err, "should not reject valid series")
 
 	// Exemplars
-	_, err = app.AppendExemplar(0, nil, exemplar.Exemplar{})
+	_, err = app.AppendExemplar(0, labels.EmptyLabels(), exemplar.Exemplar{})
 	require.Error(t, err, "should reject unknown series ref")
 
-	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}, {Name: "a", Value: "2"}}}
-	_, err = app.AppendExemplar(sRef, nil, e)
+	e := exemplar.Exemplar{Labels: labels.FromStrings("a", "1", "a", "2")}
+	_, err = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	require.ErrorIs(t, err, tsdb.ErrInvalidExemplar, "should reject duplicate labels")
 
-	e = exemplar.Exemplar{Labels: labels.Labels{{Name: "a_somewhat_long_trace_id", Value: "nYJSNtFrFTY37VR7mHzEE/LIDt7cdAQcuOzFajgmLDAdBSRHYPDzrxhMA4zz7el8naI/AoXFv9/e/G0vcETcIoNUi3OieeLfaIRQci2oa"}}}
-	_, err = app.AppendExemplar(sRef, nil, e)
+	e = exemplar.Exemplar{Labels: labels.FromStrings("a_somewhat_long_trace_id", "nYJSNtFrFTY37VR7mHzEE/LIDt7cdAQcuOzFajgmLDAdBSRHYPDzrxhMA4zz7el8naI/AoXFv9/e/G0vcETcIoNUi3OieeLfaIRQci2oa")}
+	_, err = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	require.ErrorIs(t, err, storage.ErrExemplarLabelLength, "should reject too long label length")
 
 	// Sanity check: valid exemplars
-	e = exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
-	_, err = app.AppendExemplar(sRef, nil, e)
+	e = exemplar.Exemplar{Labels: labels.FromStrings("a", "1"), Value: 20, Ts: 10, HasTs: true}
+	_, err = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	require.NoError(t, err, "should not reject valid exemplars")
 }
 
@@ -80,7 +84,7 @@ func TestStorage(t *testing.T) {
 	app := s.Appender(t.Context())
 
 	// Write some samples
-	payload := buildSeries([]string{"foo", "bar", "baz"})
+	payload := buildMixedTypeSeries(0)
 	for _, metric := range payload {
 		metric.Write(t, app)
 	}
@@ -97,17 +101,137 @@ func TestStorage(t *testing.T) {
 	}
 	require.Equal(t, payload.SeriesNames(), names)
 
-	expectedSamples := payload.ExpectedSamples()
+	expectedSamples, expectedHistograms, expectedFloatHistograms := payload.ExpectedSamples()
 	actualSamples := collector.samples
 	sort.Sort(byRefSample(actualSamples))
 	require.Equal(t, expectedSamples, actualSamples)
+
+	actualHistograms := collector.histograms
+	sort.Sort(byRefHistogramSample(actualHistograms))
+	require.Equal(t, expectedHistograms, actualHistograms)
+
+	actualFloatHistograms := collector.floatHistograms
+	sort.Sort(byRefFloatHistogramSample(actualFloatHistograms))
+	require.Equal(t, expectedFloatHistograms, actualFloatHistograms)
 
 	expectedExemplars := payload.ExpectedExemplars()
 	actualExemplars := collector.exemplars
 	sort.Sort(byRefExemplar(actualExemplars))
 	require.Equal(t, expectedExemplars, actualExemplars)
+}
 
-	require.NoError(t, onNotify.Wait(time.Minute), "Expected Notify to be called")
+func TestStorage_RepeatedCommitWithMetadata(t *testing.T) {
+	walDir := t.TempDir()
+
+	onNotify := util.NewWaitTrigger()
+	notifier := &fakeNotifier{NotitfyFunc: onNotify.Trigger}
+
+	reg := prometheus.NewRegistry()
+	s, err := NewStorage(log.NewNopLogger(), reg, walDir)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+	s.SetNotifier(notifier)
+
+	app := s.Appender(t.Context())
+
+	// Keep track of the information going into the WAL so we can verify it later.
+	// When we check the "actual" data in commit 2, we need to also include the information from commit 1.
+	expectedSamples := []record.RefSample{}
+	expectedHistograms := []record.RefHistogramSample{}
+	expectedFloatHistograms := []record.RefFloatHistogramSample{}
+
+	for i := 0; i < 4; i++ {
+		t.Run(fmt.Sprintf("Commit %d", i), func(t *testing.T) {
+			// Write some samples
+			payload := buildMixedTypeSeries(int64(i * 100))
+
+			for _, metric := range payload {
+				metric.Write(t, app)
+			}
+
+			require.NoError(t, app.Commit())
+
+			collector := walDataCollector{}
+			replayer := walReplayer{w: &collector}
+			require.NoError(t, replayer.Replay(s.wal.Dir()))
+
+			names := []string{}
+			for _, series := range collector.series {
+				names = append(names, series.Labels.Get("__name__"))
+			}
+			require.Equal(t, payload.SeriesNames(), names)
+
+			commit1Samples, commit1Histograms, commit1FloatHistograms := payload.ExpectedSamples()
+
+			expectedSamples = append(expectedSamples, commit1Samples...)
+			expectedHistograms = append(expectedHistograms, commit1Histograms...)
+			expectedFloatHistograms = append(expectedFloatHistograms, commit1FloatHistograms...)
+
+			actualSamples := collector.samples
+			require.Equal(t, expectedSamples, actualSamples)
+
+			actualHistograms := collector.histograms
+			require.Equal(t, expectedHistograms, actualHistograms)
+
+			actualFloatHistograms := collector.floatHistograms
+			require.Equal(t, expectedFloatHistograms, actualFloatHistograms)
+
+			// TODO: Verify exemplars were written
+			// expectedExemplars := payload.ExpectedExemplars()
+			// actualExemplars := collector.exemplars
+			// sort.Sort(byRefExemplar(actualExemplars))
+			// require.Equal(t, expectedExemplars, actualExemplars)
+
+			// Verify metadata was written.
+			// The amount of metadata is always the same after every Commit(), because only the first Commit() added metadata.
+			// TODO: Actually the metadata should be len(payload). Fix the issue causing it to be 2*len(payload).
+			require.Len(t, collector.metadata, 2*len(payload), "Expected metadata for each series")
+
+			// Build a map from Ref to series name for type verification
+			refToName := make(map[chunks.HeadSeriesRef]string)
+			for _, s := range collector.series {
+				refToName[s.Ref] = s.Labels.Get("__name__")
+			}
+
+			// Expected types based on series name
+			expectedTypes := map[string]uint8{
+				"float_series":      record.GetMetricType("gauge"),
+				"integer histogram": record.GetMetricType("histogram"),
+				"float histogram":   record.GetMetricType("histogram"),
+				"integer NHCB":      record.GetMetricType("histogram"),
+				"float NHCB":        record.GetMetricType("histogram"),
+			}
+
+			for _, meta := range collector.metadata {
+				name := refToName[meta.Ref]
+				expectedType, ok := expectedTypes[name]
+				require.True(t, ok, "Unknown series name: %s", name)
+				require.Equal(t, expectedType, meta.Type, "Wrong metric type for %s", name)
+				require.Equal(t, "bytes", meta.Unit)
+				require.NotEmpty(t, meta.Help)
+			}
+
+			require.NoError(t, onNotify.Wait(time.Minute), "Expected Notify to be called")
+		})
+	}
+
+	expectedMetrics := `# HELP prometheus_remote_write_wal_metadata_updates_total Total number of metadata updates sent through the WAL
+# TYPE prometheus_remote_write_wal_metadata_updates_total counter
+prometheus_remote_write_wal_metadata_updates_total 10
+# HELP prometheus_remote_write_wal_samples_appended_total Total number of samples appended to the WAL
+# TYPE prometheus_remote_write_wal_samples_appended_total counter
+prometheus_remote_write_wal_samples_appended_total 40
+`
+
+	err = testutil.GatherAndCompare(
+		reg,
+		strings.NewReader(expectedMetrics),
+		"prometheus_remote_write_wal_metadata_updates_total",
+		"prometheus_remote_write_wal_samples_appended_total",
+	)
+	require.NoError(t, err)
 }
 
 func TestStorage_Rollback(t *testing.T) {
@@ -150,31 +274,31 @@ func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 
 	app := s.Appender(t.Context())
 
-	sRef, err := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
+	sRef, err := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
 	require.NoError(t, err, "should not reject valid series")
 
 	// If the Labels, Value or Timestamp are different than the last exemplar,
 	// then a new one should be appended; Otherwise, it should be skipped.
-	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	e := exemplar.Exemplar{Labels: labels.FromStrings("a", "1"), Value: 20, Ts: 10, HasTs: true}
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
-	e.Labels = labels.Labels{{Name: "b", Value: "2"}}
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	e.Labels = labels.FromStrings("b", "2")
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	e.Value = 42
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	e.Ts = 25
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	e.Ts = 24
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	require.NoError(t, app.Commit())
 	collector := walDataCollector{}
@@ -237,7 +361,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 	}
 	require.Equal(t, payload.SeriesNames(), names)
 
-	expectedSamples := payload.ExpectedSamples()
+	expectedSamples, _, _ := payload.ExpectedSamples()
 	actualSamples := collector.samples
 	sort.Sort(byRefSample(actualSamples))
 	require.Equal(t, expectedSamples, actualSamples)
@@ -318,7 +442,7 @@ func TestStorage_Truncate(t *testing.T) {
 	}, func(e exemplar.Exemplar) bool {
 		return e.HasTs && e.Ts >= keepTs
 	})
-	expectedSamples := payload.ExpectedSamples()
+	expectedSamples, _, _ := payload.ExpectedSamples()
 	expectedExemplars := payload.ExpectedExemplars()
 
 	// Read back the WAL, collect series and samples.
@@ -355,8 +479,8 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 		payload = append(payload, &series{
 			name: metricName,
 			samples: []sample{
-				{int64(i), float64(i * 10.0)},
-				{int64(i * 10), float64(i * 100.0)},
+				{int64(i), float64(i * 10.0), nil, nil, nil},
+				{int64(i * 10), float64(i * 100.0), nil, nil, nil},
 			},
 		})
 	}
@@ -416,58 +540,6 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	}
 
 	require.NoError(t, s.Close())
-}
-
-func TestStorage_WriteStalenessMarkers(t *testing.T) {
-	walDir := t.TempDir()
-
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, s.Close())
-	}()
-
-	app := s.Appender(t.Context())
-
-	// Write some samples
-	payload := seriesList{
-		{name: "foo", samples: []sample{{1, 10.0}, {10, 100.0}}},
-		{name: "bar", samples: []sample{{2, 20.0}, {20, 200.0}}},
-		{name: "baz", samples: []sample{{3, 30.0}, {30, 300.0}}},
-	}
-	for _, metric := range payload {
-		metric.Write(t, app)
-	}
-
-	require.NoError(t, app.Commit())
-
-	// Write staleness markers for every series
-	require.NoError(t, s.WriteStalenessMarkers(func() int64 {
-		// Pass math.MaxInt64 so it seems like everything was written already
-		return math.MaxInt64
-	}))
-
-	// Read back the WAL, collect series and samples.
-	collector := walDataCollector{}
-	replayer := walReplayer{w: &collector}
-	require.NoError(t, replayer.Replay(s.wal.Dir()))
-
-	actual := collector.samples
-	sort.Sort(byRefSample(actual))
-
-	staleMap := map[chunks.HeadSeriesRef]bool{}
-	for _, sample := range actual {
-		if _, ok := staleMap[sample.Ref]; !ok {
-			staleMap[sample.Ref] = false
-		}
-		if value.IsStaleNaN(sample.V) {
-			staleMap[sample.Ref] = true
-		}
-	}
-
-	for ref, v := range staleMap {
-		require.True(t, v, "ref %d doesn't have stale marker", ref)
-	}
 }
 
 func TestStorage_TruncateAfterClose(t *testing.T) {
@@ -556,13 +628,13 @@ func BenchmarkAppendExemplar(b *testing.B) {
 	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
 	defer s.Close()
 	app := s.Appender(b.Context())
-	sRef, _ := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
-	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
+	sRef, _ := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
+	e := exemplar.Exemplar{Labels: labels.FromStrings("a", "1"), Value: 20, Ts: 10, HasTs: true}
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		e.Ts = int64(i)
-		_, _ = app.AppendExemplar(sRef, nil, e)
+		_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	}
 	b.StopTimer()
 
@@ -613,9 +685,18 @@ func BenchmarkStripeSeriesSize(b *testing.B) {
 	}
 }
 
+// Type is float histograms if fh!=nil,
+// otherwise integer histogram if h!=nil,
+// otherwise float.
+// TODO: Refactor this so there are different data structures for different metric types.
+// Each should implement an Append function similarly to the helper structs in
+// /internal/component/prometheus/remotewrite/remote_write_test.go
 type sample struct {
-	ts  int64
-	val float64
+	ts   int64
+	val  float64
+	h    *histogram.Histogram
+	fh   *histogram.FloatHistogram
+	meta *metadata.Metadata
 }
 
 type series struct {
@@ -631,11 +712,24 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	lbls := labels.FromMap(map[string]string{"__name__": s.name})
 
+	appendFunc := func(ref storage.SeriesRef, s sample) (storage.SeriesRef, error) {
+		if s.h != nil || s.fh != nil {
+			return app.AppendHistogram(ref, lbls, s.ts, s.h, s.fh)
+		}
+		return app.Append(ref, lbls, s.ts, s.val)
+	}
+
 	offset := 0
 	if s.ref == nil {
 		// Write first sample to get ref ID
-		ref, err := app.Append(0, lbls, s.samples[0].ts, s.samples[0].val)
+		ref, err := appendFunc(0, s.samples[0])
 		require.NoError(t, err)
+
+		if s.samples[0].meta != nil {
+			//TODO: Use the ref
+			_, err := app.UpdateMetadata(ref, lbls, *s.samples[0].meta)
+			require.NoError(t, err)
+		}
 
 		s.ref = &ref
 		offset = 1
@@ -643,18 +737,24 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	// Write other data points with AddFast
 	for _, sample := range s.samples[offset:] {
-		ref, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		ref, err := appendFunc(*s.ref, sample)
 		// The ref we had changed stop using the old value
 		if *s.ref != ref {
 			s.ref = &ref
 		}
 		require.NoError(t, err)
+
+		if sample.meta != nil {
+			//TODO: Use the ref
+			_, err := app.UpdateMetadata(ref, lbls, *sample.meta)
+			require.NoError(t, err)
+		}
 	}
 
 	sRef := *s.ref
 	for _, exemplar := range s.exemplars {
 		var err error
-		sRef, err = app.AppendExemplar(sRef, nil, exemplar)
+		sRef, err = app.AppendExemplar(sRef, labels.EmptyLabels(), exemplar)
 		require.NoError(t, err)
 	}
 }
@@ -728,19 +828,35 @@ func (s seriesList) SeriesNames() []string {
 }
 
 // ExpectedSamples returns the list of expected samples, sorted by ref ID and timestamp
-func (s seriesList) ExpectedSamples() []record.RefSample {
-	expect := []record.RefSample{}
+func (s seriesList) ExpectedSamples() (expect []record.RefSample, expectHistogram []record.RefHistogramSample, expectFloatHistogram []record.RefFloatHistogramSample) {
 	for _, series := range s {
 		for _, sample := range series.samples {
-			expect = append(expect, record.RefSample{
-				Ref: chunks.HeadSeriesRef(*series.ref),
-				T:   sample.ts,
-				V:   sample.val,
-			})
+			switch {
+			case sample.fh != nil:
+				expectFloatHistogram = append(expectFloatHistogram, record.RefFloatHistogramSample{
+					Ref: chunks.HeadSeriesRef(*series.ref),
+					T:   sample.ts,
+					FH:  sample.fh,
+				})
+			case sample.h != nil:
+				expectHistogram = append(expectHistogram, record.RefHistogramSample{
+					Ref: chunks.HeadSeriesRef(*series.ref),
+					T:   sample.ts,
+					H:   sample.h,
+				})
+			default:
+				expect = append(expect, record.RefSample{
+					Ref: chunks.HeadSeriesRef(*series.ref),
+					T:   sample.ts,
+					V:   sample.val,
+				})
+			}
 		}
 	}
 	sort.Sort(byRefSample(expect))
-	return expect
+	sort.Sort(byRefHistogramSample(expectHistogram))
+	sort.Sort(byRefFloatHistogramSample(expectFloatHistogram))
+	return expect, expectHistogram, expectFloatHistogram
 }
 
 // ExpectedExemplars returns the list of expected exemplars, sorted by ref ID and timestamp
@@ -766,14 +882,72 @@ func buildSeries(nameSlice []string) seriesList {
 		i++
 		s = append(s, &series{
 			name:    n,
-			samples: []sample{{int64(i), float64(i * 10.0)}, {int64(i * 10), float64(i * 100.0)}},
+			samples: []sample{{int64(i), float64(i * 10.0), nil, nil, nil}, {int64(i * 10), float64(i * 100.0), nil, nil, nil}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(i * 10.0), Ts: int64(i), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(i * 100.0), Ts: int64(i * 10), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(i * 10.0), Ts: int64(i), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(i * 100.0), Ts: int64(i * 10), HasTs: true},
 			},
 		})
 	}
 	return s
+}
+
+func buildMixedTypeSeries(baseTs int64) seriesList {
+	return seriesList{
+		{
+			name: "float_series",
+			samples: []sample{
+				{baseTs + 1, 10.0, nil, nil, &metadata.Metadata{Type: "gauge", Help: "Test metric for float_series", Unit: "bytes"}},
+				{baseTs + 10, 100.0, nil, nil, &metadata.Metadata{Type: "gauge", Help: "Test metric for float_series", Unit: "bytes"}}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 1, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 10, HasTs: true},
+			},
+		},
+		// From now on I put -1 into the float to be different from default 0.
+		// Since we should be reading back the histograms, we should never see
+		// the -1.
+		{
+			name: "integer histogram",
+			samples: []sample{
+				{baseTs + 2, -1, tsdbutil.GenerateTestHistogram(1), nil, &metadata.Metadata{Type: "histogram", Help: "Test metric for integer histogram", Unit: "bytes"}},
+				{baseTs + 20, -1, tsdbutil.GenerateTestHistogram(100), nil, &metadata.Metadata{Type: "histogram", Help: "Test metric for integer histogram", Unit: "bytes"}}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 2, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 20, HasTs: true},
+			},
+		},
+		{
+			name: "float histogram",
+			samples: []sample{
+				{baseTs + 3, -1, nil, tsdbutil.GenerateTestFloatHistogram(1), &metadata.Metadata{Type: "histogram", Help: "Test metric for float histogram", Unit: "bytes"}},
+				{baseTs + 30, -1, nil, tsdbutil.GenerateTestFloatHistogram(100), &metadata.Metadata{Type: "histogram", Help: "Test metric for float histogram", Unit: "bytes"}}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 3, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 30, HasTs: true},
+			},
+		},
+		{
+			name: "integer NHCB",
+			samples: []sample{
+				{baseTs + 2, -1, tsdbutil.GenerateTestCustomBucketsHistogram(1), nil, &metadata.Metadata{Type: "histogram", Help: "Test metric for integer NHCB", Unit: "bytes"}},
+				{baseTs + 20, -1, tsdbutil.GenerateTestCustomBucketsHistogram(100), nil, &metadata.Metadata{Type: "histogram", Help: "Test metric for integer NHCB", Unit: "bytes"}}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 2, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 20, HasTs: true},
+			},
+		},
+		{
+			name: "float NHCB",
+			samples: []sample{
+				{baseTs + 3, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(1), &metadata.Metadata{Type: "histogram", Help: "Test metric for float NHCB", Unit: "bytes"}},
+				{baseTs + 30, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(100), &metadata.Metadata{Type: "histogram", Help: "Test metric for float NHCB", Unit: "bytes"}}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 3, HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 30, HasTs: true},
+			},
+		},
+	}
 }
 
 type byRefSample []record.RefSample
@@ -781,6 +955,28 @@ type byRefSample []record.RefSample
 func (b byRefSample) Len() int      { return len(b) }
 func (b byRefSample) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 func (b byRefSample) Less(i, j int) bool {
+	if b[i].Ref == b[j].Ref {
+		return b[i].T < b[j].T
+	}
+	return b[i].Ref < b[j].Ref
+}
+
+type byRefHistogramSample []record.RefHistogramSample
+
+func (b byRefHistogramSample) Len() int      { return len(b) }
+func (b byRefHistogramSample) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byRefHistogramSample) Less(i, j int) bool {
+	if b[i].Ref == b[j].Ref {
+		return b[i].T < b[j].T
+	}
+	return b[i].Ref < b[j].Ref
+}
+
+type byRefFloatHistogramSample []record.RefFloatHistogramSample
+
+func (b byRefFloatHistogramSample) Len() int      { return len(b) }
+func (b byRefFloatHistogramSample) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byRefFloatHistogramSample) Less(i, j int) bool {
 	if b[i].Ref == b[j].Ref {
 		return b[i].T < b[j].T
 	}

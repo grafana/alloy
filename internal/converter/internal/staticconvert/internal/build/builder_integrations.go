@@ -6,6 +6,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	prom_config "github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component"
@@ -175,7 +176,7 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 
 	// NOTE: We use the default value, since Agent static mode doesn't support setting this.
 	scrapeConfig.ScrapeProtocols = prom_config.DefaultScrapeProtocols
-	scrapeConfig.MetricNameValidationScheme = prom_config.UTF8ValidationConfig
+	scrapeConfig.MetricNameValidationScheme = model.LegacyValidation
 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 
@@ -286,7 +287,7 @@ func (b *ConfigBuilder) appendV2Integrations() {
 func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, name string, extraTargets []discovery.Target) {
 	var relabelConfigs []*relabel.Config
 
-	for _, extraLabel := range commonConfig.ExtraLabels {
+	commonConfig.ExtraLabels.Range(func(extraLabel labels.Label) {
 		defaultConfig := relabel.DefaultRelabelConfig
 		relabelConfig := &defaultConfig
 		relabelConfig.SourceLabels = []model.LabelName{"__address__"}
@@ -294,7 +295,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 		relabelConfig.Replacement = extraLabel.Value
 
 		relabelConfigs = append(relabelConfigs, relabelConfig)
-	}
+	})
 
 	if commonConfig.InstanceKey != nil {
 		defaultConfig := relabel.DefaultRelabelConfig
@@ -318,7 +319,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	scrapeConfig.ScrapeTimeout = commonConfig.Autoscrape.ScrapeTimeout
 	// NOTE: We use the default value, since Agent static mode doesn't support setting this.
 	scrapeConfig.ScrapeProtocols = prom_config.DefaultScrapeProtocols
-	scrapeConfig.MetricNameValidationScheme = prom_config.UTF8ValidationConfig
+	scrapeConfig.MetricNameValidationScheme = model.UTF8Validation
 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 

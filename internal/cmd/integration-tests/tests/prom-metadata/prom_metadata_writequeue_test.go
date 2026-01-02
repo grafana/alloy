@@ -26,8 +26,8 @@ func TestPromMetadataWriteQueue(t *testing.T) {
 
 	// Make sure we got the expected metrics before checking metadata
 	common.MimirMetricsTest(t, metadataTestMetrics, metadataTestHistogram, testName)
-	expectedMetadata := make(map[string]common.Metadata, len(common.PromDefaultMetricMetadata)+len(common.PromDefaultNativeHistogramMetadata))
-	for k, v := range common.PromDefaultMetricMetadata {
+	expectedMetadata := make(map[string]common.Metadata, len(common.WriteQueueDefaultMetricMetadata)+len(common.PromDefaultNativeHistogramMetadata))
+	for k, v := range common.WriteQueueDefaultMetricMetadata {
 		expectedMetadata[toTestMetric(k)] = v
 	}
 	for k, v := range common.PromDefaultNativeHistogramMetadata {

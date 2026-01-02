@@ -15,14 +15,14 @@ jobs:
   build_linux:
     name: Build on Linux
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
+    container: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
     strategy:
       matrix:
         os: [linux]
         arch: [amd64, arm64, ppc64le, s390x]
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set ownership
@@ -42,14 +42,14 @@ jobs:
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.22-boringcrypto@sha256:a6fa44bb736498737c17aaeada5d237572be1af9f24849ab3b557692b46be57e
+    container: grafana/alloy-build-image:v0.1.25-boringcrypto@sha256:31052c9ec5b8bfeec927984955541629882eb8c6518ff9106fb484e9b711875c
     strategy:
       matrix:
         os: [linux]
         arch: [amd64, arm64]
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set ownership
@@ -71,7 +71,7 @@ jobs:
     runs-on: macos-14-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set up Go
@@ -88,7 +88,7 @@ jobs:
     runs-on: macos-14-xlarge
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set up Go
@@ -105,7 +105,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         persist-credentials: false
     - name: Set up Go
@@ -123,10 +123,10 @@ jobs:
   build_freebsd:
     name: Build on FreeBSD (AMD64)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
+    container: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
           persist-credentials: false
     - name: Set ownership

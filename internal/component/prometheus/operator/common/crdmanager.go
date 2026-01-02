@@ -145,9 +145,12 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// Start prometheus scrape manager.
-	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls, prometheus.NoopMetadataStore{})
-	opts := &scrape.Options{}
-	c.scrapeManager, err = scrape.NewManager(opts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
+	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
+
+	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
+	// TODO: Expose EnableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
+	// TODO: Expose AppendMetadata: https://github.com/grafana/alloy/issues/5036
+	c.scrapeManager, err = scrape.NewManager(&scrape.Options{}, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}

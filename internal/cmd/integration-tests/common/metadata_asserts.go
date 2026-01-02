@@ -10,19 +10,36 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// Default metrics metadata
+// Default metrics metadata that the prometheus.write_queue component creates in Mimir.
+// For some reason it causes _bucket, _count, and _sum metrics to be visible on Mimir's /metadata endpoint.
+// This is not normal. When Prometheus or Alloy's prometheus.remote_write components send metrics to Mimir,
+// only the metric family is visible on Mimir's /metadata endpoint.
+// TODO: Look into why the write_queue components causes Mimir to behave this way.
+var WriteQueueDefaultMetricMetadata = map[string]Metadata{
+	"golang_counter":                {Type: "counter", Help: "The counter description string"},
+	"golang_gauge":                  {Type: "gauge", Help: "The gauge description string"},
+	"golang_histogram_bucket":       {Type: "histogram", Help: "The histogram description string"},
+	"golang_histogram_count":        {Type: "histogram", Help: "The histogram description string"},
+	"golang_histogram_sum":          {Type: "histogram", Help: "The histogram description string"},
+	"golang_mixed_histogram_bucket": {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_mixed_histogram_count":  {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_mixed_histogram_sum":    {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_summary":                {Type: "summary", Help: "The summary description string"},
+}
+
+// Default metrics metadata that the prometheus.remote_write and otelcol.exporter.otlphttp components create in Mimir.
 var PromDefaultMetricMetadata = map[string]Metadata{
-	"golang_counter":          {Type: "counter"},
-	"golang_gauge":            {Type: "gauge"},
-	"golang_histogram_bucket": {Type: "histogram"},
-	"golang_histogram_count":  {Type: "histogram"},
-	"golang_histogram_sum":    {Type: "histogram"},
-	"golang_summary":          {Type: "summary"},
+	"golang_counter":         {Type: "counter", Help: "The counter description string"},
+	"golang_gauge":           {Type: "gauge", Help: "The gauge description string"},
+	"golang_histogram":       {Type: "histogram", Help: "The histogram description string"},
+	"golang_mixed_histogram": {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_summary":         {Type: "summary", Help: "The summary description string"},
 }
 
 // Default native histogram metadata
 var PromDefaultNativeHistogramMetadata = map[string]Metadata{
-	"golang_native_histogram": {Type: "histogram"},
+	"golang_native_histogram": {Type: "histogram", Help: "The native_histogram description string"},
+	"golang_mixed_histogram":  {Type: "histogram", Help: "The mixed_histogram description string"},
 }
 
 func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
@@ -78,6 +95,6 @@ func MetadataQuery() string {
 func GetMetadata() (MetadataResponse, error) {
 	var metadataResponse MetadataResponse
 	query := MetadataQuery()
-	err := FetchDataFromURL(query, &metadataResponse)
+	_, err := FetchDataFromURL(query, &metadataResponse)
 	return metadataResponse, err
 }

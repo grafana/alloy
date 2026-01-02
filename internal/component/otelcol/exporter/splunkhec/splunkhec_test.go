@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/confighttp"
-	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
@@ -42,7 +41,7 @@ func TestConfigConversion(t *testing.T) {
 			ReadBufferSize:       0,
 			WriteBufferSize:      0,
 			Timeout:              10000000000,
-			Headers:              map[string]configopaque.String(nil),
+			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
 			MaxIdleConns:         100,
@@ -53,6 +52,7 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              confighttp.CookiesConfig{},
+			ForceAttemptHTTP2:    true,
 		},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
@@ -130,7 +130,7 @@ func TestConfigConversion(t *testing.T) {
 			}, ReadBufferSize: 0,
 			WriteBufferSize:      0,
 			Timeout:              15000000000,
-			Headers:              map[string]configopaque.String(nil),
+			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
 			MaxIdleConns:         100,
@@ -140,6 +140,7 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
+			ForceAttemptHTTP2:    true,
 			Cookies:              confighttp.CookiesConfig{}},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
@@ -147,6 +148,7 @@ func TestConfigConversion(t *testing.T) {
 			QueueSize:    1000,
 			StorageID:    (nil),
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
+			Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,

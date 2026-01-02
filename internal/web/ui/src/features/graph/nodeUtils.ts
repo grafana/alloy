@@ -1,4 +1,4 @@
-import { ComponentInfo } from '../component/types';
+import type { ComponentInfo } from '../component/types';
 
 const AVERAGE_CHAR_WIDTH = 7.5;
 const PADDING = 30;

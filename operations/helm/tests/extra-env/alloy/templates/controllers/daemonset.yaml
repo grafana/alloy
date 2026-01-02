@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.11.3
+          image: docker.io/grafana/alloy:v1.12.1
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -44,14 +44,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            -
-              name: GREETING
+            - name: GREETING
               value: Warm greetings to
-            -
-              name: HONORIFIC
+            - name: HONORIFIC
               value: The Most Honorable
-            -
-              name: NAME
+            - name: NAME
               value: Kubernetes
           ports:
             - containerPort: 12345

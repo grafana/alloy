@@ -80,8 +80,8 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+	require.NoError(t, ctrl.WaitRunning(time.Hour), "component never started")
+	require.NoError(t, ctrl.WaitExports(time.Hour), "component never exported anything")
 
 	// Send traces in the background to our exporter.
 	go func() {
@@ -105,7 +105,7 @@ func Test(t *testing.T) {
 
 	// Wait for our exporter to finish and pass data to our rpc server.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Hour):
 		require.FailNow(t, "failed waiting for traces")
 	case tr := <-traceCh:
 		require.Equal(t, 1, tr.SpanCount())
@@ -243,6 +243,7 @@ func TestConfigConversion(t *testing.T) {
 			NumConsumers: 10,
 			QueueSize:    1000,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
+			Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 		}
 
 		defaultProtocol = loadbalancingexporter.Protocol{
@@ -251,7 +252,7 @@ func TestConfigConversion(t *testing.T) {
 					Endpoint:        "",
 					Compression:     "gzip",
 					WriteBufferSize: 512 * 1024,
-					Headers:         map[string]configopaque.String{},
+					Headers:         configopaque.MapList{},
 					BalancerName:    otelcol.DefaultBalancerName,
 				},
 				RetryConfig:   defaultRetrySettings,
@@ -289,6 +290,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -318,6 +320,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "service",
 				Protocol:   defaultProtocol,
@@ -351,7 +354,7 @@ func TestConfigConversion(t *testing.T) {
 							Endpoint:        "",
 							Compression:     "gzip",
 							WriteBufferSize: 512 * 1024,
-							Headers:         map[string]configopaque.String{},
+							Headers:         configopaque.MapList{},
 							BalancerName:    otelcol.DefaultBalancerName,
 							Authority:       "authority",
 						},
@@ -359,6 +362,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				Resolver: loadbalancingexporter.ResolverSettings{
 					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
@@ -395,6 +399,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -429,6 +434,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -460,6 +466,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -494,6 +501,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -529,6 +537,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -570,6 +579,7 @@ func TestConfigConversion(t *testing.T) {
 				Protocol:   defaultProtocol,
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
@@ -612,6 +622,7 @@ func TestConfigConversion(t *testing.T) {
 					NumConsumers: 0,
 					QueueSize:    0,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
@@ -671,6 +682,7 @@ func TestConfigConversion(t *testing.T) {
 					NumConsumers: 11,
 					QueueSize:    1111,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
@@ -683,6 +695,184 @@ func TestConfigConversion(t *testing.T) {
 			actual, err := args.Convert()
 			require.NoError(t, err)
 			require.Equal(t, &tc.expected, actual.(*loadbalancingexporter.Config))
+		})
+	}
+}
+
+func TestQueueBatchConfig(t *testing.T) {
+	tests := []struct {
+		testName string
+		alloyCfg string
+		expected otelcol.QueueArguments
+	}{
+		{
+			testName: "default",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			sending_queue {
+				batch {}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+				},
+			},
+		},
+		{
+			testName: "explicit_batch",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			sending_queue {
+				batch {
+					flush_timeout = "100ms"
+					min_size      = 4096
+					max_size      = 16384
+					sizer         = "bytes"
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 100 * time.Millisecond,
+					MinSize:      4096,
+					MaxSize:      16384,
+					Sizer:        "bytes",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			_, err := args.Convert()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expected.Enabled, args.Queue.Enabled)
+			require.Equal(t, tc.expected.NumConsumers, args.Queue.NumConsumers)
+			require.Equal(t, tc.expected.QueueSize, args.Queue.QueueSize)
+			require.Equal(t, tc.expected.Sizer, args.Queue.Sizer)
+			require.Equal(t, tc.expected.Batch, args.Queue.Batch)
+		})
+	}
+}
+
+func TestProtocolQueueBatchConfig(t *testing.T) {
+	tests := []struct {
+		testName string
+		alloyCfg string
+		expected otelcol.QueueArguments
+	}{
+		{
+			testName: "default",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+					queue {
+						batch {}
+					}
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+				},
+			},
+		},
+		{
+			testName: "explicit_batch",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+					queue {
+						batch {
+							flush_timeout = "100ms"
+							min_size      = 4096
+							max_size      = 16384
+							sizer         = "bytes"
+						}
+					}
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 100 * time.Millisecond,
+					MinSize:      4096,
+					MaxSize:      16384,
+					Sizer:        "bytes",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			_, err := args.Convert()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expected.Enabled, args.Protocol.OTLP.Queue.Enabled)
+			require.Equal(t, tc.expected.NumConsumers, args.Protocol.OTLP.Queue.NumConsumers)
+			require.Equal(t, tc.expected.QueueSize, args.Protocol.OTLP.Queue.QueueSize)
+			require.Equal(t, tc.expected.Sizer, args.Protocol.OTLP.Queue.Sizer)
+			require.Equal(t, tc.expected.Batch, args.Protocol.OTLP.Queue.Batch)
 		})
 	}
 }

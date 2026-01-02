@@ -1,6 +1,8 @@
 package wal
 
 import (
+	"log/slog"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -65,7 +67,7 @@ func (r walReplayer) Replay(dir string) error {
 }
 
 func (r walReplayer) replayWAL(reader *wlog.Reader) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
 	for reader.Next() {
 		rec := reader.Record()
@@ -82,12 +84,30 @@ func (r walReplayer) replayWAL(reader *wlog.Reader) error {
 				return err
 			}
 			r.w.Append(samples)
+		case record.HistogramSamples, record.CustomBucketsHistogramSamples:
+			samples, err := dec.HistogramSamples(rec, nil)
+			if err != nil {
+				return err
+			}
+			r.w.AppendHistograms(samples)
+		case record.FloatHistogramSamples, record.CustomBucketsFloatHistogramSamples:
+			samples, err := dec.FloatHistogramSamples(rec, nil)
+			if err != nil {
+				return err
+			}
+			r.w.AppendFloatHistograms(samples)
 		case record.Exemplars:
 			exemplars, err := dec.Exemplars(rec, nil)
 			if err != nil {
 				return err
 			}
 			r.w.AppendExemplars(exemplars)
+		case record.Metadata:
+			metadata, err := dec.Metadata(rec, nil)
+			if err != nil {
+				return err
+			}
+			r.w.StoreMetadata(metadata)
 		}
 	}
 
@@ -101,6 +121,7 @@ type walDataCollector struct {
 	exemplars       []record.RefExemplar
 	histograms      []record.RefHistogramSample
 	floatHistograms []record.RefFloatHistogramSample
+	metadata        []record.RefMetadata
 }
 
 func (c *walDataCollector) AppendExemplars(exemplars []record.RefExemplar) bool {
@@ -146,7 +167,12 @@ func (c *walDataCollector) SeriesReset(_ int) {}
 
 func (*walDataCollector) UpdateSeriesSegment([]record.RefSeries, int) {}
 
-func (c *walDataCollector) StoreMetadata([]record.RefMetadata) {}
+func (c *walDataCollector) StoreMetadata(metadata []record.RefMetadata) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.metadata = append(c.metadata, metadata...)
+}
 
 // SubDirectory returns the subdirectory within a Storage directory used for
 // the Prometheus WAL.

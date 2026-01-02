@@ -23,6 +23,7 @@ import (
 var _ storage.Appendable = (*Fanout)(nil)
 
 // Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
+// It also maintains the responsibility of assigning global ref IDs to a series via the label store.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
@@ -32,7 +33,6 @@ type Fanout struct {
 	writeLatency   prometheus.Histogram
 	samplesCounter prometheus.Counter
 	ls             labelstore.LabelStore
-	metadataStore  UpdateableMetadataStore
 
 	// lastSeriesCount stores the number of series that were sent through the last appender. It helps to estimate how
 	// much memory to allocate for the staleness trackers.
@@ -40,7 +40,7 @@ type Fanout struct {
 }
 
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore, ms UpdateableMetadataStore) *Fanout {
+func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "prometheus_fanout_latency",
 		Help:    "Write latency for sending to direct and indirect components",
@@ -60,7 +60,6 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 		writeLatency:   wl,
 		samplesCounter: s,
 		ls:             ls,
-		metadataStore:  ms,
 	}
 }
 
@@ -76,20 +75,24 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 
-	// TODO(@tpaschalis): The `otelcol.receiver.prometheus` component reuses
-	// code from the prometheusreceiver which expects the Appender context to
-	// contain both a scrape target and a metadata store, and fails the
-	// conversion if they are missing. We should find a way around this as both
-	// Targets and Metadata will be handled in a different way in Alloy.
-	// TODO(@ptodev): Can we instead use the more recent translator package:
-	// https://github.com/prometheus/otlptranslator
-	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
-		labels.EmptyLabels(),
-		&config.DefaultScrapeConfig,
-		model.LabelSet{},
-		model.LabelSet{},
-	))
-	ctx = scrape.ContextWithMetricMetadataStore(ctx, f.metadataStore)
+	// We should only change the context if
+	// it already doesn't have a target or metadata store.
+	// It will have these if the scrape loop was started
+	// with the PassMetadataInContext option set to true.
+	t, ok := scrape.TargetFromContext(ctx)
+	if !ok || t == nil {
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+	}
+
+	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
+	if !ok || s == nil {
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
+	}
 
 	app := &appender{
 		children:          make([]storage.Appender, 0),
@@ -213,12 +216,6 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m meta
 	}
 	if ref == 0 {
 		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
-	}
-
-	// Store metadata in our local store
-	familyName := l.Get(model.MetricNameLabel)
-	if familyName != "" {
-		a.fanout.metadataStore.UpdateMetadata(familyName, m)
 	}
 
 	var multiErr error

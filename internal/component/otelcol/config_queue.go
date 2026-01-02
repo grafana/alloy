@@ -84,16 +84,14 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 	if err != nil {
 		return nil, err
 	}
-
-	q := &otelexporterhelper.QueueBatchConfig{
-		Enabled:         args.Enabled,
-		NumConsumers:    args.NumConsumers,
-		QueueSize:       args.QueueSize,
-		BlockOnOverflow: args.BlockOnOverflow,
-		Sizer:           *sizer,
-		WaitForResult:   args.WaitForResult,
-		Batch:           batch,
-	}
+	q := otelexporterhelper.NewDefaultQueueConfig()
+	q.Enabled = args.Enabled
+	q.NumConsumers = args.NumConsumers
+	q.QueueSize = args.QueueSize
+	q.BlockOnOverflow = args.BlockOnOverflow
+	q.Sizer = *sizer
+	q.WaitForResult = args.WaitForResult
+	q.Batch = batch
 
 	// Configure storage if args.Storage is set.
 	if args.Storage != nil {
@@ -104,7 +102,7 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 		q.StorageID = &args.Storage.ID
 	}
 
-	return q, nil
+	return &q, nil
 }
 
 // Validate returns an error if args is invalid.
@@ -155,6 +153,20 @@ type BatchConfig struct {
 	Sizer        string        `alloy:"sizer,attr,optional"`
 }
 
+var _ syntax.Defaulter = (*BatchConfig)(nil)
+
+var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
+
+// SetToDefault implements syntax.Defaulter.
+func (args *BatchConfig) SetToDefault() {
+	*args = BatchConfig{
+		FlushTimeout: 200 * time.Millisecond,
+		MinSize:      2000,
+		MaxSize:      3000,
+		Sizer:        "items",
+	}
+}
+
 // Validate returns an error if args is invalid.
 func (args *BatchConfig) Validate() error {
 	if args == nil {
@@ -187,7 +199,7 @@ func (args *BatchConfig) Validate() error {
 
 func (args *BatchConfig) Convert() (configoptional.Optional[otelexporterhelper.BatchConfig], error) {
 	if args == nil {
-		return configoptional.None[otelexporterhelper.BatchConfig](), nil
+		return defaultBatchConfig, nil
 	}
 
 	sizer, err := convertSizer(args.Sizer)

@@ -11,7 +11,7 @@ import (
 	_ "github.com/grafana/alloy/internal/static/metrics/instance" // Imported to override default values via the init function.
 )
 
-// Set this flag to update snapshots e.g. `go test -v ./interal/converter/internal/promtailconverter/...` -fix-tests
+// Set this flag to update snapshots e.g. `go test -v ./internal/converter/internal/promtailconvert/... -fix-tests`
 var fixTestsFlag = flag.Bool("fix-tests", false, "update the test files with the current generated content")
 
 func TestConvert(t *testing.T) {

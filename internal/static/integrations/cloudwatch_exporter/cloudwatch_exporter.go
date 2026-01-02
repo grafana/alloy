@@ -72,6 +72,11 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 		defer e.cachingClientFactory.Clear()
 
 		reg := prometheus.NewRegistry()
+		for _, metric := range yace.Metrics {
+			if err := reg.Register(metric); err != nil {
+				e.logger.Debug("Could not register cloudwatch api metric")
+			}
+		}
 		err := yace.UpdateMetrics(
 			context.Background(),
 			e.logger,

@@ -1,13 +1,14 @@
 package component
 
 import (
+	prom_kubernetes "github.com/prometheus/prometheus/discovery/kubernetes"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/discovery/kubernetes"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
-	prom_kubernetes "github.com/prometheus/prometheus/discovery/kubernetes"
 )
 
 func appendDiscoveryKubernetes(pb *build.PrometheusBlocks, label string, sdConfig *prom_kubernetes.SDConfig) discovery.Exports {
@@ -61,6 +62,7 @@ func toSelectorConfig(selectors []prom_kubernetes.SelectorConfig) []kubernetes.S
 
 func toAttachMetadata(amConfig *prom_kubernetes.AttachMetadataConfig) kubernetes.AttachMetadataConfig {
 	return kubernetes.AttachMetadataConfig{
-		Node: amConfig.Node,
+		Node:      amConfig.Node,
+		Namespace: amConfig.Namespace,
 	}
 }

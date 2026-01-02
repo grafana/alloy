@@ -3,14 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 ---
 
 # `database_observability.mysql`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
@@ -37,14 +37,15 @@ You can use the following arguments with `database_observability.mysql`:
 
 The following collectors are configurable:
 
-| Name              | Description                                              | Enabled by default |
-|-------------------|----------------------------------------------------------|--------------------|
-| `query_details`   | Collect queries information.                             | yes                |
-| `schema_details`  | Collect schemas and tables from `information_schema`.    | yes                |
-| `query_samples`   | Collect query samples.                                   | yes                |
-| `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.    | yes                |
-| `locks`           | Collect queries that are waiting/blocking other queries. | no                 |
-| `explain_plans`   | Collect explain plans information.                       | no                 |
+| Name              | Description                                                  | Enabled by default |
+|-------------------|--------------------------------------------------------------|--------------------|
+| `query_details`   | Collect queries information.                                 | yes                |
+| `schema_details`  | Collect schemas and tables from `information_schema`.        | yes                |
+| `query_samples`   | Collect query samples.                                       | yes                |
+| `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.        | yes                |
+| `setup_actors`    | Check and update `performance_schema.setup_actors` settings. | yes                |
+| `locks`           | Collect queries that are waiting/blocking other queries.     | no                 |
+| `explain_plans`   | Collect explain plans information.                           | yes                |
 
 ## Blocks
 
@@ -55,6 +56,7 @@ You can use the following blocks with `database_observability.mysql`:
 | [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
 | `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | [`setup_consumers`][setup_consumers] | Configure the `setup_consumers` collector.        | no       |
+| [`setup_actors`][setup_actors]       | Configure the `setup_actors` collector.           | no       |
 | [`query_details`][query_details]     | Configure the queries collector.                  | no       |
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]     | Configure the explain plans collector.            | no       |
@@ -72,6 +74,7 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [explain_plans]: #explain_plans
 [locks]: #locks
 [query_samples]: #query_samples
+[setup_actors]: #setup_actors
 
 ### `cloud_provider`
 
@@ -130,10 +133,18 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 | Name                             | Type       | Description                                                                    | Default | Required |
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
-| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"1m"`  | no       |
+| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
 | `auto_enable_setup_consumers`    | `boolean`  | Whether to enable some specific `performance_schema.setup_consumers` settings. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
+
+### `setup_actors`
+
+| Name                       | Type       | Description                                                            | Default | Required |
+| -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
+| `auto_update_setup_actors` | `boolean`  | Whether to enable updating `performance_schema.setup_actors` settings. | `false` | no       |
+| `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
+
 
 ## Example
 

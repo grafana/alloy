@@ -318,19 +318,23 @@ func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
 func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 	res := make([]*relabel.Config, len(rcs))
 	for i, rc := range rcs {
-		sourceLabels := make([]model.LabelName, len(rc.SourceLabels))
-		for i, sl := range rc.SourceLabels {
-			sourceLabels[i] = model.LabelName(sl)
+		var sourceLabels []model.LabelName
+		if len(rc.SourceLabels) > 0 {
+			sourceLabels = make([]model.LabelName, len(rc.SourceLabels))
+			for i, sl := range rc.SourceLabels {
+				sourceLabels[i] = model.LabelName(sl)
+			}
 		}
 
 		res[i] = &relabel.Config{
-			SourceLabels: sourceLabels,
-			Separator:    rc.Separator,
-			Modulus:      rc.Modulus,
-			TargetLabel:  rc.TargetLabel,
-			Replacement:  rc.Replacement,
-			Action:       relabel.Action(rc.Action),
-			Regex:        relabel.Regexp{Regexp: rc.Regex.Regexp},
+			SourceLabels:         sourceLabels,
+			Separator:            rc.Separator,
+			Modulus:              rc.Modulus,
+			TargetLabel:          rc.TargetLabel,
+			Replacement:          rc.Replacement,
+			Action:               relabel.Action(rc.Action),
+			Regex:                relabel.Regexp{Regexp: rc.Regex.Regexp},
+			NameValidationScheme: model.LegacyValidation,
 		}
 	}
 

@@ -9,14 +9,15 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"iter"
 	"net"
 	"os"
+	"regexp"
+	"slices"
+	"sort"
 	"testing"
 	"time"
 	"unicode/utf8"
-
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 
 	"github.com/go-kit/log"
 	"github.com/leodido/go-syslog/v4"
@@ -26,7 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 )
 
 var (
@@ -310,12 +313,12 @@ func Benchmark_SyslogTarget(b *testing.B) {
 		{"tcp", ProtocolTCP, fmtOctetCounting},
 		{"udp", ProtocolUDP, fmtOctetCounting},
 	} {
-		tt := tt
 		b.Run(tt.name, func(b *testing.B) {
-			client := fake.NewClient(func() {})
+			handler := loki.NewCollectingHandler()
+			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
-			tgt, _ := NewSyslogTarget(metrics, log.NewNopLogger(), client, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+			tgt, _ := NewSyslogTarget(metrics, log.NewNopLogger(), handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
 				ListenAddress:       "127.0.0.1:0",
 				ListenProtocol:      tt.protocol,
 				LabelStructuredData: true,
@@ -353,8 +356,8 @@ func Benchmark_SyslogTarget(b *testing.B) {
 			c.Close()
 
 			require.Eventuallyf(b, func() bool {
-				return len(client.Received()) == len(messages)*b.N
-			}, 15*time.Second, time.Second, "expected: %d got:%d", len(messages)*b.N, len(client.Received()))
+				return len(handler.Received()) == len(messages)*b.N
+			}, 15*time.Second, time.Second, "expected: %d got:%d", len(messages)*b.N, len(handler.Received()))
 		})
 	}
 }
@@ -370,14 +373,14 @@ func TestSyslogTarget(t *testing.T) {
 		{"udp newline separated", ProtocolUDP, fmtNewline},
 		{"udp octetcounting", ProtocolUDP, fmtOctetCounting},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			w := log.NewSyncWriter(os.Stderr)
 			logger := log.NewLogfmtLogger(w)
-			client := fake.NewClient(func() {})
+			handler := loki.NewCollectingHandler()
+			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
-			tgt, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+			tgt, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 				MaxMessageLength:    1 << 12, // explicitly not use default value
 				ListenAddress:       "127.0.0.1:0",
 				ListenProtocol:      tt.protocol,
@@ -414,11 +417,11 @@ func TestSyslogTarget(t *testing.T) {
 			}
 
 			require.Eventuallyf(t, func() bool {
-				return len(client.Received()) == len(messages)
+				return len(handler.Received()) == len(messages)
 			}, time.Second, 10*time.Millisecond, "Expected to receive %d messages.", len(messages))
 
 			labels := make([]model.LabelSet, 0, len(messages))
-			for _, entry := range client.Received() {
+			for _, entry := range handler.Received() {
 				labels = append(labels, entry.Labels)
 			}
 			// we only check if one of the received entries contain the wanted label set
@@ -434,9 +437,9 @@ func TestSyslogTarget(t *testing.T) {
 
 				"sd_custom_exkey": "1",
 			})
-			require.Equal(t, "An application event log entry...", client.Received()[0].Line)
+			require.Equal(t, "An application event log entry...", handler.Received()[0].Line)
 
-			require.NotZero(t, client.Received()[0].Timestamp)
+			require.NotZero(t, handler.Received()[0].Timestamp)
 		})
 	}
 }
@@ -463,6 +466,11 @@ func relabelConfig(t *testing.T) []*relabel.Config {
 	err := yaml.Unmarshal([]byte(relabelCfg), &relabels)
 	require.NoError(t, err)
 
+	// Set the validation scheme for all relabel configs
+	for _, cfg := range relabels {
+		cfg.NameValidationScheme = model.LegacyValidation
+	}
+
 	return relabels
 }
 
@@ -485,14 +493,14 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 		{"tcp newline separated", ProtocolTCP, fmtNewline},
 		{"tcp octetcounting", ProtocolTCP, fmtOctetCounting},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			w := log.NewSyncWriter(os.Stderr)
 			logger := log.NewLogfmtLogger(w)
-			client := fake.NewClient(func() {})
+			handler := loki.NewCollectingHandler()
+			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
-			tgt, err := NewSyslogTarget(metrics, logger, client, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+			tgt, err := NewSyslogTarget(metrics, logger, handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
 				ListenAddress:       "127.0.0.1:0",
 				ListenProtocol:      tt.protocol,
 				LabelStructuredData: true,
@@ -522,18 +530,116 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 			require.NoError(t, c.Close())
 
 			require.Eventuallyf(t, func() bool {
-				return len(client.Received()) == len(messages)
-			}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(client.Received()))
+				return len(handler.Received()) == len(messages)
+			}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
 
 			for i := range messages {
 				require.Equal(t, model.LabelSet{
 					"test": "syslog_target",
-				}, client.Received()[i].Labels)
-				require.Contains(t, messages, client.Received()[i].Line)
-				require.NotZero(t, client.Received()[i].Timestamp)
+				}, handler.Received()[i].Labels)
+				require.Contains(t, messages, handler.Received()[i].Line)
+				require.NotZero(t, handler.Received()[i].Timestamp)
 			}
 		})
 	}
+}
+
+const layout = "Jan 02 15:04:05"
+
+var reCefDate = regexp.MustCompile(`(Dec \d{2} \d{2}:\d{2}:\d{2})`)
+
+type cefLogLine struct {
+	date time.Time
+	msg  string
+}
+
+func iterLokiLines(entries []loki.Entry) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for _, entry := range entries {
+			yield(entry.Line)
+		}
+	}
+}
+
+func parseCefLogLines(t *testing.T, lines iter.Seq[string]) []cefLogLine {
+	year := time.Now().Year()
+	out := []cefLogLine{}
+	for line := range lines {
+		matches := reCefDate.FindStringSubmatch(line)
+		if len(matches) != 2 {
+			t.Fatalf("no date in CEF log line: %s", line)
+			return nil
+		}
+
+		dt, err := time.Parse(layout, matches[1])
+		if err != nil {
+			t.Fatalf("failed to parse CEF log line: %s", line)
+		}
+
+		dt = dt.AddDate(year, 0, 0)
+		out = append(out, cefLogLine{
+			date: dt,
+			msg:  line,
+		})
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].date.Before(out[j].date)
+	})
+
+	return out
+}
+
+func TestSyslogTarget_CEFRawMessages(t *testing.T) {
+	messages := []string{
+		`Dec 17 12:23:16 Dream-Router CEF:0|Ubiquiti`,
+		`Dec 17 12:23:17 Dream-Router [LAN_LOCAL-RET-2147483647] DESCR="no rule description"`,
+		`Dec 17 12:23:18 Dream-Router CEF:0|Ubiquiti|UniFi Network`,
+	}
+
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(metrics, logger, handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+		ListenAddress:       "127.0.0.1:0",
+		ListenProtocol:      "udp",
+		LabelStructuredData: true,
+		SyslogFormat:        scrapeconfig.SyslogFormatRaw,
+		RawFormatOptions: scrapeconfig.RawFormatOptions{
+			UseNullTerminatorDelimiter: false,
+		},
+		Labels: model.LabelSet{
+			"test": "syslog_target",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+
+	addr := tgt.ListenAddress().String()
+	c, err := net.Dial("udp", addr)
+	require.NoError(t, err)
+
+	err = writeMessagesToStream(c, messages, fmtNewline)
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	time.Sleep(time.Second)
+	require.NoError(t, tgt.Stop())
+
+	require.Eventuallyf(t, func() bool {
+		return len(handler.Received()) == len(messages)
+	}, time.Second, 10*time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
+
+	// Sort received messages as UDP doesn't guarantee order of messages.
+	// Also we don't care about labels as they're not parsed in the raw mode.
+	wantLines := parseCefLogLines(t, slices.Values(messages))
+	gotLines := parseCefLogLines(t, iterLokiLines(handler.Received()))
+
+	require.Equal(t, wantLines, gotLines, "log lines did not match")
 }
 
 func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
@@ -544,14 +650,14 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 		{"rfc3164 unset year behavior", false},
 		{"rfc3164 current year behavior", true},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			w := log.NewSyncWriter(os.Stderr)
 			logger := log.NewLogfmtLogger(w)
-			client := fake.NewClient(func() {})
+			handler := loki.NewCollectingHandler()
+			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
-			tgt, err := NewSyslogTarget(metrics, logger, client, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+			tgt, err := NewSyslogTarget(metrics, logger, handler, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
 				ListenAddress:               "127.0.0.1:0",
 				RFC3164DefaultToCurrentYear: tt.currentYear,
 				UseIncomingTimestamp:        true,
@@ -579,8 +685,8 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 			require.NoError(t, c.Close())
 
 			require.Eventuallyf(t, func() bool {
-				return len(client.Received()) == len(messages)
-			}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(client.Received()))
+				return len(handler.Received()) == len(messages)
+			}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
 
 			expectedLines := []string{
 				"An application event log entry...",
@@ -589,12 +695,12 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 			for i := range messages {
 				require.Equal(t, model.LabelSet{
 					"test": "syslog_target",
-				}, client.Received()[i].Labels)
-				require.Contains(t, expectedLines, client.Received()[i].Line)
+				}, handler.Received()[i].Labels)
+				require.Contains(t, expectedLines, handler.Received()[i].Line)
 				if tt.currentYear {
-					require.Equal(t, time.Now().Year(), client.Received()[i].Timestamp.Year())
+					require.Equal(t, time.Now().Year(), handler.Received()[i].Timestamp.Year())
 				} else {
-					require.Equal(t, 0, client.Received()[i].Timestamp.Year())
+					require.Equal(t, 0, handler.Received()[i].Timestamp.Year())
 				}
 			}
 		})
@@ -604,10 +710,11 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 func TestSyslogTarget_TLSConfigWithoutServerCertificate(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
-	_, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	_, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress: "127.0.0.1:0",
 		TLSConfig: promconfig.TLSConfig{
 			KeyFile: "foo",
@@ -619,10 +726,11 @@ func TestSyslogTarget_TLSConfigWithoutServerCertificate(t *testing.T) {
 func TestSyslogTarget_TLSConfigWithoutServerKey(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
-	_, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	_, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress: "127.0.0.1:0",
 		TLSConfig: promconfig.TLSConfig{
 			CertFile: "foo",
@@ -658,10 +766,11 @@ func testSyslogTargetWithTLS(t *testing.T, fmtFunc formatFunc) {
 
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
-	tgt, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	tgt, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress:       "127.0.0.1:0",
 		LabelStructuredData: true,
 		Labels: model.LabelSet{
@@ -704,8 +813,8 @@ func testSyslogTargetWithTLS(t *testing.T, fmtFunc formatFunc) {
 	require.NoError(t, c.Close())
 
 	require.Eventuallyf(t, func() bool {
-		return len(client.Received()) == len(validMessages)
-	}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(validMessages), len(client.Received()))
+		return len(handler.Received()) == len(validMessages)
+	}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(validMessages), len(handler.Received()))
 
 	require.Equal(t, model.LabelSet{
 		"test": "syslog_target",
@@ -717,10 +826,10 @@ func testSyslogTargetWithTLS(t *testing.T, fmtFunc formatFunc) {
 		"msg_id":   "id1",
 
 		"sd_custom_exkey": "1",
-	}, client.Received()[0].Labels)
-	require.Equal(t, "An application event log entry...", client.Received()[0].Line)
+	}, handler.Received()[0].Labels)
+	require.Equal(t, "An application event log entry...", handler.Received()[0].Line)
 
-	require.NotZero(t, client.Received()[0].Timestamp)
+	require.NotZero(t, handler.Received()[0].Timestamp)
 }
 
 func createTempFile(data []byte) (*os.File, error) {
@@ -790,10 +899,11 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
-	tgt, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	tgt, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress:       "127.0.0.1:0",
 		LabelStructuredData: true,
 		Labels: model.LabelSet{
@@ -845,8 +955,8 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 		require.NoError(t, c.Close())
 
 		require.Eventuallyf(t, func() bool {
-			return len(client.Received()) == len(messages)
-		}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(client.Received()))
+			return len(handler.Received()) == len(messages)
+		}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(handler.Received()))
 
 		require.Equal(t, model.LabelSet{
 			"test": "syslog_target",
@@ -858,20 +968,21 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 			"msg_id":   "id1",
 
 			"sd_custom_exkey": "1",
-		}, client.Received()[0].Labels)
-		require.Equal(t, "An application event log entry...", client.Received()[0].Line)
+		}, handler.Received()[0].Labels)
+		require.Equal(t, "An application event log entry...", handler.Received()[0].Line)
 
-		require.NotZero(t, client.Received()[0].Timestamp)
+		require.NotZero(t, handler.Received()[0].Timestamp)
 	})
 }
 
 func TestSyslogTarget_InvalidData(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 	metrics := NewMetrics(nil)
 
-	tgt, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	tgt, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress: "127.0.0.1:0",
 	})
 	require.NoError(t, err)
@@ -899,10 +1010,11 @@ func TestSyslogTarget_InvalidData(t *testing.T) {
 func TestSyslogTarget_NonUTF8Message(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 	metrics := NewMetrics(nil)
 
-	tgt, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	tgt, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress: "127.0.0.1:0",
 	})
 	require.NoError(t, err)
@@ -927,20 +1039,20 @@ func TestSyslogTarget_NonUTF8Message(t *testing.T) {
 	require.NoError(t, c.Close())
 
 	require.Eventuallyf(t, func() bool {
-		return len(client.Received()) == 2
-	}, time.Second, time.Millisecond, "Expected to receive 2 messages, got %d.", len(client.Received()))
+		return len(handler.Received()) == 2
+	}, time.Second, time.Millisecond, "Expected to receive 2 messages, got %d.", len(handler.Received()))
 
-	require.Equal(t, msg1, client.Received()[0].Line)
-	require.Equal(t, msg2, client.Received()[1].Line)
+	require.Equal(t, msg1, handler.Received()[0].Line)
+	require.Equal(t, msg2, handler.Received()[1].Line)
 }
 
 func TestSyslogTarget_IdleTimeout(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
 	metrics := NewMetrics(nil)
 
-	tgt, err := NewSyslogTarget(metrics, logger, client, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
+	tgt, err := NewSyslogTarget(metrics, logger, handler, relabelConfig(t), &scrapeconfig.SyslogTargetConfig{
 		ListenAddress: "127.0.0.1:0",
 		IdleTimeout:   time.Millisecond,
 	})

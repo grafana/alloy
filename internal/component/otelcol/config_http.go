@@ -30,6 +30,8 @@ type HTTPServerArguments struct {
 	MaxRequestBodySize    units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
 	IncludeMetadata       bool             `alloy:"include_metadata,attr,optional"`
 	CompressionAlgorithms []string         `alloy:"compression_algorithms,attr,optional"`
+
+	KeepAlivesEnabled *bool `alloy:"keep_alives_enabled,attr,optional"`
 }
 
 var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
@@ -63,9 +65,16 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		})
 	}
 
+	// Default true boolean
+	keepAliveEnabled := true
+	if args.KeepAlivesEnabled != nil {
+		keepAliveEnabled = *args.KeepAlivesEnabled
+	}
+
 	return configoptional.Some(otelconfighttp.ServerConfig{
 		Endpoint:              args.Endpoint,
 		TLS:                   args.TLS.Convert(),
+		KeepAlivesEnabled:     keepAliveEnabled,
 		CORS:                  args.CORS.Convert(),
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
@@ -139,6 +148,7 @@ type HTTPClientArguments struct {
 	DisableKeepAlives    bool              `alloy:"disable_keep_alives,attr,optional"`
 	HTTP2ReadIdleTimeout time.Duration     `alloy:"http2_read_idle_timeout,attr,optional"`
 	HTTP2PingTimeout     time.Duration     `alloy:"http2_ping_timeout,attr,optional"`
+	ForceAttemptHTTP2    bool              `alloy:"force_attempt_http2,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
@@ -164,9 +174,9 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		authentication = configoptional.Some(otelconfigauth.Config{AuthenticatorID: ext.ID})
 	}
 
-	opaqueHeaders := make(map[string]configopaque.String)
+	opaqueHeaders := configopaque.MapList{}
 	for headerName, headerVal := range args.Headers {
-		opaqueHeaders[headerName] = configopaque.String(headerVal)
+		opaqueHeaders.Set(headerName, configopaque.String(headerVal))
 	}
 
 	v := otelconfighttp.ClientConfig{
@@ -189,6 +199,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		DisableKeepAlives:    args.DisableKeepAlives,
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
+		ForceAttemptHTTP2:    args.ForceAttemptHTTP2,
 
 		Auth: authentication,
 

@@ -1,0 +1,62 @@
+name: PR Title Lint
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+permissions:
+  pull-requests: read
+  id-token: write
+
+jobs:
+  lint-pr-title:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub app secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Validate PR title 🔎
+        uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825 # v5
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          # Require conventional commit types
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+            proposal
+          # Scope is optional
+          requireScope: false
+          # Disallow uppercase first letter in subject
+          subjectPattern: ^[a-z].+$
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase letter.
+            Example: "feat: add new component" not "feat: Add new component"

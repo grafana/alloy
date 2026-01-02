@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/exp/api/remote"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/storage/remote"
+	promremote "github.com/prometheus/prometheus/storage/remote"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -65,23 +65,30 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls, alloyprom.NoopMetadataStore{})
+	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
-	// TODO: Make these configurable in the future?
-	supportedRemoteWriteProtoMsgs := config.RemoteWriteProtoMsgs{config.RemoteWriteProtoMsgV1}
+	// TODO: Make these configurable in the future:
+	// TODO: Expose ingestCTZeroSample: https://github.com/grafana/alloy/issues/4045
+	// TODO: Expose enableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
+	// TODO: Expose appendMetadata: https://github.com/grafana/alloy/issues/5036
+	supportedRemoteWriteProtoMsgs := remote.MessageTypes{remote.WriteV1MessageType}
 	ingestCTZeroSample := false
+	enableTypeAndUnitLabels := false
+	appendMetadata := false
 
 	c := &Component{
 		opts: opts,
-		handler: remote.NewWriteHandler(
+		handler: promremote.NewWriteHandler(
 			slog.New(logging.NewSlogGoKitHandler(opts.Logger)),
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
 			ingestCTZeroSample,
+			enableTypeAndUnitLabels,
+			appendMetadata,
 		),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,

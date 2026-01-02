@@ -8,7 +8,7 @@ import (
 	"bufio"
 	"compress/bzip2"
 	"compress/gzip"
-	"compress/zlib"
+	"compress/zlib" //TODO(ptodev): Replace this with https://github.com/klauspost/compress
 	"context"
 	"fmt"
 	"io"
@@ -20,16 +20,14 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/ianaindex"
-	"golang.org/x/text/transform"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -47,11 +45,12 @@ type decompressor struct {
 	receiver  loki.LogsReceiver
 	positions positions.Positions
 
-	path      string
-	labels    model.LabelSet
-	labelsStr string
+	key    positions.Entry
+	labels model.LabelSet
 
 	posAndSizeMtx sync.RWMutex
+
+	onPositionsFileError OnPositionsFileError
 
 	running *atomic.Bool
 
@@ -68,46 +67,50 @@ func newDecompressor(
 	metrics *metrics,
 	logger log.Logger,
 	receiver loki.LogsReceiver,
-	positions positions.Positions,
-	path string,
-	labels model.LabelSet,
-	encodingFormat string,
-	cfg DecompressionConfig,
+	pos positions.Positions,
 	componentStopping func() bool,
+	opts sourceOptions,
 ) (*decompressor, error) {
 
-	labelsStr := labels.String()
+	labelsStr := opts.labels.String()
 
 	logger = log.With(logger, "component", "decompressor")
 
-	pos, err := positions.Get(path, labelsStr)
+	position, err := pos.Get(opts.path, labelsStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get positions: %w", err)
+		switch opts.onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `restart_from_beginning`")
+			fallthrough
+		default:
+			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", opts.onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
+			position = 0
+			level.Info(logger).Log("msg", "reset position to start of file after positions error", "original_error", err)
+		}
 	}
 
-	var decoder *encoding.Decoder
-	if encodingFormat != "" {
-		level.Info(logger).Log("msg", "decompressor will decode messages", "from", encodingFormat, "to", "UTF8")
-		encoder, err := ianaindex.IANA.Encoding(encodingFormat)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encodingFormat, err)
-		}
-		decoder = encoder.NewDecoder()
+	decoder, err := getDecoder(opts.encoding)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
 
 	decompressor := &decompressor{
-		metrics:           metrics,
-		logger:            logger,
-		receiver:          receiver,
-		positions:         positions,
-		path:              path,
-		labels:            labels,
-		labelsStr:         labelsStr,
-		running:           atomic.NewBool(false),
-		position:          pos,
-		decoder:           decoder,
-		cfg:               cfg,
-		componentStopping: componentStopping,
+		metrics:              metrics,
+		logger:               logger,
+		receiver:             receiver,
+		positions:            pos,
+		key:                  positions.Entry{Path: opts.path, Labels: labelsStr},
+		labels:               opts.labels,
+		running:              atomic.NewBool(false),
+		position:             position,
+		decoder:              decoder,
+		cfg:                  opts.decompressionConfig,
+		onPositionsFileError: opts.onPositionsFileError,
+		componentStopping:    componentStopping,
 	}
 
 	return decompressor, nil
@@ -119,7 +122,7 @@ func newDecompressor(
 // If the actual file format is incorrect, the reading of the header may fail and return an error - depending on the
 // implementation of the underlying compression library. In any case, when a file is corrupted, the subsequent reading
 // of lines will fail.
-func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reader io.Reader, err error) {
+func mountReader(f *os.File, decoder *encoding.Decoder, logger log.Logger, format CompressionFormat) (reader io.Reader, err error) {
 	var decompressLib string
 
 	switch format.String() {
@@ -147,6 +150,13 @@ func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reade
 	}
 
 	level.Debug(logger).Log("msg", fmt.Sprintf("using %q to decompress file %q", decompressLib, f.Name()))
+
+	// Use the appropriated decoder for the file encoding.
+	// Otherwise the file may not be split into separate lines properly.
+	if decoder != nil {
+		reader = decoder.Reader(reader)
+	}
+
 	return reader, nil
 }
 
@@ -158,7 +168,7 @@ func (d *decompressor) Run(ctx context.Context) {
 	default:
 	}
 
-	labelsMiddleware := d.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(d.path)})
+	labelsMiddleware := d.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(d.key.Path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
 	defer handler.Stop()
 
@@ -184,7 +194,7 @@ func (d *decompressor) updatePosition(posquit chan struct{}) {
 	positionWait := time.NewTicker(positionSyncPeriod)
 	defer func() {
 		positionWait.Stop()
-		level.Info(d.logger).Log("msg", "position timer: exited", "path", d.path)
+		level.Info(d.logger).Log("msg", "position timer: exited", "path", d.key.Path)
 		d.cleanupMetrics()
 	}()
 
@@ -192,7 +202,7 @@ func (d *decompressor) updatePosition(posquit chan struct{}) {
 		select {
 		case <-positionWait.C:
 			if err := d.markPositionAndSize(); err != nil {
-				level.Error(d.logger).Log("msg", "position timer: error getting position and/or size, stopping decompressor", "path", d.path, "error", err)
+				level.Error(d.logger).Log("msg", "position timer: error getting position and/or size, stopping decompressor", "path", d.key.Path, "error", err)
 				return
 			}
 		case <-posquit:
@@ -208,10 +218,10 @@ func (d *decompressor) updatePosition(posquit chan struct{}) {
 // During each iteration, the parsed and decoded log line is then sent to the API with the current timestamp.
 // done channel is closed when readlines exits.
 func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) {
-	level.Info(d.logger).Log("msg", "read lines routine: started", "path", d.path)
+	level.Info(d.logger).Log("msg", "read lines routine: started", "path", d.key.Path)
 
 	if d.cfg.InitialDelay > 0 {
-		level.Info(d.logger).Log("msg", "sleeping before starting decompression", "path", d.path, "duration", d.cfg.InitialDelay.String())
+		level.Info(d.logger).Log("msg", "sleeping before starting decompression", "path", d.key.Path, "duration", d.cfg.InitialDelay.String())
 		time.Sleep(d.cfg.InitialDelay)
 	}
 
@@ -222,7 +232,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 	}()
 
 	defer func() {
-		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
+		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.key.Path)
 		close(posquit)
 		<-posdone
 		close(done)
@@ -230,20 +240,20 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 
 	entries := handler.Chan()
 
-	f, err := os.Open(d.path)
+	f, err := os.Open(d.key.Path)
 	if err != nil {
-		level.Error(d.logger).Log("msg", "error reading file", "path", d.path, "error", err)
+		level.Error(d.logger).Log("msg", "error reading file", "path", d.key.Path, "error", err)
 		return
 	}
 	defer f.Close()
 
-	r, err := mountReader(f, d.logger, d.cfg.Format)
+	r, err := mountReader(f, d.decoder, d.logger, d.cfg.Format)
 	if err != nil {
 		level.Error(d.logger).Log("msg", "error mounting new reader", "err", err)
 		return
 	}
 
-	level.Info(d.logger).Log("msg", "successfully mounted reader", "path", d.path, "ext", filepath.Ext(d.path))
+	level.Info(d.logger).Log("msg", "successfully mounted reader", "path", d.key.Path, "ext", filepath.Ext(d.key.Path))
 
 	bufferSize := 4096
 	buffer := make([]byte, bufferSize)
@@ -272,20 +282,11 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 		d.posAndSizeMtx.RUnlock()
 
 		text := scanner.Text()
-		var finalText string
-		if d.decoder != nil {
-			var err error
-			finalText, err = d.convertToUTF8(text)
-			if err != nil {
-				level.Debug(d.logger).Log("msg", "failed to convert encoding", "error", err)
-				d.metrics.encodingFailures.WithLabelValues(d.path).Inc()
-				finalText = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Alloy: %s", err.Error())
-			}
-		} else {
-			finalText = text
-		}
 
-		d.metrics.readLines.WithLabelValues(d.path).Inc()
+		d.metrics.readLines.WithLabelValues(d.key.Path).Inc()
+
+		// Trim Windows line endings
+		text = strings.TrimSuffix(text, "\r")
 
 		entries <- loki.Entry{
 			// Allocate the expected size of labels. This matches the number of labels added by the middleware
@@ -293,12 +294,12 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 			Labels: make(model.LabelSet, len(d.labels)+1),
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      finalText,
+				Line:      text,
 			},
 		}
 
 		d.posAndSizeMtx.Lock()
-		d.size = int64(unsafe.Sizeof(finalText))
+		d.size = int64(unsafe.Sizeof(text))
 		d.position++
 		d.posAndSizeMtx.Unlock()
 	}
@@ -309,9 +310,9 @@ func (d *decompressor) markPositionAndSize() error {
 	d.posAndSizeMtx.RLock()
 	defer d.posAndSizeMtx.RUnlock()
 
-	d.metrics.totalBytes.WithLabelValues(d.path).Set(float64(d.size))
-	d.metrics.readBytes.WithLabelValues(d.path).Set(float64(d.position))
-	d.positions.Put(d.path, d.labelsStr, d.position)
+	d.metrics.totalBytes.WithLabelValues(d.key.Path).Set(float64(d.size))
+	d.metrics.readBytes.WithLabelValues(d.key.Path).Set(float64(d.position))
+	d.positions.Put(d.key.Path, d.key.Labels, d.position)
 
 	return nil
 }
@@ -320,38 +321,39 @@ func (d *decompressor) stop(done chan struct{}) {
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 	<-done
 
-	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
+	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.key.Path)
 
 	// If the component is not stopping, then it means that the target for this component is gone and that
 	// we should clear the entry from the positions file.
 	if !d.componentStopping() {
-		d.positions.Remove(d.path, d.labelsStr)
+		d.positions.Remove(d.key.Path, d.key.Labels)
 	} else {
 		// Save the current position before shutting down reader
 		if err := d.markPositionAndSize(); err != nil {
-			level.Error(d.logger).Log("msg", "error marking file position when stopping decompressor", "path", d.path, "error", err)
+			level.Error(d.logger).Log("msg", "error marking file position when stopping decompressor", "path", d.key.Path, "error", err)
 		}
 	}
 }
 
-func (d *decompressor) IsRunning() bool {
-	return d.running.Load()
+func (d *decompressor) Key() positions.Entry {
+	return d.key
 }
 
-func (d *decompressor) convertToUTF8(text string) (string, error) {
-	res, _, err := transform.String(d.decoder, text)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode text to UTF8: %w", err)
+func (d *decompressor) DebugInfo() any {
+	offset, _ := d.positions.Get(d.key.Path, d.key.Labels)
+	return sourceDebugInfo{
+		Path:       d.key.Path,
+		Labels:     d.key.Labels,
+		IsRunning:  d.running.Load(),
+		ReadOffset: offset,
 	}
-
-	return res, nil
 }
 
 // cleanupMetrics removes all metrics exported by this reader
 func (d *decompressor) cleanupMetrics() {
 	// When we stop tailing the file, un-export metrics related to the file.
 	d.metrics.filesActive.Add(-1.)
-	d.metrics.readLines.DeleteLabelValues(d.path)
-	d.metrics.readBytes.DeleteLabelValues(d.path)
-	d.metrics.totalBytes.DeleteLabelValues(d.path)
+	d.metrics.readLines.DeleteLabelValues(d.key.Path)
+	d.metrics.readBytes.DeleteLabelValues(d.key.Path)
+	d.metrics.totalBytes.DeleteLabelValues(d.key.Path)
 }

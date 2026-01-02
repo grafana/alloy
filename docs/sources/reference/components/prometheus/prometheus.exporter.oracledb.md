@@ -15,6 +15,31 @@ title: prometheus.exporter.oracledb
 The `prometheus.exporter.oracledb` component embeds
 [`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) for collecting statistics from a OracleDB server.
 
+Ensure you have the following:
+
+- Oracle Instant Client Basic installed on the system running {{< param "PRODUCT_NAME" >}}
+- Appropriate environment variables configured for Oracle Client libraries
+
+### Oracle instant client basic
+
+When you run the standalone binary, you must install the [Oracle Instant Client Basic](http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html) for your operating system.
+Only the basic version is required for the exporter.
+
+{{< admonition type="note" >}}
+You must also provide Oracle Instant Client Basic when you run {{< param "PRODUCT_NAME" >}} in Docker or Kubernetes.
+The `prometheus.exporter.oracledb` component relies on Oracle Instant Client libraries that are available in the container image or host environment.
+{{< /admonition >}}
+
+### Environment variables
+
+Set the following environment variables for Oracle Client library access:
+
+- **Linux**: Set `LD_LIBRARY_PATH` to the Oracle Instant Client library directory
+- **macOS (ARM)**: Set `DYLD_LIBRARY_PATH` to the Oracle Instant Client library directory
+- **`ORACLE_BASE`** (optional): Base directory for Oracle installations
+- **`ORACLE_HOME`** (optional): Location of the Oracle Instant Client installation
+- **`TNS_ADMIN`** (optional): Location of your Oracle wallet directory when using wallet authentication
+
 ## Usage
 
 ```alloy
@@ -30,15 +55,15 @@ You can use the following arguments with `prometheus.exporter.oracledb`:
 | Name                | Type           | Description                                                    | Default | Required |
 | ------------------- | -------------- | -------------------------------------------------------------- | ------- | -------- |
 | `connection_string` | `secret`       | The connection string used to connect to an Oracle Database.   |         | yes      |
-| `username`          | `string`       | The username to use for authentication to the Oracle Database. |         | no       |
-| `password`          | `secret`       | The password to use for authentication to the Oracle Database. |         | no       |
+| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)           |         | no       |
+| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)            |         | no       |
 | `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool.     | `0`     | no       |
 | `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool.     | `10`    | no       |
+| `password`          | `secret`       | The password to use for authentication to the Oracle Database. |         | no       |
 | `query_timeout`     | `int`          | The query timeout in seconds.                                  | `5`     | no       |
-| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)            |         | no       |
-| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)           |         | no       |
+| `username`          | `string`       | The username to use for authentication to the Oracle Database. |         | no       |
 
-Examples of TOML metrics files can be found in the [oracledb_exporter repository](https://github.com/oracle/oracle-db-appdev-monitoring).
+Examples of TOML metrics files can be found in the [`oracledb_exporter` repository](https://github.com/oracle/oracle-db-appdev-monitoring).
 
 For backward compatibility, the `username` and `password` arguments can still be provided in the `connection_string` argument:
 
@@ -81,8 +106,8 @@ The following example uses a [`prometheus.scrape` component][scrape] to collect 
 ```alloy
 prometheus.exporter.oracledb "example" {
   connection_string = "localhost:1521/orcl.localnet"
-  username = "system"
-  password = "YourPassword123"
+  username = "<DB_USERNAME>"
+  password = "<DB_PASSWORD>"
 }
 
 // Configure a prometheus.scrape component to collect oracledb metrics.
@@ -105,9 +130,11 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<DB_USERNAME>`_: The database username
+- _`<DB_PASSWORD>`_: The password for the database user
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

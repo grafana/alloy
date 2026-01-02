@@ -97,7 +97,7 @@ The following arguments are supported:
 | `max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                                             | `2097152`                      | no       |
 | `max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                                             | `5242880`                      | no       |
 | `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`. | `true`                         | no       |
-| `source_type`                | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
+| `sourcetype`                 | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
 | `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).                                                             | `""`                           | no       |
 | `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `"Alloy"`                      | no       |
 | `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                           | no       |
@@ -149,6 +149,7 @@ The following arguments are supported:
 | Name                      | Type       | Description                                                                                     | Default | Required |
 |---------------------------|------------|-------------------------------------------------------------------------------------------------|---------|----------|
 | `endpoint`                | `string`   | The Splunk HEC endpoint to use.                                                                 |         | yes      |
+| `force_attempt_http2`     | `bool`     | Force the HTTP client to try to use the HTTP/2 protocol.                                        | `true`  | no       |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                                        | `false` | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                                           | `"45s"` | no       |
 | `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                                       | `false` | no       |
@@ -186,7 +187,6 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 ### `batch`
 
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
-By default, the `batch` block is not used.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

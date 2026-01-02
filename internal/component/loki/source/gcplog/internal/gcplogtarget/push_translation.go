@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/loki/v3/pkg/util"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
