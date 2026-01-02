@@ -36,11 +36,11 @@ type RawFormatOptions struct {
 
 // RFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
 type RFC3164CiscoComponents struct {
-	EnableAll       bool `alloy:"enable_all,optional"`
-	MessageCounter  bool `alloy:"message_counter,optional"`
-	SequenceNumber  bool `alloy:"sequence_number,optional"`
-	Hostname        bool `alloy:"hostname,optional"`
-	SecondFractions bool `alloy:"second_fractions,optional"`
+	EnableAll       bool `alloy:"enable_all,attr,optional"`
+	MessageCounter  bool `alloy:"message_counter,attr,optional"`
+	SequenceNumber  bool `alloy:"sequence_number,attr,optional"`
+	Hostname        bool `alloy:"hostname,attr,optional"`
+	SecondFractions bool `alloy:"second_fractions,attr,optional"`
 }
 
 func (sc *RFC3164CiscoComponents) Validate() error {
