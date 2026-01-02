@@ -142,11 +142,11 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 
 	if cmp := sc.RFC3164CiscoComponents; cmp != nil {
 		cfg.RFC3164CiscoComponents = &scrapeconfig.RFC3164CiscoComponents{
-			EnableAllComponents: cmp.EnableAll,
-			MessageCounter:      cmp.MessageCounter,
-			SequenceNumber:      cmp.SequenceNumber,
-			Hostname:            cmp.Hostname,
-			SecondFractions:     cmp.SecondFractions,
+			EnableAll:       cmp.EnableAll,
+			MessageCounter:  cmp.MessageCounter,
+			SequenceNumber:  cmp.SequenceNumber,
+			Hostname:        cmp.Hostname,
+			SecondFractions: cmp.SecondFractions,
 		}
 	}
 
