@@ -154,16 +154,16 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
 
+[cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
+
 {{< admonition type="note" >}}
 The `raw` format is an [experimental][] feature.
 Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
-{{< /admonition >}}
 
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 [experimental]: https://grafana.com/docs/release-life-cycle/
-
-[cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
+{{< /admonition >}}
 
 ### `raw_format_options`
 
