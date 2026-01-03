@@ -136,6 +136,23 @@ useful if just using the default DaemonSet isn't sufficient.
 | global.image.pullSecrets | list | `[]` | Optional set of global image pull secrets. |
 | global.image.registry | string | `""` | Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...) |
 | global.podSecurityContext | object | `{}` | Security context to apply to the Grafana Alloy pod. |
+| gateway.enabled | bool | `false` | Enable the NGINX gateway component for unified telemetry ingress. |
+| gateway.replicas | int | `2` | Number of gateway replicas to deploy. |
+| gateway.annotations | object | {} | Annotations to add to the gateway deployment. |
+| gateway.labels | object | {} | Extra Labels to add to the gateway deployment. |
+| gateway.port | int | `8080` | Port the NGINX gateway listens on. |
+| gateway.service.type | string | `"ClusterIP"` | Service type for the gateway (ClusterIP, NodePort, or LoadBalancer). |
+| gateway.upstreams | object | `{}` | Configuration for path-based routing to Alloy (OTLP, Loki, etc.). |
+| gateway.nginxConfig.file | string | `""` | Custom NGINX configuration. Passed through `tpl`. |
+| gateway.auth.enabled | bool | `false` | Enable Basic Authentication for all gateway paths. |
+| gateway.auth.existingSecret | string | `nil` | Existing secret containing the htpasswd file. |
+| gateway.autoscaling.enabled | bool | `false` | Enable HorizontalPodAutoscaler for the gateway. |
+| gateway.podDisruptionBudget.enabled | bool | `false` | Enable PodDisruptionBudget for the gateway. |
+| gateway.serviceMonitor.enabled | bool | `false` | Enable ServiceMonitor for gateway metrics. |
+| gateway.extraContainers | list | `[]` | Extra containers for the gateway pod (e.g., prometheus-exporter). |
+| gateway.extraEnv | list | `[]` | Extra environment variables for the gateway container. |
+| gateway.extraVolumes | list | `[]` | Extra volumes for the gateway pod. |
+| gateway.extraVolumeMounts | list | `[]` | Extra volume mounts for the gateway container. |
 | image.digest | string | `nil` | Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`. |
 | image.pullPolicy | string | `"IfNotPresent"` | Grafana Alloy image pull policy. |
 | image.pullSecrets | list | `[]` | Optional set of image pull secrets. |
@@ -296,6 +313,51 @@ Using `controller.autoscaling` requires the target metric (cpu/memory) to have
 its resource requests set up for both the Alloy and config-reloader containers
 so that the HPA can use them to calculate the replica count from the actual
 resource utilization.
+
+## NGINX Gateway
+
+The NGINX Gateway is an optional component that acts as a unified entry point for all
+telemetry traffic. It is particularly useful when you want to:
+
+1. **Consolidate Ports**: Route OTLP (gRPC/HTTP), Loki, and Prometheus traffic through a single external port (typically 80/443 via Ingress).
+2. **Centralized Authentication**: Apply Basic Auth or OIDC (via sidecars) at the entry point before data reaches Alloy.
+3. **Simplify Ingress**: Use a single Ingress resource to point to the Gateway, which then routes traffic internally to the correct Alloy ports based on URL paths.
+
+
+
+### Enabling the Gateway
+
+To enable the gateway with default routing for OTLP and Loki:
+
+```yaml
+gateway:
+  enabled: true
+  upstreams:
+    otlp:
+      enabled: true
+      path: /opentelemetry
+      targetPort: 4317
+      protocol: grpc
+    loki:
+      enabled: true
+      path: /loki/api/v1/push
+      targetPort: 3100
+```
+
+### Ingress Integration
+
+When `gateway.enabled` is set to `true`, the standard `ingress.enabled` flag will automatically
+change its backend target from the Alloy service to the Gateway service. This allows you to 
+terminate TLS at the Ingress controller and pass traffic to the Gateway.
+
+```yaml
+gateway:
+  enabled: true
+ingress:
+  enabled: true
+  hosts:
+    - telemetry.example.com
+```
 
 ## Collecting logs from other containers
 
