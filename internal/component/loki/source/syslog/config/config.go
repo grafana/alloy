@@ -55,7 +55,7 @@ func (s SyslogFormat) Validate() error {
 	return fmt.Errorf("unknown syslog format: %q", s)
 }
 
-// RFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
+// RFC3164CiscoComponents enables Cisco IOS log line parsing and configures what fields to parse.
 type RFC3164CiscoComponents struct {
 	EnableAll       bool
 	MessageCounter  bool

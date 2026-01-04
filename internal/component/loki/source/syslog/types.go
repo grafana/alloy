@@ -34,7 +34,7 @@ type RawFormatOptions struct {
 	UseNullTerminatorDelimiter bool `alloy:"use_null_terminator_delimiter,attr,optional"`
 }
 
-// RFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
+// RFC3164CiscoComponents enables Cisco IOS log line parsing and configures what fields to parse.
 type RFC3164CiscoComponents struct {
 	EnableAll       bool `alloy:"enable_all,attr,optional"`
 	MessageCounter  bool `alloy:"message_counter,attr,optional"`

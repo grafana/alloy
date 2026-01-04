@@ -595,7 +595,7 @@ func parseCefLogLines(t *testing.T, lines iter.Seq[string]) []cefLogLine {
 	return out
 }
 
-func TestSyslogTarget_RFC3136CiscoComponents(t *testing.T) {
+func TestSyslogTarget_RFC3164CiscoComponents(t *testing.T) {
 	currentYear := time.Now().Year()
 	parseDate := func(layout, value string) time.Time {
 		r, err := time.Parse(layout, value)

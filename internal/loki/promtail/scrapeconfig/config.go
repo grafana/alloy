@@ -182,7 +182,7 @@ func (config SyslogTargetConfig) IsRFC3164Message() bool {
 	return config.SyslogFormat == SyslogFormatRFC3164
 }
 
-// SyslogRFC3164CiscoComponents enables Cisco ios log line parsing and configures what fields to parse.
+// SyslogRFC3164CiscoComponents enables Cisco IOS log line parsing and configures what fields to parse.
 type SyslogRFC3164CiscoComponents struct {
 	EnableAll       bool `yaml:"enable_all"`
 	MessageCounter  bool `yaml:"message_counter"`

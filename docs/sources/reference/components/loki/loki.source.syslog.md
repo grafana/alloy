@@ -191,18 +191,18 @@ The `rfc3164_cisco_components` configures parsing of non-standard Cisco IOS sysl
 This block can only be used when you set `syslog_format` to `rfc3164`.
 {{< /admonition >}}
 
-The following argument is supported:
+The following arguments are supported:
 
 | Name               | Type   | Description                                     | Default | Required |
 |--------------------|--------|-------------------------------------------------|---------|----------|
 | `enable_all`       | `bool` | Enables all components below.                   | `false` | no       |
 | `message_counter`  | `bool` | Enables syslog message counter field parsing.   | `false` | no       |
 | `sequence_number`  | `bool` | Enables service sequence number field parsing.  | `false` | no       |
-| `hostname`         | `bool` | Enables origin hostname fleld parsing.          | `false` | no       |
-| `second_fractions` | `bool` | Enables miliseconds parsing in timestamp field. | `false` | no       |
+| `hostname`         | `bool` | Enables origin hostname field parsing.          | `false` | no       |
+| `second_fractions` | `bool` | Enables milliseconds parsing in timestamp field.| `false` | no       |
 
 {{< admonition type="note" >}}
-At-least one option has to be enabled if `enable_all` is set to `false`.
+At least one option has to be enabled if `enable_all` is set to `false`.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}
