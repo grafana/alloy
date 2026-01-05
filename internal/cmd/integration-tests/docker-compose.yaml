@@ -1,7 +1,7 @@
 name: alloy-integration-tests
 services:
   mimir:
-    image: grafana/mimir:2.17.0
+    image: grafana/mimir:3.0.0
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:

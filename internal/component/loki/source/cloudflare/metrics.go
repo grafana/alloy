@@ -1,4 +1,4 @@
-package cloudflaretarget
+package cloudflare
 
 // This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
 // The cloudflaretarget package is used to configure and run a target that can
@@ -10,18 +10,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Metrics holds a set of cloudflare metrics.
-type Metrics struct {
+// metrics holds a set of cloudflare metrics.
+type metrics struct {
 	reg prometheus.Registerer
 
 	Entries prometheus.Counter
 	LastEnd prometheus.Gauge
 }
 
-// NewMetrics creates a new set of cloudflare metrics. If reg is non-nil, the
+// newMetrics creates a new set of cloudflare metrics. If reg is non-nil, the
 // metrics will be registered.
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	var m Metrics
+func newMetrics(reg prometheus.Registerer) *metrics {
+	var m metrics
 	m.reg = reg
 
 	m.Entries = prometheus.NewCounter(prometheus.CounterOpts{

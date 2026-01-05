@@ -1,0 +1,693 @@
+{
+   "annotations": {
+      "list": [
+         {
+            "datasource": "$loki_datasource",
+            "enable": true,
+            "expr": "{cluster=~\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"alloy\" | name_extracted=~\"alloy.*\"",
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "instant": false,
+            "name": "Deployments",
+            "titleFormat": "{{cluster}}/{{namespace}}"
+         }
+      ]
+   },
+   "graphTooltip": 1,
+   "links": [
+      {
+         "icon": "doc",
+         "targetBlank": true,
+         "title": "Documentation",
+         "tooltip": "Component documentation",
+         "type": "link",
+         "url": "https://grafana.com/docs/alloy/latest/reference/components/prometheus.remote_write/"
+      },
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [
+            "alloy-mixin"
+         ],
+         "targetBlank": false,
+         "title": "Dashboards",
+         "type": "dashboards"
+      }
+   ],
+   "panels": [
+      {
+         "collapsed": false,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+         },
+         "title": "prometheus.scrape",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Percentage of targets successfully scraped by prometheus.scrape\ncomponents.\n\nThis metric is calculated by dividing the number of targets\nsuccessfully scraped by the total number of targets scraped,\nacross all the namespaces in the selected cluster.\n\nLow success rates can indicate a problem with scrape targets,\nstale service discovery, or Alloy misconfiguration.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "percentunit"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 1
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(up{job=~\"$job\", cluster=~\"$cluster\"})\n/\ncount (up{job=~\"$job\", cluster=~\"$cluster\"})\n",
+               "instant": false,
+               "legendFormat": "% of targets successfully scraped",
+               "range": true
+            }
+         ],
+         "title": "Scrape success rate in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Duration of successful scrapes by prometheus.scrape components,\nacross all the namespaces in the selected cluster.\n\nThis metric should be below your configured scrape interval.\nHigh durations can indicate a problem with a scrape target or\na performance issue with Alloy.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 1
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "quantile(0.99, scrape_duration_seconds{job=~\"$job\", cluster=~\"$cluster\"})\n",
+               "instant": false,
+               "legendFormat": "p99",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "quantile(0.95, scrape_duration_seconds{job=~\"$job\", cluster=~\"$cluster\"})\n",
+               "instant": false,
+               "legendFormat": "p95",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "quantile(0.50, scrape_duration_seconds{job=~\"$job\", cluster=~\"$cluster\"})\n",
+               "instant": false,
+               "legendFormat": "p50",
+               "range": true
+            }
+         ],
+         "title": "Scrape duration in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 11
+         },
+         "title": "prometheus.remote_write",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Percentage of samples sent by prometheus.remote_write that succeeded.\n\nLow success rates can indicate a problem with Alloy or the remote storage.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "percentunit"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 12
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "(\n    1 - \n    (\n        sum(rate(prometheus_remote_storage_samples_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval]))\n    )\n    /\n    (\n        sum(rate(prometheus_remote_storage_samples_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval]))\n    )\n)\n",
+               "instant": false,
+               "legendFormat": "% of samples successfully sent",
+               "range": true
+            }
+         ],
+         "title": "Remote write success rate in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Latency of writes to the remote system made by\nprometheus.remote_write.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 12
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(0.99, sum by (le) (\n  rate(prometheus_remote_storage_sent_batch_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n))\n",
+               "instant": false,
+               "legendFormat": "99th percentile",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(0.50, sum by (le) (\n  rate(prometheus_remote_storage_sent_batch_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n))\n",
+               "instant": false,
+               "legendFormat": "50th percentile",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(rate(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\"}[$__rate_interval])) /\nsum(rate(prometheus_remote_storage_sent_batch_duration_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "Average",
+               "range": true
+            }
+         ],
+         "title": "Write latency in $cluster",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "How far behind prometheus.remote_write from samples recently written\nto the WAL.\n\nEach endpoint prometheus.remote_write is configured to send metrics\nhas its own delay. The time shown here is the sum across all\nendpoints for the given component.\n\nIt is normal for the WAL delay to be within 1-3 scrape intervals. If\nthe WAL delay continues to increase beyond that amount, try\nincreasing the number of maximum shards.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 22
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance, component_path, component_id) (\n  prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\"}\n  - ignoring(url, remote_name) group_right(instance)\n  prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "WAL delay",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Rate of data containing samples and metadata sent by\nprometheus.remote_write.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "Bps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 22
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance, component_path, component_id) (\n    rate(prometheus_remote_storage_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval]) +\n    rate(prometheus_remote_storage_metadata_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Data write throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Total number of shards which are concurrently sending samples read\nfrom the Write-Ahead Log.\n\nShards are bound to a minimum and maximum, displayed on the graph.\nThe lowest minimum and the highest maximum across all clients is\nshown.\n\nEach client has its own set of shards, minimum shards, and maximum\nshards; filter to a specific URL to display more granular\ninformation.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "none"
+            },
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Minimum"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.lineStyle",
+                        "value": {
+                           "dash": [
+                              10,
+                              15
+                           ],
+                           "fill": "dash"
+                        }
+                     },
+                     {
+                        "id": "custom.showPoints",
+                        "value": "never"
+                     },
+                     {
+                        "id": "custom.hideFrom",
+                        "value": {
+                           "legend": true,
+                           "tooltip": false,
+                           "viz": false
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Maximum"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.lineStyle",
+                        "value": {
+                           "dash": [
+                              10,
+                              15
+                           ],
+                           "fill": "dash"
+                        }
+                     },
+                     {
+                        "id": "custom.showPoints",
+                        "value": "never"
+                     },
+                     {
+                        "id": "custom.hideFrom",
+                        "value": {
+                           "legend": true,
+                           "tooltip": false,
+                           "viz": false
+                        }
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 16,
+            "y": 22
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance, component_path, component_id) (\n    prometheus_remote_storage_shards{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "min (\n    prometheus_remote_storage_shards_min{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
+               "instant": false,
+               "legendFormat": "Minimum",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "max (\n    prometheus_remote_storage_shards_max{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
+               "instant": false,
+               "legendFormat": "Maximum",
+               "range": true
+            }
+         ],
+         "title": "Shards",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Total outgoing samples sent by prometheus.remote_write.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "cps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 32
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance, component_path, component_id) (\n  rate(prometheus_remote_storage_samples_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Sent samples / second",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Rate of samples which prometheus.remote_write could not send due to\nnon-recoverable errors.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "cps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 32
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance, component_path, component_id) (\n  rate(prometheus_remote_storage_samples_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Failed samples / second",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Rate of samples which prometheus.remote_write attempted to resend\nafter receiving a recoverable error.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 20,
+                  "gradientMode": "hue",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               },
+               "unit": "cps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 16,
+            "y": 32
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance, component_path, component_id) (\n  rate(prometheus_remote_storage_samples_retried_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Retried samples / second",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Total number of active series across all components.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n\nNOTE: This metric is not available when using prometheus.write.queue component.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 42
+         },
+         "options": {
+            "legend": {
+               "showLegend": false
+            }
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(prometheus_remote_write_wal_storage_active_series{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"})\n",
+               "instant": false,
+               "legendFormat": "Series",
+               "range": true
+            }
+         ],
+         "title": "Active series (total)",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Total number of active series which are currently being tracked by\nprometheus.remote_write components, with separate lines for each Alloy instance.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n\nNOTE: This metric is not available when using prometheus.write.queue component.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 42
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "prometheus_remote_write_wal_storage_active_series{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_id!=\"\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n",
+               "instant": false,
+               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Active series (by instance/component)",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Total number of active series which are currently being tracked by\nprometheus.remote_write components, aggregated across all instances.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n\nNOTE: This metric is not available when using prometheus.write.queue component.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 16,
+            "y": 42
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (component_path, component_id) (prometheus_remote_write_wal_storage_active_series{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_id!=\"\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"})\n",
+               "instant": false,
+               "legendFormat": "{{component_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Active series (by component)",
+         "type": "timeseries"
+      }
+   ],
+   "refresh": "10s",
+   "schemaVersion": 36,
+   "tags": [
+      "alloy-mixin"
+   ],
+   "templating": {
+      "list": [
+         {
+            "label": "Data Source",
+            "name": "datasource",
+            "query": "prometheus",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "label": "Loki Data Source",
+            "name": "loki_datasource",
+            "query": "loki",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "cluster",
+            "name": "cluster",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components, cluster)\n",
+               "refId": "cluster"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "namespace",
+            "name": "namespace",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\"}, namespace)\n",
+               "refId": "namespace"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "job",
+            "name": "job",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)\n",
+               "refId": "job"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "instance",
+            "multi": true,
+            "name": "instance",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}, instance)\n",
+               "refId": "instance"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "component_path",
+            "multi": true,
+            "name": "component_path",
+            "query": {
+               "query": "label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_id=~\"prometheus.remote_write.*\", component_path=~\".*\"}, component_path)\n",
+               "refId": "component_path"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "component",
+            "multi": true,
+            "name": "component",
+            "query": {
+               "query": "label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_id=~\"prometheus.remote_write.*\"}, component_id)\n",
+               "refId": "component"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "url",
+            "multi": true,
+            "name": "url",
+            "query": {
+               "query": "label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~\"$cluster\", namespace=~\"$namespace\", job=\"$job\", instance=~\"$instance\", component_id=~\"$component\"}, url)\n",
+               "refId": "url"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-1h",
+      "to": "now"
+   },
+   "timepicker": {
+      "refresh_intervals": [
+         "5s",
+         "10s",
+         "30s",
+         "1m",
+         "5m",
+         "15m",
+         "30m",
+         "1h",
+         "2h",
+         "1d"
+      ],
+      "time_options": [
+         "5m",
+         "15m",
+         "1h",
+         "6h",
+         "12h",
+         "24h",
+         "2d",
+         "7d",
+         "30d",
+         "90d"
+      ]
+   },
+   "timezone": "utc",
+   "title": "Alloy / Prometheus Components",
+   "uid": "e324cc55567d7f3a8e32860ff8e6d0d9"
+}

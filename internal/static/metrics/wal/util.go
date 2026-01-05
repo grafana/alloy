@@ -102,6 +102,12 @@ func (r walReplayer) replayWAL(reader *wlog.Reader) error {
 				return err
 			}
 			r.w.AppendExemplars(exemplars)
+		case record.Metadata:
+			metadata, err := dec.Metadata(rec, nil)
+			if err != nil {
+				return err
+			}
+			r.w.StoreMetadata(metadata)
 		}
 	}
 
@@ -115,6 +121,7 @@ type walDataCollector struct {
 	exemplars       []record.RefExemplar
 	histograms      []record.RefHistogramSample
 	floatHistograms []record.RefFloatHistogramSample
+	metadata        []record.RefMetadata
 }
 
 func (c *walDataCollector) AppendExemplars(exemplars []record.RefExemplar) bool {
@@ -160,7 +167,12 @@ func (c *walDataCollector) SeriesReset(_ int) {}
 
 func (*walDataCollector) UpdateSeriesSegment([]record.RefSeries, int) {}
 
-func (c *walDataCollector) StoreMetadata([]record.RefMetadata) {}
+func (c *walDataCollector) StoreMetadata(metadata []record.RefMetadata) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.metadata = append(c.metadata, metadata...)
+}
 
 // SubDirectory returns the subdirectory within a Storage directory used for
 // the Prometheus WAL.

@@ -47,6 +47,34 @@ func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 	return nil
 }
 
+// SendBatch forwards a batch of entires to all registered receivers. It returns an error
+// if the context is cancelled while sending.
+func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
+	// NOTE: It's important that we hold a read lock for the duration of SendBatch
+	// rather than making a copy of children and releasing the lock early.
+	//
+	// When config is updated, the loader evaluates all components and updates
+	// them while they continue running. The scheduler only stops removed components
+	// after all updates complete. During this window, Send may execute concurrently
+	// with receiver list updates. By holding the read lock for the entire Send
+	// operation, receiver list updates (which require a write lock) will block
+	// until all in-flight Send calls complete. This prevents sending entries to
+	// receivers that have been removed by the scheduler.
+
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	for _, e := range batch {
+		for _, recv := range f.children {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case recv.Chan() <- e:
+			}
+		}
+	}
+	return nil
+}
+
 // UpdateChildren updates the list of receivers that will receive log entries.
 func (f *Fanout) UpdateChildren(children []LogsReceiver) {
 	f.mut.RLock()
