@@ -114,9 +114,11 @@ Slack channel [#alloy](https://slack.grafana.com).
 
 PR titles (and by extension CHANGELOG entries) should:
 
+1. Adhere to [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) style and use one
+   of the ["types" defined in our linting workflow](../../.github/workflows/lint-pr-title.yml#L43).
 1. Read as a complete sentence in the imperative, present tense (e.g. "change", not "changes" or
    "changed").
-2. Describe the impact on the user which is reading the changelog.
+1. Describe the impact on the user which is reading the changelog.
 
 For example: `feat: increase config file read speed by 1500%`
 
