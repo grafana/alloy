@@ -11,8 +11,8 @@ scrape_configs:
       use_rfc5424_message: true
       max_message_length: 1024
       labels:
-          variety: chardonnay
-          region: chablis
+        variety: chardonnay
+        region: chablis
       tls_config:
         ca_file: /etc/ssl/certs/ca-certificates.crt
         cert_file: /etc/promtail/certs/promtail.crt
@@ -37,6 +37,14 @@ scrape_configs:
       label_structured_data: true
       use_incoming_timestamp: true
       syslog_format: rfc5424
+  - job_name: test_raw
+    syslog:
+      listen_address: localhost:4000
+      listen_protocol: udp
+      idle_timeout: 1m
+      syslog_format: raw
+      raw_format_options:
+        use_null_terminator_delimiter: true
 
-tracing: {enabled: false}
-server: {register_instrumentation: false}
+tracing: { enabled: false }
+server: { register_instrumentation: false }

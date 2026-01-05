@@ -14,8 +14,15 @@ title: loki.source.syslog
 
 `loki.source.syslog` listens for syslog messages over TCP or UDP connections and forwards them to other `loki.*` components.
 The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) syslog protocol or the [RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) BSD syslog protocol.
-If your messages aren't RFC5424 compliant, you can use syslog-ng or rsyslog to convert the messages to a compliant format.
 For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-syslog-messages/) scenario.
+
+{{< admonition type="note" >}}
+If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](./loki.process.md) component.
+
+Please note, that the `raw` syslog format is an [experimental][] feature.
+{{< /admonition >}}
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
 
 The component starts a new syslog listener for each of the given `config` blocks and fans out incoming entries to the list of receivers in `forward_to`.
 
@@ -81,16 +88,18 @@ loki.relabel "syslog" {
 
 You can use the following blocks with `loki.source.syslog`:
 
-| Name                                    | Description                                                                 | Required |
-|-----------------------------------------|-----------------------------------------------------------------------------|----------|
-| [`listener`][listener]                  | Configures a listener for Syslog messages.                                  | no       |
-| `listener` > [`tls_config`][tls_config] | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
+| Name                                                    | Description                                                                 | Required |
+|---------------------------------------------------------|-----------------------------------------------------------------------------|----------|
+| [`listener`][listener]                                  | Configures a listener for Syslog messages.                                  | no       |
+| `listener` > [`raw_format_options`][raw_format_options] | Configures `raw` syslog format behavior.                                    | no       |
+| `listener` > [`tls_config`][tls_config]                 | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `listener` > `tls_config` refers to a `tls_config` block defined inside a `listener` block.
 
 [listener]: #listener
 [tls_config]: #tls_config
+[raw_format_options]: #raw_format_options
 
 ### `listener`
 
@@ -108,7 +117,7 @@ Only the `address` field is required and any omitted fields take their default v
 | `max_message_length`              | `int`         | The maximum limit to the length of syslog messages.                                    | `8192`      | no       |
 | `protocol`                        | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`.          | `"tcp"`     | no       |
 | `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year. | `false`     | no       |
-| `syslog_format`                   | `string`      | The format for incoming messages. Must be either `rfc5424` or `rfc3164`.               | `"rfc5424"` | no       |
+| `syslog_format`                   | `string`      | The format for incoming messages. See [supported formats](#supported-formats).         | `"rfc5424"` | no       |
 | `use_incoming_timestamp`          | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.                  | `false`     | no       |
 | `use_rfc5424_message`             | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                          | `false`     | no       |
 
@@ -124,6 +133,49 @@ For example, a  structured data entry of `[example@99999 test="yes"]` becomes th
 The `rfc3164_default_to_current_year` argument is only relevant when `use_incoming_timestamp` is also set to `true`.
 `rfc3164` message timestamps don't contain a year, and this component's default behavior is to mimic Promtail behavior and leave the year as 0.
 Setting `rfc3164_default_to_current_year` to `true` sets the year of the incoming timestamp to the current year using the local time of the {{< param "PRODUCT_NAME" >}} instance.
+
+{{< admonition type="note" >}}
+The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424_message` fields cannot be used when `syslog_format` is set to `raw`.
+{{< /admonition >}}
+
+#### Supported formats
+
+* **`rfc3164`**
+  A legacy syslog format, also known as BSD syslog.
+  Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`
+* **`rfc5424`**
+  A modern, structured syslog format. Uses ISO 8601 for timestamps.
+  Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
+* **`raw`**
+  Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
+  Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
+
+{{< admonition type="note" >}}
+The `raw` format is an [experimental][] feature.
+Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+{{< /admonition >}}
+
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
+[experimental]: https://grafana.com/docs/release-life-cycle/
+
+[cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
+
+### `raw_format_options`
+
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+The `raw_format_options` block configures the `raw` syslog format behavior.
+
+{{< admonition type="note" >}}
+This block can only be used when you set `syslog_format` to `raw`.
+{{< /admonition >}}
+
+The following argument is supported:
+
+| Name                            | Type   | Description                                                                 | Default | Required |
+|---------------------------------|--------|-----------------------------------------------------------------------------|---------|----------|
+| `use_null_terminator_delimiter` | `bool` | Use null-terminator (`\0`) instead of line break (`\n`) to split log lines. | `false` | no       |
 
 ### `tls_config`
 

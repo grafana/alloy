@@ -1,0 +1,48 @@
+name: Changelog Guard
+on:
+  pull_request:
+
+concurrency:
+  group: "${{ github.ref_name }}-${{ github.head_ref }}-changelog-guard"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check_changelog:
+    name: Check CHANGELOG.md modifications
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+
+    - name: Check if CHANGELOG.md was modified 🚫
+      env:
+        PR_AUTHOR: ${{ github.actor }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        # Allow release-please PRs created by grafana-alloybot[bot] to modify the changelog
+        if [ "$PR_AUTHOR" = "grafana-alloybot[bot]" ]; then
+          echo "✅ grafana-alloybot PR detected. CHANGELOG.md modifications are allowed."
+          exit 0
+        fi
+
+        if git diff --name-only "$BASE_SHA"..."$HEAD_SHA" | grep -q "^CHANGELOG.md$"; then
+          echo "❌ ERROR: CHANGELOG.md has been modified in this PR."
+          echo ""
+          echo "The CHANGELOG.md file should not be manually edited. It is automatically generated "
+          echo "from Pull Request titles using Conventional Commits and release-please."
+          echo ""
+          echo "To ensure your PR appears correctly in the changelog:"
+          echo "  1. Format your PR title following Conventional Commits (e.g., 'feat: add new feature')"
+          echo "  2. See docs/developer/contributing.md for detailed guidelines"
+          echo ""
+          exit 1
+        else
+          echo "✅ CHANGELOG.md has not been modified. All good!"
+        fi

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/samber/lo"
@@ -29,7 +30,9 @@ func newWithJoinPeers(opts Options) DiscoverFn {
 		defer span.End()
 
 		// Use these resolvers in order to resolve the provided addresses into a form that can be used by clustering.
+		// NOTE: dnsSDURLResolver should be above other DNS resolvers.
 		resolvers := []addressResolver{
+			dnsSDURLResolver(opts, ctx),
 			ipResolver(opts.Logger),
 			dnsAResolver(opts, ctx),
 			dnsSRVResolver(opts, ctx),
@@ -128,6 +131,7 @@ func dnsSRVResolver(opts Options, ctx context.Context) addressResolver {
 	if srvLookup == nil {
 		srvLookup = net.LookupSRV
 	}
+
 	return dnsResolver(opts, ctx, "SRV", func(addr string) ([]string, error) {
 		_, addresses, err := srvLookup("", "", addr)
 		result := make([]string, 0, len(addresses))
@@ -136,6 +140,57 @@ func dnsSRVResolver(opts Options, ctx context.Context) addressResolver {
 		}
 		return result, err
 	})
+}
+
+const (
+	dnsSchemeDNS       = "dns+"
+	dnsSchemeDNSSRV    = "dnssrv+"
+	dnsSchemeDNSSRVNOA = "dnssrvnoa+"
+)
+
+// dnsSDURLResolver handles DNS-SD URLs which explicitly states what DNS query should be used for host resolve.
+//
+// Example: `dnssrv+_memcached._tcp.memcached.namespace.svc.cluster.local`
+//
+// Resolver rejects any non-URL values.
+func dnsSDURLResolver(opts Options, ctx context.Context) addressResolver {
+	srvLookup := opts.lookupSRVFn
+	if srvLookup == nil {
+		srvLookup = net.LookupSRV
+	}
+
+	return func(addr string) ([]string, error) {
+		var (
+			nextAddr     string
+			nextResolver addressResolver
+		)
+
+		switch {
+		case strings.HasPrefix(addr, dnsSchemeDNS):
+			nextAddr = addr[len(dnsSchemeDNS):]
+			nextResolver = dnsAResolver(opts, ctx)
+		case strings.HasPrefix(addr, dnsSchemeDNSSRV):
+			nextAddr = addr[len(dnsSchemeDNSSRV):]
+			nextResolver = dnsSRVResolver(opts, ctx)
+		case strings.HasPrefix(addr, dnsSchemeDNSSRVNOA):
+			nextAddr = addr[len(dnsSchemeDNSSRVNOA):]
+			nextResolver = dnsResolver(opts, ctx, "SRVNOA", func(addr string) ([]string, error) {
+				// NOTE: the only difference between SRVNOA and SRV, as SRV request should do N+1 query for A/AAAA.
+				_, addresses, err := srvLookup("", "", addr)
+				result := make([]string, 0, len(addresses))
+				for _, a := range addresses {
+					result = append(result, a.Target)
+				}
+				return result, err
+			})
+
+		default:
+			// skip and pass control to a next resolver.
+			return nil, nil
+		}
+
+		return nextResolver(nextAddr)
+	}
 }
 
 func dnsResolver(opts Options, ctx context.Context, recordType string, dnsLookupFn func(string) ([]string, error)) addressResolver {

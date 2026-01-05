@@ -1,0 +1,3 @@
+42 <46>Apr 28 11:53:44 syslogd[18823]: start
+44 <47>Apr 28 11:53:44 syslogd[18823]: running
+88 <86>Apr 28 11:53:46 doas: catap ran command ls / as root from /home/catap/src/go-syslog
