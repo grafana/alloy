@@ -148,6 +148,9 @@ title** must adhere to Conventional Commit style.
 When a maintainer goes to merge your PR, the prompt they get will contain the PR title as the squash
 commit's title and all of the individual commit details as the squashed commit's body.
 
+You can find the list of all Conventional Commit "types" we allow
+[here](../../.github/workflows/lint-pr-title.yml#L43).
+
 ## (Maintainers) Merging a PR
 
 PR merge time is the point at which you can modify the commit title (via the "Commit message" box)
