@@ -581,6 +581,8 @@ github.com/bkaradzic/go-lz4 v1.0.0 h1:RXc4wYsyz985CkXXeX04y4VnZFGG8Rd43pRaHsOXAK
 github.com/bkaradzic/go-lz4 v1.0.0/go.mod h1:0YdlkowM3VswSROI7qDxhRvJ3sLhlFrRRwjwegp5jy4=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
+github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260105090541-b22dcef7c015 h1:bWjgi6bctsZYAC+b6NMqYhjmVqHVXS0OWctqesEW028=
+github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260105090541-b22dcef7c015/go.mod h1:zaFFJkMUpPE5AZ1IdIgP4ou4Tl0zlPR9jBEFcj4Euxo=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/bmatcuk/doublestar v1.3.4 h1:gPypJ5xD31uhX6Tf54sDPUOBXTqKH4c9aPY66CyQrS0=
 github.com/bmatcuk/doublestar v1.3.4/go.mod h1:wiQtGV+rzVYxB7WIlirSN++5HPtPlXEo9MEoZQC/PmE=
@@ -1463,8 +1465,8 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/klauspost/asmfmt v1.3.2 h1:4Ri7ox3EwapiOjCki+hw14RyKk201CN4rzyCJRFLpK4=
 github.com/klauspost/asmfmt v1.3.2/go.mod h1:AG8TuvYojzulgDAMCnYn50l/5QV3Bs/tp6j0HLHbNSE=
 github.com/klauspost/compress v1.15.9/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
-github.com/klauspost/compress v1.18.1 h1:bcSGx7UbpBqMChDtsF28Lw6v/G94LPrrbMbdC3JH2co=
-github.com/klauspost/compress v1.18.1/go.mod h1:ZQFFVG+MdnR0P+l6wpXgIL4NTtwiKIdBnrBd8Nrxr+0=
+github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=
+github.com/klauspost/compress v1.18.2/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/klauspost/cpuid/v2 v2.2.11 h1:0OwqZRYI2rFrjS4kvkDnqJkKHdHaRnCm68/DY4OxRzU=
 github.com/klauspost/cpuid/v2 v2.2.11/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=
@@ -1815,6 +1817,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencen
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencensus v0.139.0/go.mod h1:56AGqfnkJIkT04mInP/dDGpyucN+Ne4BQbkFpsrGsX0=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.139.0 h1:Pj303TPLuZ8Q8+ZhPlbbQqEoiYiiVxu/UQTRCr0vc3Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.139.0/go.mod h1:/NDwJwHP4yBFL4B+vDah49ROKH1cro8BS7ThezFZinA=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.139.0 h1:GzBM1jKDppa1hf51p2Ng19ZMKLoHXk8gbA1s8Me2OPA=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.139.0/go.mod h1:OG+ymqao7MiVkbgjx1NohVADe7Tkq3by4bOctOd+810=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.139.0 h1:ctfs8S1cQuhbXJVqSlAx8SxPmgFq2eOcllc7Pdpr9RE=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.139.0/go.mod h1:BduGmN98+nV2KObW0woovcuNwkSvSVLiPG6+Ww95uSk=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.138.0 h1:Fec1dyH3wRPjrvGN5qYLwkuXCAk4cAUcS5qGgDmT5OM=
@@ -2015,8 +2019,8 @@ github.com/prometheus/client_golang v1.11.1/go.mod h1:Z6t4BnS23TR94PD6BsDNk8yVqr
 github.com/prometheus/client_golang v1.12.1/go.mod h1:3Z9XVyYiZYEO+YQWt3RD2R3jrbd179Rt297l4aS6nDY=
 github.com/prometheus/client_golang v1.23.2 h1:Je96obch5RDVy3FDMndoUsjAhG5Edi49h0RJWRi/o0o=
 github.com/prometheus/client_golang v1.23.2/go.mod h1:Tb1a6LWHB3/SPIzCoaDXI4I8UHKeFTEQ1YCr+0Gyqmg=
-github.com/prometheus/client_golang/exp v0.0.0-20250914183048-a974e0d45e0a h1:RF1vfKM34/3DbGNis22BGd6sDDY3XBi0eM7pYqmOEO0=
-github.com/prometheus/client_golang/exp v0.0.0-20250914183048-a974e0d45e0a/go.mod h1:FGJuwvfcPY0V5enm+w8zF1RNS062yugQtPPQp1c4Io4=
+github.com/prometheus/client_golang/exp v0.0.0-20260101091701-2cd067eb23c9 h1:al1B/YzHmaXhacIFkrZSDSUpnPHV4ZPMfENQpvk3PZQ=
+github.com/prometheus/client_golang/exp v0.0.0-20260101091701-2cd067eb23c9/go.mod h1:PmAYDB13uBFBG9qE1qxZZgZWhg7Rg6SfKM5DMK7hjyI=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=
 github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
@@ -3138,8 +3142,8 @@ google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp0
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 google.golang.org/protobuf v1.28.1/go.mod h1:HV8QOd/L58Z+nl8r43ehVNZIU/HEI6OcFqwMG9pJV4I=
 google.golang.org/protobuf v1.33.0/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
-google.golang.org/protobuf v1.36.10 h1:AYd7cD/uASjIL6Q9LiTjz8JLcrh/88q5UObnmY3aOOE=
-google.golang.org/protobuf v1.36.10/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
+google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
+google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6 h1:jMFz6MfLP0/4fUyZle81rXUoxOBFi19VUFKVDOQfozc=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
