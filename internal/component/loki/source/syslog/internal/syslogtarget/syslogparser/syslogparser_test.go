@@ -6,17 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
+	"github.com/grafana/alloy/internal/util"
 )
 
-var (
-	defaultMaxMessageLength = 8192
-)
+var defaultMaxMessageLength = 8192
 
 func TestParseStream_OctetCounting(t *testing.T) {
 	r := strings.NewReader("23 <13>1 - - - - - - First24 <13>1 - - - - - - Second")
@@ -26,7 +25,7 @@ func TestParseStream_OctetCounting(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(false, false, r, cb, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength}, r, cb)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, len(results))
@@ -45,7 +44,7 @@ func TestParseStream_ValidParseError(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(false, false, r, cb, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength}, r, cb)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(results))
@@ -61,7 +60,7 @@ func TestParseStream_OctetCounting_LongMessage(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(false, false, r, cb, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength}, r, cb)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(results))
@@ -76,7 +75,7 @@ func TestParseStream_NewlineSeparated(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(false, false, r, cb, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength}, r, cb)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, len(results))
@@ -89,14 +88,14 @@ func TestParseStream_NewlineSeparated(t *testing.T) {
 func TestParseStream_InvalidStream(t *testing.T) {
 	r := strings.NewReader("invalid")
 
-	err := syslogparser.ParseStream(false, false, r, func(_ *syslog.Result) {}, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength}, r, func(_ *syslog.Result) {})
 	require.EqualError(t, err, "invalid or unsupported framing. first byte: 'i'")
 }
 
 func TestParseStream_EmptyStream(t *testing.T) {
 	r := strings.NewReader("")
 
-	err := syslogparser.ParseStream(false, false, r, func(_ *syslog.Result) {}, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength}, r, func(_ *syslog.Result) {})
 	require.Equal(t, err, io.EOF)
 }
 
@@ -108,7 +107,7 @@ func TestParseStream_RFC3164Timestamp(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(true, false, r, cb, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength, IsRFC3164Message: true}, r, cb)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(results))
@@ -126,7 +125,7 @@ func TestParseStream_RFC3164TimestampWithYear(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(true, true, r, cb, defaultMaxMessageLength)
+	err := syslogparser.ParseStream(syslogparser.StreamParseConfig{MaxMessageLength: defaultMaxMessageLength, IsRFC3164Message: true, UseRFC3164DefaultYear: true}, r, cb)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(results))
