@@ -5,6 +5,10 @@ CONTRIBUTORS GUIDE: https://github.com/grafana/alloy/blob/main/docs/developer/co
 If this is your first PR or you have not contributed in a while, we recommend
 taking the time to review the guide.
 
+**NOTE**
+Your PR title must adhere to Conventional Commit style. For details on this, check out the
+Contributors Guide linked above.
+
 -->
 
 #### PR Description
