@@ -62,9 +62,9 @@ func TestAlloyUnmarshal_Defaults(t *testing.T) {
 	// Check that defaults are applied
 	require.Equal(t, 5*time.Minute, args.QueryTimeout)
 	require.Equal(t, 24*time.Hour, args.BillingLookback)
-	require.Equal(t, 2*time.Hour, args.JobsLookback)
-	require.Equal(t, 2*time.Hour, args.PipelinesLookback)
-	require.Equal(t, 1*time.Hour, args.QueriesLookback)
+	require.Equal(t, 3*time.Hour, args.JobsLookback)
+	require.Equal(t, 3*time.Hour, args.PipelinesLookback)
+	require.Equal(t, 2*time.Hour, args.QueriesLookback)
 	require.Equal(t, 3600, args.SLAThresholdSeconds)
 	require.False(t, args.CollectTaskRetries)
 }
@@ -104,4 +104,3 @@ func TestConvert(t *testing.T) {
 	}
 	require.Equal(t, expected, *res)
 }
-

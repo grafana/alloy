@@ -59,9 +59,9 @@ client_secret: my-client-secret
 	// Check that defaults are applied
 	require.Equal(t, 5*time.Minute, config.QueryTimeout)
 	require.Equal(t, 24*time.Hour, config.BillingLookback)
-	require.Equal(t, 2*time.Hour, config.JobsLookback)
-	require.Equal(t, 2*time.Hour, config.PipelinesLookback)
-	require.Equal(t, 1*time.Hour, config.QueriesLookback)
+	require.Equal(t, 3*time.Hour, config.JobsLookback)
+	require.Equal(t, 3*time.Hour, config.PipelinesLookback)
+	require.Equal(t, 2*time.Hour, config.QueriesLookback)
 	require.Equal(t, 3600, config.SLAThresholdSeconds)
 	require.False(t, config.CollectTaskRetries)
 }
@@ -80,4 +80,3 @@ func TestConfig_InstanceKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "dbc-abc123.cloud.databricks.com", instanceKey)
 }
-

@@ -33,9 +33,9 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 var DefaultArguments = Arguments{
 	QueryTimeout:        5 * time.Minute,
 	BillingLookback:     24 * time.Hour,
-	JobsLookback:        2 * time.Hour,
-	PipelinesLookback:   2 * time.Hour,
-	QueriesLookback:     1 * time.Hour,
+	JobsLookback:        3 * time.Hour,
+	PipelinesLookback:   3 * time.Hour,
+	QueriesLookback:     2 * time.Hour,
 	SLAThresholdSeconds: 3600,
 	CollectTaskRetries:  false,
 }
@@ -75,4 +75,3 @@ func (a *Arguments) Convert() *databricks_exporter.Config {
 		CollectTaskRetries:  a.CollectTaskRetries,
 	}
 }
-

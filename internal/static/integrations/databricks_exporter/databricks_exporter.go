@@ -16,9 +16,9 @@ import (
 var DefaultConfig = Config{
 	QueryTimeout:        5 * time.Minute,
 	BillingLookback:     24 * time.Hour,
-	JobsLookback:        2 * time.Hour,
-	PipelinesLookback:   2 * time.Hour,
-	QueriesLookback:     1 * time.Hour,
+	JobsLookback:        3 * time.Hour,
+	PipelinesLookback:   3 * time.Hour,
+	QueriesLookback:     2 * time.Hour,
 	SLAThresholdSeconds: 3600,
 	CollectTaskRetries:  false,
 }
@@ -90,4 +90,3 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		integrations.WithCollectors(col),
 	), nil
 }
-
