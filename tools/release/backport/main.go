@@ -157,9 +157,11 @@ func createBackportPR(ctx context.Context, client *gh.Client, originalPR *github
 
 This PR backports #%d to %s.
 
-### Original PR
-- **Title:** %s
-- **Author:** @%s
+### Original PR Title
+`+"`%s`"+`
+
+### Original PR Author
+@%s
 
 ### Description
 %s
