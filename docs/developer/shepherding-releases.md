@@ -78,6 +78,8 @@ Release: https://github.com/grafana/alloy/releases/tag/<RELEASE_VERSION>
 Full changelog: https://github.com/grafana/alloy/blob/<RELEASE_VERSION>/CHANGELOG.md
 ```
 
+> **Note:** The internal Alloy channel is automatically notified via GitHub Workflow.
+
 ## Cutting a new PATCH release
 
 The process for this is exactly the same as a minor release with two notable exceptions:

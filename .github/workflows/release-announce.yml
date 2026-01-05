@@ -25,7 +25,6 @@ jobs:
           export_env: false
           repo_secrets: |
             SLACK_CHANNEL_ID_ALLOY_INTERNAL=slack:channel_id_alloy_internal
-            SLACK_CHANNEL_ID_ALLOY_COMMUNITY=slack:channel_id_alloy_community
 
       - name: Determine release type 🏷️
         id: release-type
@@ -47,26 +46,6 @@ jobs:
           payload: |
             {
               "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_INTERNAL }}",
-              "text": ${{ toJSON(env.SLACK_MESSAGE) }},
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": ${{ toJSON(env.SLACK_MESSAGE) }}
-                  }
-                }
-              ]
-            }
-
-      - name: Notify alloy community channel 📢
-        if: steps.release-type.outputs.is_rc == 'false'
-        uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
-        with:
-          method: chat.postMessage
-          payload: |
-            {
-              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_COMMUNITY }}",
               "text": ${{ toJSON(env.SLACK_MESSAGE) }},
               "blocks": [
                 {
