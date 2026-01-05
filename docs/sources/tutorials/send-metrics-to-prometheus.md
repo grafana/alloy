@@ -129,6 +129,14 @@ This configuration creates a [`prometheus.relabel`][prometheus.relabel] componen
 
 ### Third component: Write metrics to Prometheus
 
+{{< admonition type="note" >}}
+
+Prometheus typically scrapes metrics from targets using a pull mechanism.
+This component pushes metrics to Prometheus.
+To make sure Prometheus can accept these remote write requests, you must start Prometheus with the `--enable-feature=remote-write-receiver` flag.
+
+{{< /admonition >}}
+
 Paste the following component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
