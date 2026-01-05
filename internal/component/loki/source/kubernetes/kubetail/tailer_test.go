@@ -90,17 +90,17 @@ func Test_parseKubernetesLog(t *testing.T) {
 	}
 }
 
-func Test_processLogStream_duplicateTimestamps(t *testing.T) {
+func Test_processLogStream(t *testing.T) {
 	baseTime := time.Date(2023, time.January, 23, 17, 0, 10, 0, time.UTC)
 
 	tt := []struct {
-		name         string
-		logLines     []string
-		lastReadTime time.Time
-		expectLines  []string
+		name               string
+		preserveMetaLabels bool
+		logLines           []string
+		lastReadTime       time.Time
+		expectLines        []string
 	}{
-		{
-			name: "duplicate timestamps are not discarded",
+		{name: "duplicate timestamps are not discarded",
 			logLines: []string{
 				"2023-01-23T17:00:10Z line1\n",
 				"2023-01-23T17:00:10Z line2\n",
@@ -150,8 +150,9 @@ func Test_processLogStream_duplicateTimestamps(t *testing.T) {
 				"2023-01-23T17:00:10Z line3\n",
 				"2023-01-23T17:00:10Z line4\n",
 			},
-			lastReadTime: baseTime,
-			expectLines:  []string{"line1\n", "line2\n", "line3\n", "line4\n"},
+			lastReadTime:       baseTime,
+			expectLines:        []string{"line1\n", "line2\n", "line3\n", "line4\n"},
+			preserveMetaLabels: true,
 		},
 	}
 
@@ -159,13 +160,17 @@ func Test_processLogStream_duplicateTimestamps(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a mock tailer with minimal setup
 			lset := labels.FromStrings(
-				LabelPodNamespace, "default",
-				LabelPodName, "test-pod",
-				LabelPodContainerName, "test-container",
-				LabelPodUID, "test-uid-123",
+				kubePodName, "test-pod",
+				kubePodNamespace, "default",
+				kubePodContainerName, "test-container",
+				kubePodUID, "test-uid-123",
 				"test", "value",
 			)
-			target := NewTarget(lset, lset)
+
+			lset, err := PrepareLabelsWithMetaPreservation(lset, "test", tc.preserveMetaLabels)
+			require.NoError(t, err)
+
+			target := NewTarget(lset, lset, tc.preserveMetaLabels)
 			opts := &Options{
 				Positions: &mockPositions{},
 			}
@@ -215,6 +220,22 @@ func Test_processLogStream_duplicateTimestamps(t *testing.T) {
 			}
 
 			require.Equal(t, tc.expectLines, receivedLines, "received lines should match expected lines")
+
+			if tc.preserveMetaLabels {
+				lbls := target.Labels()
+				require.Equal(t, "test", lbls.Get("job"))
+				require.Equal(t, "value", lbls.Get("test"))
+				require.Equal(t, "default/test-pod:test-container", lbls.Get("instance"))
+				require.Equal(t, "test-pod", lbls.Get(kubePodName))
+				require.Equal(t, "default", lbls.Get(kubePodNamespace))
+				require.Equal(t, "test-container", lbls.Get(kubePodContainerName))
+				require.Equal(t, "test-uid-123", lbls.Get(kubePodUID))
+			} else {
+				lbls := target.Labels()
+				require.Equal(t, "test", lbls.Get("job"))
+				require.Equal(t, "value", lbls.Get("test"))
+				require.Equal(t, "default/test-pod:test-container", lbls.Get("instance"))
+			}
 		})
 	}
 }

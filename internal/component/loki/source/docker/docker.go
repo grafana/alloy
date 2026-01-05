@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -216,58 +217,31 @@ func (c *Component) Update(args component.Arguments) error {
 		return promTargets[i].fingerPrint < promTargets[j].fingerPrint
 	})
 
-	shouldRun := make(map[string]struct{}, len(newArgs.Targets))
-	for _, markedTarget := range promTargets {
-		containerID, ok := markedTarget.labels[dockerLabelContainerID]
-		if !ok {
-			level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
-			continue
-		}
+	source.Reconcile(
+		c.opts.Logger,
+		c.scheduler,
+		slices.Values(promTargets),
+		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
+		func(containerID string, target promTarget) (source.Source[string], error) {
+			if containerID == "" {
+				level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
+				return nil, source.ErrSkip
+			}
 
-		key := string(containerID)
-		if _, ok := shouldRun[key]; ok {
-			continue
-		}
-		shouldRun[key] = struct{}{}
-
-		if c.scheduler.Contains(key) {
-			continue
-		}
-
-		tailer, err := newTailer(
-			c.metrics,
-			log.With(c.opts.Logger, "target", fmt.Sprintf("docker/%s", containerID)),
-			c.handler,
-			c.posFile,
-			string(containerID),
-			markedTarget.labels.Merge(defaultLabels),
-			c.rcs,
-			client,
-			5*time.Second,
-			func() bool { return c.exited.Load() },
-		)
-
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to tail docker container", "containerID", containerID, "error", err)
-			continue
-		}
-
-		c.scheduler.ScheduleSource(tailer)
-	}
-
-	// Avoid mutating the scheduler state during iteration. Collect sources to
-	// remove and stop them in a separate loop.
-	var toDelete []source.Source[string]
-	for source := range c.scheduler.Sources() {
-		if _, ok := shouldRun[source.Key()]; ok {
-			continue
-		}
-		toDelete = append(toDelete, source)
-	}
-
-	for _, s := range toDelete {
-		c.scheduler.StopSource(s) // stops without blocking
-	}
+			return newTailer(
+				c.metrics,
+				log.With(c.opts.Logger, "component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.handler,
+				c.posFile,
+				containerID,
+				target.labels.Merge(defaultLabels),
+				c.rcs,
+				client,
+				5*time.Second,
+				func() bool { return c.exited.Load() },
+			)
+		},
+	)
 
 	c.args = newArgs
 	return nil
