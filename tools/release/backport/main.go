@@ -43,7 +43,7 @@ func main() {
 
 	targetBranch := fmt.Sprintf("release/%s", version)
 	backportBranch := fmt.Sprintf("backport/pr-%d-to-%s", prNumber, version)
-	backportMarker := fmt.Sprintf("chore: backport #%d", prNumber)
+	backportMarker := fmt.Sprintf("chore: Backport #%d", prNumber)
 
 	fmt.Printf("🍒 Backporting PR #%d to %s\n", prNumber, targetBranch)
 
