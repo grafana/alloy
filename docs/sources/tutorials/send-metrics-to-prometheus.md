@@ -16,12 +16,12 @@ killercoda:
         replacement: Grafana Alloy
       - regexp: '{{[%<] *param *"PRODUCT_NAME" *[%>]}}'
         replacement: Alloy
-      - regexp: "docker compose"
+      - regexp: 'docker compose'
         replacement: docker-compose
       - regexp: '\.\./\.\./'
-        replacement: "https://grafana.com/docs/alloy/latest/"
+        replacement: 'https://grafana.com/docs/alloy/latest/'
       - regexp: "../send-logs-to-loki/"
-        replacement: "https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/"
+        replacement: 'https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/'
 
   backend:
     imageid: ubuntu
@@ -36,20 +36,18 @@ In the [previous tutorial][], you learned how to configure {{< param "PRODUCT_NA
 This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local machine, send them to Prometheus, and use Grafana to explore the results.
 
 <!-- INTERACTIVE ignore START -->
-
 ## Before you begin
 
 To complete this tutorial:
 
-- You must have a basic understanding of Alloy and telemetry collection in general.
-- You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
-- You must complete the [previous tutorial][] to prepare the following prerequisites:
-  - Install {{< param "PRODUCT_NAME" >}} and start the service in your environment.
-  - Set up a local Grafana instance.
-  - Create a `config.alloy` file.
+* You must have a basic understanding of Alloy and telemetry collection in general.
+* You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
+* You must complete the [previous tutorial][] to prepare the following prerequisites:
+  * Install {{< param "PRODUCT_NAME" >}} and start the service in your environment.
+  * Set up a local Grafana instance.
+  * Create a `config.alloy` file.
 
 <!-- INTERACTIVE ignore START -->
-
 {{< admonition type="tip" >}}
 Alternatively, you can try out this example in the interactive learning environment: [Sending metrics to Prometheus](https://killercoda.com/grafana-labs/course/alloy/send-metrics-to-prometheus).
 
@@ -61,9 +59,8 @@ It's a fully configured environment with all the dependencies already installed.
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
-
 > Since this tutorial builds on the previous one, a setup script is automatically run to ensure you have the necessary prerequisites in place. This should take no longer than 1 minute to complete. You may begin the tutorial when you see this message: `Installation script has now been completed. You may now begin the tutorial.`
-> {{< /docs/ignore >}}
+{{< /docs/ignore >}}
 
 <!-- INTERACTIVE page intro.md END -->
 
@@ -98,9 +95,9 @@ prometheus.scrape "scrape_metrics" {
 
 This configuration creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
 
-- It connects to the `local_system` component as its source or target.
-- It forwards the metrics it scrapes to the receiver of another component called `filter_metrics`.
-- It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds.
+* It connects to the `local_system` component as its source or target.
+* It forwards the metrics it scrapes to the receiver of another component called `filter_metrics`.
+* It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds.
 
 ### Second component: Filter metrics
 
@@ -128,9 +125,9 @@ Within this component, you can define rule blocks to specify how you would like 
 
 This configuration creates a [`prometheus.relabel`][prometheus.relabel] component named `filter_metrics` which does the following:
 
-- It receives scraped metrics from the `scrape_metrics` component.
-- It tells {{< param "PRODUCT_NAME" >}} to drop metrics that have an `"env"` label equal to `"dev"`.
-- It forwards the processed metrics to the receiver of another component called `metrics_service`.
+* It receives scraped metrics from the `scrape_metrics` component.
+* It tells {{< param "PRODUCT_NAME" >}} to drop metrics that have an `"env"` label equal to `"dev"`.
+* It forwards the processed metrics to the receiver of another component called `metrics_service`.
 
 ### Third component: Write metrics to Prometheus
 
@@ -171,9 +168,7 @@ It's included in this example to show how you can configure authorization for ot
 For further authorization options, refer to the [`prometheus.remote_write`][prometheus.remote_write] component documentation.
 
 [prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/
-
 {{< /admonition >}}
-
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
