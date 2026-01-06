@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
-	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -18,9 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
-
-// Extracts leading major.minor.patch from a version string (e.g., "8.0.36" from "8.0.36-28.1").
-var mysqlVersionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
 
 const (
 	HealthCheckCollector = "health_check"
@@ -114,14 +109,9 @@ type healthCheckResult struct {
 
 func (c *HealthCheck) fetchHealthChecks(ctx context.Context) error {
 	checks := []func(context.Context, *sql.DB) healthCheckResult{
-		checkDBConnectionValid,
 		checkPerformanceSchemaEnabled,
-		checkMySQLVersion,
 		checkAlloyVersion,
 		checkRequiredGrants,
-		checkDigestVariablesLength,
-		checkSetupConsumerCPUTimeEnabled,
-		checkSetupConsumersEventsWaitsEnabled,
 		checkEventsStatementsDigestHasRows,
 	}
 
@@ -154,48 +144,6 @@ func checkPerformanceSchemaEnabled(ctx context.Context, db *sql.DB) healthCheckR
 
 	r.result = strings.EqualFold(varValue, "ON") || varValue == "1"
 	r.value = varValue
-	return r
-}
-
-// checkDBConnectionValid validates the database connection with a short timeout.
-func checkDBConnectionValid(ctx context.Context, db *sql.DB) healthCheckResult {
-	r := healthCheckResult{name: "DBConnectionValid"}
-	subCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(subCtx); err != nil {
-		r.value = err.Error()
-		return r
-	}
-	r.result = true
-	r.value = "ok"
-	return r
-}
-
-// checkMySQLVersion validates that the database the MySQL version >= 8.0.
-func checkMySQLVersion(ctx context.Context, db *sql.DB) healthCheckResult {
-	r := healthCheckResult{name: "MySQLVersionSupported"}
-	const q = `SELECT VERSION()`
-	var version string
-	if err := db.QueryRowContext(ctx, q).Scan(&version); err != nil {
-		r.err = fmt.Errorf("query version(): %w", err)
-		return r
-	}
-
-	matches := mysqlVersionRegex.FindStringSubmatch(version)
-	if len(matches) <= 1 {
-		r.err = fmt.Errorf("unexpected version format: %s", version)
-		return r
-	}
-
-	parsed, err := semver.ParseTolerant(matches[1])
-	if err != nil {
-		r.err = fmt.Errorf("parse semver: %w", err)
-		return r
-	}
-
-	r.result = semver.MustParseRange(">=8.0.0")(parsed)
-	r.value = version
 	return r
 }
 
@@ -260,38 +208,6 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 	return r
 }
 
-// checkDigestVariablesLength ensures text/digest length variables are >= 4096.
-func checkDigestVariablesLength(ctx context.Context, db *sql.DB) healthCheckResult {
-	r := healthCheckResult{name: "DigestVariablesLengthCheck"}
-	const q = `
-SELECT
-	@@performance_schema_max_sql_text_length,
-	@@performance_schema_max_digest_length,
-	@@max_digest_length`
-
-	var sqlTextLen, digestLen, maxDigestLen sql.NullInt64
-	if err := db.QueryRowContext(ctx, q).Scan(&sqlTextLen, &digestLen, &maxDigestLen); err != nil {
-		r.err = fmt.Errorf("query perf schema length vars: %w", err)
-		return r
-	}
-
-	r.result = true
-	if sqlTextLen.Int64 < 4096 {
-		r.result = false
-		r.value += fmt.Sprintf("performance_schema_max_sql_text_length=%d < 4096", sqlTextLen.Int64)
-	}
-	if digestLen.Int64 < 4096 {
-		r.result = false
-		r.value += fmt.Sprintf(" performance_schema_max_digest_length=%d < 4096", digestLen.Int64)
-	}
-	if maxDigestLen.Int64 < 4096 {
-		r.result = false
-		r.value += fmt.Sprintf(" max_digest_length=%d < 4096", maxDigestLen.Int64)
-	}
-
-	return r
-}
-
 // checkEventsStatementsDigestHasRows ensures performance_schema.events_statements_summary_by_digest has rows.
 func checkEventsStatementsDigestHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PerformanceSchemaHasRows"}
@@ -305,52 +221,5 @@ func checkEventsStatementsDigestHasRows(ctx context.Context, db *sql.DB) healthC
 		return r
 	}
 	r.result = true
-	return r
-}
-
-// checkSetupConsumerCPUTimeEnabled validates events_statements_cpu consumer is enabled.
-func checkSetupConsumerCPUTimeEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
-	r := healthCheckResult{name: "SetupConsumerCPUTimeEnabled"}
-	const q = `SELECT enabled FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu'`
-	var enabled string
-	if err := db.QueryRowContext(ctx, q).Scan(&enabled); err != nil {
-		r.err = fmt.Errorf("query setup_consumers: %w", err)
-		return r
-	}
-	r.result = enabled == "YES"
-	r.value = enabled
-	return r
-}
-
-// checkSetupConsumersEventsWaitsEnabled validates events_waits_current and events_waits_history consumers are enabled.
-func checkSetupConsumersEventsWaitsEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
-	r := healthCheckResult{name: "SetupConsumersEventsWaitsEnabled"}
-	const q = `SELECT name, enabled FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current','events_waits_history')`
-
-	rows, err := db.QueryContext(ctx, q)
-	if err != nil {
-		r.err = fmt.Errorf("query setup_consumers: %w", err)
-		return r
-	}
-	defer rows.Close()
-
-	r.result = true
-
-	for rows.Next() {
-		var consumerName, enabled string
-		if err := rows.Scan(&consumerName, &enabled); err != nil {
-			r.err = fmt.Errorf("scan setup_consumers: %w", err)
-			return r
-		}
-		if enabled != "YES" {
-			r.result = false
-			r.value += fmt.Sprintf(" %v=%v", consumerName, enabled)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		r.err = fmt.Errorf("iterate setup_consumers: %w", err)
-		return r
-	}
-
 	return r
 }

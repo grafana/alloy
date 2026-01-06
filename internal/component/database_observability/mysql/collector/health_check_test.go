@@ -46,7 +46,7 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) >= 9
+			return len(lokiClient.Received()) >= 4
 		}, 5*time.Second, 10*time.Millisecond)
 
 		collector.Stop()
@@ -61,9 +61,9 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.GreaterOrEqual(t, len(lokiEntries), 9)
+		require.GreaterOrEqual(t, len(lokiEntries), 4)
 
-		for _, entry := range lokiEntries[:9] {
+		for _, entry := range lokiEntries[:4] {
 			require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
 			require.Contains(t, entry.Line, `result="true"`)
 		}
@@ -89,18 +89,6 @@ func TestHealthCheck(t *testing.T) {
 				expectedResult: `result="false"`,
 			},
 			{
-				name:             "mysql version too old",
-				failingCheckName: "MySQLVersionSupported",
-				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SELECT VERSION()`).
-						WillReturnRows(
-							sqlmock.NewRows([]string{"VERSION()"}).
-								AddRow("5.7.44"),
-						)
-				},
-				expectedResult: `result="false"`,
-			},
-			{
 				name:             "missing grants",
 				failingCheckName: "RequiredGrantsPresent",
 				customSetup: func(mock sqlmock.Sqlmock) {
@@ -108,47 +96,6 @@ func TestHealthCheck(t *testing.T) {
 						WillReturnRows(
 							sqlmock.NewRows([]string{"Grants"}).
 								AddRow("GRANT SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
-						)
-				},
-				expectedResult: `result="false"`,
-			},
-			{
-				name:             "digest variables too short",
-				failingCheckName: "DigestVariablesLengthCheck",
-				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`
-SELECT
-	@@performance_schema_max_sql_text_length,
-	@@performance_schema_max_digest_length,
-	@@max_digest_length`).
-						WillReturnRows(
-							sqlmock.NewRows([]string{"@@performance_schema_max_sql_text_length", "@@performance_schema_max_digest_length", "@@max_digest_length"}).
-								AddRow(1024, 2048, 1024),
-						)
-				},
-				expectedResult: `result="false"`,
-			},
-			{
-				name:             "setup consumer cpu time disabled",
-				failingCheckName: "SetupConsumerCPUTimeEnabled",
-				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SELECT enabled FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu'`).
-						WillReturnRows(
-							sqlmock.NewRows([]string{"enabled"}).
-								AddRow("NO"),
-						)
-				},
-				expectedResult: `result="false"`,
-			},
-			{
-				name:             "events waits consumer partially disabled",
-				failingCheckName: "SetupConsumersEventsWaitsEnabled",
-				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SELECT name, enabled FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current','events_waits_history')`).
-						WillReturnRows(
-							sqlmock.NewRows([]string{"name", "enabled"}).
-								AddRow("events_waits_current", "YES").
-								AddRow("events_waits_history", "NO"),
 						)
 				},
 				expectedResult: `result="false"`,
@@ -194,7 +141,7 @@ SELECT
 				require.NoError(t, err)
 
 				require.Eventually(t, func() bool {
-					return len(lokiClient.Received()) >= 9
+					return len(lokiClient.Received()) >= 4
 				}, 5*time.Second, 10*time.Millisecond)
 
 				collector.Stop()
@@ -233,12 +180,6 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 
 	checks := []checkSetup{
 		{
-			name: "DBConnectionValid",
-			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectPing().WillDelayFor(10 * time.Millisecond)
-			},
-		},
-		{
 			name: "PerformaneSchemaEnabled",
 			setup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(`SHOW VARIABLES LIKE 'performance_schema'`).
@@ -249,57 +190,12 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 			},
 		},
 		{
-			name: "MySQLVersionSupported",
-			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT VERSION()`).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"VERSION()"}).
-							AddRow("8.0.36"),
-					)
-			},
-		},
-		{
 			name: "RequiredGrantsPresent",
 			setup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(`SHOW GRANTS`).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"Grants"}).
 							AddRow("GRANT PROCESS, REPLICATION CLIENT, SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
-					)
-			},
-		},
-		{
-			name: "DigestVariablesLengthCheck",
-			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`
-SELECT
-	@@performance_schema_max_sql_text_length,
-	@@performance_schema_max_digest_length,
-	@@max_digest_length`).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"@@performance_schema_max_sql_text_length", "@@performance_schema_max_digest_length", "@@max_digest_length"}).
-							AddRow(4096, 4096, 4096),
-					)
-			},
-		},
-		{
-			name: "SetupConsumerCPUTimeEnabled",
-			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT enabled FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu'`).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"enabled"}).
-							AddRow("YES"),
-					)
-			},
-		},
-		{
-			name: "SetupConsumersEventsWaitsEnabled",
-			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT name, enabled FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current','events_waits_history')`).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"name", "enabled"}).
-							AddRow("events_waits_current", "YES").
-							AddRow("events_waits_history", "YES"),
 					)
 			},
 		},
