@@ -41,7 +41,8 @@ func (faroExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 			ext := state.LookupExtension(cfg.(*faroexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*faroexporter.Config).QueueConfig.StorageID)
+			queue := cfg.(*faroexporter.Config).QueueConfig.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)

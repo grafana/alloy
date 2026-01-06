@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
@@ -18,7 +19,7 @@ func TestConfigConversion(t *testing.T) {
 	var (
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeout       = 30 * time.Second
-		defaultQueueConfig   = exporterhelper.NewDefaultQueueConfig()
+		defaultQueueConfig   = configoptional.Some(exporterhelper.NewDefaultQueueConfig())
 	)
 
 	tests := []struct {

@@ -4,7 +4,8 @@ receivers:
       region: "us-west-1"
       s3_bucket: "mybucket"
       s3_prefix: "mytrace"
-      s3_partition: "minute"
+      s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+      s3_partition_timezone: "UTC"
       endpoint_partition_id: "aws"
     sqs:
       queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"

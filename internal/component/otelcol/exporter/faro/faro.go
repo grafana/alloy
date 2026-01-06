@@ -57,7 +57,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 	return &faroexporter.Config{
 		ClientConfig: *convertedClientArgs,
-		QueueConfig:  *q,
+		QueueConfig:  q,
 		RetryConfig:  *args.Retry.Convert(),
 	}, nil
 }

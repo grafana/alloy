@@ -230,16 +230,12 @@ type Cookies struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
-func (c *Cookies) Convert() otelconfighttp.CookiesConfig {
+func (c *Cookies) Convert() configoptional.Optional[otelconfighttp.CookiesConfig] {
 	if c == nil {
-		return otelconfighttp.CookiesConfig{
-			Enabled: false,
-		}
+		return configoptional.None[otelconfighttp.CookiesConfig]()
 	}
 
-	return otelconfighttp.CookiesConfig{
-		Enabled: c.Enabled,
-	}
+	return configoptional.Some(otelconfighttp.CookiesConfig{})
 }
 
 type CompressionParams struct {

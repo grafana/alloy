@@ -35,7 +35,8 @@ func (syslogExporterConverter) ConvertAndAppend(state *State, id componentstatus
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*syslogexporter.Config).QueueSettings.StorageID)
+			queue := cfg.(*syslogexporter.Config).QueueSettings.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)

@@ -15,8 +15,8 @@ func TestArguments_Defaults(t *testing.T) {
 	expect := awss3.Arguments{
 		S3Downloader: awss3.S3DownloaderConfig{
 			Region:              "us-east-1",
-			S3Partition:         awss3receiver.S3PartitionMinute,
 			EndpointPartitionID: "aws",
+			S3PartitionFormat:   "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
 		},
 	}
 
@@ -41,7 +41,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					region = "us-west-2"
 					s3_bucket = "grafana-logs"
 					s3_prefix = "logs/"
-					s3_partition = "hour"
+					s3_partition_format = "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+					s3_partition_timezone = "UTC"
 					file_prefix = "app_"
 					endpoint = "https://s3.us-west-2.amazonaws.com"
 					endpoint_partition_id = "aws"
@@ -56,7 +57,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Region:              "us-west-2",
 					S3Bucket:            "grafana-logs",
 					S3Prefix:            "logs/",
-					S3Partition:         "hour",
+					S3PartitionFormat:   "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+					S3PartitionTimezone: "UTC",
 					FilePrefix:          "app_",
 					Endpoint:            "https://s3.us-west-2.amazonaws.com",
 					EndpointPartitionID: "aws",
@@ -71,7 +73,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					region = "us-west-2"
 					s3_bucket = "grafana-bucket"
 					s3_prefix = "ingest/"
-					s3_partition = "minute"
+					s3_partition_format = "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+					s3_partition_timezone = "UTC"
 				}
 				sqs {
 					queue_url = "https://sqs.us-east-1.amazonaws.com/123456789012/alloy"
@@ -87,7 +90,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Region:              "us-west-2",
 					S3Bucket:            "grafana-bucket",
 					S3Prefix:            "ingest/",
-					S3Partition:         awss3receiver.S3PartitionMinute,
+					S3PartitionFormat:   "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+					S3PartitionTimezone: "UTC",
 					EndpointPartitionID: "aws",
 				},
 				SQS: &awss3receiver.SQSConfig{
@@ -142,7 +146,6 @@ func TestArguments_Validate(t *testing.T) {
 				s3downloader {
 					s3_bucket = "grafana-logs"
 					s3_prefix = "logs/"
-					s3_partition = "hour"
 				}
 				output {}
 			`,

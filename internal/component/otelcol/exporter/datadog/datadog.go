@@ -100,7 +100,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return &datadogOtelconfig.Config{
 		ClientConfig:  *args.Client.Convert(),
-		QueueSettings: *q,
+		QueueSettings: q,
 		BackOffConfig: *args.Retry.Convert(),
 		TagsConfig: datadogOtelconfig.TagsConfig{
 			Hostname: args.Hostname,
