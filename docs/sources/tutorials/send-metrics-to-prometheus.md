@@ -217,9 +217,7 @@ If you choose to run Alloy in a Docker container, make sure you use the `--serve
 If you don't use this argument, the [debugging UI][debug] won't be available outside of the Docker container.
 
 [debug]: ../../troubleshoot/debug/#alloy-ui
-
 {{< /admonition >}}
-
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
@@ -239,7 +237,6 @@ Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and l
 {{< /docs/ignore >}}
 
 <!-- INTERACTIVE ignore START -->
-
 {{< code >}}
 
 ```macos
@@ -251,7 +248,6 @@ sudo systemctl reload alloy
 ```
 
 {{< /code >}}
-
 <!-- INTERACTIVE ignore END -->
 
 <!-- INTERACTIVE page step2.md END -->
