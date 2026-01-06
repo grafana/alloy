@@ -100,7 +100,7 @@ changelog entries. If you need to change one after the PR has already been merge
 2. Edit the PR's description and append a block such as the following to the bottom of it:
    ```
    BEGIN_COMMIT_OVERRIDE
-   feat: this is the overridden semantic commit title
+   feat: this is the overridden conventional commit-style title (#pr_number_goes_here)
    END_COMMIT_OVERRIDE
    ```
 
@@ -108,9 +108,10 @@ If you need to mark something as a **breaking change**, use the following:
 
 ```
 BEGIN_COMMIT_OVERRIDE
-feat!: this is the overridden semantic commit title
+feat!: this is the overridden conventional commit-style title (#pr_number_goes_here)
 
-BREAKING-CHANGE: This is where you write a detailed description about the breaking change. You can use markdown if needed.
+BREAKING-CHANGE: This is where you write a detailed description about the breaking change. You can
+use markdown if needed.
 END_COMMIT_OVERRIDE
 ```
 
@@ -129,6 +130,9 @@ against the appropriate release branch. Merge it in and you're done!
 
 If there's no other pending content on the release branch, you'll see a new release-please PR get
 created for the next release.
+
+> **NOTE**: For backport PRs, **do not modify** the PR title, Commit message, or Extended
+> description.
 
 ## Recreating the release-please PR
 
@@ -157,7 +161,7 @@ are the steps you can take to do it manually:
    the `Repository admin` role.
 5. Run the following commands:
    ```bash
-   git merge --strategy ours origin/release/vN.M --message "chore: forwardport release A.B.C to main"
+   git merge --strategy ours origin/release/vN.M --message "chore: Forwardport release A.B.C to main"
    git cherry-pick --no-commit <release_please_commit_hash_from_earlier>
    git commit --amend --no-edit
    git push

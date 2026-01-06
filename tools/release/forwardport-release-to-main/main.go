@@ -98,7 +98,7 @@ func main() {
 	// Merge the release branch into main using "ours" strategy.
 	// This creates a merge commit that records the release branch history (including tags)
 	// but keeps main's content unchanged.
-	commitMessage := fmt.Sprintf(`chore: forwardport %s to main
+	commitMessage := fmt.Sprintf(`chore: Forwardport %s to main
 
 Forwardports the %s branch to main after the %s release.
 

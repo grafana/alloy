@@ -116,17 +116,28 @@ Slack channel [#alloy](https://slack.grafana.com).
 
 1. Adhere to [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) style and use one
    of the ["types" defined in our linting workflow](../../.github/workflows/lint-pr-title.yml#L43).
-2. Read as a complete sentence in the imperative, present tense (e.g. "change", not "changes" or
-   "changed").
-3. Describe the impact on the user which is reading the changelog.
+2. Read as a complete sentence in the imperative, present tense (e.g. "Change", not "Changes" or
+   "Changed").
+3. Have a "description" which starts with an uppercase letter.
+4. Describe the impact on the user which is reading the changelog.
 
-For example: `feat: increase config file read speed by 1500%`
+For example: `feat: Increase config file read speed by 1500%`
 
 > Readers should be able to understand how a change impacts them. Default to being explicit over
 > vague.
 >
-> - Vague: `fix: fix issue with metric names`
-> - Explicit: `fix: fix 's' getting replaced by 'z' in metric names`
+> - Vague: `fix: Fix issue with metric names`
+> - Explicit: `fix: Fix 's' getting replaced by 'z' in metric names`
+
+General title format:
+
+```
+  ┌──────────── Type
+  │   ┌──────── Scope (optional)
+  │   │   ┌──── Description
+  │   │   │
+feat(ui): Improve UI load time for large component pages
+```
 
 #### PR "Extended descriptions" (i.e. commit bodies):
 
@@ -136,6 +147,7 @@ For example: `feat: increase config file read speed by 1500%`
    modification before final merge.
 4. **Should not** contain more than one line starting with `feat` or `fix` as this will result in
    multiple changelog entries.
+5. Should include a `BREAKING-CHANGE: [...]` footer if the change is breaking.
 
 ### Details
 
@@ -164,6 +176,24 @@ click the "Squash and merge" button, you want to:
 2. Remove any unnecessary commit details from the "Extended description" box and add a
    human-readable description instead. This can be the contents of the "Brief description of Pull
    Request" section from the PR's description, if available.
+3. If needed, add a `BREAKING-CHANGE: [...]` footer to the bottom of the "Extended description" with
+   a detailed description of the breaking change. For example:
+
+   ```
+   Commit message
+   ┌─────────────────────────────────────────────────────┐
+   │ feat!: This is the conventional commit-style title  │
+   └─────────────────────────────────────────────────────┘
+
+   Extended description
+   ┌─────────────────────────────────────────────────────┐
+   │ This is the detailed description of the PR.         │
+   │                                                     │
+   │ BREAKING-CHANGE: This is where you write a detailed │
+   │ description about the breaking change. You can use  │
+   │ markdown if needed.                                 │
+   └─────────────────────────────────────────────────────┘
+   ```
 
 ## (Maintainers) Should you backport?
 
