@@ -55,12 +55,13 @@ func TestErrorLogsCollector_ParseJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 			collector, err := NewErrorLogs(ErrorLogsArguments{
-				Receiver:     loki.NewLogsReceiver(),
-				EntryHandler: entryHandler,
-				Logger:       log.NewNopLogger(),
-				InstanceKey:  "test-instance",
-				SystemID:     "test-system",
-				Registry:     prometheus.NewRegistry(),
+				Receiver:              loki.NewLogsReceiver(),
+				EntryHandler:          entryHandler,
+				Logger:                log.NewNopLogger(),
+				InstanceKey:           "test-instance",
+				SystemID:              "test-system",
+				Registry:              prometheus.NewRegistry(),
+				DisableQueryRedaction: true,
 			})
 			require.NoError(t, err)
 
@@ -87,12 +88,13 @@ func TestErrorLogsCollector_StartStop(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 
 	collector, err := NewErrorLogs(ErrorLogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
-		Registry:     prometheus.NewRegistry(),
+		Receiver:              loki.NewLogsReceiver(),
+		EntryHandler:          entryHandler,
+		Logger:                log.NewNopLogger(),
+		InstanceKey:           "test",
+		SystemID:              "test",
+		Registry:              prometheus.NewRegistry(),
+		DisableQueryRedaction: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)
@@ -115,12 +117,13 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewErrorLogs(ErrorLogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
-		Registry:     registry,
+		Receiver:              loki.NewLogsReceiver(),
+		EntryHandler:          entryHandler,
+		Logger:                log.NewNopLogger(),
+		InstanceKey:           "test",
+		SystemID:              "test",
+		Registry:              registry,
+		DisableQueryRedaction: true,
 	})
 	require.NoError(t, err)
 
@@ -261,6 +264,199 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 
 			tt.checkFunc(t, registry)
+		})
+	}
+}
+
+func TestErrorLogsCollector_StatementObfuscation(t *testing.T) {
+	tests := []struct {
+		name                  string
+		jsonLog               string
+		disableQueryRedaction bool
+		checkStatement        func(*testing.T, string)
+	}{
+		{
+			name:                  "obfuscation enabled - smart redaction for mixed text",
+			jsonLog:               `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"error_severity":"ERROR","state_code":"40P01","message":"deadlock detected","statement":"SELECT * FROM users WHERE id = 123 AND name = 'John'","internal_query":"UPDATE accounts SET balance = 500 WHERE id = 42","detail":"Process 9112 waits for ShareLock; blocked by process 9184.\nProcess 9112: UPDATE books SET stock = 200 WHERE id = 2;\nProcess 9184: DELETE FROM orders WHERE id = 99;","hint":"SELECT * FROM users FOR UPDATE","context":"while executing query: INSERT INTO logs (message) VALUES ('test')"}`,
+			disableQueryRedaction: false,
+			checkStatement: func(t *testing.T, logLine string) {
+				// Statement should be obfuscated - literals replaced with ?
+				require.Contains(t, logLine, `statement="SELECT * FROM users WHERE id = ? AND name = ?"`)
+				require.NotContains(t, logLine, `statement="SELECT * FROM users WHERE id = 123`)
+
+				// Internal query should be obfuscated
+				require.Contains(t, logLine, `internal_query="UPDATE accounts SET balance = ? WHERE id = ?"`)
+				require.NotContains(t, logLine, `internal_query="UPDATE accounts SET balance = 500`)
+
+				// Detail: SQL should be redacted but process IDs preserved
+				require.Contains(t, logLine, `detail=`)
+				require.Contains(t, logLine, `Process 9112`)                            // Process ID preserved
+				require.Contains(t, logLine, `Process 9184`)                            // Process ID preserved
+				require.Contains(t, logLine, `UPDATE books SET stock = ? WHERE id = ?`) // SQL redacted
+				require.Contains(t, logLine, `DELETE FROM orders WHERE id = ?`)         // SQL redacted
+				require.NotContains(t, logLine, `stock = 200`)                          // Literal should be gone
+				require.NotContains(t, logLine, `id = 99`)                              // Literal should be gone
+
+				// Hint: Pure SQL example, fully redacted
+				require.Contains(t, logLine, `hint="SELECT * FROM users FOR UPDATE"`)
+
+				// Context: SQL extracted and redacted
+				require.Contains(t, logLine, `context=`)
+				require.Contains(t, logLine, `INSERT INTO logs (message) VALUES (?)`) // SQL redacted
+				require.NotContains(t, logLine, `VALUES ('test')`)                    // Literal should be gone
+			},
+		},
+		{
+			name:                  "obfuscation disabled - all fields unobfuscated",
+			jsonLog:               `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"error_severity":"ERROR","state_code":"40P01","message":"deadlock detected","statement":"SELECT * FROM users WHERE id = 123 AND name = 'John'","internal_query":"UPDATE accounts SET balance = 500 WHERE id = 42","detail":"Process 9112: UPDATE books SET stock = 200 WHERE id = 2","hint":"SELECT * FROM users FOR UPDATE"}`,
+			disableQueryRedaction: true,
+			checkStatement: func(t *testing.T, logLine string) {
+				// Statement should NOT be obfuscated - original values preserved
+				require.Contains(t, logLine, `SELECT * FROM users WHERE id = 123`)
+				require.Contains(t, logLine, `name = 'John'`)
+
+				// Internal query should NOT be obfuscated
+				require.Contains(t, logLine, `UPDATE accounts SET balance = 500 WHERE id = 42`)
+
+				// Detail should preserve original SQL
+				require.Contains(t, logLine, `Process 9112`)
+				require.Contains(t, logLine, `UPDATE books SET stock = 200 WHERE id = 2`)
+
+				// Hint should preserve original
+				require.Contains(t, logLine, `SELECT * FROM users FOR UPDATE`)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entryChan := make(chan loki.Entry, 10)
+			entryHandler := loki.NewEntryHandler(entryChan, func() {})
+
+			collector, err := NewErrorLogs(ErrorLogsArguments{
+				Receiver:              loki.NewLogsReceiver(),
+				EntryHandler:          entryHandler,
+				Logger:                log.NewNopLogger(),
+				InstanceKey:           "test",
+				SystemID:              "test",
+				Registry:              prometheus.NewRegistry(),
+				DisableQueryRedaction: tt.disableQueryRedaction,
+			})
+			require.NoError(t, err)
+
+			err = collector.Start(context.Background())
+			require.NoError(t, err)
+			defer collector.Stop()
+
+			collector.Receiver().Chan() <- loki.Entry{
+				Entry: push.Entry{
+					Line:      tt.jsonLog,
+					Timestamp: time.Now(),
+				},
+			}
+
+			select {
+			case entry := <-entryChan:
+				tt.checkStatement(t, entry.Line)
+			case <-time.After(time.Second):
+				t.Fatal("timeout waiting for log entry")
+			}
+		})
+	}
+}
+
+func TestRedactMixedTextWithSQL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "pure text without SQL",
+			input:    "Process 9112 waits for ShareLock; blocked by process 9184.",
+			expected: "Process 9112 waits for ShareLock; blocked by process 9184.",
+		},
+		{
+			name:     "text with single UPDATE statement",
+			input:    "Process 9112: UPDATE books SET stock = 200 WHERE id = 2;",
+			expected: "Process 9112: UPDATE books SET stock = ? WHERE id = ?;",
+		},
+		{
+			name:     "text with multiple SQL statements",
+			input:    "Process 9112: UPDATE books SET stock = 200 WHERE id = 2; Process 9184: DELETE FROM orders WHERE id = 99;",
+			expected: "Process 9112: UPDATE books SET stock = ? WHERE id = ?; Process 9184: DELETE FROM orders WHERE id = ?;",
+		},
+		{
+			name:     "deadlock detail with complex SQL",
+			input:    "Process 9185 waits for ShareLock on transaction 836; blocked by process 9184.\nProcess 9185: UPDATE books SET stock = stock WHERE id = 2;\nProcess 9184: UPDATE books SET stock = stock WHERE id = 1;",
+			expected: "Process 9185 waits for ShareLock on transaction 836; blocked by process 9184.\nProcess 9185: UPDATE books SET stock = stock WHERE id = ?;\nProcess 9184: UPDATE books SET stock = stock WHERE id = ?;",
+		},
+		{
+			name:     "context with INSERT statement",
+			input:    "while executing query: INSERT INTO logs (message, level) VALUES ('error occurred', 3)",
+			expected: "while executing query: INSERT INTO logs (message, level) VALUES (?, ?)",
+		},
+		{
+			name:     "SELECT statement in descriptive text",
+			input:    "Error during: SELECT * FROM users WHERE age > 25 AND status = 'active'",
+			expected: "Error during: SELECT * FROM users WHERE age > ? AND status = ?",
+		},
+		{
+			name:     "multiple keywords with mixed case",
+			input:    "Failed: select count(*) from orders where total > 100; insert into audit values (123)",
+			expected: "Failed: select count(*) from orders where total > ?; insert into audit values (?)",
+		},
+		{
+			name:     "administrative commands not redacted (no PII)",
+			input:    "Error during: VACUUM ANALYZE users; REINDEX TABLE orders; CHECKPOINT;",
+			expected: "Error during: VACUUM ANALYZE users; REINDEX TABLE orders; CHECKPOINT;",
+		},
+		{
+			name:     "transaction control not redacted (no data)",
+			input:    "Error during: BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; UPDATE accounts SET balance = 1000 WHERE id = 5; COMMIT;",
+			expected: "Error during: BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; UPDATE accounts SET balance = ? WHERE id = ?; COMMIT;",
+		},
+		{
+			name:     "DDL statements not redacted (no PII in schema)",
+			input:    "Failed: CREATE TABLE users (id INT, name VARCHAR(50)); ALTER TABLE users ADD COLUMN email VARCHAR(100);",
+			expected: "Failed: CREATE TABLE users (id INT, name VARCHAR(50)); ALTER TABLE users ADD COLUMN email VARCHAR(100);",
+		},
+		{
+			name:     "prepared statements with data - redacted",
+			input:    "Error in: PREPARE stmt AS SELECT * FROM users WHERE id = $1 AND name = 'John'",
+			expected: "Error in: PREPARE stmt AS SELECT * FROM users WHERE id = $1 AND name = ?",
+		},
+		{
+			name:     "COPY command with data paths - redacted",
+			input:    "Failed: COPY users (name, email) FROM '/tmp/data.csv' WITH (FORMAT csv, DELIMITER ',');",
+			expected: "Failed: COPY users (name, email) FROM ? WITH (FORMAT csv, DELIMITER ?);",
+		},
+		{
+			name:     "WITH CTE with data - redacted",
+			input:    "Error in: WITH active_users AS (SELECT * FROM users WHERE status = 'active') SELECT * FROM active_users",
+			expected: "Error in: WITH active_users AS (SELECT * FROM users WHERE status = ?) SELECT * FROM active_users",
+		},
+		{
+			name:     "MERGE statement with PII - redacted",
+			input:    "Failed: MERGE INTO users USING new_users ON users.id = new_users.id WHEN MATCHED THEN UPDATE SET name = 'updated'",
+			expected: "Failed: MERGE INTO users USING new_users ON users.id = new_users.id WHEN MATCHED THEN UPDATE SET name = ?",
+		},
+		{
+			name:     "user/role creation with credentials - redacted",
+			input:    "Error: CREATE USER john WITH PASSWORD 'secret123'; GRANT ALL ON database mydb TO john;",
+			expected: "Error: CREATE USER john WITH PASSWORD ?; GRANT ALL ON database mydb TO john;",
+		},
+		{
+			name:     "SET with sensitive config - redacted",
+			input:    "Error during: SET search_path TO public, private; UPDATE users SET email = 'test@example.com';",
+			expected: "Error during: SET search_path TO public, private; UPDATE users SET email = ?;",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := redactMixedTextWithSQL(tt.input)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }

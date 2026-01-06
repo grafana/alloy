@@ -71,6 +71,7 @@ type Arguments struct {
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+	ErrorLogsArguments     ErrorLogsArguments     `alloy:"error_logs,block,optional"`
 }
 
 type CloudProvider struct {
@@ -117,12 +118,19 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 	},
+	ErrorLogsArguments: ErrorLogsArguments{
+		DisableQueryRedaction: false,
+	},
 }
 
 type ExplainPlanArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+}
+
+type ErrorLogsArguments struct {
+	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -475,12 +483,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	}
 
 	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
-		Receiver:     c.errorLogsReceiver,
-		EntryHandler: entryHandler,
-		Logger:       c.opts.Logger,
-		InstanceKey:  c.instanceKey,
-		SystemID:     systemID,
-		Registry:     c.registry,
+		Receiver:              c.errorLogsReceiver,
+		EntryHandler:          entryHandler,
+		Logger:                c.opts.Logger,
+		InstanceKey:           c.instanceKey,
+		SystemID:              systemID,
+		Registry:              c.registry,
+		DisableQueryRedaction: c.args.ErrorLogsArguments.DisableQueryRedaction,
 	})
 	if err != nil {
 		logStartError(collector.ErrorLogsCollector, "create", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,53 +34,53 @@ var supportedSeverities = map[string]bool{
 // See: https://www.postgresql.org/docs/current/runtime-config-logging.html
 type PostgreSQLJSONLog struct {
 	// Core identification
-	Timestamp string `json:"timestamp"`  // Time stamp with milliseconds
-	PID       int32  `json:"pid"`        // Process ID
-	SessionID string `json:"session_id"` // Session ID
-	LineNum   int32  `json:"line_num"`   // Per-session line number
+	Timestamp string `json:"timestamp"`
+	PID       int32  `json:"pid"`
+	SessionID string `json:"session_id"`
+	LineNum   int32  `json:"line_num"`
 
 	// User/Database context
-	User   *string `json:"user"`   // User name (nullable)
-	DBName *string `json:"dbname"` // Database name (nullable)
+	User   *string `json:"user"`
+	DBName *string `json:"dbname"`
 
 	// Client information
-	RemoteHost      *string `json:"remote_host"`      // Client host (nullable)
-	RemotePort      *int32  `json:"remote_port"`      // Client port (nullable)
-	ApplicationName *string `json:"application_name"` // Client application name (nullable)
+	RemoteHost      *string `json:"remote_host"`
+	RemotePort      *int32  `json:"remote_port"`
+	ApplicationName *string `json:"application_name"`
 
 	// Session/Process info
-	PS           *string `json:"ps"`            // Current ps display (nullable)
-	SessionStart string  `json:"session_start"` // Session start time
-	BackendType  string  `json:"backend_type"`  // Type of backend
+	PS           *string `json:"ps"` // Current ps display
+	SessionStart string  `json:"session_start"`
+	BackendType  string  `json:"backend_type"`
 
 	// Transaction information
-	VXID *string `json:"vxid"` // Virtual transaction ID (nullable, format: "3/1234")
-	TXID *int64  `json:"txid"` // Regular transaction ID (nullable)
+	VXID *string `json:"vxid"` // Format: "3/1234"
+	TXID *int64  `json:"txid"`
 
 	// Error/Log information
-	ErrorSeverity string  `json:"error_severity"` // Error severity (LOG, ERROR, FATAL, etc.)
-	SqlState      *string `json:"state_code"`     // SQLSTATE code (nullable)
-	Message       string  `json:"message"`        // Error message
-	Detail        *string `json:"detail"`         // Error message detail (nullable)
-	Hint          *string `json:"hint"`           // Error message hint (nullable)
-	Context       *string `json:"context"`        // Error context (nullable)
+	ErrorSeverity string  `json:"error_severity"`
+	SqlState      *string `json:"state_code"`
+	Message       string  `json:"message"`
+	Detail        *string `json:"detail"`
+	Hint          *string `json:"hint"`
+	Context       *string `json:"context"`
 
 	// Query information
-	Statement      *string `json:"statement"`       // Client-supplied query string (nullable)
-	CursorPosition *int32  `json:"cursor_position"` // Cursor index into query string (nullable)
-	QueryID        *int64  `json:"query_id"`        // Query ID (nullable)
+	Statement      *string `json:"statement"`
+	CursorPosition *int32  `json:"cursor_position"`
+	QueryID        *int64  `json:"query_id"`
 
 	// Internal query (for errors in functions/procedures)
-	InternalQuery    *string `json:"internal_query"`    // Internal query that led to error (nullable)
-	InternalPosition *int32  `json:"internal_position"` // Cursor index into internal query (nullable)
+	InternalQuery    *string `json:"internal_query"`
+	InternalPosition *int32  `json:"internal_position"`
 
 	// Error location (for internal errors)
-	FuncName    *string `json:"func_name"`     // Error location function name (nullable)
-	FileName    *string `json:"file_name"`     // File name of error location (nullable)
-	FileLineNum *int32  `json:"file_line_num"` // File line number of error location (nullable)
+	FuncName    *string `json:"func_name"`
+	FileName    *string `json:"file_name"`
+	FileLineNum *int32  `json:"file_line_num"`
 
 	// Parallel query support
-	LeaderPID *int32 `json:"leader_pid"` // Process ID of leader for active parallel workers (nullable)
+	LeaderPID *int32 `json:"leader_pid"` // PID of leader for active parallel workers
 }
 
 type ParsedError struct {
@@ -126,20 +127,22 @@ type ParsedError struct {
 }
 
 type ErrorLogsArguments struct {
-	Receiver     loki.LogsReceiver
-	EntryHandler loki.EntryHandler
-	Logger       log.Logger
-	InstanceKey  string
-	SystemID     string
-	Registry     *prometheus.Registry
+	Receiver              loki.LogsReceiver
+	EntryHandler          loki.EntryHandler
+	Logger                log.Logger
+	InstanceKey           string
+	SystemID              string
+	Registry              *prometheus.Registry
+	DisableQueryRedaction bool
 }
 
 type ErrorLogs struct {
-	logger       log.Logger
-	entryHandler loki.EntryHandler
-	instanceKey  string
-	systemID     string
-	registry     *prometheus.Registry
+	logger                log.Logger
+	entryHandler          loki.EntryHandler
+	instanceKey           string
+	systemID              string
+	registry              *prometheus.Registry
+	disableQueryRedaction bool
 
 	receiver loki.LogsReceiver
 
@@ -159,15 +162,16 @@ func NewErrorLogs(args ErrorLogsArguments) (*ErrorLogs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	e := &ErrorLogs{
-		logger:       log.With(args.Logger, "collector", ErrorLogsCollector),
-		entryHandler: args.EntryHandler,
-		instanceKey:  args.InstanceKey,
-		systemID:     args.SystemID,
-		registry:     args.Registry,
-		receiver:     args.Receiver,
-		ctx:          ctx,
-		cancel:       cancel,
-		stopped:      atomic.NewBool(false),
+		logger:                log.With(args.Logger, "collector", ErrorLogsCollector),
+		entryHandler:          args.EntryHandler,
+		instanceKey:           args.InstanceKey,
+		systemID:              args.SystemID,
+		registry:              args.Registry,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		receiver:              args.Receiver,
+		ctx:                   ctx,
+		cancel:                cancel,
+		stopped:               atomic.NewBool(false),
 	}
 
 	e.initMetrics()
@@ -309,30 +313,20 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 	}
 
 	var err error
-	timestampFormats := []string{
-		"2006-01-02 15:04:05.999999 MST", // With microseconds
-		"2006-01-02 15:04:05.999 MST",    // With milliseconds
-		"2006-01-02 15:04:05 MST",        // Without fractional seconds
-		time.RFC3339Nano,                 // ISO 8601 with nanoseconds
-		time.RFC3339,                     // ISO 8601 without nanoseconds
-	}
+	// PostgreSQL jsonlog format uses pg_strftime with "%Y-%m-%d %H:%M:%S.%3f %Z"
+	// Source: src/backend/utils/error/elog.c write_jsonlog()
+	// Example: "2023-11-04 08:50:59.000 CET"
+	const timestampFormat = "2006-01-02 15:04:05.999 MST"
 
-	for _, format := range timestampFormats {
-		parsed.Timestamp, err = time.Parse(format, log.Timestamp)
-		if err == nil {
-			break
-		}
-	}
+	parsed.Timestamp, err = time.Parse(timestampFormat, log.Timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse timestamp: %w", err)
 	}
 
 	if log.SessionStart != "" {
-		for _, format := range timestampFormats {
-			parsed.SessionStart, err = time.Parse(format, log.SessionStart)
-			if err == nil {
-				break
-			}
+		parsed.SessionStart, err = time.Parse(timestampFormat, log.SessionStart)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse session_start timestamp: %w", err)
 		}
 	}
 
@@ -466,7 +460,11 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.Detail != "" {
-		logMessage += fmt.Sprintf(` detail=%s`, strconv.Quote(parsed.Detail))
+		detail := parsed.Detail
+		if !c.disableQueryRedaction {
+			detail = redactMixedTextWithSQL(detail)
+		}
+		logMessage += fmt.Sprintf(` detail=%s`, strconv.Quote(detail))
 	}
 
 	if parsed.Hint != "" {
@@ -474,11 +472,19 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.Context != "" {
-		logMessage += fmt.Sprintf(` context=%s`, strconv.Quote(parsed.Context))
+		context := parsed.Context
+		if !c.disableQueryRedaction {
+			context = redactMixedTextWithSQL(context)
+		}
+		logMessage += fmt.Sprintf(` context=%s`, strconv.Quote(context))
 	}
 
 	if parsed.Statement != "" {
-		logMessage += fmt.Sprintf(` statement=%s`, strconv.Quote(parsed.Statement))
+		statement := parsed.Statement
+		if !c.disableQueryRedaction {
+			statement = database_observability.RedactSql(statement)
+		}
+		logMessage += fmt.Sprintf(` statement=%s`, strconv.Quote(statement))
 	}
 
 	if parsed.CursorPosition > 0 {
@@ -486,7 +492,11 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	}
 
 	if parsed.InternalQuery != "" {
-		logMessage += fmt.Sprintf(` internal_query=%s`, strconv.Quote(parsed.InternalQuery))
+		internalQuery := parsed.InternalQuery
+		if !c.disableQueryRedaction {
+			internalQuery = database_observability.RedactSql(internalQuery)
+		}
+		logMessage += fmt.Sprintf(` internal_query=%s`, strconv.Quote(internalQuery))
 	}
 
 	if parsed.InternalPosition > 0 {
@@ -519,7 +529,6 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	return nil
 }
 
-// Helper functions to safely dereference pointers
 func ptrToString(p *string) string {
 	if p == nil {
 		return ""
@@ -548,10 +557,69 @@ func ptrInt64ToString(p *int64) string {
 	return fmt.Sprintf("%d", *p)
 }
 
-// Helper function to truncate strings for logging
 func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// redactMixedTextWithSQL attempts to find and redact SQL statements within mixed text that
+// could contain PII (Personally Identifiable Information) or sensitive data.
+// It preserves surrounding context text (like process IDs, error descriptions, etc.)
+// and does NOT redact administrative commands that don't contain data.
+func redactMixedTextWithSQL(text string) string {
+	if text == "" {
+		return text
+	}
+
+	// SQL keywords for statements that could contain PII or sensitive data
+	// Multi-word keywords (e.g., "CREATE USER") are handled by escaping spaces in the pattern
+	sqlKeywords := []string{
+		// DML (Data Manipulation Language) - contains actual data values
+		"SELECT", "INSERT", "UPDATE", "DELETE", "MERGE",
+
+		// WITH (CTEs) - can contain data in subqueries
+		"WITH",
+
+		// COPY - imports/exports actual data
+		"COPY",
+
+		// Procedural - can execute statements with data
+		"DO", "CALL", "EXECUTE",
+
+		// Prepared Statements - contain data values
+		"PREPARE",
+
+		// User/Role DDL - contains credentials/usernames
+		"CREATE USER", "CREATE ROLE",
+		"ALTER USER", "ALTER ROLE",
+		"DROP USER", "DROP ROLE",
+
+		// Grants - may contain sensitive role/permission info
+		"GRANT", "REVOKE",
+
+		// SET - could contain sensitive configuration values
+		"SET",
+
+		// VALUES - standalone VALUES clause with data
+		"VALUES",
+	}
+
+	result := text
+
+	for _, keyword := range sqlKeywords {
+		// Handle both single and multi-word keywords by escaping spaces
+		escapedKeyword := strings.ReplaceAll(keyword, " ", `\s+`)
+		pattern := fmt.Sprintf(`(?i)\b%s\b[^;]*(?:;|$)`, escapedKeyword)
+		re := regexp.MustCompile(pattern)
+
+		matches := re.FindAllString(result, -1)
+		for _, match := range matches {
+			redacted := database_observability.RedactSql(match)
+			result = strings.Replace(result, match, redacted, 1)
+		}
+	}
+
+	return result
 }
