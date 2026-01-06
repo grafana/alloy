@@ -11,8 +11,10 @@
     { "type": "build", "section": "Build", "hidden": true },
     { "type": "ci", "section": "CI", "hidden": true },
     { "type": "chore", "section": "Chores", "hidden": true },
+    { "type": "proposal", "section": "Proposals", "hidden": true },
     { "type": "revert", "section": "Reverts", "hidden": true }
   ],
+  "always-update": true,
   "draft-pull-request": true,
   "packages": {
     ".": {

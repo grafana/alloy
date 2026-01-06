@@ -68,13 +68,10 @@ func runOutput(args ...string) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// ConfigureUser configures git with the given user identity for commit authorship.
-func ConfigureUser(name, email string) error {
-	if err := run("git", "config", "user.name", name); err != nil {
-		return fmt.Errorf("setting user.name: %w", err)
-	}
-	if err := run("git", "config", "user.email", email); err != nil {
-		return fmt.Errorf("setting user.email: %w", err)
+// AmendCommit amends the current HEAD commit with any staged changes.
+func AmendCommit() error {
+	if err := run("git", "commit", "--amend", "--no-edit"); err != nil {
+		return fmt.Errorf("amending commit: %w", err)
 	}
 	return nil
 }
@@ -91,13 +88,43 @@ func BranchExistsOnRemote(branch string) (bool, error) {
 	return out != "", nil
 }
 
-// Fetch fetches a branch from origin.
-func Fetch(branch string) error {
+// Checkout checks out an existing branch.
+func Checkout(branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "fetch", "origin", branch); err != nil {
-		return fmt.Errorf("fetching branch %s: %w", branch, err)
+	if err := run("git", "checkout", branch); err != nil {
+		return fmt.Errorf("checking out branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// CherryPick cherry-picks a commit. By default it commits with a "(cherry picked from commit ...)"
+// reference. Set shouldCommit to false to stage changes without committing.
+func CherryPick(sha string, shouldCommit bool) error {
+	if err := validateSHA(sha); err != nil {
+		return err
+	}
+	args := []string{"git", "cherry-pick"}
+	if !shouldCommit {
+		args = append(args, "--no-commit")
+	} else {
+		args = append(args, "-x") // no long form; adds "(cherry picked from commit ...)" reference
+	}
+	args = append(args, sha)
+	if err := run(args...); err != nil {
+		return fmt.Errorf("cherry-picking commit %s: %w", sha, err)
+	}
+	return nil
+}
+
+// ConfigureUser configures git with the given user identity for commit authorship.
+func ConfigureUser(name, email string) error {
+	if err := run("git", "config", "user.name", name); err != nil {
+		return fmt.Errorf("setting user.name: %w", err)
+	}
+	if err := run("git", "config", "user.email", email); err != nil {
+		return fmt.Errorf("setting user.email: %w", err)
 	}
 	return nil
 }
@@ -118,13 +145,25 @@ func CreateBranchFrom(branch, base string) error {
 	return nil
 }
 
-// CherryPick cherry-picks a commit, adding a "(cherry picked from commit ...)" reference.
-func CherryPick(sha string) error {
-	if err := validateSHA(sha); err != nil {
+// Fetch fetches a branch from origin.
+func Fetch(branch string) error {
+	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "cherry-pick", "-x", sha); err != nil {
-		return fmt.Errorf("cherry-picking commit %s: %w", sha, err)
+	if err := run("git", "fetch", "origin", branch); err != nil {
+		return fmt.Errorf("fetching branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// MergeOurs merges a branch using the "ours" strategy, which creates a merge commit
+// that records the merge but keeps the current branch's content unchanged.
+func MergeOurs(branch, message string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	if err := run("git", "merge", "--strategy", "ours", "origin/"+branch, "--message", message); err != nil {
+		return fmt.Errorf("merging branch %s with ours strategy: %w", branch, err)
 	}
 	return nil
 }

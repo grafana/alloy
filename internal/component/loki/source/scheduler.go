@@ -11,34 +11,34 @@ import (
 // Scheduler manages the lifecycle of sources.
 // It is not safe for concurrent use: callers must ensure proper synchronization
 // when accessing or modifying Scheduler and its sources from multiple goroutines.
-type Scheduler[K comparable] struct {
+type Scheduler[Key comparable] struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
-	sources map[K]scheduledSource[K]
+	sources map[Key]scheduledSource[Key]
 
 	running sync.WaitGroup
 }
 
-func NewScheduler[K comparable]() *Scheduler[K] {
+func NewScheduler[Key comparable]() *Scheduler[Key] {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &Scheduler[K]{
+	return &Scheduler[Key]{
 		ctx:     ctx,
 		cancel:  cancel,
-		sources: make(map[K]scheduledSource[K]),
+		sources: make(map[Key]scheduledSource[Key]),
 	}
 }
 
 // ScheduleSource will register and run the provided source in a goroutine.
 // If a source with the same key already exists it will do nothing.
-func (s *Scheduler[K]) ScheduleSource(source Source[K]) {
+func (s *Scheduler[Key]) ScheduleSource(source Source[Key]) {
 	k := source.Key()
 	if _, ok := s.sources[k]; ok {
 		return
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
-	st := scheduledSource[K]{
+	st := scheduledSource[Key]{
 		ctx:    ctx,
 		cancel: cancel,
 		source: source,
@@ -53,7 +53,7 @@ func (s *Scheduler[K]) ScheduleSource(source Source[K]) {
 
 // StopSource will unregister provided source and cancel it
 // without waiting for it to stop.
-func (s *Scheduler[K]) StopSource(source Source[K]) {
+func (s *Scheduler[Key]) StopSource(source Source[Key]) {
 	k := source.Key()
 	scheduledTask, ok := s.sources[k]
 	if !ok {
@@ -64,8 +64,8 @@ func (s *Scheduler[K]) StopSource(source Source[K]) {
 }
 
 // Sources returns an iterator of all scheduled sources.
-func (s *Scheduler[K]) Sources() iter.Seq[Source[K]] {
-	return func(yield func(Source[K]) bool) {
+func (s *Scheduler[Key]) Sources() iter.Seq[Source[Key]] {
+	return func(yield func(Source[Key]) bool) {
 		for _, scheduledSource := range s.sources {
 			if !yield(scheduledSource.source) {
 				return
@@ -75,39 +75,39 @@ func (s *Scheduler[K]) Sources() iter.Seq[Source[K]] {
 }
 
 // Contains returns true if a source with provided k already exists.
-func (s *Scheduler[K]) Contains(k K) bool {
+func (s *Scheduler[Key]) Contains(k Key) bool {
 	_, ok := s.sources[k]
 	return ok
 }
 
 // Len returns number of scheduled sources
-func (s *Scheduler[K]) Len() int {
+func (s *Scheduler[Key]) Len() int {
 	return len(s.sources)
 }
 
 // Stop will stop all running sources and wait for them to finish.
 // Scheduler should not be reused after Stop is called.
-func (s *Scheduler[K]) Stop() {
+func (s *Scheduler[Key]) Stop() {
 	s.cancel()
 	s.running.Wait()
-	s.sources = make(map[K]scheduledSource[K])
+	s.sources = make(map[Key]scheduledSource[Key])
 }
 
 // Reset will stop all running sources and wait for them to finish and reset
 // Scheduler to a usable state.
-func (s *Scheduler[K]) Reset() {
+func (s *Scheduler[Key]) Reset() {
 	s.cancel()
 	s.running.Wait()
-	s.sources = make(map[K]scheduledSource[K])
+	s.sources = make(map[Key]scheduledSource[Key])
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
-type Source[K comparable] interface {
+type Source[Key comparable] interface {
 	// Run should start the source.
 	// It should run until there is no more work or context is canceled.
 	Run(ctx context.Context)
 	// Key is used to uniquely identify the source.
-	Key() K
+	Key() Key
 }
 
 // DebugSource is an optional interface with debug information.
@@ -115,18 +115,18 @@ type DebugSource interface {
 	DebugInfo() any
 }
 
-func NewSourceWithRetry[K comparable](source Source[K], config backoff.Config) *SourceWithRetry[K] {
-	return &SourceWithRetry[K]{source, config}
+func NewSourceWithRetry[Key comparable](source Source[Key], config backoff.Config) *SourceWithRetry[Key] {
+	return &SourceWithRetry[Key]{source, config}
 }
 
 // SourceWithRetry is used to wrap another source and apply retries
 // when running.
-type SourceWithRetry[K comparable] struct {
-	source Source[K]
+type SourceWithRetry[Key comparable] struct {
+	source Source[Key]
 	config backoff.Config
 }
 
-func (s *SourceWithRetry[K]) Run(ctx context.Context) {
+func (s *SourceWithRetry[Key]) Run(ctx context.Context) {
 	backoff := backoff.New(ctx, s.config)
 
 	for backoff.Ongoing() {
@@ -135,11 +135,11 @@ func (s *SourceWithRetry[K]) Run(ctx context.Context) {
 	}
 }
 
-func (s *SourceWithRetry[K]) Key() K {
+func (s *SourceWithRetry[Key]) Key() Key {
 	return s.source.Key()
 }
 
-func (s *SourceWithRetry[K]) DebugInfo() any {
+func (s *SourceWithRetry[Key]) DebugInfo() any {
 	ss, ok := s.source.(DebugSource)
 	if !ok {
 		return nil
@@ -149,8 +149,8 @@ func (s *SourceWithRetry[K]) DebugInfo() any {
 
 // scheduledSource is a source that is already scheduled.
 // to stop the scheduledSource cancel needs to be called.
-type scheduledSource[K comparable] struct {
+type scheduledSource[Key comparable] struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	source Source[K]
+	source Source[Key]
 }

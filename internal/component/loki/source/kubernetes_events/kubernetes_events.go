@@ -5,6 +5,7 @@ package kubernetes_events
 import (
 	"context"
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,16 +13,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/oklog/run"
 	"k8s.io/client-go/rest"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runner"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Generous timeout period for configuring informers
@@ -80,22 +79,17 @@ func (args *Arguments) Validate() error {
 // watches events from Kubernetes and forwards received events to other Loki
 // components.
 type Component struct {
-	log        log.Logger
-	opts       component.Options
-	positions  positions.Positions
-	handler    loki.LogsReceiver
-	runner     *runner.Runner[eventControllerTask]
-	newTasksCh chan struct{}
+	log       log.Logger
+	opts      component.Options
+	positions positions.Positions
+	handler   loki.LogsReceiver
 
-	mut        sync.Mutex
+	mut        sync.RWMutex
 	args       Arguments
 	restConfig *rest.Config
+	scheduler  *source.Scheduler[string]
 
-	tasksMut sync.RWMutex
-	tasks    []eventControllerTask
-
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 }
 
 var (
@@ -122,10 +116,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:      o,
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
-		runner: runner.New(func(t eventControllerTask) runner.Worker {
-			return newEventController(t)
-		}),
-		newTasksCh: make(chan struct{}, 1),
+		scheduler: source.NewScheduler[string](),
+		fanout:    loki.NewFanout(args.ForwardTo),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -135,55 +127,17 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	defer func() {
+		c.positions.Stop()
+		source.Drain(c.handler, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			c.scheduler.Stop()
+		})
+	}()
 
-	defer c.positions.Stop()
-	defer c.runner.Stop()
-
-	var rg run.Group
-
-	// Runner to apply tasks.
-	rg.Add(func() error {
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-c.newTasksCh:
-				c.tasksMut.RLock()
-				tasks := c.tasks
-				c.tasksMut.RUnlock()
-
-				if err := c.runner.ApplyTasks(ctx, tasks); err != nil {
-					level.Error(c.log).Log("msg", "failed to apply event watchers", "err", err)
-				}
-			}
-		}
-	}, func(_ error) {
-		cancel()
-	})
-
-	// Runner to forward received logs.
-	rg.Add(func() error {
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case entry := <-c.handler.Chan():
-				c.receiversMut.RLock()
-				receivers := c.receivers
-				c.receiversMut.RUnlock()
-
-				for _, receiver := range receivers {
-					receiver.Chan() <- entry
-				}
-			}
-		}
-	}, func(_ error) {
-		cancel()
-	})
-
-	return rg.Run()
+	source.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
@@ -193,9 +147,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	restConfig := c.restConfig
 
@@ -206,55 +158,65 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return fmt.Errorf("building Kubernetes client config: %w", err)
 		}
+
+		// When restConfig changes we need to restart all scheduled sources.
+		c.scheduler.Reset()
 	}
 
-	// Create a task for each defined namespace.
-	var newTasks []eventControllerTask
-	for _, namespace := range getNamespaces(newArgs) {
-		newTasks = append(newTasks, eventControllerTask{
-			Log:          c.log,
-			Config:       restConfig,
-			JobName:      newArgs.JobName,
-			InstanceName: c.opts.ID,
-			Namespace:    namespace,
-			Receiver:     c.handler,
-			Positions:    c.positions,
-			LogFormat:    newArgs.LogFormat,
-		})
-	}
-
-	c.tasksMut.Lock()
-	c.tasks = newTasks
-	c.tasksMut.Unlock()
-
-	select {
-	case c.newTasksCh <- struct{}{}:
-	default:
-		// no-op: task reload already queued.
-	}
+	source.Reconcile(
+		c.opts.Logger,
+		c.scheduler,
+		getNamespaces(newArgs),
+		func(namespace string) string { return namespace },
+		func(_ string, namespace string) (source.Source[string], error) {
+			return newEventController(eventControllerOptions{
+				Log:          c.log,
+				Config:       restConfig,
+				Namespace:    namespace,
+				JobName:      newArgs.JobName,
+				InstanceName: c.opts.ID,
+				Receiver:     c.handler,
+				Positions:    c.positions,
+				LogFormat:    newArgs.LogFormat,
+			}), nil
+		},
+	)
 
 	c.args = newArgs
 	return nil
 }
 
-// getNamespaces gets a list of namespaces to watch from the arguments. If the
-// list of namespaces is empty, returns a slice to watch all namespaces.
-func getNamespaces(args Arguments) []string {
-	if len(args.Namespaces) == 0 {
-		return []string{""} // Empty string means to watch all namespaces
+// getNamespaces returns a iterator of namespaces to watch from the arguments. If the
+// list of namespaces is empty, returns a iterator to watch all namespaces.
+func getNamespaces(args Arguments) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if len(args.Namespaces) == 0 {
+			// Empty string means to watch all namespaces
+			yield("")
+			return
+		}
+
+		for _, namespace := range args.Namespaces {
+			if !yield(namespace) {
+				return
+			}
+		}
 	}
-	return args.Namespaces
 }
 
 // DebugInfo implements [component.DebugComponent].
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
 	type Info struct {
 		Controllers []controllerInfo `alloy:"event_controller,block,optional"`
 	}
 
 	var info Info
-	for _, worker := range c.runner.Workers() {
-		info.Controllers = append(info.Controllers, worker.(*eventController).DebugInfo())
+	for s := range c.scheduler.Sources() {
+		info.Controllers = append(info.Controllers, s.(*eventController).DebugInfo())
 	}
+
 	return info
 }

@@ -1,4 +1,4 @@
-package cloudflaretarget
+package cloudflare
 
 // This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
 // The cloudflaretarget package is used to configure and run a target that can
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFields(t *testing.T) {
+func TestFieldsForType(t *testing.T) {
 	tests := []struct {
 		name             string
 		fieldsType       FieldsType
@@ -46,7 +46,7 @@ func TestFields(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := Fields(test.fieldsType, test.additionalFields)
+			result, err := fieldsForType(test.fieldsType, test.additionalFields)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expected, result)
 		})

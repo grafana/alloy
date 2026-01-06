@@ -6,19 +6,24 @@
 #
 # 1. RELEASE_TAG environment variable
 # 2. The Git tag of the current commit (if any)
-# 3. The version in the VERSION file, suffixed with -devel plus build
-#    information.
+# 3. The version in the .release-please-manifest.json file, suffixed with -devel
+#    plus build information.
 set -o errexit
 set -o pipefail
 
-VERSION=$(sed -e '/^#/d' -e '/^$/d' VERSION | tr -d '\n')
+VERSION=$(jq -r '.["."] // empty | "v" + .' .release-please-manifest.json 2>/dev/null || echo "")
+if [ -z "$VERSION" ]; then
+  echo "Error: Could not read version from .release-please-manifest.json" >&2
+  exit 1
+fi
+
 DETECTED_TAG=$(git describe --match 'v*' --exact-match 2>/dev/null || echo -n "")
 
 if [ ! -z "${RELEASE_TAG}" ]; then
-  echo ${RELEASE_TAG}
+  echo "${RELEASE_TAG}"
   exit 0
 elif [ ! -z "${DETECTED_TAG}" ]; then
-  echo ${DETECTED_TAG}
+  echo "${DETECTED_TAG}"
   exit 0
 fi
 
@@ -27,8 +32,8 @@ set -o nounset
 if [[ -z $(git status -s) ]]; then
   # There are no changes; report version as VERSION-devel+SHA.
   SHA=$(git rev-parse --short HEAD)
-  echo ${VERSION}-devel+${SHA}
+  echo "${VERSION}"-devel+"${SHA}"
 else
   # Git is dirty; tag as VERSION-devel+dirty.
-  echo ${VERSION}-devel+dirty
+  echo "${VERSION}"-devel+dirty
 fi

@@ -1,0 +1,554 @@
+{
+   "annotations": {
+      "list": [
+         {
+            "datasource": "$loki_datasource",
+            "enable": true,
+            "expr": "{cluster=\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"alloy\" | name_extracted=~\"alloy.*\"",
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "instant": false,
+            "name": "Deployments",
+            "titleFormat": "{{cluster}}/{{namespace}}"
+         }
+      ]
+   },
+   "graphTooltip": 1,
+   "links": [
+      {
+         "icon": "doc",
+         "targetBlank": true,
+         "title": "Documentation",
+         "tooltip": "Component controller documentation",
+         "type": "link",
+         "url": "https://grafana.com/docs/alloy/latest/concepts/component_controller/"
+      },
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [
+            "alloy-mixin"
+         ],
+         "targetBlank": false,
+         "title": "Dashboards",
+         "type": "dashboards"
+      }
+   ],
+   "panels": [
+      {
+         "datasource": "${datasource}",
+         "description": "The number of Alloy instances whose metrics are being sent and reported.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "instances"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 10,
+            "x": 0,
+            "y": 0
+         },
+         "options": {
+            "colorMode": "none",
+            "graphMode": "none"
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "count(group(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}) by (instance))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Running instances",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The number of running components across all running instances.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "components"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 10,
+            "x": 0,
+            "y": 4
+         },
+         "options": {
+            "colorMode": "none",
+            "graphMode": "none"
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Running components",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The percentage of components which are in a healthy state.\n",
+         "fieldConfig": {
+            "defaults": {
+               "max": 1,
+               "min": 0,
+               "noValue": "No components",
+               "unit": "percentunit"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 10,
+            "x": 0,
+            "y": 8
+         },
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "text": {
+               "valueSize": 80
+            }
+         },
+         "pluginVersion": "9.0.6",
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\",health_type=\"healthy\"}) /\nsum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Overall component health",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Breakdown of components by health across all running instances.\n\n* Healthy: components have been evaluated completely and are reporting themselves as healthy.\n* Unhealthy: Components either could not be evaluated or are reporting themselves as unhealthy.\n* Unknown: A component has been created but has not yet been started.\n* Exited: A component has exited. It will not return to the running state.\n\nMore information on a component's health state can be retrieved using\nthe Alloy UI.\n\nNote that components may be in a degraded state even if they report\nthemselves as healthy. Use component-specific dashboards and alerts\nto observe detailed information about the behavior of a component.\n",
+         "fieldConfig": {
+            "defaults": {
+               "min": 0,
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               }
+            },
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Unhealthy"
+                  },
+                  "properties": [
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "mode": "absolute",
+                           "steps": [
+                              {
+                                 "color": "green",
+                                 "value": null
+                              },
+                              {
+                                 "color": "red",
+                                 "value": 1
+                              }
+                           ]
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Unknown"
+                  },
+                  "properties": [
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "mode": "absolute",
+                           "steps": [
+                              {
+                                 "color": "green",
+                                 "value": null
+                              },
+                              {
+                                 "color": "blue",
+                                 "value": 1
+                              }
+                           ]
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Exited"
+                  },
+                  "properties": [
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "mode": "absolute",
+                           "steps": [
+                              {
+                                 "color": "green",
+                                 "value": null
+                              },
+                              {
+                                 "color": "orange",
+                                 "value": 1
+                              }
+                           ]
+                        }
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 12,
+            "w": 14,
+            "x": 10,
+            "y": 0
+         },
+         "options": {
+            "orientation": "vertical",
+            "showUnfilled": true
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", health_type=\"healthy\"}) or vector(0)\n",
+               "instant": true,
+               "legendFormat": "Healthy",
+               "range": false
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", health_type=\"unhealthy\"}) or vector(0)\n",
+               "instant": true,
+               "legendFormat": "Unhealthy",
+               "range": false
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", health_type=\"unknown\"}) or vector(0)\n",
+               "instant": true,
+               "legendFormat": "Unknown",
+               "range": false
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", health_type=\"exited\"}) or vector(0)\n",
+               "instant": true,
+               "legendFormat": "Exited",
+               "range": false
+            }
+         ],
+         "title": "Components by health",
+         "type": "bargauge"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The frequency at which components get updated.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "drawStyle": "points",
+                  "pointSize": 3
+               },
+               "unit": "ops"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 12
+         },
+         "options": {
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (instance) (rate(alloy_component_evaluation_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Component evaluation rate",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The percentiles for how long it takes to complete component evaluations.\n\nComponent evaluations must complete for components to have the latest\narguments. The longer the evaluations take, the slower it will be to\nreconcile the state of components.\n\nIf evaluation is taking too long, consider sharding your components to\ndeal with smaller amounts of data and reuse data as much as possible.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 12
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(0.99, sum(rate(alloy_component_evaluation_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\nor\nhistogram_quantile(0.99, sum by (le) (rate(alloy_component_evaluation_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\n",
+               "instant": false,
+               "legendFormat": "99th percentile",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(0.50, sum(rate(alloy_component_evaluation_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\nor\nhistogram_quantile(0.50, sum by (le) (rate(alloy_component_evaluation_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\n",
+               "instant": false,
+               "legendFormat": "50th percentile",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "(\n  histogram_sum(sum(rate(alloy_component_evaluation_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))) /\n  histogram_count(sum(rate(alloy_component_evaluation_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\n)\nor\n(\n  sum(rate(alloy_component_evaluation_seconds_sum{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])) /\n  sum(rate(alloy_component_evaluation_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n)\n",
+               "instant": false,
+               "legendFormat": "Average",
+               "range": true
+            }
+         ],
+         "title": "Component evaluation time",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The maximum duration of slow component evaluations over time.\n\nThis shows components that took longer than 1 minute to evaluate. Ideally, no component \nshould take more than 1 minute to evaluate. The components displayed in this chart\nmay be a sign of a problem with the pipeline or performance issues.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 16,
+            "y": 12
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "increase(alloy_component_evaluation_slow_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])\n",
+               "instant": false,
+               "legendFormat": "{{instance}} {{controller_path}} {{component_id}}",
+               "range": true
+            }
+         ],
+         "title": "Slow components evaluation times",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Detailed histogram view of how long component evaluations take.\n\nThe goal is to design your config so that evaluations take as little\ntime as possible; under 100ms is a good goal.\n",
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 22
+         },
+         "maxDataPoints": 30,
+         "options": {
+            "calculate": false,
+            "cellGap": 0,
+            "color": {
+               "scheme": "Spectral"
+            },
+            "exemplars": {
+               "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+               "le": 0.10000000000000001
+            },
+            "tooltip": {
+               "show": true,
+               "yHistogram": true
+            },
+            "yAxis": {
+               "unit": "s"
+            }
+         },
+         "pluginVersion": "9.0.6",
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(increase(alloy_component_evaluation_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\nor ignoring (le)\nsum by (le) (increase(alloy_component_evaluation_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+               "format": "heatmap",
+               "instant": false,
+               "legendFormat": "{{le}}",
+               "range": true
+            }
+         ],
+         "title": "Component evaluation histogram",
+         "type": "heatmap"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Detailed histogram of how long components wait to be evaluated after their dependency is updated.\n\nThe goal is to design your config so that most of the time components do not\nqueue for long; under 10ms is a good goal.\n",
+         "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 22
+         },
+         "maxDataPoints": 30,
+         "options": {
+            "calculate": false,
+            "cellGap": 0,
+            "color": {
+               "scheme": "Spectral"
+            },
+            "exemplars": {
+               "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+               "le": 0.10000000000000001
+            },
+            "tooltip": {
+               "show": true,
+               "yHistogram": true
+            },
+            "yAxis": {
+               "unit": "s"
+            }
+         },
+         "pluginVersion": "9.0.6",
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(increase(alloy_component_dependencies_wait_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\nor ignoring (le)\nsum by (le) (increase(alloy_component_dependencies_wait_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+               "format": "heatmap",
+               "instant": false,
+               "legendFormat": "{{le}}",
+               "range": true
+            }
+         ],
+         "title": "Component dependency wait histogram",
+         "type": "heatmap"
+      }
+   ],
+   "refresh": "10s",
+   "schemaVersion": 36,
+   "tags": [
+      "alloy-mixin"
+   ],
+   "templating": {
+      "list": [
+         {
+            "label": "Data Source",
+            "name": "datasource",
+            "query": "prometheus",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "label": "Loki Data Source",
+            "name": "loki_datasource",
+            "query": "loki",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "cluster",
+            "name": "cluster",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components, cluster)\n",
+               "refId": "cluster"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "namespace",
+            "name": "namespace",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\"}, namespace)\n",
+               "refId": "namespace"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "job",
+            "name": "job",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)\n",
+               "refId": "job"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-1h",
+      "to": "now"
+   },
+   "timepicker": {
+      "refresh_intervals": [
+         "5s",
+         "10s",
+         "30s",
+         "1m",
+         "5m",
+         "15m",
+         "30m",
+         "1h",
+         "2h",
+         "1d"
+      ],
+      "time_options": [
+         "5m",
+         "15m",
+         "1h",
+         "6h",
+         "12h",
+         "24h",
+         "2d",
+         "7d",
+         "30d",
+         "90d"
+      ]
+   },
+   "timezone": "utc",
+   "title": "Alloy / Controller",
+   "uid": "bf9f456aad7108b2c808dbd9973e386f"
+}

@@ -2,6 +2,8 @@ package syslog
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -109,6 +112,10 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+	if err := c.checkExperimentalFeatures(newArgs); err != nil {
+		return err
+	}
+
 	prevArgs := c.args
 	c.fanout = newArgs.ForwardTo
 
@@ -119,6 +126,25 @@ func (c *Component) Update(args component.Arguments) error {
 		select {
 		case c.targetsUpdated <- struct{}{}:
 		default:
+		}
+	}
+
+	return nil
+}
+
+func (c *Component) checkExperimentalFeatures(args Arguments) error {
+	isExperimental := c.opts.MinStability.Permits(featuregate.StabilityExperimental)
+	if isExperimental {
+		return nil
+	}
+
+	for _, listener := range args.SyslogListeners {
+		if listener.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+			return fmt.Errorf("%q syslog format is available only at experimental stability level", scrapeconfig.SyslogFormatRaw)
+		}
+
+		if listener.RFC3164CiscoComponents != nil {
+			return errors.New("rfc3164_cisco_components block is available only at experimental stability level")
 		}
 	}
 
@@ -194,7 +220,7 @@ func (c *Component) reloadTargets() {
 }
 
 // DebugInfo returns information about the status of listeners.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	var res readerDebugInfo
@@ -222,6 +248,7 @@ type listenerInfo struct {
 func listenersChanged(prev, next []ListenerConfig) bool {
 	return !reflect.DeepEqual(prev, next)
 }
+
 func relabelRulesChanged(prev, next alloy_relabel.Rules) bool {
 	return !reflect.DeepEqual(prev, next)
 }

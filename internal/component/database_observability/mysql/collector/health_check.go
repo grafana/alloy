@@ -73,10 +73,7 @@ func (c *HealthCheck) Start(ctx context.Context) error {
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
-			if err := c.fetchHealthChecks(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
-			}
-
+			c.fetchHealthChecks(c.ctx)
 			select {
 			case <-c.ctx.Done():
 				return
@@ -107,7 +104,7 @@ type healthCheckResult struct {
 	err    error
 }
 
-func (c *HealthCheck) fetchHealthChecks(ctx context.Context) error {
+func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 	checks := []func(context.Context, *sql.DB) healthCheckResult{
 		checkPerformanceSchemaEnabled,
 		checkAlloyVersion,
@@ -128,8 +125,6 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) error {
 			msg,
 		)
 	}
-
-	return nil
 }
 
 // checkPerformanceSchemaEnabled validates that performance_schema is enabled.

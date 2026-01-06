@@ -1,0 +1,276 @@
+{
+    "symbols": [
+        "",
+        "test metric foo",
+        "cluster",
+        "local",
+        "foo",
+        "bar",
+        "test metric fizz",
+        "fizz",
+        "buzz",
+        "test int histogram",
+        "histo",
+        "int histogram",
+        "test int nhcb",
+        "int nhcb",
+        "test float histogram",
+        "float histogram",
+        "test float nhcb",
+        "float nhcb"
+    ],
+    "timeseries": [
+        {
+            "labels_refs": [
+                2,
+                3,
+                4,
+                5
+            ],
+            "samples": [
+                {
+                    "value": 12,
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "histograms": null,
+            "exemplars": null,
+            "metadata": {
+                "type": 1,
+                "help_ref": 1
+            }
+        },
+        {
+            "labels_refs": [
+                2,
+                3,
+                7,
+                8
+            ],
+            "samples": [
+                {
+                    "value": 34,
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "histograms": null,
+            "exemplars": null,
+            "metadata": {
+                "type": 2,
+                "help_ref": 6
+            }
+        },
+        {
+            "labels_refs": [
+                2,
+                3,
+                10,
+                11
+            ],
+            "samples": null,
+            "histograms": [
+                {
+                    "Count": {
+                        "count_int": 120
+                    },
+                    "sum": 239.2,
+                    "schema": 1,
+                    "zero_threshold": 0.001,
+                    "ZeroCount": {
+                        "zero_count_int": 14
+                    },
+                    "negative_spans": [
+                        {
+                            "length": 2
+                        },
+                        {
+                            "offset": 1,
+                            "length": 2
+                        }
+                    ],
+                    "negative_deltas": [
+                        13,
+                        1,
+                        -1,
+                        0
+                    ],
+                    "positive_spans": [
+                        {
+                            "length": 2
+                        },
+                        {
+                            "offset": 1,
+                            "length": 2
+                        }
+                    ],
+                    "positive_deltas": [
+                        13,
+                        1,
+                        -1,
+                        0
+                    ],
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "exemplars": null,
+            "metadata": {
+                "type": 3,
+                "help_ref": 9
+            }
+        },
+        {
+            "labels_refs": [
+                2,
+                3,
+                10,
+                13
+            ],
+            "samples": null,
+            "histograms": [
+                {
+                    "Count": {
+                        "count_int": 53
+                    },
+                    "sum": 239.2,
+                    "schema": -53,
+                    "ZeroCount": {},
+                    "negative_spans": null,
+                    "positive_spans": [
+                        {
+                            "length": 2
+                        },
+                        {
+                            "offset": 1,
+                            "length": 2
+                        }
+                    ],
+                    "positive_deltas": [
+                        13,
+                        1,
+                        -1,
+                        0
+                    ],
+                    "timestamp": "__TIMESTAMP__",
+                    "custom_values": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4
+                    ]
+                }
+            ],
+            "exemplars": null,
+            "metadata": {
+                "type": 3,
+                "help_ref": 12
+            }
+        },
+        {
+            "labels_refs": [
+                2,
+                3,
+                10,
+                15
+            ],
+            "samples": null,
+            "histograms": [
+                {
+                    "Count": {
+                        "count_float": 120
+                    },
+                    "sum": 239.2,
+                    "schema": 1,
+                    "zero_threshold": 0.001,
+                    "ZeroCount": {
+                        "zero_count_float": 14
+                    },
+                    "negative_spans": [
+                        {
+                            "length": 2
+                        },
+                        {
+                            "offset": 1,
+                            "length": 2
+                        }
+                    ],
+                    "negative_counts": [
+                        13,
+                        14,
+                        13,
+                        13
+                    ],
+                    "positive_spans": [
+                        {
+                            "length": 2
+                        },
+                        {
+                            "offset": 1,
+                            "length": 2
+                        }
+                    ],
+                    "positive_counts": [
+                        13,
+                        14,
+                        13,
+                        13
+                    ],
+                    "timestamp": "__TIMESTAMP__"
+                }
+            ],
+            "exemplars": null,
+            "metadata": {
+                "type": 3,
+                "help_ref": 14
+            }
+        },
+        {
+            "labels_refs": [
+                2,
+                3,
+                10,
+                17
+            ],
+            "samples": null,
+            "histograms": [
+                {
+                    "Count": {
+                        "count_float": 53
+                    },
+                    "sum": 239.2,
+                    "schema": -53,
+                    "ZeroCount": {},
+                    "negative_spans": null,
+                    "positive_spans": [
+                        {
+                            "length": 2
+                        },
+                        {
+                            "offset": 1,
+                            "length": 2
+                        }
+                    ],
+                    "positive_counts": [
+                        13,
+                        14,
+                        13,
+                        13
+                    ],
+                    "timestamp": "__TIMESTAMP__",
+                    "custom_values": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4
+                    ]
+                }
+            ],
+            "exemplars": null,
+            "metadata": {
+                "type": 3,
+                "help_ref": 16
+            }
+        }
+    ]
+}
