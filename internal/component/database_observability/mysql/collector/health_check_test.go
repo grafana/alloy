@@ -46,7 +46,7 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) >= 4
+			return len(lokiClient.Received()) >= 3
 		}, 5*time.Second, 10*time.Millisecond)
 
 		collector.Stop()
@@ -61,9 +61,9 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.GreaterOrEqual(t, len(lokiEntries), 4)
+		require.GreaterOrEqual(t, len(lokiEntries), 3)
 
-		for _, entry := range lokiEntries[:4] {
+		for _, entry := range lokiEntries[:3] {
 			require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
 			require.Contains(t, entry.Line, `result="true"`)
 		}
@@ -76,18 +76,6 @@ func TestHealthCheck(t *testing.T) {
 			customSetup      func(mock sqlmock.Sqlmock)
 			expectedResult   string
 		}{
-			{
-				name:             "performance schema disabled",
-				failingCheckName: "PerformaneSchemaEnabled",
-				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SHOW VARIABLES LIKE 'performance_schema'`).
-						WillReturnRows(
-							sqlmock.NewRows([]string{"Variable_name", "Value"}).
-								AddRow("performance_schema", "OFF"),
-						)
-				},
-				expectedResult: `result="false"`,
-			},
 			{
 				name:             "missing grants",
 				failingCheckName: "RequiredGrantsPresent",
@@ -141,7 +129,7 @@ func TestHealthCheck(t *testing.T) {
 				require.NoError(t, err)
 
 				require.Eventually(t, func() bool {
-					return len(lokiClient.Received()) >= 4
+					return len(lokiClient.Received()) >= 3
 				}, 5*time.Second, 10*time.Millisecond)
 
 				collector.Stop()
@@ -179,16 +167,6 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 	}
 
 	checks := []checkSetup{
-		{
-			name: "PerformaneSchemaEnabled",
-			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SHOW VARIABLES LIKE 'performance_schema'`).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"Variable_name", "Value"}).
-							AddRow("performance_schema", "ON"),
-					)
-			},
-		},
 		{
 			name: "RequiredGrantsPresent",
 			setup: func(mock sqlmock.Sqlmock) {

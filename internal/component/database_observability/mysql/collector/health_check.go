@@ -106,7 +106,6 @@ type healthCheckResult struct {
 
 func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 	checks := []func(context.Context, *sql.DB) healthCheckResult{
-		checkPerformanceSchemaEnabled,
 		checkAlloyVersion,
 		checkRequiredGrants,
 		checkEventsStatementsDigestHasRows,
@@ -125,21 +124,6 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 			msg,
 		)
 	}
-}
-
-// checkPerformanceSchemaEnabled validates that performance_schema is enabled.
-func checkPerformanceSchemaEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
-	r := healthCheckResult{name: "PerformaneSchemaEnabled"}
-	const q = `SHOW VARIABLES LIKE 'performance_schema'`
-	var varName, varValue string
-	if err := db.QueryRowContext(ctx, q).Scan(&varName, &varValue); err != nil {
-		r.err = fmt.Errorf("query performance_schema variable: %w", err)
-		return r
-	}
-
-	r.result = strings.EqualFold(varValue, "ON") || varValue == "1"
-	r.value = varValue
-	return r
 }
 
 // checkAlloyVersion reports the running Alloy version.
