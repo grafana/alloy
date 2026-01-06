@@ -16,12 +16,12 @@ killercoda:
         replacement: Grafana Alloy
       - regexp: '{{[%<] *param *"PRODUCT_NAME" *[%>]}}'
         replacement: Alloy
-      - regexp: 'docker compose'
+      - regexp: "docker compose"
         replacement: docker-compose
       - regexp: '\.\./\.\./'
-        replacement: 'https://grafana.com/docs/alloy/latest/'
-      - regexp: '../send-logs-to-loki/'
-        replacement: 'https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/'
+        replacement: "https://grafana.com/docs/alloy/latest/"
+      - regexp: "../send-logs-to-loki/"
+        replacement: "https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/"
 
   backend:
     imageid: ubuntu
@@ -36,30 +36,34 @@ In the [previous tutorial][], you learned how to configure {{< param "PRODUCT_NA
 This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local machine, send them to Prometheus, and use Grafana to explore the results.
 
 <!-- INTERACTIVE ignore START -->
+
 ## Before you begin
 
 To complete this tutorial:
 
-* You must have a basic understanding of Alloy and telemetry collection in general.
-* You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
-* You must complete the [previous tutorial][] to prepare the following prerequisites:
-  * Install {{< param "PRODUCT_NAME" >}} and start the service in your environment.
-  * Set up a local Grafana instance.
-  * Create a `config.alloy` file.
+- You must have a basic understanding of Alloy and telemetry collection in general.
+- You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
+- You must complete the [previous tutorial][] to prepare the following prerequisites:
+  - Install {{< param "PRODUCT_NAME" >}} and start the service in your environment.
+  - Set up a local Grafana instance.
+  - Create a `config.alloy` file.
 
 <!-- INTERACTIVE ignore START -->
+
 {{< admonition type="tip" >}}
 Alternatively, you can try out this example in the interactive learning environment: [Sending metrics to Prometheus](https://killercoda.com/grafana-labs/course/alloy/send-metrics-to-prometheus).
 
 It's a fully configured environment with all the dependencies already installed.
 
-![Interactive](/media/docs/alloy/Alloy-Interactive-Learning-Environment-(Doc-Banner).png)
+![Interactive](</media/docs/alloy/Alloy-Interactive-Learning-Environment-(Doc-Banner).png>)
 {{< /admonition >}}
+
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
+
 > Since this tutorial builds on the previous one, a setup script is automatically run to ensure you have the necessary prerequisites in place. This should take no longer than 1 minute to complete. You may begin the tutorial when you see this message: `Installation script has now been completed. You may now begin the tutorial.`
-{{< /docs/ignore >}}
+> {{< /docs/ignore >}}
 
 <!-- INTERACTIVE page intro.md END -->
 
@@ -74,8 +78,9 @@ You add components to your `config.alloy` file to tell {{< param "PRODUCT_NAME" 
 The following steps build on the `config.alloy` file you created in the previous tutorial.
 
 {{< docs/ignore >}}
+
 > The interactive sandbox has a VSCode-like editor that allows you to access files and folders. To access this feature, click on the `Editor` tab. The editor also has a terminal that you can use to run commands. Since some commands assume you are within a specific directory, we recommend running the commands in `tab1`.
-{{< /docs/ignore >}}
+> {{< /docs/ignore >}}
 
 ### First component: Scraping
 
@@ -93,9 +98,9 @@ prometheus.scrape "scrape_metrics" {
 
 This configuration creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
 
-* It connects to the `local_system` component as its source or target.
-* It forwards the metrics it scrapes to the receiver of another component called `filter_metrics`.
-* It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds.
+- It connects to the `local_system` component as its source or target.
+- It forwards the metrics it scrapes to the receiver of another component called `filter_metrics`.
+- It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds.
 
 ### Second component: Filter metrics
 
@@ -123,17 +128,18 @@ Within this component, you can define rule blocks to specify how you would like 
 
 This configuration creates a [`prometheus.relabel`][prometheus.relabel] component named `filter_metrics` which does the following:
 
-* It receives scraped metrics from the `scrape_metrics` component.
-* It tells {{< param "PRODUCT_NAME" >}} to drop metrics that have an `"env"` label equal to `"dev"`.
-* It forwards the processed metrics to the receiver of another component called `metrics_service`.
+- It receives scraped metrics from the `scrape_metrics` component.
+- It tells {{< param "PRODUCT_NAME" >}} to drop metrics that have an `"env"` label equal to `"dev"`.
+- It forwards the processed metrics to the receiver of another component called `metrics_service`.
 
 ### Third component: Write metrics to Prometheus
 
 {{< admonition type="note" >}}
 
 Prometheus typically scrapes metrics from targets using a pull mechanism.
-This component pushes metrics to Prometheus.
-To make sure Prometheus can accept these remote write requests, you must start Prometheus with the `--enable-feature=remote-write-receiver` flag.
+This component pushes metrics to Prometheus using the remote write protocol.
+To accept these remote write requests, start Prometheus with the `--web.enable-remote-write-receiver` flag.
+For more information, refer to the [Remote storage integrations](https://prometheus.io/docs/prometheus/latest/storage/#overview) topic in the Prometheus documentation.
 
 {{< /admonition >}}
 
@@ -157,6 +163,7 @@ This final component creates a [`prometheus.remote_write`][prometheus.remote_wri
 This completes the simple configuration pipeline.
 
 <!-- INTERACTIVE ignore START -->
+
 {{< admonition type="tip" >}}
 The `basic_auth` is commented out because the local `docker compose` stack doesn't require it.
 It's included in this example to show how you can configure authorization for other environments.
@@ -164,12 +171,15 @@ It's included in this example to show how you can configure authorization for ot
 For further authorization options, refer to the [`prometheus.remote_write`][prometheus.remote_write] component documentation.
 
 [prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/
+
 {{< /admonition >}}
+
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
+
 > The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. It's included in this example to show how you can configure authorization for other environments. For further authorization options, refer to the [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) component documentation.
-{{< /docs/ignore >}}
+> {{< /docs/ignore >}}
 
 This connects directly to the Prometheus instance running in the Docker container.
 
@@ -188,7 +198,9 @@ sudo cp config.alloy /etc/alloy/config.alloy
 ```
 
 {{< /docs/ignore >}}
+
 <!-- INTERACTIVE ignore START -->
+
 {{< code >}}
 
 ```macos
@@ -200,6 +212,7 @@ sudo cp config.alloy /etc/alloy/config.alloy
 ```
 
 {{< /code >}}
+
 <!-- INTERACTIVE ignore END -->
 
 Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
@@ -209,6 +222,7 @@ curl -X POST http://localhost:12345/-/reload
 ```
 
 <!-- INTERACTIVE ignore START -->
+
 {{< admonition type="tip" >}}
 This step uses the {{< param "PRODUCT_NAME" >}} UI, on `localhost` port `12345`.
 If you choose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
@@ -216,7 +230,9 @@ If you choose to run Alloy in a Docker container, make sure you use the `--serve
 If you don't use this argument, the [debugging UI][debug] won't be available outside of the Docker container.
 
 [debug]: ../../troubleshoot/debug/#alloy-ui
+
 {{< /admonition >}}
+
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
@@ -236,6 +252,7 @@ Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and l
 {{< /docs/ignore >}}
 
 <!-- INTERACTIVE ignore START -->
+
 {{< code >}}
 
 ```macos
@@ -247,6 +264,7 @@ sudo systemctl reload alloy
 ```
 
 {{< /code >}}
+
 <!-- INTERACTIVE ignore END -->
 
 <!-- INTERACTIVE page step2.md END -->
