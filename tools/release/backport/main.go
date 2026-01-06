@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/google/go-github/v57/github"
@@ -78,6 +79,9 @@ func main() {
 		log.Fatalf("Failed to get original PR: %v", err)
 	}
 
+	// Get the merge commit SHA for cherry-pick instructions
+	mergeCommitSHA := originalPR.GetMergeCommitSHA()
+
 	// Get the app identity for git commits
 	appIdentity, err := client.GetAppIdentity(ctx)
 	if err != nil {
@@ -132,8 +136,10 @@ func main() {
 	}
 
 	// Cherry-pick the commit
-	if err := git.CherryPick(commitSHA); err != nil {
-		log.Fatalf("Failed to cherry-pick commit: %v\n\nThis may be due to conflicts. Please create the backport manually.", err)
+	if err := git.CherryPick(commitSHA, true); err != nil {
+		commentOnBackportFailure(ctx, client, prNumber, mergeCommitSHA, targetBranch, backportBranch)
+		fmt.Fprintf(os.Stderr, "Failed to cherry-pick commit: %v. A comment has been added to the original PR (#%d) with instructions for manual backport.\n", err, prNumber)
+		os.Exit(1)
 	}
 
 	// Push the backport branch
@@ -157,9 +163,11 @@ func createBackportPR(ctx context.Context, client *gh.Client, originalPR *github
 
 This PR backports #%d to %s.
 
-### Original PR
-- **Title:** %s
-- **Author:** @%s
+### Original PR Title
+`+"`%s`"+`
+
+### Original PR Author
+@%s
 
 ### Description
 %s
@@ -181,4 +189,40 @@ This PR backports #%d to %s.
 		Base:  targetBranch,
 		Body:  body,
 	})
+}
+
+func commentOnBackportFailure(ctx context.Context, client *gh.Client, prNumber int, mergeCommitSHA, targetBranch, backportBranch string) {
+	comment := fmt.Sprintf(`## ⚠️ Automatic backport to %s failed
+
+The automatic backport for this PR failed, likely due to merge conflicts. Perform the backport manually:
+
+`+"```"+`bash
+git fetch origin main %s
+git checkout %s
+git pull
+git checkout -b %s
+git cherry-pick -x %s
+# Fix any conflicts, then:
+git add .
+git commit
+git push -u origin %s
+`+"```"+`
+
+Then create a PR from `+"`%s`"+` to `+"`%s`"+`.
+`,
+		targetBranch,
+		targetBranch,
+		targetBranch,
+		backportBranch,
+		mergeCommitSHA,
+		backportBranch,
+		backportBranch,
+		targetBranch,
+	)
+
+	if err := client.CreateIssueComment(ctx, prNumber, comment); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to comment on PR #%d: %v\n", prNumber, err)
+	} else {
+		fmt.Printf("📝 Added manual backport instructions to PR #%d\n", prNumber)
+	}
 }

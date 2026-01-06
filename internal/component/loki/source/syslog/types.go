@@ -1,6 +1,7 @@
 package syslog
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -25,11 +26,34 @@ type ListenerConfig struct {
 	TLSConfig                   config.TLSConfig          `alloy:"tls_config,block,optional"`
 	SyslogFormat                scrapeconfig.SyslogFormat `alloy:"syslog_format,attr,optional"`
 	RawFormatOptions            *RawFormatOptions         `alloy:"raw_format_options,block,optional"`
+	RFC3164CiscoComponents      *RFC3164CiscoComponents   `alloy:"rfc3164_cisco_components,block,optional"`
 }
 
 // RawFormatOptions is alloy syntax mapping to [scrapeconfig.RawFormatOptions] struct.
 type RawFormatOptions struct {
 	UseNullTerminatorDelimiter bool `alloy:"use_null_terminator_delimiter,attr,optional"`
+}
+
+// RFC3164CiscoComponents enables Cisco IOS log line parsing and configures what fields to parse.
+type RFC3164CiscoComponents struct {
+	EnableAll       bool `alloy:"enable_all,attr,optional"`
+	MessageCounter  bool `alloy:"message_counter,attr,optional"`
+	SequenceNumber  bool `alloy:"sequence_number,attr,optional"`
+	Hostname        bool `alloy:"hostname,attr,optional"`
+	SecondFractions bool `alloy:"second_fractions,attr,optional"`
+}
+
+func (sc *RFC3164CiscoComponents) Validate() error {
+	if sc == nil || sc.EnableAll {
+		return nil
+	}
+
+	isEmpty := !sc.Hostname && !sc.MessageCounter && !sc.SecondFractions && !sc.SequenceNumber
+	if isEmpty {
+		return errors.New("at least one option in rfc3164_cisco_components has to be enabled")
+	}
+
+	return nil
 }
 
 // DefaultListenerConfig provides the default arguments for a syslog listener.
@@ -53,6 +77,16 @@ func (sc *ListenerConfig) Validate() error {
 
 	if err := sc.SyslogFormat.Validate(); err != nil {
 		return err
+	}
+
+	if sc.RFC3164CiscoComponents != nil {
+		if sc.SyslogFormat != scrapeconfig.SyslogFormatRFC3164 {
+			return fmt.Errorf("rfc3164_cisco_components has no effect when syslog format is not %q", scrapeconfig.SyslogFormatRFC3164)
+		}
+
+		if err := sc.RFC3164CiscoComponents.Validate(); err != nil {
+			return err
+		}
 	}
 
 	if sc.SyslogFormat == scrapeconfig.SyslogFormatRaw {
@@ -103,6 +137,16 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 	if sc.RawFormatOptions != nil {
 		cfg.RawFormatOptions = scrapeconfig.RawFormatOptions{
 			UseNullTerminatorDelimiter: sc.RawFormatOptions.UseNullTerminatorDelimiter,
+		}
+	}
+
+	if cmp := sc.RFC3164CiscoComponents; cmp != nil {
+		cfg.RFC3164CiscoComponents = &scrapeconfig.RFC3164CiscoComponents{
+			EnableAll:       cmp.EnableAll,
+			MessageCounter:  cmp.MessageCounter,
+			SequenceNumber:  cmp.SequenceNumber,
+			Hostname:        cmp.Hostname,
+			SecondFractions: cmp.SecondFractions,
 		}
 	}
 

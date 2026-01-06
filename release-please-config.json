@@ -14,6 +14,7 @@
     { "type": "proposal", "section": "Proposals", "hidden": true },
     { "type": "revert", "section": "Reverts", "hidden": true }
   ],
+  "always-update": true,
   "draft-pull-request": true,
   "packages": {
     ".": {
