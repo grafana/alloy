@@ -20,7 +20,7 @@ killercoda:
         replacement: docker-compose
       - regexp: '\.\./\.\./'
         replacement: 'https://grafana.com/docs/alloy/latest/'
-      - regexp: "../send-logs-to-loki/"
+      - regexp: '../send-logs-to-loki/'
         replacement: 'https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/'
 
   backend:
@@ -53,9 +53,8 @@ Alternatively, you can try out this example in the interactive learning environm
 
 It's a fully configured environment with all the dependencies already installed.
 
-![Interactive](</media/docs/alloy/Alloy-Interactive-Learning-Environment-(Doc-Banner).png>)
+![Interactive](/media/docs/alloy/Alloy-Interactive-Learning-Environment-(Doc-Banner).png)
 {{< /admonition >}}
-
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
@@ -75,9 +74,8 @@ You add components to your `config.alloy` file to tell {{< param "PRODUCT_NAME" 
 The following steps build on the `config.alloy` file you created in the previous tutorial.
 
 {{< docs/ignore >}}
-
 > The interactive sandbox has a VSCode-like editor that allows you to access files and folders. To access this feature, click on the `Editor` tab. The editor also has a terminal that you can use to run commands. Since some commands assume you are within a specific directory, we recommend running the commands in `tab1`.
-> {{< /docs/ignore >}}
+{{< /docs/ignore >}}
 
 ### First component: Scraping
 
@@ -160,7 +158,6 @@ This final component creates a [`prometheus.remote_write`][prometheus.remote_wri
 This completes the simple configuration pipeline.
 
 <!-- INTERACTIVE ignore START -->
-
 {{< admonition type="tip" >}}
 The `basic_auth` is commented out because the local `docker compose` stack doesn't require it.
 It's included in this example to show how you can configure authorization for other environments.
@@ -172,9 +169,8 @@ For further authorization options, refer to the [`prometheus.remote_write`][prom
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
-
 > The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. It's included in this example to show how you can configure authorization for other environments. For further authorization options, refer to the [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) component documentation.
-> {{< /docs/ignore >}}
+{{< /docs/ignore >}}
 
 This connects directly to the Prometheus instance running in the Docker container.
 
@@ -193,9 +189,7 @@ sudo cp config.alloy /etc/alloy/config.alloy
 ```
 
 {{< /docs/ignore >}}
-
 <!-- INTERACTIVE ignore START -->
-
 {{< code >}}
 
 ```macos
@@ -207,7 +201,6 @@ sudo cp config.alloy /etc/alloy/config.alloy
 ```
 
 {{< /code >}}
-
 <!-- INTERACTIVE ignore END -->
 
 Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
@@ -217,7 +210,6 @@ curl -X POST http://localhost:12345/-/reload
 ```
 
 <!-- INTERACTIVE ignore START -->
-
 {{< admonition type="tip" >}}
 This step uses the {{< param "PRODUCT_NAME" >}} UI, on `localhost` port `12345`.
 If you choose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
