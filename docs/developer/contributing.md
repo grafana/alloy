@@ -112,13 +112,13 @@ Slack channel [#alloy](https://slack.grafana.com).
 
 ### tl;dr:
 
-PR titles (and by extension CHANGELOG entries) should:
+#### PR titles (and by extension CHANGELOG entries) should:
 
 1. Adhere to [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) style and use one
    of the ["types" defined in our linting workflow](../../.github/workflows/lint-pr-title.yml#L43).
-1. Read as a complete sentence in the imperative, present tense (e.g. "change", not "changes" or
+2. Read as a complete sentence in the imperative, present tense (e.g. "change", not "changes" or
    "changed").
-1. Describe the impact on the user which is reading the changelog.
+3. Describe the impact on the user which is reading the changelog.
 
 For example: `feat: increase config file read speed by 1500%`
 
@@ -128,11 +128,13 @@ For example: `feat: increase config file read speed by 1500%`
 > - Vague: `fix: fix issue with metric names`
 > - Explicit: `fix: fix 's' getting replaced by 'z' in metric names`
 
-PR "Extended descriptions" (i.e. commit bodies):
+#### PR "Extended descriptions" (i.e. commit bodies):
 
 1. Are optional, depending on the needs of the PR.
 2. Should be a human-readable description of the PR in the imperative, present tense.
-3. **Should not** contain more than one line starting with `feat` or `fix` as this will result in
+3. Are pre-populated with the messages from all individual commits, and typically need some
+   modification before final merge.
+4. **Should not** contain more than one line starting with `feat` or `fix` as this will result in
    multiple changelog entries.
 
 ### Details
