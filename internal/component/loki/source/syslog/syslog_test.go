@@ -282,24 +282,58 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	}
 }
 
-func TestRawFormatRequiresExperimentalStabilityLevel(t *testing.T) {
-	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
-		MinStability:  featuregate.StabilityGenerallyAvailable,
+func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
+	cases := []struct {
+		label     string
+		expectErr string
+		setCfg    func(*ListenerConfig)
+	}{
+		{
+			label:     "syslog-raw-format",
+			expectErr: "syslog format is available only at experimental stability level",
+			setCfg: func(lc *ListenerConfig) {
+				lc.SyslogFormat = scrapeconfig.SyslogFormatRaw
+			},
+		},
+		{
+			label:     "cisco-ios",
+			expectErr: "rfc3164_cisco_components block is available only at experimental stability level",
+			setCfg: func(lc *ListenerConfig) {
+				lc.SyslogFormat = scrapeconfig.SyslogFormatRFC3164
+				lc.RFC3164CiscoComponents = &RFC3164CiscoComponents{EnableAll: true}
+			},
+		},
 	}
 
-	ch1 := loki.NewLogsReceiver()
-	args1 := Arguments{}
-	l1 := DefaultListenerConfig
-	l1.ListenAddress = "127.0.0.1:1234"
-	l1.ListenProtocol = syslogtarget.ProtocolTCP
-	l1.SyslogFormat = scrapeconfig.SyslogFormatRaw
-	args1.SyslogListeners = []ListenerConfig{l1}
-	args1.ForwardTo = []loki.LogsReceiver{ch1}
+	for _, tc := range cases {
+		t.Run(tc.label, func(t *testing.T) {
+			opts := component.Options{
+				Logger:        util.TestAlloyLogger(t),
+				Registerer:    prometheus.NewRegistry(),
+				OnStateChange: func(e component.Exports) {},
+				MinStability:  featuregate.StabilityGenerallyAvailable,
+			}
 
-	_, err := New(opts, args1)
-	require.Error(t, err)
-	require.Error(t, err, "syslog format requires experimental stability level")
+			lc := DefaultListenerConfig
+			lc.ListenAddress = "127.0.0.1:1234"
+			lc.ListenProtocol = syslogtarget.ProtocolTCP
+			tc.setCfg(&lc)
+
+			rcv := loki.NewLogsReceiver()
+			args := Arguments{
+				SyslogListeners: []ListenerConfig{lc},
+				ForwardTo:       []loki.LogsReceiver{rcv},
+			}
+
+			// Check if requires experimental level
+			_, err := New(opts, args)
+			require.Error(t, err)
+			require.ErrorContains(t, err, tc.expectErr, "component should require experimental level")
+
+			// Check if there is no error when stability level is experimental
+			opts.MinStability = featuregate.StabilityExperimental
+			_, err = New(opts, args)
+			require.NoError(t, err, "feature should work at experimental level")
+		})
+	}
 }

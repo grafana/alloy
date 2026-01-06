@@ -44,7 +44,7 @@ jobs:
       - name: Enrich release notes 🙋
         run: |
           cd tools
-          go run ./release/enrich-release-notes --tag "${RELEASE_TAG_NAME}"
+          go run ./release/enrich-release-notes --tag "${RELEASE_TAG_NAME}" --footer release/release-notes-footer.md
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
