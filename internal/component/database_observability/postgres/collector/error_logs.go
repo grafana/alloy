@@ -19,8 +19,10 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-const ErrorLogsCollector = "error_logs"
-const OP_ERROR_LOGS = "error_logs"
+const (
+	ErrorLogsCollector = "error_logs"
+	OP_ERROR_LOGS      = "error_logs"
+)
 
 // Supported error severities that will be processed
 var supportedSeverities = map[string]bool{

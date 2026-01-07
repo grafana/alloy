@@ -49,8 +49,10 @@ var unrecoverablePostgresSQLErrors = []string{
 	"pq: syntax error",
 }
 
-var paramCountRegex = regexp.MustCompile(`\$\d+`)
-var versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
+var (
+	paramCountRegex   = regexp.MustCompile(`\$\d+`)
+	versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
+)
 
 type PgSQLExplainplan struct {
 	Plan PlanNode `json:"Plan"`

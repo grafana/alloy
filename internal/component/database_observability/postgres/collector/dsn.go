@@ -8,10 +8,12 @@ import (
 
 type databaseConnectionFactory func(dsn string) (*sql.DB, error)
 
-var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
-var defaultDbConnectionFactory = func(dsn string) (*sql.DB, error) {
-	return sql.Open("postgres", dsn)
-}
+var (
+	dsnParseRegex              = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
+	defaultDbConnectionFactory = func(dsn string) (*sql.DB, error) {
+		return sql.Open("postgres", dsn)
+	}
+)
 
 // replaceDatabaseNameInDSN safely replaces the database name in a PostgreSQL DSN
 // using regex to ensure only the database name portion is replaced, not other occurrences
