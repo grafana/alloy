@@ -581,8 +581,8 @@ github.com/bkaradzic/go-lz4 v1.0.0 h1:RXc4wYsyz985CkXXeX04y4VnZFGG8Rd43pRaHsOXAK
 github.com/bkaradzic/go-lz4 v1.0.0/go.mod h1:0YdlkowM3VswSROI7qDxhRvJ3sLhlFrRRwjwegp5jy4=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
-github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260105090541-b22dcef7c015 h1:bWjgi6bctsZYAC+b6NMqYhjmVqHVXS0OWctqesEW028=
-github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260105090541-b22dcef7c015/go.mod h1:zaFFJkMUpPE5AZ1IdIgP4ou4Tl0zlPR9jBEFcj4Euxo=
+github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260107130404-88e0dc097b6c h1:5y7FqO4ZZPkPJqH4In45Loen2v0KQcQRrL/o9vVJAps=
+github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260107130404-88e0dc097b6c/go.mod h1:zaFFJkMUpPE5AZ1IdIgP4ou4Tl0zlPR9jBEFcj4Euxo=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/bmatcuk/doublestar v1.3.4 h1:gPypJ5xD31uhX6Tf54sDPUOBXTqKH4c9aPY66CyQrS0=
 github.com/bmatcuk/doublestar v1.3.4/go.mod h1:wiQtGV+rzVYxB7WIlirSN++5HPtPlXEo9MEoZQC/PmE=
