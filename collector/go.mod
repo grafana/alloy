@@ -42,6 +42,7 @@ require (
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.139.0
 	go.opentelemetry.io/collector/receiver v1.45.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.139.0
+	go.opentelemetry.io/collector/service v0.139.0
 	golang.org/x/sys v0.38.0
 )
 
@@ -898,7 +899,6 @@ require (
 	go.opentelemetry.io/collector/scraper v0.139.0 // indirect
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.139.0 // indirect
 	go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685 // indirect
-	go.opentelemetry.io/collector/service v0.139.0 // indirect
 	go.opentelemetry.io/collector/service/hostcapabilities v0.139.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.61.0 // indirect
@@ -1033,8 +1033,6 @@ replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrum
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
 
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
-
-replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor => github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
 
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 

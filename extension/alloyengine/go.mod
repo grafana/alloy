@@ -1032,9 +1032,6 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 // Update openshift/client-go to version compatible with structured-merge-diff v6
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-// Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
-replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor => github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
-
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 
