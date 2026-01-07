@@ -69,8 +69,8 @@ In those cases, exported fields retain their last healthy values.
 Before using this component, you need:
 
 1. **Databricks Workspace** with Unity Catalog and System Tables enabled
-2. **Service Principal** with OAuth2 M2M authentication configured
-3. **SQL Warehouse** for querying System Tables (serverless recommended for cost efficiency)
+1. **Service Principal** with OAuth2 M2M authentication configured
+1. **SQL Warehouse** for querying System Tables and serverless is recommended for cost efficiency
 
 See the [Databricks documentation](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html) for detailed OAuth2 M2M setup instructions.
 
