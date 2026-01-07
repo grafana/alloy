@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus-community/stackdriver_exporter/collectors"
 	"github.com/prometheus-community/stackdriver_exporter/delta"
-	"github.com/prometheus-community/stackdriver_exporter/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/monitoring/v3"
@@ -165,7 +164,7 @@ func (c *Config) Validate() error {
 	if len(c.ExtraFilters) > 0 {
 		filterPrefixToFilter := map[string][]string{}
 		for _, filter := range c.ExtraFilters {
-			splitFilter := strings.Split(filter, ":")
+			splitFilter := strings.SplitN(filter, ":", 2)
 			if len(splitFilter) <= 1 {
 				configErrors.Add(fmt.Errorf("%s is an invalid filter a filter must be of the form <metric_type>:<filter_expression>", filter))
 				continue
@@ -222,11 +221,11 @@ func createMonitoringService(ctx context.Context, httpTimeout time.Duration) (*m
 func parseMetricExtraFilters(filters []string) []collectors.MetricFilter {
 	var extraFilters []collectors.MetricFilter
 	for _, ef := range filters {
-		efPrefix, efModifier := utils.SplitExtraFilter(ef, ":")
-		if efPrefix != "" {
+		splitFilter := strings.SplitN(ef, ":", 2)
+		if len(splitFilter) == 2 && splitFilter[0] != "" {
 			extraFilter := collectors.MetricFilter{
-				TargetedMetricPrefix: efPrefix,
-				FilterQuery:          efModifier,
+				TargetedMetricPrefix: splitFilter[0],
+				FilterQuery:          splitFilter[1],
 			}
 			extraFilters = append(extraFilters, extraFilter)
 		}

@@ -1,0 +1,114 @@
+name: Backport PR
+
+on:
+  # SECURITY: This workflow uses pull_request_target, which runs with access to
+  # secrets and the base repo's context. This is safe here because:
+  #
+  # 1. We NEVER checkout PR code - only the base repo's default branch (see ref: below)
+  # 2. We use ZERO attacker-controlled data from the PR in commands:
+  #    - PR number is an integer (not injectable)
+  #    - Labels require write access (only maintainers can add them)
+  # 3. The workflow only runs after a PR is merged (maintainer-approved)
+  #
+  # The backport tool operates on commit SHAs as data, it never executes PR code.
+  #
+  # zizmor: ignore[dangerous-triggers] see above
+  pull_request_target:
+    types: [labeled, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  backport:
+    # Only run in the upstream repo, not in forks. This prevents forks from
+    # accidentally exposing secrets if they enable Actions with similar config.
+    if: github.repository == 'grafana/alloy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR is merged and find backport labels 🏷️
+        id: check
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            if (!pr.merged_at) {
+              console.log('PR is not merged, skipping');
+              core.setOutput('should_backport', 'false');
+              return;
+            }
+
+            const labels = pr.labels || [];
+            const backportLabels = labels
+              .map(l => l.name)
+              .filter(name => name.startsWith('backport/'));
+
+            if (backportLabels.length === 0) {
+              console.log('No backport labels found, skipping');
+              core.setOutput('should_backport', 'false');
+              return;
+            }
+
+            console.log(`PR is merged and has backport labels: ${backportLabels.join(', ')}`);
+            core.setOutput('labels', JSON.stringify(backportLabels));
+            core.setOutput('should_backport', 'true');
+
+      - name: Get GitHub app secrets 🔐
+        if: steps.check.outputs.should_backport == 'true'
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        if: steps.check.outputs.should_backport == 'true'
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository 🛎️
+        if: steps.check.outputs.should_backport == 'true'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          # Explicitly checkout the base repository's default branch to ensure
+          # we only run trusted tooling from upstream, never code from forks.
+          # The cherry-pick operation works on commit SHAs fetched from history,
+          # so it doesn't need the PR's branch checked out.
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: true # Needed for subsequent git operations
+
+      - name: Set up Go 🏗️
+        if: steps.check.outputs.should_backport == 'true'
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+
+      - name: Run backport tool 🍒
+        if: steps.check.outputs.should_backport == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          LABELS: ${{ steps.check.outputs.labels }}
+        run: |
+          cd tools
+
+          # Use while-read loop to safely handle labels with special characters
+          echo "${LABELS}" | jq -r '.[]' | while IFS= read -r label; do
+            echo "🍒 Processing backport for label: $label"
+            go run ./release/backport \
+              --pr "${{ github.event.pull_request.number }}" \
+              --label "$label"
+          done

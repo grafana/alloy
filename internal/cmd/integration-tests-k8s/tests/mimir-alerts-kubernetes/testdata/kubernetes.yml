@@ -17,7 +17,7 @@ metadata:
   name: grafana-alloy
 rules:
 - apiGroups: [""]
-  resources: ["namespaces", "configmaps"]
+  resources: ["namespaces", "configmaps", "secrets"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["monitoring.coreos.com"]
   resources: ["alertmanagerconfigs"]
@@ -101,7 +101,7 @@ data:
         sync_interval = "5s"
         global_config = remote.kubernetes.configmap.default.data["glbl"]
         template_files = {
-          `default_template` = 
+          `default_template` =
       `{{ define "__alertmanager" }}AlertManager{{ end }}
       {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}`,
         }
@@ -139,6 +139,14 @@ data:
     templates:
     - 'default_template'
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s-receiver-api-url
+  namespace: testing
+stringData:
+  api-url: https://val1.com
+---
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: AlertmanagerConfig
 metadata:
@@ -159,6 +167,19 @@ spec:
     - url: http://test.url
       httpConfig:
         followRedirects: true
+    slackConfigs:
+    - apiURL:
+        key: api-url
+        name: "s-receiver-api-url"
+      actions:
+      - type: type
+        text: text
+        name: my-action
+        confirm:
+          text: text
+      fields:
+      - title: title
+        value: value`
 ---
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: AlertmanagerConfig
@@ -185,9 +206,9 @@ kind: AlertmanagerConfig
 metadata:
   name: alertmgr-config3
   namespace: testing
-  # This config should not have the label required for 
-  # mimir.alerts.kubernetes to pick up the CRD. 
-  # 
+  # This config should not have the label required for
+  # mimir.alerts.kubernetes to pick up the CRD.
+  #
   # labels:
   #   alloy: "yes"
 spec:

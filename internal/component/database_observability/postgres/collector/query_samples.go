@@ -83,6 +83,7 @@ const selectPgStatActivity = `
 				s.query_id != 0
 			)
 		)
+		%s
 `
 
 const selectBlockingPIDs = `
@@ -90,6 +91,8 @@ const selectBlockingPIDs = `
     FROM pg_stat_activity 
     WHERE wait_event_type = 'Lock' AND pid != pg_backend_pid()
 `
+
+const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
 
 type QuerySamplesInfo struct {
 	DatabaseName    sql.NullString
@@ -124,6 +127,7 @@ type QuerySamplesArguments struct {
 	Logger                log.Logger
 	DisableQueryRedaction bool
 	BaseThrottleInterval  time.Duration
+	ExcludeCurrentUser    bool
 }
 
 type QuerySamples struct {
@@ -131,6 +135,7 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	excludeCurrentUser    bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -239,6 +244,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		collectInterval:              args.CollectInterval,
 		entryHandler:                 args.EntryHandler,
 		disableQueryRedaction:        args.DisableQueryRedaction,
+		excludeCurrentUser:           args.ExcludeCurrentUser,
 		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                      &atomic.Bool{},
 		samples:                      map[SampleKey]*SampleState{},
@@ -334,7 +340,11 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, er
 		queryTextField = queryTextClause
 	}
 
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField)
+	excludeCurrentUserClauseField := ""
+	if c.excludeCurrentUser {
+		excludeCurrentUserClauseField = excludeCurrentUserClause
+	}
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludeCurrentUserClauseField)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return false, fmt.Errorf("failed to query pg_stat_activity: %w", err)

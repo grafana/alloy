@@ -1,44 +1,13 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
-> to update the changelog._
+## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
-This document contains a historical list of changes between releases. Only
-changes that impact end-user behavior are listed; changes to documentation or
-internal API changes are not present.
 
-Main (unreleased)
------------------
+### Bug Fixes 🐛
 
-### Features
+* update to Beyla 2.7.10 ([#5019](https://github.com/grafana/alloy/issues/5019)) ([c149393](https://github.com/grafana/alloy/commit/c149393881e8c155681de9c03f8701b1fdbc6ea4))
 
-- (_Experimental_) A new `otelcol.receiver.awss3` component to receive traces previously stored in S3 by the [AWS S3 Exporter](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/). (@x1unix)
-
-- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
-
-- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
-
-- (_Experimental_) Add `pyroscope.enrich` component to enrich profiles using labels from `discovery.*` components. (@AndreZiviani)
-
-- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal)
-
-### Enhancements
-
-- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
-
-- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
-
-- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
-
-### Bugfixes
-
-- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
-
-- (_Public Preview_) Additions to `database_observability.postgres` component:
-    - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
-
-v1.12.0-rc.0
------------------
+## [1.12.0](https://github.com/grafana/alloy/compare/v1.11.3...v1.12.0) (2025-12-01)
 
 ### Breaking changes
 
@@ -48,6 +17,8 @@ v1.12.0-rc.0
   set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
 
 ### Features
+
+- Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
 
 - (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
   logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
@@ -93,6 +64,8 @@ v1.12.0-rc.0
 
 - Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
 
+- Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile. (@luweglarz)
+
 - OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
   - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.
   - All `otelcol.exporter.*` components providing the `sending_queue` > `batch` block have default `batch` values.
@@ -104,6 +77,9 @@ v1.12.0-rc.0
   - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
   - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
 
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
 
 ### Enhancements
 
@@ -140,6 +116,8 @@ v1.12.0-rc.0
 
 - `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
 
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
@@ -171,6 +149,8 @@ v1.12.0-rc.0
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
 
 - Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
+
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
 v1.11.3
 -----------------

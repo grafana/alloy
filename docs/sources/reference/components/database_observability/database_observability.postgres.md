@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.postgres
 title: database_observability.postgres
 labels:
-  stage: public_preview
+  stage: public-preview
   products:
     - oss
 ---
@@ -91,10 +91,11 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 ### `query_samples`
 
 | Name                      | Type       | Description                                                                            | Default | Required |
-| ------------------------- | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------------------|------------|----------------------------------------------------------------------------------------|---------|----------|
 | `base_throttle_interval`  | `duration` | Base interval for adaptive throttling of query sample emits. Set to `"0s"` to disable. | `"1m"`  | no       |
 | `collect_interval`        | `duration` | How frequently to collect information from database.                                   | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text. This might include parameters.                      | `false` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters).                          | `false` | no       |
+| `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.                                | `true`  | no       |
 
 `base_throttle_interval` uses a logarithmic backoff based on the per‑minute rate of finalized samples for the same query over a fixed 5‑minute window.
 This prevents an overly high sampling rate for hot queries.
