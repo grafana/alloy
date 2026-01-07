@@ -177,9 +177,9 @@ All cache settings are optional with sensible defaults.
 
 | Name                     | Type       | Description                                                                        | Default | Required |
 | ------------------------ | ---------- | ---------------------------------------------------------------------------------- | ------- | -------- |
-| `ttl`                    | `duration` | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
-| `error_cleanup_interval` | `duration` | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
 | `cleanup_check_interval` | `duration` | How often cached sourcemaps are checked for cleanup.                               | `"30s"` | no       |
+| `error_cleanup_interval` | `duration` | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
+| `ttl`                    | `duration` | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
 
 By default, sourcemaps are held in memory indefinitely.
 You can set `ttl` to clear sourcemaps that aren't used during the specified duration.
