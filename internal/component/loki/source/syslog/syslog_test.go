@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/featuregate"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -276,5 +279,61 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 		require.FailNow(t, "timeout waiting for second component to stop")
 	case err := <-done2:
 		require.NoError(t, err)
+	}
+}
+
+func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
+	cases := []struct {
+		label     string
+		expectErr string
+		setCfg    func(*ListenerConfig)
+	}{
+		{
+			label:     "syslog-raw-format",
+			expectErr: "syslog format is available only at experimental stability level",
+			setCfg: func(lc *ListenerConfig) {
+				lc.SyslogFormat = scrapeconfig.SyslogFormatRaw
+			},
+		},
+		{
+			label:     "cisco-ios",
+			expectErr: "rfc3164_cisco_components block is available only at experimental stability level",
+			setCfg: func(lc *ListenerConfig) {
+				lc.SyslogFormat = scrapeconfig.SyslogFormatRFC3164
+				lc.RFC3164CiscoComponents = &RFC3164CiscoComponents{EnableAll: true}
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.label, func(t *testing.T) {
+			opts := component.Options{
+				Logger:        util.TestAlloyLogger(t),
+				Registerer:    prometheus.NewRegistry(),
+				OnStateChange: func(e component.Exports) {},
+				MinStability:  featuregate.StabilityGenerallyAvailable,
+			}
+
+			lc := DefaultListenerConfig
+			lc.ListenAddress = "127.0.0.1:1234"
+			lc.ListenProtocol = syslogtarget.ProtocolTCP
+			tc.setCfg(&lc)
+
+			rcv := loki.NewLogsReceiver()
+			args := Arguments{
+				SyslogListeners: []ListenerConfig{lc},
+				ForwardTo:       []loki.LogsReceiver{rcv},
+			}
+
+			// Check if requires experimental level
+			_, err := New(opts, args)
+			require.Error(t, err)
+			require.ErrorContains(t, err, tc.expectErr, "component should require experimental level")
+
+			// Check if there is no error when stability level is experimental
+			opts.MinStability = featuregate.StabilityExperimental
+			_, err = New(opts, args)
+			require.NoError(t, err, "feature should work at experimental level")
+		})
 	}
 }

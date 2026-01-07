@@ -32,17 +32,6 @@ func MajorMinor(v string) (string, error) {
 	return StripVPrefix(semver.MajorMinor(v)), nil
 }
 
-// Major returns the major portion of a version (without v prefix).
-// e.g., "v1.15.0" -> "1"
-func Major(v string) (string, error) {
-	v = EnsureVPrefix(v)
-	if !semver.IsValid(v) {
-		return "", fmt.Errorf("invalid semver: %s", v)
-	}
-	// semver.Major returns "vX", strip the v
-	return StripVPrefix(semver.Major(v)), nil
-}
-
 // NextMinor increments the minor version and returns major.minor (without v prefix).
 // e.g., "v1.14.0" -> "1.15", "1.14.0" -> "1.15"
 func NextMinor(v string) (string, error) {
@@ -62,26 +51,6 @@ func NextMinor(v string) (string, error) {
 	}
 
 	return fmt.Sprintf("%d.%d", major, minor+1), nil
-}
-
-// IsValid checks if a version string is valid semver.
-func IsValid(v string) bool {
-	return semver.IsValid(EnsureVPrefix(v))
-}
-
-// ReleaseBranchName returns the release branch name for a version.
-// e.g., "v1.15.0" -> "release/v1.15", "1.15" -> "release/v1.15"
-func ReleaseBranchName(v string) (string, error) {
-	mm, err := MajorMinor(v)
-	if err != nil {
-		// If it's already just major.minor without patch, try directly
-		v = EnsureVPrefix(v + ".0")
-		mm, err = MajorMinor(v)
-		if err != nil {
-			return "", err
-		}
-	}
-	return fmt.Sprintf("release/v%s", mm), nil
 }
 
 // ParseReleaseBranch extracts the major.minor version from a release branch name.

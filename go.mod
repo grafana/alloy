@@ -584,7 +584,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/euank/go-kmsg-parser v2.0.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
-	github.com/expr-lang/expr v1.17.6 // indirect
+	github.com/expr-lang/expr v1.17.7 // indirect
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -1037,7 +1037,7 @@ replace github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-2024051813
 replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
 
 // Use forked syslog implementation by leodido for continued support
-replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.2.0
+replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.3.0
 
 // Replace thanos-io/objstore with Grafana fork
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
@@ -1065,9 +1065,6 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 
 // Update openshift/client-go to version compatible with structured-merge-diff v6
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
-
-// Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
-replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor => github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
 
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
