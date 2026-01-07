@@ -121,7 +121,8 @@ Replace the following:
 
 ## High cardinality warning
 
-The `collect_task_retries` flag adds task-level retry metrics which can significantly increase cardinality for workspaces with many jobs. Only enable if needed.
+The `collect_task_retries` flag adds task-level retry metrics which can significantly increase cardinality for workspaces with many jobs.
+Only enable this feature if you really need it.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
