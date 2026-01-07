@@ -104,9 +104,10 @@ func RedactParenthesizedValues(text string) string {
 			depth := 1
 			j := i + 1
 			for j < len(text) && depth > 0 {
-				if text[j] == '(' {
+				switch text[j] {
+				case '(':
 					depth++
-				} else if text[j] == ')' {
+				case ')':
 					depth--
 				}
 				j++
@@ -119,9 +120,10 @@ func RedactParenthesizedValues(text string) string {
 				k := j + 2
 				depth = 1
 				for k < len(text) && depth > 0 {
-					if text[k] == '(' {
+					switch text[k] {
+					case '(':
 						depth++
-					} else if text[k] == ')' {
+					case ')':
 						depth--
 					}
 					k++
