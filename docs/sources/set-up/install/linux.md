@@ -35,7 +35,7 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
     sudo mkdir -p /etc/apt/keyrings
     sudo wget -O /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg-full.key
     sudo chmod 644 /etc/apt/keyrings/grafana.asc
-    echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+   echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
    ```
 
    ```rhel-fedora
