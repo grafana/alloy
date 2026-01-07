@@ -8,16 +8,16 @@ import (
 )
 
 func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
-	otelCmd := otelcol.NewCommand(params)
+    otelCmd := otelcol.NewCommand(params)
 
-	otelCmd.Use = "otel"
-	otelCmd.Short = "Use Alloy with OTel Engine"
-	otelCmd.Long = "[EXPERIMENTAL] Use Alloy with OpenTelemetry Collector Engine"
+    otelCmd.Use = "otel"
+    otelCmd.Short = "Use Alloy with OTel Engine"
+    otelCmd.Long = "[EXPERIMENTAL] Use Alloy with OpenTelemetry Collector Engine"
 
-	flowCmd := flowcmd.RootCommand()
-	flowCmd.AddCommand(otelCmd)
+    flowCmd := flowcmd.RootCommand()
+    flowCmd.AddCommand(otelCmd)
 
-	// TODO: Officially add this command to expose in a follow up PR
-	otelCmd.Hidden = true
-	return flowCmd
+    // TODO: Officially add this command to expose in a follow up PR
+    otelCmd.Hidden = true
+    return flowCmd
 }
