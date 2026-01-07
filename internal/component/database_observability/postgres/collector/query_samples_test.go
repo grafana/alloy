@@ -1283,8 +1283,8 @@ func TestComputeBurstWindow(t *testing.T) {
 			observed: 0,
 			wantS:    50 * time.Millisecond,
 			wantW:    0,
-	},
-}
+		},
+	}
 
 	for _, tc := range cases {
 		tc := tc
