@@ -1282,7 +1282,7 @@ func TestComputeBurstWindow(t *testing.T) {
 			ci:       100 * time.Millisecond,
 			observed: 0,
 			wantS:    50 * time.Millisecond,
-		wantW:    0,
+			wantW:    0,
 	},
 }
 
@@ -1337,18 +1337,18 @@ func TestQuerySamples_TestBurstWindow(t *testing.T) {
 		}
 
 		// Active → Active → Empty (emit #1) → Empty (wait CI) → Active → Empty (emit #2)
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
 			now, "testdb", 7000, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true}, "SELECT 1",
 		))
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
 			now, "testdb", 7000, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true}, "SELECT 1",
 		))
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
 			now, "testdb", 7000, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true}, "SELECT 1",
 		))
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
@@ -1406,10 +1406,10 @@ func TestQuerySamples_TestBurstWindow(t *testing.T) {
 			"query",
 		}
 
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(250 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(250 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
 			now, "testdb", 9100, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 5001, Valid: true}, "SELECT 1",
 		))
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
@@ -1455,11 +1455,11 @@ func TestQuerySamples_TestBurstWindow(t *testing.T) {
 		}
 
 		for i := 0; i < 7; i++ {
-			mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(5 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(5 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 8100, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 6001, Valid: true}, "SELECT 1",
 			))
 		}
-		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(5 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, "")).WillDelayFor(5 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 
