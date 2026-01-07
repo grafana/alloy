@@ -116,8 +116,8 @@ Replace the following:
 
 ## Tuning recommendations
 
-- **`scrape_interval`**: Default is 5 minutes. The exporter queries Databricks System Tables which can be slow. Increase to reduce SQL Warehouse costs.
-- **`scrape_timeout`**: Default is 4 minutes. The exporter typically takes 90-120 seconds per scrape depending on data volume.
+- **`scrape_interval`**: The default is 10 minutes. The exporter queries Databricks System Tables which can be slow. Increase the `scrape_interval` to reduce your SQL Warehouse costs.
+- **`scrape_timeout`**: The default is 9 minutes. The exporter typically takes 90 to 120 seconds per scrape depending on data volume. Increase this value alongisde the scrape interval if your data volume is higher.
 
 ## High cardinality warning
 
