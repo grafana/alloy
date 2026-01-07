@@ -47,7 +47,7 @@ func (c *Config) validate() error {
 	}
 
 	if ip, err := netip.ParseAddr(host); err == nil && ip.IsValid() && ip.Is6() {
-		// Add the explicit brackets for IPv6 addresses
+		// Restore the explicit brackets for IPv6 addresses
 		c.Host = fmt.Sprintf("[%s]", host)
 	} else {
 		c.Host = host
