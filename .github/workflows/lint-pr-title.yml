@@ -56,7 +56,7 @@ jobs:
           # Scope is optional
           requireScope: false
           # Disallow uppercase first letter in subject
-          subjectPattern: ^[a-z].+$
+          subjectPattern: ^[A-Z].+$
           subjectPatternError: |
-            The subject "{subject}" must start with a lowercase letter.
-            Example: "feat: add new component" not "feat: Add new component"
+            The subject "{subject}" must start with an uppercase letter.
+            Example: "feat: Add new component" not "feat: add new component"

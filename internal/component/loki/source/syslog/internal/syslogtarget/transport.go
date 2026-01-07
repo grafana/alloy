@@ -85,6 +85,26 @@ func (t *baseTransport) maxMessageLength() int {
 	return DefaultMaxMessageLength
 }
 
+func (t *baseTransport) streamParseConfig() syslogparser.StreamParseConfig {
+	ciscoCfg := t.config.RFC3164CiscoComponents
+	parseCfg := syslogparser.StreamParseConfig{
+		MaxMessageLength:      t.maxMessageLength(),
+		IsRFC3164Message:      t.config.IsRFC3164Message(),
+		UseRFC3164DefaultYear: t.config.RFC3164DefaultToCurrentYear,
+	}
+
+	if ciscoCfg != nil {
+		parseCfg.RFC3164CiscoComponents = &syslogparser.RFC3164CiscoComponents{
+			MessageCounter:  ciscoCfg.EnableAll || ciscoCfg.MessageCounter,
+			SequenceNumber:  ciscoCfg.EnableAll || ciscoCfg.SequenceNumber,
+			CiscoHostname:   ciscoCfg.EnableAll || ciscoCfg.Hostname,
+			SecondFractions: ciscoCfg.EnableAll || ciscoCfg.SecondFractions,
+		}
+	}
+
+	return parseCfg
+}
+
 func (t *baseTransport) connectionLabels(ip string) labels.Labels {
 	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.config.Labels {
@@ -346,7 +366,8 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 		return
 	}
 
-	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, cb, t.maxMessageLength())
+	parseCfg := t.streamParseConfig()
+	err := syslogparser.ParseStream(parseCfg, c, cb)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
@@ -486,13 +507,8 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 			continue
 		}
 
-		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, r, func(result *syslog.Result) {
-			if err := result.Error; err != nil {
-				t.handleMessageError(err)
-			} else {
-				t.handleMessage(lbs.Copy(), result.Message)
-			}
-		}, t.maxMessageLength())
+		parseCfg := t.streamParseConfig()
+		err = syslogparser.ParseStream(parseCfg, r, cb)
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 		}
