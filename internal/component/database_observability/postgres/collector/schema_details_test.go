@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -34,7 +34,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -73,7 +73,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("authors"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.authors").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "authors").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -141,7 +141,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -189,7 +189,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("spatial_ref_sys"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.authors").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "authors").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -223,7 +223,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.categories").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "categories").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -257,7 +257,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("postgis.spatial_ref_sys").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("postgis", "spatial_ref_sys").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -349,7 +349,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db2.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -383,7 +383,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
 		db1Mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("users"))
-		db1Mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+		db1Mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 					AddRow("id", "integer", true, nil, "", true),
@@ -397,7 +397,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
 		db2Mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("metrics"))
-		db2Mock.ExpectQuery(selectColumnNames).WithArgs("public.metrics").RowsWillBeClosed().
+		db2Mock.ExpectQuery(selectColumnNames).WithArgs("public", "metrics").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 					AddRow("id", "bigint", true, nil, "", true),
@@ -446,7 +446,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -485,7 +485,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("users"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -558,7 +558,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
@@ -615,7 +615,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -654,7 +654,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 				}).AddRow("test_table"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -726,7 +726,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -765,7 +765,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 				}).AddRow("users"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -832,7 +832,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -871,7 +871,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 				}).AddRow("products"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.products").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "products").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -939,7 +939,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -978,7 +978,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 				}).AddRow("books"),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.books").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "books").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -1044,7 +1044,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			DSN:             "postgres://user:pass@localhost:5432/cache_test_db",
@@ -1085,7 +1085,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 			)
 
 		// selectColumnNames, selectIndexes, selectForeignKeys called only first run
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -1174,7 +1174,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1215,7 +1215,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 					}).AddRow("test_table"),
 				)
 
-			mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"column_name",
@@ -1322,7 +1322,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
 			WillReturnError(fmt.Errorf("column query error"))
 
 		collector := &SchemaDetails{logger: log.NewNopLogger()}
@@ -1347,7 +1347,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 			logger: log.NewNopLogger(),
 		}
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
 			WillReturnError(fmt.Errorf("column query error"))
 
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
@@ -1367,7 +1367,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 			logger: log.NewNopLogger(),
 		}
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation"}).
 				AddRow("id", "integer", true, nil, ""))
 
@@ -1383,7 +1383,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
 			WillReturnRows(
 				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 					AddRow("id", "integer", true, nil, "", true).
@@ -1402,7 +1402,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 				AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
@@ -1421,7 +1421,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 				AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
@@ -1441,7 +1441,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 				AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
@@ -1464,7 +1464,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 				AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
@@ -1486,7 +1486,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 				AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
@@ -1508,7 +1508,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
 				AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
@@ -1593,7 +1593,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -1627,7 +1627,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"table_name",
 				}).AddRow("users").AddRow("orders"),
 			)
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -1658,7 +1658,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"referenced_column_name",
 				}),
 			)
-		mock.ExpectQuery(selectColumnNames).WithArgs("public.orders").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("public", "orders").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"column_name",
@@ -1705,4 +1705,13 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 			},
 		}, actual)
 	})
+}
+
+func Test_Postgres_SchemaDetails_query_excludes_databases(t *testing.T) {
+	assert.Equal(t, `
+		SELECT datname
+		FROM pg_database
+		WHERE datistemplate = false
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ('azure_maintenance')`, selectAllDatabases)
 }

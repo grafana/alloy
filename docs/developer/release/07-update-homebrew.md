@@ -9,7 +9,10 @@ The PR will bump the version of Alloy in Alloy's Brew formula.
 
 2. Find the PR which bumps the Alloy formula to the release that was just published. It will look like [this one][example-pr].
 
-3. Merge the PR.
+3. If needed, update the contents of the PR with any additional changes needed to support the new Alloy version. This
+   might mean updating the Go version, changing build tags, default config file contents, etc.
+
+4. Merge the PR.
 
 [homebrew-grafana]: https://github.com/grafana/homebrew-grafana
 [example-pr]: https://github.com/grafana/homebrew-grafana/pull/89

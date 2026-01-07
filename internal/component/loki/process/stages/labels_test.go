@@ -114,7 +114,7 @@ func TestLabels(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := validateLabelsConfig(test.config)
+			actual, err := validateLabelsConfig(test.config.Values)
 			if (err != nil) != (test.err != nil) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return

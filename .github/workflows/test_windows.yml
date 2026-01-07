@@ -31,5 +31,5 @@ jobs:
         # We'll need to make sure the same cache is reused by the workflow to build Windows binaries.
         cache: false
     - name: Test
-      run: '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork,slicelabels"
-        $(go list ./... | grep -v /integration-tests/)'''
+      run: '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
+        $(go list ./... |  grep -v -E "/integration-tests/|/integration-tests-k8s/")'''

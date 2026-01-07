@@ -57,6 +57,7 @@ func TestArguments_UnmarshalDefaults(t *testing.T) {
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint:              "0.0.0.0:9411",
 			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
+			KeepAlivesEnabled:     true,
 		},
 	}
 
