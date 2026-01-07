@@ -129,7 +129,13 @@ type ExplainPlanArguments struct {
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
 }
 
+// ErrorLogsArguments configures the error_logs collector.
+// The error_logs collector processes PostgreSQL error logs in JSON format.
 type ErrorLogsArguments struct {
+	// DisableQueryRedaction controls whether SQL queries and PII in error logs are redacted.
+	// When false (default), sensitive data such as SQL literals, constraint values, and
+	// parenthesized values are replaced with placeholders to protect PII.
+	// Set to true only in non-production environments or when logs contain no sensitive data.
 	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
 }
 
