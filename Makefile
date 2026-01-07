@@ -268,19 +268,11 @@ else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
 endif
 
-generate-otel-collector-distro: with-ocb-builder
+generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./collector && GOOS= GOARCH= go generate
-endif
-
-.PHONY: with-ocb-builder
-with-ocb-builder:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	@bash ./tools/check-ocb-builder-is-installed.sh $(BUILDER_VERSION)
+	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
 generate-ui:

@@ -1,6 +1,8 @@
 package flowcmd
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy"
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
@@ -34,6 +36,7 @@ func init() {
 
 // RootCommand exposes the root Cobra command constructed by the internal alloy CLI.
 func RootCommand() *cobra.Command {
+	fmt.Println("hi")
 	return alloycli.Command()
 }
 

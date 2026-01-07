@@ -71,9 +71,6 @@ $ ./build/alloy run <CONFIG_FILE>
 
 An example of the above configuration file can be found [here][example-config].
 
-**Please note:** in order to compile Alloy, the [OCB builder tool](https://github.com/open-telemetry/opentelemetry-collector/tree/main/cmd/builder) is required.
-If this has not been installed at the version specified in the BUILDER_VERSION environment variable, it will automatically be installed as part of the alloy build target
-
 Run `make help` for a description of all available Make targets.
 
 ### Compile on Linux
