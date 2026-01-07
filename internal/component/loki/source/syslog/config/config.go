@@ -55,6 +55,15 @@ func (s SyslogFormat) Validate() error {
 	return fmt.Errorf("unknown syslog format: %q", s)
 }
 
+// RFC3164CiscoComponents enables Cisco IOS log line parsing and configures what fields to parse.
+type RFC3164CiscoComponents struct {
+	EnableAll       bool
+	MessageCounter  bool
+	SequenceNumber  bool
+	Hostname        bool
+	SecondFractions bool
+}
+
 // RawFormatOptions are options for raw syslog format processing.
 type RawFormatOptions struct {
 	// UseNullTerminatorDelimiter sets null terminator ('\0') as a log line delimiter for non-transparent framed messages.
@@ -116,6 +125,9 @@ type SyslogTargetConfig struct {
 	// When parsing an RFC3164 message, should the year be defaulted to the current year?
 	// When false, the year will default to 0.
 	RFC3164DefaultToCurrentYear bool `yaml:"rfc3164_default_to_current_year"`
+
+	// RFC3164CiscoComponents enables and configures Cisco IOS syslog parsing.
+	RFC3164CiscoComponents *RFC3164CiscoComponents `yaml:"rfc3164_cisco_components"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {

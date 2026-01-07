@@ -70,6 +70,7 @@ type Arguments struct {
 	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
+	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
@@ -119,6 +120,10 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 }
 
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	AllowUpdatePerfSchemaSettings: false,
 
@@ -158,6 +163,9 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
+	},
+	HealthCheckArguments: HealthCheckArguments{
+		CollectInterval: 1 * time.Hour,
 	},
 }
 
@@ -571,6 +579,22 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
 		c.collectors = append(c.collectors, ciCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:              c.dbConnection,
+		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(context.Background()); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {
