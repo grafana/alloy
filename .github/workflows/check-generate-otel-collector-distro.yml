@@ -1,0 +1,45 @@
+name: Check generate-otel-collector-distro
+permissions:
+  contents: read
+on: pull_request
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run generate-otel-collector-distro
+        run: |
+          make generate-otel-collector-distro
+
+      - name: Check for generated file changes
+        run: |
+          # List changed files in the collector directory (excluding generator source files)
+          CHANGED=$(git diff --name-only --ignore-all-space | grep -E '^collector/.*\.(go|mod)$' | grep -v '^collector/generator/' || true)
+
+          if [ -n "$CHANGED" ]; then
+            echo "::error::Generated collector files are out of sync with generate-otel-collector-distro."
+            echo "The following files changed:"
+            echo "$CHANGED"
+            echo
+            echo "Diff:"
+            git --no-pager diff -- $CHANGED || true
+            echo
+            echo "To fix locally:"
+            echo "  Run: make generate-otel-collector-distro"
+            echo "  Commit the generated files"
+            exit 1
+          fi
+
