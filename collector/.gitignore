@@ -1,0 +1,5 @@
+# Ignore module files and generated entrypoints in collector/
+go.mod
+go.sum
+components.go
+main*.go
