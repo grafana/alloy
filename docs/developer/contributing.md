@@ -110,6 +110,47 @@ Slack channel [#alloy](https://slack.grafana.com).
 
 ## Pull request titles and commit messages
 
+### tl;dr:
+
+#### PR titles (and by extension CHANGELOG entries) should:
+
+1. Adhere to [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) style and use one
+   of the ["types" defined in our linting workflow](../../.github/workflows/lint-pr-title.yml#L43).
+2. Read as a complete sentence in the imperative, present tense (e.g. "Change", not "Changes" or
+   "Changed").
+3. Have a "description" which starts with an uppercase letter.
+4. Describe the impact on the user which is reading the changelog.
+
+For example: `feat: Increase config file read speed by 1500%`
+
+> Readers should be able to understand how a change impacts them. Default to being explicit over
+> vague.
+>
+> - Vague: `fix: Fix issue with metric names`
+> - Explicit: `fix: Fix 's' getting replaced by 'z' in metric names`
+
+General title format:
+
+```
+  ┌──────────── Type
+  │   ┌──────── Scope (optional)
+  │   │   ┌──── Description
+  │   │   │
+feat(ui): Improve UI load time for large component pages
+```
+
+#### PR "Extended descriptions" (i.e. commit bodies):
+
+1. Are optional, depending on the needs of the PR.
+2. Should be a human-readable description of the PR in the imperative, present tense.
+3. Are pre-populated with the messages from all individual commits, and typically need some
+   modification before final merge.
+4. **Should not** contain more than one line starting with `feat` or `fix` as this will result in
+   multiple changelog entries.
+5. Should include a `BREAKING-CHANGE: [...]` footer if the change is breaking.
+
+### Details
+
 We use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) as the basis for
 [CHANGELOG](../../CHANGELOG.md) entries, but **you don't need** to worry about this for anything
 other than the Pull Request title. This is because we use squash commits when merging Pull Requests,
@@ -121,31 +162,47 @@ title** must adhere to Conventional Commit style.
 When a maintainer goes to merge your PR, the prompt they get will contain the PR title as the squash
 commit's title and all of the individual commit details as the squashed commit's body.
 
-> **MAINTAINERS:** PR merge time is the point at which you can modify the commit details to get the
-> desired changelog entry, should it be needed. This can also be fixed after the fact, but it's
-> easiest to address it at this point.
+You can find the list of all Conventional Commit "types" we allow
+[here](../../.github/workflows/lint-pr-title.yml#L43).
 
-PR titles (and by extension CHANGELOG entries) should:
+## (Maintainers) Merging a PR
 
-1. Read as a complete sentence in the imperative, present tense (e.g. "change", not "changes" or
-   "changed").
-2. Describe the impact on the user which is reading the changelog.
+PR merge time is the point at which you can modify the commit title (via the "Commit message" box)
+and the commit body (via the "Extended description" box) to get the desired changelog entry. This
+can also be fixed after the fact, but it's easiest to address it at this point. In general, when you
+click the "Squash and merge" button, you want to:
 
-For example: `feat: increase config file read speed by 1500%`
+1. Doublecheck that the "Commit message" box says what the changelog entry should say.
+2. Remove any unnecessary commit details from the "Extended description" box and add a
+   human-readable description instead. This can be the contents of the "Brief description of Pull
+   Request" section from the PR's description, if available.
+3. If needed, add a `BREAKING-CHANGE: [...]` footer to the bottom of the "Extended description" with
+   a detailed description of the breaking change. For example:
 
-> Readers should be able to understand how a change impacts them. Default to being explicit over
-> vague.
->
-> - Vague: `fix: fix issue with metric names`
-> - Explicit: `fix: fix 's' getting replaced by 'z' in metric names`
+   ```
+   Commit message
+   ┌─────────────────────────────────────────────────────┐
+   │ feat!: This is the conventional commit-style title  │
+   └─────────────────────────────────────────────────────┘
+
+   Extended description
+   ┌─────────────────────────────────────────────────────┐
+   │ This is the detailed description of the PR.         │
+   │                                                     │
+   │ BREAKING-CHANGE: This is where you write a detailed │
+   │ description about the breaking change. You can use  │
+   │ markdown if needed.                                 │
+   └─────────────────────────────────────────────────────┘
+   ```
 
 ## (Maintainers) Should you backport?
 
 You should consider backporting a PR if it meets any of the following criteria.
 
 - It fixes a bug, security vulnerability, or other critical issue that affects users on the current
-  release branch
-- It contains CI and/or build infrastructure changes which help keep releases healthy
+  release branch.
+- It fixes broken/flaky tests needed for a clean build.
+- It contains CI and/or build infrastructure changes which help keep releases healthy.
 
 For details on how to backport, see
 [Backporting a fix to a release branch](./shepherding-releases.md#backporting-a-fix-to-a-release-branch)

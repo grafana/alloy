@@ -109,10 +109,6 @@ replaces:
     dependency: github.com/openshift/client-go
     replacement: github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-  - comment: Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
-    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor
-    replacement: github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
-
   - comment: >
       Do not remove until bug in walqueue backwards compatibility is resolved:
       https://github.com/deneonet/benc/issues/13
