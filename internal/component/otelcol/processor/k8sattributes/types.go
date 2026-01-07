@@ -17,10 +17,11 @@ func (args FieldExtractConfig) convert() map[string]interface{} {
 }
 
 type ExtractConfig struct {
-	Metadata        []string             `alloy:"metadata,attr,optional"`
-	Annotations     []FieldExtractConfig `alloy:"annotation,block,optional"`
-	Labels          []FieldExtractConfig `alloy:"label,block,optional"`
-	OtelAnnotations bool                 `alloy:"otel_annotations,attr,optional"`
+	Metadata                     []string             `alloy:"metadata,attr,optional"`
+	Annotations                  []FieldExtractConfig `alloy:"annotation,block,optional"`
+	Labels                       []FieldExtractConfig `alloy:"label,block,optional"`
+	OtelAnnotations              bool                 `alloy:"otel_annotations,attr,optional"`
+	DeploymentNameFromReplicaSet bool                 `alloy:"deployment_name_from_replicaset,attr,optional"`
 }
 
 func (args ExtractConfig) convert() map[string]interface{} {
@@ -36,10 +37,11 @@ func (args ExtractConfig) convert() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"metadata":         args.Metadata,
-		"annotations":      annotations,
-		"labels":           labels,
-		"otel_annotations": args.OtelAnnotations,
+		"metadata":                        args.Metadata,
+		"annotations":                     annotations,
+		"labels":                          labels,
+		"otel_annotations":                args.OtelAnnotations,
+		"deployment_name_from_replicaset": args.DeploymentNameFromReplicaSet,
 	}
 }
 
