@@ -143,11 +143,11 @@ feat(ui): Improve UI load time for large component pages
 
 1. Are optional, depending on the needs of the PR.
 2. Should be a human-readable description of the PR in the imperative, present tense.
-3. Are pre-populated with the messages from all individual commits, and typically need some
-   modification before final merge.
+3. Should include text from the "Brief description of Pull Request" section of the PR description.
 4. **Should not** contain more than one line starting with `feat` or `fix` as this will result in
    multiple changelog entries.
 5. Should include a `BREAKING-CHANGE: [...]` footer if the change is breaking.
+6. Should maintain pre-populated co-authors.
 
 ### Details
 
@@ -173,9 +173,11 @@ can also be fixed after the fact, but it's easiest to address it at this point. 
 click the "Squash and merge" button, you want to:
 
 1. Doublecheck that the "Commit message" box says what the changelog entry should say.
-2. Remove any unnecessary commit details from the "Extended description" box and add a
-   human-readable description instead. This can be the contents of the "Brief description of Pull
-   Request" section from the PR's description, if available.
+2. Put a human-readable description of the PR into the "Extended description" box, which can be:
+   - A copy/paste of the text from the "Brief description of Pull Request" section from the PR's
+     description, if available.
+   - A copy/paste of a relevant commit message (e.g. if there's only one on the PR and it is
+     descriptive).
 3. If needed, add a `BREAKING-CHANGE: [...]` footer to the bottom of the "Extended description" with
    a detailed description of the breaking change. For example:
 
