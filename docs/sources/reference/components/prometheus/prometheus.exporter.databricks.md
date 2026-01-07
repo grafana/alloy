@@ -29,19 +29,19 @@ prometheus.exporter.databricks "LABEL" {
 
 You can use the following arguments with `prometheus.exporter.databricks`:
 
-| Name                    | Type       | Description                                                                     | Default | Required |
-|-------------------------|------------|---------------------------------------------------------------------------------|---------|----------|
-| `server_hostname`       | `string`   | The Databricks workspace hostname (e.g., `dbc-xxx.cloud.databricks.com`).       |         | yes      |
-| `warehouse_http_path`   | `string`   | The HTTP path of the SQL Warehouse (e.g., `/sql/1.0/warehouses/abc123`).        |         | yes      |
-| `client_id`             | `string`   | The OAuth2 Application ID (Client ID) of your Service Principal.                |         | yes      |
-| `client_secret`         | `secret`   | The OAuth2 Client Secret of your Service Principal.                             |         | yes      |
-| `query_timeout`         | `duration` | Timeout for individual SQL queries.                                             | `"5m"`  | no       |
-| `billing_lookback`      | `duration` | How far back to look for billing data.                                          | `"24h"` | no       |
-| `jobs_lookback`         | `duration` | How far back to look for job runs.                                              | `"2h"`  | no       |
-| `pipelines_lookback`    | `duration` | How far back to look for pipeline runs.                                         | `"2h"`  | no       |
-| `queries_lookback`      | `duration` | How far back to look for SQL warehouse queries.                                 | `"1h"`  | no       |
-| `sla_threshold_seconds` | `int`      | Duration threshold (seconds) for job SLA miss detection.                        | `3600`  | no       |
-| `collect_task_retries`  | `bool`     | Collect task retry metrics (high cardinality due to `task_key` label).          | `false` | no       |
+| Name                    | Type       | Description                                                                         | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------------- | ------- | -------- |
+| `client_id`             | `string`   | The OAuth2 Application ID or Client ID of your Service Principal.                   |         | yes      |
+| `client_secret`         | `secret`   | The OAuth2 Client Secret of your Service Principal.                                 |         | yes      |
+| `server_hostname`       | `string`   | The Databricks workspace hostname, for example, `dbc-xxx.cloud.databricks.com`.     |         | yes      |
+| `warehouse_http_path`   | `string`   | The HTTP path of the SQL Warehouse for example, `/sql/1.0/warehouses/abc123`.       |         | yes      |
+| `billing_lookback`      | `duration` | How far back to look for billing data.                                              | `"24h"` | no       |
+| `collect_task_retries`  | `bool`     | Collect task retry metrics. Can cause high cardinality due to the `task_key` label. | `false` | no       |
+| `jobs_lookback`         | `duration` | How far back to look for job runs.                                                  | `"2h"`  | no       |
+| `pipelines_lookback`    | `duration` | How far back to look for pipeline runs.                                             | `"2h"`  | no       |
+| `queries_lookback`      | `duration` | How far back to look for SQL warehouse queries.                                     | `"1h"`  | no       |
+| `query_timeout`         | `duration` | Timeout for individual SQL queries.                                                 | `"5m"`  | no       |
+| `sla_threshold_seconds` | `int`      | Duration threshold in seconds for job SLA miss detection.                           | `3600`  | no       |
 
 ## Blocks
 
