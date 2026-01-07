@@ -78,6 +78,8 @@ Release: https://github.com/grafana/alloy/releases/tag/<RELEASE_VERSION>
 Full changelog: https://github.com/grafana/alloy/blob/<RELEASE_VERSION>/CHANGELOG.md
 ```
 
+> **Note:** The internal Alloy channel is automatically notified via GitHub Workflow.
+
 ## Cutting a new PATCH release
 
 The process for this is exactly the same as a minor release with two notable exceptions:
@@ -98,7 +100,7 @@ changelog entries. If you need to change one after the PR has already been merge
 2. Edit the PR's description and append a block such as the following to the bottom of it:
    ```
    BEGIN_COMMIT_OVERRIDE
-   feat: this is the overridden semantic commit title
+   feat: this is the overridden conventional commit-style title (#pr_number_goes_here)
    END_COMMIT_OVERRIDE
    ```
 
@@ -106,9 +108,10 @@ If you need to mark something as a **breaking change**, use the following:
 
 ```
 BEGIN_COMMIT_OVERRIDE
-feat!: this is the overridden semantic commit title
+feat!: this is the overridden conventional commit-style title (#pr_number_goes_here)
 
-BREAKING-CHANGE: This is where you write a detailed description about the breaking change. You can use markdown if needed.
+BREAKING-CHANGE: This is where you write a detailed description about the breaking change. You can
+use markdown if needed.
 END_COMMIT_OVERRIDE
 ```
 
@@ -128,6 +131,9 @@ against the appropriate release branch. Merge it in and you're done!
 If there's no other pending content on the release branch, you'll see a new release-please PR get
 created for the next release.
 
+> **NOTE**: For backport PRs, **do not modify** the PR title, Commit message, or Extended
+> description.
+
 ## Recreating the release-please PR
 
 If things get stuck and it seems like the solution might just be to regenerate the release-please
@@ -138,3 +144,27 @@ PR, follow these steps:
 3. Go go the Actions page, find the release-please workflow, find the most recent entry for the
    target branch (e.g. `release/v.1.12`), and re-run it.
 4. (The PR will automatically get recreated.)
+
+## Manually forwardporting a release branch to `main`
+
+The forwardport PRs are what allow the changelog, manifest, and related files to be kept up to date
+on the main branch so that subsequent releases have an appropriate starting point when looking for
+changes.
+
+If this job should happen to fail when a release-please PR gets merged into a release branch, here
+are the steps you can take to do it manually:
+
+1. `git checkout` and `git pull` both the release branch and the main branch
+2. Run `git checkout main`
+3. Run `git log -1 release/vA.B` and retain the commit hash
+4. Add a Bypass to the `Important branches require pull requests (except trusted apps)` Ruleset for
+   the `Repository admin` role.
+5. Run the following commands:
+   ```bash
+   git merge --strategy ours origin/release/vN.M --message "chore: Forwardport release A.B.C to main"
+   git cherry-pick --no-commit <release_please_commit_hash_from_earlier>
+   git commit --amend --no-edit
+   git push
+   ```
+6. **Delete the Bypass** from `Important branches require pull requests (except trusted apps)` for
+   the `Repository admin` role.

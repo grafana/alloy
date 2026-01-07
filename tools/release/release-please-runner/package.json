@@ -8,6 +8,7 @@
     "release-please": "node index.js"
   },
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
     "release-please": "^17.1.3"
   }
 }
