@@ -72,7 +72,7 @@ Before using this component, you need:
 1. **Service Principal** with OAuth2 M2M authentication configured
 1. **SQL Warehouse** for querying System Tables and serverless is recommended for cost efficiency
 
-See the [Databricks documentation](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html) for detailed OAuth2 M2M setup instructions.
+Refer to the [Databricks documentation](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html) for detailed OAuth2 M2M setup instructions.
 
 ## Example
 
