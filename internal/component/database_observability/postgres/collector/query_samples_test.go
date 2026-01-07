@@ -1238,3 +1238,61 @@ func TestQuerySamples_ExcludeUsers(t *testing.T) {
 		return mock.ExpectationsWereMet() == nil
 	}, 5*time.Second, 100*time.Millisecond)
 }
+
+func TestComputeBurstWindow(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		ci       time.Duration
+		observed time.Duration
+		wantS    time.Duration
+		wantW    time.Duration
+	}{
+		{
+			name:     "CI=60s, observed=0 -> s=300ms, W=min(29.9s, 6s)=6s",
+			ci:       60 * time.Second,
+			observed: 0,
+			wantS:    300 * time.Millisecond,
+			wantW:    6 * time.Second,
+		},
+		{
+			name:     "CI=3s, observed=0 -> s=100ms, W=min(1.4s, 2s)=1.4s",
+			ci:       3 * time.Second,
+			observed: 0,
+			wantS:    100 * time.Millisecond,
+			wantW:    1400 * time.Millisecond,
+		},
+		{
+			name:     "CI=300ms, observed=0 -> s=50ms (clamped), W=min(50ms, 1s)=50ms",
+			ci:       300 * time.Millisecond,
+			observed: 0,
+			wantS:    50 * time.Millisecond,
+			wantW:    50 * time.Millisecond,
+		},
+		{
+			name:     "CI=9s, observed=450ms -> s=450ms, W=min(4.4s, 9s)=4.4s",
+			ci:       9 * time.Second,
+			observed: 450 * time.Millisecond,
+			wantS:    450 * time.Millisecond,
+			wantW:    4400 * time.Millisecond,
+		},
+		{
+			name:     "CI=100ms very small -> s=50ms (clamped), W=0",
+			ci:       100 * time.Millisecond,
+			observed: 0,
+			wantS:    50 * time.Millisecond,
+			wantW:    0,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s, w := computeBurstWindow(tc.ci, tc.observed)
+			require.Equal(t, tc.wantS, s)
+			require.Equal(t, tc.wantW, w)
+		})
+	}
+}

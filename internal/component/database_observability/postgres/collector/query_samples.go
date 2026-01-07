@@ -128,6 +128,9 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
+	// adaptive burst controls
+	adaptiveBurstInterval time.Duration
+	burstWindowUntil      time.Time
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -255,17 +258,41 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 			c.running.Store(false)
 		}()
 
-		ticker := time.NewTicker(c.collectInterval)
-
 		for {
-			if err := c.fetchQuerySample(c.ctx); err != nil {
+			loopStart := time.Now()
+			hasActive, err := c.fetchQuerySample(c.ctx)
+			if err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
+			}
+
+			elapsed := time.Since(loopStart)
+			interval := c.collectInterval
+			now := time.Now()
+			if hasActive {
+				s, window := computeBurstWindow(c.collectInterval, elapsed)
+				if now.Before(c.burstWindowUntil) && c.adaptiveBurstInterval > 0 {
+					// continue the current burst
+					interval = c.adaptiveBurstInterval
+					level.Debug(c.logger).Log("msg", "continuing the current burst window", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+				} else if window > s {
+					// start a new burst window
+					c.adaptiveBurstInterval = s
+					c.burstWindowUntil = now.Add(window)
+					level.Debug(c.logger).Log("msg", "starting a collection burst window while there are rows in active state", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+					interval = s
+				} else {
+					// don't start a new burst, use the observed latency as interval to avoid impacting database performance
+					c.adaptiveBurstInterval = 0
+					c.burstWindowUntil = time.Time{}
+					interval = s
+					level.Debug(c.logger).Log("msg", "using the observed latency as interval to avoid impacting database performance", "interval", s)
+				}
 			}
 
 			select {
 			case <-c.ctx.Done():
 				return
-			case <-ticker.C:
+			case <-time.After(interval):
 				// continue loop
 			}
 		}
@@ -283,7 +310,7 @@ func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, err error) {
 	queryTextField := ""
 	if c.disableQueryRedaction {
 		queryTextField = queryTextClause
@@ -299,7 +326,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
+		return false, fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 
 	defer rows.Close()
@@ -344,7 +371,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	if err := rows.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
-		return err
+		return false, err
 	}
 
 	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
@@ -354,7 +381,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key)
 	}
-	return nil
+	return len(activeKeys) > 0, nil
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -603,4 +630,40 @@ func isIdleState(state string) bool {
 		return true
 	}
 	return false
+}
+
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// computeBurstWindow returns the burst interval s and the window duration W
+// for time-boxed burst polling, given the collection interval and the last
+// observed latency. W is bounded by 20*s to limit the number of burst polls.
+//
+// Rules:
+//   - s_base = clamp(CI/30, 50ms..300ms)
+//   - s = max(s_base, observedLatency)
+//   - W = min(CI/2 - 100ms)
+//   - N ≤ 20 ⇒ for a burst interval s, the window ≤ 20*s
+func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
+	s := time.Duration(float64(collectInterval) / 30.0)
+	if s < 50*time.Millisecond {
+		s = 50 * time.Millisecond
+	} else if s > 300*time.Millisecond {
+		s = 300 * time.Millisecond
+	}
+	if observedLatency > s {
+		s = observedLatency
+	}
+	guard := 100 * time.Millisecond
+	capWindow := collectInterval/2 - guard
+	if capWindow < 0 {
+		capWindow = 0
+	}
+
+	capWindow = min(capWindow, 20*s)
+	return s, capWindow
 }
