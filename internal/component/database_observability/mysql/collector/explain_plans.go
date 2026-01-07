@@ -692,6 +692,14 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
+		msgBlock, _, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
+		if err == nil {
+			if strings.Contains(string(msgBlock), "no matching row in const table") {
+				level.Debug(logger).Log("msg", "explain plan query resulted in no rows, skipping", "message", string(msgBlock))
+				continue
+			}
+		}
+
 		level.Debug(logger).Log("msg", "db native explain plan",
 			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
