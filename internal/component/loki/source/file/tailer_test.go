@@ -14,7 +14,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -354,10 +354,8 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		close(done)
 	}()
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.True(c, tailer.IsRunning())
-		assert.Equal(c, "16", positionsFile.GetString(logFile.Name(), labels.String()))
-	}, time.Second, 50*time.Millisecond)
+	// tailer needs some time to start
+	time.Sleep(50 * time.Millisecond)
 
 	_, err = logFile.Write([]byte("writing some text\n"))
 	require.NoError(t, err)

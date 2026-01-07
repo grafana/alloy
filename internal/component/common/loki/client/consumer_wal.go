@@ -25,7 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
-	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/useragent"
 )
 
@@ -92,6 +91,8 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 			client:  client,
 		})
 	}
+
+	writer.Start(walCfg.MaxSegmentAge)
 
 	return m, nil
 }
@@ -392,7 +393,7 @@ func (c *walClient) runSendOldBatches() {
 				c.sendQueue.enqueue(qb)
 			}
 
-			batchesToFlush = batchesToFlush[:0] // renew slide
+			batchesToFlush = batchesToFlush[:0] // renew slice
 		}
 	}
 }
@@ -443,7 +444,6 @@ func (c *walClient) sendBatch(ctx context.Context, tenantID string, batch *batch
 		if err == nil {
 			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
 			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
-
 			return
 		}
 
@@ -462,17 +462,15 @@ func (c *walClient) sendBatch(ctx context.Context, tenantID string, batch *batch
 		}
 	}
 
-	if err != nil {
-		level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
-		// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
-		// were for a different reason
-		dropReason := ReasonGeneric
-		if batchIsRateLimited(status) {
-			dropReason = ReasonRateLimited
-		}
-		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-		c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
+	level.Error(c.logger).Log("msg", "final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
+	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
+	// were for a different reason
+	dropReason := ReasonGeneric
+	if batchIsRateLimited(status) {
+		dropReason = ReasonRateLimited
 	}
+	c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
+	c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
 }
 
 func (c *walClient) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
@@ -507,7 +505,19 @@ func (c *walClient) send(ctx context.Context, tenantID string, buf []byte) (int,
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
+
+	// NOTE: it is important in go to fully read the body and
+	// close it so that the connection can be reused.
+	// We only partially read the body if we encounter a non 2xx error
+	// so we should always consume whats left.
+	// https://github.com/golang/go/blob/32a9804c7ba3f4a0e0bd26cc24b9204860a49ec8/src/net/http/response.go#L59-L64
+	// It is unclear that we always need to drain the body but
+	// https://github.com/golang/go/issues/60240#issuecomment-1551060433 seems to indicate that we should.
+
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))

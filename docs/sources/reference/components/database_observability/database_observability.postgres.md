@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.postgres
 title: database_observability.postgres
 labels:
-  stage: public_preview
+  stage: public-preview
   products:
     - oss
 ---
@@ -94,6 +94,7 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+| `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.       | `true`  | no       |
 
 ### `schema_details`
 

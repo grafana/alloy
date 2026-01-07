@@ -222,6 +222,65 @@ custom_namespace "customEC2Metrics" {
 }
 `
 
+const discoveryJobDelayConfig = `
+sts_region = "us-east-2"
+debug = true
+discovery {
+	type = "AWS/EC2"
+	regions = ["us-east-2"]
+	delay = "2m"
+	metric {
+		name = "CPUUtilization"
+		statistics = ["Average"]
+		period = "5m"
+	}
+	metric {
+		name = "NetworkIn"
+		statistics = ["Sum"]
+		period = "5m"
+	}
+}
+`
+
+const staticJobDelayConfig = `
+sts_region = "us-east-2"
+debug = true
+static "test_instance" {
+	regions = ["us-east-2"]
+	namespace = "AWS/EC2"
+	dimensions = {
+		"InstanceId" = "i-test",
+	}
+	metric {
+		name = "CPUUtilization"
+		statistics = ["Average"]
+		period = "5m"
+	}
+}
+`
+
+const customNamespaceDelayConfig = `
+sts_region = "eu-west-1"
+
+custom_namespace "testMetrics" {
+    namespace = "TestMetrics"
+    regions   = ["us-east-1"]
+	delay = "30s"
+
+    metric {
+        name       = "metric1"
+        statistics = ["Average"]
+        period     = "1m"
+    }
+
+    metric {
+        name       = "metric2"
+        statistics = ["Sum"]
+        period     = "1m"
+    }
+}
+`
+
 func TestCloudwatchComponentConfig(t *testing.T) {
 	type testcase struct {
 		raw                 string
@@ -553,6 +612,110 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								Delay:                  0,
 								NilToZero:              truePtr,
 								AddCloudwatchTimestamp: falsePtr,
+							},
+						},
+						RoundingPeriod: nil,
+					},
+				},
+			},
+		},
+		"discovery job with delay": {
+			raw: discoveryJobDelayConfig,
+			expected: yaceModel.JobsConfig{
+				StsRegion: "us-east-2",
+				DiscoveryJobs: []yaceModel.DiscoveryJob{
+					{
+						Regions:    []string{"us-east-2"},
+						Roles:      []yaceModel.Role{{}},
+						Type:       "AWS/EC2",
+						SearchTags: []yaceModel.SearchTag{},
+						CustomTags: []yaceModel.Tag{},
+						Metrics: []*yaceModel.MetricConfig{
+							{
+								Name:       "CPUUtilization",
+								Statistics: []string{"Average"},
+								Period:     300,
+								Length:     300,
+								Delay:      120, // 2 minutes
+								NilToZero:  defaultNilToZero,
+							},
+							{
+								Name:       "NetworkIn",
+								Statistics: []string{"Sum"},
+								Period:     300,
+								Length:     300,
+								Delay:      120, // 2 minutes
+								NilToZero:  defaultNilToZero,
+							},
+						},
+						RoundingPeriod:        nil,
+						ExportedTagsOnMetrics: []string{},
+						DimensionsRegexps: []yaceModel.DimensionsRegexp{
+							{
+								Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
+								DimensionsNames: []string{"InstanceId"},
+							},
+						},
+					},
+				},
+			},
+		},
+		"static job with delay": {
+			raw: staticJobDelayConfig,
+			expected: yaceModel.JobsConfig{
+				StsRegion: "us-east-2",
+				StaticJobs: []yaceModel.StaticJob{
+					{
+						Name:       "test_instance",
+						Roles:      []yaceModel.Role{{}},
+						Regions:    []string{"us-east-2"},
+						Namespace:  "AWS/EC2",
+						CustomTags: []yaceModel.Tag{},
+						Dimensions: []yaceModel.Dimension{
+							{
+								Name:  "InstanceId",
+								Value: "i-test",
+							},
+						},
+						Metrics: []*yaceModel.MetricConfig{{
+							Name:       "CPUUtilization",
+							Statistics: []string{"Average"},
+							Period:     300,
+							Length:     300,
+							Delay:      0, // Delay not supported for static jobs
+							NilToZero:  defaultNilToZero,
+						}},
+					},
+				},
+			},
+		},
+		"custom namespace job with delay": {
+			raw: customNamespaceDelayConfig,
+			expected: yaceModel.JobsConfig{
+				StsRegion: "eu-west-1",
+				CustomNamespaceJobs: []yaceModel.CustomNamespaceJob{
+					{
+						Name:       "testMetrics",
+						Regions:    []string{"us-east-1"},
+						Roles:      []yaceModel.Role{{}},
+						CustomTags: []yaceModel.Tag{},
+						Namespace:  "TestMetrics",
+						Metrics: []*yaceModel.MetricConfig{
+							{
+								Name:       "metric1",
+								Statistics: []string{"Average"},
+								Period:     60,
+								Length:     60,
+								Delay:      30, // 30 seconds
+								NilToZero:  defaultNilToZero,
+							},
+							{
+								Name:       "metric2",
+								Statistics: []string{"Sum"},
+								Period:     60,
+								Length:     60,
+								Delay:      30, // 30 seconds
+								NilToZero:  defaultNilToZero,
 							},
 						},
 						RoundingPeriod: nil,

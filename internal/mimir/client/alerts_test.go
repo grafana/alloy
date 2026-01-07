@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	alertmgr_cfg "github.com/prometheus/alertmanager/config"
+	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,9 +36,11 @@ func TestMimirClient_CreateAlertmanagerConfigs(t *testing.T) {
 
 	// This Alertmanager config was copied from:
 	// https://github.com/prometheus/alertmanager/blob/v0.28.1/config/testdata/conf.good.yml
-	config, err := alertmgr_cfg.LoadFile("testdata/alertmanager/conf.good.yml")
+	configBytes, err := os.ReadFile("testdata/alertmanager/conf.good.yml")
 	require.NoError(t, err)
-	require.NotNil(t, config)
+
+	config, err := alertmgr_cfg.Unmarshal(configBytes)
+	require.NoError(t, err)
 
 	templateFiles := map[string]string{
 		"template1.tmpl": "{{ range .Alerts }}Alert: {{ .Summary }}{{ end }}",
@@ -62,5 +64,6 @@ func TestMimirClient_CreateAlertmanagerConfigs(t *testing.T) {
 	require.NoError(t, err)
 	expectedResponse := string(expectedResponseBytes)
 
-	require.Equal(t, expectedResponse, string(body))
+	actualResponse := string(body)
+	require.YAMLEq(t, expectedResponse, actualResponse)
 }

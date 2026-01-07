@@ -20,14 +20,14 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -339,8 +339,14 @@ func (d *decompressor) Key() positions.Entry {
 	return d.key
 }
 
-func (d *decompressor) IsRunning() bool {
-	return d.running.Load()
+func (d *decompressor) DebugInfo() any {
+	offset, _ := d.positions.Get(d.key.Path, d.key.Labels)
+	return sourceDebugInfo{
+		Path:       d.key.Path,
+		Labels:     d.key.Labels,
+		IsRunning:  d.running.Load(),
+		ReadOffset: offset,
+	}
 }
 
 // cleanupMetrics removes all metrics exported by this reader

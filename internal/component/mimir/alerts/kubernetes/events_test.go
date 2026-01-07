@@ -10,16 +10,18 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/mimir/alertmanager"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
-	"github.com/prometheus/alertmanager/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -33,7 +35,7 @@ import (
 
 type fakeMimirClient struct {
 	alertMgrConfigsMut sync.RWMutex
-	alertMgrConfig     config.Config
+	alertMgrConfig     alertmanager.Config
 	templateFiles      map[string]string
 }
 
@@ -43,7 +45,7 @@ func newFakeMimirClient() *fakeMimirClient {
 	return &fakeMimirClient{}
 }
 
-func (m *fakeMimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf *config.Config, templateFiles map[string]string) error {
+func (m *fakeMimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf *alertmanager.Config, templateFiles map[string]string) error {
 	m.alertMgrConfigsMut.Lock()
 	defer m.alertMgrConfigsMut.Unlock()
 	// These are just shallow copies, but it should be sufficient.
@@ -52,19 +54,16 @@ func (m *fakeMimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf *c
 	return nil
 }
 
-func (m *fakeMimirClient) getAlertmanagerConfig() config.Config {
+func (m *fakeMimirClient) getAlertmanagerConfig() alertmanager.Config {
 	m.alertMgrConfigsMut.RLock()
 	defer m.alertMgrConfigsMut.RUnlock()
 	return m.alertMgrConfig
 }
 
-func convertToAlertmanagerType(t *testing.T, alertmanagerConf string) config.Config {
-	config.MarshalSecretValue = true
-
-	var res config.Config
-	err := yaml.Unmarshal([]byte(alertmanagerConf), &res)
+func convertToAlertmanagerType(t *testing.T, alertmanagerConf string) alertmanager.Config {
+	cfg, err := alertmanager.Unmarshal([]byte(alertmanagerConf))
 	assert.NoError(t, err)
-	return res
+	return *cfg
 }
 
 // createTestLoggerWithBuffer creates a logger that writes to a thread-safe buffer for testing
@@ -94,7 +93,6 @@ global:
   smtp_require_tls: true
 route:
   receiver: "null"
-  continue: false
 receivers:
 - name: "null"
 templates: []`
@@ -117,7 +115,20 @@ spec:
     webhookConfigs:
     - url: http://test.url
       httpConfig:
-        followRedirects: true`
+        followRedirects: true
+    slackConfigs:
+    - apiURL:
+        key: api-url
+        name: "s-receiver-api-url"
+      actions:
+      - type: type
+        text: text
+        name: my-action
+        confirm:
+          text: text
+      fields:
+      - title: title
+        value: value`
 
 	amConfCrd1_mynamespace := fmt.Sprintf(amConfCrd1, "mynamespace", "")
 	amConfCrd1_mynamespace_alloyLabel := fmt.Sprintf(amConfCrd1, "mynamespace", `{alloy: "yes"}`)
@@ -152,7 +163,6 @@ spec:
   smtp_require_tls: true
 route:
   receiver: "null"
-  continue: false
   routes:
   - receiver: mynamespace/alertmgr-config1/null
     matchers:
@@ -165,15 +175,21 @@ receivers:
 - name: "null"
 - name: mynamespace/alertmgr-config1/null
 - name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
   webhook_configs:
-  - send_resolved: false
-    http_config:
+  - http_config:
       follow_redirects: true
-      enable_http2: true
     url: http://test.url
-    url_file: ""
-    max_alerts: 0
-    timeout: 0s
 templates: []`
 
 	final_amConf_1_and_2 := `global:
@@ -185,7 +201,6 @@ templates: []`
   smtp_require_tls: true
 route:
   receiver: "null"
-  continue: false
   routes:
   - receiver: mynamespace/alertmgr-config1/null
     matchers:
@@ -202,21 +217,26 @@ route:
     - receiver: mynamespace/alertmgr-config2/database-pager
       matchers:
       - "service=\"webapp\""
-      continue: false
       group_wait: 10s
 receivers:
 - name: "null"
 - name: mynamespace/alertmgr-config1/null
 - name: mynamespace/alertmgr-config1/myamc
+  slack_configs:
+  - api_url: https://val1.com
+    fields:
+    - title: title
+      value: value
+    actions:
+    - type: type
+      text: text
+      name: my-action
+      confirm:
+        text: text
   webhook_configs:
-  - send_resolved: false
-    timeout: 0s
-    http_config:
+  - http_config:
       follow_redirects: true
-      enable_http2: true
     url: http://test.url
-    url_file: ""
-    max_alerts: 0
 - name: mynamespace/alertmgr-config2/null
 - name: mynamespace/alertmgr-config2/database-pager
 templates: []`
@@ -366,6 +386,19 @@ spec:
 				testLogger = util.TestLogger(t)
 			}
 
+			c := fake.NewSimpleClientset(
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "s-receiver-api-url",
+						Namespace: "mynamespace",
+					},
+					Data: map[string][]byte{
+						"api-url": []byte("https://val1.com"),
+					},
+				},
+			)
+			store := assets.NewStoreBuilder(c.CoreV1(), c.CoreV1())
+
 			processor := &eventProcessor{
 				queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 				stopChan:          make(chan struct{}),
@@ -378,6 +411,7 @@ spec:
 				cfgSelector:       cfgSelector,
 				metrics:           newMetrics(),
 				logger:            testLogger,
+				storeBuilder:      store,
 			}
 
 			ctx := t.Context()
@@ -405,7 +439,8 @@ spec:
 
 			// Wait for the configs to be added to mimir
 			require.EventuallyWithT(t, func(c *assert.CollectT) {
-				actual := mimirClient.getAlertmanagerConfig().String()
+				actual, err := mimirClient.getAlertmanagerConfig().String()
+				require.NoError(c, err)
 				require.YAMLEq(c, tt.want, actual, "want", tt.want, "actual", actual)
 			}, 10*time.Second, 100*time.Millisecond)
 

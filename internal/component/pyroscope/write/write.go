@@ -366,7 +366,7 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 	lbs.Range(func(label labels.Label) {
 		// filter reserved labels, with exceptions for __name__ and __delta__.
 		if strings.HasPrefix(label.Name, model.ReservedLabelPrefix) &&
-			label.Name != labels.MetricName &&
+			label.Name != model.MetricNameLabel &&
 			label.Name != pyroscope.LabelNameDelta {
 
 			return

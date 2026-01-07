@@ -190,12 +190,7 @@ func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registere
 		},
 		{
 			OutputConfig: &OutputConfig{
-				"content",
-			},
-		},
-		{
-			OutputConfig: &OutputConfig{
-				"tags",
+				Source: "content",
 			},
 		},
 	}
