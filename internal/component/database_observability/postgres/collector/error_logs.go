@@ -147,11 +147,8 @@ type ErrorLogs struct {
 
 	receiver loki.LogsReceiver
 
-	logsProcessed       prometheus.Counter
-	errorsTotal         *prometheus.CounterVec
-	errorsBySQLState    *prometheus.CounterVec
-	errorsByBackendType *prometheus.CounterVec
-	parseErrors         prometheus.Counter
+	errorsBySQLState *prometheus.CounterVec
+	parseErrors      prometheus.Counter
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -181,35 +178,12 @@ func NewErrorLogs(args ErrorLogsArguments) (*ErrorLogs, error) {
 }
 
 func (c *ErrorLogs) initMetrics() {
-	c.logsProcessed = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "postgres_error_logs_processed_total",
-			Help: "Total number of log lines processed",
-		},
-	)
-
-	c.errorsTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "postgres_errors_total",
-			Help: "Total PostgreSQL errors by severity and database",
-		},
-		[]string{"severity", "database", "instance"},
-	)
-
 	c.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "postgres_errors_by_sqlstate_query_user_total",
 			Help: "PostgreSQL errors by SQLSTATE code with database, user, queryid, and instance tracking",
 		},
 		[]string{"sqlstate", "error_name", "sqlstate_class", "error_category", "severity", "database", "user", "queryid", "instance"},
-	)
-
-	c.errorsByBackendType = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "postgres_errors_by_backend_type_total",
-			Help: "Errors by backend type and database",
-		},
-		[]string{"backend_type", "severity", "database", "instance"},
 	)
 
 	c.parseErrors = prometheus.NewCounter(
@@ -221,10 +195,7 @@ func (c *ErrorLogs) initMetrics() {
 
 	if c.registry != nil {
 		c.registry.MustRegister(
-			c.logsProcessed,
-			c.errorsTotal,
 			c.errorsBySQLState,
-			c.errorsByBackendType,
 			c.parseErrors,
 		)
 	} else {
@@ -270,7 +241,6 @@ func (c *ErrorLogs) run() {
 			level.Debug(c.logger).Log("msg", "collector stopping")
 			return
 		case entry := <-c.receiver.Chan():
-			c.logsProcessed.Inc()
 			if err := c.processLogLine(entry); err != nil {
 				level.Warn(c.logger).Log(
 					"msg", "failed to process log line",
@@ -363,12 +333,6 @@ func (c *ErrorLogs) buildParsedError(log *PostgreSQLJSONLog) (*ParsedError, erro
 }
 
 func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
-	c.errorsTotal.WithLabelValues(
-		parsed.ErrorSeverity,
-		parsed.DatabaseName,
-		c.instanceKey,
-	).Inc()
-
 	if parsed.SQLState != "" {
 		queryIDStr := ""
 		if parsed.QueryID > 0 {
@@ -387,13 +351,6 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 			c.instanceKey,
 		).Inc()
 	}
-
-	c.errorsByBackendType.WithLabelValues(
-		parsed.BackendType,
-		parsed.ErrorSeverity,
-		parsed.DatabaseName,
-		c.instanceKey,
-	).Inc()
 }
 
 func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
