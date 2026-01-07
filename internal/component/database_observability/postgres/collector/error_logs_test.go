@@ -400,7 +400,7 @@ func TestRedactParenthesizedValues(t *testing.T) {
 		{
 			name:     "Composite key with multiple columns",
 			input:    "Key (user_id, order_id)=(12345, 67890) already exists.",
-			expected: "Key (user_id, order_id)=(?) already exists.",
+			expected: "Key (user_id, order_id)=(?, ?) already exists.",
 		},
 		{
 			name:     "Failing row with mixed data types",
@@ -411,6 +411,11 @@ func TestRedactParenthesizedValues(t *testing.T) {
 			name:     "Empty parentheses",
 			input:    "Empty call: func().",
 			expected: "Empty call: func(?).",
+		},
+		{
+			name:     "Nested parentheses with function calls and range literals",
+			input:    "Key (room_id, daterange(booking_start, booking_end, '[]'::text))=(1, [2024-01-12,2024-01-19)) conflicts with existing key (room_id, daterange(booking_start, booking_end, '[]'::text))=(1, [2024-01-10,2024-01-16)).",
+			expected: "Key (room_id, daterange(booking_start, booking_end, '[]'::text))=(?, [???,???)) conflicts with existing key (room_id, daterange(booking_start, booking_end, '[]'::text))=(?, [???,???)).",
 		},
 		{
 			name:     "Unmatched parentheses - returns original",

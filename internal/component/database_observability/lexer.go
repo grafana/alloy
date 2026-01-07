@@ -35,11 +35,9 @@ func isCommandKeywordOrIdentifier(token sqllexer.Token) bool {
 // ContainsReservedKeywords checks if the SQL query contains any reserved keywords
 // that indicate write operations, excluding those in string literals or comments
 func ContainsReservedKeywords(query string, reservedWords map[string]ExplainReservedWordMetadata, dbms sqllexer.DBMSType) (bool, error) {
-	// Use the lexer to tokenize the query
 	lexer := sqllexer.New(query, sqllexer.WithDBMS(dbms))
 	tokenBuffer := make([]sqllexer.Token, 0)
 
-	// Scan all tokens
 	for {
 		token := lexer.Scan()
 		if token.Type == sqllexer.ERROR {
@@ -87,33 +85,69 @@ func ContainsReservedKeywords(query string, reservedWords map[string]ExplainRese
 }
 
 // RedactParenthesizedValues redacts literal values within parentheses to protect PII.
-// For patterns like "(column)=(value)", only the value part is redacted: "(column)=(?)".
-// For other patterns like "Failing row contains (data)", the content is redacted: "Failing row contains (?)".
+// For "(column)=(value)" patterns, only the value part is redacted: "(column)=(?)".
+// Uses the SQL lexer's obfuscator to handle complex PostgreSQL syntax.
 func RedactParenthesizedValues(text string) string {
 	if text == "" {
 		return text
 	}
 
-	const placeholder = "\x00PROTECTED_PARENS\x00"
+	result := strings.Builder{}
+	result.Grow(len(text))
+	obfuscator := sqllexer.NewObfuscator()
+	i := 0
 
-	equalsPattern := regexp.MustCompile(`\(([^)]*)\)=`)
-	protectedParts := []string{}
-	text = equalsPattern.ReplaceAllStringFunc(text, func(match string) string {
-		protectedParts = append(protectedParts, match)
-		return placeholder
-	})
+	for i < len(text) {
+		if text[i] == '(' {
+			depth := 1
+			j := i + 1
+			for j < len(text) && depth > 0 {
+				if text[j] == '(' {
+					depth++
+				} else if text[j] == ')' {
+					depth--
+				}
+				j++
+			}
 
-	equalsValuePattern := regexp.MustCompile(`\x00PROTECTED_PARENS\x00\(([^)]*)\)`)
-	text = equalsValuePattern.ReplaceAllString(text, placeholder+"(?)")
+			if depth == 0 && j < len(text) && text[j] == '=' && j+1 < len(text) && text[j+1] == '(' {
+				result.WriteString(text[i:j])
+				result.WriteByte('=')
 
-	standalonePattern := regexp.MustCompile(`\([^)]*\)`)
-	text = standalonePattern.ReplaceAllString(text, "(?)")
+				k := j + 2
+				depth = 1
+				for k < len(text) && depth > 0 {
+					if text[k] == '(' {
+						depth++
+					} else if text[k] == ')' {
+						depth--
+					}
+					k++
+				}
 
-	for _, protected := range protectedParts {
-		text = strings.Replace(text, placeholder, protected, 1)
+				if depth == 0 {
+					valuePart := text[j+1 : k]
+					obfuscated := obfuscator.Obfuscate(valuePart)
+					result.WriteString(obfuscated)
+					i = k
+					continue
+				}
+			}
+
+			if depth == 0 {
+				result.WriteString("(?)")
+				i = j
+			} else {
+				result.WriteByte(text[i])
+				i++
+			}
+		} else {
+			result.WriteByte(text[i])
+			i++
+		}
 	}
 
-	return text
+	return result.String()
 }
 
 // RedactSQLWithinMixedText finds and redacts SQL statements within mixed text that could contain PII.
