@@ -178,3 +178,32 @@ func Push(branch string) error {
 	}
 	return nil
 }
+
+// CoAuthor represents a co-author extracted from a commit message.
+type CoAuthor struct {
+	Name  string
+	Email string
+}
+
+// ParseCoAuthors extracts co-authors from Co-authored-by trailers in a commit message.
+func ParseCoAuthors(message string) []CoAuthor {
+	var coauthors []CoAuthor
+	for line := range strings.SplitSeq(message, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(strings.ToLower(line), "co-authored-by:") {
+			continue
+		}
+		// Parse "Co-authored-by: Name <email>"
+		rest := strings.TrimSpace(line[len("co-authored-by:"):])
+		start := strings.Index(rest, "<")
+		end := strings.Index(rest, ">")
+		if start == -1 || end == -1 || end <= start {
+			continue
+		}
+		coauthors = append(coauthors, CoAuthor{
+			Name:  strings.TrimSpace(rest[:start]),
+			Email: strings.TrimSpace(rest[start+1 : end]),
+		})
+	}
+	return coauthors
+}

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/grafana/alloy/tools/release/internal/git"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
@@ -72,39 +73,75 @@ func main() {
 	fmt.Println("✅ Release notes updated successfully")
 }
 
-// addContributorInfo adds contributor usernames to PR references in the release notes.
+// addContributorInfo adds contributor usernames to changelog entries.
+// It extracts commit SHAs from each line and looks up the author + co-authors.
 func addContributorInfo(ctx context.Context, client *gh.Client, body string) string {
 	lines := strings.Split(body, "\n")
-	prPattern := regexp.MustCompile(`\[#(\d+)\]\([^)]+\)`)
+	// Match commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
+	// This captures the short SHA from the link text
+	commitPattern := regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)\s*$`)
 
 	for i, line := range lines {
-		matches := prPattern.FindStringSubmatch(line)
+		matches := commitPattern.FindStringSubmatch(line)
 		if matches == nil {
 			continue
 		}
+		sha := matches[1]
 
-		prNumber := 0
-		if _, err := fmt.Sscanf(matches[1], "%d", &prNumber); err != nil {
-			continue
-		}
-
-		pr, err := client.GetPR(ctx, prNumber)
+		contributors, err := getCommitContributors(ctx, client, sha)
 		if err != nil {
-			fmt.Printf("⚠️  Failed to get PR #%d: %v\n", prNumber, err)
+			fmt.Printf("⚠️  Commit %s: %v\n", sha, err)
+			continue
+		}
+		if len(contributors) == 0 {
+			fmt.Printf("   Commit %s: no human contributors found\n", sha)
 			continue
 		}
 
-		username := pr.GetUser().GetLogin()
-		fmt.Printf("   PR #%d authored by @%s\n", prNumber, username)
-
-		// Append username to the line if not already present
-		attribution := fmt.Sprintf("(@%s)", username)
-		if !strings.Contains(line, attribution) {
-			lines[i] = line + " " + attribution
-		}
+		fmt.Printf("   Commit %s: %v\n", sha, contributors)
+		lines[i] = line + " " + formatAttribution(contributors)
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// getCommitContributors returns human contributors for a commit (author + co-authors, excluding bots).
+func getCommitContributors(ctx context.Context, client *gh.Client, sha string) ([]string, error) {
+	commit, err := client.GetCommit(ctx, sha)
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]bool)
+	var contributors []string
+
+	// Add commit author (GitHub user association)
+	if author := commit.GetAuthor(); author != nil {
+		if username := author.GetLogin(); username != "" && !gh.IsBot(username) {
+			seen[username] = true
+			contributors = append(contributors, username)
+		}
+	}
+
+	// Add co-authors from commit message
+	for _, coauthor := range git.ParseCoAuthors(commit.GetCommit().GetMessage()) {
+		username := gh.ParseUsernameFromEmail(coauthor.Email)
+		if username != "" && !gh.IsBot(username) && !seen[username] {
+			seen[username] = true
+			contributors = append(contributors, username)
+		}
+	}
+
+	return contributors, nil
+}
+
+// formatAttribution formats a list of usernames as "(@user1, @user2)".
+func formatAttribution(usernames []string) string {
+	var mentions []string
+	for _, u := range usernames {
+		mentions = append(mentions, "@"+u)
+	}
+	return "(" + strings.Join(mentions, ", ") + ")"
 }
 
 // appendFooter reads the release notes footer template and appends it with version substitution.

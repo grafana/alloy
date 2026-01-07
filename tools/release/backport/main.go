@@ -43,7 +43,6 @@ func main() {
 
 	targetBranch := fmt.Sprintf("release/%s", version)
 	backportBranch := fmt.Sprintf("backport/pr-%d-to-%s", prNumber, version)
-	backportMarker := fmt.Sprintf("chore: Backport #%d", prNumber)
 
 	fmt.Printf("🍒 Backporting PR #%d to %s\n", prNumber, targetBranch)
 
@@ -88,16 +87,16 @@ func main() {
 		log.Fatalf("Failed to get app identity: %v", err)
 	}
 
-	// Check if backport was already merged by looking for the marker in the release branch history
+	// Check if backport was already merged by looking for the original PR title in the release branch history
 	alreadyMerged, err := client.CommitExistsWithPattern(ctx, gh.FindCommitParams{
 		Branch:  targetBranch,
-		Pattern: backportMarker,
+		Pattern: originalPR.GetTitle(),
 	})
 	if err != nil {
 		log.Fatalf("Failed to check for existing backport commit: %v", err)
 	}
 	if alreadyMerged {
-		fmt.Printf("ℹ️  Backport already merged (found commit with %s in %s)\n", backportMarker, targetBranch)
+		fmt.Printf("ℹ️  Backport already merged (found commit with title %q in %s)\n", originalPR.GetTitle(), targetBranch)
 		return
 	}
 
@@ -150,7 +149,7 @@ func main() {
 	fmt.Printf("✅ Pushed backport branch: %s\n", backportBranch)
 
 	// Create the backport PR
-	backportPR, err := createBackportPR(ctx, client, originalPR, backportBranch, targetBranch, backportMarker)
+	backportPR, err := createBackportPR(ctx, client, originalPR, backportBranch, targetBranch)
 	if err != nil {
 		log.Fatalf("Failed to create backport PR: %v", err)
 	}
@@ -158,13 +157,16 @@ func main() {
 	fmt.Printf("✅ Created backport PR: %s\n", backportPR.GetHTMLURL())
 }
 
-func createBackportPR(ctx context.Context, client *gh.Client, originalPR *github.PullRequest, backportBranch, targetBranch, backportMarker string) (*github.PullRequest, error) {
+func createBackportPR(ctx context.Context, client *gh.Client, originalPR *github.PullRequest, backportBranch, targetBranch string) (*github.PullRequest, error) {
+	// Use the original PR's title with [backport] suffix for conventional commit compatibility
+	title := fmt.Sprintf("%s [backport]", originalPR.GetTitle())
+
 	body := fmt.Sprintf(`## Backport of #%d
 
 This PR backports #%d to %s.
 
 ### Original PR Title
-`+"`%s`"+`
+%s
 
 ### Original PR Author
 @%s
@@ -184,7 +186,7 @@ This PR backports #%d to %s.
 	)
 
 	return client.CreatePR(ctx, gh.CreatePRParams{
-		Title: backportMarker,
+		Title: title,
 		Head:  backportBranch,
 		Base:  targetBranch,
 		Body:  body,
