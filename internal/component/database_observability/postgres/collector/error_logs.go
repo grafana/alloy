@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -462,7 +461,8 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	if parsed.Detail != "" {
 		detail := parsed.Detail
 		if !c.disableQueryRedaction {
-			detail = redactMixedTextWithSQL(detail)
+			detail = database_observability.RedactSQLWithinMixedText(detail)
+			detail = database_observability.RedactParenthesizedValues(detail)
 		}
 		logMessage += fmt.Sprintf(` detail=%s`, strconv.Quote(detail))
 	}
@@ -474,7 +474,8 @@ func (c *ErrorLogs) emitToLoki(parsed *ParsedError) error {
 	if parsed.Context != "" {
 		context := parsed.Context
 		if !c.disableQueryRedaction {
-			context = redactMixedTextWithSQL(context)
+			context = database_observability.RedactSQLWithinMixedText(context)
+			context = database_observability.RedactParenthesizedValues(context)
 		}
 		logMessage += fmt.Sprintf(` context=%s`, strconv.Quote(context))
 	}
@@ -562,64 +563,4 @@ func truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
-}
-
-// redactMixedTextWithSQL attempts to find and redact SQL statements within mixed text that
-// could contain PII (Personally Identifiable Information) or sensitive data.
-// It preserves surrounding context text (like process IDs, error descriptions, etc.)
-// and does NOT redact administrative commands that don't contain data.
-func redactMixedTextWithSQL(text string) string {
-	if text == "" {
-		return text
-	}
-
-	// SQL keywords for statements that could contain PII or sensitive data
-	// Multi-word keywords (e.g., "CREATE USER") are handled by escaping spaces in the pattern
-	sqlKeywords := []string{
-		// DML (Data Manipulation Language) - contains actual data values
-		"SELECT", "INSERT", "UPDATE", "DELETE", "MERGE",
-
-		// WITH (CTEs) - can contain data in subqueries
-		"WITH",
-
-		// COPY - imports/exports actual data
-		"COPY",
-
-		// Procedural - can execute statements with data
-		"DO", "CALL", "EXECUTE",
-
-		// Prepared Statements - contain data values
-		"PREPARE",
-
-		// User/Role DDL - contains credentials/usernames
-		"CREATE USER", "CREATE ROLE",
-		"ALTER USER", "ALTER ROLE",
-		"DROP USER", "DROP ROLE",
-
-		// Grants - may contain sensitive role/permission info
-		"GRANT", "REVOKE",
-
-		// SET - could contain sensitive configuration values
-		"SET",
-
-		// VALUES - standalone VALUES clause with data
-		"VALUES",
-	}
-
-	result := text
-
-	for _, keyword := range sqlKeywords {
-		// Handle both single and multi-word keywords by escaping spaces
-		escapedKeyword := strings.ReplaceAll(keyword, " ", `\s+`)
-		pattern := fmt.Sprintf(`(?i)\b%s\b[^;]*(?:;|$)`, escapedKeyword)
-		re := regexp.MustCompile(pattern)
-
-		matches := re.FindAllString(result, -1)
-		for _, match := range matches {
-			redacted := database_observability.RedactSql(match)
-			result = strings.Replace(result, match, redacted, 1)
-		}
-	}
-
-	return result
 }

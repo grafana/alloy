@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
 func TestErrorLogsCollector_ParseJSON(t *testing.T) {
@@ -268,7 +269,7 @@ func TestErrorLogsCollector_MetricsIncremented(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_StatementObfuscation(t *testing.T) {
+func TestErrorLogsCollector_StatementRedaction(t *testing.T) {
 	tests := []struct {
 		name                  string
 		jsonLog               string
@@ -276,7 +277,7 @@ func TestErrorLogsCollector_StatementObfuscation(t *testing.T) {
 		checkStatement        func(*testing.T, string)
 	}{
 		{
-			name:                  "obfuscation enabled - smart redaction for mixed text",
+			name:                  "redaction enabled - smart redaction for mixed text",
 			jsonLog:               `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"error_severity":"ERROR","state_code":"40P01","message":"deadlock detected","statement":"SELECT * FROM users WHERE id = 123 AND name = 'John'","internal_query":"UPDATE accounts SET balance = 500 WHERE id = 42","detail":"Process 9112 waits for ShareLock; blocked by process 9184.\nProcess 9112: UPDATE books SET stock = 200 WHERE id = 2;\nProcess 9184: DELETE FROM orders WHERE id = 99;","hint":"SELECT * FROM users FOR UPDATE","context":"while executing query: INSERT INTO logs (message) VALUES ('test')"}`,
 			disableQueryRedaction: false,
 			checkStatement: func(t *testing.T, logLine string) {
@@ -300,14 +301,14 @@ func TestErrorLogsCollector_StatementObfuscation(t *testing.T) {
 				// Hint: Pure SQL example, fully redacted
 				require.Contains(t, logLine, `hint="SELECT * FROM users FOR UPDATE"`)
 
-				// Context: SQL extracted and redacted
+				// Context: SQL extracted and redacted, then parentheses redacted
 				require.Contains(t, logLine, `context=`)
-				require.Contains(t, logLine, `INSERT INTO logs (message) VALUES (?)`) // SQL redacted
-				require.NotContains(t, logLine, `VALUES ('test')`)                    // Literal should be gone
+				require.Contains(t, logLine, `INSERT INTO logs (?) VALUES (?)`) // SQL redacted, then parens redacted
+				require.NotContains(t, logLine, `VALUES ('test')`)              // Literal should be gone
 			},
 		},
 		{
-			name:                  "obfuscation disabled - all fields unobfuscated",
+			name:                  "redaction disabled - all fields unredacted",
 			jsonLog:               `{"timestamp":"2025-12-12 15:29:16.068 GMT","user":"app-user","dbname":"books_store","pid":9112,"error_severity":"ERROR","state_code":"40P01","message":"deadlock detected","statement":"SELECT * FROM users WHERE id = 123 AND name = 'John'","internal_query":"UPDATE accounts SET balance = 500 WHERE id = 42","detail":"Process 9112: UPDATE books SET stock = 200 WHERE id = 2","hint":"SELECT * FROM users FOR UPDATE"}`,
 			disableQueryRedaction: true,
 			checkStatement: func(t *testing.T, logLine string) {
@@ -361,6 +362,101 @@ func TestErrorLogsCollector_StatementObfuscation(t *testing.T) {
 			case <-time.After(time.Second):
 				t.Fatal("timeout waiting for log entry")
 			}
+		})
+	}
+}
+
+func TestRedactParenthesizedValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no parentheses",
+			input:    "Process 9112 waits for ShareLock; blocked by process 9184.",
+			expected: "Process 9112 waits for ShareLock; blocked by process 9184.",
+		},
+		{
+			name:     "PostgreSQL constraint error - Failing row contains",
+			input:    "Failing row contains (k6-books, t, -1.000, 2026-01-06 21:44:44.431006, 7033, 2026-01-06 19:33:48.988596, 2026-01-06 21:44:45.123756).",
+			expected: "Failing row contains (?).",
+		},
+		{
+			name:     "PostgreSQL foreign key error - Key not present",
+			input:    "Key (book_id)=(99999999) is not present in table \"books\".",
+			expected: "Key (book_id)=(?) is not present in table \"books\".",
+		},
+		{
+			name:     "PostgreSQL unique constraint error - Key already exists",
+			input:    "Key (isbn)=(9780123456781) already exists.",
+			expected: "Key (isbn)=(?) already exists.",
+		},
+		{
+			name:     "Multiple Key patterns in one message",
+			input:    "Key (book_id)=(99999999) is not present in table \"books\". Key (isbn)=(9780123456781) already exists.",
+			expected: "Key (book_id)=(?) is not present in table \"books\". Key (isbn)=(?) already exists.",
+		},
+		{
+			name:     "Composite key with multiple columns",
+			input:    "Key (user_id, order_id)=(12345, 67890) already exists.",
+			expected: "Key (user_id, order_id)=(?) already exists.",
+		},
+		{
+			name:     "Failing row with mixed data types",
+			input:    "Failing row contains (john@example.com, John Doe, 2025-01-01, true, 123.45).",
+			expected: "Failing row contains (?).",
+		},
+		{
+			name:     "Empty parentheses",
+			input:    "Empty call: func().",
+			expected: "Empty call: func(?).",
+		},
+		{
+			name:     "Unmatched parentheses - returns original",
+			input:    "Incomplete (value without closing",
+			expected: "Incomplete (value without closing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := database_observability.RedactParenthesizedValues(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestRedactCombined(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "PostgreSQL error with both parenthesized values and SQL",
+			input:    "Key (book_id)=(99999999) is not present in table \"books\". Process 9112: UPDATE books SET stock = 200 WHERE id = 2;",
+			expected: "Key (book_id)=(?) is not present in table \"books\". Process 9112: UPDATE books SET stock = ? WHERE id = ?;",
+		},
+		{
+			name:     "Failing row with SQL in context",
+			input:    "Failing row contains (john@example.com, John Doe, 2025-01-01, true, 123.45). Query: INSERT INTO users VALUES ('test', 123)",
+			expected: "Failing row contains (?). Query: INSERT INTO users VALUES (?)",
+		},
+		{
+			name:     "Multiple errors with mixed patterns",
+			input:    "Key (isbn)=(9780123456781) already exists. Detail: SELECT * FROM books WHERE isbn = '9780123456781'",
+			expected: "Key (isbn)=(?) already exists. Detail: SELECT * FROM books WHERE isbn = ?",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Apply both redaction functions in sequence, as done in emitToLoki
+			// SQL redaction first, then parenthesized values
+			result := database_observability.RedactSQLWithinMixedText(tt.input)
+			result = database_observability.RedactParenthesizedValues(result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -455,7 +551,7 @@ func TestRedactMixedTextWithSQL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := redactMixedTextWithSQL(tt.input)
+			result := database_observability.RedactSQLWithinMixedText(tt.input)
 			require.Equal(t, tt.expected, result)
 		})
 	}

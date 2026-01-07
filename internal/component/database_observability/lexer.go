@@ -2,6 +2,7 @@ package database_observability
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/DataDog/go-sqllexer"
@@ -83,4 +84,64 @@ func ContainsReservedKeywords(query string, reservedWords map[string]ExplainRese
 	}
 
 	return false, nil
+}
+
+// RedactParenthesizedValues redacts literal values within parentheses to protect PII.
+// For patterns like "(column)=(value)", only the value part is redacted: "(column)=(?)".
+// For other patterns like "Failing row contains (data)", the content is redacted: "Failing row contains (?)".
+func RedactParenthesizedValues(text string) string {
+	if text == "" {
+		return text
+	}
+
+	const placeholder = "\x00PROTECTED_PARENS\x00"
+
+	equalsPattern := regexp.MustCompile(`\(([^)]*)\)=`)
+	protectedParts := []string{}
+	text = equalsPattern.ReplaceAllStringFunc(text, func(match string) string {
+		protectedParts = append(protectedParts, match)
+		return placeholder
+	})
+
+	equalsValuePattern := regexp.MustCompile(`\x00PROTECTED_PARENS\x00\(([^)]*)\)`)
+	text = equalsValuePattern.ReplaceAllString(text, placeholder+"(?)")
+
+	standalonePattern := regexp.MustCompile(`\([^)]*\)`)
+	text = standalonePattern.ReplaceAllString(text, "(?)")
+
+	for _, protected := range protectedParts {
+		text = strings.Replace(text, placeholder, protected, 1)
+	}
+
+	return text
+}
+
+// RedactSQLWithinMixedText finds and redacts SQL statements within mixed text that could contain PII.
+func RedactSQLWithinMixedText(text string) string {
+	if text == "" {
+		return text
+	}
+
+	sqlKeywords := []string{
+		"SELECT", "INSERT", "UPDATE", "DELETE", "MERGE",
+		"WITH", "COPY", "DO", "CALL", "EXECUTE", "PREPARE",
+		"CREATE USER", "CREATE ROLE", "ALTER USER", "ALTER ROLE", "DROP USER", "DROP ROLE",
+		"GRANT", "REVOKE", "SET", "VALUES",
+	}
+
+	result := text
+
+	for _, keyword := range sqlKeywords {
+		escapedKeyword := strings.ReplaceAll(keyword, " ", `\s+`)
+		pattern := fmt.Sprintf(`(?i)\b%s\b[^;]*(?:;|$)`, escapedKeyword)
+		re := regexp.MustCompile(pattern)
+
+		matches := re.FindAllString(result, -1)
+		for _, match := range matches {
+			redacted := RedactSql(match)
+			result = strings.Replace(result, match, redacted, 1)
+		}
+	}
+
+	return result
 }
