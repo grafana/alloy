@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/go-kit/log"
@@ -26,10 +28,26 @@ const (
 
 const (
 	queryTextClause     = ", s.query"
+	waitEventTypeLock   = "Lock"
 	stateActive         = "active"
 	stateIdle           = "idle"
-	stateIdleTxnAborted = "idle in transaction (aborted)"
 	stateIdleTxn        = "idle in transaction"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+)
+
+const (
+	// Bounds for adaptive throttle caches keyed by queryid.
+	throttleCacheSize = 1000
+	// A higher value to prevent throttling from being too permissive due to TTL.
+	throttleCacheTTL = 1 * time.Hour
+
+	// Window for finalization rate calculation.
+	finalizationRateWindow = 5 * time.Minute
+
+	// Cache for emitted samples to avoid duplicates.
+	idleEmittedCacheSize = 1000
+	// A shorter TTL to emit continuous idle samples and allow detecting stale connections.
+	idleEmittedCacheTTL = 10 * time.Minute
 )
 
 const selectPgStatActivity = `
@@ -103,6 +121,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	BaseThrottleInterval  time.Duration
 	ExcludeCurrentUser    bool
 }
 
@@ -122,6 +141,10 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
+	// adaptive throttling controls
+	baseThrottleInterval         time.Duration
+	lastEmittedByQueryID         *expirable.LRU[int64, time.Time]
+	recentFinalizationsByQueryID *expirable.LRU[int64, []time.Time]
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -209,19 +232,19 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
-	const emittedCacheTTL = 10 * time.Minute
-
 	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		excludeCurrentUser:    args.ExcludeCurrentUser,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
+		dbConnection:                 args.DB,
+		collectInterval:              args.CollectInterval,
+		entryHandler:                 args.EntryHandler,
+		disableQueryRedaction:        args.DisableQueryRedaction,
+		excludeCurrentUser:           args.ExcludeCurrentUser,
+		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                      &atomic.Bool{},
+		samples:                      map[SampleKey]*SampleState{},
+		idleEmitted:                  expirable.NewLRU[SampleKey, struct{}](idleEmittedCacheSize, nil, idleEmittedCacheTTL),
+		baseThrottleInterval:         args.BaseThrottleInterval,
+		lastEmittedByQueryID:         expirable.NewLRU[int64, time.Time](throttleCacheSize, nil, throttleCacheTTL),
+		recentFinalizationsByQueryID: expirable.NewLRU[int64, []time.Time](throttleCacheSize, nil, throttleCacheTTL),
 	}, nil
 }
 
@@ -235,6 +258,11 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 	} else {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
+
+	if c.baseThrottleInterval < 30*time.Second {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with base throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.baseThrottleInterval))
+	}
+	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with base throttle interval: %s", c.baseThrottleInterval))
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -460,24 +488,53 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if state.EndAt.Valid {
 		ts = state.EndAt.Time.UnixNano()
 	}
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		ts,
-	)
 
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
+	// Adaptive throttling for query sample emissions
+	now := time.Now()
+	qid := state.LastRow.QueryID.Int64
+	isExempt := isThrottleExempt(state)
+
+	var perMinuteRate float64
+	if !isExempt {
+		window, _ := c.recentFinalizationsByQueryID.Get(qid)
+		cutoff := now.Add(-finalizationRateWindow)
+		cutoffIndex := sort.Search(len(window), func(j int) bool { return window[j].After(cutoff) })
+		window = append(window[cutoffIndex:], now)
+		c.recentFinalizationsByQueryID.Add(qid, window)
+		perMinuteRate = float64(len(window)) * float64(time.Minute) / float64(finalizationRateWindow)
+	}
+
+	shouldEmit := true
+	if !isExempt && c.baseThrottleInterval > 0 {
+		adaptiveThrottleInterval := computeAdaptiveThrottleInterval(c.baseThrottleInterval, perMinuteRate)
+		if last, ok := c.lastEmittedByQueryID.Get(qid); ok {
+			if now.Sub(last) < adaptiveThrottleInterval {
+				shouldEmit = false
+			}
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
+	}
+	if shouldEmit {
+		if !isExempt {
+			c.lastEmittedByQueryID.Add(qid, now)
+		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
+			OP_QUERY_SAMPLE,
+			sampleLabels,
+			ts,
 		)
+		for _, we := range state.tracker.WaitEvents() {
+			if we.WaitEventType == "" || we.WaitEvent == "" {
+				continue
+			}
+			waitEventLabels := c.buildWaitEventLabels(state, we)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				waitEventLabels,
+				we.LastTimestamp.UnixNano(),
+			)
+		}
 	}
 
 	delete(c.samples, key)
@@ -592,4 +649,36 @@ func isIdleState(state string) bool {
 		return true
 	}
 	return false
+}
+
+func isThrottleExempt(sample *SampleState) bool {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
+		return true
+	}
+	return false
+}
+
+// computeAdaptiveThrottleInterval scales the base interval using a logarithmic factor derived
+// from the per-minute finalization rate. This provides gentle backoff at high rates,
+// avoiding excessive sampling:
+//
+//	factor = 1 + ceil(log10(max(1, per-minute-rate)))
+//	effective = baseThrottleInterval * factor
+//
+// If baseThrottleInterval is 0, adaptive throttling is disabled and 0 is returned.
+func computeAdaptiveThrottleInterval(baseThrottleInterval time.Duration, perMinuteRate float64) time.Duration {
+	if baseThrottleInterval <= 0 {
+		return 0
+	}
+	if perMinuteRate <= 1 {
+		return baseThrottleInterval
+	}
+	r := perMinuteRate
+	f := 1 + int(math.Ceil(math.Log10(r)))
+	if f < 1 {
+		f = 1
+	} else if f > 10 {
+		f = 10
+	}
+	return time.Duration(f) * baseThrottleInterval
 }

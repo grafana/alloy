@@ -993,3 +993,53 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 		})
 	}
 }
+
+// TestComputeAdaptiveThrottle tests the computeAdaptiveThrottle function with various rate counts and base throttle intervals.
+func TestComputeAdaptiveThrottle(t *testing.T) {
+	t.Parallel()
+
+	// base=0 disables
+	require.Equal(t, time.Duration(0), computeAdaptiveThrottleInterval(0, 100))
+
+	type rateCase struct {
+		perMinuteRate int
+		factor        int
+	}
+	rateCases := []rateCase{
+		{0, 1},
+		{1, 1},
+		{2, 2},
+		{3, 2},
+		{4, 2},
+		{5, 2},
+		{9, 2},
+		{10, 2},
+		{16, 3},
+		{30, 3},
+		{81, 3},
+		{100, 3},
+		{500, 4},
+		{1000, 4},
+		{10000, 5},
+		{100000, 6},
+	}
+
+	baseThrottleIntervals := []time.Duration{
+		15 * time.Second,
+		30 * time.Second,
+		1 * time.Minute,
+		2 * time.Minute,
+		5 * time.Minute,
+	}
+
+	for _, baseThrottleInterval := range baseThrottleIntervals {
+		t.Run(baseThrottleInterval.String(), func(t *testing.T) {
+			t.Parallel()
+			for _, rc := range rateCases {
+				got := computeAdaptiveThrottleInterval(baseThrottleInterval, float64(rc.perMinuteRate))
+				want := time.Duration(rc.factor) * baseThrottleInterval
+				require.Equal(t, want, got, "baseThrottleInterval=%s count=%d", baseThrottleInterval, rc.perMinuteRate)
+			}
+		})
+	}
+}
