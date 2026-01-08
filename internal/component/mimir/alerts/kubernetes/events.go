@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promListers_v1alpha "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	go_k8s "k8s.io/client-go/kubernetes"
 	coreListers "k8s.io/client-go/listers/core/v1"
@@ -36,12 +37,14 @@ type eventProcessor struct {
 
 	mimirClient client.AlertmanagerInterface
 
-	namespaceLister   coreListers.NamespaceLister
-	cfgLister         promListers_v1alpha.AlertmanagerConfigLister
-	namespaceSelector labels.Selector
-	cfgSelector       labels.Selector
-	kclient           go_k8s.Interface
-	storeBuilder      *assets.StoreBuilder
+	namespaceLister       coreListers.NamespaceLister
+	cfgLister             promListers_v1alpha.AlertmanagerConfigLister
+	namespaceSelector     labels.Selector
+	cfgSelector           labels.Selector
+	matcherStrategy       monitoringv1.AlertmanagerConfigMatcherStrategyType
+	alertmanagerNamespace string
+	kclient               go_k8s.Interface
+	storeBuilder          *assets.StoreBuilder
 
 	baseCfg       alertmgr_cfg.Config
 	templateFiles map[string]string
@@ -177,7 +180,17 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 		// TODO: Make this configurable?
 		version, _ = semver.New("0.29.0")
 		// TODO: Add an option to get an Alertmanager CRD through k8s informers.
-		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &monitoringv1.Alertmanager{})
+		am = monitoringv1.Alertmanager{
+			Spec: monitoringv1.AlertmanagerSpec{
+				AlertmanagerConfigMatcherStrategy: monitoringv1.AlertmanagerConfigMatcherStrategy{
+					Type: c.matcherStrategy,
+				},
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: c.alertmanagerNamespace,
+			},
+		}
+		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &am)
 	)
 
 	convertedCfg, err := c.baseCfg.String()
