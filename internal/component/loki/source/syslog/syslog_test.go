@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -336,4 +337,31 @@ func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
 			require.NoError(t, err, "feature should work at experimental level")
 		})
 	}
+}
+
+func TestLiveDebuggingServiceWorks(t *testing.T) {
+	opts := component.Options{
+		Logger:        util.TestAlloyLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+		GetServiceData: func(name string) (interface{}, error) {
+			require.Equal(t, name, livedebugging.ServiceName)
+			return livedebugging.NewLiveDebugging(), nil
+		},
+	}
+
+	l1 := DefaultListenerConfig
+	l1.ListenAddress = "0.0.0.0:1234"
+	l1.ListenProtocol = syslogtarget.ProtocolTCP
+
+	args := Arguments{
+		SyslogListeners: []ListenerConfig{l1},
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	require.NotNil(t, c.liveDbgListener)
+	_, ok := c.liveDbgListener.(*liveDebuggingWriter)
+	require.True(t, ok, "expected livedebugging to work")
 }
