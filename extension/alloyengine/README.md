@@ -59,5 +59,5 @@ The extension manages the lifecycle of the embedded default engine:
 
 ## Stability
 
-This extension is currently marked as **Development** stability level. The API and behavior may change in future releases.
+This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
 
