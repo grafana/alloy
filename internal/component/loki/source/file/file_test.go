@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"golang.org/x/text/encoding/unicode"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -598,6 +599,172 @@ func TestEncoding(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestEncodingWithLogRotation(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	runTests(t, func(t *testing.T, match FileMatch) {
+		logDir := t.TempDir()
+
+		// File that will be tailed
+		dstFile := filepath.Join(logDir, "UTF-16_LE.txt")
+
+		// Expected lines from the original file
+		originalExpectedLines := []string{
+			"Log entry 1",
+			"Log entry 2",
+			"Log entry 3",
+			"Log entry 4",
+			"Log entry 5",
+		}
+
+		// Expected lines from the rotated file
+		rotatedExpectedLines := []string{
+			"New log entry A",
+			"New log entry B",
+			"New log entry C",
+		}
+
+		// Create original file with UTF-16 LE encoded content
+		var originalData []byte
+		for _, line := range originalExpectedLines {
+			originalData = append(originalData, encodeUTF16LE(line+"\r\n")...)
+		}
+		require.NoError(t, os.WriteFile(dstFile, originalData, 0644))
+
+		// Lines to append (used both pre and post rotation)
+		appendLines := []string{
+			"Appended entry X",
+		}
+
+		opts := component.Options{
+			Logger:        util.TestAlloyLogger(t),
+			Registerer:    prometheus.NewRegistry(),
+			OnStateChange: func(e component.Exports) {},
+			DataPath:      t.TempDir(),
+		}
+
+		ch1 := loki.NewLogsReceiver()
+		args := Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": dstFile,
+				"source":   "rotation_test",
+			})},
+			FileMatch: match,
+			Encoding:  "UTF-16LE",
+			ForwardTo: []loki.LogsReceiver{ch1},
+		}
+
+		// Create and run the component
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := c.Run(ctx)
+			require.NoError(t, err)
+		}()
+
+		expectedLabelSet := model.LabelSet{
+			"filename": model.LabelValue(dstFile),
+			"source":   "rotation_test",
+		}
+
+		// Helper function to collect log lines
+		collectLines := func(expectedCount int, timeout time.Duration) []string {
+			receivedLines := make([]string, 0)
+			timeoutCh := time.After(timeout)
+			for len(receivedLines) < expectedCount {
+				select {
+				case logEntry := <-ch1.Chan():
+					require.Equal(t, expectedLabelSet, logEntry.Labels)
+					receivedLines = append(receivedLines, logEntry.Line)
+					t.Logf("Received log line %d: %q", len(receivedLines), logEntry.Line)
+				case <-timeoutCh:
+					t.Logf("Timeout reached, received %d log lines total", len(receivedLines))
+					return receivedLines
+				}
+			}
+			return receivedLines
+		}
+
+		// Step 1: Read the original file content
+		receivedLines := collectLines(len(originalExpectedLines), 10*time.Second)
+		require.Len(t, receivedLines, len(originalExpectedLines), "should receive all original lines")
+		for i := range originalExpectedLines {
+			require.Equal(t, originalExpectedLines[i], receivedLines[i], "original log line %d should match", i+1)
+		}
+
+		// Step 2: Append lines before rotation
+		t.Log("Appending lines before rotation")
+		f, err := os.OpenFile(dstFile, os.O_APPEND|os.O_WRONLY, 0644)
+		require.NoError(t, err)
+		for _, line := range appendLines {
+			content := line + "\r\n"
+			_, err = f.Write(encodeUTF16LE(content))
+			require.NoError(t, err)
+		}
+		require.NoError(t, f.Sync())
+		require.NoError(t, f.Close())
+
+		// Collect the pre-rotation appended lines
+		receivedLines = collectLines(len(appendLines), 10*time.Second)
+		require.Len(t, receivedLines, len(appendLines), "should receive all pre-rotation appended lines")
+		for i := range appendLines {
+			require.Equal(t, appendLines[i], receivedLines[i], "pre-rotation appended log line %d should match", i+1)
+		}
+
+		// Step 3: Replace the file with rotated content (simulating log rotation)
+		var rotatedData []byte
+		for _, line := range rotatedExpectedLines {
+			rotatedData = append(rotatedData, encodeUTF16LE(line+"\r\n")...)
+		}
+		t.Log("Replacing file with rotated content")
+		require.NoError(t, os.WriteFile(dstFile, rotatedData, 0644))
+
+		// Collect the rotated file lines
+		receivedLines = collectLines(len(rotatedExpectedLines), 10*time.Second)
+		require.Len(t, receivedLines, len(rotatedExpectedLines), "should receive all rotated lines")
+		for i := range rotatedExpectedLines {
+			require.Equal(t, rotatedExpectedLines[i], receivedLines[i], "rotated log line %d should match", i+1)
+		}
+
+		// Step 4: Append more lines after rotation
+		t.Log("Appending lines after rotation")
+		f, err = os.OpenFile(dstFile, os.O_APPEND|os.O_WRONLY, 0644)
+		require.NoError(t, err)
+		for _, line := range appendLines {
+			content := line + "\r\n"
+			_, err = f.Write(encodeUTF16LE(content))
+			require.NoError(t, err)
+		}
+		require.NoError(t, f.Sync())
+		require.NoError(t, f.Close())
+
+		// Collect the post-rotation appended lines
+		receivedLines = collectLines(len(appendLines), 10*time.Second)
+		require.Len(t, receivedLines, len(appendLines), "should receive all post-rotation appended lines")
+		for i := range appendLines {
+			require.Equal(t, appendLines[i], receivedLines[i], "post-rotation appended log line %d should match", i+1)
+		}
+
+		// Shut down the component
+		cancel()
+		wg.Wait()
+	})
+}
+
+// encodeUTF16LE encodes a string to UTF-16 LE bytes
+func encodeUTF16LE(s string) []byte {
+	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+	encoded, _ := encoder.Bytes([]byte(s))
+	return encoded
 }
 
 func TestDeleteRecreateFile(t *testing.T) {
