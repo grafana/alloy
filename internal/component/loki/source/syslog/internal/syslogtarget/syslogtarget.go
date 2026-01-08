@@ -53,29 +53,37 @@ type message struct {
 	timestamp time.Time
 }
 
+type TargetParams struct {
+	Metrics *Metrics
+	Logger  log.Logger
+	Handler loki.EntryHandler
+	Relabel []*relabel.Config
+	Config  *scrapeconfig.SyslogTargetConfig
+}
+
 // NewSyslogTarget configures a new SyslogTarget.
-func NewSyslogTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, relabel []*relabel.Config, config *scrapeconfig.SyslogTargetConfig) (*SyslogTarget, error) {
+func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 	t := &SyslogTarget{
-		metrics:       metrics,
-		logger:        logger,
-		handler:       handler,
-		config:        config,
-		relabelConfig: relabel,
+		metrics:       params.Metrics,
+		logger:        params.Logger,
+		handler:       params.Handler,
+		config:        params.Config,
+		relabelConfig: params.Relabel,
 		messagesDone:  make(chan struct{}),
 	}
 
 	switch t.transportProtocol() {
 	case ProtocolTCP:
 		t.transport = NewSyslogTCPTransport(TransportConfig{
-			Logger:         logger,
-			Target:         config,
+			Logger:         params.Logger,
+			Target:         params.Config,
 			MessageHandler: t.handleMessage,
 			ErrorHandler:   t.handleMessageError,
 		})
 	case ProtocolUDP:
 		t.transport = NewSyslogUDPTransport(TransportConfig{
-			Logger:         logger,
-			Target:         config,
+			Logger:         params.Logger,
+			Target:         params.Config,
 			MessageHandler: t.handleMessage,
 			ErrorHandler:   t.handleMessageError,
 		})
@@ -84,7 +92,7 @@ func NewSyslogTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHand
 	}
 
 	t.messages = make(chan message)
-	go t.messageSender(handler.Chan())
+	go t.messageSender(params.Handler.Chan())
 
 	err := t.transport.Run()
 	if err != nil {
