@@ -692,8 +692,13 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		msgBlock, _, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
-		if err == nil {
+		msgBlock, msgDatType, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
+		if err != nil {
+			// An explain plan response typically will not have a message field if it is successful.
+			if msgDatType != jsonparser.NotExist {
+				level.Error(logger).Log("msg", "failed to parse explain plan json", "err", err)
+			}
+		} else {
 			if strings.Contains(string(msgBlock), "no matching row in const table") {
 				level.Debug(logger).Log("msg", "explain plan query resulted in no rows, skipping", "message", string(msgBlock))
 				continue
