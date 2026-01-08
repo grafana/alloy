@@ -24,8 +24,13 @@ type liveDebuggingWriter struct {
 //
 // Returns stub implementation if live debugging service isn't available.
 func newLiveDebuggingListener(opts component.Options) syslogtarget.DebugListener {
+	// GetServiceData is a callback and may be nil in unit tests
+	if opts.GetServiceData == nil {
+		return syslogtarget.NopDebugListener{}
+	}
+
 	svc, err := opts.GetServiceData(livedebugging.ServiceName)
-	if err != nil {
+	if err != nil || svc == nil {
 		return syslogtarget.NopDebugListener{}
 	}
 
