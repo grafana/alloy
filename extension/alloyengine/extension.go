@@ -79,7 +79,7 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 	e.runExited = make(chan struct{})
 
 	runCommand := e.runCommandFactory()
-	runCommand.SetArgs([]string{e.config.Value})
+	runCommand.SetArgs([]string{e.config.AlloyConfig.File.Path})
 	err := runCommand.ParseFlags(e.config.flagsAsSlice())
 	if err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)

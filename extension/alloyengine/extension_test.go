@@ -16,9 +16,12 @@ import (
 // defaultTestConfig returns a default test configuration.
 func defaultTestConfig() *Config {
 	return &Config{
-		Format: FormatFile,
-		Value:  "testdata/config.alloy",
-		Flags:  map[string]string{},
+		AlloyConfig: AlloyConfig{
+			File: File{
+				Path: "testdata/config.alloy",
+			},
+		},
+		Flags: map[string]string{},
 	}
 }
 
@@ -79,9 +82,16 @@ func newRetryTrackingCommand(failCount int, err error) (func() *cobra.Command, *
 	return factory, state
 }
 
-func TestConfig_InvalidFormat(t *testing.T) {
+func TestConfig_MissingPath(t *testing.T) {
 	t.Helper()
-	cfg := &Config{Format: "invalid_format", Value: "testdata/config.alloy", Flags: map[string]string{}}
+	cfg := &Config{
+		AlloyConfig: AlloyConfig{
+			File: File{
+				Path: "",
+			},
+		},
+		Flags: map[string]string{},
+	}
 	require.Error(t, cfg.Validate())
 }
 

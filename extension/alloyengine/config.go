@@ -5,17 +5,19 @@ import (
 	"os"
 )
 
-type Format string
-
-const (
-	FormatFile Format = "file"
-)
-
-// Config represents the configuration for the alloyflow extension.
 type Config struct {
-	Format Format            `mapstructure:"format"`
-	Value  string            `mapstructure:"value"`
-	Flags  map[string]string `mapstructure:"flags"`
+	AlloyConfig AlloyConfig       `mapstructure:"config"`
+	Flags       map[string]string `mapstructure:"flags"`
+}
+
+// This type represents the incoming format of the Alloy configuration
+// This is a one-of type, and it is expected that only one of the fields will be set (ie, we cannot define multiple config sources of different types)
+type AlloyConfig struct {
+	File File `mapstructure:"file"`
+}
+
+type File struct {
+	Path string `mapstructure:"path"`
 }
 
 func (cfg *Config) flagsAsSlice() []string {
@@ -26,29 +28,14 @@ func (cfg *Config) flagsAsSlice() []string {
 	return flags
 }
 
-func (f Format) validFormat() bool {
-	switch f {
-	case FormatFile:
-		return true
-	default:
-		return false
-	}
-}
-
-// Validate checks if the extension configuration is valid.
 func (cfg *Config) Validate() error {
-	if !cfg.Format.validFormat() {
-		return fmt.Errorf("unsupported format: %q", cfg.Format)
+	if cfg.AlloyConfig.File.Path == "" {
+		return fmt.Errorf("config.file.path is required")
 	}
 
-	if cfg.Value == "" {
-		return fmt.Errorf("config value is required")
-	}
-
-	// Check if the config path exists and can be read
-	_, err := os.Stat(cfg.Value)
+	_, err := os.Stat(cfg.AlloyConfig.File.Path)
 	if err != nil {
-		return fmt.Errorf("provided config path %s does not exist or is not readable: %w", cfg.Value, err)
+		return fmt.Errorf("provided config path %s does not exist or is not readable: %w", cfg.AlloyConfig.File.Path, err)
 	}
 
 	return nil

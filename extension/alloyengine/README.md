@@ -12,17 +12,26 @@ The extension accepts the following configuration fields:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `format` | string | Yes | - | The format of the configuration. Currently only `"file"` is supported. |
-| `value` | string | Yes | - | The path to the Alloy configuration file to run. |
+| `config` | object | Yes | - | The Alloy configuration source. See [Config Object](#config-object) for details. |
 | `flags` | map[string]string | No | `{}` | Additional flags to pass to the `alloy run` command. Flags should be specified without the leading `--` prefix. |
+
+### Config Object
+
+The `config` object specifies the Alloy configuration source. It is a one-of type, meaning only one configuration source type can be specified.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `file` | object | Yes | - | File-based configuration source. |
+| `file.path` | string | Yes | - | The path to the Alloy configuration file to run. |
 
 ### Example Configuration
 
 ```yaml
 extensions:
   alloyengine:
-    format: file
-    value: ./config.alloy
+    config:
+      file:
+        path: ./config.alloy
     flags:
       server.http.listen-addr: 0.0.0.0:12345
       stability.level: experimental
