@@ -272,6 +272,7 @@ generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
+	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
 	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
