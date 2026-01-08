@@ -37,11 +37,22 @@ You can use the following arguments with `prometheus.exporter.databricks`:
 | `warehouse_http_path`   | `string`   | The HTTP path of the SQL Warehouse for example, `/sql/1.0/warehouses/abc123`.       |         | yes      |
 | `billing_lookback`      | `duration` | How far back to look for billing data.                                              | `"24h"` | no       |
 | `collect_task_retries`  | `bool`     | Collect task retry metrics. Can cause high cardinality due to the `task_key` label. | `false` | no       |
-| `jobs_lookback`         | `duration` | How far back to look for job runs.                                                  | `"2h"`  | no       |
-| `pipelines_lookback`    | `duration` | How far back to look for pipeline runs.                                             | `"2h"`  | no       |
-| `queries_lookback`      | `duration` | How far back to look for SQL warehouse queries.                                     | `"1h"`  | no       |
+| `jobs_lookback`         | `duration` | How far back to look for job runs.                                                  | `"3h"`  | no       |
+| `pipelines_lookback`    | `duration` | How far back to look for pipeline runs.                                             | `"3h"`  | no       |
+| `queries_lookback`      | `duration` | How far back to look for SQL warehouse queries.                                     | `"2h"`  | no       |
 | `query_timeout`         | `duration` | Timeout for individual SQL queries.                                                 | `"5m"`  | no       |
 | `sla_threshold_seconds` | `int`      | Duration threshold in seconds for job SLA miss detection.                           | `3600`  | no       |
+
+### Lookback windows
+
+The exporter queries Databricks System Tables using SQL with sliding time windows. Each scrape collects data from `now - lookback` to `now`:
+
+- **`billing_lookback`**: Queries `system.billing.usage` for DBU consumption and cost estimates. Databricks billing data typically has 24-48 hour lag.
+- **`jobs_lookback`**: Queries `system.lakeflow.job_run_timeline` for job run counts, durations, and status.
+- **`pipelines_lookback`**: Queries `system.lakeflow.pipeline_event_log` for DLT pipeline metrics.
+- **`queries_lookback`**: Queries `system.query.history` for SQL warehouse query metrics.
+
+The lookback window should be at least 2x the `scrape_interval` to ensure data continuity between scrapes. For example, with a 10-minute scrape interval, use at least 20 minutes of lookback.
 
 ## Blocks
 
@@ -90,8 +101,8 @@ prometheus.exporter.databricks "example" {
 prometheus.scrape "demo" {
   targets         = prometheus.exporter.databricks.example.targets
   forward_to      = [prometheus.remote_write.demo.receiver]
-  scrape_interval = "5m"
-  scrape_timeout  = "4m"
+  scrape_interval = "10m"
+  scrape_timeout  = "9m"
 }
 
 prometheus.remote_write "demo" {
@@ -116,8 +127,9 @@ Replace the following:
 
 ## Tuning recommendations
 
-- **`scrape_interval`**: The default is 10 minutes. The exporter queries Databricks System Tables which can be slow. Increase the `scrape_interval` to reduce your SQL Warehouse costs.
-- **`scrape_timeout`**: The default is 9 minutes. The exporter typically takes 90 to 120 seconds per scrape depending on data volume. Increase this value alongisde the scrape interval if your data volume is higher.
+- **`scrape_interval`**: Use 10-30 minutes. The exporter queries Databricks System Tables which can be slow. Increase the `scrape_interval` to reduce your SQL Warehouse costs.
+- **`scrape_timeout`**: Must be less than `scrape_interval`. The exporter typically takes 90-120 seconds per scrape depending on data volume.
+- **Lookback vs interval**: The lookback windows should be at least 2x the scrape interval. The defaults (3h for jobs/pipelines, 2h for queries) work well with 10-30 minute scrape intervals.
 
 ## High cardinality warning
 
