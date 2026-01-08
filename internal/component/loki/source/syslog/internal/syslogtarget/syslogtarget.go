@@ -40,10 +40,10 @@ type NewMessageDebugEvent struct {
 	MappedLabels   model.LabelSet
 }
 
-type nopDebugListener struct{}
+type NopDebugListener struct{}
 
-func (nopDebugListener) OnNewMessage(e NewMessageDebugEvent) {}
-func (nopDebugListener) OnError(msg string, err error)       {}
+func (NopDebugListener) OnNewMessage(e NewMessageDebugEvent) {}
+func (NopDebugListener) OnError(msg string, err error)       {}
 
 type DebugListener interface {
 	OnNewMessage(e NewMessageDebugEvent)
@@ -94,7 +94,7 @@ func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 	}
 
 	if t.dbgListener == nil {
-		t.dbgListener = nopDebugListener{}
+		t.dbgListener = NopDebugListener{}
 	}
 
 	switch t.transportProtocol() {

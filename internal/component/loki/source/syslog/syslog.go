@@ -13,10 +13,13 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
+
+var _ component.LiveDebugging = (*Component)(nil)
 
 func init() {
 	component.Register(component.Registration{
@@ -43,24 +46,29 @@ type Component struct {
 	opts    component.Options
 	metrics *st.Metrics
 
-	mut     sync.RWMutex
-	args    Arguments
-	fanout  []loki.LogsReceiver
-	targets []*st.SyslogTarget
+	mut             sync.RWMutex
+	args            Arguments
+	fanout          []loki.LogsReceiver
+	targets         []*st.SyslogTarget
+	liveDbgListener syslogtarget.DebugListener
 
 	targetsUpdated chan struct{}
 	handler        loki.LogsReceiver
 }
 
+// LiveDebugging implements component.LiveDebugging.
+func (*Component) LiveDebugging() {}
+
 // New creates a new loki.source.syslog component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:           o,
-		metrics:        st.NewMetrics(o.Registerer),
-		handler:        loki.NewLogsReceiver(),
-		fanout:         args.ForwardTo,
-		targetsUpdated: make(chan struct{}, 1),
-		targets:        []*st.SyslogTarget{},
+		opts:            o,
+		metrics:         st.NewMetrics(o.Registerer),
+		handler:         loki.NewLogsReceiver(),
+		fanout:          args.ForwardTo,
+		targetsUpdated:  make(chan struct{}, 1),
+		targets:         []*st.SyslogTarget{},
+		liveDbgListener: newLiveDebuggingListener(o),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -211,11 +219,12 @@ func (c *Component) reloadTargets() {
 		}
 
 		t, err := st.NewSyslogTarget(st.TargetParams{
-			Metrics: c.metrics,
-			Logger:  c.opts.Logger,
-			Handler: entryHandler,
-			Relabel: rcs,
-			Config:  promtailCfg,
+			Metrics:       c.metrics,
+			Logger:        c.opts.Logger,
+			Handler:       entryHandler,
+			Relabel:       rcs,
+			Config:        promtailCfg,
+			DebugListener: c.liveDbgListener,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
