@@ -11,6 +11,7 @@
   ],
 
   "commitMessageAction": "Update",
+  "commitMessageLowerCase": "never",
   "commitMessageTopic": "{{manager}} dependency {{depName}}",
 
   // Updates must be published for at least 7 to be considered

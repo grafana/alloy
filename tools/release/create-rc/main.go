@@ -114,28 +114,33 @@ func findReleasePleasePR(ctx context.Context, client *gh.Client, baseBranch stri
 		return nil, fmt.Errorf("listing pull requests: %w", err)
 	}
 
-	// Look for PR with "autorelease: pending" label
+	fmt.Printf("Found %d open PRs targeting %s\n", len(prs), baseBranch)
+
+	// Look for PR with "autorelease: pending" label (handle both with/without space after colon)
 	for _, pr := range prs {
+		fmt.Printf("  PR #%d: %q has %d labels\n", pr.GetNumber(), pr.GetTitle(), len(pr.Labels))
 		for _, label := range pr.Labels {
-			if label.GetName() == "autorelease: pending" {
+			labelName := label.GetName()
+			fmt.Printf("    - label: %q\n", labelName)
+			if labelName == "autorelease: pending" || labelName == "autorelease:pending" {
 				return pr, nil
 			}
 		}
 	}
 
 	// Fallback: look for PR with release-please title pattern
-	titlePattern := regexp.MustCompile(fmt.Sprintf(`^chore\(%s\): release`, regexp.QuoteMeta(baseBranch)))
+	titlePattern := regexp.MustCompile(fmt.Sprintf(`^chore\(%s\): Release`, regexp.QuoteMeta(baseBranch)))
 	for _, pr := range prs {
 		if titlePattern.MatchString(pr.GetTitle()) {
 			return pr, nil
 		}
 	}
 
-	return nil, fmt.Errorf("no release-please PR found for branch %s (looked for 'autorelease: pending' label or release-please title pattern)", baseBranch)
+	return nil, fmt.Errorf("no release-please PR found for branch %s (looked for 'autorelease: pending' or 'autorelease:pending' label or release-please title pattern)", baseBranch)
 }
 
 func extractVersionFromTitle(title string) (string, error) {
-	pattern := regexp.MustCompile(`release\s+(\d+\.\d+\.\d+)`)
+	pattern := regexp.MustCompile(`Release\s+(\d+\.\d+\.\d+)`)
 	matches := pattern.FindStringSubmatch(title)
 	if len(matches) < 2 {
 		return "", fmt.Errorf("could not extract version from title: %s", title)
