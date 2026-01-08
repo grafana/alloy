@@ -27,19 +27,11 @@ jobs:
       - name: Check for generated file changes
         run: |
           # List changed files in the collector directory (excluding generator source files)
-          CHANGED=$(git diff --name-only --ignore-all-space | grep -E '^collector/.*\.(go|mod)$' | grep -v '^collector/generator/' || true)
-
-          if [ -n "$CHANGED" ]; then
-            echo "::error::Generated collector files are out of sync with generate-otel-collector-distro."
-            echo "The following files changed:"
-            echo "$CHANGED"
-            echo
-            echo "Diff:"
-            git --no-pager diff -- $CHANGED || true
-            echo
-            echo "To fix locally:"
-            echo "  Run: make generate-otel-collector-distro"
-            echo "  Commit the generated files"
+          if [ -n "$(git status --porcelain -- collector/)" ]; then
+            echo "Error: generated collector files are out of sync with generate-otel-collector-distro."
+            echo "  Run: make generate-otel-collector-distro and commit the generated files"
+            git status -- collector/
+            git diff -- collector/
             exit 1
           fi
 
