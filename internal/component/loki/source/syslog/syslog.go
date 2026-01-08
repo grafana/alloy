@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
-	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -50,7 +49,7 @@ type Component struct {
 	args            Arguments
 	fanout          []loki.LogsReceiver
 	targets         []*st.SyslogTarget
-	liveDbgListener syslogtarget.DebugListener
+	liveDbgListener st.DebugListener
 
 	targetsUpdated chan struct{}
 	handler        loki.LogsReceiver
