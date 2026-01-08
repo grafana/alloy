@@ -210,7 +210,13 @@ func (c *Component) reloadTargets() {
 			continue
 		}
 
-		t, err := st.NewSyslogTarget(c.metrics, c.opts.Logger, entryHandler, rcs, promtailCfg)
+		t, err := st.NewSyslogTarget(st.TargetParams{
+			Metrics: c.metrics,
+			Logger:  c.opts.Logger,
+			Handler: entryHandler,
+			Relabel: rcs,
+			Config:  promtailCfg,
+		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
 			continue
