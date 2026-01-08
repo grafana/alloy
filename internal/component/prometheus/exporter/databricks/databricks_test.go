@@ -4,10 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/static/integrations/databricks_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,38 +67,20 @@ func TestAlloyUnmarshal_Defaults(t *testing.T) {
 	require.False(t, args.CollectTaskRetries)
 }
 
-func TestConvert(t *testing.T) {
-	alloyConfig := `
-	server_hostname     = "dbc-abc123.cloud.databricks.com"
-	warehouse_http_path = "/sql/1.0/warehouses/xyz789"
-	client_id           = "my-client-id"
-	client_secret       = "my-client-secret"
-	query_timeout       = "10m"
-	billing_lookback    = "48h"
-	jobs_lookback       = "4h"
-	pipelines_lookback  = "4h"
-	queries_lookback    = "2h"
-	sla_threshold_seconds = 7200
-	collect_task_retries  = true
-	`
+func TestConfigName(t *testing.T) {
 	var args Arguments
-	err := syntax.Unmarshal([]byte(alloyConfig), &args)
-	require.NoError(t, err)
+	args.SetToDefault()
+	cfg := args.toConfig()
+	require.Equal(t, "databricks", cfg.Name())
+}
 
-	res := args.Convert()
-
-	expected := databricks_exporter.Config{
-		ServerHostname:      "dbc-abc123.cloud.databricks.com",
-		WarehouseHTTPPath:   "/sql/1.0/warehouses/xyz789",
-		ClientID:            "my-client-id",
-		ClientSecret:        config_util.Secret("my-client-secret"),
-		QueryTimeout:        10 * time.Minute,
-		BillingLookback:     48 * time.Hour,
-		JobsLookback:        4 * time.Hour,
-		PipelinesLookback:   4 * time.Hour,
-		QueriesLookback:     2 * time.Hour,
-		SLAThresholdSeconds: 7200,
-		CollectTaskRetries:  true,
+func TestConfigInstanceKey(t *testing.T) {
+	args := Arguments{
+		ServerHostname: "dbc-abc123.cloud.databricks.com",
 	}
-	require.Equal(t, expected, *res)
+	cfg := args.toConfig()
+
+	instanceKey, err := cfg.InstanceKey("")
+	require.NoError(t, err)
+	require.Equal(t, "dbc-abc123.cloud.databricks.com", instanceKey)
 }

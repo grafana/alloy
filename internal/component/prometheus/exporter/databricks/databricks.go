@@ -1,15 +1,17 @@
 package databricks
 
 import (
+	"log/slog"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
-	"github.com/grafana/alloy/internal/static/integrations/databricks_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	config_util "github.com/prometheus/common/config"
+	"github.com/grafana/databricks-prometheus-exporter/collector"
 )
 
 func init() {
@@ -25,8 +27,8 @@ func init() {
 
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	cfg := a.toConfig()
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, cfg, a.ServerHostname)
 }
 
 // DefaultArguments holds the default settings for the databricks exporter
@@ -60,18 +62,71 @@ func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-func (a *Arguments) Convert() *databricks_exporter.Config {
-	return &databricks_exporter.Config{
-		ServerHostname:      a.ServerHostname,
-		WarehouseHTTPPath:   a.WarehouseHTTPPath,
-		ClientID:            a.ClientID,
-		ClientSecret:        config_util.Secret(a.ClientSecret),
-		QueryTimeout:        a.QueryTimeout,
-		BillingLookback:     a.BillingLookback,
-		JobsLookback:        a.JobsLookback,
-		PipelinesLookback:   a.PipelinesLookback,
-		QueriesLookback:     a.QueriesLookback,
-		SLAThresholdSeconds: a.SLAThresholdSeconds,
-		CollectTaskRetries:  a.CollectTaskRetries,
+func (a *Arguments) toConfig() *databricksConfig {
+	return &databricksConfig{
+		serverHostname:      a.ServerHostname,
+		warehouseHTTPPath:   a.WarehouseHTTPPath,
+		clientID:            a.ClientID,
+		clientSecret:        string(a.ClientSecret),
+		queryTimeout:        a.QueryTimeout,
+		billingLookback:     a.BillingLookback,
+		jobsLookback:        a.JobsLookback,
+		pipelinesLookback:   a.PipelinesLookback,
+		queriesLookback:     a.QueriesLookback,
+		slaThresholdSeconds: a.SLAThresholdSeconds,
+		collectTaskRetries:  a.CollectTaskRetries,
 	}
+}
+
+// databricksConfig implements integrations.Config for creating the exporter.
+type databricksConfig struct {
+	serverHostname      string
+	warehouseHTTPPath   string
+	clientID            string
+	clientSecret        string
+	queryTimeout        time.Duration
+	billingLookback     time.Duration
+	jobsLookback        time.Duration
+	pipelinesLookback   time.Duration
+	queriesLookback     time.Duration
+	slaThresholdSeconds int
+	collectTaskRetries  bool
+}
+
+// Name returns the name of the integration.
+func (c *databricksConfig) Name() string {
+	return "databricks"
+}
+
+// InstanceKey returns the hostname as the instance identifier.
+func (c *databricksConfig) InstanceKey(_ string) (string, error) {
+	return c.serverHostname, nil
+}
+
+// NewIntegration creates a new databricks integration.
+func (c *databricksConfig) NewIntegration(l log.Logger) (integrations.Integration, error) {
+	exporterCfg := &collector.Config{
+		ServerHostname:      c.serverHostname,
+		WarehouseHTTPPath:   c.warehouseHTTPPath,
+		ClientID:            c.clientID,
+		ClientSecret:        c.clientSecret,
+		QueryTimeout:        c.queryTimeout,
+		BillingLookback:     c.billingLookback,
+		JobsLookback:        c.jobsLookback,
+		PipelinesLookback:   c.pipelinesLookback,
+		QueriesLookback:     c.queriesLookback,
+		SLAThresholdSeconds: c.slaThresholdSeconds,
+		CollectTaskRetries:  c.collectTaskRetries,
+	}
+
+	if err := exporterCfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	logger := slog.New(logging.NewSlogGoKitHandler(l))
+	col := collector.NewCollector(logger, exporterCfg)
+	return integrations.NewCollectorIntegration(
+		c.Name(),
+		integrations.WithCollectors(col),
+	), nil
 }
