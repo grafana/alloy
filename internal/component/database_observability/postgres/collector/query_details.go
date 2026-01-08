@@ -138,7 +138,7 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		queryText, err = RemoveComments(c.normalizer, queryText)
+		queryText, err = removeComments(c.normalizer, queryText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
 			continue
@@ -150,7 +150,7 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
 		)
 
-		tables, err := TokenizeTableNames(c.normalizer, queryText)
+		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to tokenize table names", "err", err)
 			continue
@@ -178,7 +178,7 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	return nil
 }
 
-func TokenizeTableNames(normalizer *sqllexer.Normalizer, sqlText string) ([]string, error) {
+func tokenizeTableNames(normalizer *sqllexer.Normalizer, sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
 	_, metadata, err := normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
 	if err != nil {
@@ -188,10 +188,10 @@ func TokenizeTableNames(normalizer *sqllexer.Normalizer, sqlText string) ([]stri
 	return metadata.Tables, nil
 }
 
-func RemoveComments(normalizer *sqllexer.Normalizer, sqlText string) (string, error) {
+func removeComments(normalizer *sqllexer.Normalizer, sqlText string) (string, error) {
 	_, metadata, err := normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
 	if err != nil {
-		return sqlText, fmt.Errorf("failed to redact comments: %w", err)
+		return sqlText, fmt.Errorf("failed to normalize sql text: %w", err)
 	}
 
 	if len(metadata.Comments) == 0 {

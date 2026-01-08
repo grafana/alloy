@@ -751,7 +751,7 @@ func TestQueryDetails_TokenizeTableNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := TokenizeTableNames(sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)), tt.sql)
+			got, err := tokenizeTableNames(sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)), tt.sql)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -805,7 +805,7 @@ func TestQueryDetails_RemoveComments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := RemoveComments(sqllexer.NewNormalizer(sqllexer.WithCollectComments(true)), tt.sql)
+			got, err := removeComments(sqllexer.NewNormalizer(sqllexer.WithCollectComments(true)), tt.sql)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
