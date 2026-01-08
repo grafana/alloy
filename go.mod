@@ -1076,6 +1076,6 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
 // Point to fork that uses prometheus v0.308.0, changes here are mostly related to type name updates. This can be removed once the upstream dependency points to prometheus v0.308.0 and above
-replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => github.com/blewis12/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260107130404-88e0dc097b6c
+replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => github.com/grafana/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260108134526-9817e6c361c9
 
 // END GENERATED REPLACES
