@@ -17,9 +17,7 @@ import (
 func defaultTestConfig() *Config {
 	return &Config{
 		AlloyConfig: AlloyConfig{
-			File: File{
-				Path: "testdata/config.alloy",
-			},
+			File: "testdata/config.alloy",
 		},
 		Flags: map[string]string{},
 	}
@@ -86,9 +84,7 @@ func TestConfig_MissingPath(t *testing.T) {
 	t.Helper()
 	cfg := &Config{
 		AlloyConfig: AlloyConfig{
-			File: File{
-				Path: "",
-			},
+			File: "",
 		},
 		Flags: map[string]string{},
 	}

@@ -17,12 +17,12 @@ The extension accepts the following configuration fields:
 
 ### Config Object
 
-The `config` object specifies the Alloy configuration source. It is a one-of type, meaning only one configuration source type can be specified.
+The `config` object specifies the Alloy configuration source.
+Currently we only support `file` as an input type, but this is planned to be extended to other formats
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `file` | object | Yes | - | File-based configuration source. |
-| `file.path` | string | Yes | - | The path to the Alloy configuration file to run. |
+| `file` | string | Yes | - | The path to the Alloy configuration file to run. |
 
 ### Example Configuration
 
@@ -30,8 +30,7 @@ The `config` object specifies the Alloy configuration source. It is a one-of typ
 extensions:
   alloyengine:
     config:
-      file:
-        path: ./config.alloy
+      file: ./config.alloy
     flags:
       server.http.listen-addr: 0.0.0.0:12345
       stability.level: experimental
