@@ -66,19 +66,19 @@ func NewSyslogTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHand
 
 	switch t.transportProtocol() {
 	case ProtocolTCP:
-		t.transport = NewSyslogTCPTransport(
-			config,
-			t.handleMessage,
-			t.handleMessageError,
-			logger,
-		)
+		t.transport = NewSyslogTCPTransport(TransportConfig{
+			Logger:         logger,
+			Target:         config,
+			MessageHandler: t.handleMessage,
+			ErrorHandler:   t.handleMessageError,
+		})
 	case ProtocolUDP:
-		t.transport = NewSyslogUDPTransport(
-			config,
-			t.handleMessage,
-			t.handleMessageError,
-			logger,
-		)
+		t.transport = NewSyslogUDPTransport(TransportConfig{
+			Logger:         logger,
+			Target:         config,
+			MessageHandler: t.handleMessage,
+			ErrorHandler:   t.handleMessageError,
+		})
 	default:
 		return nil, fmt.Errorf("invalid transport protocol. expected 'tcp' or 'udp', got '%s'", t.transportProtocol())
 	}
