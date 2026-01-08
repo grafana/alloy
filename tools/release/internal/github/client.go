@@ -371,3 +371,32 @@ func (c *Client) CreateIssueComment(ctx context.Context, issueNumber int, body s
 	}
 	return nil
 }
+
+// GetCommit fetches a commit by SHA.
+func (c *Client) GetCommit(ctx context.Context, sha string) (*github.RepositoryCommit, error) {
+	commit, _, err := c.api.Repositories.GetCommit(ctx, c.owner, c.repo, sha, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getting commit %s: %w", sha, err)
+	}
+	return commit, nil
+}
+
+// IsBot checks if a username appears to be a bot account.
+func IsBot(username string) bool {
+	return strings.HasSuffix(username, "[bot]") || strings.HasSuffix(username, "-bot") || username == "Copilot"
+}
+
+// ParseUsernameFromEmail extracts a GitHub username from a noreply email.
+// Handles formats: "user@users.noreply.github.com" and "12345+user@users.noreply.github.com"
+func ParseUsernameFromEmail(email string) string {
+	const suffix = "@users.noreply.github.com"
+	if !strings.HasSuffix(email, suffix) {
+		return ""
+	}
+	local := strings.TrimSuffix(email, suffix)
+	// Handle "12345+username" format
+	if _, after, ok := strings.Cut(local, "+"); ok {
+		return after
+	}
+	return local
+}
