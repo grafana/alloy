@@ -37,9 +37,10 @@ jobs:
       - name: Save PR info for worker workflow 📦
         run: |
           mkdir -p backport-info
-          echo '${{ github.event.pull_request.number }}' > backport-info/pr_number
-          echo '${PR_LABELS}' > backport-info/labels
+          echo "${PR_NUMBER}" > backport-info/pr_number
+          echo "${PR_LABELS}" > backport-info/labels
         env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_LABELS: ${{ steps.labels.outputs.labels }}
 
       - name: Upload PR info artifact 🛫
