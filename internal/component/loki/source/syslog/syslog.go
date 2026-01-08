@@ -2,6 +2,7 @@ package syslog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -140,6 +141,10 @@ func (c *Component) checkExperimentalFeatures(args Arguments) error {
 	for _, listener := range args.SyslogListeners {
 		if listener.SyslogFormat == scrapeconfig.SyslogFormatRaw {
 			return fmt.Errorf("%q syslog format is available only at experimental stability level", scrapeconfig.SyslogFormatRaw)
+		}
+
+		if listener.RFC3164CiscoComponents != nil {
+			return errors.New("rfc3164_cisco_components block is available only at experimental stability level")
 		}
 	}
 

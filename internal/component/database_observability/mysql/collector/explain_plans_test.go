@@ -313,6 +313,12 @@ func TestExplainPlansOutput(t *testing.T) {
 		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
 	})
 
+	t.Run("zero rows", func(t *testing.T) {
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		_, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"message\": \"no matching row in const table\"}}"))
+		require.NoError(t, err)
+	})
+
 	currentTime := time.Now().Format(time.RFC3339)
 	tests := []struct {
 		dbVersion string
@@ -1668,6 +1674,37 @@ func TestExplainPlans(t *testing.T) {
 
 			require.NotContains(t, logBuffer.String(), "error")
 			lokiClient.Clear()
+		})
+
+		t.Run("skips no row result", func(t *testing.T) {
+			logBuffer.Reset()
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_sample_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"select * from some_table where id = 1",
+				lastSeen,
+			))
+
+			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+			mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
+				"json",
+			}).AddRow(
+				[]byte(`{"query_block": {"message": "no matching row in const table"}}`),
+			))
+
+			err = c.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			lokiClient.Clear()
+
+			require.NotContains(t, logBuffer.String(), "error")
+			require.Contains(t, logBuffer.String(), "no matching row in const table")
 		})
 
 		t.Run("passes queries beginning in select", func(t *testing.T) {

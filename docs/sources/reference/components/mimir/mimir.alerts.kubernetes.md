@@ -29,8 +29,8 @@ This component requires [Role-based access control (RBAC)][] to be set up in Kub
 {{< /admonition >}}
 
 `mimir.alerts.kubernetes` doesn't support [clustering][clustered mode].
-[clustered mode]: ../../../../get-started/clustering/
 
+[clustered mode]: ../../../../get-started/clustering/
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 [prometheus-operator]: https://prometheus-operator.dev/
 [within a Pod]: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/
@@ -84,17 +84,18 @@ At most, one of the following can be provided:
 The following blocks are supported inside the definition of
 `mimir.alerts.kubernetes`:
 
-| Block                                                                            | Description                                                | Required |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
-| [`authorization`][authorization]                                                 | Configure generic authorization to the endpoint.           | no       |
-| [`basic_auth`][basic_auth]                                                       | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| [`oauth2`][oauth2]                                                               | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
-| `oauth2` > [`tls_config`][tls_config]                                            | Configure TLS settings for connecting to the endpoint.     | no       |
-| [`alertmanagerconfig_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
-| `alertmanagerconfig_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no       |
-| [`alertmanagerconfig_selector`][label_selector]                                  | Label selector for `AlertmanagerConfig` resources.         | no       |
-| `alertmanagerconfig_selector` > [`match_expression`][match_expression]           | Label match expression for `AlertmanagerConfig` resources. | no       |
-| [`tls_config`][tls_config]                                                       | Configure TLS settings for connecting to the endpoint.     | no       |
+| Block                                                                            | Description                                                 | Required |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------- |
+| [`authorization`][authorization]                                                 | Configure generic authorization to the endpoint.            | no       |
+| [`basic_auth`][basic_auth]                                                       | Configure `basic_auth` for authenticating to the endpoint.  | no       |
+| [`oauth2`][oauth2]                                                               | Configure OAuth 2.0 for authenticating to the endpoint.     | no       |
+| `oauth2` > [`tls_config`][tls_config]                                            | Configure TLS settings for connecting to the endpoint.      | no       |
+| [`alertmanagerconfig_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                   | no       |
+| `alertmanagerconfig_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.           | no       |
+| [`alertmanagerconfig_selector`][label_selector]                                  | Label selector for `AlertmanagerConfig` resources.          | no       |
+| `alertmanagerconfig_selector` > [`match_expression`][match_expression]           | Label match expression for `AlertmanagerConfig` resources.  | no       |
+| `alertmanagerconfig_matcher`                                                     | Strategy to match alerts to `AlertmanagerConfig` resources. | no       |
+| [`tls_config`][tls_config]                                                       | Configure TLS settings for connecting to the endpoint.      | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
@@ -146,6 +147,33 @@ The `operator` argument should be one of the following strings:
 * `"DoesNotExist"`
 
 The `values` argument must not be provided when `operator` is set to `"Exists"` or `"DoesNotExist"`.
+
+### `alertmanagerconfig_matcher`
+
+The `alertmanagerconfig_matcher` block describes the strategy used by AlertmanagerConfig objects to match alerts in the routes and inhibition rules.
+
+Depending on how this block is configured, the final Alertmanger config will have different [matchers][] in its [route][] section.
+
+[matchers]: https://prometheus.io/docs/alerting/latest/configuration/#matcher
+[route]: https://prometheus.io/docs/alerting/latest/configuration/#route
+
+The following arguments are supported:
+
+| Name                     | Type     | Description                                                                                                          | Default         | Required                                                              |
+| ------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------- |
+| `strategy`               | `string` | Strategy for adding matchers to AlertmanagerConfig CRDs.                                                             | `"OnNamespace"` | no                                                                    |
+| `alertmanager_namespace` | `string` | Namespace to use when `alertmanagerconfig_matcher_strategy` is set to `"OnNamespaceExceptForAlertmanagerNamespace"`. |                 | only when `strategy` is `"OnNamespaceExceptForAlertmanagerNamespace"` |
+
+The `strategy` argument should be one of the following strings:
+
+* `"OnNamespace"`: Each AlertmanagerConfig object only matches alerts that have the `namespace` label set to the same namespace as the AlertmanagerConfig object.
+* `"OnNamespaceExceptForAlertmanagerNamespace"`: The same as `"OnNamespace"`, except for AlertmanagerConfigs in the namespace given by `alertmanager_namespace`, which apply to all alerts.
+* `"None"`: Every AlertmanagerConfig object applies to all alerts
+
+`strategy` is similar to the [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] in Prometheus Operator, but it is configured in {{< param "PRODUCT_NAME" >}} instead of in an Alertmanager CRD.
+{{< param "PRODUCT_NAME" >}} doesn't require an Alertmanager CRD.
+
+[alertmanager-config-matcher-strategy]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.AlertmanagerConfigMatcherStrategy
 
 ### `oauth2`
 
@@ -465,6 +493,70 @@ alertmanager_config: |
       - receiver: testing/alertmgr-config2/null
         matchers:
         - namespace="testing"
+        continue: true
+        routes:
+        - receiver: testing/alertmgr-config2/database-pager
+          matchers:
+          - service="webapp"
+          continue: false
+          group_wait: 10s
+    receivers:
+    - name: "null"
+    - name: alloy-namespace/global-config/myreceiver
+    - name: testing/alertmgr-config1/null
+    - name: testing/alertmgr-config1/myamc
+      webhook_configs:
+      - send_resolved: false
+        http_config:
+          follow_redirects: true
+          enable_http2: true
+        url: <secret>
+        url_file: ""
+        max_alerts: 0
+        timeout: 0s
+    - name: testing/alertmgr-config2/null
+    - name: testing/alertmgr-config2/database-pager
+    templates:
+    - default_template
+```
+
+{{< /collapse >}}
+
+You can add the `alertmanagerconfig_matcher` block to your {{< param "PRODUCT_NAME" >}} configuration to remove the namespace matchers:
+
+```alloy
+alertmanagerconfig_matcher {
+  strategy = "None"
+}
+```
+
+This results in the following final configuration:
+
+{{< collapse title="Example merged configuration sent to Mimir." >}}
+
+```yaml
+template_files:
+    default_template: |-
+        {{ define "__alertmanager" }}AlertManager{{ end }}
+        {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}
+alertmanager_config: |
+    global:
+      resolve_timeout: 5m
+      http_config:
+        follow_redirects: true
+        enable_http2: true
+      smtp_hello: localhost
+      smtp_require_tls: true
+    route:
+      receiver: "null"
+      continue: false
+      routes:
+      - receiver: testing/alertmgr-config1/null
+        continue: true
+        routes:
+        - receiver: testing/alertmgr-config1/myamc
+          continue: true
+      - receiver: testing/alertmgr-config2/null
         continue: true
         routes:
         - receiver: testing/alertmgr-config2/database-pager
