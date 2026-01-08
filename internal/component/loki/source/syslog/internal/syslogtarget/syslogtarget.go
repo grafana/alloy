@@ -32,6 +32,24 @@ var (
 	DefaultProtocol         = ProtocolTCP
 )
 
+type NewMessageDebugEvent struct {
+	Format         string
+	Message        string
+	Timestamp      time.Time
+	OriginalLabels labels.Labels
+	MappedLabels   model.LabelSet
+}
+
+type nopDebugListener struct{}
+
+func (nopDebugListener) OnNewMessage(e NewMessageDebugEvent) {}
+func (nopDebugListener) OnError(msg string, err error)       {}
+
+type DebugListener interface {
+	OnNewMessage(e NewMessageDebugEvent)
+	OnError(msg string, err error)
+}
+
 // SyslogTarget listens to syslog messages.
 // nolint:revive
 type SyslogTarget struct {
@@ -40,6 +58,7 @@ type SyslogTarget struct {
 	handler       loki.EntryHandler
 	config        *scrapeconfig.SyslogTargetConfig
 	relabelConfig []*relabel.Config
+	dbgListener   DebugListener
 
 	transport Transport
 
@@ -54,11 +73,12 @@ type message struct {
 }
 
 type TargetParams struct {
-	Metrics *Metrics
-	Logger  log.Logger
-	Handler loki.EntryHandler
-	Relabel []*relabel.Config
-	Config  *scrapeconfig.SyslogTargetConfig
+	Metrics       *Metrics
+	Logger        log.Logger
+	Handler       loki.EntryHandler
+	Relabel       []*relabel.Config
+	Config        *scrapeconfig.SyslogTargetConfig
+	DebugListener DebugListener
 }
 
 // NewSyslogTarget configures a new SyslogTarget.
@@ -70,6 +90,11 @@ func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 		config:        params.Config,
 		relabelConfig: params.Relabel,
 		messagesDone:  make(chan struct{}),
+		dbgListener:   params.DebugListener,
+	}
+
+	if t.dbgListener == nil {
+		t.dbgListener = nopDebugListener{}
 	}
 
 	switch t.transportProtocol() {
@@ -104,9 +129,12 @@ func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 func (t *SyslogTarget) handleMessageError(err error) {
 	var ne net.Error
 	if errors.As(err, &ne) && ne.Timeout() {
+		t.dbgListener.OnError("connection timed out", ne)
 		level.Debug(t.logger).Log("msg", "connection timed out", "err", ne)
 		return
 	}
+
+	t.dbgListener.OnError("failed to parse syslog stream", err)
 	level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 	t.metrics.syslogParsingErrors.Inc()
 }
@@ -155,7 +183,8 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 		}
 	}
 
-	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
+	originalLabels := lb.Labels()
+	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
@@ -181,6 +210,15 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 			m = fullMsg
 		}
 	}
+
+	t.dbgListener.OnNewMessage(NewMessageDebugEvent{
+		Format:         scrapeconfig.SyslogFormatRFC5424,
+		Message:        m,
+		Timestamp:      timestamp,
+		OriginalLabels: originalLabels,
+		MappedLabels:   filtered,
+	})
+
 	t.messages <- message{filtered, m, timestamp}
 }
 
@@ -218,7 +256,8 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc31
 		lb.Set("__syslog_message_sequence", strconv.Itoa(int(*v)))
 	}
 
-	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
+	originalLabels := lb.Labels()
+	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
@@ -236,6 +275,13 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc31
 	}
 
 	m := *msg.Message
+	t.dbgListener.OnNewMessage(NewMessageDebugEvent{
+		Format:         scrapeconfig.SyslogFormatRFC3164,
+		Message:        m,
+		Timestamp:      timestamp,
+		OriginalLabels: originalLabels,
+		MappedLabels:   filtered,
+	})
 
 	t.messages <- message{filtered, m, timestamp}
 }
@@ -254,7 +300,8 @@ func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Ba
 		lb.Set("__syslog_message_facility", *v)
 	}
 
-	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
+	originalLabels := lb.Labels()
+	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
@@ -263,11 +310,20 @@ func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Ba
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 	})
 
+	ts := time.Now()
+	t.dbgListener.OnNewMessage(NewMessageDebugEvent{
+		Format:         scrapeconfig.SyslogFormatRaw,
+		Message:        *msg.Message,
+		Timestamp:      ts,
+		OriginalLabels: originalLabels,
+		MappedLabels:   filtered,
+	})
+
 	// Timestamp isn't available during raw parse.
 	t.messages <- message{
 		labels:    filtered,
 		message:   *msg.Message,
-		timestamp: time.Now(),
+		timestamp: ts,
 	}
 }
 
