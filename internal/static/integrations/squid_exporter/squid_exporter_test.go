@@ -12,9 +12,10 @@ import (
 
 func TestConfigValidate(t *testing.T) {
 	cases := []struct {
-		name        string
-		getConfig   func() Config
-		expectedErr error
+		name         string
+		getConfig    func() Config
+		expectedErr  error
+		expectedHost string
 	}{
 		{
 			name: "valid",
@@ -64,17 +65,30 @@ func TestConfigValidate(t *testing.T) {
 			},
 			expectedErr: errors.New("address a@#$%:asdf::12312: too many colons in address"),
 		},
+		{
+			name: "valid ipv6",
+			getConfig: func() Config {
+				cfg := Config{}
+				cfg.Address = "[::1]:51001"
+				return cfg
+			},
+			expectedHost: "[::1]",
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := tc.getConfig()
 			err := cfg.validate()
-			if tc.expectedErr == nil {
-				require.NoError(t, err)
+			if tc.expectedErr != nil {
+				require.ErrorContains(t, err, tc.expectedErr.Error())
 				return
 			}
-			require.ErrorContains(t, err, tc.expectedErr.Error())
+
+			require.NoError(t, err)
+			if tc.expectedHost != "" {
+				require.Equal(t, tc.expectedHost, cfg.Host)
+			}
 		})
 	}
 }

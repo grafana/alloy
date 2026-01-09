@@ -324,6 +324,9 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			Threshold:       time.Second,
 		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
 	}
 	var gotExports cmp.Exports
 	opts := cmp.Options{
