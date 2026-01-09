@@ -67,7 +67,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.12
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla/v2 v2.7.10
+	github.com/grafana/beyla/v2 v2.8.4
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20251024151910-87043f5a3cf7
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -531,7 +531,7 @@ require (
 	github.com/channelmeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
-	github.com/cilium/ebpf v0.19.0 // indirect
+	github.com/cilium/ebpf v0.20.0 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f // indirect
@@ -684,7 +684,7 @@ require (
 	github.com/hodgesds/perf-utils v0.7.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20250628045327-2d64ad6b7ec5
+	github.com/ianlancetaylor/demangle v0.0.0-20251118225945-96ee0021ea0f
 	github.com/illumos/go-kstat v0.0.0-20210513183136-173c9b0a9973 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -917,7 +917,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.4 // indirect
 	go.etcd.io/etcd/client/v3 v3.6.4 // indirect
 	go.mongodb.org/mongo-driver v1.17.4 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.3.0 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.3.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector v0.142.0 // indirect
@@ -1006,6 +1006,11 @@ require (
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/orchestrator/util v0.74.0-rc.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.1 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator/v10 v10.26.0 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
 )
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
@@ -1058,8 +1063,13 @@ replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter 
 // Use Grafana fork of smimesign
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
+// TODO: Rollback these changes prior to merging
 // Replace OpenTelemetry OBI with Grafana fork
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
+// replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.10
+// replace go.opentelemetry.io/obi => /Users/paulintodev/Documents/GitHub/opentelemetry-ebpf-instrumentation-paulin
+replace go.opentelemetry.io/obi => github.com/ptodev/opentelemetry-ebpf-instrumentation v0.0.0-20260108162446-7fe00a090339
+
+replace github.com/grafana/beyla/v2 => github.com/ptodev/beyla/v2 v2.0.0-20260109075219-ccd3826aab1d
 
 // Replace OpenTelemetry eBPF profiler with Grafana fork
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e

@@ -16,18 +16,19 @@ import (
 	"github.com/caarlos0/env/v9"
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
-	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
 	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"go.opentelemetry.io/obi/pkg/appolly/services"
+	obiCfg "go.opentelemetry.io/obi/pkg/config"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
 	"go.opentelemetry.io/obi/pkg/export/prom"
 	"go.opentelemetry.io/obi/pkg/filter"
-	"go.opentelemetry.io/obi/pkg/kubeflags"
-	"go.opentelemetry.io/obi/pkg/services"
+	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
+	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
 	"golang.org/x/sync/errgroup" //nolint:depguard
 
@@ -79,7 +80,7 @@ var validInstrumentations = map[string]struct{}{
 }
 
 func (args Routes) Convert() *transform.RoutesConfig {
-	routes := beyla.DefaultConfig.Routes
+	routes := beyla.DefaultConfig().Routes
 	if args.Unmatch != "" {
 		routes.Unmatch = transform.UnmatchType(args.Unmatch)
 	}
@@ -139,7 +140,7 @@ func (args SamplerConfig) Convert() services.SamplerConfig {
 }
 
 func (args Attributes) Convert() beyla.Attributes {
-	attrs := beyla.DefaultConfig.Attributes
+	attrs := beyla.DefaultConfig().Attributes
 	// Kubernetes
 	if args.Kubernetes.Enable != "" {
 		attrs.Kubernetes.Enable = kubeflags.EnableFlag(args.Kubernetes.Enable)
@@ -180,7 +181,7 @@ func (args Selections) Convert() attributes.Selection {
 }
 
 func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
-	d := beyla.DefaultConfig.Discovery
+	d := beyla.DefaultConfig().Discovery
 
 	// Services (deprecated)
 	srv, err := args.Services.Convert()
@@ -439,7 +440,7 @@ func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAtt
 }
 
 func (args Metrics) Convert() prom.PrometheusConfig {
-	p := beyla.DefaultConfig.Prometheus
+	p := beyla.DefaultConfig().Prometheus
 	if args.Features != nil {
 		p.Features = args.Features
 	}
@@ -497,8 +498,8 @@ func (args Metrics) Validate() error {
 	return nil
 }
 
-func (args Network) Convert(enable bool) beyla.NetworkConfig {
-	networks := beyla.DefaultConfig.NetworkFlows
+func (args Network) Convert(enable bool) obi.NetworkConfig {
+	networks := beyla.DefaultConfig().NetworkFlows
 	networks.Enable = enable
 	if args.Source != "" {
 		networks.Source = args.Source
@@ -532,8 +533,8 @@ func (args Network) Convert(enable bool) beyla.NetworkConfig {
 	return networks
 }
 
-func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
-	ebpf := beyla.DefaultConfig.EBPF
+func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
+	ebpf := beyla.DefaultConfig().EBPF
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
@@ -541,7 +542,7 @@ func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
 	if args.ContextPropagation == "" {
 		args.ContextPropagation = "disabled"
 	}
-	var contextPropagationMode beylaCfg.ContextPropagationMode
+	var contextPropagationMode obiCfg.ContextPropagationMode
 	err := contextPropagationMode.UnmarshalText([]byte(args.ContextPropagation))
 	if err != nil {
 		return nil, err
@@ -758,7 +759,7 @@ func (c *Component) Handler() http.Handler {
 
 func (a *Arguments) Convert() (*beyla.Config, error) {
 	var err error
-	cfg := beyla.DefaultConfig
+	cfg := beyla.DefaultConfig()
 
 	if a.Output != nil {
 		cfg.TracesReceiver = a.Traces.Convert(a.Output.Traces)
@@ -792,7 +793,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		})).Handler(), a.Debug)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func (args *Arguments) Validate() error {
