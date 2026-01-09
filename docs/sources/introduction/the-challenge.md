@@ -56,12 +56,12 @@ Whether you're monitoring infrastructure, applications, or both, {{< param "PROD
 
 ## Next steps
 
-- Learn [when to use Alloy][When to use Alloy] for your observability needs
-- Understand [how Alloy works][How Alloy works] and what makes it powerful
+- Learn [when to use Alloy][When to use Alloy] for specific scenarios
+- See [how Alloy fits][How Alloy fits] in your observability architecture
 - [Install][Install] {{< param "PRODUCT_NAME" >}} to get started
 
 [When to use Alloy]: ../when-to-use-alloy/
-[How Alloy works]: ../how-alloy-works/
+[How Alloy fits]: ../how-alloy-fits/
 [Install]: ../../set-up/install/
 [syntax]: ../../get-started/syntax/
 [components]: ../../get-started/components/

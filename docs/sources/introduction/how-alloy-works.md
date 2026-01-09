@@ -61,36 +61,6 @@ As your systems grow more complex, {{< param "PRODUCT_NAME" >}} scales with you:
 - Troubleshoot configuration issues
 - Monitor performance
 
-## The collection process
-
-{{< param "PRODUCT_NAME" >}} follows a three-stage process: collect, transform, and write.
-
-### Collect
-
-{{< param "PRODUCT_NAME" >}} uses more than 120 components to collect telemetry data from applications, databases, and other collectors.
-It supports collection using multiple ecosystems, including OpenTelemetry and Prometheus.
-
-Telemetry data can be pushed to {{< param "PRODUCT_NAME" >}} or pulled from your data sources.
-Applications can send OpenTelemetry data to {{< param "PRODUCT_NAME" >}}, or {{< param "PRODUCT_NAME" >}} can scrape Prometheus metrics from your systems.
-
-### Transform
-
-{{< param "PRODUCT_NAME" >}} processes data and transforms it before sending.
-
-Use transformations to:
-
-- Add metadata to enrich telemetry
-- Filter out unwanted data to reduce costs
-- Sample high-volume telemetry
-- Convert between formats
-- Route data to different destinations
-
-### Write
-
-{{< param "PRODUCT_NAME" >}} sends data to OpenTelemetry-compatible databases or collectors, the Grafana stack, or Grafana Cloud.
-
-{{< param "PRODUCT_NAME" >}} can also write alerting rules to compatible databases, letting you define alerts alongside your collection pipelines.
-
 ## Next steps
 
 - [Install][Install] {{< param "PRODUCT_NAME" >}} to get started

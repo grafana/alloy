@@ -125,12 +125,10 @@ You can then query and visualize this data in Grafana Dashboard.
 
 ## Next steps
 
-- Learn [when to use {{< param "PRODUCT_NAME" >}}][when] for your specific needs
-- Understand the [components and architecture][concepts]
+- Understand [how Alloy works][How Alloy works] and what makes it powerful
 - Review [deployment patterns][deploy] for different environments
 - Check [migration guides][migrate] for moving from other collectors
 
-[when]: ../when-to-use-alloy/
-[concepts]: ../../get-started/
+[How Alloy works]: ../how-alloy-works/
 [deploy]: ../../set-up/deploy/
 [migrate]: ../../set-up/migrate/
