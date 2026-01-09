@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/
 description: Grafana Alloy simplifies telemetry collection by combining metrics, logs, traces, and profiles into one powerful, vendor-neutral collector
 menuTitle: Introduction
 title: Introduction to Grafana Alloy
-weight: 100
+weight: 10
 ---
 
 # Introduction to {{% param "FULL_PRODUCT_NAME" %}}
