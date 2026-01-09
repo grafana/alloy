@@ -75,6 +75,7 @@ jobs:
         uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
         with:
           method: chat.postMessage
+          payload-templated: false
           payload: |
             {
               "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_DEV }}",
