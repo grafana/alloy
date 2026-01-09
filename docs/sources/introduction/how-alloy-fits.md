@@ -1,12 +1,12 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/introduction/alloy-in-observability-stack/
-description: Understand where Grafana Alloy fits in your observability architecture
-menuTitle: Alloy in the observability stack
-title: Grafana Alloy in the observability stack
+canonical: https://grafana.com/docs/alloy/latest/introduction/how-alloy-fits/
+description: Learn how Grafana Alloy fits in your observability architecture
+menuTitle: How Alloy fits
+title: How Grafana Alloy fits
 weight: 300
 ---
 
-# {{% param "FULL_PRODUCT_NAME" %}} in the observability stack
+# How {{% param "FULL_PRODUCT_NAME" %}} fits
 
 Understanding where {{< param "PRODUCT_NAME" >}} fits in your observability architecture helps clarify its role and how it works with other tools.
 

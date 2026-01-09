@@ -29,7 +29,7 @@ Ready to try {{< param "PRODUCT_NAME" >}}? Start with these resources:
 
 - [The challenge][The challenge] - Understand the telemetry collection problems {{< param "PRODUCT_NAME" >}} solves
 - [When to use Alloy][When to use Alloy] - Determine which scenarios {{< param "PRODUCT_NAME" >}} is designed for
-- [Alloy in the observability stack][Alloy in the observability stack] - See where {{< param "PRODUCT_NAME" >}} fits and how it integrates with other tools
+- [How Alloy fits][How Alloy fits] - See where {{< param "PRODUCT_NAME" >}} fits and how it integrates with other tools
 - [How Alloy works][How Alloy works] - Learn what makes {{< param "PRODUCT_NAME" >}} powerful
 - [Supported platforms][Supported platforms] - Check platform and architecture compatibility
 - [Estimate resource usage][Estimate resource usage] - Plan your deployment resource requirements
@@ -42,7 +42,7 @@ Ready to try {{< param "PRODUCT_NAME" >}}? Start with these resources:
 [reference]: ../reference/
 [The challenge]: ./the-challenge/
 [When to use Alloy]: ./when-to-use-alloy/
-[Alloy in the observability stack]: ./alloy-in-observability-stack/
+[How Alloy fits]: ./how-alloy-fits/
 [How Alloy works]: ./how-alloy-works/
 [Supported platforms]: ./supported-platforms/
 [Estimate resource usage]: ./estimate-resource-usage/
