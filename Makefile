@@ -308,11 +308,10 @@ else
 	cd operations/alloy-mixin && $(JB) install
 	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
 	$(JSONNET) -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
-	@$(MAKE) test-mixin
 endif
 
 .PHONY: test-mixin
-test-mixin:
+test-mixin: generate-rendered-mixin
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
