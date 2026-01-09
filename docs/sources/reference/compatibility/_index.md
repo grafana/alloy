@@ -95,6 +95,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.catchpoint](../components/prometheus/prometheus.exporter.catchpoint)
 - [prometheus.exporter.cloudwatch](../components/prometheus/prometheus.exporter.cloudwatch)
 - [prometheus.exporter.consul](../components/prometheus/prometheus.exporter.consul)
+- [prometheus.exporter.databricks](../components/prometheus/prometheus.exporter.databricks)
 - [prometheus.exporter.dnsmasq](../components/prometheus/prometheus.exporter.dnsmasq)
 - [prometheus.exporter.elasticsearch](../components/prometheus/prometheus.exporter.elasticsearch)
 - [prometheus.exporter.gcp](../components/prometheus/prometheus.exporter.gcp)

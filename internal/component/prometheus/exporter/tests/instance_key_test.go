@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/consul"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/gcp"
@@ -156,6 +157,17 @@ func TestInstanceKey(t *testing.T) {
 				Server: "http://host01:8500",
 			},
 			expectedInstanceLabel: "host01:8500",
+		},
+		{
+			testName:      "databricks",
+			componentName: "prometheus.exporter.databricks",
+			args: databricks.Arguments{
+				ServerHostname:    "dbc-abc123.cloud.databricks.com",
+				WarehouseHTTPPath: "/sql/1.0/warehouses/abc123",
+				ClientID:          "test-client-id",
+				ClientSecret:      "test-client-secret",
+			},
+			expectedInstanceLabel: "dbc-abc123.cloud.databricks.com",
 		},
 		{
 			testName:      "dnsmasq",
