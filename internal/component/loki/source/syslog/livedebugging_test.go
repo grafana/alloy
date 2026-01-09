@@ -6,12 +6,12 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -57,7 +57,7 @@ func getTestMessagesCount(t *testing.T, defaults int) int {
 	}
 
 	n, err := strconv.Atoi(v)
-	require.NoErrorf(t, err, "invalid value in enviroment variable %q", liveDebuggingMsgCountEnvVar)
+	require.NoErrorf(t, err, "invalid value in environment variable %q", liveDebuggingMsgCountEnvVar)
 	return n
 }
 
@@ -159,10 +159,10 @@ func TestLiveDebugging(t *testing.T) {
 		require.Equal(t, receivedCount, int(debugMsgCount.Load()), "invalid number of log messages")
 	}
 
-	finalize(t, origStats)
+	finalize(origStats)
 }
 
-func finalize(t *testing.T, origStats runtime.MemStats) {
+func finalize(origStats runtime.MemStats) {
 	var gotStats runtime.MemStats
 	runtime.ReadMemStats(&gotStats)
 
