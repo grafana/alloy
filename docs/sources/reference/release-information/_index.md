@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/reference/release-information/
 description: Versioning policies and release schedules for Grafana Alloy
 menuTitle: Release information
 title: Release information
-weight: 450
+weight: 750
 ---
 
 # Release information
