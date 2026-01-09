@@ -5,7 +5,7 @@ aliases:
 description: Learn about possible deployment topologies for Grafana Alloy
 menuTitle: Deploy
 title: Deploy Grafana Alloy
-weight: 900
+weight: 400
 ---
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}}

@@ -5,7 +5,7 @@ aliases:
 description: Supported platforms for Grafana Alloy
 menuTitle: Supported platforms
 title: Supported platforms
-weight: 550
+weight: 50
 ---
 
 # Supported platforms
