@@ -47,7 +47,7 @@ It includes native pipelines for:
 
 With {{< param "PRODUCT_NAME" >}}, you have:
 
-- **One solution to learn**: A single configuration language and component model
+- **One solution to learn**: A single [configuration language][syntax] and [component model][components]
 - **One solution to deploy**: Unified installation and deployment process
 - **One solution to maintain**: Simplified troubleshooting and upgrades
 - **Reduced resource usage**: Less memory consumption and CPU overhead compared to running multiple collectors
@@ -63,3 +63,5 @@ Whether you're monitoring infrastructure, applications, or both, {{< param "PROD
 [When to use Alloy]: ../when-to-use-alloy/
 [How Alloy works]: ../how-alloy-works/
 [Install]: ../../set-up/install/
+[syntax]: ../../get-started/syntax/
+[components]: ../../get-started/components/
