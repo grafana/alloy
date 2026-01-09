@@ -67,8 +67,8 @@ func (l *liveDebuggingWriter) OnNewMessage(e syslogtarget.NewMessageDebugEvent) 
 
 		// print mapped and original labels to simplify relabel configuration debugging
 		sb.WriteString("  Labels:\n")
-		fmt.Fprintf(sb, "  - Mapped:   %s\n", e.MappedLabels.String())
-		fmt.Fprintf(sb, "  - Original: %s\n", e.OriginalLabels.String())
+		fmt.Fprintf(sb, "  - Mapped:   %s\n", e.MappedLabels)
+		fmt.Fprintf(sb, "  - Original: %s\n", e.OriginalLabels)
 
 		return sb.String()
 	})
