@@ -73,6 +73,8 @@ An example of the above configuration file can be found [here][example-config].
 
 Run `make help` for a description of all available Make targets.
 
+> **NOTE**: Alloy includes an embedded OpenTelemetry Collector distribution. For details about the project build process, including how to regenerate collector code and manage dependencies, see the [Collector Distro README](../../collector/README.md).
+
 ### Compile on Linux
 
 Compiling Alloy on Linux requires extra dependencies:
