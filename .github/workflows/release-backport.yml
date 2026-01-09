@@ -22,7 +22,8 @@ jobs:
     # Only run if the trigger workflow succeeded.
     if: >
       github.repository == 'grafana/alloy' &&
-      github.event.workflow_run.conclusion == 'success'
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == 'grafana/alloy'
     runs-on: ubuntu-latest
     steps:
       - name: Get GitHub app secrets 🔐
