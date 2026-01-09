@@ -62,10 +62,12 @@ jobs:
       - name: Verify PR is merged and get backport labels 🏷️
         id: pr-info
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
-            const prNumber = parseInt('${{ steps.pr-number.outputs.pr_number }}', 10);
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
 
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
