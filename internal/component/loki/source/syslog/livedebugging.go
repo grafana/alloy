@@ -5,9 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -69,36 +66,9 @@ func (l *liveDebuggingWriter) OnNewMessage(e syslogtarget.NewMessageDebugEvent) 
 		)
 
 		// print mapped and original labels to simplify relabel configuration debugging
-		sb.WriteString("  Mapped Labels:\n")
-		if len(e.MappedLabels) == 0 {
-			sb.WriteString("  <empty>\n")
-		}
-
-		for k, v := range e.MappedLabels {
-			sb.WriteString("  - ")
-			sb.WriteString(string(k))
-			sb.WriteString(" = ")
-			sb.WriteString(string(v))
-			sb.WriteByte('\n')
-		}
-
-		sb.WriteString("  Original Labels:\n")
-		if e.OriginalLabels.IsEmpty() {
-			sb.WriteString("  <empty>\n")
-		}
-
-		e.OriginalLabels.Range(func(l labels.Label) {
-			_, ok := e.MappedLabels[model.LabelName(l.Name)]
-			if ok {
-				return
-			}
-
-			sb.WriteString("  - ")
-			sb.WriteString(l.Name)
-			sb.WriteString(" = ")
-			sb.WriteString(l.Value)
-			sb.WriteByte('\n')
-		})
+		sb.WriteString("  Labels:\n")
+		fmt.Fprintf(sb, "  - Mapped:   %s\n", e.MappedLabels.String())
+		fmt.Fprintf(sb, "  - Original: %s\n", e.OriginalLabels.String())
 
 		return sb.String()
 	})
