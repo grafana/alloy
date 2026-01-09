@@ -24,159 +24,92 @@ A typical observability setup has three main layers:
 
 ## What {{< param "PRODUCT_NAME" >}} does
 
-{{< param "PRODUCT_NAME" >}} acts as the bridge between data sources and storage backends.
-
-It performs three main functions:
+{{< param "PRODUCT_NAME" >}} acts as the bridge between data sources and storage backends, performing three main functions in your telemetry pipeline.
 
 ### Collect telemetry data
 
-{{< param "PRODUCT_NAME" >}} gathers telemetry from various sources using multiple methods:
-
-- **Scraping**: Pull metrics from Prometheus endpoints
-- **Receiving**: Accept pushed data via OpenTelemetry protocol or OTLP
-- **Tailing**: Read logs from files or system outputs
-- **Discovering**: Find services automatically in Kubernetes, Docker, or cloud environments
-- **Integrating**: Collect from databases, message queues, and other systems
+Use {{< param "PRODUCT_NAME" >}} to gather telemetry from any source in your infrastructure.
+Configure it to scrape Prometheus endpoints for metrics, or set up receivers to accept pushed data via the OpenTelemetry protocol.
+Tail log files or read from system outputs to capture application and infrastructure logs.
+Enable service discovery to automatically find resources in Kubernetes, Docker, or cloud environments without maintaining static configuration.
+Integrate with databases, message queues, and other systems to capture telemetry from specialized sources.
 
 ### Transform and process data
 
-{{< param "PRODUCT_NAME" >}} processes telemetry before sending it:
-
-- **Filtering**: Remove unwanted data to reduce costs
-- **Enriching**: Add labels, metadata, or context
-- **Sampling**: Reduce high-volume data while maintaining signal
-- **Converting**: Transform between formats like Prometheus to OTLP
-- **Routing**: Send different data to different destinations based on rules
+Process your telemetry before sending it to backends to optimize costs and improve data quality.
+Create filters to remove unwanted data and reduce storage costs while focusing on high-value telemetry.
+Add labels, metadata, or contextual information to enrich your data and make it more useful for analysis.
+Implement sampling strategies to reduce high-volume data while preserving the signal you need for troubleshooting.
+Convert between formats, such as transforming Prometheus metrics to OpenTelemetry format, to ensure compatibility with your backends.
+Define routing rules to send different types of data to different destinations based on your operational requirements.
 
 ### Send to backends
 
-{{< param "PRODUCT_NAME" >}} delivers telemetry to your storage systems:
-
-- Send to Grafana Cloud
-- Export to self-hosted Grafana stack components
-- Forward to any Prometheus-compatible database
-- Push to any OpenTelemetry-compatible backend
-- Write to multiple destinations simultaneously
+Configure {{< param "PRODUCT_NAME" >}} to deliver processed telemetry to any storage system you choose.
+Send data to Grafana Cloud for managed observability, or export to your self-hosted Grafana stack components.
+Connect to any Prometheus-compatible database for metrics and any OpenTelemetry-compatible backend for all signal types.
+Write to multiple destinations simultaneously, sending the same data to different systems or routing different data types to specialized backends based on your architecture.
 
 ## What {{< param "PRODUCT_NAME" >}} replaces
 
-{{< param "PRODUCT_NAME" >}} can replace or consolidate several types of collectors:
+Consolidate your observability collectors by replacing multiple tools with {{< param "PRODUCT_NAME" >}}.
 
-### Prometheus components
+Replace Prometheus Agent with {{< param "PRODUCT_NAME" >}} to gain all the same functionality plus support for logs, traces, and profiles.
+Migrate from Prometheus Server used primarily for collection by using {{< param "PRODUCT_NAME" >}} for scraping and remote write while keeping remote storage for queries.
+Switch from Prometheus node exporter to {{< param "PRODUCT_NAME" >}} to collect the same infrastructure metrics with added processing capabilities.
 
-- **Prometheus Agent**: {{< param "PRODUCT_NAME" >}} includes all Prometheus agent functionality
-- **Prometheus Server for collection**: Use {{< param "PRODUCT_NAME" >}} for scraping and remote write, with remote storage for queries
-- **Prometheus node exporter with transformation**: {{< param "PRODUCT_NAME" >}} can collect the same metrics with additional processing
+Replace your OpenTelemetry Collector deployment with {{< param "PRODUCT_NAME" >}} to add native Prometheus support alongside OTLP.
+Generate telemetry from systems without code instrumentation, replacing the need for OpenTelemetry SDKs in infrastructure components.
 
-### OpenTelemetry components
+Migrate from Grafana Agent to {{< param "PRODUCT_NAME" >}} for enhanced capabilities and a more powerful configuration model.
+Replace specialized log collectors like Promtail, Fluentd, or Filebeat with {{< param "PRODUCT_NAME" >}}'s unified collection approach.
+Eliminate many single-purpose exporters by using the integrations built into {{< param "PRODUCT_NAME" >}}.
 
-- **OpenTelemetry Collector**: {{< param "PRODUCT_NAME" >}} is a distribution of the Collector with additional capabilities
-- **OpenTelemetry SDKs for infrastructure**: {{< param "PRODUCT_NAME" >}} can generate telemetry from systems without code instrumentation
-
-### Other collectors
-
-- **Grafana Agent**: {{< param "PRODUCT_NAME" >}} is the successor to Grafana Agent
-- **Log collectors**: Replace tools like Promtail, Fluentd, or Filebeat for log collection
-- **Specialized exporters**: The integrations in {{< param "PRODUCT_NAME" >}} replace many single-purpose exporters
-
-You don't need to replace everything at once.
-{{< param "PRODUCT_NAME" >}} can run alongside existing collectors during migration.
+Run {{< param "PRODUCT_NAME" >}} alongside existing collectors during migration to transition gradually without disrupting your observability.
 
 ## How {{< param "PRODUCT_NAME" >}} integrates with the Grafana ecosystem
 
-{{< param "PRODUCT_NAME" >}} is designed to work seamlessly with Grafana's observability stack.
+Connect {{< param "PRODUCT_NAME" >}} to Grafana's observability stack whether you use Grafana Cloud or self-hosted components.
 
-### Grafana Cloud
+Configure {{< param "PRODUCT_NAME" >}} to send telemetry directly to Grafana Cloud.
+Route metrics to Grafana Cloud Metrics powered by Mimir, logs to Grafana Cloud Logs powered by Loki, traces to Grafana Cloud Traces powered by Tempo, and profiles to Grafana Cloud Profiles powered by Pyroscope.
+Use built-in authentication and endpoint configuration to simplify your setup.
 
-Send telemetry directly to Grafana Cloud:
+Deploy {{< param "PRODUCT_NAME" >}} with your self-hosted Grafana stack.
+Send logs to Loki for aggregation and querying, metrics to Mimir for long-term storage, traces to Tempo for distributed tracing analysis, and profiles to Pyroscope for continuous profiling.
 
-- Metrics to Grafana Cloud Metrics powered by Mimir
-- Logs to Grafana Cloud Logs powered by Loki
-- Traces to Grafana Cloud Traces powered by Tempo
-- Profiles to Grafana Cloud Profiles powered by Pyroscope
-
-{{< param "PRODUCT_NAME" >}} handles authentication and configuration for Grafana Cloud endpoints.
-
-### Self-hosted Grafana stack
-
-Deploy {{< param "PRODUCT_NAME" >}} with self-hosted components:
-
-- **Loki**: Send logs for aggregation and querying
-- **Mimir**: Send metrics for long-term storage and queries
-- **Tempo**: Send traces for distributed tracing analysis
-- **Pyroscope**: Send profiles for continuous profiling
-
-### Grafana dashboards
-
-{{< param "PRODUCT_NAME" >}} exposes its own metrics that you can visualize in Grafana:
-
-- Monitor performance
-- Track collection rates and volumes
-- Debug pipeline issues
-- Use pre-built dashboards from the mixin
+Visualize {{< param "PRODUCT_NAME" >}}'s own metrics in Grafana dashboards.
+Monitor collector performance, track collection rates and volumes, debug pipeline issues, and use pre-built dashboards from the mixin to observe your collector infrastructure.
 
 ## How {{< param "PRODUCT_NAME" >}} works with open source ecosystems
 
-{{< param "PRODUCT_NAME" >}} embraces vendor neutrality and open standards.
+Integrate {{< param "PRODUCT_NAME" >}} with any observability ecosystem through open standards.
 
-### Prometheus ecosystem
+Use {{< param "PRODUCT_NAME" >}} with the Prometheus ecosystem through full compatibility with the Prometheus exposition format and service discovery mechanisms.
+Configure Prometheus remote write to send data to any Prometheus-compatible database, including Thanos, Cortex, and VictoriaMetrics.
 
-- Compatible with Prometheus exposition format
-- Supports Prometheus service discovery mechanisms
-- Uses Prometheus remote write protocol
-- Works with Prometheus-compatible databases like Thanos, Cortex, and VictoriaMetrics
+Deploy {{< param "PRODUCT_NAME" >}} as your OpenTelemetry Collector distribution.
+Receive OTLP data for metrics, logs, and traces from any OpenTelemetry instrumentation.
+Send to any OTLP-compatible backend to maintain flexibility in your tool choices.
 
-### OpenTelemetry ecosystem
-
-- Distribution of OpenTelemetry Collector
-- Supports OTLP for metrics, logs, and traces
-- Compatible with OpenTelemetry instrumentation
-- Works with any OTLP-compatible backend
-
-### Other ecosystems
-
-- **InfluxDB**: Send metrics using Telegraf or native formats
-- **Elasticsearch**: Send logs via various output formats
-- **Cloud platforms**: Native integrations for AWS, GCP, Azure
+Connect {{< param "PRODUCT_NAME" >}} to other ecosystems beyond Prometheus and OpenTelemetry.
+Send metrics to InfluxDB using Telegraf or native formats, export logs to Elasticsearch via various output formats, and use native integrations for cloud platforms like AWS, GCP, and Azure.
 
 ## Deployment patterns
 
-{{< param "PRODUCT_NAME" >}} adapts to different architectural needs.
+Choose the deployment pattern that fits your architecture.
 
-### Edge collection
+Deploy {{< param "PRODUCT_NAME" >}} at the edge, close to your data sources, for minimal latency.
+Run it as a DaemonSet in Kubernetes to collect from every node, install it on each host for infrastructure monitoring, or deploy it alongside applications for local processing.
+Use this pattern to minimize network hops and enable immediate data transformation at the source.
 
-Deploy {{< param "PRODUCT_NAME" >}} close to data sources:
+Deploy {{< param "PRODUCT_NAME" >}} as a gateway for centralized collection.
+Configure your applications to send telemetry to {{< param "PRODUCT_NAME" >}} gateways, which process and forward data to backends.
+Simplify backend configuration in your applications since they only need to know about the gateway endpoints.
 
-- Run as a DaemonSet in Kubernetes to collect from every node
-- Install on each host for infrastructure monitoring
-- Deploy alongside applications for local processing
-
-### Gateway pattern
-
-Deploy {{< param "PRODUCT_NAME" >}} as a central collection point:
-
-- Applications send telemetry to {{< param "PRODUCT_NAME" >}} gateways
-- Gateways process and forward to backends
-- Simplifies backend configuration in applications
-
-### Hybrid approach
-
-Combine edge and gateway deployments:
-
-- Edge instances do initial collection and filtering
-- Gateway instances handle aggregation and final processing
-- Reduces bandwidth and allows centralized policy enforcement
-
-## What {{< param "PRODUCT_NAME" >}} doesn't replace
-
-{{< param "PRODUCT_NAME" >}} is a collector, not a complete observability platform.
-
-You still need:
-
-- **Storage backends**: {{< param "PRODUCT_NAME" >}} doesn't store telemetry long-term
-- **Visualization tools**: Use Grafana or other frontends to query and explore data
-- **Instrumentation**: Applications still need to expose metrics or use OpenTelemetry SDKs
-- **Exporters**: Specialized exporters might still be needed for very specific integrations
+Combine edge and gateway deployments in a hybrid approach.
+Deploy edge instances to handle initial collection and filtering close to sources, then forward to gateway instances for aggregation and final processing.
+Use this pattern to reduce bandwidth usage and enable centralized policy enforcement while maintaining local processing capabilities.for very specific integrations
 
 {{< param "PRODUCT_NAME" >}} complements these tools rather than replacing them.
 
