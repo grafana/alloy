@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/how-alloy-works/
 description: Learn how Grafana Alloy works and what makes it a powerful telemetry collector
 menuTitle: How Alloy works
 title: How Grafana Alloy works
-weight: 200
+weight: 350
 ---
 
 # How {{% param "FULL_PRODUCT_NAME" %}} works

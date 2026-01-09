@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/the-challenge/
 description: Understand the telemetry collection challenges that Grafana Alloy solves
 menuTitle: The challenge
 title: The telemetry collection challenge
-weight: 15
+weight: 200
 ---
 
 # The telemetry collection challenge

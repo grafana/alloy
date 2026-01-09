@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/release-cadence/
 description: The release cadence for Grafana Alloy
 menuTitle: Release cadence
 title: Release cadence
-weight: 400
+weight: 600
 ---
 
 # Release cadence

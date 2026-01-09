@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/alloy-in-observabi
 description: Understand where Grafana Alloy fits in your observability architecture
 menuTitle: Alloy in the observability stack
 title: Grafana Alloy in the observability stack
-weight: 100
+weight: 300
 ---
 
 # {{% param "FULL_PRODUCT_NAME" %}} in the observability stack

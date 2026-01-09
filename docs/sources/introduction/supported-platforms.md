@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/supported-platform
 description: Supported platforms for Grafana Alloy
 menuTitle: Supported platforms
 title: Supported platforms
-weight: 200
+weight: 550
 ---
 
 # Supported platforms
@@ -12,20 +12,20 @@ The following operating systems and hardware architecture are supported.
 
 ## Linux
 
-* Architectures: AMD64, ARM64
-* Within the Linux distribution lifecycle
+- Architectures: AMD64, ARM64
+- Within the Linux distribution lifecycle
 
 ## Windows
 
-* Minimum version: Windows Server 2016 or later, or Windows 10 or later.
-* Architectures: AMD64
+- Minimum version: Windows Server 2016 or later, or Windows 10 or later.
+- Architectures: AMD64
 
 ## macOS
 
-* Minimum version: macOS 10.13 or later
-* Architectures: AMD64 on Intel, ARM64 on Apple Silicon
+- Minimum version: macOS 10.13 or later
+- Architectures: AMD64 on Intel, ARM64 on Apple Silicon
 
 ## FreeBSD
 
-* Within the FreeBSD lifecycle
-* Architectures: AMD64
+- Within the FreeBSD lifecycle
+- Architectures: AMD64

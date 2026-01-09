@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/when-to-use-alloy/
 description: Learn when Grafana Alloy is the right choice for your telemetry collection needs
 menuTitle: When to use Alloy
 title: When to use Grafana Alloy
-weight: 50
+weight: 250
 ---
 
 # When to use {{% param "FULL_PRODUCT_NAME" %}}
