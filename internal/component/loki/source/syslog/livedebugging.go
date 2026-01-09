@@ -56,6 +56,10 @@ func (l liveDebuggingWriter) pushData(thunk func() string) {
 
 // OnError implements syslogtarget.DebugListener.
 func (l liveDebuggingWriter) OnError(msg string, err error) {
+	if !l.pub.IsActive(l.componentID) {
+		return
+	}
+
 	l.pushData(func() string {
 		return fmt.Sprintf("[Error]: %s: %s", msg, err)
 	})
@@ -63,11 +67,15 @@ func (l liveDebuggingWriter) OnError(msg string, err error) {
 
 // OnNewMessage implements syslogtarget.DebugListener.
 func (l *liveDebuggingWriter) OnNewMessage(e syslogtarget.NewMessageDebugEvent) {
+	if !l.pub.IsActive(l.componentID) {
+		return
+	}
+
 	l.pushData(func() string {
 		sb := &strings.Builder{}
 		sb.Grow(1 << 11) // 2 KiB
 		fmt.Fprintf(
-			sb, "[IN] New Log: Format=%q ts=%q\n  Message: %q\n",
+			sb, "[IN] New Log: Format=%q TS=%q\n  Message: %q\n",
 			e.Format, e.Timestamp.Format(time.RFC3339), e.Message,
 		)
 
