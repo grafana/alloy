@@ -129,7 +129,7 @@ Replace the following:
 
 - **`scrape_interval`**: Use 10-30 minutes. The exporter queries Databricks System Tables which can be slow. Increase the `scrape_interval` to reduce your SQL Warehouse costs.
 - **`scrape_timeout`**: Must be less than `scrape_interval`. The exporter typically takes 90-120 seconds per scrape depending on data volume.
-- **Lookback vs interval**: The lookback windows should be at least 2x the scrape interval. The defaults (3h for jobs/pipelines, 2h for queries) work well with 10-30 minute scrape intervals.
+- **Lookback vs interval**: The lookback windows should be at least 2x the scrape interval. The defaults, `3h` for jobs and pipelines, and `2h` for queries, work well with 10-30 minute scrape intervals.
 
 ## High cardinality warning
 
