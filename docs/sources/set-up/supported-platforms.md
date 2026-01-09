@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/introduction/supported-platforms/
+canonical: https://grafana.com/docs/alloy/latest/set-up/supported-platforms/
+aliases:
+  - ../introduction/supported-platforms/ # /docs/alloy/latest/introduction/supported-platforms/
 description: Supported platforms for Grafana Alloy
 menuTitle: Supported platforms
 title: Supported platforms

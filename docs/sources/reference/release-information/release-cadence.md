@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/introduction/release-cadence/
+aliases:
+  - ../../introduction/release-cadence/
+canonical: https://grafana.com/docs/alloy/latest/reference/release-information/release-cadence/
 description: The release cadence for Grafana Alloy
 menuTitle: Release cadence
 title: Release cadence
-weight: 600
+weight: 200
 ---
 
 # Release cadence

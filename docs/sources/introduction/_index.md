@@ -44,6 +44,6 @@ Ready to try {{< param "PRODUCT_NAME" >}}? Start with these resources:
 [When to use Alloy]: ./when-to-use-alloy/
 [How Alloy fits]: ./how-alloy-fits/
 [How Alloy works]: ./how-alloy-works/
-[Supported platforms]: ./supported-platforms/
-[Estimate resource usage]: ./estimate-resource-usage/
+[Supported platforms]: ../set-up/supported-platforms/
+[Estimate resource usage]: ../set-up/estimate-resource-usage/
 [migrate]: ../set-up/migrate/
