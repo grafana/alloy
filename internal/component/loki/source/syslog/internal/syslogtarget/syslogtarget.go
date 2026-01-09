@@ -43,11 +43,9 @@ type NewMessageDebugEvent struct {
 type NopDebugListener struct{}
 
 func (NopDebugListener) OnNewMessage(e NewMessageDebugEvent) {}
-func (NopDebugListener) OnError(msg string, err error)       {}
 
 type DebugListener interface {
 	OnNewMessage(e NewMessageDebugEvent)
-	OnError(msg string, err error)
 }
 
 // SyslogTarget listens to syslog messages.
@@ -129,12 +127,10 @@ func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 func (t *SyslogTarget) handleMessageError(err error) {
 	var ne net.Error
 	if errors.As(err, &ne) && ne.Timeout() {
-		t.dbgListener.OnError("connection timed out", ne)
 		level.Debug(t.logger).Log("msg", "connection timed out", "err", ne)
 		return
 	}
 
-	t.dbgListener.OnError("failed to parse syslog stream", err)
 	level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 	t.metrics.syslogParsingErrors.Inc()
 }
