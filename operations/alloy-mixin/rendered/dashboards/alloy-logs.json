@@ -269,7 +269,7 @@
             "label": "Instance",
             "multi": true,
             "name": "instance",
-            "query": "label_values({cluster=~\"$cluster\",namespace=~\"$namespace\",job=~\"$job\"}, instance)",
+            "query": "label_values({cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}, instance)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

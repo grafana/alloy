@@ -56,7 +56,7 @@ local filename = 'alloy-logs.json';
         label: 'Instance',
         type: 'query',
         datasource: '${loki_datasource}',
-        query: 'label_values({cluster=~"$cluster",namespace=~"$namespace",job=~"$job"}, instance)',
+        query: 'label_values({cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)',
         refresh: 2,
         sort: 1,
         multi: true,
