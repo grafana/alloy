@@ -27,10 +27,9 @@ Ready to try {{< param "PRODUCT_NAME" >}}? Start with these resources:
 
 ## Learn more
 
-- [Overview][Overview] - See where {{< param "PRODUCT_NAME" >}} fits and when to use it
 - [The challenge][The challenge] - Understand the telemetry collection problems {{< param "PRODUCT_NAME" >}} solves
 - [When to use Alloy][When to use Alloy] - Determine which scenarios {{< param "PRODUCT_NAME" >}} is designed for
-- [Alloy in the observability stack][Alloy in the observability stack] - See how {{< param "PRODUCT_NAME" >}} integrates with other tools
+- [Alloy in the observability stack][Alloy in the observability stack] - See where {{< param "PRODUCT_NAME" >}} fits and how it integrates with other tools
 - [How Alloy works][How Alloy works] - Learn what makes {{< param "PRODUCT_NAME" >}} powerful
 - [Supported platforms][Supported platforms] - Check platform and architecture compatibility
 - [Estimate resource usage][Estimate resource usage] - Plan your deployment resource requirements
@@ -40,7 +39,6 @@ Ready to try {{< param "PRODUCT_NAME" >}}? Start with these resources:
 [Install]: ../set-up/install/
 [Concepts]: ../get-started/
 [tutorials]: ../tutorials/
-[Overview]: ./overview/
 [reference]: ../reference/
 [The challenge]: ./the-challenge/
 [When to use Alloy]: ./when-to-use-alloy/
