@@ -79,19 +79,20 @@
 
 include tools/make/*.mk
 
-ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
-ALLOY_BINARY         ?= build/alloy
-SERVICE_BINARY       ?= build/alloy-service
-ALLOYLINT_BINARY     ?= build/alloylint
-JSONNET              ?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
-JB                   ?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
-GOOS                 ?= $(shell go env GOOS)
-GOARCH               ?= $(shell go env GOARCH)
-GOARM                ?= $(shell go env GOARM)
-CGO_ENABLED          ?= 1
-RELEASE_BUILD        ?= 0
-GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
+ALLOY_BINARY         		?= build/alloy
+SERVICE_BINARY       		?= build/alloy-service
+ALLOYLINT_BINARY     		?= build/alloylint
+BUILDER_VERSION      		?= v0.139.0
+JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+GOOS                 		?= $(shell go env GOOS)
+GOARCH               		?= $(shell go env GOARCH)
+GOARM                		?= $(shell go env GOARM)
+CGO_ENABLED          		?= 1
+RELEASE_BUILD        		?= 0
+GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -195,11 +196,11 @@ integration-test-k8s: alloy-image
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: generate-otel-collector-distro
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
 endif
 
 # alloy-service is not included in binaries since it's Windows-only.
@@ -243,8 +244,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
@@ -265,6 +266,14 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+endif
+
+generate-otel-collector-distro:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
+	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
 generate-ui:
