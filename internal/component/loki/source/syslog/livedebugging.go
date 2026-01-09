@@ -67,7 +67,7 @@ func (l *liveDebuggingWriter) OnNewMessage(e syslogtarget.NewMessageDebugEvent) 
 		sb := &strings.Builder{}
 		sb.Grow(1 << 11) // 2 KiB
 		fmt.Fprintf(
-			sb, "[IN] New Log: Format=%q DT=%q\n  Message: %q\n",
+			sb, "[IN] New Log: Format=%q ts=%q\n  Message: %q\n",
 			e.Format, e.Timestamp.Format(time.RFC3339), e.Message,
 		)
 
