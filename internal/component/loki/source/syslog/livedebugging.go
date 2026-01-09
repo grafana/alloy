@@ -54,17 +54,6 @@ func (l liveDebuggingWriter) pushData(thunk func() string) {
 	})
 }
 
-// OnError implements syslogtarget.DebugListener.
-func (l liveDebuggingWriter) OnError(msg string, err error) {
-	if !l.pub.IsActive(l.componentID) {
-		return
-	}
-
-	l.pushData(func() string {
-		return fmt.Sprintf("[Error]: %s: %s", msg, err)
-	})
-}
-
 // OnNewMessage implements syslogtarget.DebugListener.
 func (l *liveDebuggingWriter) OnNewMessage(e syslogtarget.NewMessageDebugEvent) {
 	if !l.pub.IsActive(l.componentID) {
