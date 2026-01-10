@@ -19,7 +19,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.139.0
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	go.opentelemetry.io/collector/component v1.45.0
 	go.opentelemetry.io/collector/confmap v1.49.0
 	go.opentelemetry.io/collector/confmap/provider/envprovider v1.45.0
@@ -43,7 +43,7 @@ require (
 	go.opentelemetry.io/collector/receiver v1.45.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.139.0
 	go.opentelemetry.io/collector/service v0.139.0
-	golang.org/x/sys v0.38.0
+	golang.org/x/sys v0.40.0
 )
 
 require (
@@ -1028,15 +1028,15 @@ replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter 
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.10
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
 
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
+replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.8
 
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.0
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 

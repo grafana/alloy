@@ -8,7 +8,7 @@ replace github.com/grafana/alloy/syntax => ../../syntax
 
 require (
 	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.45.0
 	go.opentelemetry.io/collector/component/componenttest v0.139.0
@@ -1024,7 +1024,7 @@ replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
 // Replace OpenTelemetry OBI with Grafana fork
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.10
 
 // Replace OpenTelemetry eBPF profiler with Grafana fork
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
@@ -1033,10 +1033,10 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
-replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
+replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.8
 
 // Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.0
 
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
