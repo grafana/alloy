@@ -8,9 +8,11 @@ import (
 	"github.com/grafana/alloy/internal/service"
 )
 
-type ComponentID string
-type ModuleID string
-type CallbackID string
+type (
+	ComponentID string
+	ModuleID    string
+	CallbackID  string
+)
 
 // CallbackManager is used to manage live debugging callbacks.
 type CallbackManager interface {
@@ -30,21 +32,39 @@ type CallbackManager interface {
 type DebugDataPublisher interface {
 	// Publish sends debugging data for a given componentID if a least one consumer is listening for debugging data for the given componentID.
 	PublishIfActive(data Data)
+
+	// IsActive returns whether debuging is enabled and there is at least one consumer listening for debugging data for the given component ID.
+	IsActive(cid ComponentID) bool
 }
+
 type liveDebugging struct {
 	loadMut   sync.RWMutex
 	callbacks map[ComponentID]map[CallbackID]func(Data)
 	enabled   bool
 }
 
-var _ CallbackManager = &liveDebugging{}
-var _ DebugDataPublisher = &liveDebugging{}
+var (
+	_ CallbackManager    = &liveDebugging{}
+	_ DebugDataPublisher = &liveDebugging{}
+)
 
 // NewLiveDebugging creates a new instance of liveDebugging.
 func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
 		callbacks: make(map[ComponentID]map[CallbackID]func(Data)),
 	}
+}
+
+func (s *liveDebugging) IsActive(cid ComponentID) bool {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
+
+	if !s.enabled {
+		return false
+	}
+
+	callbacks, ok := s.callbacks[cid]
+	return ok && len(callbacks) > 0
 }
 
 func (s *liveDebugging) PublishIfActive(data Data) {
