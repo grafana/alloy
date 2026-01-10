@@ -149,19 +149,30 @@ func (f *File) Stop() error {
 // wait blocks until a file event is detected (modification, truncation, or deletion).
 // Returns an error if the context is canceled or an unrecoverable error occurs.
 func (f *File) wait(partial bool) error {
-	offset, err := f.offset()
+	// Use file size instead of calculated offset for blockUntilEvent.
+	// This is important when using a decoder (e.g., UTF-16) because the offset()
+	// calculation mixes raw file bytes with decoded bytes, which are incompatible
+	// units and can cause incorrect comparisons.
+	fi, err := f.file.Stat()
 	if err != nil {
 		return err
 	}
+	fileSize := fi.Size()
 
-	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
+	event, err := blockUntilEvent(f.ctx, f.file, fileSize, f.cfg)
 	switch event {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
 		if partial {
 			// We need to reset to last successful offset because we consumed a partial line.
+			// TODO: Return error from Seek()?
 			f.file.Seek(f.lastOffset, io.SeekStart)
-			f.reader.Reset(f.file)
+			f.resetReader()
+		} else if f.cfg.Decoder != nil {
+			// Reset the reader when a decoder is configured. Once a decoder's underlying
+			// transform.Reader returns EOF, it won't read more data even if new content
+			// is appended. Resetting creates a fresh decoder that can read the new content.
+			f.resetReader()
 		}
 		return nil
 	case eventTruncated:
@@ -186,9 +197,11 @@ func (f *File) wait(partial bool) error {
 // The newline and any trailing carriage return (for Windows line endings) are stripped.
 func (f *File) readLine() (string, error) {
 	line, err := f.reader.ReadString('\n')
+
 	if err != nil {
 		return line, err
 	}
+
 	return strings.TrimRight(line, "\r\n"), err
 }
 
@@ -200,7 +213,7 @@ func (f *File) drain() {
 	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
 		return
 	}
-	f.reader.Reset(f.file)
+	f.resetReader()
 
 	for {
 		text, err := f.readLine()
@@ -298,11 +311,19 @@ func (f *File) reopen(truncated bool) error {
 		}
 
 		f.file = file
-		f.reader.Reset(f.file)
+		f.resetReader()
 		break
 	}
 
 	return backoff.Err()
+}
+
+// resetReader recreates the reader chain, preserving the decoder if one is configured.
+// This is necessary when seeking to a new position in the file, as the decoder may have
+// internal state that needs to be reset. Simply calling bufio.Reader.Reset() would
+// bypass the decoder and read raw bytes instead of decoded content.
+func (f *File) resetReader() {
+	f.reader = newReader(f.file, f.cfg)
 }
 
 func newReader(f *os.File, cfg *Config) *bufio.Reader {
