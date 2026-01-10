@@ -55,6 +55,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
+| [`health_check`][health_check]     | Configure the health check collector.             | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
@@ -65,6 +66,7 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [query_samples]: #query_samples
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
+[health_check]: #health_check
 
 ### `cloud_provider`
 
@@ -113,6 +115,12 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | `collect_interval`             | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio`            | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
 | `explain_plan_exclude_schemas` | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
+
+### `health_check`
+
+| Name               | Type       | Description                                          | Default | Required |
+|--------------------|------------|------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
 
 ## Example
 
