@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/go-kit/log"
@@ -26,10 +28,26 @@ const (
 
 const (
 	queryTextClause     = ", s.query"
+	waitEventTypeLock   = "Lock"
 	stateActive         = "active"
 	stateIdle           = "idle"
-	stateIdleTxnAborted = "idle in transaction (aborted)"
 	stateIdleTxn        = "idle in transaction"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+)
+
+const (
+	// Bounds for adaptive throttle caches keyed by queryid.
+	throttleCacheSize = 1000
+	// A higher value to prevent throttling from being too permissive due to TTL.
+	throttleCacheTTL = 1 * time.Hour
+
+	// Window for finalization rate calculation.
+	finalizationRateWindow = 5 * time.Minute
+
+	// Cache for emitted samples to avoid duplicates.
+	idleEmittedCacheSize = 1000
+	// A shorter TTL to emit continuous idle samples and allow detecting stale connections.
+	idleEmittedCacheTTL = 10 * time.Minute
 )
 
 const selectPgStatActivity = `
@@ -51,7 +69,6 @@ const selectPgStatActivity = `
 		s.state_change,
 		s.wait_event_type,
 		s.wait_event,
-		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
 		s.query_id
 		%s
@@ -67,6 +84,12 @@ const selectPgStatActivity = `
 			)
 		)
 		%s
+`
+
+const selectBlockingPIDs = `
+    SELECT pid, pg_blocking_pids(pid) 
+    FROM pg_stat_activity 
+    WHERE wait_event_type = 'Lock' AND pid != pg_backend_pid()
 `
 
 const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
@@ -103,6 +126,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	BaseThrottleInterval  time.Duration
 	ExcludeCurrentUser    bool
 }
 
@@ -122,6 +146,12 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
+	// adaptive throttling and burst controls
+	baseThrottleInterval         time.Duration
+	lastEmittedByQueryID         *expirable.LRU[int64, time.Time]
+	recentFinalizationsByQueryID *expirable.LRU[int64, []time.Time]
+	adaptiveBurstInterval        time.Duration
+	burstWindowUntil             time.Time
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -209,19 +239,19 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
-	const emittedCacheTTL = 10 * time.Minute
-
 	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		excludeCurrentUser:    args.ExcludeCurrentUser,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
+		dbConnection:                 args.DB,
+		collectInterval:              args.CollectInterval,
+		entryHandler:                 args.EntryHandler,
+		disableQueryRedaction:        args.DisableQueryRedaction,
+		excludeCurrentUser:           args.ExcludeCurrentUser,
+		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                      &atomic.Bool{},
+		samples:                      map[SampleKey]*SampleState{},
+		idleEmitted:                  expirable.NewLRU[SampleKey, struct{}](idleEmittedCacheSize, nil, idleEmittedCacheTTL),
+		baseThrottleInterval:         args.BaseThrottleInterval,
+		lastEmittedByQueryID:         expirable.NewLRU[int64, time.Time](throttleCacheSize, nil, throttleCacheTTL),
+		recentFinalizationsByQueryID: expirable.NewLRU[int64, []time.Time](throttleCacheSize, nil, throttleCacheTTL),
 	}, nil
 }
 
@@ -236,6 +266,11 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
 
+	if c.baseThrottleInterval < 30*time.Second {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with base throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.baseThrottleInterval))
+	}
+	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with base throttle interval: %s", c.baseThrottleInterval))
+
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
@@ -247,17 +282,41 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 			c.running.Store(false)
 		}()
 
-		ticker := time.NewTicker(c.collectInterval)
-
 		for {
-			if err := c.fetchQuerySample(c.ctx); err != nil {
+			loopStart := time.Now()
+			hasActive, err := c.fetchQuerySample(c.ctx)
+			if err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
+			}
+
+			elapsed := time.Since(loopStart)
+			interval := c.collectInterval
+			now := time.Now()
+			if hasActive {
+				s, window := computeBurstWindow(c.collectInterval, elapsed)
+				if now.Before(c.burstWindowUntil) && c.adaptiveBurstInterval > 0 {
+					// continue the current burst
+					interval = c.adaptiveBurstInterval
+					level.Debug(c.logger).Log("msg", "continuing the current burst window", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+				} else if window > s {
+					// start a new burst window
+					c.adaptiveBurstInterval = s
+					c.burstWindowUntil = now.Add(window)
+					level.Debug(c.logger).Log("msg", "starting a collection burst window while there are rows in active state", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+					interval = s
+				} else {
+					// don't start a new burst, use the observed latency as interval to avoid impacting database performance
+					c.adaptiveBurstInterval = 0
+					c.burstWindowUntil = time.Time{}
+					interval = s
+					level.Debug(c.logger).Log("msg", "using the observed latency as interval to avoid impacting database performance", "interval", s)
+				}
 			}
 
 			select {
 			case <-c.ctx.Done():
 				return
-			case <-ticker.C:
+			case <-time.After(interval):
 				// continue loop
 			}
 		}
@@ -275,7 +334,7 @@ func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, err error) {
 	queryTextField := ""
 	if c.disableQueryRedaction {
 		queryTextField = queryTextClause
@@ -288,12 +347,13 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludeCurrentUserClauseField)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
+		return false, fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 
 	defer rows.Close()
 
-	activeKeys := map[SampleKey]struct{}{}
+	var buffered []QuerySamplesInfo
+	hasLockWait := false
 
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
@@ -301,7 +361,47 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
+		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
+			hasLockWait = true
+		}
+		buffered = append(buffered, sample)
+	}
 
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("failed to iterate pg_stat_activity rows: %w", err)
+	}
+
+	// Enrich blocked_by_pids only when there are lock waits
+	blockedByPID := map[int]pq.Int64Array{}
+	if hasLockWait {
+		blockedRows, err := c.dbConnection.QueryContext(ctx, selectBlockingPIDs)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to query blocking pids", "err", err)
+		} else {
+			defer blockedRows.Close()
+			for blockedRows.Next() {
+				var pid int
+				var blocked pq.Int64Array
+				if err := blockedRows.Scan(&pid, &blocked); err != nil {
+					level.Error(c.logger).Log("msg", "failed to scan blocking pids row", "err", err)
+					continue
+				}
+				blockedByPID[pid] = blocked
+			}
+			if err := blockedRows.Err(); err != nil {
+				level.Error(c.logger).Log("msg", "failed to iterate blocking pids rows", "err", err)
+			}
+		}
+	}
+
+	activeKeys := map[SampleKey]struct{}{}
+
+	for _, sample := range buffered {
+		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
+			if blocked, ok := blockedByPID[sample.PID]; ok {
+				sample.BlockedByPIDs = blocked
+			}
+		}
 		key, procErr := c.processRow(sample)
 		if procErr != nil {
 			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
@@ -331,11 +431,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		continue
 	}
 
-	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
-		return err
-	}
-
 	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
 	for key, st := range c.samples {
 		if _, stillActive := activeKeys[key]; stillActive && !st.EndAt.Valid {
@@ -343,7 +438,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key)
 	}
-	return nil
+	return len(activeKeys) > 0, nil
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -366,7 +461,6 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.StateChange,
 		&sample.WaitEventType,
 		&sample.WaitEvent,
-		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
 	}
@@ -460,24 +554,53 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if state.EndAt.Valid {
 		ts = state.EndAt.Time.UnixNano()
 	}
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		ts,
-	)
 
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
+	// Adaptive throttling for query sample emissions
+	now := time.Now()
+	qid := state.LastRow.QueryID.Int64
+	isExempt := isThrottleExempt(state)
+
+	var perMinuteRate float64
+	if !isExempt {
+		window, _ := c.recentFinalizationsByQueryID.Get(qid)
+		cutoff := now.Add(-finalizationRateWindow)
+		cutoffIndex := sort.Search(len(window), func(j int) bool { return window[j].After(cutoff) })
+		window = append(window[cutoffIndex:], now)
+		c.recentFinalizationsByQueryID.Add(qid, window)
+		perMinuteRate = float64(len(window)) * float64(time.Minute) / float64(finalizationRateWindow)
+	}
+
+	shouldEmit := true
+	if !isExempt && c.baseThrottleInterval > 0 {
+		adaptiveThrottleInterval := computeAdaptiveThrottleInterval(c.baseThrottleInterval, perMinuteRate)
+		if last, ok := c.lastEmittedByQueryID.Get(qid); ok {
+			if now.Sub(last) < adaptiveThrottleInterval {
+				shouldEmit = false
+			}
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
+	}
+	if shouldEmit {
+		if !isExempt {
+			c.lastEmittedByQueryID.Add(qid, now)
+		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
+			OP_QUERY_SAMPLE,
+			sampleLabels,
+			ts,
 		)
+		for _, we := range state.tracker.WaitEvents() {
+			if we.WaitEventType == "" || we.WaitEvent == "" {
+				continue
+			}
+			waitEventLabels := c.buildWaitEventLabels(state, we)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				waitEventLabels,
+				we.LastTimestamp.UnixNano(),
+			)
+		}
 	}
 
 	delete(c.samples, key)
@@ -592,4 +715,72 @@ func isIdleState(state string) bool {
 		return true
 	}
 	return false
+}
+
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func isThrottleExempt(sample *SampleState) bool {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
+		return true
+	}
+	return false
+}
+
+// computeBurstWindow returns the burst interval s and the window duration W
+// for time-boxed burst polling, given the collection interval and the last
+// observed latency. W is bounded by 20*s to limit the number of burst polls.
+//
+// Rules:
+//   - s_base = clamp(CI/30, 50ms..300ms)
+//   - s = max(s_base, observedLatency)
+//   - W = min(CI/2 - 100ms)
+//   - N ≤ 20 ⇒ for a burst interval s, the window ≤ 20*s
+func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
+	s := time.Duration(float64(collectInterval) / 30.0)
+	if s < 50*time.Millisecond {
+		s = 50 * time.Millisecond
+	} else if s > 300*time.Millisecond {
+		s = 300 * time.Millisecond
+	}
+	if observedLatency > s {
+		s = observedLatency
+	}
+	guard := 100 * time.Millisecond
+	capWindow := collectInterval/2 - guard
+	if capWindow < 0 {
+		capWindow = 0
+	}
+
+	capWindow = min(capWindow, 20*s)
+	return s, capWindow
+}
+
+// computeAdaptiveThrottleInterval scales the base interval using a logarithmic factor derived
+// from the per-minute finalization rate. This provides gentle backoff at high rates,
+// avoiding excessive sampling:
+//
+//	factor = 1 + ceil(log10(max(1, per-minute-rate)))
+//	effective = baseThrottleInterval * factor
+//
+// If baseThrottleInterval is 0, adaptive throttling is disabled and 0 is returned.
+func computeAdaptiveThrottleInterval(baseThrottleInterval time.Duration, perMinuteRate float64) time.Duration {
+	if baseThrottleInterval <= 0 {
+		return 0
+	}
+	if perMinuteRate <= 1 {
+		return baseThrottleInterval
+	}
+	r := perMinuteRate
+	f := 1 + int(math.Ceil(math.Log10(r)))
+	if f < 1 {
+		f = 1
+	} else if f > 10 {
+		f = 10
+	}
+	return time.Duration(f) * baseThrottleInterval
 }
