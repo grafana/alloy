@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/atomic"
@@ -69,7 +70,7 @@ const (
 			index_name,
 			seq_in_index,
 			column_name,
-			expression,
+			%s
 			nullable,
 			non_unique,
 			index_type
@@ -78,6 +79,9 @@ const (
 		WHERE
 			table_schema = ? and table_name = ?
 		ORDER BY table_name, index_name, seq_in_index`
+
+	selectIndexExpression     = `expression,`
+	selectIndexExpressionNull = `NULL as expression,`
 
 	// Ignore 'PRIMARY' constraints, as they're already covered by the query above
 	selectForeignKeys = `
@@ -97,6 +101,7 @@ const (
 
 type SchemaDetailsArguments struct {
 	DB              *sql.DB
+	EngineVersion   semver.Version
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -109,6 +114,7 @@ type SchemaDetailsArguments struct {
 
 type SchemaDetails struct {
 	dbConnection    *sql.DB
+	engineVersion   semver.Version
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -167,6 +173,7 @@ type foreignKey struct {
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:    args.DB,
+		engineVersion:   args.EngineVersion,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
@@ -422,7 +429,14 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, schemaName 
 		return nil, err
 	}
 
-	idxRS, err := c.dbConnection.QueryContext(ctx, selectIndexNames, schemaName, tableName)
+	selectIndexNamesQuery := ""
+	if semver.MustParseRange("<8.0.13")(c.engineVersion) {
+		selectIndexNamesQuery = fmt.Sprintf(selectIndexNames, selectIndexExpressionNull)
+	} else {
+		selectIndexNamesQuery = fmt.Sprintf(selectIndexNames, selectIndexExpression)
+	}
+
+	idxRS, err := c.dbConnection.QueryContext(ctx, selectIndexNamesQuery, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query table indexes", "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
