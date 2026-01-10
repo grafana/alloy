@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.13.0](https://github.com/grafana/alloy/compare/v1.12.1...v1.13.0) (2026-01-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* `otelcol.exporter` > `sending_queue` > `batch` > `min_size` changed from `8192` to `2000` and `max_size` changed from `0` to `3000`
+
+### Features 🌟
+
+* Add missing configuration parameter `deployment_name_from_replicaset` to k8sattributes processor ([#5183](https://github.com/grafana/alloy/issues/5183)) ([b54ca77](https://github.com/grafana/alloy/commit/b54ca777eed56cbbd7f76ed84e71f7b7174747c5))
+* Add unexposed otel engine and extension to codebase and change build structure ([#5114](https://github.com/grafana/alloy/issues/5114)) ([6438176](https://github.com/grafana/alloy/commit/6438176d0451b2ba17feb553eb24f2efeb079310))
+* Change the defaults for `sending_queue` &gt; `batch` block inside `otelcol.exporter` components ([#5061](https://github.com/grafana/alloy/issues/5061)) ([714a2ed](https://github.com/grafana/alloy/commit/714a2ed6c57b3aa7172b8da194caf1fe8a724680))
+* **database_observability:** Add health_check collector to validate configuration ([#5115](https://github.com/grafana/alloy/issues/5115)) ([6d96740](https://github.com/grafana/alloy/commit/6d96740f7b758ce8ffa1872108ffacdbda99b276))
+* **database_observability:** Stop tracking own instrumentation queries ([#4991](https://github.com/grafana/alloy/issues/4991)) ([0b55557](https://github.com/grafana/alloy/commit/0b55557657fa3e9f1a3463444c372b6fdde4bcf2))
+* **loki.source.syslog:** Support cisco-specific syslog fields ([#5165](https://github.com/grafana/alloy/issues/5165)) ([3230ba0](https://github.com/grafana/alloy/commit/3230ba0560991c28e267e0f27c5f6ac3a2be5242))
+* **loki.source.syslog:** Support raw format ([#5140](https://github.com/grafana/alloy/issues/5140)) ([923d127](https://github.com/grafana/alloy/commit/923d127c50949f88a37ac808154240de0649df09))
+* **mixin:** Provide rendered mixin outputs ([#5118](https://github.com/grafana/alloy/issues/5118)) ([738b9fb](https://github.com/grafana/alloy/commit/738b9fb4e99595d5d202db9dbc89f71e95402ce0))
+* Strip comments from normalized sql text in `database_observability.postgres` ([#5005](https://github.com/grafana/alloy/issues/5005)) ([a58721a](https://github.com/grafana/alloy/commit/a58721a0aa8e076fc66508f22e3f8317cee933d1))
+
+
+### Bug Fixes 🐛
+
+* **database_observability:** Improve postgres version parsing for explain plans in database_observability component ([#5131](https://github.com/grafana/alloy/issues/5131)) ([23c7f37](https://github.com/grafana/alloy/commit/23c7f37afc25dabe267bb60d8b0ee0473f073e5b))
+* **deps:** Update npm dependencies ([#5190](https://github.com/grafana/alloy/issues/5190)) ([cd027e2](https://github.com/grafana/alloy/commit/cd027e2f23f2e6649154f46ab953ac840c956d3a))
+* Ensure the squid exporter wrapper properly brackets ipv6 addresses ([#5199](https://github.com/grafana/alloy/issues/5199)) ([ee23162](https://github.com/grafana/alloy/commit/ee2316252e6e0ee901b0ff57c55d6d07750d14ab))
+* **mixin:** Correct invalid queries in alloy logs dashboard  ([#5123](https://github.com/grafana/alloy/issues/5123)) ([ad8efd3](https://github.com/grafana/alloy/commit/ad8efd3511d3a64b9cd7aeb5d6c566b061c29918))
+* Only alert on cluster drift when cluster_name is set ([#5181](https://github.com/grafana/alloy/issues/5181)) ([8b6f056](https://github.com/grafana/alloy/commit/8b6f056e39f0348f5c7121e938d86d15a04a5e99))
+* Perform drain when file is deleted in tail package ([#5139](https://github.com/grafana/alloy/issues/5139)) ([2e48867](https://github.com/grafana/alloy/commit/2e48867c639c5170c547443f16227133d6c6f604))
+* Preserve meta labels in loki.source.podlogs ([#5097](https://github.com/grafana/alloy/issues/5097)) ([23d787c](https://github.com/grafana/alloy/commit/23d787c5c607a077dbb28dd382e6543aeee115fe))
+* Prevent panic in import.git when update fails ([#5198](https://github.com/grafana/alloy/issues/5198)) ([577a591](https://github.com/grafana/alloy/commit/577a591537aeae7dfd3758c30dc2980af622a415))
+* Show correct fallback alloy version instead of v1.13.0 ([#5110](https://github.com/grafana/alloy/issues/5110)) ([e2e96e9](https://github.com/grafana/alloy/commit/e2e96e95ff0dab600befbe63165e10eea096b968))
+* Skip explain plans which lookup individual records and return no rows  ([#5203](https://github.com/grafana/alloy/issues/5203)) ([b7c7cbb](https://github.com/grafana/alloy/commit/b7c7cbbf0a9542af8b89592b2ff011df8a2a362e))
+
 ## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
 
