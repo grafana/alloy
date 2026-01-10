@@ -61,11 +61,13 @@ You can use the following blocks with `faro.receiver`:
 | [`server`][server]                           | Configures the HTTP server.                          | no       |
 | `server` >  [`rate_limiting`][rate_limiting] | Configures rate limiting for the HTTP server.        | no       |
 | [`sourcemaps`][sourcemaps]                   | Configures sourcemap retrieval.                      | no       |
+| `sourcemaps` > [`cache`][cache]              | Configures sourcemap caching behavior.               | no       |
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
 
+[cache]: #cache
 [location]: #location
 [output]: #output
 [rate_limiting]: #rate_limiting
@@ -149,7 +151,7 @@ The `sourcemaps` block configures how to retrieve sourcemaps.
 Sourcemaps are then used to transform file and line information from minified code into the file and line information from the original source code.
 
 | Name                    | Type           | Description                                | Default | Required |
-|-------------------------|----------------|--------------------------------------------|---------|----------|
+| ----------------------- | -------------- | ------------------------------------------ | ------- | -------- |
 | `download`              | `bool`         | Whether to download sourcemaps.            | `true`  | no       |
 | `download_from_origins` | `list(string)` | Which origins to download sourcemaps from. | `["*"]` | no       |
 | `download_timeout`      | `duration`     | Timeout when downloading sourcemaps.       | `"1s"`  | no       |
@@ -167,6 +169,26 @@ Setting `download_timeout` to `"0s"` disables timeouts.
 
 To retrieve sourcemaps from disk instead of the network, specify one or more [`location` blocks][location].
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
+
+#### `cache`
+
+The `cache` block configures sourcemap caching behavior.
+All cache settings are optional with sensible defaults.
+
+| Name                     | Type       | Description                                                                        | Default | Required |
+| ------------------------ | ---------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `cleanup_check_interval` | `duration` | How often cached sourcemaps are checked for cleanup.                               | `"30s"` | no       |
+| `error_cleanup_interval` | `duration` | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
+| `ttl`                    | `duration` | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
+
+By default, sourcemaps are held in memory indefinitely.
+You can set `ttl` to clear sourcemaps that aren't used during the specified duration.
+
+By default, if there's an error while downloading or parsing a sourcemap, the error is cached.
+After the duration specified by `error_cleanup_interval`, all errors are cleared from the cache.
+
+By default, cached sourcemaps are checked for cleanup every 30 seconds.
+You can modify the frequency by setting the `cleanup_check_interval` argument.
 
 #### `location`
 
@@ -223,7 +245,7 @@ The template value is replaced with the release value provided by the [Faro Web 
 * `faro_receiver_request_message_bytes` (histogram): Size (in bytes) of HTTP requests received from clients.
 * `faro_receiver_response_message_bytes` (histogram): Size (in bytes) of HTTP responses sent to clients.
 * `faro_receiver_inflight_requests` (gauge): Current number of inflight requests.
-* `faro_receiver_sourcemap_cache_size` (counter): Number of items in sourcemap cache per origin.
+* `faro_receiver_sourcemap_cache_size` (gauge): Number of items in sourcemap cache per origin.
 * `faro_receiver_sourcemap_downloads_total` (counter): Total number of sourcemap downloads performed per origin and status.
 * `faro_receiver_sourcemap_file_reads_total` (counter): Total number of sourcemap retrievals using the filesystem per origin and status.
 * `faro_receiver_rate_limiter_active_app` (gauge): Number of active applications with rate limiters. Inactive limiters are cleaned up every 10 minutes.
