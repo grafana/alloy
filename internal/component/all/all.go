@@ -141,6 +141,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"        // Import prometheus.exporter.elasticsearch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/gcp"                  // Import prometheus.exporter.gcp
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/github"               // Import prometheus.exporter.github
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/ipmi"                 // Import prometheus.exporter.ipmi
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/kafka"                // Import prometheus.exporter.kafka
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/memcached"            // Import prometheus.exporter.memcached
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/mongodb"              // Import prometheus.exporter.mongodb

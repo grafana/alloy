@@ -118,7 +118,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.8.7
 	github.com/oklog/run v1.2.0
-	github.com/olekukonko/tablewriter v0.0.5
+	github.com/olekukonko/tablewriter v1.0.9
 	github.com/oliver006/redis_exporter v1.74.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.139.0
@@ -1005,6 +1005,15 @@ require (
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
+)
+
+require github.com/bougou/go-ipmi v0.8.0
+
+require (
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/olekukonko/errors v1.1.0 // indirect
+	github.com/olekukonko/ll v0.0.9 // indirect
 )
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
