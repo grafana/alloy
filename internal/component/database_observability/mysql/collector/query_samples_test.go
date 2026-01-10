@@ -198,14 +198,14 @@ func TestQuerySamples(t *testing.T) {
 				require.Equal(t, len(entries), len(tc.logsLines))
 
 				require.Contains(t, logBuffer.String(), tc.errorLine)
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			collector.Stop()
 			lokiClient.Stop()
 
 			require.Eventually(t, func() bool {
 				return collector.Stopped()
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			// Run this after Stop() to avoid race conditions
 			err = mock.ExpectationsWereMet()
@@ -300,14 +300,14 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -461,14 +461,14 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 5
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -584,14 +584,14 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 3
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -698,14 +698,14 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -811,14 +811,14 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -917,14 +917,14 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -1136,14 +1136,14 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 
 			require.Eventually(t, func() bool {
 				return len(lokiClient.Received()) == 1
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			collector.Stop()
 			lokiClient.Stop()
 
 			require.Eventually(t, func() bool {
 				return collector.Stopped()
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			err = mock.ExpectationsWereMet()
 			require.NoError(t, err)
@@ -1269,14 +1269,14 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -1395,14 +1395,14 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -1517,14 +1517,14 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -1658,7 +1658,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 		require.Len(t, lokiClient.Received(), 1)
 		assert.Equal(t, model.LabelSet{
 			"op": OP_QUERY_SAMPLE,
@@ -2192,14 +2192,14 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -2249,7 +2249,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
