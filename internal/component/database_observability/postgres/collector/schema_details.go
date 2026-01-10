@@ -213,9 +213,11 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
-type database string
-type schema string
-type table string
+type (
+	database string
+	schema   string
+	table    string
+)
 
 // TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
 type TableRegistry struct {

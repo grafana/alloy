@@ -2,6 +2,7 @@ package database_observability
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/DataDog/go-sqllexer"
@@ -69,4 +70,102 @@ func ContainsReservedKeywords(query string, reservedWords map[string]ExplainRese
 	}
 
 	return false, nil
+}
+
+// RedactParenthesizedValues redacts literal values within parentheses to protect PII.
+// For "(column)=(value)" patterns, only the value part is redacted: "(column)=(?)".
+// Uses the SQL lexer's obfuscator to handle complex PostgreSQL syntax.
+func RedactParenthesizedValues(text string) string {
+	if text == "" {
+		return text
+	}
+
+	result := strings.Builder{}
+	result.Grow(len(text))
+	obfuscator := sqllexer.NewObfuscator()
+	i := 0
+
+	for i < len(text) {
+		if text[i] == '(' {
+			depth := 1
+			j := i + 1
+			for j < len(text) && depth > 0 {
+				switch text[j] {
+				case '(':
+					depth++
+				case ')':
+					depth--
+				}
+				j++
+			}
+
+			if depth == 0 && j < len(text) && text[j] == '=' && j+1 < len(text) && text[j+1] == '(' {
+				result.WriteString(text[i:j])
+				result.WriteByte('=')
+
+				k := j + 2
+				depth = 1
+				for k < len(text) && depth > 0 {
+					switch text[k] {
+					case '(':
+						depth++
+					case ')':
+						depth--
+					}
+					k++
+				}
+
+				if depth == 0 {
+					valuePart := text[j+1 : k]
+					obfuscated := obfuscator.Obfuscate(valuePart)
+					result.WriteString(obfuscated)
+					i = k
+					continue
+				}
+			}
+
+			if depth == 0 {
+				result.WriteString("(?)")
+				i = j
+			} else {
+				result.WriteByte(text[i])
+				i++
+			}
+		} else {
+			result.WriteByte(text[i])
+			i++
+		}
+	}
+
+	return result.String()
+}
+
+// RedactSQLWithinMixedText finds and redacts SQL statements within mixed text that could contain PII.
+func RedactSQLWithinMixedText(text string) string {
+	if text == "" {
+		return text
+	}
+
+	sqlKeywords := []string{
+		"SELECT", "INSERT", "UPDATE", "DELETE", "MERGE",
+		"WITH", "COPY", "DO", "CALL", "EXECUTE", "PREPARE",
+		"CREATE USER", "CREATE ROLE", "ALTER USER", "ALTER ROLE", "DROP USER", "DROP ROLE",
+		"GRANT", "REVOKE", "SET", "VALUES",
+	}
+
+	result := text
+
+	for _, keyword := range sqlKeywords {
+		escapedKeyword := strings.ReplaceAll(keyword, " ", `\s+`)
+		pattern := fmt.Sprintf(`(?i)\b%s\b[^;]*(?:;|$)`, escapedKeyword)
+		re := regexp.MustCompile(pattern)
+
+		matches := re.FindAllString(result, -1)
+		for _, match := range matches {
+			redacted := RedactSql(match)
+			result = strings.Replace(result, match, redacted, 1)
+		}
+	}
+
+	return result
 }
