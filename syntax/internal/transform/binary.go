@@ -1,4 +1,4 @@
-package vm
+package transform
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, error) {
+func BinaryOp(lhs value.Value, op token.Token, rhs value.Value) (value.Value, error) {
 	// Original parameters of lhs and rhs used for returning errors.
 	var (
 		origLHS = lhs
