@@ -331,6 +331,7 @@ func (f *File) reopen(truncated bool) error {
 		// file, so we start from the beginning.
 		sig, err := newSignatureFromFile(file)
 		if err != nil {
+			file.Close()
 			return err
 		}
 
@@ -343,6 +344,7 @@ func (f *File) reopen(truncated bool) error {
 		f.signature = sig
 		f.file = file
 		if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
+			file.Close()
 			return err
 		}
 
