@@ -116,18 +116,18 @@ When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every r
 
 The attributes in `database_name_attributes` are tried in order, selecting the first match.
 
-`virtual_node_peer_attributes` is useful when an OTel-instrumented client sends a request to a service that is not OTel-instrumented.
-Normally, `otelcol.connector.servicegraph` wouldn't be able to pair the client span with the service span
+`virtual_node_peer_attributes` is useful when an OTel-instrumented client sends a request to a service that isn't OTel-instrumented.
+Normally, `otelcol.connector.servicegraph` can't pair the client span with the server span.
 When an edge expires, `otelcol.connector.servicegraph` checks if it has peer attributes listed in `virtual_node_peer_attributes`.
-If an attribute is found, the metrics are then aggregated with a virtual node.
+If it finds an attribute, `otelcol.connector.servicegraph` aggregates the metrics with a virtual node.
 
 If no client span is found and `virtual_node_peer_attributes` is not an empty list,
 then the service span will be paired with a virtual node called `client="user"`.
-This can be useful when a client that is not OTel-instrumented (like a web browser) sends a request to an OTel-instrumented service. 
-Without a virtual node, normally the client span will be missing, and the server span will expire without being paired.
+This is useful when a client that isn't OTel-instrumented (like a web browser) sends a request to an OTel-instrumented service.
+Without a virtual node, the client span is missing, and the server span expires without being paired.
 
-Attributes configured in the `virtual_node_peer_attributes` argument are ordered by priority. An empty list disables the creation of a virtual node.
-The attributes are tried in order, with earlier attributes having higher priority.
+Attributes configured in the `virtual_node_peer_attributes` argument are ordered by priority, with earlier attributes having higher priority.
+An empty list disables the creation of a virtual node.
 
 [Span Kind]: https://opentelemetry.io/docs/concepts/signals/traces/#span-kind
 
