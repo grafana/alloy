@@ -22,7 +22,7 @@ Unreleased
 
 ### Enhancements
 
-- Update to Grafana Alloy v1.12.2. (@jharvey10)
+- Update to Grafana Alloy v1.12.1. (@jharvey10)
 
 1.5.0 (2025-12-01)
 ----------
