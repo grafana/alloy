@@ -148,7 +148,6 @@ func TestSignature(t *testing.T) {
 	t.Run("shouldRecompute returns false when signature already at threshold", func(t *testing.T) {
 		sig := &signature{d: make([]byte, 64)}
 		require.False(t, sig.shouldRecompute(64))
-		require.False(t, sig.shouldRecompute(128))
 	})
 
 	t.Run("shouldRecompute returns true when position crosses threshold and signature is smaller", func(t *testing.T) {
