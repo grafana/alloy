@@ -32,9 +32,6 @@ type CallbackManager interface {
 type DebugDataPublisher interface {
 	// Publish sends debugging data for a given componentID if a least one consumer is listening for debugging data for the given componentID.
 	PublishIfActive(data Data)
-
-	// IsActive returns whether debuging is enabled and there is at least one consumer listening for debugging data for the given component ID.
-	IsActive(cid ComponentID) bool
 }
 
 type liveDebugging struct {
@@ -53,18 +50,6 @@ func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
 		callbacks: make(map[ComponentID]map[CallbackID]func(Data)),
 	}
-}
-
-func (s *liveDebugging) IsActive(cid ComponentID) bool {
-	s.loadMut.RLock()
-	defer s.loadMut.RUnlock()
-
-	if !s.enabled {
-		return false
-	}
-
-	callbacks, ok := s.callbacks[cid]
-	return ok && len(callbacks) > 0
 }
 
 func (s *liveDebugging) PublishIfActive(data Data) {

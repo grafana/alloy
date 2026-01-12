@@ -53,10 +53,6 @@ func (l liveDebuggingWriter) pushData(thunk func() string) {
 
 // OnNewMessage implements syslogtarget.DebugListener.
 func (l *liveDebuggingWriter) OnNewMessage(e syslogtarget.NewMessageDebugEvent) {
-	if !l.pub.IsActive(l.componentID) {
-		return
-	}
-
 	l.pushData(func() string {
 		sb := &strings.Builder{}
 		sb.Grow(1 << 11) // 2 KiB
