@@ -454,7 +454,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
-		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
+		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
 			DB:             c.dbConnection,
 			DSN:            string(c.args.DataSourceName),
 			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
