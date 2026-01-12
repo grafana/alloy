@@ -34,7 +34,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 
-The following collectors are configurable:
+The following collectors are configurable via `enable_collectors` and `disable_collectors`:
 
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
@@ -42,6 +42,9 @@ The following collectors are configurable:
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
 | `explain_plans`  | Collect query explain plans.                                          | yes                |
+
+The `error_logs` collector is always active and processes PostgreSQL error logs in JSON format that are forwarded to it via the `forward_to` parameter.
+It does not need to be explicitly enabled.
 
 ## Blocks
 
@@ -55,6 +58,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
+| [`error_logs`][error_logs]         | Configure the error logs collector.               | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
@@ -65,6 +69,7 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [query_samples]: #query_samples
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
+[error_logs]: #error_logs
 
 ### `cloud_provider`
 
@@ -114,6 +119,28 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | `per_collect_ratio`            | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
 | `explain_plan_exclude_schemas` | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
 
+### `error_logs`
+
+The `error_logs` collector is always active and processes PostgreSQL error logs in JSON format (requires `log_destination = 'jsonlog'` in PostgreSQL configuration).
+It receives log entries through the component's `forward_to` parameter, extracts error information, maps SQLSTATE codes to human-readable error names, and tracks metrics by error type and severity.
+
+Unlike other collectors, `error_logs` does not need to be enabled via `enable_collectors` - it automatically processes any PostgreSQL JSON logs that are forwarded to the component.
+
+By default, SQL statements and Personally Identifiable Information (PII) in error log fields are redacted to protect sensitive data.
+This includes:
+- SQL literals in `statement` and `internal_query` fields
+- Data values in `detail` and `context` fields (such as constraint violations, key values, and row data)
+- Parenthesized values in error messages (e.g., `Key (id)=(123)` becomes `Key (id)=(?)`)
+
+| Name                      | Type   | Description                                                                                         | Default | Required |
+|---------------------------|--------|-----------------------------------------------------------------------------------------------------|---------|----------|
+| `disable_query_redaction` | `bool` | Disable redaction of SQL queries and PII in error logs. Use with caution in production environments. | `false` | no       |
+
+{{< admonition type="warning" >}}
+Setting `disable_query_redaction` to `true` will expose SQL query parameters, constraint values, and other potentially sensitive information in error logs.
+Only enable this in non-production environments or when you are certain the logs do not contain sensitive data.
+{{< /admonition >}}
+
 ## Example
 
 ```alloy
@@ -128,6 +155,11 @@ database_observability.postgres "orders_db" {
     aws {
       arn = "your-rds-db-arn"
     }
+  }
+
+  // error_logs collector is always active - configure it here
+  error_logs {
+    disable_query_redaction = false // Recommended: Keep redaction enabled in production
   }
 }
 

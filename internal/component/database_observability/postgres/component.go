@@ -71,6 +71,7 @@ type Arguments struct {
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+	ErrorLogsArguments     ErrorLogsArguments     `alloy:"error_logs,block,optional"`
 }
 
 type CloudProvider struct {
@@ -117,12 +118,25 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 	},
+	ErrorLogsArguments: ErrorLogsArguments{
+		DisableQueryRedaction: false,
+	},
 }
 
 type ExplainPlanArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+}
+
+// ErrorLogsArguments configures the error_logs collector.
+// The error_logs collector processes PostgreSQL error logs in JSON format.
+type ErrorLogsArguments struct {
+	// DisableQueryRedaction controls whether SQL queries and PII in error logs are redacted.
+	// When false (default), sensitive data such as SQL literals, constraint values, and
+	// parenthesized values are replaced with placeholders to protect PII.
+	// Set to true only in non-production environments or when logs contain no sensitive data.
+	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -138,7 +152,8 @@ func (a *Arguments) Validate() error {
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets           []discovery.Target `alloy:"targets,attr"`
+	ErrorLogsReceiver loki.LogsReceiver  `alloy:"error_logs_receiver,attr,optional"`
 }
 
 var (
@@ -167,6 +182,9 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+
+	// Error logs receiver (exported if error_logs collector is enabled)
+	errorLogsReceiver loki.LogsReceiver
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -175,13 +193,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:              opts,
+		args:              args,
+		receivers:         args.ForwardTo,
+		handler:           loki.NewLogsReceiver(),
+		registry:          prometheus.NewRegistry(),
+		healthErr:         atomic.NewString(""),
+		openSQL:           openFn,
+		errorLogsReceiver: loki.NewLogsReceiver(),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -317,9 +336,14 @@ func (c *Component) Update(args component.Arguments) error {
 			targets = append(targets, builder.Target())
 		}
 	}
-	c.opts.OnStateChange(Exports{
-		Targets: targets,
-	})
+
+	// Build exports
+	exports := Exports{
+		Targets:           targets,
+		ErrorLogsReceiver: c.errorLogsReceiver, // Always export (initialized in New)
+	}
+
+	c.opts.OnStateChange(exports)
 
 	for _, collector := range c.collectors {
 		collector.Stop()
@@ -462,6 +486,25 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, epCollector)
+	}
+
+	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
+		Receiver:              c.errorLogsReceiver,
+		EntryHandler:          entryHandler,
+		Logger:                c.opts.Logger,
+		InstanceKey:           c.instanceKey,
+		SystemID:              systemID,
+		Registry:              c.registry,
+		DisableQueryRedaction: c.args.ErrorLogsArguments.DisableQueryRedaction,
+	})
+	if err != nil {
+		logStartError(collector.ErrorLogsCollector, "create", err)
+	} else {
+		if err := elCollector.Start(context.Background()); err != nil {
+			logStartError(collector.ErrorLogsCollector, "start", err)
+		} else {
+			c.collectors = append(c.collectors, elCollector)
+		}
 	}
 
 	if len(startErrors) > 0 {
