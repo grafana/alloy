@@ -128,6 +128,8 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 ### `queue_config`
 
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 The optional `queue_config` block configures how the endpoint queues batches of logs sent to Loki.
 
 The following arguments are supported:
