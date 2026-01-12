@@ -65,11 +65,9 @@ type File struct {
 	cfg    *Config
 	logger log.Logger
 
-	// protects file, reader, and lastOffset.
-	mu     sync.Mutex
-	file   *os.File
-	reader *bufio.Reader
-
+	mu         sync.Mutex
+	file       *os.File
+	reader     *bufio.Reader
 	lastOffset int64
 	signature  *signature
 
