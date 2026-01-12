@@ -3,9 +3,10 @@ name: Backport PR
 on:
   # SECURITY: This workflow uses workflow_run to create pull requests and write commits.
   #
-  # - The artifact only contains: PR number (integer) and labels (JSON array)
+  # - The artifact only contains the PR number (integer)
   # - The default branch is checked out, not PR code
   # - The backport tool uses PR number to fetch commits via API, not execute code
+  # - PR state and labels are verified via API before processing
   #
   # zizmor: ignore[dangerous-triggers] see above
   workflow_run:
@@ -51,15 +52,47 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ steps.app-token.outputs.token }}
 
-      - name: Read PR info 📖
-        id: pr-info
+      - name: Read PR number 📖
+        id: pr-number
         run: |
           PR_NUMBER=$(cat backport-info/pr_number)
-          LABELS=$(cat backport-info/labels)
           echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "labels=${LABELS}" >> "$GITHUB_OUTPUT"
           echo "PR number: ${PR_NUMBER}"
-          echo "Labels: ${LABELS}"
+
+      - name: Verify PR is merged and get backport labels 🏷️
+        id: pr-info
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            if (!pr.merged) {
+              core.setFailed(`PR #${prNumber} is not merged`);
+              return;
+            }
+
+            console.log(`PR #${prNumber} is merged`);
+
+            const backportLabels = pr.labels
+              .map(l => l.name)
+              .filter(name => name.startsWith('backport/'));
+
+            if (backportLabels.length === 0) {
+              core.setFailed(`PR #${prNumber} has no backport labels`);
+              return;
+            }
+
+            console.log(`Backport labels: ${backportLabels.join(', ')}`);
+            core.setOutput('labels', JSON.stringify(backportLabels));
 
       - name: Checkout repository 🛎️
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4
@@ -80,7 +113,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
           LABELS: ${{ steps.pr-info.outputs.labels }}
-          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
         run: |
           cd tools
 
