@@ -201,7 +201,5 @@ func checkMonitoringUserPrivileges(ctx context.Context, db *sql.DB) healthCheckR
 		r.err = fmt.Errorf("iterate pg_stat_statements: %w", err)
 	}
 
-	r.result = true
-
 	return r
 }
