@@ -19,7 +19,7 @@ const signatureSize = 1024
 
 // signatureThresholds defines the byte offsets at which we should recompute the signature
 // as the file grows. This allows us to progressively build a more complete signature.
-var signatureThresholds = []int{64, 128, 256, 512}
+var signatureThresholds = []int{64, 128, 256, 512, signatureSize}
 
 // newSignatureFromFile reads up to signatureSize bytes from the beginning of the file
 // to create a signature. If the file is smaller, the signature will be incomplete.
