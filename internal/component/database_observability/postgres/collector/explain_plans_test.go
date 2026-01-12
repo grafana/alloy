@@ -2260,7 +2260,7 @@ func TestNewExplainPlan(t *testing.T) {
 		pre17semver, err := semver.ParseTolerant(pre17ver)
 		require.NoError(t, err)
 
-		args := ExplainPlanArguments{
+		args := ExplainPlansArguments{
 			DB:              db,
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			ScrapeInterval:  time.Minute,
@@ -2291,7 +2291,7 @@ func TestNewExplainPlan(t *testing.T) {
 	})
 
 	t.Run("version with trailing characters from docker image", func(t *testing.T) {
-		args := ExplainPlanArguments{
+		args := ExplainPlansArguments{
 			DBVersion: "16.10 (Debian 16.10-1.pgdg13+1)",
 		}
 
@@ -2304,7 +2304,7 @@ func TestNewExplainPlan(t *testing.T) {
 	})
 
 	t.Run("version with trailing characters from percona helm", func(t *testing.T) {
-		args := ExplainPlanArguments{
+		args := ExplainPlansArguments{
 			DBVersion: "17.7 - Percona Server for PostgreSQL 17.7.1",
 		}
 
@@ -2318,12 +2318,12 @@ func TestNewExplainPlan(t *testing.T) {
 }
 
 func TestExplainPlan_Name(t *testing.T) {
-	explainPlan := &ExplainPlan{}
+	explainPlan := &ExplainPlans{}
 	assert.Equal(t, ExplainPlanCollector, explainPlan.Name())
 }
 
 func TestExplainPlan_Stopped(t *testing.T) {
-	explainPlan := &ExplainPlan{
+	explainPlan := &ExplainPlans{
 		running: atomic.NewBool(false),
 	}
 	assert.True(t, explainPlan.Stopped())
@@ -2514,7 +2514,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			explainPlan := &ExplainPlan{
+			explainPlan := &ExplainPlans{
 				dbConnection:       db,
 				dbVersion:          pre17ver,
 				queryCache:         make(map[string]*queryInfo),
@@ -2554,7 +2554,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			explainPlan := &ExplainPlan{
+			explainPlan := &ExplainPlans{
 				dbConnection:       db,
 				dbVersion:          post17ver,
 				queryCache:         make(map[string]*queryInfo),
@@ -2594,7 +2594,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			explainPlan := &ExplainPlan{
+			explainPlan := &ExplainPlans{
 				dbConnection: db,
 				dbVersion:    post17ver,
 				logger:       logger,
@@ -2620,7 +2620,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			explainPlan := &ExplainPlan{
+			explainPlan := &ExplainPlans{
 				dbConnection: db,
 				dbVersion:    post17ver,
 				logger:       logger,
@@ -2647,7 +2647,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			explainPlan := &ExplainPlan{
+			explainPlan := &ExplainPlans{
 				dbConnection: db,
 				dbVersion:    post17ver,
 				logger:       logger,
@@ -2674,7 +2674,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		explainPlan := &ExplainPlan{
+		explainPlan := &ExplainPlans{
 			dbConnection: db,
 			dbVersion:    pre17ver,
 			logger:       logger,
@@ -2740,7 +2740,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	post17ver, err := semver.ParseTolerant("17.0")
 	require.NoError(t, err)
 
-	explainPlan := &ExplainPlan{
+	explainPlan := &ExplainPlans{
 		dbConnection:        db,
 		dbConnectionFactory: defaultDbConnectionFactory,
 		dbDSN:               "postgres://user:pass@host:1234/database",
@@ -2779,7 +2779,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		t.Run("skips truncated queries", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			explainPlan = &ExplainPlan{
+			explainPlan = &ExplainPlans{
 				dbConnection:        db,
 				dbConnectionFactory: defaultDbConnectionFactory,
 				dbDSN:               "postgres://user:pass@host:1234/database",
@@ -2822,7 +2822,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		t.Run("skips non-select queries", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			explainPlan = &ExplainPlan{
+			explainPlan = &ExplainPlans{
 				dbConnection:        db,
 				dbConnectionFactory: defaultDbConnectionFactory,
 				dbDSN:               "postgres://user:pass@host:1234/database",
@@ -2886,7 +2886,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				Mock:               &mock,
 				InstantiationCount: 0,
 			}
-			explainPlan = &ExplainPlan{
+			explainPlan = &ExplainPlans{
 				dbConnection:        db,
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
@@ -2953,7 +2953,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				Mock:               &mock,
 				InstantiationCount: 0,
 			}
-			explainPlan = &ExplainPlan{
+			explainPlan = &ExplainPlans{
 				dbConnection:        db,
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
@@ -3020,7 +3020,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				Mock:               &mock,
 				InstantiationCount: 0,
 			}
-			explainPlan = &ExplainPlan{
+			explainPlan = &ExplainPlans{
 				dbConnection:        db,
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
