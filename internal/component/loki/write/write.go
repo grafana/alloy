@@ -2,6 +2,7 @@ package write
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -99,6 +100,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts: o,
 	}
 
+	if err := validateConfigStabilityLevel(o, args); err != nil {
+		return nil, err
+	}
+
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
 	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
@@ -150,6 +155,10 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
+
+	if err := validateConfigStabilityLevel(c.opts, newArgs); err != nil {
+		return err
+	}
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -210,4 +219,14 @@ func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) l
 		e.Labels = externalLabels.Merge(e.Labels)
 		return e
 	})
+}
+
+func validateConfigStabilityLevel(o component.Options, args Arguments) error {
+	canUseExperimentalConfig := o.MinStability.Permits(featuregate.StabilityExperimental)
+	for _, e := range args.Endpoints {
+		if e.QueueConfig != defaultQueueConfig && !canUseExperimentalConfig {
+			return errors.New("changing queue_config requires stability.level flag to be experimental")
+		}
+	}
+	return nil
 }

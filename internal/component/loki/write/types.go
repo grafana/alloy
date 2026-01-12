@@ -77,13 +77,15 @@ type QueueConfig struct {
 	DrainTimeout time.Duration    `alloy:"drain_timeout,attr,optional"`
 }
 
+var defaultQueueConfig = QueueConfig{
+	Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
+	MinShards:    1,
+	DrainTimeout: 15 * time.Second,
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (q *QueueConfig) SetToDefault() {
-	*q = QueueConfig{
-		Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
-		MinShards:    1,
-		DrainTimeout: 15 * time.Second,
-	}
+	*q = defaultQueueConfig
 }
 
 func (args Arguments) convertEndpointConfigs() []client.Config {
