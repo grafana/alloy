@@ -132,4 +132,41 @@ func TestSignature(t *testing.T) {
 		sig2 := &signature{d: []byte("hi")}
 		require.False(t, sig1.equal(sig2))
 	})
+
+	t.Run("shouldRecompute returns false for completed signature", func(t *testing.T) {
+		sig := &signature{d: make([]byte, signatureSize)}
+		require.False(t, sig.shouldRecompute(2000))
+		require.False(t, sig.shouldRecompute(100))
+	})
+
+	t.Run("shouldRecompute returns false when position is before any threshold", func(t *testing.T) {
+		sig := &signature{d: []byte("small")}
+		require.False(t, sig.shouldRecompute(10))
+		require.False(t, sig.shouldRecompute(63))
+	})
+
+	t.Run("shouldRecompute returns false when signature already at threshold", func(t *testing.T) {
+		sig := &signature{d: make([]byte, 64)}
+		require.False(t, sig.shouldRecompute(64))
+		require.False(t, sig.shouldRecompute(128))
+	})
+
+	t.Run("shouldRecompute returns true when position crosses threshold and signature is smaller", func(t *testing.T) {
+		sig := &signature{d: []byte("small")}
+		require.True(t, sig.shouldRecompute(64))
+		require.True(t, sig.shouldRecompute(65))
+		require.True(t, sig.shouldRecompute(128))
+	})
+
+	t.Run("shouldRecompute returns true for threshold 256 when signature is 128 bytes", func(t *testing.T) {
+		sig := &signature{d: make([]byte, 128)}
+		require.False(t, sig.shouldRecompute(128))
+		require.True(t, sig.shouldRecompute(256))
+	})
+
+	t.Run("shouldRecompute returns true for threshold 1024 when signature is 512 bytes", func(t *testing.T) {
+		sig := &signature{d: make([]byte, 512)}
+		require.False(t, sig.shouldRecompute(512))
+		require.True(t, sig.shouldRecompute(1024))
+	})
 }
