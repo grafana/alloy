@@ -2,6 +2,7 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -150,9 +151,9 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	}
 
 	// Try as a commit SHA
-	commit, _, err := c.api.Git.GetCommit(ctx, c.owner, c.repo, ref)
+	commit, err := c.GetCommit(ctx, ref)
 	if err == nil {
-		return commit.GetSHA(), nil
+		return *commit.SHA, nil
 	}
 
 	return "", fmt.Errorf("could not resolve ref: %s", ref)
@@ -381,22 +382,44 @@ func (c *Client) GetCommit(ctx context.Context, sha string) (*github.RepositoryC
 	return commit, nil
 }
 
+// GraphQL executes a GraphQL query against the GitHub API.
+// The result parameter should be a pointer to a struct that will be decoded from the response.
+func (c *Client) GraphQL(ctx context.Context, query string, variables map[string]any, result any) error {
+	reqBody := map[string]any{
+		"query":     query,
+		"variables": variables,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("marshaling graphql request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("creating graphql request: %w", err)
+	}
+
+	// Get the HTTP client from the underlying go-github client (has auth configured)
+	httpClient := c.api.Client()
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("executing graphql request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("graphql request failed with status %d", resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("decoding graphql response: %w", err)
+	}
+
+	return nil
+}
+
 // IsBot checks if a username appears to be a bot account.
 func IsBot(username string) bool {
 	return strings.HasSuffix(username, "[bot]") || strings.HasSuffix(username, "-bot") || username == "Copilot"
-}
-
-// ParseUsernameFromEmail extracts a GitHub username from a noreply email.
-// Handles formats: "user@users.noreply.github.com" and "12345+user@users.noreply.github.com"
-func ParseUsernameFromEmail(email string) string {
-	const suffix = "@users.noreply.github.com"
-	if !strings.HasSuffix(email, suffix) {
-		return ""
-	}
-	local := strings.TrimSuffix(email, suffix)
-	// Handle "12345+username" format
-	if _, after, ok := strings.Cut(local, "+"); ok {
-		return after
-	}
-	return local
 }
