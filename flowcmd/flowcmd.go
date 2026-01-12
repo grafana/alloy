@@ -1,10 +1,11 @@
-package main
+package flowcmd
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-
+	"github.com/grafana/alloy"
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
 
 	// Register Prometheus SD components
 	_ "github.com/grafana/alloy/internal/loki/promtail/discovery/consulagent"
@@ -25,12 +26,17 @@ func init() {
 	// If the build version wasn't set by the build process, we'll set it based
 	// on the version in .release-please-manifest.json.
 	if build.Version == "" || build.Version == "v0.0.0" {
-		build.Version = fallbackVersion()
+		build.Version = alloy.FallbackVersion()
 	}
 
 	prometheus.MustRegister(build.NewCollector("alloy"))
 }
 
-func main() {
-	alloycli.Run()
+// RootCommand exposes the root Cobra command constructed by the internal alloy CLI.
+func RootCommand() *cobra.Command {
+	return alloycli.Command()
+}
+
+func RunCommand() *cobra.Command {
+	return alloycli.RunCommand()
 }
