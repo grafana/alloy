@@ -155,7 +155,7 @@ local filename = 'alloy-loki.json';
 
     // Loki write entries dropped
     (
-      panel.new(title='Bytes dropped in $cluster', type='timeseries') +
+      panel.new(title='Entries dropped in $cluster', type='timeseries') +
       panel.withDescription(|||
         Entries dropped per second.
       |||) +
