@@ -30,11 +30,13 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 
 	sig, err := newSignatureFromFile(f)
 	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
 	// NOTE: we always need to seek because newSignatureFromFile will read from file.
 	if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
+		f.Close()
 		return nil, err
 	}
 
