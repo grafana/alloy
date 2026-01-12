@@ -82,7 +82,7 @@ func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarg
 
 			for _, m := range matches {
 				if exclude != "" {
-					if match, _ := doublestar.PathMatch(exclude, m); match {
+					if match, _ := doublestar.PathMatch(filepath.FromSlash(exclude), m); match {
 						continue
 					}
 				}
