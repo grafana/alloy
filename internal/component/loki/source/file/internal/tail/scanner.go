@@ -10,48 +10,52 @@ import (
 	"golang.org/x/text/encoding"
 )
 
-func newScanner(f *os.File, offset int64, enc encoding.Encoding) (*scanner, error) {
+func newScanner(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
+	if offset == 0 {
+		offset = skipBOM(f)
+	}
+
 	var (
 		decoder = enc.NewDecoder()
 		encoder = enc.NewEncoder()
 	)
 
-	scanner := &scanner{
-		s:       bufio.NewScanner(f),
+	reader := &reader{
+		scanner: bufio.NewScanner(f),
 		decoder: decoder,
 		splitFn: newSplitFn(encoder),
 		pos:     offset,
 	}
 
-	scanner.s.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		advance, token, err = scanner.splitFn(data, atEOF)
-		scanner.pos += int64(advance)
+	reader.scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		advance, token, err = reader.splitFn(data, atEOF)
+		reader.pos += int64(advance)
 		return advance, token, err
 	})
 
-	return scanner, nil
+	return reader, nil
 }
 
-type scanner struct {
+type reader struct {
 	pos     int64
-	s       *bufio.Scanner
+	scanner *bufio.Scanner
 	splitFn bufio.SplitFunc
 	decoder *encoding.Decoder
 }
 
-func (r *scanner) next() (string, error) {
+func (r *reader) next() (string, error) {
 	var err error
-	ok := r.s.Scan()
+	ok := r.scanner.Scan()
 
 	if !ok {
-		err = r.s.Err()
+		err = r.scanner.Err()
 		if err != nil {
 			return "", err
 		}
 		return "", io.EOF
 	}
 
-	bytes, decodeErr := r.decoder.Bytes(r.s.Bytes())
+	bytes, decodeErr := r.decoder.Bytes(r.scanner.Bytes())
 	if decodeErr != nil {
 		return "", decodeErr
 	}
@@ -59,14 +63,17 @@ func (r *scanner) next() (string, error) {
 	return str, err
 }
 
-func (r *scanner) position() (int64, error) {
-	return r.pos, nil
+func (r *reader) position() int64 {
+	return r.pos
 }
 
-func (r *scanner) reset(f *os.File, offset int64) {
+func (r *reader) reset(f *os.File, offset int64) {
+	if offset == 0 {
+		offset = skipBOM(f)
+	}
 	r.pos = offset
-	r.s = bufio.NewScanner(f)
-	r.s.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	r.scanner = bufio.NewScanner(f)
+	r.scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		advance, token, err = r.splitFn(data, atEOF)
 		r.pos += int64(advance)
 		return advance, token, err
@@ -87,11 +94,11 @@ func newSplitFn(e *encoding.Encoder) bufio.SplitFunc {
 		}
 
 		if i >= 0 {
-			// We have a full newline-terminated line.
+			// We have a full line so we should strip out cr.
 			return i + len(nl), bytes.TrimSuffix(data[:i], cr), nil
 		}
 
-		// We have a partial line so we need to wait for more data
+		// We have a partial line so we need to wait for more data.
 		return 0, nil, nil
 	}
 }
