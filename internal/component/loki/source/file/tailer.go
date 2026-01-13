@@ -254,14 +254,14 @@ func (t *tailer) initRun() error {
 	return nil
 }
 
-func getDecoder(encoding string) (*encoding.Decoder, error) {
-	if encoding == "" {
-		return nil, nil
+func getDecoder(enc string) (*encoding.Decoder, error) {
+	if enc == "" {
+		return encoding.Nop.NewDecoder(), nil
 	}
 
-	encoder, err := ianaindex.IANA.Encoding(encoding)
+	encoder, err := ianaindex.IANA.Encoding(enc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encoding, err)
+		return nil, fmt.Errorf("failed to get IANA encoding %s: %w", enc, err)
 	}
 	return encoder.NewDecoder(), nil
 }

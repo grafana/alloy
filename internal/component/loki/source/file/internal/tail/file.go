@@ -1,18 +1,17 @@
 package tail
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
+	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -35,6 +34,10 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		}
 	}
 
+	if cfg.Decoder == nil {
+		cfg.Decoder = encoding.Nop.NewDecoder()
+	}
+
 	if cfg.WatcherConfig == (WatcherConfig{}) {
 		cfg.WatcherConfig = defaultWatcherConfig
 	}
@@ -44,12 +47,12 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:    cfg,
-		logger: logger,
-		file:   f,
-		reader: newReader(f, cfg),
-		ctx:    ctx,
-		cancel: cancel,
+		cfg:     cfg,
+		logger:  logger,
+		file:    f,
+		scanner: newScanner(f, cfg.Decoder),
+		ctx:     ctx,
+		cancel:  cancel,
 	}, nil
 }
 
@@ -61,9 +64,9 @@ type File struct {
 	logger log.Logger
 
 	// protects file, reader, and lastOffset.
-	mu     sync.Mutex
-	file   *os.File
-	reader *bufio.Reader
+	mu      sync.Mutex
+	file    *os.File
+	scanner *scanner
 
 	lastOffset int64
 
@@ -98,7 +101,7 @@ read:
 		return &line, nil
 	}
 
-	text, err := f.readLine()
+	text, err := f.scanner.next()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			if err := f.wait(text != ""); err != nil {
@@ -109,7 +112,7 @@ read:
 		return nil, err
 	}
 
-	offset, err := f.offset()
+	offset, err := f.scanner.offset()
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +152,7 @@ func (f *File) Stop() error {
 // wait blocks until a file event is detected (modification, truncation, or deletion).
 // Returns an error if the context is canceled or an unrecoverable error occurs.
 func (f *File) wait(partial bool) error {
-	offset, err := f.offset()
+	offset, err := f.scanner.offset()
 	if err != nil {
 		return err
 	}
@@ -161,7 +164,7 @@ func (f *File) wait(partial bool) error {
 		if partial {
 			// We need to reset to last successful offset because we consumed a partial line.
 			f.file.Seek(f.lastOffset, io.SeekStart)
-			f.reader.Reset(f.file)
+			f.scanner.reset(f.file)
 		}
 		return nil
 	case eventTruncated:
@@ -182,16 +185,6 @@ func (f *File) wait(partial bool) error {
 	}
 }
 
-// readLine reads a single line from the file, including the newline character.
-// The newline and any trailing carriage return (for Windows line endings) are stripped.
-func (f *File) readLine() (string, error) {
-	line, err := f.reader.ReadString('\n')
-	if err != nil {
-		return line, err
-	}
-	return strings.TrimRight(line, "\r\n"), err
-}
-
 // drain reads all remaining complete lines from the current file handle and stores
 // them in bufferedLines. This is called when a file deletion/rotation is detected
 // to ensure we don't lose any data from the old file before switching to the new one.
@@ -200,13 +193,13 @@ func (f *File) drain() {
 	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
 		return
 	}
-	f.reader.Reset(f.file)
+	f.scanner.reset(f.file)
 
 	for {
-		text, err := f.readLine()
+		text, err := f.scanner.next()
 		if err != nil {
 			if text != "" {
-				offset, err := f.offset()
+				offset, err := f.scanner.offset()
 				if err != nil {
 					return
 				}
@@ -219,7 +212,7 @@ func (f *File) drain() {
 			return
 		}
 
-		offset, err := f.offset()
+		offset, err := f.scanner.offset()
 		if err != nil {
 			return
 		}
@@ -230,17 +223,6 @@ func (f *File) drain() {
 			Time:   time.Now(),
 		})
 	}
-}
-
-// offset returns the current byte offset in the file where the next read will occur.
-// It accounts for buffered data in the reader.
-func (f *File) offset() (int64, error) {
-	offset, err := f.file.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-
-	return offset - int64(f.reader.Buffered()), nil
 }
 
 // reopen closes the current file handle and opens a new one for the same file path.
@@ -298,16 +280,9 @@ func (f *File) reopen(truncated bool) error {
 		}
 
 		f.file = file
-		f.reader.Reset(f.file)
+		f.scanner.reset(f.file)
 		break
 	}
 
 	return backoff.Err()
-}
-
-func newReader(f *os.File, cfg *Config) *bufio.Reader {
-	if cfg.Decoder != nil {
-		return bufio.NewReader(cfg.Decoder.Reader(f))
-	}
-	return bufio.NewReader(f)
 }
