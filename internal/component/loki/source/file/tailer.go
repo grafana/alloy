@@ -47,8 +47,8 @@ type tailer struct {
 
 	report sync.Once
 
-	file    *tail.File
-	decoder *encoding.Decoder
+	file *tail.File
+	enc  encoding.Encoding
 }
 
 func newTailer(
@@ -60,7 +60,7 @@ func newTailer(
 	opts sourceOptions,
 ) (*tailer, error) {
 
-	decoder, err := getDecoder(opts.encoding)
+	decoder, err := getEncoding(opts.encoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
@@ -82,7 +82,7 @@ func newTailer(
 		},
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-		decoder:           decoder,
+		enc:               decoder,
 	}
 
 	return tailer, nil
@@ -241,7 +241,7 @@ func (t *tailer) initRun() error {
 	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
-		Decoder:       t.decoder,
+		Encoding:      t.enc,
 		WatcherConfig: t.watcherConfig,
 	})
 
@@ -254,16 +254,12 @@ func (t *tailer) initRun() error {
 	return nil
 }
 
-func getDecoder(enc string) (*encoding.Decoder, error) {
+func getEncoding(enc string) (encoding.Encoding, error) {
 	if enc == "" {
-		return encoding.Nop.NewDecoder(), nil
+		return encoding.Nop, nil
 	}
 
-	encoder, err := ianaindex.IANA.Encoding(enc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get IANA encoding %s: %w", enc, err)
-	}
-	return encoder.NewDecoder(), nil
+	return ianaindex.IANA.Encoding(enc)
 }
 
 // readLines reads lines from the tailed file by calling Next() in a loop.

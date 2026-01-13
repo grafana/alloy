@@ -17,6 +17,64 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
+// detectBOM reads the first few bytes of the file to detect a Byte Order Mark (BOM).
+// Returns the number of bytes the BOM occupies (0 if no BOM is found).
+// Common BOM patterns:
+//   - UTF-8: EF BB BF (3 bytes)
+//   - UTF-16 LE: FF FE (2 bytes)
+//   - UTF-16 BE: FE FF (2 bytes)
+//   - UTF-32 LE: FF FE 00 00 (4 bytes)
+//   - UTF-32 BE: 00 00 FE FF (4 bytes)
+func detectBOM(f *os.File) (int64, error) {
+	// Save current position
+	currentPos, err := f.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Seek(currentPos, io.SeekStart) // Restore position
+
+	// Seek to start
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return 0, err
+	}
+
+	// Read first 4 bytes to cover all BOM types
+	bomBytes := make([]byte, 4)
+	n, err := f.Read(bomBytes)
+	if err != nil && err != io.EOF {
+		return 0, err
+	}
+
+	if n < 2 {
+		return 0, nil // Not enough bytes for any BOM
+	}
+
+	// Check for UTF-16 LE/BE (2 bytes)
+	if bomBytes[0] == 0xFF && bomBytes[1] == 0xFE {
+		if n >= 4 && bomBytes[2] == 0x00 && bomBytes[3] == 0x00 {
+			return 4, nil // UTF-32 LE
+		}
+		return 2, nil // UTF-16 LE
+	}
+
+	// Check for UTF-16 BE (2 bytes)
+	if bomBytes[0] == 0xFE && bomBytes[1] == 0xFF {
+		return 2, nil // UTF-16 BE
+	}
+
+	// Check for UTF-32 BE (4 bytes)
+	if n >= 4 && bomBytes[0] == 0x00 && bomBytes[1] == 0x00 && bomBytes[2] == 0xFE && bomBytes[3] == 0xFF {
+		return 4, nil // UTF-32 BE
+	}
+
+	// Check for UTF-8 BOM (3 bytes)
+	if n >= 3 && bomBytes[0] == 0xEF && bomBytes[1] == 0xBB && bomBytes[2] == 0xBF {
+		return 3, nil // UTF-8
+	}
+
+	return 0, nil // No BOM found
+}
+
 // NewFile creates a new File tailer for the specified file path.
 // It opens the file and seeks to the provided offset if one is specified.
 // The returned File can be used to read lines from the file as they are appended.
@@ -27,30 +85,47 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Offset != 0 {
-		// Seek to provided offset
-		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-			return nil, err
-		}
-	}
-
-	if cfg.Decoder == nil {
-		cfg.Decoder = encoding.Nop.NewDecoder()
+	if cfg.Encoding == nil {
+		cfg.Encoding = encoding.Nop
 	}
 
 	if cfg.WatcherConfig == (WatcherConfig{}) {
 		cfg.WatcherConfig = defaultWatcherConfig
 	}
 
-	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
+	// Detect and skip BOM if starting from the beginning of the file
+	actualOffset := cfg.Offset
+	if cfg.Offset == 0 {
+		bomSize, err := detectBOM(f)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect BOM: %w", err)
+		}
+		if bomSize > 0 {
+			actualOffset = bomSize
+			if _, err := f.Seek(bomSize, io.SeekStart); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		// Seek to provided offset
+		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
+			return nil, err
+		}
+	}
 
+	scanner, err := newScanner(f, actualOffset, cfg.Encoding)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
 		cfg:     cfg,
 		logger:  logger,
 		file:    f,
-		scanner: newScanner(f, cfg.Decoder),
+		scanner: scanner,
 		ctx:     ctx,
 		cancel:  cancel,
 	}, nil
@@ -104,7 +179,7 @@ read:
 	text, err := f.scanner.next()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			if err := f.wait(text != ""); err != nil {
+			if err := f.wait(); err != nil {
 				return nil, err
 			}
 			goto read
@@ -112,7 +187,7 @@ read:
 		return nil, err
 	}
 
-	offset, err := f.scanner.offset()
+	offset, err := f.scanner.position()
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +226,8 @@ func (f *File) Stop() error {
 
 // wait blocks until a file event is detected (modification, truncation, or deletion).
 // Returns an error if the context is canceled or an unrecoverable error occurs.
-func (f *File) wait(partial bool) error {
-	offset, err := f.scanner.offset()
+func (f *File) wait() error {
+	offset, err := f.offset()
 	if err != nil {
 		return err
 	}
@@ -161,15 +236,13 @@ func (f *File) wait(partial bool) error {
 	switch event {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
-		if partial {
-			// We need to reset to last successful offset because we consumed a partial line.
-			f.file.Seek(f.lastOffset, io.SeekStart)
-			f.scanner.reset(f.file)
-		}
+		f.file.Seek(f.lastOffset, io.SeekStart)
+		f.scanner.reset(f.file, f.lastOffset)
 		return nil
 	case eventTruncated:
 		level.Debug(f.logger).Log("msg", "file truncated")
 		// We need to reopen the file when it was truncated.
+		f.lastOffset = 0
 		return f.reopen(true)
 	case eventDeleted:
 		level.Debug(f.logger).Log("msg", "file deleted")
@@ -185,6 +258,15 @@ func (f *File) wait(partial bool) error {
 	}
 }
 
+// offset returns the current byte offset in the file where the next read will occur.
+func (f *File) offset() (int64, error) {
+	offset, err := f.file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 0, err
+	}
+	return offset, nil
+}
+
 // drain reads all remaining complete lines from the current file handle and stores
 // them in bufferedLines. This is called when a file deletion/rotation is detected
 // to ensure we don't lose any data from the old file before switching to the new one.
@@ -193,13 +275,13 @@ func (f *File) drain() {
 	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
 		return
 	}
-	f.scanner.reset(f.file)
+	f.scanner.reset(f.file, f.lastOffset)
 
 	for {
 		text, err := f.scanner.next()
 		if err != nil {
 			if text != "" {
-				offset, err := f.scanner.offset()
+				offset, err := f.scanner.position()
 				if err != nil {
 					return
 				}
@@ -212,7 +294,7 @@ func (f *File) drain() {
 			return
 		}
 
-		offset, err := f.scanner.offset()
+		offset, err := f.scanner.position()
 		if err != nil {
 			return
 		}
@@ -280,7 +362,7 @@ func (f *File) reopen(truncated bool) error {
 		}
 
 		f.file = file
-		f.scanner.reset(f.file)
+		f.scanner.reset(f.file, f.lastOffset)
 		break
 	}
 
