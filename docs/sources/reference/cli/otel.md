@@ -44,45 +44,9 @@ This will run a Default Engine pipeline _in parallel_ to the OTel Engine pipelin
 
 ### Available Components
 
-The included components are based off the upstream core distribution, in order to ensure that full end-to-end pipelines are accessible for most use cases. In addition to upstream components, we also integrate some of our own components that enable functionality to work well within the Alloy ecosystem. 
+The included components are based off the upstream core distribution, in order to ensure that full end-to-end pipelines are accessible for most use cases. In addition to upstream components, we also integrate some of our own components that enable functionality to work well within the Alloy ecosystem.
 
-The following table lists all components available in the Alloy OTel Engine:
-
-| Component Name | Stability Level |
-|----------------|-----------------|
-| **Extensions** | |
-| [`zpages`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/extension/zpagesextension) | Generally Available |
-| [`healthcheck`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/healthcheckextension) | Generally Available |
-| [`pprof`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/pprofextension) | Generally Available |
-| [`alloyengine`](https://github.com/grafana/alloy/tree/main/extension/alloyengine) | Experimental |
-| **Receivers** | |
-| [`otlp`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver) | Generally Available |
-| **Processors** | |
-| [`batch`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/batchprocessor) | Generally Available |
-| [`memory_limiter`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/memorylimiterprocessor) | Generally Available |
-| [`attributes`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/attributesprocessor) | Generally Available |
-| [`resource`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/resourceprocessor) | Generally Available |
-| [`span`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/spanprocessor) | Generally Available |
-| [`probabilistic_sampler`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/probabilisticsamplerprocessor) | Generally Available |
-| [`filter`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/filterprocessor) | Generally Available |
-| **Exporters** | |
-| [`debug`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/debugexporter) | Generally Available |
-| [`nop`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/nopexporter) | Generally Available |
-| [`otlp`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlpexporter) | Generally Available |
-| [`otlphttp`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlphttpexporter) | Generally Available |
-| [`file`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/fileexporter) | Generally Available |
-| [`kafka`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/kafkaexporter) | Generally Available |
-| [`prometheus`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/prometheusexporter) | Generally Available |
-| [`prometheusremotewrite`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/prometheusremotewriteexporter) | Generally Available |
-| [`zipkin`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/zipkinexporter) | Generally Available |
-| **Connectors** | |
-| [`forward`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/connector/forwardconnector) | Generally Available |
-| **Providers** | |
-| [`env`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/confmap/provider/envprovider) | Generally Available |
-| [`file`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/confmap/provider/fileprovider) | Generally Available |
-| [`http`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/confmap/provider/httpprovider) | Generally Available |
-| [`https`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/confmap/provider/httpsprovider) | Generally Available |
-| [`yaml`](https://github.com/open-telemetry/opentelemetry-collector/tree/main/confmap/provider/yamlprovider) | Generally Available |
+To view the full list of components and their versioning, please refer to the [OCB manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml)
 
 ## Examples
 
