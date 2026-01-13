@@ -44,7 +44,7 @@ This will run a Default Engine pipeline _in parallel_ to the OTel Engine pipelin
 
 ### Available Components
 
-THe included components are based off the upstream core distribution, in order to ensure that full end-to-end pipelines are accessible for most use cases. In addition to upstream components, we also integrate some of our own components that enable functionality to work well within the Alloy ecosystem. 
+The included components are based off the upstream core distribution, in order to ensure that full end-to-end pipelines are accessible for most use cases. In addition to upstream components, we also integrate some of our own components that enable functionality to work well within the Alloy ecosystem. 
 
 The following table lists all components available in the Alloy OTel Engine:
 
