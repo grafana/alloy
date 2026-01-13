@@ -26,6 +26,13 @@ func populateCloudProviderFromConfig(config *CloudProvider) (*database_observabi
 			ARN: arn,
 		}
 	}
+	if config.Azure != nil {
+		cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
+			SubscriptionID: config.Azure.SubscriptionID,
+			ResourceGroup:  config.Azure.ResourceGroup,
+			Resource:       config.Azure.ServerName,
+		}
+	}
 	return &cloudProvider, nil
 }
 
