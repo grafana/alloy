@@ -76,6 +76,12 @@ func TestConnectionInfo(t *testing.T) {
 			engineVersion:   "15.4",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "unknown", "azure", "unknown"),
 		},
+		{
+			name:            "Azure privatelink dsn",
+			dsn:             "postgres://user:pass@products-db.privatelink.postgres.database.azure.com:5432/mydb",
+			engineVersion:   "15.4",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "unknown", "azure", "unknown"),
+		},
 	}
 
 	for _, tc := range testCases {
