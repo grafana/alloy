@@ -2,17 +2,11 @@ package postgres
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
-)
-
-var (
-	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
 )
 
 func populateCloudProviderFromConfig(config *CloudProvider) (*database_observability.CloudProvider, error) {
@@ -39,7 +33,7 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 
 	if host, ok := parts["host"]; ok {
 		if strings.HasSuffix(host, "rds.amazonaws.com") {
-			matches := rdsRegex.FindStringSubmatch(host)
+			matches := database_observability.RdsRegex.FindStringSubmatch(host)
 			cloudProvider.AWS = &database_observability.AWSCloudProviderInfo{
 				ARN: arn.ARN{
 					Resource:  fmt.Sprintf("db:%s", matches[1]),
@@ -48,7 +42,7 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 				},
 			}
 		} else if strings.HasSuffix(host, "postgres.database.azure.com") {
-			matches := azureRegex.FindStringSubmatch(host)
+			matches := database_observability.AzurePostgreSQLRegex.FindStringSubmatch(host)
 			if len(matches) > 1 {
 				cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
 					Resource: matches[1],

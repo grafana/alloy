@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"net"
-	"regexp"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -13,11 +12,6 @@ import (
 )
 
 const ConnectionInfoName = "connection_info"
-
-var (
-	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.(?:privatelink\.)?mysql\.database\.azure\.com`)
-)
 
 type ConnectionInfoArguments struct {
 	DSN           string
@@ -93,14 +87,14 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		if err == nil && host != "" {
 			if strings.HasSuffix(host, "rds.amazonaws.com") {
 				providerName = "aws"
-				matches := rdsRegex.FindStringSubmatch(host)
+				matches := database_observability.RdsRegex.FindStringSubmatch(host)
 				if len(matches) > 3 {
 					dbInstanceIdentifier = matches[1]
 					providerRegion = matches[3]
 				}
 			} else if strings.HasSuffix(host, "mysql.database.azure.com") {
 				providerName = "azure"
-				matches := azureRegex.FindStringSubmatch(host)
+				matches := database_observability.AzureMySQLRegex.FindStringSubmatch(host)
 				if len(matches) > 1 {
 					dbInstanceIdentifier = matches[1]
 				}
