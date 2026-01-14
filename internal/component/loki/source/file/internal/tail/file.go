@@ -42,7 +42,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		}
 	}
 
-	scanner, err := newScanner(f, cfg.Offset, cfg.Encoding)
+	scanner, err := newReader(f, cfg.Offset, cfg.Encoding)
 	if err != nil {
 		return nil, err
 	}
@@ -51,12 +51,12 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:     cfg,
-		logger:  logger,
-		file:    f,
-		scanner: scanner,
-		ctx:     ctx,
-		cancel:  cancel,
+		cfg:    cfg,
+		logger: logger,
+		file:   f,
+		reader: scanner,
+		ctx:    ctx,
+		cancel: cancel,
 	}, nil
 }
 
@@ -68,9 +68,9 @@ type File struct {
 	logger log.Logger
 
 	// protects file, reader, and lastOffset.
-	mu      sync.Mutex
-	file    *os.File
-	scanner *reader
+	mu     sync.Mutex
+	file   *os.File
+	reader *reader
 
 	lastOffset int64
 
@@ -105,7 +105,7 @@ read:
 		return &line, nil
 	}
 
-	text, err := f.scanner.next()
+	text, err := f.reader.next()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			if err := f.wait(); err != nil {
@@ -116,7 +116,7 @@ read:
 		return nil, err
 	}
 
-	f.lastOffset = f.scanner.position()
+	f.lastOffset = f.reader.position()
 
 	return &Line{
 		Text:   text,
@@ -161,7 +161,7 @@ func (f *File) wait() error {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
 		f.file.Seek(f.lastOffset, io.SeekStart)
-		f.scanner.reset(f.file, f.lastOffset)
+		f.reader.reset(f.file, f.lastOffset)
 		return nil
 	case eventTruncated:
 		level.Debug(f.logger).Log("msg", "file truncated")
@@ -199,15 +199,15 @@ func (f *File) drain() {
 	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
 		return
 	}
-	f.scanner.reset(f.file, f.lastOffset)
+	f.reader.reset(f.file, f.lastOffset)
 
 	for {
-		text, err := f.scanner.next()
+		text, err := f.reader.next()
 		if err != nil {
 			if text != "" {
 				f.bufferedLines = append(f.bufferedLines, Line{
 					Text:   text,
-					Offset: f.scanner.position(),
+					Offset: f.reader.position(),
 					Time:   time.Now(),
 				})
 			}
@@ -216,7 +216,7 @@ func (f *File) drain() {
 
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,
-			Offset: f.scanner.position(),
+			Offset: f.reader.position(),
 			Time:   time.Now(),
 		})
 	}
@@ -277,7 +277,7 @@ func (f *File) reopen(truncated bool) error {
 		}
 
 		f.file = file
-		f.scanner.reset(f.file, f.lastOffset)
+		f.reader.reset(f.file, f.lastOffset)
 		break
 	}
 
