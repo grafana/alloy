@@ -49,8 +49,10 @@ var unrecoverablePostgresSQLErrors = []string{
 	"pq: syntax error",
 }
 
-var paramCountRegex = regexp.MustCompile(`\$\d+`)
-var versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
+var (
+	paramCountRegex   = regexp.MustCompile(`\$\d+`)
+	versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
+)
 
 type PgSQLExplainplan struct {
 	Plan PlanNode `json:"Plan"`
@@ -207,7 +209,7 @@ func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset ti
 	}
 }
 
-type ExplainPlanArguments struct {
+type ExplainPlansArguments struct {
 	DB              *sql.DB
 	DSN             string
 	ScrapeInterval  time.Duration
@@ -220,7 +222,7 @@ type ExplainPlanArguments struct {
 	Logger log.Logger
 }
 
-type ExplainPlan struct {
+type ExplainPlans struct {
 	dbConnection        *sql.DB
 	dbDSN               string
 	dbVersion           semver.Version
@@ -239,8 +241,8 @@ type ExplainPlan struct {
 	cancel              context.CancelFunc
 }
 
-func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	ep := &ExplainPlan{
+func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
+	ep := &ExplainPlans{
 		dbConnection:        args.DB,
 		dbDSN:               args.DSN,
 		dbConnectionFactory: defaultDbConnectionFactory,
@@ -265,7 +267,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 	return ep, nil
 }
 
-func (c *ExplainPlan) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
+func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
 			DatabaseEngine:         "PostgreSQL",
@@ -301,11 +303,11 @@ func (c *ExplainPlan) sendExplainPlansOutput(schemaName string, digest string, g
 	return nil
 }
 
-func (c *ExplainPlan) Name() string {
+func (c *ExplainPlans) Name() string {
 	return ExplainPlanCollector
 }
 
-func (c *ExplainPlan) Start(ctx context.Context) error {
+func (c *ExplainPlans) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
@@ -338,15 +340,15 @@ func (c *ExplainPlan) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *ExplainPlan) Stopped() bool {
+func (c *ExplainPlans) Stopped() bool {
 	return !c.running.Load()
 }
 
-func (c *ExplainPlan) Stop() {
+func (c *ExplainPlans) Stop() {
 	c.cancel()
 }
 
-func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
+func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
@@ -437,7 +439,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	return nil
 }
 
-func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
+func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 	if len(c.queryCache) == 0 {
 		if err := c.populateQueryCache(ctx); err != nil {
 			return err
@@ -574,7 +576,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	return nil
 }
 
-func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
+func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
 	querySpecificDSN, err := replaceDatabaseNameInDSN(c.dbDSN, qi.datname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace database name in DSN: %w", err)
