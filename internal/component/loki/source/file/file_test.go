@@ -470,10 +470,21 @@ func TestEncoding(t *testing.T) {
 		encoding            string
 		decompressionConfig DecompressionConfig
 	}{
+		{"CRLF default encoding", "/CRLF/UTF-8.txt", "", noDecompress},
+		{"CRLF UTF-8", "/CRLF/UTF-8.txt", "UTF-8", noDecompress},
+		{"CRLF UTF-16", "/CRLF/UTF-16.txt", "UTF-16", noDecompress},
+		{"CRLF UTF-16 LE", "/CRLF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
+		{"CRLF UTF-16 BE", "/CRLF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
 		{"CRLF UTF-16 LE with BOM", "/CRLF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
 		{"CRLF UTF-16 BE with BOM", "/CRLF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
+		{"LF default encoding", "/LF/UTF-8.txt", "", noDecompress},
+		{"LF UTF-8", "/LF/UTF-8.txt", "UTF-8", noDecompress},
+		{"LF UTF-16", "/LF/UTF-16.txt", "UTF-16", noDecompress},
+		{"LF UTF-16 LE", "/LF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
+		{"LF UTF-16 BE", "/LF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
 		{"LF UTF-16 LE with BOM", "/LF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
 		{"LF UTF-16 BE with BOM", "/LF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
+		{"CRLF default encoding (gzipped)", "/CRLF/UTF-8.txt.gz", "", gzDecompress},
 		{"CRLF UTF-8 (gzipped)", "/CRLF/UTF-8.txt.gz", "UTF-8", gzDecompress},
 		{"CRLF UTF-16 (gzipped)", "/CRLF/UTF-16.txt.gz", "UTF-16", gzDecompress},
 		{"CRLF UTF-16 LE (gzipped)", "/CRLF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
@@ -493,7 +504,7 @@ func TestEncoding(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				opts := component.Options{
-					Logger:        logging.NewNop(),
+					Logger:        util.TestAlloyLogger(t),
 					Registerer:    prometheus.NewRegistry(),
 					OnStateChange: func(e component.Exports) {},
 					DataPath:      t.TempDir(),
