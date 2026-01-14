@@ -126,6 +126,7 @@ func (r *reader) reset(f *os.File) {
 	offset, _ := skipBOM(f, 0)
 	r.pos = offset
 	r.br.Reset(f)
+	r.decoder.Reset()
 	r.pending = make([]byte, 0, defaultBufSize)
 }
 
