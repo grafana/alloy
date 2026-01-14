@@ -121,29 +121,9 @@ func (r *reader) position() int64 {
 	return r.pos
 }
 
-func (r *reader) reset(f *os.File, offset int64) {
-	// Just skip BOM if needed, but keep the same encoding that was set on creation
-	if offset == 0 {
-		offset, _ = skipBOM(f, offset)
-	}
-
-	// Recreate decoder and encoder with the stored encoding
-	r.decoder = r.enc.NewDecoder()
-	encoder := r.enc.NewEncoder()
-
-	// Update newline and carriage return patterns
-	var err error
-	r.nl, err = encodedNewline(encoder)
-	if err != nil {
-		// If encoding fails, keep old values - this shouldn't happen in practice
-		return
-	}
-	r.lastNl = r.nl[len(r.nl)-1]
-	r.cr, err = encodedCarriageReturn(encoder)
-	if err != nil {
-		return
-	}
-
+func (r *reader) reset(f *os.File) {
+	// Skip BOM if needed, we asume that the rotated file have the same encoding.
+	offset, _ := skipBOM(f, 0)
 	r.pos = offset
 	r.br.Reset(f)
 	r.pending = make([]byte, 0, defaultBufSize)
