@@ -334,7 +334,8 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
-			MinStability: featuregate.StabilityGenerallyAvailable,
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
 		}, args)
 
 		require.Error(t, err)

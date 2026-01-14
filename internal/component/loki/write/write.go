@@ -100,10 +100,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts: o,
 	}
 
-	if err := validateConfigStabilityLevel(o, args); err != nil {
-		return nil, err
-	}
-
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
 	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
