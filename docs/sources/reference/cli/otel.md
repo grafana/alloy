@@ -14,13 +14,16 @@ weight: 350
 
 # `otel`
 
+> **EXPERIMENTAL**: This is an [experimental][] feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
+
 The `otel` command runs Grafana Alloy using the OpenTelemetry (OTel) Collector engine. This command accepts OpenTelemetry Collector YAML configuration files.
 
 The Alloy OTel distribution includes receivers, processors, exporters, extensions, and connectors from the OpenTelemetry Collector core and contrib repositories. This includes components for OTLP, Prometheus, Kafka, Zipkin, and other popular integrations.
 
 As with the `run` command, this runs in the foreground until an interrupt is received.
-
-{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
