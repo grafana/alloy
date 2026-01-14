@@ -12,13 +12,9 @@ import (
 const defaultBufSize = 4096
 
 func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
-	if offset == 0 {
-		bomOffset, bomBytes := skipBOM(f)
-		offset = bomOffset
-		// Resolve the encoding based on BOM bytes if any.
-		enc = resolveEncodingFromBOM(bomBytes, enc)
-	}
-
+	var bomBytes []byte
+	offset, bomBytes = skipBOM(f, offset)
+	enc = resolveEncodingFromBOM(bomBytes, enc)
 
 	var (
 		decoder = enc.NewDecoder()
@@ -128,10 +124,7 @@ func (r *reader) position() int64 {
 func (r *reader) reset(f *os.File, offset int64) {
 	// Just skip BOM if needed, but keep the same encoding that was set on creation
 	if offset == 0 {
-		var bomOffset int64
-		bomOffset, _ = skipBOM(f)
-		offset = bomOffset
-		// Note: We don't change encoding on reset - it was determined on creation
+		offset, _ = skipBOM(f, offset)
 	}
 
 	// Recreate decoder and encoder with the stored encoding

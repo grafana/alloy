@@ -19,20 +19,32 @@ var (
 )
 
 // skipBOM detects and skips a BOM at the beginning of the file.
-// It returns the number of bytes skipped and the BOM bytes
-// that were consumed. The file offset is left positioned correctly for
-// subsequent reads.
-func skipBOM(f *os.File) (int64, []byte) {
+// It takes the current offset and returns the final offset
+// and the BOM bytes that were detected.
+// The file is positioned at the start to read the BOM, then
+// seeks to the final offset for subsequent reads.
+func skipBOM(f *os.File, offset int64) (int64, []byte) {
+	// Make sure we are reading from the start of the file.
+	f.Seek(0, io.SeekStart)
+
 	// Read up to 4 bytes (longest BOM)
 	var buf [4]byte
 	n, err := f.Read(buf[:])
 	if err != nil && n == 0 {
-		return 0, nil
+		return offset, nil
 	}
 
 	bomLen := detectBom(buf[:n])
-	f.Seek(bomLen, io.SeekStart)
-	return bomLen, buf[:bomLen]
+
+	// If a BOM was detected and its length is greater than or equal to the
+	// provided offset, use the BOM length as the offset. Otherwise, use the
+	// provided offset (which may be beyond the BOM).
+	if bomLen >= offset {
+		offset = bomLen
+	}
+
+	f.Seek(offset, io.SeekStart)
+	return offset, buf[:bomLen]
 }
 
 // detectBom detects a BOM in the given bytes and returns the length
