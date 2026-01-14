@@ -11,7 +11,9 @@ weight: 350
 
 # `otel`
 
-The `otel` command runs the Alloy Open Telemetry (OTel) Engine, a collector distribution that embeds both upstream and internal components. The Alloy collector distribution is a pre-packaged, supported set of components designed for ease of use and integration with backend observability platforms.
+The `otel` command runs Grafana Alloy using the OpenTelemetry (OTel) Collector engine. This command accepts OpenTelemetry Collector YAML configuration files.
+
+The Alloy OTel distribution includes receivers, processors, exporters, extensions, and connectors from the OpenTelemetry Collector core and contrib repositories. This includes components for OTLP, Prometheus, Kafka, Zipkin, and other popular integrations.
 
 As with the `run` command, this runs in the foreground until an interrupt is received.
 
