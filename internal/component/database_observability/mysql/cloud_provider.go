@@ -3,17 +3,11 @@ package mysql
 import (
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/alloy/internal/component/database_observability"
-)
-
-var (
-	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
 )
 
 func populateCloudProviderFromConfig(config *CloudProvider) (*database_observability.CloudProvider, error) {
@@ -41,7 +35,7 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 	host, _, err := net.SplitHostPort(cfg.Addr)
 	if err == nil && host != "" {
 		if strings.HasSuffix(host, "rds.amazonaws.com") {
-			if matches := rdsRegex.FindStringSubmatch(host); len(matches) >= 4 {
+			if matches := database_observability.RdsRegex.FindStringSubmatch(host); len(matches) >= 4 {
 				cloudProvider.AWS = &database_observability.AWSCloudProviderInfo{
 					ARN: arn.ARN{
 						Resource:  fmt.Sprintf("db:%s", matches[1]),
@@ -51,7 +45,7 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 				}
 			}
 		} else if strings.HasSuffix(host, "mysql.database.azure.com") {
-			if matches := azureRegex.FindStringSubmatch(host); len(matches) >= 2 {
+			if matches := database_observability.AzureMySQLRegex.FindStringSubmatch(host); len(matches) >= 2 {
 				cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
 					Resource: matches[1],
 				}
