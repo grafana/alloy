@@ -117,10 +117,14 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	return line, true
 }
 
+// position returns the byte offset for completed lines,
+// not necessarily all bytes consumed from the file.
 func (r *reader) position() int64 {
 	return r.pos
 }
 
+// reset prepares the reader for a new file handle, assuming the same encoding.
+// It skips the BOM, resets the buffered reader and decoder, and clears pending data.
 func (r *reader) reset(f *os.File) {
 	// Skip BOM if needed, we asume that the rotated file have the same encoding.
 	offset, _ := skipBOM(f, 0)
