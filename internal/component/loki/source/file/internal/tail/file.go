@@ -51,13 +51,12 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:        cfg,
-		logger:     logger,
-		file:       f,
-		reader:     scanner,
-		ctx:        ctx,
-		cancel:     cancel,
-		lastOffset: cfg.Offset,
+		cfg:    cfg,
+		logger: logger,
+		file:   f,
+		reader: scanner,
+		ctx:    ctx,
+		cancel: cancel,
 	}, nil
 }
 
@@ -72,8 +71,6 @@ type File struct {
 	mu     sync.Mutex
 	file   *os.File
 	reader *reader
-
-	lastOffset int64
 
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
@@ -117,11 +114,9 @@ read:
 		return nil, err
 	}
 
-	f.lastOffset = f.reader.position()
-
 	return &Line{
 		Text:   text,
-		Offset: f.lastOffset,
+		Offset: f.reader.position(),
 		Time:   time.Now(),
 	}, nil
 }
@@ -165,14 +160,11 @@ func (f *File) wait() error {
 	case eventTruncated:
 		level.Debug(f.logger).Log("msg", "file truncated")
 		// We need to reopen the file when it was truncated.
-		f.lastOffset = 0
 		return f.reopen(true)
 	case eventDeleted:
 		level.Debug(f.logger).Log("msg", "file deleted")
 		// if a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
-
-		f.lastOffset = 0
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -195,11 +187,6 @@ func (f *File) offset() (int64, error) {
 // to ensure we don't lose any data from the old file before switching to the new one.
 // drain is best effort and will stop if it encounters any errors.
 func (f *File) drain() {
-	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
-		return
-	}
-	f.reader.reset(f.file, f.lastOffset)
-
 	for {
 		text, err := f.reader.next()
 		if err != nil {
@@ -276,7 +263,7 @@ func (f *File) reopen(truncated bool) error {
 		}
 
 		f.file = file
-		f.reader.reset(f.file, f.lastOffset)
+		f.reader.reset(f.file)
 		break
 	}
 
