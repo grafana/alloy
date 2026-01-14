@@ -17,9 +17,7 @@ The Alloy OTel distribution includes receivers, processors, exporters, extension
 
 As with the `run` command, this runs in the foreground until an interrupt is received.
 
-{{< admonition type="warning" >}}
-Please note that this is an *experimental* feature and can therefore be subject to breaking changes or removal in future releases.
-{{< /admonition >}}
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
