@@ -49,7 +49,7 @@ type reader struct {
 	pos     int64
 	br      *bufio.Reader
 	decoder *encoding.Decoder
-	enc     encoding.Encoding // The encoding to use (set on creation, preserved on reset)
+	enc     encoding.Encoding
 
 	nl      []byte
 	lastNl  byte
