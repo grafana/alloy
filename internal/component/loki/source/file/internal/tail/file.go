@@ -51,12 +51,13 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:    cfg,
-		logger: logger,
-		file:   f,
-		reader: scanner,
-		ctx:    ctx,
-		cancel: cancel,
+		cfg:        cfg,
+		logger:     logger,
+		file:       f,
+		reader:     scanner,
+		ctx:        ctx,
+		cancel:     cancel,
+		lastOffset: cfg.Offset,
 	}, nil
 }
 
@@ -160,8 +161,6 @@ func (f *File) wait() error {
 	switch event {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
-		f.file.Seek(f.lastOffset, io.SeekStart)
-		f.reader.reset(f.file, f.lastOffset)
 		return nil
 	case eventTruncated:
 		level.Debug(f.logger).Log("msg", "file truncated")
