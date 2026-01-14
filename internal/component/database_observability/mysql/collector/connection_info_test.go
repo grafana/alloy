@@ -74,6 +74,12 @@ func TestConnectionInfo(t *testing.T) {
 			engineVersion:   "8.0.32",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "unknown", "azure", "unknown"),
 		},
+		{
+			name:            "Azure privatelink dsn",
+			dsn:             "user:pass@tcp(products-db.privatelink.mysql.database.azure.com:3306)/schema",
+			engineVersion:   "8.0.32",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "unknown", "azure", "unknown"),
+		},
 	}
 
 	for _, tc := range testCases {

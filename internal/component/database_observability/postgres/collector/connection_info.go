@@ -14,7 +14,7 @@ const ConnectionInfoName = "connection_info"
 
 var (
 	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.(?:privatelink\.)?postgres\.database\.azure\.com`)
 )
 
 var engineVersionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)(?P<suffix>.*)?$`)

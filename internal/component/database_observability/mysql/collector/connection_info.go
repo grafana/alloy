@@ -16,7 +16,7 @@ const ConnectionInfoName = "connection_info"
 
 var (
 	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.(?:privatelink\.)?mysql\.database\.azure\.com`)
 )
 
 type ConnectionInfoArguments struct {
