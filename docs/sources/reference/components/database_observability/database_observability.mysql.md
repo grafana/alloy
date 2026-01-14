@@ -144,7 +144,7 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 | Name                       | Type       | Description                                                            | Default | Required |
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `auto_update_setup_actors` | `boolean`  | Whether to enable updating `performance_schema.setup_actors` settings. In order for this feature to work, `allow_update_performance_schema_settings` must be enabled as well. | `false` | no       |
+| `auto_update_setup_actors` | `boolean`  | Enables updates to `performance_schema.setup_actors` settings. You must also enable `allow_update_performance_schema_settings`.| `false` | no       |
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
 
 
