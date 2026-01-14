@@ -49,7 +49,7 @@ func Test_GetRelabelingRules(t *testing.T) {
 	t.Run("return relabeling rules with Azure config", func(t *testing.T) {
 		rr := GetRelabelingRules("some-server-id", &CloudProvider{
 			Azure: &AzureCloudProviderInfo{
-				Resource: "some-resource",
+				ServerName: "some-resource",
 			},
 		})
 

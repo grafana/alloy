@@ -14,7 +14,7 @@ type AWSCloudProviderInfo struct {
 }
 
 type AzureCloudProviderInfo struct {
-	Resource       string
 	SubscriptionID string
 	ResourceGroup  string
+	ServerName     string
 }

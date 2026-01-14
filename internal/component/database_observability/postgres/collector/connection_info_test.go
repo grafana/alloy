@@ -65,7 +65,7 @@ func TestConnectionInfo(t *testing.T) {
 			engineVersion: "15.4",
 			cloudProvider: &database_observability.CloudProvider{
 				Azure: &database_observability.AzureCloudProviderInfo{
-					Resource:       "products-db",
+					ServerName:     "products-db",
 					SubscriptionID: "sub-12345-abcde",
 					ResourceGroup:  "my-resource-group",
 				},
