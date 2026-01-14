@@ -2,6 +2,7 @@ package tail
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 
@@ -51,16 +52,16 @@ func skipBOM(f *os.File, offset int64) (int64, []byte) {
 // of the BOM (0 if no BOM was detected).
 func detectBom(b []byte) int64 {
 	switch {
-	case bytes.HasPrefix(b, bomUTF32BE):
-		return 4
-	case bytes.HasPrefix(b, bomUTF32LE):
-		return 4
 	case bytes.HasPrefix(b, bomUTF8):
 		return 3
 	case bytes.HasPrefix(b, bomUTF16BE):
 		return 2
 	case bytes.HasPrefix(b, bomUTF16LE):
 		return 2
+	case bytes.HasPrefix(b, bomUTF32BE):
+		return 4
+	case bytes.HasPrefix(b, bomUTF32LE):
+		return 4
 	default:
 		return 0
 	}
@@ -76,10 +77,14 @@ func resolveEncodingFromBOM(bomBytes []byte, originalEnc encoding.Encoding) enco
 	}
 
 	switch {
+	case bytes.HasPrefix(bomBytes, bomUTF8):
+		// UTF-8 BOM detected - return encoding
+		return encoding.Nop
 	case bytes.HasPrefix(bomBytes, bomUTF16BE):
 		// UTF-16 BE BOM detected - return encoding with IgnoreBOM since we skip it
 		return unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM)
 	case bytes.HasPrefix(bomBytes, bomUTF16LE):
+		fmt.Println("Detected UTF-16LE")
 		// UTF-16 LE BOM detected - return encoding with IgnoreBOM since we skip it
 		return unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
 	default:

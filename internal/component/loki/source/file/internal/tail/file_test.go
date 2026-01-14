@@ -260,6 +260,93 @@ func TestFile(t *testing.T) {
 		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
 		verify(t, file, &Line{Text: "newline2", Offset: 18}, nil)
 	})
+
+	t.Run("should detect UTF-16LE encoding from BOM", func(t *testing.T) {
+		enc := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder()
+		encoded, err := enc.String("Hello, 世界\r\n")
+		require.NoError(t, err)
+		name := createFile(t, "utf-16LE", encoded)
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
+			Encoding: unicode.UTF8,
+		})
+		require.NoError(t, err)
+
+		verify(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
+		file.Stop()
+
+		enc = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+		encoded, err = enc.String("newline\r\n")
+		require.NoError(t, err)
+		appendToFile(t, name, encoded)
+
+		// Reopen file from last offset to make sure it handles that.
+		file, err = NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
+			Encoding: unicode.UTF8,
+			Offset:   24,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verify(t, file, &Line{Text: "newline", Offset: 42}, nil)
+	})
+
+	t.Run("should detect UTF-16BE encoding from BOM", func(t *testing.T) {
+		enc := unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder()
+		encoded, err := enc.String("Hello, 世界\r\n")
+		require.NoError(t, err)
+		name := createFile(t, "utf-16LE", encoded)
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
+			Encoding: unicode.UTF8,
+		})
+		require.NoError(t, err)
+
+		verify(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
+		file.Stop()
+
+		enc = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
+		encoded, err = enc.String("newline\r\n")
+		require.NoError(t, err)
+		appendToFile(t, name, encoded)
+
+		// Reopen file from last offset.
+		file, err = NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
+			Encoding: unicode.UTF8,
+			Offset:   24,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verify(t, file, &Line{Text: "newline", Offset: 42}, nil)
+	})
+
+	t.Run("should detect UTF-8 encoding from BOM", func(t *testing.T) {
+		bytes := []byte("Hello, 世界\r\n")
+
+		name := createFile(t, "utf-8", string(append(bomUTF8, bytes...)))
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF-16BE here but still expect to decode the file using UTF-8
+			Encoding: unicode.UTF16(unicode.BigEndian, unicode.UseBOM),
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verify(t, file, &Line{Text: "Hello, 世界", Offset: 18}, nil)
+	})
 }
 
 func createFile(t *testing.T, name, content string) string {
