@@ -1,4 +1,4 @@
--the correct enconding will be used.--
+---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.file/
 aliases:
   - ../loki.source.file/ # /docs/alloy/latest/reference/components/loki.source.file/
