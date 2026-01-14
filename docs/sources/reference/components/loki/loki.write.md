@@ -143,6 +143,9 @@ The following arguments are supported:
 Each endpoint is divided into a number of concurrent _shards_ which are responsible for sending a fraction of batches. The number of shards is controlled with `min_shards` argument.
 Each shard has a queue of batches it keeps in memory, controlled with the `capacity` argument.
 
+Queue size is calculated using `batch_size` and `capacity` for each shard. So if `batch_size` is 1MiB and `capacity` is 10MiB each shard would be able to queue up 10 batches.
+The maximum amount of memory required for all configured shards can be calculated using `capacity` * `min_shards`. 
+
 ### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
