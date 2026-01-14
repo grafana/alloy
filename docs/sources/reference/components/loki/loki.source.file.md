@@ -50,6 +50,7 @@ You can use the following arguments with `loki.source.file`:
 
 The `encoding` argument must be a valid [IANA encoding][] name and if not set, it defaults to UTF-8. {{< param "PRODUCT_NAME" >}} is able to automatically change
 the encoding to `UTF-16` if the file includes a Byte Order Mark (BOM) for either `UTF-16BE` or `UTF-16LE`.
+The BOM will be taken into account even if Alloy resumes tailing a file from the middle of the file. This can happen after Alloy is restarted.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
