@@ -13,8 +13,12 @@ const defaultBufSize = 4096
 
 func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
 	if offset == 0 {
-		offset = skipBOM(f)
+		bomOffset, bomBytes := skipBOM(f)
+		offset = bomOffset
+		// Resolve the encoding based on BOM bytes if any.
+		enc = resolveEncodingFromBOM(bomBytes, enc)
 	}
+
 
 	var (
 		decoder = enc.NewDecoder()
@@ -35,6 +39,7 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error)
 		pos:     offset,
 		br:      bufio.NewReader(f),
 		decoder: decoder,
+		enc:     enc, // Store the encoding (after BOM detection) for use in reset
 		nl:      nl,
 		lastNl:  nl[len(nl)-1],
 		cr:      cr,
@@ -48,6 +53,7 @@ type reader struct {
 	pos     int64
 	br      *bufio.Reader
 	decoder *encoding.Decoder
+	enc     encoding.Encoding // The encoding to use (set on creation, preserved on reset)
 
 	nl      []byte
 	lastNl  byte
@@ -120,9 +126,31 @@ func (r *reader) position() int64 {
 }
 
 func (r *reader) reset(f *os.File, offset int64) {
+	// Just skip BOM if needed, but keep the same encoding that was set on creation
 	if offset == 0 {
-		offset = skipBOM(f)
+		var bomOffset int64
+		bomOffset, _ = skipBOM(f)
+		offset = bomOffset
+		// Note: We don't change encoding on reset - it was determined on creation
 	}
+
+	// Recreate decoder and encoder with the stored encoding
+	r.decoder = r.enc.NewDecoder()
+	encoder := r.enc.NewEncoder()
+
+	// Update newline and carriage return patterns
+	var err error
+	r.nl, err = encodedNewline(encoder)
+	if err != nil {
+		// If encoding fails, keep old values - this shouldn't happen in practice
+		return
+	}
+	r.lastNl = r.nl[len(r.nl)-1]
+	r.cr, err = encodedCarriageReturn(encoder)
+	if err != nil {
+		return
+	}
+
 	r.pos = offset
 	r.br.Reset(f)
 	r.pending = make([]byte, 0, defaultBufSize)

@@ -18,7 +18,6 @@ import (
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
@@ -60,7 +59,7 @@ func newTailer(
 	opts sourceOptions,
 ) (*tailer, error) {
 
-	decoder, err := getEncoding(opts.encoding)
+	enc, err := getEncoding(opts.encoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
@@ -82,7 +81,7 @@ func newTailer(
 		},
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-		enc:               decoder,
+		enc:               enc,
 	}
 
 	return tailer, nil
@@ -252,14 +251,6 @@ func (t *tailer) initRun() error {
 	t.file = tail
 
 	return nil
-}
-
-func getEncoding(enc string) (encoding.Encoding, error) {
-	if enc == "" {
-		return encoding.Nop, nil
-	}
-
-	return ianaindex.IANA.Encoding(enc)
 }
 
 // readLines reads lines from the tailed file by calling Next() in a loop.
