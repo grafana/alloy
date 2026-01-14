@@ -306,6 +306,8 @@ func (s *shards) stop() {
 	case <-time.After(s.cfg.QueueConfig.DrainTimeout):
 	}
 
+	level.Warn(s.logger).Log("msg", "failed to flush all queues during shutdown")
+
 	// Perform hard shutdown
 	s.cancel()
 	<-s.done
