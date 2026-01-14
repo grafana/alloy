@@ -21,6 +21,13 @@ func populateCloudProviderFromConfig(config *CloudProvider) (*database_observabi
 			ARN: arn,
 		}
 	}
+	if config.Azure != nil {
+		cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
+			SubscriptionID: config.Azure.SubscriptionID,
+			ResourceGroup:  config.Azure.ResourceGroup,
+			ServerName:     config.Azure.ServerName,
+		}
+	}
 	return &cloudProvider, nil
 }
 
@@ -47,7 +54,7 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 		} else if strings.HasSuffix(host, "mysql.database.azure.com") {
 			if matches := database_observability.AzureMySQLRegex.FindStringSubmatch(host); len(matches) >= 2 {
 				cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
-					Resource: matches[1],
+					ServerName: matches[1],
 				}
 			}
 		}

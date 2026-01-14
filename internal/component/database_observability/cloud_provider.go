@@ -20,6 +20,9 @@ type CloudProvider struct {
 type AWSCloudProviderInfo struct {
 	ARN arn.ARN
 }
+
 type AzureCloudProviderInfo struct {
-	Resource string
+	SubscriptionID string
+	ResourceGroup  string
+	ServerName     string
 }

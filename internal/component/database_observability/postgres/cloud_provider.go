@@ -20,6 +20,13 @@ func populateCloudProviderFromConfig(config *CloudProvider) (*database_observabi
 			ARN: arn,
 		}
 	}
+	if config.Azure != nil {
+		cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
+			SubscriptionID: config.Azure.SubscriptionID,
+			ResourceGroup:  config.Azure.ResourceGroup,
+			ServerName:     config.Azure.ServerName,
+		}
+	}
 	return &cloudProvider, nil
 }
 
@@ -45,7 +52,7 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 			matches := database_observability.AzurePostgreSQLRegex.FindStringSubmatch(host)
 			if len(matches) > 1 {
 				cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
-					Resource: matches[1],
+					ServerName: matches[1],
 				}
 			}
 		}

@@ -75,7 +75,9 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 		if c.CloudProvider.Azure != nil {
 			providerName = "azure"
-			dbInstanceIdentifier = c.CloudProvider.Azure.Resource
+			dbInstanceIdentifier = c.CloudProvider.Azure.ServerName
+			providerRegion = c.CloudProvider.Azure.ResourceGroup
+			providerAccount = c.CloudProvider.Azure.SubscriptionID
 		}
 	} else {
 		cfg, err := mysql.ParseDSN(c.DSN)
