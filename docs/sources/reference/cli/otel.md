@@ -38,7 +38,7 @@ For information about configuration options, refer to the [OpenTelemetry Collect
 
 ### Optionally Running the Default Engine
 
-The Alloy Collector Distro includes the option to run pipelines using the Default Engine alongside the OTel Engine using the built in `alloyengine` extension. More information on how to run the extension can be found [here](https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md)
+The Alloy Collector Distro includes the option to run pipelines using the Default Engine alongside the OTel Engine using the built in Alloy Engine extension. More information on how to run the extension can be found [here](https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md)
 
 This will run a Default Engine pipeline _in parallel_ to the OTel Engine pipeline - the two pipelines cannot natively interact.
 
@@ -50,7 +50,40 @@ To view the full list of components and their versioning, please refer to the [O
 
 ## Examples
 
-### Running with YAML configuration and Alloy Engine extension
+### Running with OTel Engine only
+
+This example runs the OTel Engine without the Alloy Engine extension:
+
+```shell
+alloy otel --config=config.yaml
+```
+
+Example `config.yaml`:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+
+exporters:
+  debug:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+```
+
+### Running with OTel Engine and Alloy Engine extension
+
+This example runs both the OTel Engine and the Alloy Engine extension in parallel:
 
 ```shell
 alloy otel --config=config.yaml
@@ -62,7 +95,7 @@ Example `config.yaml`:
 extensions:
   alloyengine:
     config:
-      file: ./alloy-config.alloy
+      file: path/to/alloy-config.alloy
     flags:
       server.http.listen-addr: 0.0.0.0:12345
       stability.level: experimental
@@ -87,8 +120,6 @@ service:
       processors: [batch]
       exporters: [debug]
 ```
-
-Removing the `alloyengine` portion of the config will run the OTel Engine alone, without any Alloy Engine pipeline running alongside.
 
 ## Related documentation
 * [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/): Official OpenTelemetry Collector documentation.
