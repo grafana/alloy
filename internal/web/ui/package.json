@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:fixtures": "npx tsx src/test/fixtures/writeFixture.ts",
+    "dev:mock": "npm run generate:fixtures && MOCK=true vite",
     "build": "tsc -b && vite build",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",
