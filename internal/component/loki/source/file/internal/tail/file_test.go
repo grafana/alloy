@@ -199,24 +199,6 @@ func TestFile(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 	})
 
-	t.Run("UTF-16LE", func(t *testing.T) {
-		file, err := NewFile(log.NewNopLogger(), &Config{
-			Filename: "testdata/mssql.log",
-			Encoding: unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM),
-		})
-		require.NoError(t, err)
-		defer file.Stop()
-
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 180}, nil)
-		verify(t, file, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 228}, nil)
-		verify(t, file, &Line{Text: "	Copyright (C) 2019 Microsoft Corporation", Offset: 314}, nil)
-		verify(t, file, &Line{Text: "	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)", Offset: 518}, nil)
-		verify(t, file, &Line{Text: "", Offset: 522}, nil)
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 636}, nil)
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 762}, nil)
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
-	})
-
 	t.Run("calls to next after stop", func(t *testing.T) {
 		name := createFile(t, "stopped", "hello\n")
 		defer removeFile(t, name)
@@ -259,6 +241,47 @@ func TestFile(t *testing.T) {
 		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
 		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
 		verify(t, file, &Line{Text: "newline2", Offset: 18}, nil)
+	})
+
+	t.Run("deleted while reading", func(t *testing.T) {
+		name := createFile(t, "removed", "1\n2\n")
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Offset:   0,
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+
+		go func() {
+			appendToFile(t, name, "3\n4\n")
+			removeFile(t, name)
+		}()
+
+		verify(t, file, &Line{Text: "1", Offset: 2}, nil)
+		verify(t, file, &Line{Text: "2", Offset: 4}, nil)
+		verify(t, file, &Line{Text: "3", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "4", Offset: 8}, nil)
+	})
+
+	t.Run("UTF-16LE", func(t *testing.T) {
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: "testdata/mssql.log",
+			Encoding: unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM),
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 180}, nil)
+		verify(t, file, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 228}, nil)
+		verify(t, file, &Line{Text: "	Copyright (C) 2019 Microsoft Corporation", Offset: 314}, nil)
+		verify(t, file, &Line{Text: "	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)", Offset: 518}, nil)
+		verify(t, file, &Line{Text: "", Offset: 522}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 636}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 762}, nil)
+		verify(t, file, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
 	})
 
 	t.Run("should detect UTF-16LE encoding from BOM", func(t *testing.T) {

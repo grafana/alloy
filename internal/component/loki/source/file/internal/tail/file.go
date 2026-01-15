@@ -163,8 +163,14 @@ func (f *File) wait() error {
 		return f.reopen(true)
 	case eventDeleted:
 		level.Debug(f.logger).Log("msg", "file deleted")
-		// if a file is deleted we want to make sure we drain what's remaining in the open file.
+		// If a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
+		// If we have any buffered lines after drain we can return here to make sure they are consumed and
+		// we are not blocking on a new file to aprea.
+		if len(f.bufferedLines) > 0 {
+			level.Debug(f.logger).Log("msg", "finish reading deleted file before reopen")
+			return nil
+		}
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
