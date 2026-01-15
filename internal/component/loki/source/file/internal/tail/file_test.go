@@ -256,6 +256,7 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
+			time.Sleep(50 * time.Millisecond)
 			appendToFile(t, name, "3\n4\n")
 			removeFile(t, name)
 		}()
