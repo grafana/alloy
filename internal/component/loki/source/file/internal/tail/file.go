@@ -41,10 +41,11 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	// NOTE: we always need to seek because newSignatureFromFile will read from file.
-	if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-		f.Close()
-		return nil, err
+	if cfg.Offset > 0 {
+		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
+			f.Close()
+			return nil, err
+		}
 	}
 
 	scanner, err := newReader(f, cfg.Offset, cfg.Encoding)
@@ -125,19 +126,12 @@ read:
 	// Recompute signature if we've crossed a threshold and haven't reached it yet.
 	// This progressively builds a more complete signature as the file grows.
 	if f.signature.shouldRecompute(offset) {
-		if _, err := f.file.Seek(0, io.SeekStart); err != nil {
-			return nil, err
-		}
-
 		sig, err := newSignatureFromFile(f.file)
 		if err != nil {
 			return nil, err
 		}
 
 		f.signature = sig
-		if _, err := f.file.Seek(offset, io.SeekStart); err != nil {
-			return nil, err
-		}
 	}
 
 	return &Line{

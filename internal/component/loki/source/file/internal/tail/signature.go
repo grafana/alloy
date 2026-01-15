@@ -25,7 +25,7 @@ var signatureThresholds = []int{64, 128, 256, 512, signatureSize}
 // to create a signature. If the file is smaller, the signature will be incomplete.
 func newSignatureFromFile(f *os.File) (*signature, error) {
 	buf := make([]byte, signatureSize)
-	n, err := f.Read(buf)
+	n, err := f.ReadAt(buf, 0)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("failed to compute signature for file: %w", err)
 	}

@@ -1,20 +1,28 @@
 package tail
 
 import (
+	"io"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSignature(t *testing.T) {
+	verifyFilePosition := func(f *os.File, expected int64) {
+		offset, err := f.Seek(0, io.SeekCurrent)
+		require.NoError(t, err)
+		require.Equal(t, expected, offset)
+	}
+
 	t.Run("newSignatureFromFile with empty file", func(t *testing.T) {
 		f := createEmptyFile(t, "empty")
 		defer f.Close()
-
 		sig, err := newSignatureFromFile(f)
 		require.NoError(t, err)
 		require.Equal(t, 0, len(sig.d))
 		require.False(t, sig.completed())
+		verifyFilePosition(f, 0)
 	})
 
 	t.Run("newSignatureFromFile with small file", func(t *testing.T) {
@@ -27,6 +35,7 @@ func TestSignature(t *testing.T) {
 		require.Equal(t, len(content), len(sig.d))
 		require.Equal(t, content, sig.d)
 		require.False(t, sig.completed())
+		verifyFilePosition(f, 0)
 	})
 
 	t.Run("newSignatureFromFile with exactly 512 bytes", func(t *testing.T) {
@@ -42,6 +51,7 @@ func TestSignature(t *testing.T) {
 		require.Equal(t, signatureSize, len(sig.d))
 		require.Equal(t, content, sig.d)
 		require.True(t, sig.completed())
+		verifyFilePosition(f, 0)
 	})
 
 	t.Run("newSignatureFromFile with large file", func(t *testing.T) {
@@ -57,6 +67,7 @@ func TestSignature(t *testing.T) {
 		require.Equal(t, signatureSize, len(sig.d))
 		require.Equal(t, content[:signatureSize], sig.d)
 		require.True(t, sig.completed())
+		verifyFilePosition(f, 0)
 	})
 
 	t.Run("completed returns false for incomplete signature", func(t *testing.T) {
