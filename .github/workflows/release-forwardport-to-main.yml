@@ -17,6 +17,17 @@ jobs:
     if: |
       github.event.pull_request.merged == true &&
       startsWith(github.event.pull_request.head.ref, 'release-please--')
+    env:
+      SLACK_MESSAGE: |
+        :x: *Forwardport to main failed*
+
+        The forwardport operation for PR #${{ github.event.pull_request.number }} failed.
+
+        *Release branch:* `${{ github.event.pull_request.base.ref }}`
+        *PR:* <${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }}>
+        *Workflow run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>
+
+        Please investigate and manually forwardport if needed.
     steps:
       - name: Get GitHub app secrets 🔐
         id: get-secrets
@@ -26,6 +37,7 @@ jobs:
           repo_secrets: |
             ALLOYBOT_APP_ID=alloybot:app_id
             ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+            SLACK_CHANNEL_ID_ALLOY_DEV=slack:channel_id_alloy_dev
 
       - name: Generate token 🔐
         uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
@@ -41,7 +53,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true # Needed for subsequent git operations
 
       - name: Set up Go 🏗️
         uses: actions/setup-go@v5
@@ -50,8 +62,44 @@ jobs:
           cache-dependency-path: tools/go.sum
 
       - name: Forwardport to main 🔀
+        id: forwardport
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           cd tools
           go run ./release/forwardport-release-to-main --pr "${{ github.event.pull_request.number }}"
+
+      - name: Notify Slack on failure 📢
+        if: failure() && steps.forwardport.outcome == 'failure'
+        uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
+        with:
+          method: chat.postMessage
+          payload-templated: false
+          payload: |
+            {
+              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_DEV }}",
+              "text": ${{ toJSON(env.SLACK_MESSAGE) }},
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ${{ toJSON(env.SLACK_MESSAGE) }}
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "Manual Forwardport Instructions"
+                      },
+                      "url": "https://github.com/grafana/alloy/blob/main/docs/developer/shepherding-releases.md#manually-forwardporting-a-release-branch-to-main"
+                    }
+                  ]
+                }
+              ]
+            }

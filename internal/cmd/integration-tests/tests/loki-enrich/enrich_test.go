@@ -18,35 +18,33 @@ import (
 
 func TestEnrichWithFileDiscovery(t *testing.T) {
 	// Send test logs directly to API
-	sendTestLogsForDevice(t, "router1.example.com", "enrich_with_file_discovery")
+	sendTestLogsForDevice(t, "router1.example.com")
 
 	// Verify logs were enriched with expected labels
-	common.AssertLogsPresent(t, "network_device_enriched", map[string]string{
-		"environment": "production",
-		"datacenter":  "us-east",
-		"role":        "core-router",
-		"rack":        "rack1",
-		"host":        "router1.example.com",
-	}, 3)
-	common.AssertLogsMissing(t, "network_device_enriched",
-		"__meta_rack",
-	)
+	common.AssertLogsPresent(t, common.ExpectedLogResult{
+		Labels: map[string]string{
+			"environment": "production",
+			"datacenter":  "us-east",
+			"role":        "core-router",
+			"rack":        "rack1",
+			"host":        "router1.example.com",
+			"job":         "network_device_logs",
+		},
+		EntryCount: 3,
+	})
 }
 
 func TestEnrichWithMissingLabels(t *testing.T) {
 	// Send test logs for unknown device
-	sendTestLogsForDevice(t, "unknown.example.com", "enrich_with_missing_labels")
+	sendTestLogsForDevice(t, "unknown.example.com")
 
 	// Verify logs passed through without enrichment
-	common.AssertLogsPresent(t, "network_device_enriched", map[string]string{
-		"host": "unknown.example.com",
-	}, 3)
-	common.AssertLogsMissing(t, "network_device_enriched",
-		"environment",
-		"datacenter",
-		"role",
-		"rack",
-	)
+	common.AssertLogsPresent(t, common.ExpectedLogResult{
+		Labels: map[string]string{
+			"host": "unknown.example.com",
+		},
+		EntryCount: 3,
+	})
 }
 
 func getLokiAPIEndpoint() string {
@@ -61,7 +59,7 @@ func getLokiAPIEndpoint() string {
 	return "http://localhost:1514/loki/api/v1/push"
 }
 
-func sendTestLogsForDevice(t *testing.T, hostname string, testName string) {
+func sendTestLogsForDevice(t *testing.T, hostname string) {
 	networkLogs := []string{
 		"%LINK-3-UPDOWN: Interface GigabitEthernet1/0/1, changed state to up",
 		"%SEC-6-IPACCESSLOGP: list 102 denied tcp 10.1.1.1(1234) -> 10.1.1.2(80), 1 packet",
@@ -82,7 +80,7 @@ func sendTestLogsForDevice(t *testing.T, hostname string, testName string) {
 		Streams: []common.LogData{{
 			Stream: map[string]string{
 				"host":      hostname,
-				"test_name": testName,
+				"test_name": common.SanitizeTestName(t),
 			},
 			Values: values,
 		}},

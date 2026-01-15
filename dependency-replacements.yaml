@@ -28,6 +28,14 @@ modules:
     path: go.mod
     file_type: mod
 
+  - name: extension
+    path: extension/alloyengine/go.mod
+    file_type: mod
+
+  - name: collector
+    path: collector/builder-config.yaml
+    file_type: ocb
+
 replaces:
   - comment: >
       TODO: remove this replace directive once the upstream issue is fixed:
@@ -61,7 +69,7 @@ replaces:
 
   - comment: Use forked syslog implementation by leodido for continued support
     dependency: github.com/influxdata/go-syslog/v3
-    replacement: github.com/leodido/go-syslog/v4 v4.2.0
+    replacement: github.com/leodido/go-syslog/v4 v4.3.0
 
   - comment: Replace thanos-io/objstore with Grafana fork
     dependency: github.com/thanos-io/objstore
@@ -101,10 +109,6 @@ replaces:
     dependency: github.com/openshift/client-go
     replacement: github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-  - comment: Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
-    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor
-    replacement: github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
-
   - comment: >
       Do not remove until bug in walqueue backwards compatibility is resolved:
       https://github.com/deneonet/benc/issues/13
@@ -118,3 +122,9 @@ replaces:
   - comment: Replace controller-runtime with pinned version
     dependency: sigs.k8s.io/controller-runtime
     replacement: sigs.k8s.io/controller-runtime v0.20.4
+
+  - comment: >
+      Point to fork that uses prometheus v0.308.0, changes here are mostly related to type name updates.
+      This can be removed once the upstream dependency points to prometheus v0.308.0 and above
+    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter
+    replacement: github.com/grafana/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260108134526-9817e6c361c9

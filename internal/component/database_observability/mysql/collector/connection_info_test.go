@@ -60,17 +60,25 @@ func TestConnectionInfo(t *testing.T) {
 		{
 			name:          "Azure with cloud provider info supplied",
 			dsn:           "user:pass@tcp(products-db.mysql.database.azure.com:3306)/schema",
-			engineVersion: "15.4",
+			engineVersion: "8.0.32",
 			cloudProvider: &database_observability.CloudProvider{
 				Azure: &database_observability.AzureCloudProviderInfo{
-					Resource: "products-db",
+					ServerName:     "products-db",
+					SubscriptionID: "sub-12345-abcde",
+					ResourceGroup:  "my-resource-group",
 				},
 			},
-			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "15.4", "unknown", "azure", "unknown"),
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "sub-12345-abcde", "azure", "my-resource-group"),
 		},
 		{
 			name:            "Azure flexibleservers dsn",
 			dsn:             "user:pass@tcp(products-db.mysql.database.azure.com:3306)/schema",
+			engineVersion:   "8.0.32",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "unknown", "azure", "unknown"),
+		},
+		{
+			name:            "Azure privatelink dsn",
+			dsn:             "user:pass@tcp(products-db.privatelink.mysql.database.azure.com:3306)/schema",
 			engineVersion:   "8.0.32",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "unknown", "azure", "unknown"),
 		},

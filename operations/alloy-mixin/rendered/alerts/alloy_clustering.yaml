@@ -51,7 +51,7 @@
       "summary": "Cluster configuration drifting."
     "expr": |
       count without (sha256) (
-          max by (cluster, namespace, sha256, job, cluster_name) (alloy_config_hash and on(cluster, namespace, job, cluster_name) cluster_node_info)
+          max by (cluster, namespace, sha256, job, cluster_name) (alloy_config_hash{cluster_name!=""} and on(cluster, namespace, job, cluster_name) cluster_node_info)
       ) > 1
     "for": "5m"
     "labels":

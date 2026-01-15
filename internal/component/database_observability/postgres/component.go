@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blang/semver/v4"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -72,14 +71,22 @@ type Arguments struct {
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
-	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
 	ARN string `alloy:"arn,attr"`
+}
+
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
 type QuerySampleArguments struct {
@@ -118,12 +125,19 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 	},
+	HealthCheckArguments: HealthCheckArguments{
+		CollectInterval: 1 * time.Hour,
+	},
 }
 
 type ExplainPlanArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+}
+
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -447,17 +461,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
-		engineSemver, err := semver.ParseTolerant(engineVersion)
-		if err != nil {
-			logStartError(collector.ExplainPlanCollector, "parse version", err)
-		}
-		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
+		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
 			DB:             c.dbConnection,
 			DSN:            string(c.args.DataSourceName),
 			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
 			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
 			Logger:         c.opts.Logger,
-			DBVersion:      engineSemver,
+			DBVersion:      engineVersion,
 			EntryHandler:   entryHandler,
 		})
 		if err != nil {
@@ -467,6 +477,22 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, epCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:              c.dbConnection,
+		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(context.Background()); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/google/go-github/v57/github"
@@ -12,6 +13,20 @@ import (
 	"github.com/grafana/alloy/tools/release/internal/git"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 )
+
+type backportCreationParams struct {
+	OriginalPR     *github.PullRequest
+	BackportBranch string
+	TargetBranch   string
+}
+
+type backportFailureParams struct {
+	PRNumber       int
+	OriginalTitle  string
+	MergeCommitSHA string
+	TargetBranch   string
+	BackportBranch string
+}
 
 func main() {
 	var (
@@ -42,7 +57,6 @@ func main() {
 
 	targetBranch := fmt.Sprintf("release/%s", version)
 	backportBranch := fmt.Sprintf("backport/pr-%d-to-%s", prNumber, version)
-	backportMarker := fmt.Sprintf("chore: backport #%d", prNumber)
 
 	fmt.Printf("🍒 Backporting PR #%d to %s\n", prNumber, targetBranch)
 
@@ -78,22 +92,25 @@ func main() {
 		log.Fatalf("Failed to get original PR: %v", err)
 	}
 
+	// Get the merge commit SHA for cherry-pick instructions
+	mergeCommitSHA := originalPR.GetMergeCommitSHA()
+
 	// Get the app identity for git commits
 	appIdentity, err := client.GetAppIdentity(ctx)
 	if err != nil {
 		log.Fatalf("Failed to get app identity: %v", err)
 	}
 
-	// Check if backport was already merged by looking for the marker in the release branch history
+	// Check if backport was already merged by looking for the original PR title in the release branch history
 	alreadyMerged, err := client.CommitExistsWithPattern(ctx, gh.FindCommitParams{
 		Branch:  targetBranch,
-		Pattern: backportMarker,
+		Pattern: originalPR.GetTitle(),
 	})
 	if err != nil {
 		log.Fatalf("Failed to check for existing backport commit: %v", err)
 	}
 	if alreadyMerged {
-		fmt.Printf("ℹ️  Backport already merged (found commit with %s in %s)\n", backportMarker, targetBranch)
+		fmt.Printf("ℹ️  Backport already merged (found commit with title %q in %s)\n", originalPR.GetTitle(), targetBranch)
 		return
 	}
 
@@ -132,8 +149,16 @@ func main() {
 	}
 
 	// Cherry-pick the commit
-	if err := git.CherryPick(commitSHA); err != nil {
-		log.Fatalf("Failed to cherry-pick commit: %v\n\nThis may be due to conflicts. Please create the backport manually.", err)
+	if err := git.CherryPick(commitSHA, true); err != nil {
+		commentOnBackportFailure(ctx, client, backportFailureParams{
+			PRNumber:       prNumber,
+			OriginalTitle:  originalPR.GetTitle(),
+			MergeCommitSHA: mergeCommitSHA,
+			TargetBranch:   targetBranch,
+			BackportBranch: backportBranch,
+		})
+		fmt.Fprintf(os.Stderr, "Failed to cherry-pick commit: %v. A comment has been added to the original PR (#%d) with instructions for manual backport.\n", err, prNumber)
+		os.Exit(1)
 	}
 
 	// Push the backport branch
@@ -144,7 +169,11 @@ func main() {
 	fmt.Printf("✅ Pushed backport branch: %s\n", backportBranch)
 
 	// Create the backport PR
-	backportPR, err := createBackportPR(ctx, client, originalPR, backportBranch, targetBranch, backportMarker)
+	backportPR, err := createBackportPR(ctx, client, backportCreationParams{
+		OriginalPR:     originalPR,
+		BackportBranch: backportBranch,
+		TargetBranch:   targetBranch,
+	})
 	if err != nil {
 		log.Fatalf("Failed to create backport PR: %v", err)
 	}
@@ -152,14 +181,19 @@ func main() {
 	fmt.Printf("✅ Created backport PR: %s\n", backportPR.GetHTMLURL())
 }
 
-func createBackportPR(ctx context.Context, client *gh.Client, originalPR *github.PullRequest, backportBranch, targetBranch, backportMarker string) (*github.PullRequest, error) {
+func createBackportPR(ctx context.Context, client *gh.Client, params backportCreationParams) (*github.PullRequest, error) {
+	// Use the original PR's title with [backport] suffix for conventional commit compatibility
+	title := backportPRTitle(params.OriginalPR.GetTitle())
+
 	body := fmt.Sprintf(`## Backport of #%d
 
 This PR backports #%d to %s.
 
-### Original PR
-- **Title:** %s
-- **Author:** @%s
+### Original PR Title
+%s
+
+### Original PR Author
+@%s
 
 ### Description
 %s
@@ -167,18 +201,62 @@ This PR backports #%d to %s.
 ---
 *This backport was created automatically.*
 `,
-		originalPR.GetNumber(),
-		originalPR.GetNumber(),
-		targetBranch,
-		originalPR.GetTitle(),
-		originalPR.GetUser().GetLogin(),
-		originalPR.GetBody(),
+		params.OriginalPR.GetNumber(),
+		params.OriginalPR.GetNumber(),
+		params.TargetBranch,
+		params.OriginalPR.GetTitle(),
+		params.OriginalPR.GetUser().GetLogin(),
+		params.OriginalPR.GetBody(),
 	)
 
 	return client.CreatePR(ctx, gh.CreatePRParams{
-		Title: backportMarker,
-		Head:  backportBranch,
-		Base:  targetBranch,
+		Title: title,
+		Head:  params.BackportBranch,
+		Base:  params.TargetBranch,
 		Body:  body,
 	})
+}
+
+func backportPRTitle(originalTitle string) string {
+	return fmt.Sprintf("%s [backport]", originalTitle)
+}
+
+func commentOnBackportFailure(ctx context.Context, client *gh.Client, params backportFailureParams) {
+	comment := fmt.Sprintf(`## ⚠️ Automatic backport to %s failed
+
+The automatic backport for this PR failed, likely due to merge conflicts. Perform the backport manually:
+
+`+"```"+`bash
+git fetch origin main %s
+git checkout %s
+git pull
+git checkout -b %s
+git cherry-pick -x %s
+# If conflicts exist, fix them, then:
+git add .
+git commit
+# If no [more] conflicts, then:
+git push -u origin %s
+`+"```"+`
+
+Then create a PR from `+"`%s`"+` to `+"`%s`"+` with the title:
+
+%s
+`,
+		params.TargetBranch,
+		params.TargetBranch,
+		params.TargetBranch,
+		params.BackportBranch,
+		params.MergeCommitSHA,
+		params.BackportBranch,
+		params.BackportBranch,
+		params.TargetBranch,
+		backportPRTitle(params.OriginalTitle),
+	)
+
+	if err := client.CreateIssueComment(ctx, params.PRNumber, comment); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to comment on PR #%d: %v\n", params.PRNumber, err)
+	} else {
+		fmt.Printf("📝 Added manual backport instructions to PR #%d\n", params.PRNumber)
+	}
 }
