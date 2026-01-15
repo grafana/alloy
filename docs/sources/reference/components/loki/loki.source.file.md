@@ -219,6 +219,7 @@ loki.write "local" {
 ### File globbing with `file_match` (recommended)
 
 This example collects log entries from files matching the `*.log` pattern using the built-in `file_match` block.
+When files appear or disappear, the list of targets is automatically updated based on the `sync_period` configuration.
 
 ```alloy
 loki.source.file "tmpfiles" {
