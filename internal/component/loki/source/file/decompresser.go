@@ -93,7 +93,7 @@ func newDecompressor(
 		}
 	}
 
-	decoder, err := getDecoder(opts.encoding)
+	enc, err := getEncoding(opts.encoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
@@ -107,7 +107,7 @@ func newDecompressor(
 		labels:               opts.labels,
 		running:              atomic.NewBool(false),
 		position:             position,
-		decoder:              decoder,
+		decoder:              enc.NewDecoder(),
 		cfg:                  opts.decompressionConfig,
 		onPositionsFileError: opts.onPositionsFileError,
 		componentStopping:    componentStopping,

@@ -1,18 +1,17 @@
 package tail
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
+	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -28,6 +27,14 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
+	if cfg.Encoding == nil {
+		cfg.Encoding = encoding.Nop
+	}
+
+	if cfg.WatcherConfig == (WatcherConfig{}) {
+		cfg.WatcherConfig = defaultWatcherConfig
+	}
+
 	if cfg.Offset != 0 {
 		// Seek to provided offset
 		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
@@ -35,19 +42,19 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		}
 	}
 
-	if cfg.WatcherConfig == (WatcherConfig{}) {
-		cfg.WatcherConfig = defaultWatcherConfig
+	scanner, err := newReader(f, cfg.Offset, cfg.Encoding)
+	if err != nil {
+		return nil, err
 	}
 
 	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
 		cfg:    cfg,
 		logger: logger,
 		file:   f,
-		reader: newReader(f, cfg),
+		reader: scanner,
 		ctx:    ctx,
 		cancel: cancel,
 	}, nil
@@ -63,9 +70,7 @@ type File struct {
 	// protects file, reader, and lastOffset.
 	mu     sync.Mutex
 	file   *os.File
-	reader *bufio.Reader
-
-	lastOffset int64
+	reader *reader
 
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
@@ -98,10 +103,10 @@ read:
 		return &line, nil
 	}
 
-	text, err := f.readLine()
+	text, err := f.reader.next()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			if err := f.wait(text != ""); err != nil {
+			if err := f.wait(); err != nil {
 				return nil, err
 			}
 			goto read
@@ -109,16 +114,9 @@ read:
 		return nil, err
 	}
 
-	offset, err := f.offset()
-	if err != nil {
-		return nil, err
-	}
-
-	f.lastOffset = offset
-
 	return &Line{
 		Text:   text,
-		Offset: offset,
+		Offset: f.reader.position(),
 		Time:   time.Now(),
 	}, nil
 }
@@ -148,7 +146,7 @@ func (f *File) Stop() error {
 
 // wait blocks until a file event is detected (modification, truncation, or deletion).
 // Returns an error if the context is canceled or an unrecoverable error occurs.
-func (f *File) wait(partial bool) error {
+func (f *File) wait() error {
 	offset, err := f.offset()
 	if err != nil {
 		return err
@@ -158,11 +156,6 @@ func (f *File) wait(partial bool) error {
 	switch event {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
-		if partial {
-			// We need to reset to last successful offset because we consumed a partial line.
-			f.file.Seek(f.lastOffset, io.SeekStart)
-			f.reader.Reset(f.file)
-		}
 		return nil
 	case eventTruncated:
 		level.Debug(f.logger).Log("msg", "file truncated")
@@ -172,8 +165,6 @@ func (f *File) wait(partial bool) error {
 		level.Debug(f.logger).Log("msg", "file deleted")
 		// if a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
-
-		f.lastOffset = 0
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -182,14 +173,13 @@ func (f *File) wait(partial bool) error {
 	}
 }
 
-// readLine reads a single line from the file, including the newline character.
-// The newline and any trailing carriage return (for Windows line endings) are stripped.
-func (f *File) readLine() (string, error) {
-	line, err := f.reader.ReadString('\n')
+// offset returns the current byte offset in the file where the next read will occur.
+func (f *File) offset() (int64, error) {
+	offset, err := f.file.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return line, err
+		return 0, err
 	}
-	return strings.TrimRight(line, "\r\n"), err
+	return offset, nil
 }
 
 // drain reads all remaining complete lines from the current file handle and stores
@@ -197,50 +187,25 @@ func (f *File) readLine() (string, error) {
 // to ensure we don't lose any data from the old file before switching to the new one.
 // drain is best effort and will stop if it encounters any errors.
 func (f *File) drain() {
-	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
-		return
-	}
-	f.reader.Reset(f.file)
-
 	for {
-		text, err := f.readLine()
+		text, err := f.reader.next()
 		if err != nil {
 			if text != "" {
-				offset, err := f.offset()
-				if err != nil {
-					return
-				}
 				f.bufferedLines = append(f.bufferedLines, Line{
 					Text:   text,
-					Offset: offset,
+					Offset: f.reader.position(),
 					Time:   time.Now(),
 				})
 			}
 			return
 		}
 
-		offset, err := f.offset()
-		if err != nil {
-			return
-		}
-
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,
-			Offset: offset,
+			Offset: f.reader.position(),
 			Time:   time.Now(),
 		})
 	}
-}
-
-// offset returns the current byte offset in the file where the next read will occur.
-// It accounts for buffered data in the reader.
-func (f *File) offset() (int64, error) {
-	offset, err := f.file.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-
-	return offset - int64(f.reader.Buffered()), nil
 }
 
 // reopen closes the current file handle and opens a new one for the same file path.
@@ -298,16 +263,9 @@ func (f *File) reopen(truncated bool) error {
 		}
 
 		f.file = file
-		f.reader.Reset(f.file)
+		f.reader.reset(f.file)
 		break
 	}
 
 	return backoff.Err()
-}
-
-func newReader(f *os.File, cfg *Config) *bufio.Reader {
-	if cfg.Decoder != nil {
-		return bufio.NewReader(cfg.Decoder.Reader(f))
-	}
-	return bufio.NewReader(f)
 }
