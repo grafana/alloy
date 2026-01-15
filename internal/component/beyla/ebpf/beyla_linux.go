@@ -90,7 +90,9 @@ func (args Routes) Convert() *transform.RoutesConfig {
 	if args.WildcardChar != "" {
 		routes.WildcardChar = args.WildcardChar
 	}
-	routes.MaxPathSegmentCardinality = args.MaxPathSegmentCardinality
+	if args.MaxPathSegmentCardinality > 0 {
+		routes.MaxPathSegmentCardinality = args.MaxPathSegmentCardinality
+	}
 	return routes
 }
 
