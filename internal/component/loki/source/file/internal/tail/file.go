@@ -166,7 +166,7 @@ func (f *File) wait() error {
 		// If a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
 		// If we have any buffered lines after drain we can return here to make sure they are consumed and
-		// we are not blocking on a new file to aprea.
+		// we are not blocking on reopening the new file.
 		if len(f.bufferedLines) > 0 {
 			level.Debug(f.logger).Log("msg", "finish reading deleted file before reopen")
 			return nil
