@@ -2,7 +2,6 @@ package tail
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 
@@ -84,7 +83,6 @@ func resolveEncodingFromBOM(bomBytes []byte, originalEnc encoding.Encoding) enco
 		// UTF-16 BE BOM detected - return encoding with IgnoreBOM since we skip it
 		return unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM)
 	case bytes.HasPrefix(bomBytes, bomUTF16LE):
-		fmt.Println("Detected UTF-16LE")
 		// UTF-16 LE BOM detected - return encoding with IgnoreBOM since we skip it
 		return unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
 	default:
