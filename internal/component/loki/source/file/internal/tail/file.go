@@ -50,6 +50,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 
 	scanner, err := newReader(f, cfg.Offset, cfg.Encoding)
 	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
@@ -161,7 +162,11 @@ func (f *File) Stop() error {
 	f.cancel()
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.file.Close()
+	err := f.file.Close()
+	if errors.Is(err, os.ErrClosed) {
+		return nil
+	}
+	return err
 }
 
 // wait blocks until a file event is detected (modification, truncation, or deletion).
