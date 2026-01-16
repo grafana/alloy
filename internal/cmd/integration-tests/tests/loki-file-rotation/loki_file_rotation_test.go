@@ -147,23 +147,39 @@ func runFileRotationTest(t *testing.T, fn rotateFn) {
 
 	defer cleanup(t, testDir)
 
-	var wg sync.WaitGroup
-	var results = [numWriters][]common.ExpectedLogResult{}
+	var (
+		wg      sync.WaitGroup
+		errors  = [numWriters]error{}
+		results = [numWriters][]common.ExpectedLogResult{}
+	)
 
-	for id := range numWriters {
+	for i := range numWriters {
 		wg.Go(func() {
-			w, err := newWriter(common.SanitizeTestName(t), id, testDir, fn)
+			w, err := newWriter(common.SanitizeTestName(t), i, testDir, fn)
 			if err != nil {
-				t.Errorf("failed to create writer: %v\n", err)
+				errors[i] = err
 			}
 			if err := w.run(); err != nil {
-				t.Errorf("failed to run writer: %v\n", err)
+				errors[i] = err
 			}
-			results[id] = append(results[id], w.expected()...)
+			results[i] = append(results[i], w.expected()...)
 		})
 	}
-
 	wg.Wait()
+
+	var hasErrors bool
+	for i, err := range errors {
+		if err != nil {
+			hasErrors = true
+			t.Logf("failed to perform writes: %d %v", i, err)
+		}
+	}
+
+	if hasErrors {
+		t.Fail()
+		// return here so we still perform cleanup but do not run assertions.
+		return
+	}
 
 	var expected []common.ExpectedLogResult
 	for _, r := range results {
@@ -229,15 +245,11 @@ func (w *writer) run() error {
 		w.file.Close()
 	}()
 
-	lineNum := 0
 	for {
 		<-ticker.C
-		lineNum += 1
 
-		w.log(lineNum)
-
-		if lineNum == rotateEvery {
-			lineNum = 0
+		w.log()
+		if w.fileWritten == rotateEvery {
 			if err := w.rotate(); err != nil {
 				return err
 			}
@@ -249,13 +261,14 @@ func (w *writer) run() error {
 	}
 }
 
-func (w *writer) log(lineNum int) error {
-	_, err := fmt.Fprintf(w.file, "id=%d generation=%d num=%d test_name=\"%s\"\n", w.id, w.generation, lineNum, w.testName)
+func (w *writer) log() error {
+	w.fileWritten += 1
+	w.totalWritten += 1
+
+	_, err := fmt.Fprintf(w.file, "id=%d generation=%d num=%d test_name=\"%s\"\n", w.id, w.generation, w.fileWritten, w.testName)
 	if err != nil {
 		return err
 	}
-	w.fileWritten += 1
-	w.totalWritten += 1
 	return nil
 }
 
