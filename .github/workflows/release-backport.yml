@@ -95,7 +95,7 @@ jobs:
             core.setOutput('labels', JSON.stringify(backportLabels));
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.event.repository.default_branch }}
@@ -103,7 +103,7 @@ jobs:
           persist-credentials: true # Needed for subsequent git operations
 
       - name: Set up Go 🏗️
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: tools/go.mod
           cache-dependency-path: tools/go.sum

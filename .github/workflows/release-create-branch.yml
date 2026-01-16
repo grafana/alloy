@@ -40,7 +40,7 @@ jobs:
           repositories: alloy
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.source_ref }}
           fetch-depth: 0
@@ -48,7 +48,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go 🏗️
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: tools/go.mod
           cache-dependency-path: tools/go.sum
