@@ -39,7 +39,7 @@ func TestFileRotationRename(t *testing.T) {
 // Default query limit in loki is 5k so we need to make sure that total
 // logs produced is not more to make the assertion simple.
 const (
-	numWriters  = 1
+	numWriters  = 5
 	rotateEvery = 200
 	stopAfter   = rotateEvery * 5
 )
@@ -128,21 +128,18 @@ type writer struct {
 func (w *writer) run() error {
 	// We need an initial sleep so that alloy have time to discover the first set of files.
 	time.Sleep(5 * time.Second)
+	ticker := time.NewTicker(50 * time.Millisecond)
 
 	defer func() {
-		if w.file != nil {
-			w.file.Close()
-		}
+		ticker.Stop()
+		w.file.Close()
+
 		if err := os.Remove(w.filePath); err != nil && !os.IsNotExist(err) {
 			fmt.Printf("warning: failed to remove file %s: %v\n", w.filePath, err)
 		}
 	}()
 
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
 	lineNum := 0
-
 	for {
 		<-ticker.C
 		lineNum += 1
