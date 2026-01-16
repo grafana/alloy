@@ -40,7 +40,7 @@ jobs:
             SLACK_CHANNEL_ID_ALLOY_DEV=slack:channel_id_alloy_dev
 
       - name: Generate token 🔐
-        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: app-token
         with:
           app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
