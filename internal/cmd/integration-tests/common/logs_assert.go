@@ -12,10 +12,10 @@ import (
 const lokiURL = "http://localhost:3100/loki/api/v1/"
 
 // LogQuery returns a formatted Loki query with the given test_name label
-func LogQuery(testName string) string {
+func LogQuery(testName string, limit int) string {
 	// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-logs-within-a-range-of-time
 	queryFilter := fmt.Sprintf("{test_name=\"%s\"}", testName)
-	query := fmt.Sprintf("%squery_range?query=%s", lokiURL, url.QueryEscape(queryFilter))
+	query := fmt.Sprintf("%squery_range?query=%s&limit=%d", lokiURL, url.QueryEscape(queryFilter), limit)
 
 	// Loki queries require a nanosecond unix timestamp for the start time.
 	if startingAt := AlloyStartTimeUnixNano(); startingAt > 0 {
@@ -35,12 +35,26 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var logResponse LogResponse
+	var (
+		totalExpected int
+		logResponse   LogResponse
+	)
 
-	require.Eventually(t, func() bool {
-		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t)), &logResponse)
-		require.NoError(t, err)
-		return len(logResponse.Data.Result) == len(expected)
+	for _, e := range expected {
+		totalExpected += e.EntryCount
+	}
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t), totalExpected), &logResponse)
+		require.NoError(c, err)
+		require.Len(c, logResponse.Data.Result, len(expected))
+
+		var totalRecv int
+		for _, r := range logResponse.Data.Result {
+			totalRecv += len(r.Values)
+		}
+
+		require.Equal(c, totalExpected, totalRecv)
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
 	for _, e := range expected {

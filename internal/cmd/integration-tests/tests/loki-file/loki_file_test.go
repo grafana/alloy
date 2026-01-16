@@ -29,9 +29,9 @@ func TestReadLogFile(t *testing.T) {
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"detected_level": "error",
+				"detected_level": "warn",
 			},
-			EntryCount: 2,
+			EntryCount: 1,
 		},
 	)
 }
