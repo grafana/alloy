@@ -6,7 +6,7 @@ go 1.25.5
 
 require (
 	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
-	github.com/grafana/alloy/extension/alloyengine v0.1.0
+	github.com/grafana/alloy/extension/alloyengine v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.139.0
@@ -886,10 +886,10 @@ require (
 	go.opentelemetry.io/collector/internal/memorylimiter v0.139.0 // indirect
 	go.opentelemetry.io/collector/internal/sharedcomponent v0.139.0 // indirect
 	go.opentelemetry.io/collector/internal/telemetry v0.139.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.49.0 // indirect
-	go.opentelemetry.io/collector/pdata/pprofile v0.143.0 // indirect
-	go.opentelemetry.io/collector/pdata/testdata v0.143.0 // indirect
-	go.opentelemetry.io/collector/pdata/xpdata v0.143.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.45.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.139.0 // indirect
+	go.opentelemetry.io/collector/pdata/testdata v0.139.0 // indirect
+	go.opentelemetry.io/collector/pdata/xpdata v0.139.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.49.0 // indirect
 	go.opentelemetry.io/collector/pipeline/xpipeline v0.143.0 // indirect
 	go.opentelemetry.io/collector/processor/processorhelper v0.139.0 // indirect
@@ -1045,3 +1045,41 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.0
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => github.com/grafana/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260108134526-9817e6c361c9
+
+exclude (
+	github.com/containerd/containerd v1.7.0
+	github.com/containerd/containerd v1.7.1
+	github.com/containerd/containerd v1.7.2
+	github.com/containerd/containerd v1.7.3
+	github.com/containerd/containerd v1.7.4
+	github.com/containerd/containerd v1.7.5
+	github.com/containerd/containerd v1.7.6
+	github.com/containerd/containerd v1.7.7
+	github.com/containerd/containerd v1.7.8
+	github.com/containerd/containerd v1.7.9
+	github.com/containerd/containerd v1.7.10
+	github.com/containerd/containerd v1.7.11
+	github.com/containerd/containerd v1.7.12
+	github.com/containerd/containerd v1.7.13
+	github.com/containerd/containerd v1.7.14
+	github.com/containerd/containerd v1.7.15
+	github.com/containerd/containerd v1.7.16
+	github.com/containerd/containerd v1.7.17
+	github.com/containerd/containerd v1.7.18
+	go.opentelemetry.io/collector/pdata v1.46.0
+	go.opentelemetry.io/collector/pdata v1.47.0
+	go.opentelemetry.io/collector/pdata v1.48.0
+	go.opentelemetry.io/collector/pdata v1.49.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.140.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.141.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.142.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.143.0
+	go.opentelemetry.io/collector/pdata/testdata v0.140.0
+	go.opentelemetry.io/collector/pdata/testdata v0.141.0
+	go.opentelemetry.io/collector/pdata/testdata v0.142.0
+	go.opentelemetry.io/collector/pdata/testdata v0.143.0
+	go.opentelemetry.io/collector/pdata/xpdata v0.140.0
+	go.opentelemetry.io/collector/pdata/xpdata v0.141.0
+	go.opentelemetry.io/collector/pdata/xpdata v0.142.0
+	go.opentelemetry.io/collector/pdata/xpdata v0.143.0
+)
