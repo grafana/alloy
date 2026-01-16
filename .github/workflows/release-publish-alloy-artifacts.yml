@@ -140,7 +140,7 @@ jobs:
         cache: false
 
     - name: Download signed Windows executables
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: windows-executables-signed
         path: .
@@ -237,21 +237,21 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Download dist
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: dist
         path: dist
 
     # Overwrite the original Windows Alloy executable with the signed version
     - name: Download signed Windows executable
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: windows-executables-signed
         path: .
 
     # Overwrite the original Windows Alloy installer with the signed version
     - name: Download signed Windows installer
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: windows-installer-signed
         path: dist
