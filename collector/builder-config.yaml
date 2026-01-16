@@ -69,7 +69,7 @@ replaces:
   # Replace thanos-io/objstore with Grafana fork
   - github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
   # TODO - remove forks when changes are merged upstream — non-singleton cadvisor
-  - github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+  - github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260113212819-8e138474f7ff
   # TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
   - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
   # TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
@@ -86,8 +86,8 @@ replaces:
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
   # Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
   - github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
-  # Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
-  - github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+  # Pin runc to v1.3.3 for compatibility with cadvisor and dockertest (v1.4.0 blocked by dockertest using deprecated libcontainer/user)
+  - github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.3
   # Replace controller-runtime with pinned version
   - sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
   # Point to fork that uses prometheus v0.308.0, changes here are mostly related to type name updates. This can be removed once the upstream dependency points to prometheus v0.308.0 and above
