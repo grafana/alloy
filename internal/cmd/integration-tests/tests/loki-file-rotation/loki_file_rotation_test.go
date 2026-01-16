@@ -158,9 +158,11 @@ func runFileRotationTest(t *testing.T, fn rotateFn) {
 			w, err := newWriter(common.SanitizeTestName(t), i, testDir, fn)
 			if err != nil {
 				errors[i] = err
+				return
 			}
 			if err := w.run(); err != nil {
 				errors[i] = err
+				return
 			}
 			results[i] = append(results[i], w.expected()...)
 		})
