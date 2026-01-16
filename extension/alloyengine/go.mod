@@ -1039,16 +1039,19 @@ replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 
-// Pin runc to v1.3.3 for compatibility with cadvisor and dockertest (v1.4.0 blocked by dockertest using deprecated libcontainer/user)
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.3
+// Pin runc to v1.4.0 (packaging tests disabled until dockertest is updated)
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.0
 
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
 // Point to fork that uses prometheus v0.308.0, changes here are mostly related to type name updates. This can be removed once the upstream dependency points to prometheus v0.308.0 and above
 replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => github.com/grafana/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260108134526-9817e6c361c9
-
 // END GENERATED REPLACES
+
+
+
+
 
 exclude (
 	github.com/containerd/containerd v1.7.0
