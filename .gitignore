@@ -19,6 +19,7 @@ data-alloy/
 /packaging/windows/LICENSE
 /packaging/windows/agent-windows-amd64.exe
 internal/web/ui/dist
+internal/web/ui/src/test/fixtures/large_disc_output.json
 
 .DS_Store
 buildx-v*
