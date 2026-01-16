@@ -186,6 +186,19 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 		}
 	}()
 
+	// FIXME(@kalleep): All these checks for special setups are
+	// annoying. We should figure out a way for a test to describe
+	// special setups it needs like mounts, exported ports etc.
+	if dirName == "loki-file-rotation" {
+		// Ensure mountDir exists
+		mountDir := filepath.Join(absTestDir, "mount")
+		if _, err := os.Stat(mountDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(mountDir, 0755); err != nil {
+				panic(fmt.Sprintf("failed to create mount directory: %v\n", err))
+			}
+		}
+	}
+
 	// Check if special directory exists that we should mount into container
 	mountDir := filepath.Join(testDir, "mount")
 	mountStat, err := os.Stat(mountDir)
@@ -194,20 +207,17 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 	}
 
 	var mounts []mount.Mount
-
 	if mountStat != nil {
 		mountSrc, err := filepath.Abs(mountDir)
 		if err != nil {
 			panic(err)
 		}
-
 		mounts = append(mounts, mount.Mount{
 			Type:     mount.TypeBind,
 			Source:   mountSrc,
 			Target:   "/etc/alloy/mount",
 			ReadOnly: true,
 		})
-
 	}
 	// Create container request
 	req := createContainerRequest(dirName, port, "alloy-integration-tests_integration-tests", containerFiles, mounts)
@@ -235,6 +245,14 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 				AlloyLog: fmt.Sprintf("failed to terminate Alloy container: %v", err),
 				IsError:  true,
 			})
+		}
+
+		if dirName == "loki-file-rotation" {
+			// Cleanup mount directory
+			mountDir := filepath.Join(absTestDir, "mount")
+			if err := os.RemoveAll(mountDir); err != nil {
+				panic(fmt.Sprintf("failed to remove mount directory: %v\n", err))
+			}
 		}
 	}()
 
