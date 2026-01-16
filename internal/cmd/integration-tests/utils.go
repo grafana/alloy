@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -88,7 +89,7 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 }
 
 // Create a container request based on the test directory
-func createContainerRequest(dirName string, port int, networkName string, containerFiles []testcontainers.ContainerFile) testcontainers.ContainerRequest {
+func createContainerRequest(dirName string, port int, networkName string, containerFiles []testcontainers.ContainerFile, mounts []mount.Mount) testcontainers.ContainerRequest {
 	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build natPort: %v", err))
@@ -99,7 +100,10 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 		ExposedPorts: []string{fmt.Sprintf("%d/tcp", port)},
 		WaitingFor:   wait.ForListeningPort(natPort),
 		Cmd:          []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"},
-		Files:        containerFiles,
+		HostConfigModifier: func(hc *container.HostConfig) {
+			hc.Mounts = append(hc.Mounts, mounts...)
+		},
+		Files: containerFiles,
 		Networks: []string{
 			networkName,
 		},
@@ -182,8 +186,31 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 		}
 	}()
 
+	// Check if special directory exists that we should mount into container
+	mountDir := filepath.Join(testDir, "mount")
+	mountStat, err := os.Stat(mountDir)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	var mounts []mount.Mount
+
+	if mountStat != nil {
+		mountSrc, err := filepath.Abs(mountDir)
+		if err != nil {
+			panic(err)
+		}
+
+		mounts = append(mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   mountSrc,
+			Target:   "/etc/alloy/mount",
+			ReadOnly: true,
+		})
+
+	}
 	// Create container request
-	req := createContainerRequest(dirName, port, "alloy-integration-tests_integration-tests", containerFiles)
+	req := createContainerRequest(dirName, port, "alloy-integration-tests_integration-tests", containerFiles, mounts)
 
 	// Start container
 	containerStartTime := time.Now()
