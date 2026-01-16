@@ -119,6 +119,22 @@ replaces:
     dependency: github.com/opencontainers/runc
     replacement: github.com/opencontainers/runc v1.4.0
 
+  - comment: Pin OTel pdata to v1.45.0 to avoid breaking API changes in v1.46.0+
+    dependency: go.opentelemetry.io/collector/pdata
+    replacement: go.opentelemetry.io/collector/pdata v1.45.0
+
+  - comment: Pin OTel pdata/pprofile to v0.139.0 to avoid breaking API changes (Sample, Line, CommentStrindices removed)
+    dependency: go.opentelemetry.io/collector/pdata/pprofile
+    replacement: go.opentelemetry.io/collector/pdata/pprofile v0.139.0
+
+  - comment: Pin OTel pdata/testdata to v0.139.0 for compatibility with pprofile v0.139.0
+    dependency: go.opentelemetry.io/collector/pdata/testdata
+    replacement: go.opentelemetry.io/collector/pdata/testdata v0.139.0
+
+  - comment: Pin OTel pdata/xpdata to v0.139.0 for compatibility with pprofile v0.139.0
+    dependency: go.opentelemetry.io/collector/pdata/xpdata
+    replacement: go.opentelemetry.io/collector/pdata/xpdata v0.139.0
+
   - comment: Replace controller-runtime with pinned version
     dependency: sigs.k8s.io/controller-runtime
     replacement: sigs.k8s.io/controller-runtime v0.20.4

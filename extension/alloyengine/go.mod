@@ -1042,6 +1042,18 @@ replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 // Pin runc to v1.4.0 (packaging tests disabled until dockertest is updated)
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.0
 
+// Pin OTel pdata to v1.45.0 to avoid breaking API changes in v1.46.0+
+replace go.opentelemetry.io/collector/pdata => go.opentelemetry.io/collector/pdata v1.45.0
+
+// Pin OTel pdata/pprofile to v0.139.0 to avoid breaking API changes (Sample, Line, CommentStrindices removed)
+replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.139.0
+
+// Pin OTel pdata/testdata to v0.139.0 for compatibility with pprofile v0.139.0
+replace go.opentelemetry.io/collector/pdata/testdata => go.opentelemetry.io/collector/pdata/testdata v0.139.0
+
+// Pin OTel pdata/xpdata to v0.139.0 for compatibility with pprofile v0.139.0
+replace go.opentelemetry.io/collector/pdata/xpdata => go.opentelemetry.io/collector/pdata/xpdata v0.139.0
+
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
