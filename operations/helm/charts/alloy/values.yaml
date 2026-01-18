@@ -274,6 +274,9 @@ controller:
   # -- Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
   dnsPolicy: ClusterFirst
 
+  # -- Configures the DNS settings for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: {}
+
   # -- Termination grace period in seconds for the Grafana Alloy pods.
   # The default value used by Kubernetes if unspecifed is 30 seconds.
   terminationGracePeriodSeconds: null
