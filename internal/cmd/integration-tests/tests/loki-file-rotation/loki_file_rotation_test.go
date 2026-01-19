@@ -253,7 +253,10 @@ func (w *writer) run() error {
 	for {
 		<-ticker.C
 
-		w.log()
+		if err := w.log(); err != nil {
+			return err
+		}
+
 		if w.fileWritten == rotateEvery {
 			if err := w.rotate(); err != nil {
 				return err
