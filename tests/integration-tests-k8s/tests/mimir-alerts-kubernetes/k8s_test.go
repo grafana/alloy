@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/integration-tests-k8s/util"
+	"github.com/grafana/alloy/tests/integration-tests-k8s/util"
 )
 
 // Running the test in a stateful way means that k8s resources won't be deleted at the end.
