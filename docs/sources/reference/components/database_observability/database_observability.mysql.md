@@ -33,7 +33,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `targets`                                  | `list(map(string))`  | List of targets to scrape.                                                  |         | yes      |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
-| `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. | `false` | no       |
+| `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
 
@@ -55,6 +55,7 @@ You can use the following blocks with `database_observability.mysql`:
 |--------------------------------------|---------------------------------------------------|----------|
 | [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
 | `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | [`setup_consumers`][setup_consumers] | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]       | Configure the `setup_actors` collector.           | no       |
 | [`query_details`][query_details]     | Configure the queries collector.                  | no       |
@@ -69,6 +70,7 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
+[azure]: #azure
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
 [schema_details]: #schema_details
@@ -93,6 +95,16 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | Name  | Type     | Description                                             | Default | Required |
 |-------|----------|---------------------------------------------------------|---------|----------|
 | `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
+
+### `azure`
+
+The `azure` block supplies the identifying information for the database being monitored.
+
+| Name              | Type     | Description                                          | Default | Required |
+|-------------------|----------|------------------------------------------------------|---------|----------|
+| `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
+| `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
+| `server_name`     | `string` | The database server name.                            |         | no       |
 
 ### `setup_consumers`
 
@@ -137,14 +149,14 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
 | `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
-| `auto_enable_setup_consumers`    | `boolean`  | Whether to enable some specific `performance_schema.setup_consumers` settings. | `false` | no       |
+| `auto_enable_setup_consumers`    | `boolean`  | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 
 ### `setup_actors`
 
 | Name                       | Type       | Description                                                            | Default | Required |
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `auto_update_setup_actors` | `boolean`  | Whether to enable updating `performance_schema.setup_actors` settings. | `false` | no       |
+| `auto_update_setup_actors` | `boolean`  | Enables updates to `performance_schema.setup_actors` settings. You must also enable `allow_update_performance_schema_settings`.| `false` | no       |
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
 
 

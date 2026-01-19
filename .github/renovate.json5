@@ -33,14 +33,14 @@
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],
-      // "groupName": "docker-compose dependencies",
-      "enabled": false // TODO: remove to enable when ready
+      "groupName": "docker-compose dependencies",
+      "enabled": true
     },
     {
       "matchManagers": ["dockerfile"],
-      // "groupName": "dockerfile dependencies",
-      // "pinDigests": true,
-      "enabled": false // TODO: remove to enable when ready
+      "groupName": "dockerfile dependencies",
+      "pinDigests": true,
+      "enabled": true
     },
     {
       "matchManagers": ["github-actions"],
@@ -58,7 +58,8 @@
       "matchPackageNames": [
         // OpenTelemetry needs special handling due to a temporary fork
         "github.com/open-telemetry/opentelemetry-collector-contrib/**",
-        "go.opentelemetry.io/collector/**"
+        "go.opentelemetry.io/collector/**",
+        "go.opentelemetry.io/otel/**",
       ],
       "groupName": "go otel collector dependencies",
       "dependencyDashboardApproval": true
@@ -73,12 +74,14 @@
         "github.com/google/cadvisor",
         "github.com/grafana/beyla/v2",
         "github.com/grafana/jfr-parser/pprof",
+        "github.com/grafana/opentelemetry-ebpf-instrumentation",
         "github.com/hashicorp/vault/api/**",
         "github.com/heroku/x",
         "github.com/jaegertracing/jaeger-idl",
         "github.com/mackerelio/go-osstat",
         "github.com/ncabatoff/process-exporter",
         "github.com/nerdswords/yet-another-cloudwatch-exporter",
+        "github.com/opencontainers/runc",
         "github.com/prometheus-operator/**",
         "github.com/prometheus/consul_exporter",
         "github.com/prometheus/memcached_exporter",
@@ -104,18 +107,18 @@
     },
     {
       "matchManagers": ["helm-values"],
-      // "groupName": "helm-values dependencies",
-      "enabled": false // TODO: remove to enable when ready
+      "groupName": "helm-values dependencies",
+      "enabled": true
     },
     {
       "matchManagers": ["helmv3"],
-      // "groupName": "helmv3 dependencies",
-      "enabled": false // TODO: remove to enable when ready
+      "groupName": "helmv3 dependencies",
+      "enabled": true
     },
     {
       "matchManagers": ["jsonnet-bundler"],
-      // "groupName": "jsonnet-bundler dependencies",
-      "enabled": false // TODO: remove to enable when ready
+      "groupName": "jsonnet-bundler dependencies",
+      "enabled": true
     },
     {
       "matchManagers": ["npm"],

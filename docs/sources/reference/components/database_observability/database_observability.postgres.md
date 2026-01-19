@@ -51,6 +51,7 @@ You can use the following blocks with `database_observability.postgres`:
 |------------------------------------|---------------------------------------------------|----------|
 | [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
 | `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
@@ -62,6 +63,7 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
+[azure]: #azure
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
@@ -83,6 +85,16 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | Name  | Type     | Description                                             | Default | Required |
 |-------|----------|---------------------------------------------------------|---------|----------|
 | `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
+
+### `azure`
+
+The `azure` block supplies the identifying information for the database being monitored.
+
+| Name              | Type     | Description                                          | Default | Required |
+|-------------------|----------|------------------------------------------------------|---------|----------|
+| `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
+| `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
+| `server_name`     | `string` | The database server name.                            |         | no       |
 
 ### `query_details`
 

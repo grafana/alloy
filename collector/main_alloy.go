@@ -17,7 +17,5 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
     flowCmd := flowcmd.RootCommand()
     flowCmd.AddCommand(otelCmd)
 
-    // TODO: Officially add this command to expose in a follow up PR
-    otelCmd.Hidden = true
     return flowCmd
 }

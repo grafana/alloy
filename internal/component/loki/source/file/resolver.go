@@ -4,7 +4,7 @@ import (
 	"iter"
 	"path/filepath"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
@@ -72,7 +72,7 @@ func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarg
 			targetPath, _ := target.Get(labelPath)
 			labels := target.NonReservedLabelSet()
 
-			matches, err := doublestar.Glob(targetPath)
+			matches, err := doublestar.FilepathGlob(targetPath)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "failed to resolve target", "error", err)
 				continue
@@ -82,7 +82,7 @@ func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarg
 
 			for _, m := range matches {
 				if exclude != "" {
-					if match, _ := doublestar.PathMatch(exclude, m); match {
+					if match, _ := doublestar.PathMatch(filepath.FromSlash(exclude), m); match {
 						continue
 					}
 				}

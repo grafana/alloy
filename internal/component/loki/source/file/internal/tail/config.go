@@ -14,12 +14,9 @@ type Config struct {
 	// If 0, tailing starts from the beginning of the file.
 	Offset int64
 
-	// Decoder is an optional text decoder for non-UTF-8 encoded files.
-	// If the file is not UTF-8, the tailer must use the correct decoder
-	// or the output text may be corrupted. For example, if the file is
-	// "UTF-16 LE" encoded, the tailer would not separate new lines properly
-	// and the output could appear as garbled characters.
-	Decoder *encoding.Decoder
+	// Encoding used for file. If none is provided encoding.Nop is used
+	// and the file is assumed to be UTF-8.
+	Encoding encoding.Encoding
 
 	// WatcherConfig controls how the file system is polled for changes.
 	WatcherConfig WatcherConfig
