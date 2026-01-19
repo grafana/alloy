@@ -1,0 +1,74 @@
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager.go b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager.go
+index b1c7d83a9..0e87d57ab 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager.go
+@@ -70,7 +70,7 @@ func (m *Manager) Start(ctx context.Context, host component.Host, sm *scrape.Man
+ 		// the target allocator is disabled
+ 		return nil
+ 	}
+-	httpClient, err := m.cfg.ToClient(ctx, host.GetExtensions(), m.settings.TelemetrySettings)
++	httpClient, err := m.cfg.ToClient(ctx, host, m.settings.TelemetrySettings)
+ 	if err != nil {
+ 		m.settings.Logger.Error("Failed to create http client", zap.Error(err))
+ 		return err
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/transaction.go b/internal/component/otelcol/receiver/prometheus/internal/transaction.go
+index f0b4540d9..9f583ccd1 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/transaction.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/transaction.go
+@@ -26,8 +26,8 @@ import (
+ 	"go.opentelemetry.io/collector/receiver/receiverhelper"
+ 	"go.uber.org/zap"
+ 
++	mdata "github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal/metadata"
+ 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
+-	mdata "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver/internal/metadata"
+ )
+ 
+ var _ = featuregate.GlobalRegistry().MustRegister(
+@@ -362,13 +362,13 @@ func (t *transaction) AppendHistogram(_ storage.SeriesRef, ls labels.Labels, atM
+ 	return 1, nil
+ }
+ 
+-func (t *transaction) AppendSTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, stMs int64) (storage.SeriesRef, error) {
++func (t *transaction) AppendCTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, stMs int64) (storage.SeriesRef, error) {
+ 	t.addingNativeHistogram = false
+ 	t.addingNHCB = false
+ 	return t.setStartTimestamp(ls, atMs, stMs)
+ }
+ 
+-func (t *transaction) AppendHistogramSTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, stMs int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
++func (t *transaction) AppendHistogramCTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, stMs int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+ 	var schema int32
+ 	if h != nil {
+ 		schema = h.Schema
+@@ -506,7 +506,7 @@ func getScopeID(ls labels.Labels) scopeID {
+ 		if lbl.Name == prometheus.ScopeVersionLabelKey {
+ 			scope.version = lbl.Value
+ 		}
+-		if lbl.Name == prometheus.ScopeSchemaURLLabelKey {
++		if lbl.Name == "otel_scope_schema_url" {
+ 			scope.schemaURL = lbl.Value
+ 		}
+ 	})
+@@ -633,7 +633,7 @@ func (t *transaction) addScopeInfo(key resourceKey, ls labels.Labels) {
+ 			scope.version = lbl.Value
+ 			return
+ 		}
+-		if lbl.Name == prometheus.ScopeSchemaURLLabelKey {
++		if lbl.Name == "otel_scope_schema_url" {
+ 			scope.schemaURL = lbl.Value
+ 			return
+ 		}
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/util.go b/internal/component/otelcol/receiver/prometheus/internal/util.go
+index cb6fd0478..7d952944b 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/util.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/util.go
+@@ -43,7 +43,7 @@ var (
+ 
+ 	notUsefulLabelsOther = sortString([]string{
+ 		model.MetricNameLabel, model.InstanceLabel, model.SchemeLabel,
+-		model.MetricsPathLabel, model.JobLabel, prometheus.ScopeNameLabelKey, prometheus.ScopeVersionLabelKey, prometheus.ScopeSchemaURLLabelKey,
++		model.MetricsPathLabel, model.JobLabel, prometheus.ScopeNameLabelKey, prometheus.ScopeVersionLabelKey, "otel_scope_schema_url",
+ 	})
+ 	notUsefulLabelsHistogram = sortString(append(notUsefulLabelsOther, model.BucketLabel))
+ 	notUsefulLabelsSummary   = sortString(append(notUsefulLabelsOther, model.QuantileLabel))

@@ -1,0 +1,258 @@
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/prom_to_otlp.go b/internal/component/otelcol/receiver/prometheus/internal/prom_to_otlp.go
+index c18953f2f..8ebb6b936 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/prom_to_otlp.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/prom_to_otlp.go
+@@ -8,19 +8,19 @@ import (
+ 
+ 	"github.com/prometheus/common/model"
+ 	"github.com/prometheus/prometheus/model/labels"
+-	"go.opentelemetry.io/collector/featuregate"
+ 	"go.opentelemetry.io/collector/pdata/pcommon"
+ 	conventions "go.opentelemetry.io/otel/semconv/v1.38.0"
+ )
+ 
+-var _ = featuregate.GlobalRegistry().MustRegister(
+-	"receiver.prometheusreceiver.RemoveLegacyResourceAttributes",
+-	featuregate.StageStable,
+-	featuregate.WithRegisterFromVersion("v0.101.0"),
+-	featuregate.WithRegisterDescription("When enabled, the net.host.name, net.host.port, and http.scheme resource attributes are no longer added to metrics. Use server.address, server.port, and url.scheme instead."),
+-	featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32814"),
+-	featuregate.WithRegisterToVersion("v0.130.0"),
+-)
++// Already registered through the vendor module.
++//var _, _ = featuregate.GlobalRegistry().Register(
++//	"receiver.prometheusreceiver.RemoveLegacyResourceAttributes",
++//	featuregate.StageStable,
++//	featuregate.WithRegisterFromVersion("v0.101.0"),
++//	featuregate.WithRegisterDescription("When enabled, the net.host.name, net.host.port, and http.scheme resource attributes are no longer added to metrics. Use server.address, server.port, and url.scheme instead."),
++//	featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32814"),
++//	featuregate.WithRegisterToVersion("v0.130.0"),
++//)
+ 
+ // isDiscernibleHost checks if a host can be used as a value for the 'host.name' key.
+ // localhost-like hosts and unspecified (0.0.0.0) hosts are not discernible.
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/staleness_end_to_end_test.go b/internal/component/otelcol/receiver/prometheus/internal/staleness_end_to_end_test.go
+index 8e25918fe..f8c3b926c 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/staleness_end_to_end_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/staleness_end_to_end_test.go
+@@ -30,7 +30,6 @@ import (
+ 	"go.opentelemetry.io/collector/processor"
+ 	"go.opentelemetry.io/collector/processor/batchprocessor"
+ 	"go.opentelemetry.io/collector/receiver"
+-	"go.opentelemetry.io/collector/service/telemetry"
+ 	"go.uber.org/zap"
+ 	"go.uber.org/zap/zapcore"
+ 
+@@ -142,9 +141,6 @@ service:
+ 		Receivers:  receivers,
+ 		Exporters:  exporters,
+ 		Processors: processors,
+-		Telemetry: telemetry.NewFactory(
+-			func() component.Config { return struct{}{} },
+-		),
+ 	}
+ 
+ 	appSettings := otelcol.CollectorSettings{
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/config_test.go b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/config_test.go
+index 58c5ad62f..13208ff34 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/config_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/config_test.go
+@@ -545,12 +545,12 @@ func TestUnmarshalConf(t *testing.T) {
+ 		assert.Equal(t, "mutated", cfg.BasicAuth.Username)
+ 	})
+ 
+-	t.Run("marshal error", func(t *testing.T) {
++	t.Run("unmarshal error", func(t *testing.T) {
+ 		var cfg promConfig.HTTPClientConfig
+ 		input := map[string]any{
+ 			"invalid": make(chan int), // channels can't be marshaled to YAML
+ 		}
+ 		err := unmarshalConf(confmap.NewFromStringMap(input), nil, &cfg)
+-		require.ErrorContains(t, err, "failed to marshal")
++		require.ErrorContains(t, err, "failed to unmarshal yaml")
+ 	})
+ }
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_test.go b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_test.go
+index e91603073..e0a1c93ba 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_test.go
+@@ -22,7 +22,7 @@ import (
+ 	"go.uber.org/zap/zapcore"
+ 	"go.uber.org/zap/zaptest/observer"
+ 
+-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver/internal/metadata"
++	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal/metadata"
+ )
+ 
+ func TestNewManager(t *testing.T) {
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_unsafe_test.go b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_unsafe_test.go
+index 4da315738..b5d194a77 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_unsafe_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/targetallocator/manager_unsafe_test.go
+@@ -34,7 +34,7 @@ import (
+ 	"go.opentelemetry.io/collector/config/configtls"
+ 	"go.opentelemetry.io/collector/receiver/receivertest"
+ 
+-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver/internal/metadata"
++	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal/metadata"
+ )
+ 
+ type mockTargetAllocator struct {
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/transaction.go b/internal/component/otelcol/receiver/prometheus/internal/transaction.go
+index 9f583ccd1..4631a6d8c 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/transaction.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/transaction.go
+@@ -19,7 +19,6 @@ import (
+ 	"github.com/prometheus/prometheus/storage"
+ 	"go.opentelemetry.io/collector/component"
+ 	"go.opentelemetry.io/collector/consumer"
+-	"go.opentelemetry.io/collector/featuregate"
+ 	"go.opentelemetry.io/collector/pdata/pcommon"
+ 	"go.opentelemetry.io/collector/pdata/pmetric"
+ 	"go.opentelemetry.io/collector/receiver"
+@@ -30,15 +29,6 @@ import (
+ 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
+ )
+ 
+-var _ = featuregate.GlobalRegistry().MustRegister(
+-	"receiver.prometheusreceiver.RemoveStartTimeAdjustment",
+-	featuregate.StageStable,
+-	featuregate.WithRegisterFromVersion("v0.121.0"),
+-	featuregate.WithRegisterToVersion("v0.142.0"),
+-	featuregate.WithRegisterDescription("When enabled, the Prometheus receiver will"+
+-		" leave the start time unset. Use the new metricstarttime processor instead."),
+-)
+-
+ type resourceKey struct {
+ 	job      string
+ 	instance string
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/transaction_bench_test.go b/internal/component/otelcol/receiver/prometheus/internal/transaction_bench_test.go
+index 27d73dce8..63b200e50 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/transaction_bench_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/transaction_bench_test.go
+@@ -20,8 +20,8 @@ import (
+ 	"go.opentelemetry.io/collector/receiver/receiverhelper"
+ 	"go.opentelemetry.io/collector/receiver/receivertest"
+ 
++	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal/metadata"
+ 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
+-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver/internal/metadata"
+ )
+ 
+ const (
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/transaction_created_bench_test.go b/internal/component/otelcol/receiver/prometheus/internal/transaction_created_bench_test.go
+index d5dfed2ca..0ed0bc94a 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/transaction_created_bench_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/transaction_created_bench_test.go
+@@ -40,7 +40,7 @@ func BenchmarkAppendWithCreatedLine(b *testing.B) {
+ 		}
+ 	})
+ 
+-	b.Run("AppendWithCreatedLineWithAppendSTZeroSample", func(b *testing.B) {
++	b.Run("AppendWithCreatedLineWithAppendCTZeroSample", func(b *testing.B) {
+ 		b.ResetTimer()
+ 		b.ReportAllocs()
+ 		for b.Loop() {
+@@ -54,7 +54,7 @@ func BenchmarkAppendWithCreatedLine(b *testing.B) {
+ 				if err != nil {
+ 					b.Fatal(err)
+ 				}
+-				_, err = tx.AppendSTZeroSample(0, ls[1], timestamp, int64(ctValue))
++				_, err = tx.AppendCTZeroSample(0, ls[1], timestamp, int64(ctValue))
+ 				if err != nil {
+ 					b.Fatal(err)
+ 				}
+diff --git a/internal/component/otelcol/receiver/prometheus/internal/transaction_test.go b/internal/component/otelcol/receiver/prometheus/internal/transaction_test.go
+index 939dcae58..a93438f92 100644
+--- a/internal/component/otelcol/receiver/prometheus/internal/transaction_test.go
++++ b/internal/component/otelcol/receiver/prometheus/internal/transaction_test.go
+@@ -487,11 +487,11 @@ func testAppendExemplarWithEmptyLabelArray(t *testing.T) {
+ 	assert.Equal(t, errNoJobInstance, err)
+ }
+ 
+-func TestAppendSTZeroSampleNoLabels(t *testing.T) {
++func TestAppendCTZeroSampleNoLabels(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+-	_, err := tr.AppendSTZeroSample(0, labels.FromStrings(), 0, 100)
++	_, err := tr.AppendCTZeroSample(0, labels.FromStrings(), 0, 100)
+ 	assert.ErrorContains(t, err, "job or instance cannot be found from labels")
+ }
+ 
+@@ -499,15 +499,15 @@ func TestAppendHistogramCTZeroSampleNoLabels(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+-	_, err := tr.AppendHistogramSTZeroSample(0, labels.FromStrings(), 0, 100, nil, nil)
++	_, err := tr.AppendHistogramCTZeroSample(0, labels.FromStrings(), 0, 100, nil, nil)
+ 	assert.ErrorContains(t, err, "job or instance cannot be found from labels")
+ }
+ 
+-func TestAppendSTZeroSampleDuplicateLabels(t *testing.T) {
++func TestAppendCTZeroSampleDuplicateLabels(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+-	_, err := tr.AppendSTZeroSample(0, labels.FromStrings(
++	_, err := tr.AppendCTZeroSample(0, labels.FromStrings(
+ 		model.InstanceLabel, "0.0.0.0:8855",
+ 		model.JobLabel, "test",
+ 		model.MetricNameLabel, "counter_test",
+@@ -521,7 +521,7 @@ func TestAppendHistogramCTZeroSampleDuplicateLabels(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+-	_, err := tr.AppendHistogramSTZeroSample(0, labels.FromStrings(
++	_, err := tr.AppendHistogramCTZeroSample(0, labels.FromStrings(
+ 		model.InstanceLabel, "0.0.0.0:8855",
+ 		model.JobLabel, "test",
+ 		model.MetricNameLabel, "hist_test_bucket",
+@@ -531,11 +531,11 @@ func TestAppendHistogramCTZeroSampleDuplicateLabels(t *testing.T) {
+ 	assert.ErrorContains(t, err, "invalid sample: non-unique label names")
+ }
+ 
+-func TestAppendSTZeroSampleEmptyMetricName(t *testing.T) {
++func TestAppendCTZeroSampleEmptyMetricName(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+-	_, err := tr.AppendSTZeroSample(0, labels.FromStrings(
++	_, err := tr.AppendCTZeroSample(0, labels.FromStrings(
+ 		model.InstanceLabel, "0.0.0.0:8855",
+ 		model.JobLabel, "test",
+ 		model.MetricNameLabel, "",
+@@ -547,7 +547,7 @@ func TestAppendHistogramCTZeroSampleEmptyMetricName(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+-	_, err := tr.AppendHistogramSTZeroSample(0, labels.FromStrings(
++	_, err := tr.AppendHistogramCTZeroSample(0, labels.FromStrings(
+ 		model.InstanceLabel, "0.0.0.0:8855",
+ 		model.JobLabel, "test",
+ 		model.MetricNameLabel, "",
+@@ -555,13 +555,13 @@ func TestAppendHistogramCTZeroSampleEmptyMetricName(t *testing.T) {
+ 	assert.ErrorContains(t, err, "metricName not found")
+ }
+ 
+-func TestAppendSTZeroSample(t *testing.T) {
++func TestAppendCTZeroSample(t *testing.T) {
+ 	sink := new(consumertest.MetricsSink)
+ 	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+ 
+ 	var atMs, ctMs int64
+ 	atMs, ctMs = 200, 100
+-	_, err := tr.AppendSTZeroSample(0, labels.FromStrings(
++	_, err := tr.AppendCTZeroSample(0, labels.FromStrings(
+ 		model.InstanceLabel, "0.0.0.0:8855",
+ 		model.JobLabel, "test",
+ 		model.MetricNameLabel, "counter_test",
+@@ -595,7 +595,7 @@ func TestAppendHistogramCTZeroSample(t *testing.T) {
+ 
+ 	var atMs, ctMs int64
+ 	atMs, ctMs = 200, 100
+-	_, err := tr.AppendHistogramSTZeroSample(0, labels.FromStrings(
++	_, err := tr.AppendHistogramCTZeroSample(0, labels.FromStrings(
+ 		model.InstanceLabel, "0.0.0.0:8855",
+ 		model.JobLabel, "test",
+ 		model.MetricNameLabel, "hist_test_bucket",
