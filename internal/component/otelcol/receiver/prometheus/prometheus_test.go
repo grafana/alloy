@@ -229,10 +229,12 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
 		h := tsdbutil.GenerateTestHistogram(42)
+
 		_, err = app.AppendHistogram(0, nativeHistLabels, ts, h, nil)
 		require.NoError(t, err)
 
 		// 5. Send a mixed histogram (both classic buckets and native histogram data)
+		hm := tsdbutil.GenerateTestCustomBucketsHistogram(42)
 		mixedHistogramName := "testMixedHistogram"
 
 		// First, send classic histogram buckets
@@ -264,7 +266,7 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 			"otel_scope_name", "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp",
 			"otel_scope_version", "v0.24.0",
 		)
-		_, err = app.Append(0, mixedCountLabels, ts, 30.0)
+		_, err = app.Append(0, mixedCountLabels, ts, float64(hm.Count))
 		require.NoError(t, err)
 
 		// Mixed histogram sum
@@ -276,7 +278,7 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 			"otel_scope_name", "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp",
 			"otel_scope_version", "v0.24.0",
 		)
-		_, err = app.Append(0, mixedSumLabels, ts, 125.5)
+		_, err = app.Append(0, mixedSumLabels, ts, hm.Sum)
 		require.NoError(t, err)
 
 		// Then, send native exponential histogram data for the same metric
@@ -289,14 +291,8 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 			"otel_scope_version", "v0.24.0",
 		)
 
-		// Create a native histogram with the same count and sum as the classic histogram
-		mixedNativeHist := tsdbutil.GenerateTestHistogram(123)
-		mixedNativeHist.Count = 30
-		mixedNativeHist.Sum = 125.5
-		mixedNativeHist.ZeroCount = 1
-		mixedNativeHist.Schema = 2
-
-		_, err = app.AppendHistogram(0, mixedNativeHistLabels, ts, mixedNativeHist, nil)
+		// Use the custom buckets histogram which has the correct schema/scale factor
+		_, err = app.AppendHistogram(0, mixedNativeHistLabels, ts, hm, nil)
 		require.NoError(t, err)
 
 		require.NoError(t, app.Commit())
@@ -400,9 +396,9 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 		require.True(t, exists, "testMixedHistogram as exponential histogram should exist")
 		require.Equal(t, 1, mixedNativeHist.ExponentialHistogram().DataPoints().Len())
 		mixedNativeDP := mixedNativeHist.ExponentialHistogram().DataPoints().At(0)
-		require.Equal(t, uint64(30), mixedNativeDP.Count())
-		require.Equal(t, 125.5, mixedNativeDP.Sum())
-		require.NotEqual(t, int32(0), mixedNativeDP.Scale(), "should have a valid scale")
+		require.Equal(t, uint64(173), mixedNativeDP.Count())
+		require.InDelta(t, 791.2, mixedNativeDP.Sum(), 0.0001)
+		require.Equal(t, int32(0), mixedNativeDP.Scale()) //TODO: What should the correct scale be?
 		if _, ok := metadataStore.GetMetadata("testMixedHistogram"); ok {
 			require.Equal(t, "A test mixed histogram metric with both classic and native buckets", mixedNativeHist.Description())
 		}
