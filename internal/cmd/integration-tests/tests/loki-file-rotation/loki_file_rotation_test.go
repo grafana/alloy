@@ -30,7 +30,7 @@ func TestFileRotationRename(t *testing.T) {
 
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 		if err != nil {
-			return nil, fmt.Errorf("failed to created new file: %w", err)
+			return nil, fmt.Errorf("failed to create new file: %w", err)
 		}
 
 		return file, nil
@@ -75,7 +75,7 @@ func TestFileRotationCopyTruncate(t *testing.T) {
 		}
 
 		if _, err := f.Seek(0, io.SeekStart); err != nil {
-			return nil, fmt.Errorf("failed initial seek: %w\n", err)
+			return nil, fmt.Errorf("failed initial seek: %w", err)
 		}
 
 		if _, err := io.Copy(copyTo, f); err != nil {
@@ -142,7 +142,8 @@ func runFileRotationTest(t *testing.T, fn rotateFn) {
 	// The test runs from the test directory, so we can use relative path
 	testDir, err := os.Getwd()
 	if err != nil {
-		t.Errorf("failed to get test directory: %v\n", err)
+		t.Errorf("failed to get test directory: %v", err)
+		return
 	}
 
 	defer cleanup(t, testDir)
@@ -194,12 +195,14 @@ func runFileRotationTest(t *testing.T, fn rotateFn) {
 func cleanup(t *testing.T, testDir string) {
 	entries, err := os.ReadDir(filepath.Join(testDir, "mount"))
 	if err != nil {
-		t.Errorf("failed to cleanup mount dir: %v\n", err)
+		t.Errorf("failed to cleanup mount dir: %v", err)
+		return
 	}
 
 	for _, e := range entries {
 		if err := os.RemoveAll(filepath.Join(testDir, "mount", e.Name())); err != nil {
-			t.Errorf("failed to cleanup mount dir: %v\n", err)
+			t.Errorf("failed to cleanup mount dir: %v", err)
+			return
 		}
 	}
 }
