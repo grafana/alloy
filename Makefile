@@ -179,11 +179,11 @@ endif
 
 .PHONY: integration-test
 integration-test:
-	cd tests/integration-tests && $(GO_ENV) go run .
+	cd integration-tests/docker && $(GO_ENV) go run .
 
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
-	cd tests/integration-tests-k8s/ && $(GO_ENV) go test -timeout 10m ./...
+	cd integration-tests/k8s && $(GO_ENV) go test -timeout 10m ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
