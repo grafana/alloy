@@ -55,7 +55,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 
 	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
 	if !stateful {
-		defer executeCommand("docker", []string{"compose", "down", "--rmi", "all"}, "Stopping dependent services")
+		defer executeCommand("docker", []string{"compose", "down"}, "Stopping dependent services")
 		fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
 		time.Sleep(10 * time.Second)
 	} else {

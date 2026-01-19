@@ -163,12 +163,12 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race ./internal/...
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
-	$(GO_ENV) cd ./collector && go test $(GO_FLAGS) -race ./...
-	$(GO_ENV) cd ./extension/alloyengine && go test $(GO_FLAGS) -race ./...
-	$(GO_ENV) cd ./syntax && go test -race ./...
-
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		pushd $$dir;\
+		$(GO_ENV) go test $(GO_FLAGS) -race ./... || exit 1;\
+		popd;\
+	done
+	
 test-packages:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
@@ -183,7 +183,7 @@ integration-test:
 
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
-	cd integration-tests/k8s && $(GO_ENV) go test -timeout 10m ./...
+	cd integration-tests/k8s && $(GO_ENV) go test -tags="integration" -timeout 10m ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
