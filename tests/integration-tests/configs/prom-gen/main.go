@@ -80,7 +80,6 @@ func handleWithPrefixSupport(w http.ResponseWriter, r *http.Request) {
 	reg.MustRegister(prefixedCollector)
 	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
-	return
 }
 
 // getAddressAndPort always defines a non empty address and port

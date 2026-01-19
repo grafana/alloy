@@ -64,7 +64,6 @@ func findStream(labels map[string]string, result []LogData) ([][2]string, bool) 
 				return r.Values, true
 			}
 		}
-
 	}
 
 	return nil, false
