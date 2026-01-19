@@ -121,7 +121,7 @@ type sourceMapsStoreImpl struct {
 	metrics *sourceMapMetrics
 	locs    []*sourcemapFileLocation
 
-	cacheMut      sync.RWMutex
+	cacheMut      sync.Mutex
 	cache         map[string]*cachedSourceMap
 	timeSource    timeSource
 	cleanupCtx    context.Context
