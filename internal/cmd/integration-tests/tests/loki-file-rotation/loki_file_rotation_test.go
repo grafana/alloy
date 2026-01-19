@@ -232,8 +232,12 @@ type writer struct {
 
 	file *os.File
 
-	fileWritten  int
-	totalWritten int
+	// linesWritten is the number of lines written for this generation. It will reset to 0
+	// on every rotation.
+	linesWritten int
+	// totalLinesWritten is the total number of lines written and keeps increasing
+	// even if file is rotated.
+	totalLinesWritten int
 
 	rotateFn rotateFn
 
@@ -257,23 +261,23 @@ func (w *writer) run() error {
 			return err
 		}
 
-		if w.fileWritten == rotateEvery {
+		if w.linesWritten == rotateEvery {
 			if err := w.rotate(); err != nil {
 				return err
 			}
 		}
 
-		if w.totalWritten == stopAfter {
+		if w.totalLinesWritten == stopAfter {
 			return nil
 		}
 	}
 }
 
 func (w *writer) log() error {
-	w.fileWritten += 1
-	w.totalWritten += 1
+	w.linesWritten += 1
+	w.totalLinesWritten += 1
 
-	_, err := fmt.Fprintf(w.file, "id=%d generation=%d num=%d test_name=\"%s\"\n", w.id, w.generation, w.fileWritten, w.testName)
+	_, err := fmt.Fprintf(w.file, "id=%d generation=%d num=%d test_name=\"%s\"\n", w.id, w.generation, w.linesWritten, w.testName)
 	if err != nil {
 		return err
 	}
@@ -286,7 +290,7 @@ func (w *writer) rotate() error {
 
 	for i := range w.results {
 		if w.results[i].Labels["filename"] == mountPath {
-			w.results[i].EntryCount += w.fileWritten
+			w.results[i].EntryCount += w.linesWritten
 			found = true
 		}
 	}
@@ -296,11 +300,11 @@ func (w *writer) rotate() error {
 			Labels: map[string]string{
 				"filename": mountPath,
 			},
-			EntryCount: w.fileWritten,
+			EntryCount: w.linesWritten,
 		})
 	}
 
-	w.fileWritten = 0
+	w.linesWritten = 0
 
 	// Make sure to sync all written data before we rotate.
 	if err := w.file.Sync(); err != nil {
