@@ -58,8 +58,8 @@ services:
     depends_on:
       - kafka
     build:
-      dockerfile: ./internal/cmd/integration-tests/configs/kafka/Dockerfile
-      context: ../../..
+      dockerfile: ./tests/integration-tests/configs/kafka/Dockerfile
+      context: ../../
     networks:
       - integration-tests
 
@@ -78,8 +78,8 @@ services:
 
   otel-gen:
     build:
-      dockerfile: ./internal/cmd/integration-tests/configs/otel-gen/Dockerfile
-      context: ../../..
+      dockerfile: ./tests/integration-tests/configs/otel-gen/Dockerfile
+      context: ../../
     environment:
       - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-alloy-otlp-metrics:4318}
     networks:
@@ -89,8 +89,8 @@ services:
 
   prom-gen:
     build:
-      dockerfile: ./internal/cmd/integration-tests/configs/prom-gen/Dockerfile
-      context: ../../..
+      dockerfile: ./tests/integration-tests/configs/prom-gen/Dockerfile
+      context: ../../
     ports:
       - "9001:9001"
     networks:
