@@ -163,8 +163,10 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v -E '/integration-tests/|/integration-tests-k8s/')
+	$(GO_ENV) go test $(GO_FLAGS) -race ./internal/...
 	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
+	$(GO_ENV) cd ./collector && go test $(GO_FLAGS) -race ./...
+	$(GO_ENV) cd ./extension/alloyengine && go test $(GO_FLAGS) -race ./...
 	$(GO_ENV) cd ./syntax && go test -race ./...
 
 test-packages:
@@ -177,18 +179,17 @@ endif
 
 .PHONY: integration-test
 integration-test:
-	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+	cd tests/integration-tests && $(GO_ENV) go run .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	cd tests/integration-tests-k8s/ && $(GO_ENV) go test -timeout 10m ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
 	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
 		$(GO_ENV) go build .
-
-.PHONY: integration-test-k8s
-integration-test-k8s: alloy-image
-	cd ./internal/cmd/integration-tests-k8s/ && \
-		$(GO_ENV) go test -timeout 10m ./...
 
 #
 # Targets for building binaries
