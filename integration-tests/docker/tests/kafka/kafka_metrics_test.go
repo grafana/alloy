@@ -1,4 +1,4 @@
-//go:build integration
+//go:build alloy-integration-tests
 
 package main
 

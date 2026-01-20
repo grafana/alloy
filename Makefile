@@ -181,7 +181,7 @@ integration-test:
 
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
-	cd integration-tests/k8s && $(GO_ENV) go test -tags="integration" -timeout 10m ./...
+	cd integration-tests/k8s && $(GO_ENV) go test -tags="alloy-integration-tests" -timeout 10m ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
