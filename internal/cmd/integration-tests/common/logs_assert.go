@@ -1,9 +1,11 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,6 +63,33 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 		values, ok := findStream(e.Labels, logResponse.Data.Result)
 		require.True(t, ok, "no stream with labels %s", e.Labels)
 		assert.Len(t, values, e.EntryCount)
+	}
+}
+
+// WaitForInitalLogs will try to wait until any logs can be retrived from loki for testName.
+// It will return an error if no logs are found after test timeout.
+func WaitForInitalLogs(testName string) error {
+	var (
+		after = time.After(DefaultTimeout)
+		tick  = time.NewTicker(DefaultRetryInterval)
+	)
+
+	for {
+		select {
+		case <-tick.C:
+			var resp LogResponse
+			_, err := FetchDataFromURL(LogQuery(testName, 1), &resp)
+			if err != nil {
+				continue
+			}
+
+			// We start seeing initial logs
+			if len(resp.Data.Result) > 0 {
+				return nil
+			}
+		case <-after:
+			return errors.New("faild to get first log")
+		}
 	}
 }
 

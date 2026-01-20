@@ -245,8 +245,8 @@ type writer struct {
 }
 
 func (w *writer) run() error {
+
 	// We need an initial sleep so that alloy has time to discover the first set of files.
-	time.Sleep(5 * time.Second)
 	ticker := time.NewTicker(50 * time.Millisecond)
 
 	defer func() {
@@ -254,11 +254,22 @@ func (w *writer) run() error {
 		w.file.Close()
 	}()
 
+	first := true
+
 	for {
 		<-ticker.C
 
 		if err := w.log(); err != nil {
 			return err
+		}
+		// Because our rotations are done pretty fast we need to ensure that alloy have discovered
+		// the first set of files before we initiate rotations. So we log one line and then wait for
+		// that to be ingested into loki.
+		if first {
+			first = false
+			if err := common.WaitForInitalLogs(w.testName); err != nil {
+				return err
+			}
 		}
 
 		if w.linesWritten == rotateEvery {
