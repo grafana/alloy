@@ -31,4 +31,4 @@ jobs:
         # We'll need to make sure the same cache is reused by the workflow to build Windows binaries.
         cache: false
     - name: Test
-      run: '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork" ./internal/...'''
+      run: '& "C:/Program Files/git/bin/bash.exe" -c ''make GO_TAGS="nodocker,nonetwork" test'''
