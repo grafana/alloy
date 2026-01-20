@@ -89,6 +89,19 @@ func TestHealthCheck(t *testing.T) {
 				expectedResult: `result="false"`,
 			},
 			{
+				name:             "missing grants",
+				failingCheckName: "RequiredGrantsPresent",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(`SHOW GRANTS`).
+						WillReturnRows(
+							sqlmock.NewRows([]string{"Grants"}).
+								AddRow("GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'user'@'host'").
+								AddRow("GRANT SELECT ON cars.* TO 'user'@'host'"),
+						)
+				},
+				expectedResult: `result="false"`,
+			},
+			{
 				name:             "no rows in events statements digest",
 				failingCheckName: "PerformanceSchemaHasRows",
 				customSetup: func(mock sqlmock.Sqlmock) {
