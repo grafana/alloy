@@ -145,7 +145,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.142.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.142.0
@@ -801,6 +800,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.142.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.142.0 // indirect
