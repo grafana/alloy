@@ -39,6 +39,11 @@ func init() {
 type Arguments struct {
 	Server    *fnet.ServerConfig   `alloy:",squash"`
 	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+
+	// Whether the metric metadata should be passed to the downstream components.
+	AppendMetadata bool `alloy:"append_metadata,attr,optional"`
+	// Whether the metric type and unit should be added as labels
+	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -70,14 +75,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
-	// TODO: Make these configurable in the future:
-	// TODO: Expose ingestCTZeroSample: https://github.com/grafana/alloy/issues/4045
-	// TODO: Expose enableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
-	// TODO: Expose appendMetadata: https://github.com/grafana/alloy/issues/5036
-	supportedRemoteWriteProtoMsgs := remote.MessageTypes{remote.WriteV1MessageType}
-	ingestCTZeroSample := false
-	enableTypeAndUnitLabels := false
-	appendMetadata := false
+	supportedRemoteWriteProtoMsgs := remote.MessageTypes{remote.WriteV1MessageType, remote.WriteV2MessageType}
 
 	c := &Component{
 		opts: opts,
@@ -86,9 +84,9 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
-			ingestCTZeroSample,
-			enableTypeAndUnitLabels,
-			appendMetadata,
+			false,
+			args.EnableTypeAndUnitLabels,
+			args.AppendMetadata,
 		),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,

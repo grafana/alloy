@@ -17,24 +17,28 @@ import (
 	"time"
 
 	"github.com/golang/snappy"
+	"github.com/phayes/freeport"
+	"github.com/prometheus/client_golang/exp/api/remote"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/prompb"
+	writev2 "github.com/prometheus/prometheus/prompb/io/prometheus/write/v2"
+	"github.com/prometheus/prometheus/storage"
+	promremote "github.com/prometheus/prometheus/storage/remote"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
+
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/phayes/freeport"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/prompb"
-	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/storage/remote"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/protoadapt"
 )
 
 // generateTestCertAndKey generates a self-signed certificate and private key for testing
@@ -242,7 +246,7 @@ func requestTLS(ctx context.Context, rawRemoteWriteURL string, req *prompb.Write
 		return err
 	}
 
-	client, err := remote.NewWriteClient("remote-write-client", &remote.ClientConfig{
+	client, err := promremote.NewWriteClient("remote-write-client", &promremote.ClientConfig{
 		URL:     &config.URL{URL: remoteWriteURL},
 		Timeout: model.Duration(30 * time.Second),
 		HTTPClientConfig: config.HTTPClientConfig{
@@ -581,7 +585,7 @@ func request(ctx context.Context, rawRemoteWriteURL string, req *prompb.WriteReq
 		return err
 	}
 
-	client, err := remote.NewWriteClient("remote-write-client", &remote.ClientConfig{
+	client, err := promremote.NewWriteClient("remote-write-client", &promremote.ClientConfig{
 		URL:     &config.URL{URL: remoteWriteURL},
 		Timeout: model.Duration(30 * time.Second),
 	})
@@ -595,6 +599,31 @@ func request(ctx context.Context, rawRemoteWriteURL string, req *prompb.WriteReq
 	}
 
 	compressed := snappy.Encode(buf, buf)
+	_, err = client.Store(ctx, compressed, 0)
+	return err
+}
+
+func requestV2(ctx context.Context, rawRemoteWriteURL string, req *writev2.Request) error {
+	remoteWriteURL, err := url.Parse(rawRemoteWriteURL)
+	if err != nil {
+		return err
+	}
+
+	client, err := promremote.NewWriteClient("remote-write-client-v2", &promremote.ClientConfig{
+		URL:           &config.URL{URL: remoteWriteURL},
+		Timeout:       model.Duration(30 * time.Second),
+		WriteProtoMsg: remote.WriteV2MessageType,
+	})
+	if err != nil {
+		return err
+	}
+
+	buf, err := req.Marshal()
+	if err != nil {
+		return err
+	}
+
+	compressed := snappy.Encode(nil, buf)
 	_, err = client.Store(ctx, compressed, 0)
 	return err
 }
@@ -614,4 +643,251 @@ func getFreePort(t *testing.T) int {
 	p, err := freeport.GetFreePort()
 	require.NoError(t, err)
 	return p
+}
+
+func TestRemoteWriteV2(t *testing.T) {
+	timestamp := time.Now().Add(time.Second).UnixMilli()
+
+	// Create Remote Write v2 request with symbol table
+	symbols := []string{
+		"",                              // 0: empty string (required)
+		"__name__",                      // 1
+		"http_requests_total",           // 2
+		"method",                        // 3
+		"GET",                           // 4
+		"status",                        // 5
+		"200",                           // 6
+		"cpu_usage_seconds",             // 7
+		"cpu",                           // 8
+		"0",                             // 9
+		"Total number of HTTP requests", // 10
+		"requests",                      // 11
+		"CPU usage in seconds",          // 12
+		"seconds",                       // 13
+	}
+
+	input := &writev2.Request{
+		Symbols: symbols,
+		Timeseries: []writev2.TimeSeries{
+			{
+				// http_requests_total{method="GET", status="200"}
+				LabelsRefs: []uint32{1, 2, 3, 4, 5, 6}, // __name__=http_requests_total, method=GET, status=200
+				Samples: []writev2.Sample{
+					{Timestamp: timestamp, Value: 100},
+					{Timestamp: timestamp + 1, Value: 150},
+				},
+				Metadata: writev2.Metadata{
+					Type:    writev2.Metadata_METRIC_TYPE_COUNTER,
+					HelpRef: 10, // "Total number of HTTP requests"
+					UnitRef: 11, // "requests"
+				},
+			},
+			{
+				// cpu_usage_seconds{cpu="0"}
+				LabelsRefs: []uint32{1, 7, 8, 9}, // __name__=cpu_usage_seconds, cpu=0
+				Samples: []writev2.Sample{
+					{Timestamp: timestamp, Value: 45.2},
+				},
+				Metadata: writev2.Metadata{
+					Type:    writev2.Metadata_METRIC_TYPE_GAUGE,
+					HelpRef: 12, // "CPU usage in seconds"
+					UnitRef: 13, // "seconds"
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		name                    string
+		appendMetadata          bool
+		enableTypeAndUnitLabels bool
+		expectedSamples         []testSample
+		expectedMetadata        map[string]testMetadata
+	}{
+		{
+			name:                    "with metadata forwarding",
+			appendMetadata:          true,
+			enableTypeAndUnitLabels: false,
+			expectedSamples: []testSample{
+				{ts: timestamp, val: 100, l: labels.FromStrings("__name__", "http_requests_total", "method", "GET", "status", "200")},
+				{ts: timestamp + 1, val: 150, l: labels.FromStrings("__name__", "http_requests_total", "method", "GET", "status", "200")},
+				{ts: timestamp, val: 45.2, l: labels.FromStrings("__name__", "cpu_usage_seconds", "cpu", "0")},
+			},
+			expectedMetadata: map[string]testMetadata{
+				"http_requests_total": {
+					metricName: "http_requests_total",
+					metricType: "counter",
+					help:       "Total number of HTTP requests",
+					unit:       "requests",
+				},
+				"cpu_usage_seconds": {
+					metricName: "cpu_usage_seconds",
+					metricType: "gauge",
+					help:       "CPU usage in seconds",
+					unit:       "seconds",
+				},
+			},
+		},
+		{
+			name:                    "with type and unit labels",
+			appendMetadata:          false,
+			enableTypeAndUnitLabels: true,
+			expectedSamples: []testSample{
+				{ts: timestamp, val: 100, l: labels.FromStrings("__name__", "http_requests_total", "__type__", "counter", "__unit__", "requests", "method", "GET", "status", "200")},
+				{ts: timestamp + 1, val: 150, l: labels.FromStrings("__name__", "http_requests_total", "__type__", "counter", "__unit__", "requests", "method", "GET", "status", "200")},
+				{ts: timestamp, val: 45.2, l: labels.FromStrings("__name__", "cpu_usage_seconds", "__type__", "gauge", "__unit__", "seconds", "cpu", "0")},
+			},
+			expectedMetadata: nil, // No metadata should be forwarded
+		},
+		{
+			name:                    "with both metadata and type/unit labels",
+			appendMetadata:          true,
+			enableTypeAndUnitLabels: true,
+			expectedSamples: []testSample{
+				{ts: timestamp, val: 100, l: labels.FromStrings("__name__", "http_requests_total", "__type__", "counter", "__unit__", "requests", "method", "GET", "status", "200")},
+				{ts: timestamp + 1, val: 150, l: labels.FromStrings("__name__", "http_requests_total", "__type__", "counter", "__unit__", "requests", "method", "GET", "status", "200")},
+				{ts: timestamp, val: 45.2, l: labels.FromStrings("__name__", "cpu_usage_seconds", "__type__", "gauge", "__unit__", "seconds", "cpu", "0")},
+			},
+			expectedMetadata: map[string]testMetadata{
+				"http_requests_total": {
+					metricName: "http_requests_total",
+					metricType: "counter",
+					help:       "Total number of HTTP requests",
+					unit:       "requests",
+				},
+				"cpu_usage_seconds": {
+					metricName: "cpu_usage_seconds",
+					metricType: "gauge",
+					help:       "CPU usage in seconds",
+					unit:       "seconds",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualSamples := make(chan testSample, 100)
+			actualMetadata := make(chan testMetadata, 10)
+
+			// Start the component
+			port, err := freeport.GetFreePort()
+			require.NoError(t, err)
+			args := Arguments{
+				Server: &fnet.ServerConfig{
+					HTTP: &fnet.HTTPConfig{
+						ListenAddress: "localhost",
+						ListenPort:    port,
+					},
+					GRPC: testGRPCConfig(t),
+				},
+				ForwardTo:               testAppendableWithMetadata(actualSamples, actualMetadata),
+				AppendMetadata:          tc.appendMetadata,
+				EnableTypeAndUnitLabels: tc.enableTypeAndUnitLabels,
+			}
+			comp, err := New(testOptions(t), args)
+			require.NoError(t, err)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			go func() {
+				require.NoError(t, comp.Run(ctx))
+			}()
+
+			// Wait for server to be ready
+			waitForServerToBeReady(t, args)
+
+			// Send the remote write v2 request
+			endpoint := fmt.Sprintf(
+				"http://%s:%d/api/v1/metrics/write",
+				args.Server.HTTP.ListenAddress,
+				args.Server.HTTP.ListenPort,
+			)
+			err = requestV2(ctx, endpoint, input)
+			require.NoError(t, err)
+
+			// Verify samples were received
+			for _, exp := range tc.expectedSamples {
+				select {
+				case actual := <-actualSamples:
+					require.Equal(t, exp, actual)
+				case <-ctx.Done():
+					t.Fatalf("test timed out waiting for samples")
+				}
+			}
+
+			// Verify metadata if expected
+			if tc.expectedMetadata != nil {
+				receivedMetadata := make(map[string]testMetadata)
+				for i := 0; i < len(tc.expectedMetadata); i++ {
+					select {
+					case m := <-actualMetadata:
+						receivedMetadata[m.metricName] = m
+					case <-time.After(2 * time.Second):
+						t.Fatalf("timeout waiting for metadata, received %d of %d", i, len(tc.expectedMetadata))
+					}
+				}
+				require.Equal(t, tc.expectedMetadata, receivedMetadata)
+			}
+
+			// Ensure no unexpected samples
+			select {
+			case unexpected := <-actualSamples:
+				t.Fatalf("unexpected extra sample received: %v", unexpected)
+			default:
+			}
+
+			// Ensure no unexpected metadata
+			select {
+			case unexpected := <-actualMetadata:
+				if tc.expectedMetadata == nil {
+					t.Fatalf("unexpected metadata received when append_metadata=false: %v", unexpected)
+				} else {
+					t.Fatalf("unexpected extra metadata received: %v", unexpected)
+				}
+			default:
+			}
+		})
+	}
+}
+
+type testMetadata struct {
+	metricName string
+	metricType string
+	help       string
+	unit       string
+}
+
+func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata chan testMetadata) []storage.Appendable {
+	appendHook := func(
+		ref storage.SeriesRef,
+		l labels.Labels,
+		ts int64,
+		val float64,
+		next storage.Appender,
+	) (storage.SeriesRef, error) {
+		actualSamples <- testSample{ts: ts, val: val, l: l}
+		return ref, nil
+	}
+
+	metadataHook := func(
+		ref storage.SeriesRef,
+		l labels.Labels,
+		m metadata.Metadata,
+		next storage.Appender,
+	) (storage.SeriesRef, error) {
+		metricName := l.Get(labels.MetricName)
+		actualMetadata <- testMetadata{
+			metricName: metricName,
+			metricType: string(m.Type),
+			help:       m.Help,
+			unit:       m.Unit,
+		}
+		return ref, nil
+	}
+
+	return []storage.Appendable{alloyprom.NewInterceptor(
+		nil,
+		alloyprom.WithAppendHook(appendHook),
+		alloyprom.WithMetadataHook(metadataHook),
+	)}
 }
