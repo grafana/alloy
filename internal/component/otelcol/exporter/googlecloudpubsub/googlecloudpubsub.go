@@ -77,7 +77,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	result.QueueSettings = *q
+	result.QueueSettings = q
 
 	result.ProjectID = args.Project
 	result.UserAgent = args.UserAgent

@@ -138,7 +138,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			Timeout: args.Timeout,
 		},
 		BackOffConfig: *args.Retry.Convert(),
-		QueueSettings: *q,
+		QueueSettings: q,
 	}, nil
 }
 
@@ -190,7 +190,7 @@ func (oc OtlpConfig) Convert() (*otlpexporter.Config, error) {
 		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
-		QueueConfig:  *q,
+		QueueConfig:  q,
 		RetryConfig:  *oc.Retry.Convert(),
 		ClientConfig: *clientConfig,
 	}, nil
