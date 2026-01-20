@@ -10,21 +10,16 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	conventions "go.opentelemetry.io/otel/semconv/v1.25.0"
-	oldconventions "go.opentelemetry.io/otel/semconv/v1.6.1"
+	conventions "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
 
-const removeOldSemconvFeatureGateID = "receiver.prometheusreceiver.RemoveLegacyResourceAttributes"
-
-// TODO: Find a way to enable this feature gate again, at least for 1-2 more versions of Alloy.
-// Those conventions were deprecated a really long time ago:
-// https://www.honeycomb.io/blog/opentelemetry-http-attributes
-var removeOldSemconvFeatureGate = featuregate.GlobalRegistry().MustRegister(
-	removeOldSemconvFeatureGateID,
-	featuregate.StageAlpha,
+var _ = featuregate.GlobalRegistry().MustRegister(
+	"receiver.prometheusreceiver.RemoveLegacyResourceAttributes",
+	featuregate.StageStable,
 	featuregate.WithRegisterFromVersion("v0.101.0"),
 	featuregate.WithRegisterDescription("When enabled, the net.host.name, net.host.port, and http.scheme resource attributes are no longer added to metrics. Use server.address, server.port, and url.scheme instead."),
 	featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32814"),
+	featuregate.WithRegisterToVersion("v0.130.0"),
 )
 
 // isDiscernibleHost checks if a host can be used as a value for the 'host.name' key.
@@ -56,16 +51,9 @@ func CreateResource(job, instance string, serviceDiscoveryLabels labels.Labels) 
 	attrs := resource.Attributes()
 	attrs.PutStr(string(conventions.ServiceNameKey), job)
 	if isDiscernibleHost(host) {
-		if !removeOldSemconvFeatureGate.IsEnabled() {
-			attrs.PutStr(string(oldconventions.NetHostNameKey), host)
-		}
 		attrs.PutStr(string(conventions.ServerAddressKey), host)
 	}
 	attrs.PutStr(string(conventions.ServiceInstanceIDKey), instance)
-	if !removeOldSemconvFeatureGate.IsEnabled() {
-		attrs.PutStr(string(conventions.NetHostPortKey), port)
-		attrs.PutStr(string(conventions.HTTPSchemeKey), serviceDiscoveryLabels.Get(model.SchemeLabel))
-	}
 	attrs.PutStr(string(conventions.ServerPortKey), port)
 	attrs.PutStr(string(conventions.URLSchemeKey), serviceDiscoveryLabels.Get(model.SchemeLabel))
 

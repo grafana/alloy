@@ -8,9 +8,7 @@ import (
 
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	conventions "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 type jobInstanceDefinition struct {
@@ -25,34 +23,34 @@ func makeK8sResource(jobInstance *jobInstanceDefinition, def *k8sResourceDefinit
 	resource := makeResourceWithJobInstanceScheme(jobInstance, true)
 	attrs := resource.Attributes()
 	if def.podName != "" {
-		attrs.PutStr(string(conventions.K8SPodNameKey), def.podName)
+		attrs.PutStr("k8s.pod.name", def.podName)
 	}
 	if def.podUID != "" {
-		attrs.PutStr(string(conventions.K8SPodUIDKey), def.podUID)
+		attrs.PutStr("k8s.pod.uid", def.podUID)
 	}
 	if def.container != "" {
-		attrs.PutStr(string(conventions.K8SContainerNameKey), def.container)
+		attrs.PutStr("k8s.container.name", def.container)
 	}
 	if def.node != "" {
-		attrs.PutStr(string(conventions.K8SNodeNameKey), def.node)
+		attrs.PutStr("k8s.node.name", def.node)
 	}
 	if def.rs != "" {
-		attrs.PutStr(string(conventions.K8SReplicaSetNameKey), def.rs)
+		attrs.PutStr("k8s.replicaset.name", def.rs)
 	}
 	if def.ds != "" {
-		attrs.PutStr(string(conventions.K8SDaemonSetNameKey), def.ds)
+		attrs.PutStr("k8s.daemonset.name", def.ds)
 	}
 	if def.ss != "" {
-		attrs.PutStr(string(conventions.K8SStatefulSetNameKey), def.ss)
+		attrs.PutStr("k8s.statefulset.name", def.ss)
 	}
 	if def.job != "" {
-		attrs.PutStr(string(conventions.K8SJobNameKey), def.job)
+		attrs.PutStr("k8s.job.name", def.job)
 	}
 	if def.cronjob != "" {
-		attrs.PutStr(string(conventions.K8SCronJobNameKey), def.cronjob)
+		attrs.PutStr("k8s.cronjob.name", def.cronjob)
 	}
 	if def.ns != "" {
-		attrs.PutStr(string(conventions.K8SNamespaceNameKey), def.ns)
+		attrs.PutStr("k8s.namespace.name", def.ns)
 	}
 	return resource
 }
@@ -74,16 +72,14 @@ func makeResourceWithJobInstanceScheme(def *jobInstanceDefinition, hasHost bool)
 
 func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 	tests := []struct {
-		name, job                   string
-		instance                    string
-		sdLabels                    labels.Labels
-		removeOldSemconvFeatureGate bool
-		want                        pcommon.Resource
+		name, job string
+		instance  string
+		sdLabels  labels.Labels
+		want      pcommon.Resource
 	}{
 		{
 			name: "all attributes proper",
 			job:  "job", instance: "hostname:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, true),
@@ -91,7 +87,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 		{
 			name: "missing port",
 			job:  "job", instance: "myinstance", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "https"}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "myinstance", "myinstance", "https", "",
 			}, true),
@@ -99,7 +94,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 		{
 			name: "blank scheme",
 			job:  "job", instance: "myinstance:443", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: ""}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "myinstance:443", "myinstance", "", "443",
 			}, true),
@@ -107,7 +101,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 		{
 			name: "blank instance, blank scheme",
 			job:  "job", instance: "", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: ""}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "", "", "", "",
 			}, true),
@@ -115,7 +108,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 		{
 			name: "blank instance, non-blank scheme",
 			job:  "job", instance: "", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "", "", "http", "",
 			}, true),
@@ -123,7 +115,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 		{
 			name: "0.0.0.0 address",
 			job:  "job", instance: "0.0.0.0:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "0.0.0.0:8888", "", "http", "8888",
 			}, false),
@@ -131,7 +122,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 		{
 			name: "localhost",
 			job:  "job", instance: "localhost:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
 				"job", "localhost:8888", "", "http", "8888",
 			}, false),
@@ -148,7 +138,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__meta_kubernetes_pod_controller_kind", Value: "DaemonSet"},
 				labels.Label{Name: "__meta_kubernetes_namespace", Value: "kube-system"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -172,7 +161,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__meta_kubernetes_pod_controller_kind", Value: "ReplicaSet"},
 				labels.Label{Name: "__meta_kubernetes_namespace", Value: "kube-system"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -196,7 +184,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__meta_kubernetes_pod_controller_kind", Value: "StatefulSet"},
 				labels.Label{Name: "__meta_kubernetes_namespace", Value: "kube-system"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -220,7 +207,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__meta_kubernetes_pod_controller_kind", Value: "Job"},
 				labels.Label{Name: "__meta_kubernetes_namespace", Value: "kube-system"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -244,7 +230,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__meta_kubernetes_pod_controller_kind", Value: "CronJob"},
 				labels.Label{Name: "__meta_kubernetes_namespace", Value: "kube-system"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -262,7 +247,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__scheme__", Value: "http"},
 				labels.Label{Name: "__meta_kubernetes_node_name", Value: "k8s-node-123"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -275,7 +259,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 				labels.Label{Name: "__scheme__", Value: "http"},
 				labels.Label{Name: "__meta_kubernetes_endpoint_node_name", Value: "k8s-node-123"},
 			),
-			removeOldSemconvFeatureGate: true,
 			want: makeK8sResource(&jobInstanceDefinition{
 				"job", "hostname:8888", "hostname", "http", "8888",
 			}, &k8sResourceDefinition{
@@ -286,17 +269,8 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SetFeatureGateForTest(t, removeOldSemconvFeatureGate, tt.removeOldSemconvFeatureGate)
 			got := CreateResource(tt.job, tt.instance, tt.sdLabels)
 			require.Equal(t, tt.want.Attributes().AsRaw(), got.Attributes().AsRaw())
 		})
-	}
-}
-
-func SetFeatureGateForTest(tb testing.TB, gate *featuregate.Gate, enabled bool) func() {
-	originalValue := gate.IsEnabled()
-	require.NoError(tb, featuregate.GlobalRegistry().Set(gate.ID(), enabled))
-	return func() {
-		require.NoError(tb, featuregate.GlobalRegistry().Set(gate.ID(), originalValue))
 	}
 }
