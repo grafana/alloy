@@ -55,6 +55,9 @@ type ScrapeOptions struct {
 
 	// ScrapeNativeHistograms enables scraping of Prometheus native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+
+	// HonorMetadata controls whether metric metadata should be passed to downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {

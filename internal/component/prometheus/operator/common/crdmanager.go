@@ -84,7 +84,7 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
-	client *kubernetes.Clientset
+	client kubernetes.Interface
 
 	kind string
 }
@@ -118,13 +118,19 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.L
 }
 
 func (c *crdManager) Run(ctx context.Context) error {
-	restConfig, err := c.args.Client.BuildRESTConfig(c.logger)
-	if err != nil {
-		return fmt.Errorf("creating rest config: %w", err)
-	}
-	c.client, err = kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return fmt.Errorf("creating kubernetes client: %w", err)
+	// Build REST config (used for both k8s client and informers)
+	// Only build if client is not already set (i.e., not injected by tests)
+	var restConfig *rest.Config
+	if c.client == nil {
+		var err error
+		restConfig, err = c.args.Client.BuildRESTConfig(c.logger)
+		if err != nil {
+			return fmt.Errorf("creating rest config: %w", err)
+		}
+		c.client, err = kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("creating kubernetes client: %w", err)
+		}
 	}
 
 	unregisterer := util.WrapWithUnregisterer(c.opts.Registerer)
@@ -149,8 +155,11 @@ func (c *crdManager) Run(ctx context.Context) error {
 
 	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
 	// TODO: Expose EnableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
-	// TODO: Expose AppendMetadata: https://github.com/grafana/alloy/issues/5036
-	c.scrapeManager, err = scrape.NewManager(&scrape.Options{}, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
+	scrapeOpts := &scrape.Options{
+		AppendMetadata:        c.args.Scrape.HonorMetadata,
+		PassMetadataInContext: c.args.Scrape.HonorMetadata,
+	}
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
@@ -165,10 +174,14 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// run informers after everything else is running
-	if err := c.runInformers(restConfig, ctx); err != nil {
-		return err
+	// restConfig is nil when client was injected (e.g., in tests), in which case we skip informers
+	// TODO: Use a fake k8s cache so that the tests can go through more of the k8s code?
+	if restConfig != nil {
+		if err := c.runInformers(restConfig, ctx); err != nil {
+			return err
+		}
+		level.Info(c.logger).Log("msg", "informers started")
 	}
-	level.Info(c.logger).Log("msg", "informers started")
 
 	var cachedTargets map[string][]*targetgroup.Group
 	// Start the target discovery loop to update the scrape manager with new targets.
