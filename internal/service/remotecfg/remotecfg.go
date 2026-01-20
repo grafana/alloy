@@ -155,6 +155,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
 		case <-ctx.Done():
+			s.unregisterCollector()
 			return nil
 		}
 	}
@@ -313,6 +314,22 @@ func (s *Service) registerCollector() error {
 
 	if err != nil {
 		s.opts.Logger.Log("level", "error", "msg", "failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
+		return err
+	}
+	return nil
+}
+
+func (s *Service) unregisterCollector() error {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+
+	_, err := s.apiClient.UnregisterCollector(s.getContext(), &connect.Request[collectorv1.UnregisterCollectorRequest]{
+		Msg: &collectorv1.UnregisterCollectorRequest{
+			Id: s.args.ID,
+		},
+	})
+	if err != nil {
+		s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector with remote server", "id", s.args.ID, "err", err)
 		return err
 	}
 	return nil
