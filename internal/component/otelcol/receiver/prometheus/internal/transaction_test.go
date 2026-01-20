@@ -218,7 +218,7 @@ func testReceiverVersionAndNameAreAttached(t *testing.T) {
 	require.Equal(t, expectedResource, gotResource)
 
 	gotScope := mds[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Scope()
-	require.Equal(t, "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver", gotScope.Name())
+	require.Equal(t, "otelcol/prometheusreceiver", gotScope.Name())
 	require.Equal(t, component.NewDefaultBuildInfo().Version, gotScope.Version())
 }
 
