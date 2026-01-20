@@ -77,7 +77,7 @@ replaces:
 
   - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
     dependency: github.com/google/cadvisor
-    replacement: github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+    replacement: github.com/grafana/cadvisor v0.0.0-20260113212819-8e138474f7ff
 
   - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
@@ -115,9 +115,25 @@ replaces:
     dependency: github.com/deneonet/benc
     replacement: github.com/deneonet/benc v1.1.7
 
-  - comment: Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
+  - comment: Pin runc to v1.4.0 (packaging tests disabled until dockertest is updated)
     dependency: github.com/opencontainers/runc
-    replacement: github.com/opencontainers/runc v1.2.8
+    replacement: github.com/opencontainers/runc v1.4.0
+
+  - comment: Pin OTel pdata to v1.45.0 to avoid breaking API changes in v1.46.0+
+    dependency: go.opentelemetry.io/collector/pdata
+    replacement: go.opentelemetry.io/collector/pdata v1.45.0
+
+  - comment: Pin OTel pdata/pprofile to v0.139.0 to avoid breaking API changes (Sample, Line, CommentStrindices removed)
+    dependency: go.opentelemetry.io/collector/pdata/pprofile
+    replacement: go.opentelemetry.io/collector/pdata/pprofile v0.139.0
+
+  - comment: Pin OTel pdata/testdata to v0.139.0 for compatibility with pprofile v0.139.0
+    dependency: go.opentelemetry.io/collector/pdata/testdata
+    replacement: go.opentelemetry.io/collector/pdata/testdata v0.139.0
+
+  - comment: Pin OTel pdata/xpdata to v0.139.0 for compatibility with pprofile v0.139.0
+    dependency: go.opentelemetry.io/collector/pdata/xpdata
+    replacement: go.opentelemetry.io/collector/pdata/xpdata v0.139.0
 
   - comment: Replace controller-runtime with pinned version
     dependency: sigs.k8s.io/controller-runtime

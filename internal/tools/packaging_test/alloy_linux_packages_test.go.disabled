@@ -1,4 +1,9 @@
-//go:build !nonetwork && !nodocker && packaging
+//go:build !nonetwork && !nodocker && packaging && enable_packaging_tests
+// NOTE: Packaging tests are currently disabled due to dockertest dependency on
+// runc/libcontainer/user which was removed in runc v1.4.0. To re-enable these
+// tests, either:
+// 1. Wait for dockertest to be updated (https://github.com/ory/dockertest/pull/615)
+// 2. Build with -tags=enable_packaging_tests after dockertest is fixed
 
 package packaging_test
 
