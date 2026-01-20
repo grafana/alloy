@@ -125,7 +125,7 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 
 // Configure the test command with appropriate environment variables if needed
 func setupTestCommand(ctx context.Context, dirName string, testDir string, alloyContainer testcontainers.Container, testTimeout time.Duration) (*exec.Cmd, error) {
-	testCmd := exec.Command("go", "test", "-tags", "alloy-integration-tests")
+	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests")
 	testCmd.Dir = testDir
 
 	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))

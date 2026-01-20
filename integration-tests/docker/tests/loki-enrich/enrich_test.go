@@ -1,4 +1,4 @@
-//go:build alloy-integration-tests && !windows
+//go:build alloyintegrationtests && !windows
 
 package main
 
