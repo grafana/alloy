@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/tsdb/tsdbutil"
@@ -463,6 +464,218 @@ func TestDuplicateLabelNamesError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid sample: non-unique label names:")
+}
+
+func TestNHCBDeltaBuckets(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args prometheus.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	metricCh := make(chan pmetric.Metrics)
+	args.Output = makeMetricsOutput(metricCh)
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(prometheus.Exports)
+
+	go func() {
+		ts := time.Now().Unix()
+
+		ctx := t.Context()
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, testMetadataStore{
+			"testNHCBDeltaHistogram": scrape.MetricMetadata{
+				MetricFamily: "testNHCBDeltaHistogram",
+				Type:         model.MetricTypeHistogram,
+				Help:         "A test NHCB histogram with delta buckets",
+			},
+		})
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+		app := exports.Receiver.Appender(ctx)
+
+		nhcbHistLabels := labels.FromStrings(
+			model.MetricNameLabel, "testNHCBDeltaHistogram",
+			model.JobLabel, "testJob",
+			model.InstanceLabel, "otelcol.receiver.prometheus",
+			"endpoint", "/api/v1",
+		)
+
+		nhcbHist := &histogram.Histogram{
+			Schema:          histogram.CustomBucketsSchema, // -53
+			Count:           180,
+			Sum:             100.5,
+			CustomValues:    []float64{1.0, 2.0, 5.0, 10.0},
+			PositiveSpans:   []histogram.Span{{Offset: 0, Length: 5}},
+			PositiveBuckets: []int64{10, 15, 20, 5, 0}, // Delta encoded
+		}
+		nhcbHist.CounterResetHint = histogram.NotCounterReset
+
+		_, err := app.AppendHistogram(0, nhcbHistLabels, ts, nhcbHist, nil)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		require.FailNow(t, "failed waiting for NHCB delta histogram metrics")
+	case m := <-metricCh:
+		require.Equal(t, 1, m.MetricCount())
+		metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0)
+
+		require.Equal(t, "testNHCBDeltaHistogram", metric.Name())
+		require.Equal(t, "A test NHCB histogram with delta buckets", metric.Description())
+
+		// NHCB should be converted to OTel Histogram (not ExponentialHistogram)
+		require.Equal(t, pmetric.MetricTypeHistogram, metric.Type(),
+			"NHCB should be converted to Histogram type, not ExponentialHistogram")
+
+		hist := metric.Histogram()
+		require.Equal(t, 1, hist.DataPoints().Len())
+
+		dp := hist.DataPoints().At(0)
+
+		// Verify count and sum
+		require.Equal(t, uint64(180), dp.Count())
+		require.True(t, dp.HasSum())
+		require.Equal(t, 100.5, dp.Sum())
+
+		// Verify explicit bounds from CustomValues
+		bounds := dp.ExplicitBounds().AsRaw()
+		require.Equal(t, []float64{1.0, 2.0, 5.0, 10.0}, bounds,
+			"Explicit bounds should match CustomValues")
+
+		// Verify bucket counts (converted from delta to absolute)
+		// Delta: [10, 15, 20, 5, 0] -> Absolute: [10, 25, 45, 50, 50]
+		bucketCounts := dp.BucketCounts().AsRaw()
+		require.Equal(t, []uint64{10, 25, 45, 50, 50}, bucketCounts,
+			"Bucket counts should be converted from delta to absolute values")
+	}
+}
+
+func TestNHCBAbsoluteBuckets(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args prometheus.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	metricCh := make(chan pmetric.Metrics)
+	args.Output = makeMetricsOutput(metricCh)
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(prometheus.Exports)
+
+	go func() {
+		ts := time.Now().Unix()
+
+		ctx := t.Context()
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, testMetadataStore{
+			"testNHCBAbsoluteHistogram": scrape.MetricMetadata{
+				MetricFamily: "testNHCBAbsoluteHistogram",
+				Type:         model.MetricTypeHistogram,
+				Help:         "A test NHCB histogram with absolute buckets",
+			},
+		})
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+		app := exports.Receiver.Appender(ctx)
+
+		nhcbHistLabels := labels.FromStrings(
+			model.MetricNameLabel, "testNHCBAbsoluteHistogram",
+			model.JobLabel, "testJob",
+			model.InstanceLabel, "otelcol.receiver.prometheus",
+			"endpoint", "/api/v2",
+		)
+
+		nhcbFloatHist := &histogram.FloatHistogram{
+			Schema:          histogram.CustomBucketsSchema, // -53
+			Count:           50.0,
+			Sum:             125.25,
+			CustomValues:    []float64{0.5, 2.0},
+			PositiveSpans:   []histogram.Span{{Offset: 0, Length: 3}},
+			PositiveBuckets: []float64{15.0, 20.0, 15.0}, // Absolute values
+		}
+		nhcbFloatHist.CounterResetHint = histogram.NotCounterReset
+
+		_, err := app.AppendHistogram(0, nhcbHistLabels, ts, nil, nhcbFloatHist)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		require.FailNow(t, "failed waiting for NHCB absolute histogram metrics")
+	case m := <-metricCh:
+		require.Equal(t, 1, m.MetricCount())
+		metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0)
+
+		require.Equal(t, "testNHCBAbsoluteHistogram", metric.Name())
+		require.Equal(t, "A test NHCB histogram with absolute buckets", metric.Description())
+
+		// NHCB should be converted to OTel Histogram (not ExponentialHistogram)
+		require.Equal(t, pmetric.MetricTypeHistogram, metric.Type(),
+			"NHCB should be converted to Histogram type, not ExponentialHistogram")
+
+		hist := metric.Histogram()
+		require.Equal(t, 1, hist.DataPoints().Len())
+
+		dp := hist.DataPoints().At(0)
+
+		// Verify count and sum
+		require.Equal(t, uint64(50), dp.Count())
+		require.True(t, dp.HasSum())
+		require.Equal(t, 125.25, dp.Sum())
+
+		// Verify explicit bounds from CustomValues
+		bounds := dp.ExplicitBounds().AsRaw()
+		require.Equal(t, []float64{0.5, 2.0}, bounds,
+			"Explicit bounds should match CustomValues")
+
+		// Verify bucket counts (already absolute values, truncated to uint64)
+		// Float buckets: [15.0, 20.0, 15.0] -> uint64: [15, 20, 15]
+		bucketCounts := dp.BucketCounts().AsRaw()
+		require.Equal(t, []uint64{15, 20, 15}, bucketCounts,
+			"Bucket counts should match absolute float values (truncated to uint64)")
+	}
 }
 
 // makeMetricsOutput returns a ConsumerArguments which will forward metrics to
