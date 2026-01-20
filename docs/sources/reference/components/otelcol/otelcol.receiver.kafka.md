@@ -44,7 +44,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 
 | Name                                       | Type            | Description                                                                                                           | Default            | Required |
 | ------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
-| `brokers`                                  | `array(string)` | Kafka brokers to connect to.                                                                                          |                    | yes      |
+| `brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                                                          |                    | yes      |
 | `protocol_version`                         | `string`        | Kafka protocol version to use.                                                                                        |                    | yes      |
 | `client_id`                                | `string`        | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
 | `default_fetch_size`                       | `int`           | The default number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
@@ -166,7 +166,7 @@ The `logs` block configures how to receive logs from Kafka brokers.
 | ---------- | --------------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
 | `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
 | `topic`    | `string`        | The name of the Kafka topic on which logs will be received.                  | `""`             | no       |
-| `topics`   | `array(string)` | The names of the Kafka topics on which logs will be received.                | `["otlp_logs"]`  | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which logs will be received.                | `["otlp_logs"]`  | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -181,7 +181,7 @@ The `metrics` block configures how to receive metrics from Kafka brokers.
 | ---------- | --------------- | ---------------------------------------------------------------------------- | ------------------- | -------- |
 | `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`      | no       |
 | `topic`    | `string`        | The name of the Kafka topic on which metrics will be received.               | `""`                | no       |
-| `topics`   | `array(string)` | The names of the Kafka topics on which metrics will be received.             | `["otlp_metrics"]`  | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which metrics will be received.             | `["otlp_metrics"]`  | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -196,7 +196,7 @@ The `traces` block configures how to receive traces from Kafka brokers.
 | ---------- | --------------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
 | `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
 | `topic`    | `string`        | The name of the Kafka topic on which traces will be received.                | `""`             | no       |
-| `topics`   | `array(string)` | The names of the Kafka topics on which traces will be received.              | `["otlp_spans"]` | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which traces will be received.              | `["otlp_spans"]` | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
