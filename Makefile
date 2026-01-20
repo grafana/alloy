@@ -177,8 +177,8 @@ else
 	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
-.PHONY: integration-test
-integration-test:
+.PHONY: integration-test-docker
+integration-test-docker:
 	cd integration-tests/docker && $(GO_ENV) go run .
 
 .PHONY: integration-test-k8s
