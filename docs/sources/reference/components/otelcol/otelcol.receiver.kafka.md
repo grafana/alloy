@@ -162,11 +162,11 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 
 The `logs` block configures how to receive logs from Kafka brokers.
 
-| Name       | Type            | Description                                                                  | Default          | Required |
-| ---------- | --------------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
-| `topic`    | `string`        | The name of the Kafka topic on which logs will be received.                  | `""`             | no       |
-| `topics`   | `list(string)`  | The names of the Kafka topics on which logs will be received.                | `["otlp_logs"]`  | no       |
+| Name       | Type            | Description                                                                                    | Default          | Required |
+| ---------- | --------------- | ---------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                   | `"otlp_proto"`   | no       |
+| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which logs will be received. | `""`             | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which logs will be received.                                  | `["otlp_logs"]`  | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -177,11 +177,11 @@ If `topic` is set, it will take precedence over default value of `topics`.
 
 The `metrics` block configures how to receive metrics from Kafka brokers.
 
-| Name       | Type            | Description                                                                  | Default             | Required |
-| ---------- | --------------- | ---------------------------------------------------------------------------- | ------------------- | -------- |
-| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`      | no       |
-| `topic`    | `string`        | The name of the Kafka topic on which metrics will be received.               | `""`                | no       |
-| `topics`   | `list(string)`  | The names of the Kafka topics on which metrics will be received.             | `["otlp_metrics"]`  | no       |
+| Name       | Type            | Description                                                                                       | Default             | Required |
+| ---------- | --------------- | ------------------------------------------------------------------------------------------------- | ------------------- | -------- |
+| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                      | `"otlp_proto"`      | no       |
+| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which metrics will be received. | `""`                | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which metrics will be received.                                  | `["otlp_metrics"]`  | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -192,11 +192,11 @@ If `topic` is set, it will take precedence over default value of `topics`.
 
 The `traces` block configures how to receive traces from Kafka brokers.
 
-| Name       | Type            | Description                                                                  | Default          | Required |
-| ---------- | --------------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
-| `topic`    | `string`        | The name of the Kafka topic on which traces will be received.                | `""`             | no       |
-| `topics`   | `list(string)`  | The names of the Kafka topics on which traces will be received.              | `["otlp_spans"]` | no       |
+| Name       | Type            | Description                                                                                      | Default          | Required |
+| ---------- | --------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
+| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                     | `"otlp_proto"`   | no       |
+| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which traces will be received. | `""`             | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which traces will be received.                                  | `["otlp_spans"]` | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
