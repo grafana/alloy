@@ -3,17 +3,45 @@
 
 package internal_test
 
-// TODO: Uncomment this in the future when there's no more dependency hell for the
-// opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite
-// package. Loki requires an older version of that package,
-// whereas this test needs a new version so that the test's dependency on
-// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter
-// works ok.
+// import (
+// 	"context"
+// 	"fmt"
+// 	"io"
+// 	"net/http"
+// 	"net/http/httptest"
+// 	"net/url"
+// 	"os"
+// 	"strings"
+// 	"sync/atomic"
+// 	"testing"
+// 	"time"
 
-// Test that staleness markers are emitted for timeseries that intermittently disappear.
-// This test runs the entire collector and end-to-end scrapes then checks with the
-// Prometheus remotewrite exporter that staleness markers are emitted per timeseries.
-// See https://github.com/open-telemetry/opentelemetry-collector/issues/3413
+// 	"github.com/gogo/protobuf/proto"
+// 	"github.com/golang/snappy"
+// 	"github.com/prometheus/prometheus/model/value"
+// 	"github.com/prometheus/prometheus/prompb"
+// 	"github.com/stretchr/testify/assert"
+// 	"github.com/stretchr/testify/require"
+// 	"go.opentelemetry.io/collector/component"
+// 	"go.opentelemetry.io/collector/confmap"
+// 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
+// 	"go.opentelemetry.io/collector/exporter"
+// 	"go.opentelemetry.io/collector/otelcol"
+// 	"go.opentelemetry.io/collector/processor"
+// 	"go.opentelemetry.io/collector/processor/batchprocessor"
+// 	"go.opentelemetry.io/collector/receiver"
+// 	"go.opentelemetry.io/collector/service/telemetry"
+// 	"go.uber.org/zap"
+// 	"go.uber.org/zap/zapcore"
+
+// 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
+// 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
+// )
+
+// // Test that staleness markers are emitted for timeseries that intermittently disappear.
+// // This test runs the entire collector and end-to-end scrapes then checks with the
+// // Prometheus remotewrite exporter that staleness markers are emitted per timeseries.
+// // See https://github.com/open-telemetry/opentelemetry-collector/issues/3413
 // func TestStalenessMarkersEndToEnd(t *testing.T) {
 // 	if testing.Short() {
 // 		t.Skip("This test can take a long time")
@@ -85,8 +113,6 @@ package internal_test
 //           static_configs:
 //             - targets: [%q]
 
-// processors:
-//   batch:
 // exporters:
 //   prometheusremotewrite:
 //     endpoint: %q
@@ -97,7 +123,6 @@ package internal_test
 //   pipelines:
 //     metrics:
 //       receivers: [prometheus]
-//       processors: [batch]
 //       exporters: [prometheusremotewrite]`, serverURL.Host, prweServer.URL)
 
 // 	confFile, err := os.CreateTemp(os.TempDir(), "conf-")
@@ -117,6 +142,9 @@ package internal_test
 // 		Receivers:  receivers,
 // 		Exporters:  exporters,
 // 		Processors: processors,
+// 		Telemetry: telemetry.NewFactory(
+// 			func() component.Config { return struct{}{} },
+// 		),
 // 	}
 
 // 	appSettings := otelcol.CollectorSettings{
@@ -161,7 +189,7 @@ package internal_test
 
 // 	// 5. Let's wait on 10 fetches.
 // 	var wReqL []*prompb.WriteRequest
-// 	for i := 0; i < 10; i++ {
+// 	for range 10 {
 // 		wReqL = append(wReqL, <-prweUploads)
 // 	}
 // 	defer cancel()
