@@ -167,6 +167,7 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 				strings.Contains(up, " ON PERFORMANCE_SCHEMA.*") ||
 				strings.Contains(up, " ON `PERFORMANCE_SCHEMA`.") ||
 				strings.Contains(up, " ON *.*") {
+
 				req["SELECT"] = true
 			}
 		}
@@ -176,6 +177,7 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 				strings.Contains(up, " ON PERFORMANCE_SCHEMA.*") ||
 				strings.Contains(up, " ON `PERFORMANCE_SCHEMA`.") ||
 				strings.Contains(up, " ON *.*") {
+
 				req["SELECT"] = true
 			}
 		}
@@ -191,7 +193,6 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 		if strings.Contains(up, "REPLICATION CLIENT") && strings.Contains(up, " ON *.*") {
 			req["REPLICATION CLIENT"] = true
 		}
-
 	}
 	if err := rows.Err(); err != nil {
 		r.err = fmt.Errorf("iterate SHOW GRANTS: %w", err)
