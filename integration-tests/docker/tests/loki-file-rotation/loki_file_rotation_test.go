@@ -1,3 +1,5 @@
+//go:build alloyintegrationtests
+
 package main
 
 import (

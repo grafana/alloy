@@ -66,7 +66,7 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	}
 }
 
-// WaitForInitalLogs will try to wait until any logs can be retrived from loki for testName.
+// WaitForInitalLogs will try to wait until any logs can be retrieved from loki for testName.
 // It will return an error if no logs are found after test timeout.
 func WaitForInitalLogs(testName string) error {
 	var (
