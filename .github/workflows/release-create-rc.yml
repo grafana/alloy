@@ -27,7 +27,7 @@ jobs:
             ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
       - name: Generate token 🔐
-        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: app-token
         with:
           app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
@@ -48,14 +48,14 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
       - name: Set up Go 🏗️
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: tools/go.mod
           cache-dependency-path: tools/go.sum

@@ -33,7 +33,7 @@ jobs:
 
   build_alloy:
     name: Build Alloy
-    container: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
+    container: grafana/alloy-build-image:v0.1.26@sha256:54ef2371fc6b049d932c58d4622c88b573b45c393b7622fe6cca492ac4525dbe
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -42,7 +42,7 @@ jobs:
     - publish_windows_container
     steps:
     - name: Checkout code
-      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         ref: ${{ github.event.release.tag_name }}
         persist-credentials: false
@@ -54,7 +54,7 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
       with:
         go-version-file: go.mod
         cache: false
@@ -122,7 +122,7 @@ jobs:
     - sign_alloy_windows
     steps:
     - name: Checkout code
-      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         ref: ${{ github.event.release.tag_name }}
         persist-credentials: false
@@ -134,13 +134,13 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
       with:
         go-version-file: go.mod
         cache: false
 
     - name: Download signed Windows executables
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: windows-executables-signed
         path: .
@@ -215,7 +215,7 @@ jobs:
           ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
     - name: Create GitHub app token 🔐
-      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
       id: app-token
       with:
         app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
@@ -224,7 +224,7 @@ jobs:
         repositories: alloy
 
     - name: Checkout repository 🛎️
-      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         ref: ${{ github.event.release.tag_name }}
         token: ${{ steps.app-token.outputs.token }}
@@ -237,21 +237,21 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Download dist
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: dist
         path: dist
 
     # Overwrite the original Windows Alloy executable with the signed version
     - name: Download signed Windows executable
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: windows-executables-signed
         path: .
 
     # Overwrite the original Windows Alloy installer with the signed version
     - name: Download signed Windows installer
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: windows-installer-signed
         path: dist
