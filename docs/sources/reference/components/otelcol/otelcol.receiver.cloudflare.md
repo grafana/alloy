@@ -27,7 +27,7 @@ You can specify multiple `otelcol.receiver.cloudflare` components by giving them
 
 ```alloy
 otelcol.receiver.cloudflare "<LABEL>" {
-  endpoint = "0.0.0.0:12345"
+  endpoint = "<HOST>:<PORT>"
 
   output {
     logs = [...]
@@ -95,7 +95,7 @@ The following example receives logs from Cloudflare and forwards them through a 
 
 ```alloy
 otelcol.receiver.cloudflare "default" {
-  endpoint = "0.0.0.0:12345"
+  endpoint = "<HOST>:<PORT>"
   secret = "1234567890abcdef1234567890abcdef"
   timestamp_field = "EdgeStartTimestamp"
   timestamp_format = "rfc3339"
@@ -127,6 +127,12 @@ otelcol.exporter.otlp "default" {
 }
 ```
 
+Replace the following:
+
+- _`<HOST>`_: The hostname or IP address where the receiver listens for Cloudflare LogPush requests.
+- _`<PORT>`_: The port number where the receiver listens for Cloudflare LogPush requests.
+- _`<OTLP_ENDPOINT>`_: The OTLP endpoint URL for your observability backend.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -134,7 +140,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.cloudflare` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
