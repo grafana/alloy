@@ -26,6 +26,7 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/prompb"
 	writev2 "github.com/prometheus/prometheus/prompb/io/prometheus/write/v2"
+	"github.com/prometheus/prometheus/schema"
 	"github.com/prometheus/prometheus/storage"
 	promremote "github.com/prometheus/prometheus/storage/remote"
 	"github.com/stretchr/testify/assert"
@@ -865,6 +866,7 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 		val float64,
 		next storage.Appender,
 	) (storage.SeriesRef, error) {
+
 		actualSamples <- testSample{ts: ts, val: val, l: l}
 		return ref, nil
 	}
@@ -875,7 +877,8 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 		m metadata.Metadata,
 		next storage.Appender,
 	) (storage.SeriesRef, error) {
-		metricName := l.Get(labels.MetricName)
+
+		metricName := schema.NewMetadataFromLabels(l).Name
 		actualMetadata <- testMetadata{
 			metricName: metricName,
 			metricType: string(m.Type),
