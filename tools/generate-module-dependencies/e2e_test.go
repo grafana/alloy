@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,7 +64,7 @@ func TestE2EMod(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read expected go.mod: %v", err)
 			}
-			expectedGoMod := strings.TrimSpace(string(expectedContent))
+			expectedGoMod := string(normalizeLineEndings(expectedContent))
 
 			actualContent, err := os.ReadFile(goModPath)
 			if err != nil {
@@ -127,7 +128,7 @@ func TestE2EOCB(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read expected builder yaml: %v", err)
 			}
-			expectedYaml := strings.TrimSpace(string(expectedContent))
+			expectedYaml := string(normalizeLineEndings(expectedContent))
 
 			actualContent, err := os.ReadFile(builderYamlPath)
 			if err != nil {
@@ -140,4 +141,10 @@ func TestE2EOCB(t *testing.T) {
 			}
 		})
 	}
+}
+
+// normalizeLineEndings will replace '\r\n' with '\n'.
+func normalizeLineEndings(data []byte) []byte {
+	normalized := bytes.TrimSpace(bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'}))
+	return normalized
 }
