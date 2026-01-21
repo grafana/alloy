@@ -46,6 +46,7 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoffRetries: 10,
 		HTTPClientConfig:  types.CloneDefaultHTTPClientConfig(),
 		RetryOnHTTP429:    true,
+		QueueConfig:       defaultQueueConfig,
 	}
 
 	return defaultEndpointOptions

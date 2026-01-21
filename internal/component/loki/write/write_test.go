@@ -321,6 +321,22 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 }
 
 func TestComponentExperimentalConfig(t *testing.T) {
+	t.Run("should be able to create component with default queue_config", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.NoError(t, err)
+	})
+
 	t.Run("should not be able to create component with experimental config without correct flag", func(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(`
