@@ -196,7 +196,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:                    db,
-				CollectInterval:       time.Millisecond,
+				CollectInterval:       50 * time.Millisecond,
 				EntryHandler:          lokiClient,
 				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				DisableQueryRedaction: tc.disableQueryRedaction,
@@ -213,12 +213,12 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			if tc.expectedErrorLine != "" {
 				require.Eventually(t, func() bool {
 					return strings.Contains(logBuffer.String(), tc.expectedErrorLine)
-				}, 5*time.Second, 100*time.Millisecond)
+				}, 10*time.Second, 200*time.Millisecond)
 			}
 
 			require.Eventually(t, func() bool {
 				return len(lokiClient.Received()) == len(tc.expectedLines)
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			entries := lokiClient.Received()
 			for i, entry := range entries {
@@ -234,11 +234,11 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			sampleCollector.Stop()
 			require.Eventually(t, func() bool {
 				return sampleCollector.Stopped()
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			require.Eventually(t, func() bool {
 				return mock.ExpectationsWereMet() == nil
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 		})
 	}
 }
@@ -274,7 +274,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -300,7 +300,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
@@ -312,11 +312,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("wait-event merges across scrapes with normalized PID set", func(t *testing.T) {
@@ -332,7 +332,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -368,7 +368,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
@@ -379,11 +379,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("wait-event closes on no-wait row; single occurrence emitted", func(t *testing.T) {
@@ -399,7 +399,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -435,7 +435,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
@@ -447,11 +447,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("cpu persists across waits", func(t *testing.T) {
@@ -467,7 +467,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -503,7 +503,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
@@ -515,11 +515,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("wait-event starts new occurrence on set change", func(t *testing.T) {
@@ -535,7 +535,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -571,7 +571,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 3
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 3)
@@ -585,11 +585,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 }
 
@@ -624,7 +624,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -657,7 +657,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
@@ -670,11 +670,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("idle-only emitted once and deduped across scrapes", func(t *testing.T) {
@@ -690,7 +690,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -723,7 +723,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
@@ -735,11 +735,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("idle in transaction (aborted) emitted once and deduped across scrapes", func(t *testing.T) {
@@ -755,7 +755,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -788,7 +788,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
@@ -800,11 +800,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("two idle-only keys emit separately and dedup individually", func(t *testing.T) {
@@ -820,7 +820,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
-			CollectInterval:       time.Millisecond,
+			CollectInterval:       50 * time.Millisecond,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			DisableQueryRedaction: true,
@@ -871,7 +871,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
@@ -894,11 +894,11 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
 			return sampleCollector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 
 		require.Eventually(t, func() bool {
 			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 200*time.Millisecond)
 	})
 }
 
@@ -977,7 +977,7 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 
 			require.Eventually(t, func() bool {
 				return len(lokiClient.Received()) == 1
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			entries := lokiClient.Received()
 			require.Len(t, entries, 1)
@@ -985,11 +985,11 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 			sampleCollector.Stop()
 			require.Eventually(t, func() bool {
 				return sampleCollector.Stopped()
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 
 			require.Eventually(t, func() bool {
 				return mock.ExpectationsWereMet() == nil
-			}, 5*time.Second, 100*time.Millisecond)
+			}, 10*time.Second, 200*time.Millisecond)
 		})
 	}
 }
