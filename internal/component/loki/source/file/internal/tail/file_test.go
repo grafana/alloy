@@ -3,12 +3,12 @@ package tail
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/natefinch/atomic"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/unicode"
 )
@@ -454,16 +454,5 @@ func rotateFile(t *testing.T, name, newContent string) {
 }
 
 func atomicwrite(t *testing.T, name, newContent string) {
-	dir := filepath.Dir(name)
-	filename := filepath.Base(name)
-
-	tmp, err := os.CreateTemp(dir, filename+".tmp")
-	require.NoError(t, err)
-
-	_, err = tmp.Write([]byte(newContent))
-	require.NoError(t, err)
-
-	require.NoError(t, tmp.Sync())
-	require.NoError(t, tmp.Close())
-	require.NoError(t, os.Rename(tmp.Name(), name))
+	require.NoError(t, atomic.WriteFile(name, strings.NewReader(newContent)))
 }
