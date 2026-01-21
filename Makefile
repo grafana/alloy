@@ -163,10 +163,12 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v -E '/integration-tests/|/integration-tests-k8s/')
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
-	$(GO_ENV) cd ./syntax && go test -race ./...
-
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		if echo "$$dir" | grep -qv testdata; then \
+			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
+		fi;\
+	done
+	
 test-packages:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
@@ -175,20 +177,19 @@ else
 	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
-.PHONY: integration-test
-integration-test:
-	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+.PHONY: integration-test-docker
+integration-test-docker:
+	cd integration-tests/docker && $(GO_ENV) go run .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	cd integration-tests/k8s && $(GO_ENV) go test -tags="alloyintegrationtests" -timeout 10m ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
 	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
 		$(GO_ENV) go build .
-
-.PHONY: integration-test-k8s
-integration-test-k8s: alloy-image
-	cd ./internal/cmd/integration-tests-k8s/ && \
-		$(GO_ENV) go test -timeout 10m ./...
 
 #
 # Targets for building binaries

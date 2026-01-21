@@ -51,11 +51,10 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              confighttp.CookiesConfig{},
+			Cookies:              configoptional.None[confighttp.CookiesConfig](),
 			ForceAttemptHTTP2:    true,
 		},
-		QueueSettings: exporterhelper.QueueBatchConfig{
-			Enabled:      true,
+		QueueSettings: configoptional.Some(exporterhelper.QueueBatchConfig{
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    nil,
@@ -66,7 +65,7 @@ func TestConfigConversion(t *testing.T) {
 				MinSize:      500,
 				MaxSize:      1000,
 			}),
-		},
+		}),
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
 			InitialInterval:     15 * time.Second,
@@ -141,15 +140,14 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			ForceAttemptHTTP2:    true,
-			Cookies:              confighttp.CookiesConfig{}},
-		QueueSettings: exporterhelper.QueueBatchConfig{
-			Enabled:      true,
+			Cookies:              configoptional.None[confighttp.CookiesConfig](),
+		},
+		QueueSettings: configoptional.Some(exporterhelper.QueueBatchConfig{
 			NumConsumers: 10,
 			QueueSize:    1000,
-			StorageID:    (nil),
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
 			Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
-		},
+		}),
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
 			InitialInterval:     5 * time.Second,
