@@ -180,14 +180,14 @@ The `cache` block configures sourcemap caching behavior.
 | `error_cleanup_interval` | `duration` | How long {{< param "PRODUCT_NAME" >}} waits before retrying a failed source map download. | `"1h"`  | no       |
 | `ttl`                    | `duration` | How long {{< param "PRODUCT_NAME" >}} keeps an unused source map in the cache.            | `inf`   | no       |
 
-By default, sourcemaps are held in memory indefinitely.
-You can set `ttl` to clear sourcemaps that aren't used during the specified duration.
+By default, {{< param "PRODUCT_NAME" >}} keeps sourcemaps in memory indefinitely.
+Set `ttl` to remove sourcemaps that are not accessed within the specified duration.
 
-By default, if there's an error while downloading or parsing a sourcemap, the error is cached.
-After the duration specified by `error_cleanup_interval`, all errors are cleared from the cache.
+{{< param "PRODUCT_NAME" >}} caches errors that occur while downloading or parsing a sourcemap.
+Use `error_cleanup_interval` to control how long these errors remain cached.
 
-By default, cached sourcemaps are checked for cleanup every 30 seconds.
-You can modify the frequency by setting the `cleanup_check_interval` argument.
+Cached sourcemaps are checked for cleanup every 30 seconds by default.
+Set `cleanup_check_interval` to adjust this frequency.
 
 #### `location`
 
