@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -153,7 +154,11 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	// Try as a commit SHA
 	commit, err := c.GetCommit(ctx, ref)
 	if err == nil {
-		return *commit.SHA, nil
+		sha := commit.GetSHA()
+		if sha == "" {
+			return "", fmt.Errorf("commit SHA is empty for ref: %s", ref)
+		}
+		return sha, nil
 	}
 
 	return "", fmt.Errorf("could not resolve ref: %s", ref)
@@ -399,6 +404,7 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 	if err != nil {
 		return fmt.Errorf("creating graphql request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	// Get the HTTP client from the underlying go-github client (has auth configured)
 	httpClient := c.api.Client()
@@ -409,7 +415,8 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("graphql request failed with status %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("graphql request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {

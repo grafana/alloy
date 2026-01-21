@@ -149,12 +149,15 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 }
 
 // getCommitContributors returns human contributors for a commit (author + co-authors, excluding bots).
-// Uses GitHub's GraphQL API which resolves email addresses to usernames server-side.
+// Uses GitHub's GraphQL API to fetch all authors associated with the commit (including co-authors) and their usernames.
 func getCommitContributors(ctx context.Context, client *gh.Client, sha string) ([]string, error) {
-	fullSHA, err := client.GetRefSHA(ctx, sha)
+	// Use GetCommit to expand short SHA to full SHA (more efficient than GetRefSHA
+	// which tries branch/tag resolution first)
+	commit, err := client.GetCommit(ctx, sha)
 	if err != nil {
-		return nil, fmt.Errorf("resolving commit SHA: %w", err)
+		return nil, fmt.Errorf("getting commit: %w", err)
 	}
+	fullSHA := commit.GetSHA()
 
 	variables := map[string]any{
 		"owner": client.Owner(),
