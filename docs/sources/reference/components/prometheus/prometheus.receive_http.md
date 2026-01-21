@@ -48,10 +48,15 @@ You can use the following arguments with `prometheus.receive_http`:
 | `append_metadata`             | `bool`                  | Whether metric metadata should be passed to downstream components.    | `false` | no       |
 | `enable_type_and_unit_labels` | `bool`                  | Whether metric type and unit should be added as labels to the metric. | `false` | no       |
 
-{{< admonition type="note" >}}
-The `append_metadata` and `enable_type_and_unit_labels` arguments only apply to remote write v2 payloads and only when metadata is included in those payloads.
-Remote write v1 payloads don't support metadata.
-{{< /admonition >}}
+> **EXPERIMENTAL**: The `append_metadata` and `enable_type_and_unit_labels` arguments are [experimental][] features.
+> These arguments only apply to remote write v2 payloads and only when metadata is included in those payloads.
+> Remote write v1 payloads don't support metadata.
+>
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 ## Blocks
 

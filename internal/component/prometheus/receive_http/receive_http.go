@@ -72,6 +72,13 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	ls := service.(labelstore.LabelStore)
 	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 
+	if args.AppendMetadata && !opts.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("append_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+	if args.EnableTypeAndUnitLabels && !opts.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
