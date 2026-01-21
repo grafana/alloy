@@ -22,7 +22,7 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 		PullRange:  time.Duration(s.cfg.CloudflareConfig.PullRange),
 		FieldsType: cloudflare.FieldsType(s.cfg.CloudflareConfig.FieldsType),
 	}
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch conv := val.(type) {
 		case []loki.LogsReceiver:
 			return common.CustomTokenizer{Expr: s.getOrNewLokiRelabel()}

@@ -79,7 +79,7 @@ func (s *StringReceiverComponent) Run(ctx context.Context) error {
 }
 
 // Return the receiver as debug info instead of export to avoid evaluation loop.
-func (s *StringReceiverComponent) DebugInfo() interface{} {
+func (s *StringReceiverComponent) DebugInfo() any {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	return s.recvStr

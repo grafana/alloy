@@ -57,29 +57,29 @@ func TestConvertMatchProperties(t *testing.T) {
 		SpanKinds: []string{"span1"},
 	}
 
-	expectedMatchProps := map[string]interface{}{
-		"attributes": []interface{}{
-			map[string]interface{}{
+	expectedMatchProps := map[string]any{
+		"attributes": []any{
+			map[string]any{
 				"key":   "attr1",
 				"value": 5,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"key":   "attr2",
 				"value": "asdf",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"key":   "attr2",
 				"value": false,
 			},
 		},
-		"libraries": []interface{}{
-			map[string]interface{}{
+		"libraries": []any{
+			map[string]any{
 				"name":    "mongo-java-driver",
 				"version": "3.8.0",
 			},
 		},
 		"log_bodies": []string{"AUTH.*"},
-		"log_severity_number": map[string]interface{}{
+		"log_severity_number": map[string]any{
 			"min":             plog.SeverityNumber(2),
 			"match_undefined": true,
 		},
@@ -88,12 +88,12 @@ func TestConvertMatchProperties(t *testing.T) {
 		},
 		"match_type":   "strict",
 		"metric_names": []string{"metric1"},
-		"regexp": map[string]interface{}{
+		"regexp": map[string]any{
 			"cacheenabled":       false,
 			"cachemaxnumentries": 2,
 		},
-		"resources": []interface{}{
-			map[string]interface{}{
+		"resources": []any{
+			map[string]any{
 				"key":   "attr1",
 				"value": 5,
 			},
@@ -106,12 +106,12 @@ func TestConvertMatchProperties(t *testing.T) {
 	tests := []struct {
 		testName            string
 		inputMatchConfig    otelcol.MatchConfig
-		expectedMatchConfig map[string]interface{}
+		expectedMatchConfig map[string]any
 	}{
 		{
 			testName:            "TestConvertEmpty",
 			inputMatchConfig:    otelcol.MatchConfig{},
-			expectedMatchConfig: make(map[string]interface{}),
+			expectedMatchConfig: make(map[string]any),
 		},
 		{
 			testName: "TestConvertMandatory",
@@ -120,8 +120,8 @@ func TestConvertMatchProperties(t *testing.T) {
 					MatchType: "strict",
 				},
 			},
-			expectedMatchConfig: map[string]interface{}{
-				"include": map[string]interface{}{
+			expectedMatchConfig: map[string]any{
+				"include": map[string]any{
 					"match_type": "strict",
 				},
 			},
@@ -132,7 +132,7 @@ func TestConvertMatchProperties(t *testing.T) {
 				Include: &inputMatchProps,
 				Exclude: &inputMatchProps,
 			},
-			expectedMatchConfig: map[string]interface{}{
+			expectedMatchConfig: map[string]any{
 				"include": expectedMatchProps,
 				"exclude": expectedMatchProps,
 			},
@@ -142,7 +142,7 @@ func TestConvertMatchProperties(t *testing.T) {
 			inputMatchConfig: otelcol.MatchConfig{
 				Include: &inputMatchProps,
 			},
-			expectedMatchConfig: map[string]interface{}{
+			expectedMatchConfig: map[string]any{
 				"include": expectedMatchProps,
 			},
 		},
@@ -151,7 +151,7 @@ func TestConvertMatchProperties(t *testing.T) {
 			inputMatchConfig: otelcol.MatchConfig{
 				Exclude: &inputMatchProps,
 			},
-			expectedMatchConfig: map[string]interface{}{
+			expectedMatchConfig: map[string]any{
 				"exclude": expectedMatchProps,
 			},
 		},

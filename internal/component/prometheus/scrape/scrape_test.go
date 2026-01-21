@@ -166,7 +166,7 @@ func TestCustomDialer(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{
@@ -756,7 +756,7 @@ func testScrapingAllMetricTypes(t *testing.T, enableTypeAndUnitLabels bool) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{

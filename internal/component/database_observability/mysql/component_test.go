@@ -348,7 +348,7 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	opts := cmp.Options{
 		ID:     "test.mysql",
 		Logger: kitlog.NewNopLogger(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
 	}
@@ -382,7 +382,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	opts := cmp.Options{
 		ID:     "test.mysql",
 		Logger: kitlog.NewNopLogger(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
 		OnStateChange: func(e cmp.Exports) { gotExports = e },

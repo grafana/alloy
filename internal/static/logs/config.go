@@ -20,7 +20,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	type config Config
 	err := unmarshal((*config)(c))
 	if err != nil {
@@ -103,7 +103,7 @@ func (c *InstanceConfig) Initialize() {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *InstanceConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *InstanceConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	c.Initialize()
 	type instanceConfig InstanceConfig
 	return unmarshal((*instanceConfig)(c))

@@ -311,7 +311,7 @@ func (c *Component) CurrentHealth() component.Health {
 
 // DebugInfo returns debug information about the remote.vault component. It
 // includes non-sensitive metadata about the current secret.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	return debugInfo{
 		AuthToken: c.authManager.DebugInfo(),
 		Secret:    c.secretManager.DebugInfo(),

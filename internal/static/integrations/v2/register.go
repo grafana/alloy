@@ -14,13 +14,13 @@ import (
 )
 
 var (
-	integrationByName = make(map[string]interface{})  // Cache of field names for uniqueness checking.
+	integrationByName = make(map[string]any)          // Cache of field names for uniqueness checking.
 	integrationTypes  = make(map[reflect.Type]Type)   // Map of registered type to Type
 	nameByType        = make(map[reflect.Type]string) // Map of Type to registered name
 
 	// Registered integrations. Registered integrations may be either a Config or
 	// a v1.Config. v1.Configs must have a corresponding upgrader for their type.
-	registered = []interface{}{}
+	registered = []any{}
 	upgraders  = make(map[reflect.Type]UpgradeFunc)
 
 	emptyStructType = reflect.TypeOf(struct{}{})
@@ -39,7 +39,7 @@ func Register(cfg Config, ty Type) {
 	registerIntegration(cfg, cfg.Name(), ty, nil)
 }
 
-func registerIntegration(v interface{}, name string, ty Type, upgrader UpgradeFunc) {
+func registerIntegration(v any, name string, ty Type, upgrader UpgradeFunc) {
 	if reflect.TypeOf(v).Kind() != reflect.Pointer {
 		panic(fmt.Sprintf("Register must be given a pointer, got %T", v))
 	}
@@ -109,7 +109,7 @@ const (
 // setRegistered must not be used with parallelized tests.
 func setRegistered(t *testing.T, cc map[Config]Type) {
 	clear := func() {
-		integrationByName = make(map[string]interface{})
+		integrationByName = make(map[string]any)
 		integrationTypes = make(map[reflect.Type]Type)
 		registered = registered[:0]
 		upgraders = make(map[reflect.Type]UpgradeFunc)
@@ -148,7 +148,7 @@ func RegisteredType(c Config) (Type, bool) {
 	return t, ok
 }
 
-func cloneConfig(r interface{}) Config {
+func cloneConfig(r any) Config {
 	switch v := r.(type) {
 	case Config:
 		return cloneValue(v).(Config)
@@ -163,7 +163,7 @@ func cloneConfig(r interface{}) Config {
 	}
 }
 
-func cloneValue(in interface{}) interface{} {
+func cloneValue(in any) any {
 	return reflect.New(reflect.TypeOf(in).Elem()).Interface()
 }
 
@@ -174,7 +174,7 @@ type Configs []Config
 
 // MarshalYAML helps implement yaml.Marshaler for structs that have a Configs
 // field that should be inlined in the YAML string.
-func MarshalYAML(v interface{}) (interface{}, error) {
+func MarshalYAML(v any) (any, error) {
 	inVal := reflect.ValueOf(v)
 	for inVal.Kind() == reflect.Pointer {
 		inVal = inVal.Elem()
@@ -218,7 +218,7 @@ func MarshalYAML(v interface{}) (interface{}, error) {
 	for _, c := range configs {
 		fieldName := c.Name()
 
-		var data interface{} = c
+		var data any = c
 		if wc, ok := c.(UpgradedConfig); ok {
 			data, _ = wc.LegacyConfig()
 		}
@@ -271,7 +271,7 @@ func MarshalYAML(v interface{}) (interface{}, error) {
 // Prometheus:
 //
 //	https://github.com/prometheus/prometheus/blob/511511324adfc4f4178f064cc104c2deac3335de/discovery/registry.go#L111
-func UnmarshalYAML(out interface{}, unmarshal func(interface{}) error) error {
+func UnmarshalYAML(out any, unmarshal func(any) error) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer {
 		return fmt.Errorf("integrations: can only unmarshal into a struct pointer, got %T", out)
@@ -375,7 +375,7 @@ func UnmarshalYAML(out interface{}, unmarshal func(interface{}) error) error {
 
 // deferredConfigUnmarshal performs a deferred unmarshal of raw into a Config.
 // ref must be either Config or v1.Config.
-func deferredConfigUnmarshal(raw util.RawYAML, ref interface{}) (Config, error) {
+func deferredConfigUnmarshal(raw util.RawYAML, ref any) (Config, error) {
 	switch ref := ref.(type) {
 	case Config:
 		out := cloneValue(ref).(Config)

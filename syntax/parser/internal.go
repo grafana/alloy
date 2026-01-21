@@ -141,7 +141,7 @@ func (p *parser) expect(t token.Token) (pos token.Pos, tok token.Token, lit stri
 	return
 }
 
-func (p *parser) addErrorf(format string, args ...interface{}) {
+func (p *parser) addErrorf(format string, args ...any) {
 	pos := p.file.PositionFor(p.pos)
 
 	// Ignore errors which occur on the same line.

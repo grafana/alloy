@@ -155,7 +155,7 @@ func parseTimestampWithoutYear(layout string, location *time.Location, timestamp
 }
 
 // getString will convert the input variable to a string if possible
-func getString(unk interface{}) (string, error) {
+func getString(unk any) (string, error) {
 	switch i := unk.(type) {
 	case float64:
 		return strconv.FormatFloat(i, 'f', -1, 64), nil

@@ -50,7 +50,7 @@ type capsuleConvertibleToObject struct {
 	address string
 }
 
-func (c capsuleConvertibleToObject) ConvertInto(dst interface{}) error {
+func (c capsuleConvertibleToObject) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
 		result := map[string]syntax.Value{
@@ -95,14 +95,14 @@ func TestBuilder_GoEncode(t *testing.T) {
 	})
 	f.Body().AppendTokens([]builder.Token{{token.LITERAL, "\n"}})
 
-	f.Body().SetAttributeValue("map", map[string]interface{}{"foo": "bar"})
-	f.Body().SetAttributeValue("map_2", map[string]interface{}{"non ident": "bar"})
+	f.Body().SetAttributeValue("map", map[string]any{"foo": "bar"})
+	f.Body().SetAttributeValue("map_2", map[string]any{"non ident": "bar"})
 	f.Body().AppendTokens([]builder.Token{{token.LITERAL, "\n"}})
 
-	f.Body().SetAttributeValue("mixed_list", []interface{}{
+	f.Body().SetAttributeValue("mixed_list", []any{
 		0,
 		true,
-		map[string]interface{}{"key": true},
+		map[string]any{"key": true},
 		"Hello!",
 	})
 
@@ -155,7 +155,7 @@ func TestBuilder_GoEncode_SortMapKeys(t *testing.T) {
 
 	// Maps are unordered because you can't iterate over their keys in a
 	// consistent order.
-	var unordered = map[string]interface{}{
+	var unordered = map[string]any{
 		"key_a": 1,
 		"key_c": 3,
 		"key_b": 2,
@@ -403,7 +403,7 @@ func TestBuilder_ValueOverrideHook(t *testing.T) {
 	}
 
 	f := builder.NewFile()
-	f.Body().SetValueOverrideHook(func(val interface{}) interface{} {
+	f.Body().SetValueOverrideHook(func(val any) any {
 		return "some other value"
 	})
 	f.Body().AppendFrom(Structure{

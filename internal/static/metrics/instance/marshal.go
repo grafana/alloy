@@ -33,7 +33,7 @@ func MarshalConfigToWriter(c *Config, w io.Writer, scrubSecrets bool) error {
 	// encoding hook to ignore how Secrets marshal (i.e., scrubbing the value
 	// and replacing it with <secret>).
 	if !scrubSecrets {
-		enc.SetHook(func(in interface{}) (ok bool, out interface{}, err error) {
+		enc.SetHook(func(in any) (ok bool, out any, err error) {
 			switch v := in.(type) {
 			case config_util.Secret:
 				return true, string(v), nil

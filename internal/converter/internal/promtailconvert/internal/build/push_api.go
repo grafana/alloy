@@ -16,7 +16,7 @@ func (s *ScrapeConfigBuilder) AppendPushAPI() {
 	}
 	s.diags.AddAll(common.ValidateWeaveWorksServerCfg(s.cfg.PushConfig.Server))
 	args := toLokiApiArguments(s.cfg.PushConfig, s.getOrNewProcessStageReceivers())
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}
