@@ -1,0 +1,18 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/grafana/alloy/internal/service/labelstore
+cpu: Apple M2
+BenchmarkStaleness-8        	     379	   3960583 ns/op	 6531803 B/op	   50047 allocs/op
+BenchmarkStaleness-8        	     460	   2303396 ns/op	 6530271 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     462	   2736982 ns/op	 6530229 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     501	   2271037 ns/op	 6529865 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     446	   2585208 ns/op	 6530361 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     512	   2251867 ns/op	 6529665 B/op	   50046 allocs/op
+BenchmarkHighContention-8   	      63	  17950933 ns/op	 2063814 B/op	   63105 allocs/op
+BenchmarkHighContention-8   	      69	  16745578 ns/op	 1976736 B/op	   63117 allocs/op
+BenchmarkHighContention-8   	      72	  21537123 ns/op	 1929626 B/op	   62587 allocs/op
+BenchmarkHighContention-8   	      67	  17329961 ns/op	 1983287 B/op	   63165 allocs/op
+BenchmarkHighContention-8   	      73	  16778453 ns/op	 1997467 B/op	   63315 allocs/op
+BenchmarkHighContention-8   	      74	  16438858 ns/op	 1962656 B/op	   62953 allocs/op
+PASS
+ok  	github.com/grafana/alloy/internal/service/labelstore	17.355s

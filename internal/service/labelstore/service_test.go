@@ -193,3 +193,92 @@ func BenchmarkStaleness(b *testing.B) {
 	}
 	wg.Wait()
 }
+
+// BenchmarkHighContention simulates the real prometheus write path roughly matching production traffic.
+func BenchmarkHighContention(b *testing.B) {
+	const numGoroutines = 20000
+	const numUniqueLabelSets = 10000
+	const numComponents = 5
+
+	ls := New(log.NewNopLogger(), prometheus.NewRegistry())
+
+	// Pre-generate label sets
+	labelSets := make([]labels.Labels, numUniqueLabelSets)
+	for i := range numUniqueLabelSets {
+		labelSets[i] = labels.FromStrings(
+			"__name__", "http_requests_total",
+			"job", "api-server-"+strconv.Itoa(i),
+			"instance", "10.0.0."+strconv.Itoa(i%256),
+			"path", "/api/v1/query_"+strconv.Itoa(i%100),
+			"method", []string{"GET", "POST", "PUT", "DELETE"}[i%4],
+			"status", strconv.Itoa(200+i%100),
+		)
+	}
+
+	// Pre-populate 50% of series to simulate existing series (warm cache)
+	// This means 50% of GetOrAddGlobalRefID calls will be cache hits, 50% will create new entries
+	for i := range numUniqueLabelSets/2 {
+		globalID := ls.GetOrAddGlobalRefID(labelSets[i])
+		for c := range numComponents {
+			componentID := "component_" + strconv.Itoa(c)
+			ls.AddLocalLink(componentID, globalID, uint64(i*100+c))
+		}
+	}
+
+	for i:=0; b.Loop(); i++ {
+		var wg sync.WaitGroup
+
+		// Simulate prometheus metrics collection happening in background
+		if i%10 == 0 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				// Simulate prometheus calling Collect
+				ch := make(chan prometheus.Metric, 10)
+				go func() {
+					for range ch {
+					}
+				}()
+				ls.Collect(ch)
+				close(ch)
+			}()
+		}
+
+		for g := range numGoroutines {
+			wg.Add(1)
+			go func(gIdx int) {
+				defer wg.Done()
+				lblIdx := (gIdx * 7) % numUniqueLabelSets
+				componentID := "component_" + strconv.Itoa(gIdx%numComponents)
+
+				// This is called on EVERY sample in production to get the global ref ID.
+				globalRef := ls.GetOrAddGlobalRefID(labelSets[lblIdx])
+
+				// Read-only operation to get the cached local ref for this component.
+				cachedLocalRef := ls.GetLocalRefID(componentID, globalRef)
+
+				// Simulate getting a new local ref from storage.Append
+				newLocalRef := uint64(lblIdx*1000 + gIdx)
+
+				if cachedLocalRef == 0 {
+					// First time seeing this series for this component
+					ls.AddLocalLink(componentID, globalRef, newLocalRef)
+				} else {
+					// Local ref changed, need to replace
+					ls.ReplaceLocalLink(componentID, globalRef, cachedLocalRef, newLocalRef)
+				}
+
+				// Occasionally track staleness (~10% of samples)
+				if gIdx%10 == 0 {
+					ls.TrackStaleness([]StalenessTracker{{
+						GlobalRefID: globalRef,
+						Value:       math.Float64frombits(value.StaleNaN),
+						Labels:      labelSets[lblIdx],
+					}})
+				}
+			}(g)
+		}
+
+		wg.Wait()
+	}
+}
