@@ -1,6 +1,7 @@
 package remotewrite_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -171,6 +172,7 @@ func TestSend(t *testing.T) {
 
 			expectedMetricsBytes, err := os.ReadFile(filepath.Join(testdataDir, "expected_metrics.txt"))
 			require.NoError(t, err)
+			expectedMetricsBytes = normalizeLineEndings(expectedMetricsBytes)
 			expectedMetrics := strings.ReplaceAll(string(expectedMetricsBytes), "__MIMIR_RW_URL__", srv.URL)
 			expectedMetrics = strings.ReplaceAll(expectedMetrics, "__EXPECTED_SAMPLES__", strconv.Itoa(test.expectedSamples))
 
@@ -268,6 +270,7 @@ func TestMetadataResend_V2(t *testing.T) {
 
 	expectedMetricsBytes, err := os.ReadFile(filepath.Join(testdataDir, "expected_metrics.txt"))
 	require.NoError(t, err)
+	expectedMetricsBytes = normalizeLineEndings(expectedMetricsBytes)
 	expectedMetricsTemplate := string(expectedMetricsBytes)
 
 	writeResult := make(chan string)
@@ -666,4 +669,9 @@ func testArgs(t *testing.T, cfg string) remotewrite.Arguments {
 	var args remotewrite.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	return args
+}
+
+// normalizeLineEndings will replace '\r\n' with '\n'.
+func normalizeLineEndings(data []byte) []byte {
+	return bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
 }

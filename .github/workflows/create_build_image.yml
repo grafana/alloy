@@ -14,13 +14,13 @@ jobs:
     strategy:
       matrix:
         build:
-          - runtime: golang:1.25.5-alpine3.22
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.25.5-bookworm
+          - runtime: golang:1.25.6-alpine3.23
+          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.25.6-bookworm
             suffix: "-boringcrypto"
     runs-on: ubuntu-latest-8-cores
     steps:
     - name: Checkout code
-      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
 
@@ -39,13 +39,13 @@ jobs:
       run: echo "image_tag=${FULL_TAG##*/}${{ matrix.build.suffix }}" >> $GITHUB_OUTPUT
 
     - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@c6d954f7cd9c0022018982e01268de6cb75b913c # dockerhub-login/v1.0.2
+      uses: grafana/shared-workflows/actions/dockerhub-login@081a366728379fd0426b9cfef190e9a21c2d5418 # dockerhub-login/v1.0.3
 
     - name: Setup QEMU
       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
     - name: Create Linux build image
       uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0

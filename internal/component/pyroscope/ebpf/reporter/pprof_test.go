@@ -21,13 +21,19 @@ import (
 
 func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, funcName, sourceFile string, sourceLine libpf.SourceLineno) libpf.Frames {
 	frames := make(libpf.Frames, 0, 1)
+	var mapping libpf.FrameMapping
+	if mappingFile != (libpf.FrameMappingFile{}) {
+		mapping = libpf.NewFrameMapping(libpf.FrameMappingData{
+			File: mappingFile,
+		})
+	}
 	frames.Append(&libpf.Frame{
 		Type:            ty,
 		AddressOrLineno: lineno,
 		FunctionName:    libpf.Intern(funcName),
 		SourceFile:      libpf.Intern(sourceFile),
 		SourceLine:      sourceLine,
-		MappingFile:     mappingFile,
+		Mapping:         mapping,
 	})
 	return frames
 }
@@ -73,7 +79,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 	}
 
 	profiles := rep.createProfile(
-		samples.ContainerID(""),
+		libpf.Intern(""),
 		support.TraceOriginSampling,
 		events,
 	)
@@ -101,12 +107,14 @@ Mappings
 func singleFrameNative(mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, mappingStart, mappingEnd libpf.Address, mappingFileOffset uint64) libpf.Frames {
 	frames := make(libpf.Frames, 0, 2)
 	frames.Append(&libpf.Frame{
-		Type:              libpf.NativeFrame,
-		AddressOrLineno:   lineno,
-		MappingStart:      mappingStart,
-		MappingEnd:        mappingEnd,
-		MappingFileOffset: mappingFileOffset,
-		MappingFile:       mappingFile,
+		Type:            libpf.NativeFrame,
+		AddressOrLineno: lineno,
+		Mapping: libpf.NewFrameMapping(libpf.FrameMappingData{
+			File:       mappingFile,
+			Start:      mappingStart,
+			End:        mappingEnd,
+			FileOffset: mappingFileOffset,
+		}),
 	})
 	return frames
 }
@@ -130,7 +138,7 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 		},
 	}
 	profiles := rep.createProfile(
-		samples.ContainerID(""),
+		libpf.Intern(""),
 		support.TraceOriginSampling,
 		events,
 	)
@@ -174,7 +182,7 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 	}
 
 	profiles := rep.createProfile(
-		samples.ContainerID(""),
+		libpf.Intern(""),
 		support.TraceOriginSampling,
 		events,
 	)
@@ -233,7 +241,7 @@ func TestPPROFReporter_Bug(t *testing.T) {
 	}
 
 	profiles := rep.createProfile(
-		samples.ContainerID(""),
+		libpf.Intern(""),
 		support.TraceOriginSampling,
 		events,
 	)
@@ -290,22 +298,26 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		Type:            libpf.NativeFrame,
 		FunctionName:    libpf.Intern("_ZN18ConcurrentGCThread3runEv"),
 		AddressOrLineno: 0xcafe00ef,
-		MappingStart:    0xcafe0000,
-		MappingEnd:      0xcafe1000,
-		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   fid,
-			FileName: libpf.Intern("libfoo.so"),
+		Mapping: libpf.NewFrameMapping(libpf.FrameMappingData{
+			File: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
+				FileID:   fid,
+				FileName: libpf.Intern("libfoo.so"),
+			}),
+			Start: 0xcafe0000,
+			End:   0xcafe1000,
 		}),
 	})
 	frames.Append(&libpf.Frame{ // a native frame with a mapping should be symbolized
 		Type:            libpf.NativeFrame,
 		FunctionName:    libpf.NullString,
 		AddressOrLineno: 0xcafe00de,
-		MappingStart:    0xcafe0000,
-		MappingEnd:      0xcafe1000,
-		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   fid,
-			FileName: libpf.Intern("libfoo.so"),
+		Mapping: libpf.NewFrameMapping(libpf.FrameMappingData{
+			File: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
+				FileID:   fid,
+				FileName: libpf.Intern("libfoo.so"),
+			}),
+			Start: 0xcafe0000,
+			End:   0xcafe1000,
 		}),
 	})
 
@@ -320,7 +332,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 	}
 
 	profiles := rep.createProfile(
-		samples.ContainerID(""),
+		libpf.Intern(""),
 		support.TraceOriginSampling,
 		events,
 	)
@@ -365,11 +377,13 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 	frames.Append(&libpf.Frame{
 		Type:            libpf.NativeFrame,
 		AddressOrLineno: 0xcafe00ef,
-		MappingStart:    0xcafe0000,
-		MappingEnd:      0xcafe1000,
-		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   libpf.NewFileID(7, 13),
-			FileName: libpf.Intern("libfoo.so"),
+		Mapping: libpf.NewFrameMapping(libpf.FrameMappingData{
+			File: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
+				FileID:   libpf.NewFileID(7, 13),
+				FileName: libpf.Intern("libfoo.so"),
+			}),
+			Start: 0xcafe0000,
+			End:   0xcafe1000,
 		}),
 	})
 
@@ -384,7 +398,7 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 	}
 
 	profiles := rep.createProfile(
-		samples.ContainerID(""),
+		libpf.Intern(""),
 		support.TraceOriginSampling,
 		events,
 	)

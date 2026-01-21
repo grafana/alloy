@@ -213,7 +213,7 @@ func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarker
 		return nil, err
 	}
 
-	client, err := config.NewClientFromConfig(cfg.Client, useragent.ProductName, config.WithHTTP2Disabled())
+	client, err := config.NewClientFromConfig(cfg.Client, useragent.ProductName)
 	if err != nil {
 		return nil, err
 	}
