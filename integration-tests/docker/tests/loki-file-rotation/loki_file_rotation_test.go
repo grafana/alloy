@@ -247,7 +247,6 @@ type writer struct {
 }
 
 func (w *writer) run() error {
-	// We need an initial sleep so that alloy has time to discover the first set of files.
 	ticker := time.NewTicker(50 * time.Millisecond)
 
 	defer func() {
