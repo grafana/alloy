@@ -2,6 +2,7 @@ package vm_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -385,7 +386,7 @@ func TestStdlibFileFunc(t *testing.T) {
 		input  string
 		expect interface{}
 	}{
-		{"file.path_join", `file.path_join("this/is", "a/path")`, "this/is/a/path"},
+		{"file.path_join", `file.path_join("this/is", "a/path")`, filepath.Join("this", "is", "a", "path")},
 		{"file.path_join empty", `file.path_join()`, ""},
 	}
 
