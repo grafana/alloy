@@ -173,7 +173,6 @@ When `location` blocks are provided, they're checked first for sourcemaps before
 #### `cache`
 
 The `cache` block configures sourcemap caching behavior.
-All cache settings are optional with sensible defaults.
 
 | Name                     | Type       | Description                                                                        | Default | Required |
 | ------------------------ | ---------- | ---------------------------------------------------------------------------------- | ------- | -------- |
