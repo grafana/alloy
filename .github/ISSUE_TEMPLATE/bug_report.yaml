@@ -136,6 +136,7 @@ body:
       - otelcol.receiver.jaeger
       - otelcol.receiver.kafka
       - otelcol.receiver.loki
+      - otelcol.receiver.opencensus
       - otelcol.receiver.otlp
       - otelcol.receiver.prometheus
       - otelcol.receiver.solace
