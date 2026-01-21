@@ -174,7 +174,7 @@ func (args *Arguments) Convert() *ht.HerokuDrainTargetConfig {
 }
 
 // DebugInfo returns information about the status of listener.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 

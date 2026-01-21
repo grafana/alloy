@@ -5,8 +5,8 @@ type ResourceAttributeConfig struct {
 	Enabled bool `alloy:"enabled,attr"`
 }
 
-func (r ResourceAttributeConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributeConfig) Convert() map[string]any {
+	return map[string]any{
 		"enabled": r.Enabled,
 	}
 }

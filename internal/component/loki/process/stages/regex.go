@@ -67,7 +67,7 @@ func newRegexStage(logger log.Logger, config RegexConfig) (Stage, error) {
 }
 
 // parseRegexConfig processes an incoming configuration into a RegexConfig
-func parseRegexConfig(config interface{}) (*RegexConfig, error) {
+func parseRegexConfig(config any) (*RegexConfig, error) {
 	cfg := &RegexConfig{}
 	err := mapstructure.Decode(config, cfg)
 	if err != nil {
@@ -77,7 +77,7 @@ func parseRegexConfig(config interface{}) (*RegexConfig, error) {
 }
 
 // Process implements Stage
-func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	// If a source key is provided, the regex stage should process it
 	// from the extracted map, otherwise should fall back to the entry
 	input := entry

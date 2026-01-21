@@ -17,7 +17,7 @@ import (
 func TestVM_Evaluate_Literals(t *testing.T) {
 	tt := map[string]struct {
 		input  string
-		expect interface{}
+		expect any
 	}{
 		"number to int":     {`12`, int(12)},
 		"number to int8":    {`13`, int8(13)},
@@ -73,7 +73,7 @@ func TestVM_Evaluate_Secrets(t *testing.T) {
 
 	tt := map[string]struct {
 		input  string
-		expect interface{}
+		expect any
 		errMsg string
 	}{
 		"secret":                       {`secretSecret`, string("bar"), "secrets may not be converted into strings"},
@@ -107,13 +107,13 @@ func TestVM_Evaluate_Secrets(t *testing.T) {
 
 func TestVM_Evaluate(t *testing.T) {
 	// Shared scope across all tests below
-	scope := vm.NewScope(map[string]interface{}{
+	scope := vm.NewScope(map[string]any{
 		"foobar": int(42),
 	})
 
 	tt := []struct {
 		input  string
-		expect interface{}
+		expect any
 	}{
 		// Binops
 		{`true || false`, bool(true)},
@@ -214,14 +214,14 @@ func TestVM_Evaluate_Null(t *testing.T) {
 
 	eval := vm.New(expr)
 
-	var v interface{}
+	var v any
 	require.NoError(t, eval.Evaluate(nil, &v))
 	require.Nil(t, v)
 }
 
 func TestVM_Evaluate_IdentifierExpr(t *testing.T) {
 	t.Run("Valid lookup", func(t *testing.T) {
-		scope := vm.NewScope(map[string]interface{}{
+		scope := vm.NewScope(map[string]any{
 			"foobar": 15,
 		})
 
@@ -241,7 +241,7 @@ func TestVM_Evaluate_IdentifierExpr(t *testing.T) {
 
 		eval := vm.New(expr)
 
-		var v interface{}
+		var v any
 		err = eval.Evaluate(nil, &v)
 		require.EqualError(t, err, `1:1: identifier "foobar" does not exist`)
 	})
@@ -253,7 +253,7 @@ func TestVM_Evaluate_AccessExpr(t *testing.T) {
 			Name string `alloy:"name,attr,optional"`
 		}
 
-		scope := vm.NewScope(map[string]interface{}{
+		scope := vm.NewScope(map[string]any{
 			"person": Person{},
 		})
 
@@ -273,7 +273,7 @@ func TestVM_Evaluate_AccessExpr(t *testing.T) {
 
 		eval := vm.New(expr)
 
-		var v interface{}
+		var v any
 		err = eval.Evaluate(nil, &v)
 		require.EqualError(t, err, `1:12: field "b" does not exist`)
 	})

@@ -76,7 +76,7 @@ func TestOutputStage_Process(t *testing.T) {
 	cfg := OutputConfig{
 		Source: "out",
 	}
-	extractedValues := map[string]interface{}{
+	extractedValues := map[string]any{
 		"something": "notimportant",
 		"out":       "outmessage",
 	}

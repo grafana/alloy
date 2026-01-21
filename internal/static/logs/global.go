@@ -24,7 +24,7 @@ type GlobalConfig struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *GlobalConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultGlobalConfig
 
 	type plain GlobalConfig

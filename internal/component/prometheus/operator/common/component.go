@@ -145,7 +145,7 @@ func (c *Component) NotifyClusterChange() {
 }
 
 // DebugInfo returns debug information for this component.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	return c.manager.DebugInfo()
 }
 

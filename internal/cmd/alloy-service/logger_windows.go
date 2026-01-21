@@ -48,7 +48,7 @@ func newLogger() (*logger, error) {
 // event logger as logfmt.
 //
 // If kvps contains a logging level, then
-func (l *logger) Log(kvps ...interface{}) error {
+func (l *logger) Log(kvps ...any) error {
 	// log.NewLogfmtLogger shouldn't escape to the heap since it's never used
 	// beyond the scope of this initial call.
 	return log.NewLogfmtLogger(l).Log(kvps...)

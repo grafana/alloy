@@ -13,8 +13,8 @@ const (
 
 type AttrActionKeyValueSlice []AttrActionKeyValue
 
-func (actions AttrActionKeyValueSlice) Convert() []interface{} {
-	res := make([]interface{}, 0, len(actions))
+func (actions AttrActionKeyValueSlice) Convert() []any {
+	res := make([]any, 0, len(actions))
 
 	if len(actions) == 0 {
 		return res
@@ -50,7 +50,7 @@ type AttrActionKeyValue struct {
 
 	// Value specifies the value to populate for the key.
 	// The type of the value is inferred from the configuration.
-	Value interface{} `alloy:"value,attr,optional"`
+	Value any `alloy:"value,attr,optional"`
 
 	// A regex pattern  must be specified for the action EXTRACT.
 	// It uses the attribute specified by `key' to extract values from
@@ -104,12 +104,12 @@ type AttrActionKeyValue struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *AttrActionKeyValue) convert() map[string]interface{} {
+func (args *AttrActionKeyValue) convert() map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"key":            args.Key,
 		"action":         args.Action,
 		"value":          args.Value,

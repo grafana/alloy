@@ -251,7 +251,7 @@ func newRelabelComponent(t testing.TB, logger log.Logger, forwardTo []storage.Ap
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args, func(opts component.Options) component.Options {
 			inner := opts.GetServiceData
-			opts.GetServiceData = func(name string) (interface{}, error) {
+			opts.GetServiceData = func(name string) (any, error) {
 				if name == labelstore.ServiceName {
 					return ls, nil
 				}

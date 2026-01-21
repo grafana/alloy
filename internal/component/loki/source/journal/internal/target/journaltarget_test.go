@@ -18,6 +18,7 @@ import (
 
 	"github.com/coreos/go-systemd/v22/sdjournal"
 	"github.com/go-kit/log"
+	"github.com/google/go-tpm-tools/verifier/fake"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"

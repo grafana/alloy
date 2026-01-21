@@ -1243,7 +1243,7 @@ func TestDeprecatedFields(t *testing.T) {
 	var mu sync.Mutex
 
 	// Create a synchronized logger that protects both writing and reading
-	syncLogger := log.LoggerFunc(func(keyvals ...interface{}) error {
+	syncLogger := log.LoggerFunc(func(keyvals ...any) error {
 		mu.Lock()
 		defer mu.Unlock()
 		return log.NewLogfmtLogger(&buf).Log(keyvals...)

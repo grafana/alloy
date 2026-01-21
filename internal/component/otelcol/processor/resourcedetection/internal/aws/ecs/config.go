@@ -39,12 +39,12 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args *Config) Convert() map[string]interface{} {
+func (args *Config) Convert() map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
@@ -68,8 +68,8 @@ type ResourceAttributesConfig struct {
 	CloudRegion           rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"aws.ecs.cluster.arn":     r.AwsEcsClusterArn.Convert(),
 		"aws.ecs.launchtype":      r.AwsEcsLaunchtype.Convert(),
 		"aws.ecs.task.arn":        r.AwsEcsTaskArn.Convert(),

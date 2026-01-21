@@ -28,7 +28,7 @@ type Packed struct {
 
 // UnmarshalJSON populates a Packed struct where every key except the _entry key is added to the Labels field
 func (w *Packed) UnmarshalJSON(data []byte) error {
-	m := &map[string]interface{}{}
+	m := &map[string]any{}
 	err := json.Unmarshal(data, m)
 	if err != nil {
 		return err

@@ -137,7 +137,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Tests decoding into an interface", func(t *testing.T) {
 		type block struct {
-			Anything interface{} `alloy:"anything,attr"`
+			Anything any `alloy:"anything,attr"`
 		}
 
 		tests := []struct {
@@ -674,7 +674,7 @@ func TestVM_Block_Unmarshaler(t *testing.T) {
 
 func TestVM_Block_UnmarshalToMap(t *testing.T) {
 	type OuterBlock struct {
-		Settings map[string]interface{} `alloy:"some.settings,block"`
+		Settings map[string]any `alloy:"some.settings,block"`
 	}
 
 	tt := []struct {
@@ -692,7 +692,7 @@ func TestVM_Block_UnmarshalToMap(t *testing.T) {
 				}
 			`,
 			expect: OuterBlock{
-				Settings: map[string]interface{}{
+				Settings: map[string]any{
 					"field_a": 12345,
 					"field_b": "helloworld",
 				},
@@ -761,7 +761,7 @@ func TestVM_Block_UnmarshalToAny(t *testing.T) {
 	var actual OuterBlock
 	require.NoError(t, eval.Evaluate(nil, &actual))
 
-	expect := map[string]interface{}{
+	expect := map[string]any{
 		"field_a": 12345,
 		"field_b": "helloworld",
 	}
@@ -818,7 +818,7 @@ type Setting struct {
 	ValidateCalled  bool
 }
 
-func (s *Setting) UnmarshalAlloy(f func(interface{}) error) error {
+func (s *Setting) UnmarshalAlloy(f func(any) error) error {
 	s.UnmarshalCalled = true
 	return f((*settingUnmarshalTarget)(s))
 }

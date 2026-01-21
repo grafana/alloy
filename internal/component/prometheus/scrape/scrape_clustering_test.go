@@ -205,7 +205,7 @@ func testOptions(t *testing.T, alloyMetricsReg *client.Registry, fakeCluster *fa
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: alloyMetricsReg,
 		ID:         "prometheus.scrape.test",
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http.ServiceName:
 				return http.Data{

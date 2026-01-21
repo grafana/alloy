@@ -16,9 +16,9 @@ const TypeStr = "prom_sd_processor"
 
 // Config holds the configuration for the Prometheus SD processor.
 type Config struct {
-	ScrapeConfigs   []interface{} `mapstructure:"scrape_configs"`
-	OperationType   string        `mapstructure:"operation_type"`
-	PodAssociations []string      `mapstructure:"pod_associations"`
+	ScrapeConfigs   []any    `mapstructure:"scrape_configs"`
+	OperationType   string   `mapstructure:"operation_type"`
+	PodAssociations []string `mapstructure:"pod_associations"`
 }
 
 // NewFactory returns a new factory for the Attributes processor.

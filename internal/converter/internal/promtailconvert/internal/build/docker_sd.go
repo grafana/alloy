@@ -31,7 +31,7 @@ func (s *ScrapeConfigBuilder) AppendDockerPipeline() {
 		targets := "discovery.docker." + compLabel + ".targets"
 
 		// Add loki.source.docker
-		overrideHook := func(val interface{}) interface{} {
+		overrideHook := func(val any) any {
 			switch val.(type) {
 			case []discovery.Target: // override targets expression to our string
 				return common.CustomTokenizer{Expr: targets}

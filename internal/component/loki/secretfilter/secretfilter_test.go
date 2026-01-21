@@ -927,7 +927,7 @@ func makeList(input string, separator string) string {
 	return strings.Join(parts, ",")
 }
 
-func getServiceData(name string) (interface{}, error) {
+func getServiceData(name string) (any, error) {
 	switch name {
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil
@@ -938,7 +938,7 @@ func getServiceData(name string) (interface{}, error) {
 
 type noopLogger struct{}
 
-func (d *noopLogger) Log(_ ...interface{}) error {
+func (d *noopLogger) Log(_ ...any) error {
 	return nil
 }
 

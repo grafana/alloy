@@ -30,7 +30,7 @@ type fakeTarget struct {
 func (f *fakeTarget) run()                             { <-f.ctx.Done() }
 func (f *fakeTarget) DiscoveredLabels() model.LabelSet { return nil }
 func (f *fakeTarget) Labels() model.LabelSet           { return f.lbs }
-func (f *fakeTarget) Details() interface{}             { return nil }
+func (f *fakeTarget) Details() any                     { return nil }
 
 func Test_ConsumerConsume(t *testing.T) {
 	var (

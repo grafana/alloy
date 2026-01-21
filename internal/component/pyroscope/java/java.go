@@ -113,7 +113,7 @@ func (j *Component) Run(ctx context.Context) error {
 	return nil
 }
 
-func (j *Component) DebugInfo() interface{} {
+func (j *Component) DebugInfo() any {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
 	var di debugInfo

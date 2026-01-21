@@ -234,7 +234,7 @@ func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger
 				}
 
 			case <-ticker.C:
-				dataArray := make([]interface{}, 0, len(dataMap))
+				dataArray := make([]any, 0, len(dataMap))
 				for _, data := range dataMap {
 					data.Rate = float64(data.Count) / window.Seconds()
 					dataArray = append(dataArray, data)

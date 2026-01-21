@@ -117,7 +117,7 @@ func (m *metricStage) Run(in chan Entry) chan Entry {
 }
 
 // Process implements Stage
-func (m *metricStage) Process(labels model.LabelSet, extracted map[string]interface{}, _ *time.Time, entry *string) {
+func (m *metricStage) Process(labels model.LabelSet, extracted map[string]any, _ *time.Time, entry *string) {
 	for name, cc := range m.metrics {
 		// There is a special case for counters where we count even if there is no match in the extracted map.
 		if c, ok := cc.collector.(*metric.Counters); ok {
@@ -175,7 +175,7 @@ func (m *metricStage) Cleanup() {
 }
 
 // recordCounter will update a counter metric
-func (m *metricStage) recordCounter(name string, counter *metric.Counters, labels model.LabelSet, v interface{}) {
+func (m *metricStage) recordCounter(name string, counter *metric.Counters, labels model.LabelSet, v any) {
 	// If value matching is defined, make sure value matches.
 	if counter.Cfg.Value != "" {
 		stringVal, err := getString(v)
@@ -208,7 +208,7 @@ func (m *metricStage) recordCounter(name string, counter *metric.Counters, label
 }
 
 // recordGauge will update a gauge metric
-func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels model.LabelSet, v interface{}) {
+func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels model.LabelSet, v any) {
 	// If value matching is defined, make sure value matches.
 	if gauge.Cfg.Value != "" {
 		stringVal, err := getString(v)
@@ -261,7 +261,7 @@ func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels mode
 }
 
 // recordHistogram will update a Histogram metric
-func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms, labels model.LabelSet, v interface{}) {
+func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms, labels model.LabelSet, v any) {
 	// If value matching is defined, make sure value matches.
 	if histogram.Cfg.Value != "" {
 		stringVal, err := getString(v)
@@ -288,7 +288,7 @@ func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms,
 }
 
 // getFloat will take the provided value and return a float64 if possible
-func getFloat(unk interface{}) (float64, error) {
+func getFloat(unk any) (float64, error) {
 	switch i := unk.(type) {
 	case float64:
 		return i, nil

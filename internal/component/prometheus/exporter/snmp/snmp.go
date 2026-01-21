@@ -211,7 +211,7 @@ func (t TargetsList) convert() []SNMPTarget {
 }
 
 // UnmarshalAlloy implements Alloy unmarshalling for Arguments.
-func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
+func (a *Arguments) UnmarshalAlloy(f func(any) error) error {
 	a.SetToDefault()
 
 	type args Arguments

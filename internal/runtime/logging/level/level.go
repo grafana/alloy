@@ -59,6 +59,6 @@ var disabledLogger = &noopLogger{}
 
 type noopLogger struct{}
 
-func (d *noopLogger) Log(_ ...interface{}) error {
+func (d *noopLogger) Log(_ ...any) error {
 	return nil
 }

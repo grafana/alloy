@@ -236,7 +236,7 @@ func TestArguments_Auth(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			testName: "plain_text",
@@ -253,7 +253,7 @@ func TestArguments_Auth(t *testing.T) {
 
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"brokers":                  []string{"10.10.10.10:9092"},
 				"protocol_version":         "2.0.0",
 				"session_timeout":          10 * time.Second,
@@ -306,8 +306,8 @@ func TestArguments_Auth(t *testing.T) {
 					MaxInterval:         0,
 					MaxElapsedTime:      0,
 				},
-				"auth": map[string]interface{}{
-					"plain_text": map[string]interface{}{
+				"auth": map[string]any{
+					"plain_text": map[string]any{
 						"username": "test_username",
 						"password": "test_password",
 					},
@@ -334,7 +334,7 @@ func TestArguments_Auth(t *testing.T) {
 
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"brokers":                  []string{"10.10.10.10:9092"},
 				"protocol_version":         "2.0.0",
 				"session_timeout":          10 * time.Second,
@@ -387,13 +387,13 @@ func TestArguments_Auth(t *testing.T) {
 					MaxInterval:         0,
 					MaxElapsedTime:      0,
 				},
-				"auth": map[string]interface{}{
-					"sasl": map[string]interface{}{
+				"auth": map[string]any{
+					"sasl": map[string]any{
 						"username":  "test_username",
 						"password":  "test_password",
 						"mechanism": "test_mechanism",
 						"version":   9,
-						"aws_msk": map[string]interface{}{
+						"aws_msk": map[string]any{
 							"region": "test_region",
 						},
 					},
@@ -421,7 +421,7 @@ func TestArguments_Auth(t *testing.T) {
 
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"brokers":                  []string{"10.10.10.10:9092"},
 				"protocol_version":         "2.0.0",
 				"session_timeout":          10 * time.Second,
@@ -474,8 +474,8 @@ func TestArguments_Auth(t *testing.T) {
 					MaxInterval:         0,
 					MaxElapsedTime:      0,
 				},
-				"auth": map[string]interface{}{
-					"tls": map[string]interface{}{
+				"auth": map[string]any{
+					"tls": map[string]any{
 						"insecure":             true,
 						"insecure_skip_verify": true,
 						"server_name_override": "test_server_name_override",
@@ -509,7 +509,7 @@ func TestArguments_Auth(t *testing.T) {
 
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"brokers":                  []string{"10.10.10.10:9092"},
 				"protocol_version":         "2.0.0",
 				"session_timeout":          10 * time.Second,
@@ -562,8 +562,8 @@ func TestArguments_Auth(t *testing.T) {
 					MaxInterval:         0,
 					MaxElapsedTime:      0,
 				},
-				"auth": map[string]interface{}{
-					"kerberos": map[string]interface{}{
+				"auth": map[string]any{
+					"kerberos": map[string]any{
 						"service_name":             "test_service_name",
 						"realm":                    "test_realm",
 						"use_keytab":               true,
