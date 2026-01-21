@@ -18,7 +18,7 @@ The HTTP API exposed is compatible with [Prometheus `remote_write` API][promethe
 This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_NAME" >}} as a proxy for Prometheus metrics.
 
 [prometheus.remote_write]: ../prometheus.remote_write/
-[prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/2.45/querying/api/#remote-write-receiver
+[prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/latest/querying/api/#remote-write-receiver
 
 ## Usage
 
@@ -35,16 +35,23 @@ prometheus.receive_http "<LABEL?" {
 The component starts an HTTP server supporting the following endpoint:
 
 * `POST /api/v1/metrics/write`: Sends metrics to the component, which in turn is forwarded to the receivers as configured in `forward_to` argument.
-  The request format must match that of [Prometheus `remote_write` API][prometheus-remote-write-docs].
+  The request format must match that of the [Prometheus `remote_write` API][prometheus-remote-write-docs], supporting both remote write v1 and v2 formats.
   One way to send valid requests to this component is to use another {{< param "PRODUCT_NAME" >}} with a [`prometheus.remote_write`][prometheus.remote_write] component.
 
 ## Arguments
 
-You can use the following argument with `prometheus.receive_http`:
+You can use the following arguments with `prometheus.receive_http`:
 
-| Name         | Type                    | Description                           | Default | Required |
-| ------------ | ----------------------- | ------------------------------------- | ------- | -------- |
-| `forward_to` | `list(MetricsReceiver)` | List of receivers to send metrics to. |         | yes      |
+| Name                          | Type                    | Description                                                           | Default | Required |
+| ----------------------------- | ----------------------- | --------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`                  | `list(MetricsReceiver)` | List of receivers to send metrics to.                                 |         | yes      |
+| `append_metadata`             | `bool`                  | Whether metric metadata should be passed to downstream components.    | `false` | no       |
+| `enable_type_and_unit_labels` | `bool`                  | Whether metric type and unit should be added as labels to the metric. | `false` | no       |
+
+{{< admonition type="note" >}}
+The `append_metadata` and `enable_type_and_unit_labels` arguments only apply to remote write v2 payloads and only when metadata is included in those payloads.
+Remote write v1 payloads don't support metadata.
+{{< /admonition >}}
 
 ## Blocks
 
