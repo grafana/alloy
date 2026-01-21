@@ -155,7 +155,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
 		case <-ctx.Done():
-			s.unregisterCollector()
+			if err := s.unregisterCollector(); err != nil {
+				s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector during service shutdown", "err", err)
+			}
 			return nil
 		}
 	}
