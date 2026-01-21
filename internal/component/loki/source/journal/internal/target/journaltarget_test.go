@@ -8,6 +8,7 @@ package target
 
 import (
 	"io"
+	"maps"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,9 +73,7 @@ func newMockJournalEntry(entry *sdjournal.JournalEntry) journalEntryFunc {
 
 func (r *mockJournalReader) Write(fields map[string]string) {
 	allFields := make(map[string]string, len(fields))
-	for k, v := range fields {
-		allFields[k] = v
-	}
+	maps.Copy(allFields, fields)
 
 	ts := uint64(time.Now().UnixNano())
 
@@ -104,7 +104,8 @@ func TestJournalTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := loki
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	relabelCfg := `
 - source_labels: ['__journal_code_file']
@@ -113,19 +114,16 @@ func TestJournalTarget(t *testing.T) {
 - source_labels: ['__journal_code_file']
   target_label: 'code_file'`
 
-	var relabels []*relabel.Config
-	err = yaml.Unmarshal([]byte(relabelCfg), &relabels)
-	require.NoError(t, err)
-
+	relabels := parseRelabelRules(t, relabelCfg)
 	registry := prometheus.NewRegistry()
-	jt, err := journalTargetWithReader(NewMetrics(registry), logger, client, ps, "test", relabels,
+	jt, err := journalTargetWithReader(NewMetrics(registry), logger, handler, ps, "test", relabels,
 		&scrapeconfig.JournalTargetConfig{}, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
 	r := jt.r.(*mockJournalReader)
 	r.t = t
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		r.Write(map[string]string{
 			"MESSAGE":   "ping",
 			"CODE_FILE": "journaltarget_test.go",
@@ -133,7 +131,6 @@ func TestJournalTarget(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	require.NoError(t, jt.Stop())
-	client.Stop()
 
 	expectedMetrics := `# HELP loki_source_journal_target_lines_total Total number of successful journal lines read
 	# TYPE loki_source_journal_target_lines_total counter
@@ -144,7 +141,7 @@ func TestJournalTarget(t *testing.T) {
 		strings.NewReader(expectedMetrics)); err != nil {
 		t.Fatalf("mismatch metrics: %v", err)
 	}
-	assert.Len(t, client.Received(), 10)
+	assert.Len(t, handler.Received(), 10)
 }
 
 func TestJournalTargetParsingErrors(t *testing.T) {
@@ -166,13 +163,14 @@ func TestJournalTargetParsingErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	// We specify no relabel rules, so that we end up with an empty labelset
 	var relabels []*relabel.Config
 
 	registry := prometheus.NewRegistry()
-	jt, err := journalTargetWithReader(NewMetrics(registry), logger, client, ps, "test", relabels,
+	jt, err := journalTargetWithReader(NewMetrics(registry), logger, handler, ps, "test", relabels,
 		&scrapeconfig.JournalTargetConfig{}, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
@@ -180,7 +178,7 @@ func TestJournalTargetParsingErrors(t *testing.T) {
 	r.t = t
 
 	// No labels but correct message
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		r.Write(map[string]string{
 			"MESSAGE":   "ping",
 			"CODE_FILE": "journaltarget_test.go",
@@ -189,14 +187,13 @@ func TestJournalTargetParsingErrors(t *testing.T) {
 	}
 
 	// No labels and no message
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		r.Write(map[string]string{
 			"CODE_FILE": "journaltarget_test.go",
 		})
 		assert.NoError(t, err)
 	}
 	require.NoError(t, jt.Stop())
-	client.Stop()
 
 	expectedMetrics := `# HELP loki_source_journal_target_lines_total Total number of successful journal lines read
 	# TYPE loki_source_journal_target_lines_total counter
@@ -212,7 +209,7 @@ func TestJournalTargetParsingErrors(t *testing.T) {
 		t.Fatalf("mismatch metrics: %v", err)
 	}
 
-	assert.Len(t, client.Received(), 0)
+	assert.Len(t, handler.Received(), 0)
 }
 
 func TestJournalTarget_JSON(t *testing.T) {
@@ -234,7 +231,8 @@ func TestJournalTarget_JSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	relabelCfg := `
 - source_labels: ['__journal_code_file']
@@ -242,21 +240,17 @@ func TestJournalTarget_JSON(t *testing.T) {
   action: 'keep'
 - source_labels: ['__journal_code_file']
   target_label: 'code_file'`
-
-	var relabels []*relabel.Config
-	err = yaml.Unmarshal([]byte(relabelCfg), &relabels)
-	require.NoError(t, err)
-
+	relabels := parseRelabelRules(t, relabelCfg)
 	cfg := &scrapeconfig.JournalTargetConfig{JSON: true}
 
-	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, client, ps, "test", relabels,
+	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", relabels,
 		cfg, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
 	r := jt.r.(*mockJournalReader)
 	r.t = t
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		r.Write(map[string]string{
 			"MESSAGE":     "ping",
 			"CODE_FILE":   "journaltarget_test.go",
@@ -267,11 +261,11 @@ func TestJournalTarget_JSON(t *testing.T) {
 	}
 	expectMsg := `{"CODE_FILE":"journaltarget_test.go","MESSAGE":"ping","OTHER_FIELD":"foobar"}`
 	require.NoError(t, jt.Stop())
-	client.Stop()
 
-	assert.Len(t, client.Received(), 10)
-	for i := 0; i < 10; i++ {
-		require.Equal(t, expectMsg, client.Received()[i].Line)
+	entries := handler.Received()
+	assert.Len(t, entries, 10)
+	for i := range 10 {
+		require.Equal(t, expectMsg, entries[i].Line)
 	}
 }
 
@@ -294,19 +288,19 @@ func TestJournalTarget_Since(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	cfg := scrapeconfig.JournalTargetConfig{
 		MaxAge: "4h",
 	}
 
-	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, client, ps, "test", nil,
+	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
 		&cfg, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
 	r := jt.r.(*mockJournalReader)
 	require.Equal(t, r.config.Since, -1*time.Hour*4)
-	client.Stop()
 }
 
 func TestJournalTarget_Cursor_TooOld(t *testing.T) {
@@ -329,7 +323,8 @@ func TestJournalTarget_Cursor_TooOld(t *testing.T) {
 	}
 	ps.PutString("journal-test", "", "foobar")
 
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	cfg := scrapeconfig.JournalTargetConfig{}
 
@@ -340,13 +335,12 @@ func TestJournalTarget_Cursor_TooOld(t *testing.T) {
 		RealtimeTimestamp: uint64(entryTs.UnixNano()),
 	})
 
-	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, client, ps, "test", nil,
+	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
 		&cfg, newMockJournalReader, journalEntry)
 	require.NoError(t, err)
 
 	r := jt.r.(*mockJournalReader)
 	require.Equal(t, r.config.Since, -1*time.Hour*7)
-	client.Stop()
 }
 
 func TestJournalTarget_Cursor_NotTooOld(t *testing.T) {
@@ -369,7 +363,8 @@ func TestJournalTarget_Cursor_NotTooOld(t *testing.T) {
 	}
 	ps.PutString(positions.CursorKey("test"), "", "foobar")
 
-	client := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
 	cfg := scrapeconfig.JournalTargetConfig{}
 
@@ -380,14 +375,13 @@ func TestJournalTarget_Cursor_NotTooOld(t *testing.T) {
 		RealtimeTimestamp: uint64(entryTs.UnixNano() / int64(time.Microsecond)),
 	})
 
-	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, client, ps, "test", nil,
+	jt, err := journalTargetWithReader(NewMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
 		&cfg, newMockJournalReader, journalEntry)
 	require.NoError(t, err)
 
 	r := jt.r.(*mockJournalReader)
 	require.Equal(t, r.config.Since, time.Duration(0))
 	require.Equal(t, r.config.Cursor, "foobar")
-	client.Stop()
 }
 
 func Test_MakeJournalFields(t *testing.T) {
@@ -439,4 +433,14 @@ func TestJournalTarget_Matches(t *testing.T) {
 	matches := []sdjournal.Match{{Field: "UNIT", Value: "foo.service"}, {Field: "PRIORITY", Value: "1"}}
 	require.Equal(t, r.config.Matches, matches)
 	handler.Stop()
+}
+
+func parseRelabelRules(t *testing.T, s string) []*relabel.Config {
+	var relabels []*relabel.Config
+	err := yaml.Unmarshal([]byte(s), &relabels)
+	require.NoError(t, err)
+	for i := range relabels {
+		relabels[i].NameValidationScheme = model.LegacyValidation
+	}
+	return relabels
 }
