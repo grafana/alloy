@@ -177,7 +177,6 @@ func newSourceMapsStore(log log.Logger, args SourceMapsArguments, metrics *sourc
 }
 
 func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error) {
-
 	store.cacheMut.Lock()
 	defer store.cacheMut.Unlock()
 

@@ -683,7 +683,6 @@ func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
 	logger := util.TestLogger(t)
 
 	for _, tc := range tt {
-
 		reg := prometheus.NewRegistry()
 		metrics := newSourceMapMetrics(reg)
 
@@ -765,7 +764,6 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 	logger := util.TestLogger(t)
 
 	for _, tc := range tt {
-
 		reg := prometheus.NewRegistry()
 		metrics := newSourceMapMetrics(reg)
 
@@ -877,5 +875,4 @@ func newTestFileService() *testFileService {
 		stats:         make([]string, 0),
 		reads:         make([]string, 0),
 	}
-
 }
