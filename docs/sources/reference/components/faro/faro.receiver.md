@@ -174,11 +174,11 @@ When `location` blocks are provided, they're checked first for sourcemaps before
 
 The `cache` block configures sourcemap caching behavior.
 
-| Name                     | Type       | Description                                                                        | Default | Required |
-| ------------------------ | ---------- | ---------------------------------------------------------------------------------- | ------- | -------- |
-| `cleanup_check_interval` | `duration` | How often cached sourcemaps are checked for cleanup.                               | `"30s"` | no       |
-| `error_cleanup_interval` | `duration` | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
-| `ttl`                    | `duration` | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
+| Name                     | Type       | Description                                                                               | Default | Required |
+| ------------------------ | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `cleanup_check_interval` | `duration` | How often {{< param "PRODUCT_NAME" >}} checks cached sourcemaps for cleanup.              | `"30s"` | no       |
+| `error_cleanup_interval` | `duration` | How long {{< param "PRODUCT_NAME" >}} waits before retrying a failed source map download. | `"1h"`  | no       |
+| `ttl`                    | `duration` | How long {{< param "PRODUCT_NAME" >}} keeps an unused source map in the cache.            | `inf`   | no       |
 
 By default, sourcemaps are held in memory indefinitely.
 You can set `ttl` to clear sourcemaps that aren't used during the specified duration.
