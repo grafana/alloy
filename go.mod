@@ -1013,6 +1013,8 @@ require (
 	gotest.tools/gotestsum v1.13.0 // indirect
 )
 
+require github.com/google/go-tpm-tools v0.4.4
+
 require (
 	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1
 	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1
@@ -1025,6 +1027,8 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
+	github.com/google/go-sev-guest v0.9.3 // indirect
+	github.com/google/go-tdx-guest v0.3.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
 )
