@@ -58,6 +58,8 @@ func atomicwrite(t *testing.T, name, newContent string) {
 		0, // NULL exclude
 		0, // NULL reserved
 	)
-	require.Equal(t, 0, ret)
+
+	require.Equal(t, uintptr(0), ret)
+
 	require.NoError(t, os.Remove(tmpName))
 }
