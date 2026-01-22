@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -155,7 +156,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
 		case <-ctx.Done():
-			if err := s.unregisterCollector(); err != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			if err := s.unregisterCollector(cleanupCtx); err != nil {
 				s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector during service shutdown", "err", err)
 			}
 			return nil
@@ -321,11 +324,11 @@ func (s *Service) registerCollector() error {
 	return nil
 }
 
-func (s *Service) unregisterCollector() error {
+func (s *Service) unregisterCollector(ctx context.Context) error {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
-	_, err := s.apiClient.UnregisterCollector(s.getContext(), &connect.Request[collectorv1.UnregisterCollectorRequest]{
+	_, err := s.apiClient.UnregisterCollector(ctx, &connect.Request[collectorv1.UnregisterCollectorRequest]{
 		Msg: &collectorv1.UnregisterCollectorRequest{
 			Id: s.args.ID,
 		},
