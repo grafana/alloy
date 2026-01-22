@@ -18,7 +18,7 @@ const ServiceName = "labelstore"
 type Service struct {
 	log                 log.Logger
 	single              *single
-	sharded             interface{} // TODO: will be *sharded when implemented
+	_                   interface{} // sharded - TODO: will be *sharded when implemented
 	totalIDs            *prometheus.Desc
 	idsInRemoteWrapping *prometheus.Desc
 }

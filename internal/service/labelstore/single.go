@@ -15,13 +15,13 @@ import (
 // single is the original single-shard labelstore implementation.
 // It holds all the core logic with a single mutex protecting all data structures.
 type single struct {
-	log                 log.Logger
-	mut                 sync.Mutex
-	globalRefID         uint64
-	mappings            map[string]*remoteWriteMapping
-	labelsHashToGlobal  map[uint64]uint64
-	staleGlobals        map[uint64]*staleMarker
-	lastStaleCheck      prometheus.Gauge
+	log                log.Logger
+	mut                sync.Mutex
+	globalRefID        uint64
+	mappings           map[string]*remoteWriteMapping
+	labelsHashToGlobal map[uint64]uint64
+	staleGlobals       map[uint64]*staleMarker
+	lastStaleCheck     prometheus.Gauge
 }
 
 func newSingle(l log.Logger, r prometheus.Registerer) *single {
@@ -29,11 +29,11 @@ func newSingle(l log.Logger, r prometheus.Registerer) *single {
 		l = log.NewNopLogger()
 	}
 	s := &single{
-		log:                 l,
-		globalRefID:         0,
-		mappings:            make(map[string]*remoteWriteMapping),
-		labelsHashToGlobal:  make(map[uint64]uint64),
-		staleGlobals:        make(map[uint64]*staleMarker),
+		log:                l,
+		globalRefID:        0,
+		mappings:           make(map[string]*remoteWriteMapping),
+		labelsHashToGlobal: make(map[uint64]uint64),
+		staleGlobals:       make(map[uint64]*staleMarker),
 		lastStaleCheck: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "alloy_labelstore_last_stale_check_timestamp",
 			Help: "Last time stale check was ran expressed in unix timestamp.",
@@ -200,4 +200,3 @@ func (rw *remoteWriteMapping) deleteStaleIDs(globalID uint64) {
 
 // staleDuration determines how long we should wait after a stale value is received to GC that value
 var staleDuration = time.Minute * 10
-
