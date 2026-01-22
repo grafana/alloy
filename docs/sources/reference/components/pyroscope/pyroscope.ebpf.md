@@ -41,11 +41,6 @@ You can specify multiple `pyroscope.ebpf` components by giving them different la
 pyroscope.ebpf "<LABEL>" {
   targets    = <TARGET_LIST>
   forward_to = <RECEIVER_LIST>
-
-  debug_info {
-    on_target_symbolization = <ON_TARGET_SYMBOLIZATION>
-    upload                  = <UPLOAD>
-  }
 }
 ```
 
