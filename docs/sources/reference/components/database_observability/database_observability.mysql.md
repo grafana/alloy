@@ -117,6 +117,7 @@ The `azure` block supplies the identifying information for the database being mo
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `250`   | no       |
 
 ### `schema_details`
 

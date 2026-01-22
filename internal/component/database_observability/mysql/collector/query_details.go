@@ -31,11 +31,14 @@ const selectQueryTablesSamples = `
 		query_sample_text
 	FROM performance_schema.events_statements_summary_by_digest
 	WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)
-	AND schema_name NOT IN ` + EXCLUDED_SCHEMAS
+	AND schema_name NOT IN %s
+	ORDER BY last_seen DESC
+	LIMIT %d`
 
 type QueryDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
+	StatementsLimit int
 	EntryHandler    loki.EntryHandler
 
 	Logger log.Logger
@@ -44,6 +47,7 @@ type QueryDetailsArguments struct {
 type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
+	statementsLimit int
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
@@ -58,6 +62,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	c := &QueryDetails{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
+		statementsLimit: args.StatementsLimit,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
@@ -115,7 +120,8 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
+	query := fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, c.statementsLimit)
+	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch summary table samples: %w", err)
 	}

@@ -371,13 +371,14 @@ func TestQueryTables(t *testing.T) {
 			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
 				CollectInterval: time.Second,
+				StatementsLimit: 250,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"digest",
@@ -431,13 +432,14 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
+			StatementsLimit: 250,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest", // not enough columns
@@ -445,7 +447,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -496,13 +498,14 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
+			StatementsLimit: 250,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -558,15 +561,16 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
+			StatementsLimit: 250,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
