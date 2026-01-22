@@ -29,7 +29,6 @@ func TestMimirAlerts(t *testing.T) {
 		kt.CheckMimirConfig(t, testDataDir, mimirPort, "expected_1.yml")
 	})
 
-	// TODO: Use t instead of k.t
 	t.Run("Deleted Config", func(t *testing.T) {
 		util.ExecuteCommand(
 			"kubectl", []string{"delete", "alertmanagerconfig", "alertmgr-config2", "-n", "testing"},

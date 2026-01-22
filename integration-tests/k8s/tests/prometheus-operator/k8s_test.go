@@ -29,58 +29,61 @@ func TestPrometheusOperator(t *testing.T) {
 
 	t.Run("ServiceMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the ServiceMonitor target.
-		// The prom-gen pod exposes metrics like "golang_counter", "golang_gauge", etc.
+		// All metrics are prefixed with test_servicemonitors_ via relabeling.
 		kt.QueryMimirMetrics(t, "servicemonitor", mimirPort, []string{
-			"golang_counter",
-			"golang_gauge",
+			"test_servicemonitors_golang_counter",
+			"test_servicemonitors_golang_gauge",
 		})
 		// Check that Mimir received metadata for the metrics (honor_metadata = true)
+		// Each component has unique metric names to verify metadata is sent independently.
 		kt.QueryMimirMetadata(t, mimirPort, map[string]util.ExpectedMetadata{
-			"golang_counter": {Type: "counter", Help: "The counter description string"},
-			"golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
+			"test_servicemonitors_golang_counter": {Type: "counter", Help: "The counter description string"},
+			"test_servicemonitors_golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
 		})
 	})
 
 	t.Run("PodMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the PodMonitor target.
-		// Uses the same prom-gen pod but scraped via PodMonitor.
+		// All metrics are prefixed with test_podmonitors_ via relabeling.
 		kt.QueryMimirMetrics(t, "podmonitor", mimirPort, []string{
-			"golang_counter",
-			"golang_gauge",
+			"test_podmonitors_golang_counter",
+			"test_podmonitors_golang_gauge",
 		})
 		// Check that Mimir received metadata for the metrics (honor_metadata = true)
-		// Note: metadata from ServiceMonitors test should already be present, so we just verify it's still there
+		// Each component has unique metric names to verify metadata is sent independently.
 		kt.QueryMimirMetadata(t, mimirPort, map[string]util.ExpectedMetadata{
-			"golang_counter": {Type: "counter", Help: "The counter description string"},
-			"golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
+			"test_podmonitors_golang_counter": {Type: "counter", Help: "The counter description string"},
+			"test_podmonitors_golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
 		})
 	})
 
 	t.Run("Probes", func(t *testing.T) {
 		// Check that Mimir received metrics from the Probe target.
-		// The blackbox exporter returns probe_success metric.
+		// All metrics are prefixed with test_probes_ via relabeling.
 		kt.QueryMimirMetrics(t, "probe", mimirPort, []string{
-			"probe_success",
-			"probe_duration_seconds",
+			"test_probes_probe_success",
+			"test_probes_probe_duration_seconds",
 		})
 		// Check that Mimir received metadata for the probe metrics (honor_metadata = true)
+		// Each component has unique metric names to verify metadata is sent independently.
 		kt.QueryMimirMetadata(t, mimirPort, map[string]util.ExpectedMetadata{
-			"probe_success":          {Type: "gauge", Help: "Displays whether or not the probe was a success"},
-			"probe_duration_seconds": {Type: "gauge", Help: "Returns how long the probe took to complete in seconds"},
+			"test_probes_probe_success":          {Type: "gauge", Help: "Displays whether or not the probe was a success"},
+			"test_probes_probe_duration_seconds": {Type: "gauge", Help: "Returns how long the probe took to complete in seconds"},
 		})
 	})
 
 	t.Run("ScrapeConfigs", func(t *testing.T) {
 		// Check that Mimir received metrics from the ScrapeConfig target.
-		// Uses the same prom-gen pod but scraped via ScrapeConfig with static targets.
+		// All metrics are prefixed with test_scrapeconfigs_ via relabeling.
 		kt.QueryMimirMetrics(t, "scrapeconfig", mimirPort, []string{
-			"golang_counter",
-			"golang_gauge",
+			"test_scrapeconfigs_golang_counter",
+			"test_scrapeconfigs_golang_gauge",
 		})
 		// Check that Mimir received metadata for the metrics (honor_metadata = true)
+		// Each component has unique metric names to verify metadata is sent independently.
 		kt.QueryMimirMetadata(t, mimirPort, map[string]util.ExpectedMetadata{
-			"golang_counter": {Type: "counter", Help: "The counter description string"},
-			"golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
+			"test_scrapeconfigs_golang_counter": {Type: "counter", Help: "The counter description string"},
+			"test_scrapeconfigs_golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
 		})
 	})
 }

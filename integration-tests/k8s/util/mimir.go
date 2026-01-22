@@ -65,7 +65,7 @@ func (k *KubernetesTester) QueryMimirMetrics(t *testing.T, alloyIntTest, mimirPo
 			}
 		}
 
-		require.Emptyf(c, missingMetrics, "Missing expected metrics for alloy_int_test=%s: %v. Found metrics: %v", alloyIntTest, missingMetrics, actualMetrics)
+		require.Emptyf(c, missingMetrics, "Missing expected metrics for %s=%s: %v. Found metrics: %v", intTestLabel, alloyIntTest, missingMetrics, actualMetrics)
 	}, timeout, retryInterval)
 }
 

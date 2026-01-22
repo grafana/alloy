@@ -313,6 +313,14 @@ data:
         target_label = "alloy_int_test"
         replacement  = "servicemonitor"
       }
+      // Rename all metrics to test_servicemonitors_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_servicemonitors_$1"
+      }
     }
 
     // Test prometheus.operator.podmonitors
@@ -331,6 +339,14 @@ data:
         action       = "replace"
         target_label = "alloy_int_test"
         replacement  = "podmonitor"
+      }
+      // Rename all metrics to test_podmonitors_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_podmonitors_$1"
       }
     }
 
@@ -351,6 +367,14 @@ data:
         target_label = "alloy_int_test"
         replacement  = "probe"
       }
+      // Rename all metrics to test_probes_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_probes_$1"
+      }
     }
 
     // Test prometheus.operator.scrapeconfigs
@@ -369,6 +393,14 @@ data:
         action       = "replace"
         target_label = "alloy_int_test"
         replacement  = "scrapeconfig"
+      }
+      // Rename all metrics to test_scrapeconfigs_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_scrapeconfigs_$1"
       }
     }
 
