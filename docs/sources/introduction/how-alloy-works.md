@@ -10,7 +10,7 @@ weight: 300
 
 Understanding the architecture and design of {{< param "PRODUCT_NAME" >}} helps you use it effectively.
 
-## Where {{< param "PRODUCT_NAME" >}} fits
+## Where {{% param "PRODUCT_NAME" %}} fits
 
 A typical observability setup has three layers: data sources that generate telemetry, collection tools that gather and process it, and storage backends with visualization frontends for querying and exploring data.
 
@@ -93,12 +93,11 @@ It also works with the broader Prometheus ecosystem through full compatibility w
 
 You can also connect to other ecosystems, including InfluxDB, Elasticsearch, and cloud platforms like AWS, Google Cloud Platform, and Azure.
 
-## What {{< param "PRODUCT_NAME" >}} replaces
+## What {{% param "PRODUCT_NAME" %}} replaces
 
 {{< param "PRODUCT_NAME" >}} can consolidate multiple collectors.
 Replace Prometheus Agent to gain the same functionality plus support for logs, traces, and profiles.
 Replace the OpenTelemetry Collector to add native Prometheus support alongside OTLP.
-Migrate from Grafana Agent for enhanced capabilities and a more powerful configuration model.
 Replace specialized log collectors like Promtail, `Fluentd`, or `Filebeat` with a unified collection approach.
 
 You can also run {{< param "PRODUCT_NAME" >}} alongside collectors during migration to transition gradually without disrupting your observability.
