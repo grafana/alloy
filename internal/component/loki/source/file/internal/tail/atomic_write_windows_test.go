@@ -59,7 +59,7 @@ func atomicwrite(t *testing.T, name, newContent string) {
 		0, // NULL reserved
 	)
 
-	require.Equal(t, uintptr(0), ret)
-
+	// ReplaceFileW returns 0 if it failed and 1 if it succeeded.
+	require.Equal(t, uintptr(1), ret)
 	require.NoError(t, os.Remove(tmpName))
 }
