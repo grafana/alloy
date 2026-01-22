@@ -83,7 +83,6 @@ func (c *Client) Upload(j UploadJob) {
 		return
 	}
 	c.uploader.upload(c.client, j)
-
 }
 
 func (c *Client) Run(ctx context.Context) error {
