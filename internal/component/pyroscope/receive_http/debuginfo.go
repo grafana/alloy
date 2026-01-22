@@ -16,18 +16,18 @@ import (
 var errNoDebugInfoClient = status.Error(codes.Unavailable, "no debug info client available")
 
 func (c *Component) mountDebugInfo(router *mux.Router) {
-	grpcServer := NewGrpcServer(c.server.Config())
-	debuginfogrpc.RegisterDebuginfoServiceServer(grpcServer, c)
+	c.grpcServer = NewGrpcServer(c.server.Config())
+	debuginfogrpc.RegisterDebuginfoServiceServer(c.grpcServer, c)
 	const (
 		DebuginfoService_Upload_FullMethodName               = "/parca.debuginfo.v1alpha1.DebuginfoService/Upload"
 		DebuginfoService_ShouldInitiateUpload_FullMethodName = "/parca.debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
 		DebuginfoService_InitiateUpload_FullMethodName       = "/parca.debuginfo.v1alpha1.DebuginfoService/InitiateUpload"
 		DebuginfoService_MarkUploadFinished_FullMethodName   = "/parca.debuginfo.v1alpha1.DebuginfoService/MarkUploadFinished"
 	)
-	router.PathPrefix(DebuginfoService_Upload_FullMethodName).Handler(grpcServer)
-	router.PathPrefix(DebuginfoService_ShouldInitiateUpload_FullMethodName).Handler(grpcServer)
-	router.PathPrefix(DebuginfoService_InitiateUpload_FullMethodName).Handler(grpcServer)
-	router.PathPrefix(DebuginfoService_MarkUploadFinished_FullMethodName).Handler(grpcServer)
+	router.PathPrefix(DebuginfoService_Upload_FullMethodName).Handler(c.grpcServer)
+	router.PathPrefix(DebuginfoService_ShouldInitiateUpload_FullMethodName).Handler(c.grpcServer)
+	router.PathPrefix(DebuginfoService_InitiateUpload_FullMethodName).Handler(c.grpcServer)
+	router.PathPrefix(DebuginfoService_MarkUploadFinished_FullMethodName).Handler(c.grpcServer)
 }
 
 func (c *Component) getDebugInfoClient() debuginfogrpc.DebuginfoServiceClient {

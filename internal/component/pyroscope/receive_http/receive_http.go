@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 func init() {
@@ -60,6 +61,7 @@ type Component struct {
 	serverConfig       *fnet.HTTPConfig
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
+	grpcServer         *grpc.Server
 	mut                sync.Mutex
 	logger             log.Logger
 	tracer             trace.Tracer
@@ -304,6 +306,10 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Component) shutdownServer() {
+	if c.grpcServer != nil {
+		c.grpcServer.GracefulStop()
+		c.grpcServer = nil
+	}
 	if c.server != nil {
 		c.server.StopAndShutdown()
 		c.server = nil
