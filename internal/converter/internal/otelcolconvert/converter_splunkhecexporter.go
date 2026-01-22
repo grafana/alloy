@@ -33,7 +33,8 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*splunkhecexporter.Config).QueueSettings.StorageID)
+			queue := cfg.(*splunkhecexporter.Config).QueueSettings.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)

@@ -70,14 +70,22 @@ type Arguments struct {
 	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
+	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
-	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
 	ARN string `alloy:"arn,attr"`
+}
+
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
 type QueryTablesArguments struct {
@@ -119,6 +127,10 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 }
 
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	AllowUpdatePerfSchemaSettings: false,
 
@@ -158,6 +170,9 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
+	},
+	HealthCheckArguments: HealthCheckArguments{
+		CollectInterval: 1 * time.Hour,
 	},
 }
 
@@ -465,6 +480,10 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
+			level.Warn(c.opts.Logger).Log("msg", "auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
+		}
+
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
 			EngineVersion:               parsedEngineVersion,
@@ -503,6 +522,10 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	}
 
 	if collectors[collector.SetupActorsCollector] {
+		if c.args.SetupActorsArguments.AutoUpdateSetupActors && !c.args.AllowUpdatePerfSchemaSettings {
+			level.Warn(c.opts.Logger).Log("msg", "auto_update_setup_actors is true but allow_update_performance_schema_settings is false, setup_actors will not be updated")
+		}
+
 		saCollector, err := collector.NewSetupActors(collector.SetupActorsArguments{
 			DB:                    c.dbConnection,
 			Logger:                c.opts.Logger,
@@ -571,6 +594,22 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
 		c.collectors = append(c.collectors, ciCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:              c.dbConnection,
+		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(context.Background()); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {

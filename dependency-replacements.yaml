@@ -28,6 +28,14 @@ modules:
     path: go.mod
     file_type: mod
 
+  - name: extension
+    path: extension/alloyengine/go.mod
+    file_type: mod
+
+  - name: collector
+    path: collector/builder-config.yaml
+    file_type: ocb
+
 replaces:
   - comment: >
       TODO: remove this replace directive once the upstream issue is fixed:
@@ -91,11 +99,11 @@ replaces:
 
   - comment: Replace OpenTelemetry OBI with Grafana fork
     dependency: go.opentelemetry.io/obi
-    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
+    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
 
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler
-    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
+    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260108094543-6d4ae039eecb
 
   - comment: Update openshift/client-go to version compatible with structured-merge-diff v6
     dependency: github.com/openshift/client-go

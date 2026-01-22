@@ -18,7 +18,6 @@ import (
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
@@ -47,8 +46,8 @@ type tailer struct {
 
 	report sync.Once
 
-	file    *tail.File
-	decoder *encoding.Decoder
+	file *tail.File
+	enc  encoding.Encoding
 }
 
 func newTailer(
@@ -60,7 +59,7 @@ func newTailer(
 	opts sourceOptions,
 ) (*tailer, error) {
 
-	decoder, err := getDecoder(opts.encoding)
+	enc, err := getEncoding(opts.encoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
@@ -82,7 +81,7 @@ func newTailer(
 		},
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-		decoder:           decoder,
+		enc:               enc,
 	}
 
 	return tailer, nil
@@ -241,7 +240,7 @@ func (t *tailer) initRun() error {
 	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
-		Decoder:       t.decoder,
+		Encoding:      t.enc,
 		WatcherConfig: t.watcherConfig,
 	})
 
@@ -252,18 +251,6 @@ func (t *tailer) initRun() error {
 	t.file = tail
 
 	return nil
-}
-
-func getDecoder(encoding string) (*encoding.Decoder, error) {
-	if encoding == "" {
-		return nil, nil
-	}
-
-	encoder, err := ianaindex.IANA.Encoding(encoding)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encoding, err)
-	}
-	return encoder.NewDecoder(), nil
 }
 
 // readLines reads lines from the tailed file by calling Next() in a loop.

@@ -154,6 +154,7 @@ body:
       - prometheus.exporter.catchpoint
       - prometheus.exporter.cloudwatch
       - prometheus.exporter.consul
+      - prometheus.exporter.databricks
       - prometheus.exporter.dnsmasq
       - prometheus.exporter.elasticsearch
       - prometheus.exporter.gcp

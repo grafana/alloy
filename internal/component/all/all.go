@@ -118,7 +118,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/loki"                    // Import otelcol.receiver.loki
-	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/opencensus"              // Import otelcol.receiver.opencensus
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"                    // Import otelcol.receiver.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"              // Import otelcol.receiver.prometheus
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/solace"                  // Import otelcol.receiver.solace
@@ -137,6 +136,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"           // Import prometheus.exporter.catchpoint
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"           // Import prometheus.exporter.cloudwatch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/consul"               // Import prometheus.exporter.consul
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"           // Import prometheus.exporter.databricks
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"              // Import prometheus.exporter.dnsmasq
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"        // Import prometheus.exporter.elasticsearch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/gcp"                  // Import prometheus.exporter.gcp

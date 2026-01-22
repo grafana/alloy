@@ -3,6 +3,18 @@ name: Announce Release to Slack
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.13.0)'
+        required: true
+        default: ''
+        type: string
+      release_url:
+        description: 'Release URL'
+        required: true
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -12,40 +24,41 @@ jobs:
   announce-release:
     runs-on: ubuntu-latest
     env:
-      SLACK_MESSAGE: |
-        :alloy: *Grafana Alloy ${{ github.event.release.tag_name }} is now available!* :alloy:
-
-        *Release:* <${{ github.event.release.html_url }}|${{ github.event.release.tag_name }}>
-        *Full changelog:* <https://github.com/${{ github.repository }}/blob/${{ github.event.release.tag_name }}/CHANGELOG.md|CHANGELOG.md>
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      RELEASE_URL: ${{ inputs.release_url || github.event.release.html_url }}
     steps:
-      - name: Get GitHub app secrets 🔐
+      - name: Get secrets 🔐
         id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
         with:
           export_env: false
           repo_secrets: |
-            SLACK_CHANNEL_ID_ALLOY_INTERNAL=slack:channel_id_alloy_internal
+            SLACK_CHANNEL_ID_ALLOY=slack:channel_id_alloy
 
       - name: Determine release type 🏷️
         id: release-type
         run: |
-          TAG="${RELEASE_TAG}"
-          if [[ "$TAG" == *"-rc"* ]]; then
+          if [[ "$RELEASE_TAG" == *"-rc"* ]]; then
             echo "is_rc=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_rc=false" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
 
       - name: Notify internal alloy channel 📢
         if: steps.release-type.outputs.is_rc == 'false'
         uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
+        env:
+          SLACK_MESSAGE: |
+            :alloy: *Grafana Alloy ${{ env.RELEASE_TAG }} is now available!* :alloy:
+
+            *Release:* <${{ env.RELEASE_URL }}|${{ env.RELEASE_TAG }}>
+            *Full changelog:* <https://github.com/${{ github.repository }}/blob/${{ env.RELEASE_TAG }}/CHANGELOG.md|CHANGELOG.md>
         with:
           method: chat.postMessage
+          payload-templated: false
           payload: |
             {
-              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY_INTERNAL }}",
+              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY }}",
               "text": ${{ toJSON(env.SLACK_MESSAGE) }},
               "blocks": [
                 {
