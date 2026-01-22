@@ -164,7 +164,7 @@ func AtomicWrite(name string, content []byte) error {
 	}
 
 	// Use ReplaceFileW to atomically replace the target file with the temp file
-	// This works even when target file is open with FILE_SHARE_DELETE.
+	// This works when target file is open with FILE_SHARE_DELETE.
 	// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew
 	ret, _, errno := replaceFileW.Call(
 		uintptr(unsafe.Pointer(replacedPath)),
@@ -175,12 +175,12 @@ func AtomicWrite(name string, content []byte) error {
 		0, // NULL reserved
 	)
 
+	// errno is always non-nil so we should only sett err if ret is 0.
 	if ret == 0 {
 		err = errno
 	}
 
 	if err != nil {
-		// Clean up temp file if replace failed
 		return &os.PathError{Op: "AtomicWrite", Path: name, Err: err}
 	}
 
