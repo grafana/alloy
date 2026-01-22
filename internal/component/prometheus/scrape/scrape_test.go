@@ -180,7 +180,7 @@ func TestCustomDialer(t *testing.T) {
 			case cluster.ServiceName:
 				return cluster.Mock(), nil
 			case labelstore.ServiceName:
-				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+				return labelstore.New(nil, prometheus_client.DefaultRegisterer, 1), nil
 			case livedebugging.ServiceName:
 				return livedebugging.NewLiveDebugging(), nil
 
@@ -757,7 +757,7 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 			case cluster.ServiceName:
 				return cluster.Mock(), nil
 			case labelstore.ServiceName:
-				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+				return labelstore.New(nil, prometheus_client.DefaultRegisterer, 1), nil
 			case livedebugging.ServiceName:
 				return livedebugging.NewLiveDebugging(), nil
 			default:

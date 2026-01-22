@@ -2,17 +2,17 @@ goos: darwin
 goarch: arm64
 pkg: github.com/grafana/alloy/internal/service/labelstore
 cpu: Apple M2
-BenchmarkStaleness-8        	     379	   3960583 ns/op	 6531803 B/op	   50047 allocs/op
-BenchmarkStaleness-8        	     460	   2303396 ns/op	 6530271 B/op	   50046 allocs/op
-BenchmarkStaleness-8        	     462	   2736982 ns/op	 6530229 B/op	   50046 allocs/op
-BenchmarkStaleness-8        	     501	   2271037 ns/op	 6529865 B/op	   50046 allocs/op
-BenchmarkStaleness-8        	     446	   2585208 ns/op	 6530361 B/op	   50046 allocs/op
-BenchmarkStaleness-8        	     512	   2251867 ns/op	 6529665 B/op	   50046 allocs/op
-BenchmarkHighContention-8   	      63	  17950933 ns/op	 2063814 B/op	   63105 allocs/op
-BenchmarkHighContention-8   	      69	  16745578 ns/op	 1976736 B/op	   63117 allocs/op
-BenchmarkHighContention-8   	      72	  21537123 ns/op	 1929626 B/op	   62587 allocs/op
-BenchmarkHighContention-8   	      67	  17329961 ns/op	 1983287 B/op	   63165 allocs/op
-BenchmarkHighContention-8   	      73	  16778453 ns/op	 1997467 B/op	   63315 allocs/op
-BenchmarkHighContention-8   	      74	  16438858 ns/op	 1962656 B/op	   62953 allocs/op
+BenchmarkStaleness-8        	     372	   2694380 ns/op	 6531830 B/op	   50047 allocs/op
+BenchmarkStaleness-8        	     442	   2781606 ns/op	 6530534 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     523	   2278449 ns/op	 6529641 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     565	   3842895 ns/op	 6529277 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     543	   2482410 ns/op	 6529390 B/op	   50046 allocs/op
+BenchmarkStaleness-8        	     528	   2175612 ns/op	 6529523 B/op	   50046 allocs/op
+BenchmarkHighContention-8   	      44	  25225694 ns/op	 2140429 B/op	   63392 allocs/op
+BenchmarkHighContention-8   	      70	  16404401 ns/op	 1959228 B/op	   62921 allocs/op
+BenchmarkHighContention-8   	      63	  16052394 ns/op	 1976553 B/op	   63095 allocs/op
+BenchmarkHighContention-8   	      69	  17952229 ns/op	 1964201 B/op	   62989 allocs/op
+BenchmarkHighContention-8   	      74	  16791779 ns/op	 1966398 B/op	   63005 allocs/op
+BenchmarkHighContention-8   	      68	  15830524 ns/op	 1955529 B/op	   62889 allocs/op
 PASS
-ok  	github.com/grafana/alloy/internal/service/labelstore	17.355s
+ok  	github.com/grafana/alloy/internal/service/labelstore	18.467s

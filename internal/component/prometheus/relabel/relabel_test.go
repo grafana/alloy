@@ -223,7 +223,7 @@ func TestRuleGetter(t *testing.T) {
 func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case labelstore.ServiceName:
-		return labelstore.New(nil, prom.DefaultRegisterer), nil
+		return labelstore.New(nil, prom.DefaultRegisterer, 1), nil
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil
 	default:

@@ -369,7 +369,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to create otel service")
 	}
 
-	labelService := labelstore.New(l, reg)
+	labelService := labelstore.New(l, reg, 1)
 	alloyseed.Init(fr.storagePath, l)
 
 	f := alloy_runtime.New(alloy_runtime.Options{

@@ -74,7 +74,7 @@ func TestRunExit(t *testing.T) {
 			case cluster.ServiceName:
 				return cluster.Mock(), nil
 			case labelstore.ServiceName:
-				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
+				return labelstore.New(nil, prometheus.DefaultRegisterer, 1), nil
 			default:
 				return nil, fmt.Errorf("service %q does not exist", name)
 			}

@@ -34,7 +34,7 @@ func TestClearConfigsSameNsSamePrefix(t *testing.T) {
 		logger,
 		&operator.DefaultArguments,
 		KindServiceMonitor,
-		labelstore.New(logger, prometheus.DefaultRegisterer),
+		labelstore.New(logger, prometheus.DefaultRegisterer, 1),
 	)
 
 	m.discoveryManager = newMockDiscoveryManager()
@@ -99,7 +99,7 @@ func TestClearConfigsProbe(t *testing.T) {
 		logger,
 		&operator.DefaultArguments,
 		KindProbe,
-		labelstore.New(logger, prometheus.DefaultRegisterer),
+		labelstore.New(logger, prometheus.DefaultRegisterer, 1),
 	)
 
 	m.discoveryManager = newMockDiscoveryManager()

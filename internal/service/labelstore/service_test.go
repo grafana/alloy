@@ -15,41 +15,41 @@ import (
 )
 
 func TestAddingMarker(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	shouldBeSameGlobalID := mapping.GetOrAddGlobalRefID(l)
 	require.True(t, globalID == shouldBeSameGlobalID)
-	require.Len(t, mapping.labelsHashToGlobal, 1)
+	require.Len(t, mapping.single.labelsHashToGlobal, 1)
 }
 
 func TestAddingDifferentMarkers(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 	l2 := labels.FromStrings("__name__", "roar")
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	shouldBeDifferentID := mapping.GetOrAddGlobalRefID(l2)
 	require.True(t, globalID != shouldBeDifferentID)
-	require.Len(t, mapping.labelsHashToGlobal, 2)
+	require.Len(t, mapping.single.labelsHashToGlobal, 2)
 }
 
 func TestAddingLocalMapping(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	mapping.AddLocalLink("1", globalID, 1)
 	mapping.GetLocalRefID("1", globalID)
 	require.Equal(t, uint64(1), mapping.GetLocalRefID("1", globalID))
-	require.Len(t, mapping.labelsHashToGlobal, 1)
-	require.Len(t, mapping.mappings, 1)
-	require.True(t, mapping.mappings["1"].RemoteWriteID == "1")
-	require.True(t, mapping.mappings["1"].globalToLocal[globalID] == 1)
-	require.True(t, mapping.mappings["1"].localToGlobal[1] == globalID)
+	require.Len(t, mapping.single.labelsHashToGlobal, 1)
+	require.Len(t, mapping.single.mappings, 1)
+	require.True(t, mapping.single.mappings["1"].RemoteWriteID == "1")
+	require.True(t, mapping.single.mappings["1"].globalToLocal[globalID] == 1)
+	require.True(t, mapping.single.mappings["1"].localToGlobal[1] == globalID)
 }
 
 func TestAddingLocalMappings(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -58,20 +58,20 @@ func TestAddingLocalMappings(t *testing.T) {
 	mapping.AddLocalLink("2", globalID, localRefID)
 	require.Equal(t, localRefID, mapping.GetLocalRefID("1", globalID))
 	require.Equal(t, localRefID, mapping.GetLocalRefID("2", globalID))
-	require.Len(t, mapping.labelsHashToGlobal, 1)
-	require.Len(t, mapping.mappings, 2)
+	require.Len(t, mapping.single.labelsHashToGlobal, 1)
+	require.Len(t, mapping.single.mappings, 2)
 
-	require.True(t, mapping.mappings["1"].RemoteWriteID == "1")
-	require.True(t, mapping.mappings["1"].globalToLocal[globalID] == localRefID)
-	require.True(t, mapping.mappings["1"].localToGlobal[localRefID] == globalID)
+	require.True(t, mapping.single.mappings["1"].RemoteWriteID == "1")
+	require.True(t, mapping.single.mappings["1"].globalToLocal[globalID] == localRefID)
+	require.True(t, mapping.single.mappings["1"].localToGlobal[localRefID] == globalID)
 
-	require.True(t, mapping.mappings["2"].RemoteWriteID == "2")
-	require.True(t, mapping.mappings["2"].globalToLocal[globalID] == localRefID)
-	require.True(t, mapping.mappings["2"].localToGlobal[localRefID] == globalID)
+	require.True(t, mapping.single.mappings["2"].RemoteWriteID == "2")
+	require.True(t, mapping.single.mappings["2"].globalToLocal[globalID] == localRefID)
+	require.True(t, mapping.single.mappings["2"].localToGlobal[localRefID] == globalID)
 }
 
 func TestReplaceLocalMappings(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -84,22 +84,22 @@ func TestReplaceLocalMappings(t *testing.T) {
 	localRefID = uint64(2)
 	mapping.ReplaceLocalLink("1", globalID, 1, localRefID)
 	mapping.ReplaceLocalLink("2", globalID, 1, localRefID)
-	require.Len(t, mapping.labelsHashToGlobal, 1)
-	require.Len(t, mapping.mappings, 2)
+	require.Len(t, mapping.single.labelsHashToGlobal, 1)
+	require.Len(t, mapping.single.mappings, 2)
 
-	require.True(t, mapping.mappings["1"].RemoteWriteID == "1")
-	require.True(t, mapping.mappings["1"].globalToLocal[globalID] == localRefID)
-	require.Len(t, mapping.mappings["1"].localToGlobal, 1)
-	require.True(t, mapping.mappings["1"].localToGlobal[localRefID] == globalID)
+	require.True(t, mapping.single.mappings["1"].RemoteWriteID == "1")
+	require.True(t, mapping.single.mappings["1"].globalToLocal[globalID] == localRefID)
+	require.Len(t, mapping.single.mappings["1"].localToGlobal, 1)
+	require.True(t, mapping.single.mappings["1"].localToGlobal[localRefID] == globalID)
 
-	require.True(t, mapping.mappings["2"].RemoteWriteID == "2")
-	require.True(t, mapping.mappings["2"].globalToLocal[globalID] == localRefID)
-	require.Len(t, mapping.mappings["2"].localToGlobal, 1)
-	require.True(t, mapping.mappings["2"].localToGlobal[localRefID] == globalID)
+	require.True(t, mapping.single.mappings["2"].RemoteWriteID == "2")
+	require.True(t, mapping.single.mappings["2"].globalToLocal[globalID] == localRefID)
+	require.Len(t, mapping.single.mappings["2"].localToGlobal, 1)
+	require.True(t, mapping.single.mappings["2"].localToGlobal[localRefID] == globalID)
 }
 
 func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -112,7 +112,7 @@ func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
 }
 
 func TestStaleness(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 	l2 := labels.FromStrings("__name__", "test2")
 
@@ -127,17 +127,17 @@ func TestStaleness(t *testing.T) {
 			Labels:      l,
 		},
 	})
-	require.Len(t, mapping.staleGlobals, 1)
-	require.Len(t, mapping.labelsHashToGlobal, 2)
+	require.Len(t, mapping.single.staleGlobals, 1)
+	require.Len(t, mapping.single.labelsHashToGlobal, 2)
 	staleDuration = 1 * time.Millisecond
 	time.Sleep(10 * time.Millisecond)
 	mapping.CheckAndRemoveStaleMarkers()
-	require.Len(t, mapping.staleGlobals, 0)
-	require.Len(t, mapping.labelsHashToGlobal, 1)
+	require.Len(t, mapping.single.staleGlobals, 0)
+	require.Len(t, mapping.single.labelsHashToGlobal, 1)
 }
 
 func TestRemovingStaleness(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 	l := labels.FromStrings("__name__", "test")
 
 	global1 := mapping.GetOrAddGlobalRefID(l)
@@ -150,7 +150,7 @@ func TestRemovingStaleness(t *testing.T) {
 		},
 	})
 
-	require.Len(t, mapping.staleGlobals, 1)
+	require.Len(t, mapping.single.staleGlobals, 1)
 	// This should remove it from staleness tracking.
 	mapping.TrackStaleness([]StalenessTracker{
 		{
@@ -159,12 +159,12 @@ func TestRemovingStaleness(t *testing.T) {
 			Labels:      l,
 		},
 	})
-	require.Len(t, mapping.staleGlobals, 0)
+	require.Len(t, mapping.single.staleGlobals, 0)
 }
 
 func BenchmarkStaleness(b *testing.B) {
 	b.StopTimer()
-	ls := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	ls := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
 
 	tracking := make([]StalenessTracker, 100_000)
 	for i := 0; i < 100_000; i++ {
@@ -200,7 +200,7 @@ func BenchmarkHighContention(b *testing.B) {
 	const numUniqueLabelSets = 10000
 	const numComponents = 5
 
-	ls := New(log.NewNopLogger(), prometheus.NewRegistry())
+	ls := New(log.NewNopLogger(), prometheus.NewRegistry(), 1)
 
 	// Pre-generate label sets
 	labelSets := make([]labels.Labels, numUniqueLabelSets)
@@ -217,7 +217,7 @@ func BenchmarkHighContention(b *testing.B) {
 
 	// Pre-populate 50% of series to simulate existing series (warm cache)
 	// This means 50% of GetOrAddGlobalRefID calls will be cache hits, 50% will create new entries
-	for i := range numUniqueLabelSets/2 {
+	for i := range numUniqueLabelSets / 2 {
 		globalID := ls.GetOrAddGlobalRefID(labelSets[i])
 		for c := range numComponents {
 			componentID := "component_" + strconv.Itoa(c)
@@ -225,7 +225,7 @@ func BenchmarkHighContention(b *testing.B) {
 		}
 	}
 
-	for i:=0; b.Loop(); i++ {
+	for i := 0; b.Loop(); i++ {
 		var wg sync.WaitGroup
 
 		// Simulate prometheus metrics collection happening in background

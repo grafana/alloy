@@ -225,7 +225,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			// properly.
 			http_service.New(http_service.Options{}),
 			clusterService,
-			labelstore.New(nil, prometheus.DefaultRegisterer),
+			labelstore.New(nil, prometheus.DefaultRegisterer, 1),
 			remotecfgService,
 			livedebugging.New(),
 		},
