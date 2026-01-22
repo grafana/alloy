@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 )
 
 type Appender interface {
@@ -29,7 +30,7 @@ type Arguments struct {
 	WorkerNum                    int    `alloy:"worker_num,attr,optional"`
 }
 
-func NewClient(logger log.Logger, newClient func() (debuginfogrpc.DebuginfoServiceClient, error),
+func NewClient(logger log.Logger, newClient func() (*grpc.ClientConn, error),
 	metric prometheus.Counter, dataPath string) *Client {
 
 	return &Client{
@@ -37,7 +38,8 @@ func NewClient(logger log.Logger, newClient func() (debuginfogrpc.DebuginfoServi
 		metric:    metric,
 		dataPath:  dataPath,
 
-		logger: logger,
+		logger:       logger,
+		uploaderChan: make(chan *uploader),
 	}
 }
 
@@ -47,8 +49,9 @@ func NewClient(logger log.Logger, newClient func() (debuginfogrpc.DebuginfoServi
 //   - perform the debug info upload from the current host by the ebpf profiler request
 type Client struct {
 	logger       log.Logger
-	newClient    func() (debuginfogrpc.DebuginfoServiceClient, error)
+	newClient    func() (*grpc.ClientConn, error)
 	clientOnce   sync.Once
+	cc           *grpc.ClientConn
 	client       debuginfogrpc.DebuginfoServiceClient
 	uploaderOnce sync.Once
 	uploader     *uploader
@@ -60,10 +63,12 @@ type Client struct {
 func (c *Client) Client() debuginfogrpc.DebuginfoServiceClient {
 	c.clientOnce.Do(func() {
 		var err error
-		c.client, err = c.newClient()
+		c.cc, err = c.newClient()
 		if err != nil {
 			_ = level.Error(c.logger).Log("msg", "error initializing debuginfo client", "err", err)
+			return
 		}
+		c.client = debuginfogrpc.NewDebuginfoServiceClient(c.cc)
 	})
 	return c.client
 }
@@ -86,6 +91,11 @@ func (c *Client) Upload(j UploadJob) {
 }
 
 func (c *Client) Run(ctx context.Context) error {
+	defer func() {
+		if c.cc != nil {
+			_ = c.cc.Close()
+		}
+	}()
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

@@ -9,14 +9,13 @@ import (
 	"os"
 	"strings"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	commonconfig "github.com/prometheus/common/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (debuginfogrpc.DebuginfoServiceClient, error) {
+func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, error) {
 	var creds credentials.TransportCredentials
 	switch u.Scheme {
 	case "http":
@@ -48,8 +47,7 @@ func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (debuginfogrpc.Debug
 		return nil, err
 	}
 
-	client := debuginfogrpc.NewDebuginfoServiceClient(cc)
-	return client, nil
+	return cc, nil
 }
 
 func newGrpcBasicAuthCredentials(e *EndpointOptions) (*basicAuthCredential, error) {

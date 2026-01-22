@@ -35,6 +35,7 @@ import (
 	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -285,7 +286,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		ingestClients[endpoint] = httpClient
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		debugInfo := debuginfo.NewClient(logger, func() (debuginfogrpc.DebuginfoServiceClient, error) {
+		debugInfo := debuginfo.NewClient(logger, func() (*grpc.ClientConn, error) {
 			return newDebugInfoGRPCClient(u, endpoint)
 		}, metrics.debugInfoUploadBytes, endpointDataPath)
 		debugInfos = append(debugInfos, debugInfo)
