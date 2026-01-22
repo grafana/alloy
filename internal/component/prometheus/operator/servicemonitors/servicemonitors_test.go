@@ -13,8 +13,8 @@ import (
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/schema"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,8 +89,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 
 	// Create a test factory that provides access to internal components
 	testFactory := &common.TestCrdManagerFactory{
-		K8sClient:  fakeK8s,
-		RunStarted: make(chan struct{}),
+		K8sClient: fakeK8s,
 	}
 
 	// Inject our test factory
@@ -116,13 +115,6 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 	err = comp.Update(args)
 	require.NoError(t, err)
 
-	// Wait for manager's Run to start (ensures discovery/scrape managers are initialized)
-	select {
-	case <-testFactory.RunStarted:
-	case <-time.After(10 * time.Second):
-		t.Fatal("Timeout waiting for manager to start")
-	}
-
 	// Create a ServiceMonitor (similar to mimir tests adding AlertmanagerConfig to indexer)
 	serviceMonitor := &promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -145,8 +137,10 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 		},
 	}
 
-	// Trigger the add event (similar to mimir tests calling eventHandler.OnAdd)
-	testFactory.TriggerServiceMonitorAdd(serviceMonitor)
+	// Trigger the add event. Retry until the manager is ready.
+	require.Eventually(t, func() bool {
+		return testFactory.TriggerServiceMonitorAdd(serviceMonitor)
+	}, 10*time.Second, 100*time.Millisecond, "Timeout waiting for manager to be ready")
 
 	// Verify scrape config was registered
 	require.Eventually(t, func() bool {
@@ -156,7 +150,8 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 
 	// Inject static targets (since k8s service discovery won't work without a real cluster)
 	jobName := "serviceMonitor/monitoring/test-service-monitor/0"
-	err = testFactory.InjectStaticTargets(jobName, serverAddr)
+	ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
+	require.True(t, ready, "Manager should be ready after TriggerServiceMonitorAdd succeeded")
 	require.NoError(t, err)
 
 	// Wait for metrics to be scraped and forwarded, then verify
@@ -191,7 +186,8 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 	}, 30*time.Second, 500*time.Millisecond, "timed out waiting for metrics to be forwarded")
 }
 
-// startTestMetricsServer starts an HTTP server that serves Prometheus metrics
+// startTestMetricsServer starts an HTTP server that serves Prometheus metrics.
+// The server is automatically closed when the test completes.
 func startTestMetricsServer(t *testing.T) (*http.Server, string) {
 	t.Helper()
 
@@ -225,11 +221,21 @@ func startTestMetricsServer(t *testing.T) (*http.Server, string) {
 		Handler: handler,
 	}
 
+	var serverWg sync.WaitGroup
+	serverWg.Add(1)
 	go func() {
-		if err := server.Serve(listener); err != http.ErrServerClosed {
-			t.Logf("HTTP server error: %v", err)
-		}
+		defer serverWg.Done()
+		// Intentionally not logging errors here to avoid race with test completion.
+		// We expect http.ErrServerClosed when the server is shut down.
+		_ = server.Serve(listener)
 	}()
+
+	// Use t.Cleanup to ensure the server goroutine is properly waited for
+	// before the test completes, avoiding races with t.Logf or other test state.
+	t.Cleanup(func() {
+		server.Close()
+		serverWg.Wait()
+	})
 
 	// Wait for server to be ready
 	time.Sleep(50 * time.Millisecond)
@@ -240,7 +246,7 @@ func startTestMetricsServer(t *testing.T) (*http.Server, string) {
 // findSampleByName finds a sample by metric name from the collected samples
 func findSampleByName(samples map[string]*testappender.MetricSample, metricName string) *testappender.MetricSample {
 	for _, sample := range samples {
-		if sample.Labels.Get(labels.MetricName) == metricName {
+		if schema.NewMetadataFromLabels(sample.Labels).Name == metricName {
 			return sample
 		}
 	}
