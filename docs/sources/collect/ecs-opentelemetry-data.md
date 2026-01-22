@@ -130,14 +130,14 @@ Complete the following steps to create a sample task.
    * _`{{ecsTaskRoleArn}}`_: The AWSOTTaskRole ARN.
    * _`{{ecsTaskExecutionRoleArn}}`_: The AWSOTTaskExecutionRole ARN.
    * Set the container image to `grafana/alloy:<VERSION>`, for example `grafana/alloy:latest` or a specific version such as `grafana/alloy:v1.5.0`.
-   * Add a custom environment variable named `ALLOY_CONFIG_CONTENT`. Select **ValueFrom** to tell ECS to get the value from the Parameter Store, and set the value to `collector-config`. Alloy doesn't read this variable directly, but you use it with the command below to pass the configuration.
+   * Add a custom environment variable named `ALLOY_CONFIG_CONTENT`. Select **ValueFrom** to tell ECS to get the value from the Parameter Store, and set the value to `collector-config`. {{< param "PRODUCT_NAME" >}} doesn't read this variable directly, but you use it with the command below to pass the configuration.
    * Add environment variables for Prometheus remote write:
       * `PROMETHEUS_REMOTE_WRITE_URL`
       * `PROMETHEUS_USERNAME`
       * `PROMETHEUS_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
    * In the Docker configuration, change the **Entrypoint** to `bash,-c`.
-   * _`{{command}}`_: `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. This command writes the configuration from the environment variable to a file and then runs Alloy with that configuration. Make sure you don't omit the double quotes around the command.
-   * Alloy doesn't support collecting container metrics from the ECS metadata endpoint directly, so you need to add a second container for the [Prometheus exporter](https://github.com/prometheus-community/ecs_exporter) if needed:
+   * _`{{command}}`_: `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. This command writes the configuration from the environment variable to a file and then runs {{< param "PRODUCT_NAME" >}} with that configuration. Make sure you don't omit the double quotes around the command.
+   * {{< param "PRODUCT_NAME" >}} doesn't support collecting container metrics from the ECS metadata endpoint directly, so you need to add a second container for the [Prometheus exporter](https://github.com/prometheus-community/ecs_exporter) if needed:
 
       1. Add a container to the task.
       1. Set the container name to `ecs-exporter`.
