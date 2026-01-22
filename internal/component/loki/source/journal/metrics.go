@@ -9,18 +9,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Metrics holds a set of journal target metrics.
-type Metrics struct {
+// metrics holds a set of journal target metrics.
+type metrics struct {
 	reg prometheus.Registerer
 
 	journalErrors *prometheus.CounterVec
 	journalLines  prometheus.Counter
 }
 
-// NewMetrics creates a new set of journal target metrics. If reg is non-nil, the
+// newMetrics creates a new set of journal target metrics. If reg is non-nil, the
 // metrics will be registered.
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	var m Metrics
+func newMetrics(reg prometheus.Registerer) *metrics {
+	var m metrics
 	m.reg = reg
 
 	m.journalErrors = prometheus.NewCounterVec(prometheus.CounterOpts{

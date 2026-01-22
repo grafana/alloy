@@ -38,8 +38,8 @@ var _ component.Component = (*Component)(nil)
 // Component represents reading from a journal
 type Component struct {
 	mut            sync.RWMutex
-	t              *JournalTarget
-	metrics        *Metrics
+	tailer         *tailer
+	metrics        *metrics
 	o              component.Options
 	handler        chan loki.Entry
 	positions      positions.Positions
@@ -71,7 +71,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		metrics:        NewMetrics(o.Registerer),
+		metrics:        newMetrics(o.Registerer),
 		o:              o,
 		handler:        make(chan loki.Entry),
 		positions:      positionsFile,
@@ -102,8 +102,8 @@ func (c *Component) Run(ctx context.Context) error {
 		// Stop existing target
 		c.mut.RLock()
 		defer c.mut.RUnlock()
-		if c.t != nil {
-			err := c.t.Stop()
+		if c.tailer != nil {
+			err := c.tailer.Stop()
 			if err != nil {
 				level.Warn(c.o.Logger).Log("msg", "error stopping journal target", "err", err)
 			}
@@ -196,9 +196,9 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 
 	// Grab current state
 	c.mut.RLock()
-	var targetToStop *JournalTarget
-	if c.t != nil {
-		targetToStop = c.t
+	var targetToStop *tailer
+	if c.tailer != nil {
+		targetToStop = c.tailer
 	}
 	rcs := alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
 	c.mut.RUnlock()
@@ -217,15 +217,15 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 	// Create new target
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	c.t = nil
+	c.tailer = nil
 	entryHandler := loki.NewEntryHandler(c.handler, func() {})
 
-	newTarget, err := NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, c.args))
+	newTarget, err := newTailer(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, c.args))
 	if err != nil {
 		level.Error(c.o.Logger).Log("msg", "error creating journal target", "err", err, "path", c.args.Path)
 		c.healthErr = fmt.Errorf("error creating journal target: %w", err)
 	} else {
-		c.t = newTarget
+		c.tailer = newTarget
 		c.healthErr = nil
 	}
 }

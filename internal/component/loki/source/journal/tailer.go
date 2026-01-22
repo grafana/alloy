@@ -97,10 +97,10 @@ var defaultJournalEntryFunc = func(c sdjournal.JournalReaderConfig, cursor strin
 	return journal.GetEntry()
 }
 
-// JournalTarget tails systemd journal entries.
+// tailer tails systemd journal entries.
 // nolint
-type JournalTarget struct {
-	metrics       *Metrics
+type tailer struct {
+	metrics       *metrics
 	logger        log.Logger
 	handler       loki.EntryHandler
 	positions     positions.Positions
@@ -113,18 +113,18 @@ type JournalTarget struct {
 	until chan time.Time
 }
 
-// NewJournalTarget configures a new JournalTarget.
-func NewJournalTarget(
-	metrics *Metrics,
+// newTailer return as new tailer
+func newTailer(
+	metrics *metrics,
 	logger log.Logger,
 	handler loki.EntryHandler,
 	positions positions.Positions,
 	jobName string,
 	relabelConfig []*relabel.Config,
 	targetConfig *scrapeconfig.JournalTargetConfig,
-) (*JournalTarget, error) {
+) (*tailer, error) {
 
-	return journalTargetWithReader(
+	return newTailerWithReader(
 		metrics,
 		logger,
 		handler,
@@ -137,8 +137,8 @@ func NewJournalTarget(
 	)
 }
 
-func journalTargetWithReader(
-	metrics *Metrics,
+func newTailerWithReader(
+	metrics *metrics,
 	logger log.Logger,
 	handler loki.EntryHandler,
 	pos positions.Positions,
@@ -147,7 +147,7 @@ func journalTargetWithReader(
 	targetConfig *scrapeconfig.JournalTargetConfig,
 	readerFunc journalReaderFunc,
 	entryFunc journalEntryFunc,
-) (*JournalTarget, error) {
+) (*tailer, error) {
 
 	positionPath := positions.CursorKey(jobName)
 	position := pos.GetString(positionPath, "")
@@ -160,7 +160,7 @@ func journalTargetWithReader(
 	}
 
 	until := make(chan time.Time)
-	t := &JournalTarget{
+	t := &tailer{
 		metrics:       metrics,
 		logger:        logger,
 		handler:       handler,
@@ -244,7 +244,7 @@ type journalConfigBuilder struct {
 // generateJournalConfig generates a journal config by trying to intelligently
 // determine if a time offset or the cursor should be used for the starting
 // position in the reader.
-func (t *JournalTarget) generateJournalConfig(
+func (t *tailer) generateJournalConfig(
 	cb journalConfigBuilder,
 ) sdjournal.JournalReaderConfig {
 
@@ -288,7 +288,7 @@ func (t *JournalTarget) generateJournalConfig(
 	return cfg
 }
 
-func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error) {
+func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 	ts := time.Unix(0, int64(entry.RealtimeTimestamp)*int64(time.Microsecond))
 
 	var msg string
@@ -350,7 +350,7 @@ func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error)
 }
 
 // Stop shuts down the JournalTarget.
-func (t *JournalTarget) Stop() error {
+func (t *tailer) Stop() error {
 	t.until <- time.Now()
 	err := t.r.Close()
 	t.handler.Stop()
