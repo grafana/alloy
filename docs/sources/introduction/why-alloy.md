@@ -88,7 +88,8 @@ The Kubernetes discovery components automatically find and scrape pods as they s
 
 The {{< param "PRODUCT_NAME" >}} configuration language lets you create conditional logic in your pipelines, reference data from one component in another, build reusable pipeline modules, transform and filter data with built-in functions, and respond dynamically to changing conditions.
 
-If you need more than basic "collect and forward" functionality, such as routing high-priority service metrics to one backend and lower-priority metrics to another with different sampling rates, the programmable approach provides the flexibility you need.
+If you need more than basic "collect and forward" functionality, the programmable approach provides the flexibility you need.
+Common scenarios include routing high-priority metrics to one backend while sampling lower-priority data, extracting useful labels from high-cardinality fields to manage storage costs, standardizing attribute names when different teams use inconsistent conventions, and redacting sensitive tokens or credentials from logs before they reach storage.
 
 ### You want to share pipelines across teams
 

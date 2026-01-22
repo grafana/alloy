@@ -29,8 +29,9 @@ You can also integrate with databases, message queues, and other systems to capt
 ### Transform and process data
 
 Processing telemetry before sending it to backends optimizes costs and improves data quality.
-You can create filters to remove unwanted data and reduce storage costs while focusing on high-value telemetry.
-Add labels, metadata, or contextual information to enrich your data and make it more useful for analysis.
+Create filters to drop unwanted data or redact sensitive information like tokens and credentials from logs before they reach storage.
+Add labels, metadata, or contextual information to enrich your data—for example, extract a cloud provider name from instance IDs to create useful aggregation labels.
+Standardize attribute names across services when different teams use inconsistent naming conventions.
 Implement sampling strategies to reduce high-volume data while preserving the signal you need for troubleshooting.
 Convert between formats, such as transforming Prometheus metrics to OpenTelemetry format, to ensure compatibility with your backends.
 Define routing rules to send different types of data to different destinations based on your operational requirements.

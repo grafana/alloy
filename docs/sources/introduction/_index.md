@@ -24,6 +24,7 @@ This approach reduces operational complexity while giving you the flexibility to
 - [Install][Install] {{< param "PRODUCT_NAME" >}} on your platform
 - Learn core [concepts][Concepts] including components, expressions, and pipelines
 - Follow [tutorials][tutorials] for hands-on experience
+- Try the [Alloy for Beginners][beginners] workshop for interactive, scenario-based learning
 - Explore the [component reference][reference] to see available components
 
 ## Learn more
@@ -44,3 +45,4 @@ This approach reduces operational complexity while giving you the flexibility to
 [Supported platforms]: ../set-up/supported-platforms/
 [Estimate resource usage]: ../set-up/estimate-resource-usage/
 [migrate]: ../set-up/migrate/
+[beginners]: https://github.com/grafana/Grafana-Alloy-for-Beginners
