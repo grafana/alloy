@@ -704,6 +704,8 @@ func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
 }
 
 func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
+	now := time.Now()
+
 	tt := []struct {
 		name              string
 		cache             map[string]*cachedSourceMap
@@ -714,48 +716,48 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		{
 			name: "should clear entry from cache if too old",
 			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: time.Now()},
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
 			},
-			timeSource:        &mockTimeSource{now: time.Now().Add(5 * time.Minute)},
+			timeSource:        &mockTimeSource{now: now.Add(6 * time.Minute)},
 			cacheTimeout:      5 * time.Minute,
 			expectedCacheSize: 0,
 		},
 		{
 			name: "should not clear entry from cache if not too old",
 			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: time.Now()},
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
 			},
-			timeSource:        &mockTimeSource{now: time.Now().Add(3 * time.Minute)},
+			timeSource:        &mockTimeSource{now: now.Add(3 * time.Minute)},
 			cacheTimeout:      5 * time.Minute,
 			expectedCacheSize: 1,
 		},
 		{
 			name: "should clear only old entries from cache",
 			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: time.Now()},
-				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: time.Now().Add(-5 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-6 * time.Minute)},
 			},
-			timeSource:        &mockTimeSource{now: time.Now()},
+			timeSource:        &mockTimeSource{now: now},
 			cacheTimeout:      5 * time.Minute,
 			expectedCacheSize: 1,
 		},
 		{
 			name: "should not clear multiple entries",
 			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: time.Now().Add(3 * time.Minute)},
-				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: time.Now().Add(4 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(3 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(4 * time.Minute)},
 			},
-			timeSource:        &mockTimeSource{now: time.Now()},
+			timeSource:        &mockTimeSource{now: now},
 			cacheTimeout:      5 * time.Minute,
 			expectedCacheSize: 2,
 		},
 		{
 			name: "should clear multiple old entries from cache",
 			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: time.Now().Add(-10 * time.Minute)},
-				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: time.Now().Add(-7 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(-10 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-7 * time.Minute)},
 			},
-			timeSource:        &mockTimeSource{now: time.Now()},
+			timeSource:        &mockTimeSource{now: now},
 			cacheTimeout:      5 * time.Minute,
 			expectedCacheSize: 0,
 		},
