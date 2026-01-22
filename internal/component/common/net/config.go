@@ -104,7 +104,7 @@ type HTTP2Config struct {
 	MaxDecoderHeaderTableSize    uint32        `alloy:"max_decoder_header_table_size,attr,optional"`
 	MaxEncoderHeaderTableSize    uint32        `alloy:"max_encoder_header_table_size,attr,optional"`
 	MaxReadFrameSize             uint32        `alloy:"max_read_frame_size,attr,optional"`
-	PermitProhibitedCipherSuites bool          `json:"permit_prohibited_ciphers"`
+	PermitProhibitedCipherSuites bool          `alloy:"permit_prohibited_ciphers,attr,optional"`
 	IdleTimeout                  time.Duration `alloy:"idle_timeout,attr,optional"`
 	ReadIdleTimeout              time.Duration `alloy:"read_idle_timeout,attr,optional"`
 	PingTimeout                  time.Duration `alloy:"ping_timeout,attr,optional"`
