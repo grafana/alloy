@@ -42,10 +42,11 @@ const (
 	// shardBits is the number of bits used to encode the shard index in globalRefID.
 	// Upper 8 bits = 256 max shards, lower 56 bits = 2^56 IDs per shard.
 	shardBits = 8
-	maxShards = 1 << shardBits // 256
+	// MaxShards is the maximum number of shards supported by the labelstore.
+	MaxShards = 1 << shardBits // 256
 
 	// shardMask extracts the shard index from globalRefID (upper 8 bits)
-	shardMask = uint64(maxShards-1) << (64 - shardBits)
+	shardMask = uint64(MaxShards-1) << (64 - shardBits)
 
 	// localIDMask extracts the per-shard ID from globalRefID (lower 56 bits)
 	localIDMask = ^shardMask

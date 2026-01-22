@@ -169,6 +169,7 @@ depending on the nature of the reload error.
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	cmd.Flags().IntVar(&r.labelstoreShards, "feature.labelstore-shards", 1, fmt.Sprintf("Number of Prometheus' labelstore shards to reduce mutex contention (1-%d). Values other than 1 require --stability.level=experimental.", labelstore.MaxShards))
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -205,6 +206,7 @@ type alloyRun struct {
 	disableSupportBundle         bool
 	windowsPriority              string
 	taskShutdownDeadline         time.Duration
+	labelstoreShards             int
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -369,7 +371,19 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to create otel service")
 	}
 
-	labelService := labelstore.New(l, reg, 1)
+	// Validate labelstore shards configuration
+	labelstoreShards := fr.labelstoreShards
+	if labelstoreShards < 1 {
+		return fmt.Errorf("--feature.labelstore-shards must be >= 1, got %d", labelstoreShards)
+	}
+	if labelstoreShards > labelstore.MaxShards {
+		return fmt.Errorf("--feature.labelstore-shards must be <= %d, got %d", labelstore.MaxShards, labelstoreShards)
+	}
+	if labelstoreShards != 1 && !fr.minStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("--feature.labelstore-shards=%d requires --stability.level=experimental", labelstoreShards)
+	}
+
+	labelService := labelstore.New(l, reg, labelstoreShards)
 	alloyseed.Init(fr.storagePath, l)
 
 	f := alloy_runtime.New(alloy_runtime.Options{

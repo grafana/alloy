@@ -61,9 +61,9 @@ func New(l log.Logger, r prometheus.Registerer, shards int) *Service {
 		level.Warn(l).Log("msg", "shards <= 0, setting to 1", "shards", shards)
 		shards = 1
 	}
-	if shards > maxShards {
-		level.Warn(l).Log("msg", "shards > maxShards, setting to maxShards", "shards", shards, "maxShards", maxShards)
-		shards = maxShards
+	if shards > MaxShards {
+		level.Warn(l).Log("msg", "shards > MaxShards, setting to MaxShards", "shards", shards, "MaxShards", MaxShards)
+		shards = MaxShards
 	}
 
 	s := &Service{
