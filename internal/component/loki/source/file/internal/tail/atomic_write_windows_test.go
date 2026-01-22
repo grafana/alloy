@@ -13,10 +13,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// atomicwrite performs an atomic write on Windows using ReplaceFileW.
+// atomicWrite performs an atomic write on Windows using ReplaceFileW.
 // This allows replacing a file when it's open with FILE_SHARE_DELETE.
 // This function is only used in tests.
-func atomicwrite(t *testing.T, name, newContent string) {
+func atomicWrite(t *testing.T, name, newContent string) {
 	var (
 		kernel32     = windows.NewLazySystemDLL("kernel32.dll")
 		replaceFileW = kernel32.NewProc("ReplaceFileW")

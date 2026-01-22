@@ -10,6 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func atomicwrite(t *testing.T, name, newContent string) {
+func atomicWrite(t *testing.T, name, newContent string) {
 	require.NoError(t, atomic.WriteFile(name, strings.NewReader(newContent)))
 }

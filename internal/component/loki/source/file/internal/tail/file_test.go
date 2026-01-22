@@ -389,7 +389,7 @@ func TestFile(t *testing.T) {
 		// Read first two lines
 		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
 		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
-		atomicwrite(t, name, "line1\nline2\nline3\nline4\nnewline1\n")
+		atomicWrite(t, name, "line1\nline2\nline3\nline4\nnewline1\n")
 		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
 		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
 		verify(t, file, &Line{Text: "newline1", Offset: 33}, nil)
@@ -412,7 +412,7 @@ func TestFile(t *testing.T) {
 		// Read first two lines
 		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
 		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
-		atomicwrite(t, name, "newline1\n")
+		atomicWrite(t, name, "newline1\n")
 		// Because we buffer lines when file is deleted we still get line3 and line4.
 		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
 		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
