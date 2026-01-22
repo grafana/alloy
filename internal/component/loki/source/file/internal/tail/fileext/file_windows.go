@@ -148,7 +148,9 @@ func AtomicWrite(name string, content []byte) error {
 	}
 
 	// Close the temp file before replacing
-	tmp.Close()
+	if err := tmp.Close(); err != nil {
+		return err
+	}
 
 	// Convert paths to UTF-16 for ReplaceFileW
 	replacedPath, err := syscall.UTF16PtrFromString(name)
