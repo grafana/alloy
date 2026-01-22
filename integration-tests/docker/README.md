@@ -30,7 +30,8 @@ Follow these steps to add a new integration test to the project:
 2. Create a new directory under the tests directory to house the files for the new test.
 3. Within the new test directory, create a file named `config.alloy` to hold the pipeline configuration you want to test.
 4. Create a `_test.go` file within the new test directory. This file should contain the Go code necessary to run the test and verify the data processing through the pipeline. All test file should have `alloyintegrationtests` as a build tag.
-5. Ensure any data is written with a unique `test_name` label that matches your assertions. 
+5. If a test folder contains test.yaml this file will be read and parsed. This file can specify different setup requirements that the test have like mount or port mapping.
+6. Ensure any data is written with a unique `test_name` label that matches your assertions. 
    * Since the tests are run concurrently, each Alloy instance used for a test queries for data that will match the `test_name`. 
    * This ensures the correct data verification during the Go testing process.
 
