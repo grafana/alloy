@@ -10,8 +10,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/unicode"
-
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 )
 
 func TestFile(t *testing.T) {
@@ -452,8 +450,4 @@ func rotateFile(t *testing.T, name, newContent string) {
 	removeFile(t, name)
 	// Create new file with same name
 	require.NoError(t, os.WriteFile(name, []byte(newContent), 0600))
-}
-
-func atomicwrite(t *testing.T, name, newContent string) {
-	require.NoError(t, fileext.AtomicWrite(name, []byte(newContent)))
 }
