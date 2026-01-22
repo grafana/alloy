@@ -24,4 +24,4 @@ jobs:
       with:
         go-version-file: go.mod
     - name: Run tests
-      run: make integration-test
+      run: make integration-test-docker
