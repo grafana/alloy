@@ -10,39 +10,36 @@ weight: 10
 
 {{< param "FULL_PRODUCT_NAME" >}} is an open source telemetry collector that simplifies how you gather and send observability data.
 It's an [OpenTelemetry Collector distribution][OpenTelemetry] with built-in Prometheus pipelines and native support for Loki, Pyroscope, and other observability backends.
-{{< param "PRODUCT_NAME" >}} combines metrics, logs, traces, and profiles into one solution, compatible with popular open source standards including OpenTelemetry and Prometheus.
+
+{{< param "PRODUCT_NAME" >}} collects metrics, logs, traces, and profiles in one unified solution.
+Instead of running separate collectors for each signal type, you configure a single tool that works with both OpenTelemetry and Prometheus ecosystems.
+This approach reduces operational complexity while giving you the flexibility to send data to any compatible backend, whether that's Grafana Cloud, a self-managed Grafana stack, or other observability platforms.
 
 {{< youtube bFyGd_Sr5W4 >}}
 
 {{< docs/learning-journeys title="Send logs to Grafana Cloud using Alloy" url="/docs/learning-journeys/send-logs-alloy-loki/" >}}
 
-## Get started with {{< param "PRODUCT_NAME" >}}
-
-Ready to try {{< param "PRODUCT_NAME" >}}? Start with these resources:
+## Get started
 
 - [Install][Install] {{< param "PRODUCT_NAME" >}} on your platform
-- Learn core [Concepts][Concepts] including components, expressions, and pipelines
-- Follow [tutorials][tutorials] for hands-on experience with common use cases
-- Explore the [component reference][reference] to see what {{< param "PRODUCT_NAME" >}} can do
+- Learn core [concepts][Concepts] including components, expressions, and pipelines
+- Follow [tutorials][tutorials] for hands-on experience
+- Explore the [component reference][reference] to see available components
 
 ## Learn more
 
-- [The challenge][The challenge] - Understand the telemetry collection problems {{< param "PRODUCT_NAME" >}} solves
-- [When to use Alloy][When to use Alloy] - Determine which scenarios {{< param "PRODUCT_NAME" >}} is designed for
-- [How Alloy fits][How Alloy fits] - See where {{< param "PRODUCT_NAME" >}} fits and how it integrates with other tools
-- [How Alloy works][How Alloy works] - Learn what makes {{< param "PRODUCT_NAME" >}} powerful
-- [Supported platforms][Supported platforms] - Check platform and architecture compatibility
-- [Estimate resource usage][Estimate resource usage] - Plan your deployment resource requirements
-- [Migrate from other collectors][migrate] - Move from OpenTelemetry Collector, Prometheus Agent, or Grafana Agent
+- [Why Alloy][Why Alloy]: Understand when {{< param "PRODUCT_NAME" >}} is the right choice
+- [How Alloy works][How Alloy works]: Learn about the architecture and key capabilities
+- [Supported platforms][Supported platforms]: Check platform compatibility
+- [Estimate resource usage][Estimate resource usage]: Plan your deployment
+- [Migrate from other collectors][migrate]: Move from OpenTelemetry Collector, Prometheus Agent, or Grafana Agent
 
 [OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
 [Install]: ../set-up/install/
 [Concepts]: ../get-started/
 [tutorials]: ../tutorials/
 [reference]: ../reference/
-[The challenge]: ./the-challenge/
-[When to use Alloy]: ./when-to-use-alloy/
-[How Alloy fits]: ./how-alloy-fits/
+[Why Alloy]: ./why-alloy/
 [How Alloy works]: ./how-alloy-works/
 [Supported platforms]: ../set-up/supported-platforms/
 [Estimate resource usage]: ../set-up/estimate-resource-usage/
