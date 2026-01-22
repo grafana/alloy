@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/natefinch/atomic"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/unicode"
+
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 )
 
 func TestFile(t *testing.T) {
@@ -454,5 +455,5 @@ func rotateFile(t *testing.T, name, newContent string) {
 }
 
 func atomicwrite(t *testing.T, name, newContent string) {
-	require.NoError(t, atomic.WriteFile(name, strings.NewReader(newContent)))
+	require.NoError(t, fileext.AtomicWrite(name, []byte(newContent)))
 }
