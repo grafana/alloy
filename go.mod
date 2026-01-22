@@ -81,7 +81,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
-	github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc // indirect
+	github.com/grafana/pyroscope/lidia v0.0.2
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251023151319-9baba332b98a
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329

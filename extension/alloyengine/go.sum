@@ -1193,8 +1193,8 @@ github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxR
 github.com/grafana/pyroscope/api v1.2.0/go.mod h1:CCWrMnwvTB5O+VBZfT+jO2RAvgm0GxdG2//kAWuMDhA=
 github.com/grafana/pyroscope/ebpf v0.4.11 h1:QpXj3xIWveFy1Zx7M9YzCq7z+d70LQ2pF/qEzD/tXWo=
 github.com/grafana/pyroscope/ebpf v0.4.11/go.mod h1:LhmNuYZpxlmjsLK36j1nD+eJ/CNebBRDPCzRJPVHZbI=
-github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc h1:aaY+Oax8VpaoyGZlBq3h+XIT/aTHkZPm2Op4IVRLykY=
-github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc/go.mod h1:4AxmVrn7RJPBStqSw+0erQN2kr+I6MW6LmaawOM8Nlo=
+github.com/grafana/pyroscope/lidia v0.0.2 h1:DsZiUjWfB+6w9wKGosEQQTFuDvkay7kUECw3Os7Xno0=
+github.com/grafana/pyroscope/lidia v0.0.2/go.mod h1:4AxmVrn7RJPBStqSw+0erQN2kr+I6MW6LmaawOM8Nlo=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
