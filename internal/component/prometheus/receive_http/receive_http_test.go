@@ -764,6 +764,17 @@ func TestRemoteWriteV2(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                    "without metadata or type/unit labels",
+			appendMetadata:          false,
+			enableTypeAndUnitLabels: false,
+			expectedSamples: []testSample{
+				{ts: timestamp, val: 100, l: labels.FromStrings("__name__", "http_requests_total", "method", "GET", "status", "200")},
+				{ts: timestamp + 1, val: 150, l: labels.FromStrings("__name__", "http_requests_total", "method", "GET", "status", "200")},
+				{ts: timestamp, val: 45.2, l: labels.FromStrings("__name__", "cpu_usage_seconds", "cpu", "0")},
+			},
+			expectedMetadata: nil, // No metadata should be forwarded
+		},
 	}
 
 	for _, tc := range testCases {
