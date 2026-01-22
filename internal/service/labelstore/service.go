@@ -9,16 +9,21 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	alloy_service "github.com/grafana/alloy/internal/service"
 )
 
 const ServiceName = "labelstore"
 
 // Service is the labelstore service wrapper that delegates to either single or sharded implementation.
+//
+// Future simplification: sharded now supports numShards=1, so eventually Service could
+// always use sharded, eliminating the single/sharded split. For now, we keep single for
+// explicit backward compatibility and to make the refactoring reviewable.
 type Service struct {
 	log                 log.Logger
 	single              *single
-	_                   interface{} // sharded - TODO: will be *sharded when implemented
+	sharded             *sharded
 	totalIDs            *prometheus.Desc
 	idsInRemoteWrapping *prometheus.Desc
 }
@@ -44,27 +49,35 @@ var _ alloy_service.Service = (*Service)(nil)
 // Parameters:
 //   - l: Logger for the service
 //   - r: Prometheus registerer for metrics
-//   - shards: Number of shards (currently only shards=1 is supported)
+//   - shards: Number of shards (1 = no sharding, 2-256 = sharded)
 //
-// For now, only shards=1 is implemented. Higher values will panic.
-// The sharding implementation will be added in a future commit.
+// With shards=1 (default), uses single-shard implementation with zero overhead.
+// With shards>1, distributes load across N independent shards to reduce mutex contention.
 func New(l log.Logger, r prometheus.Registerer, shards int) *Service {
 	if l == nil {
 		l = log.NewNopLogger()
 	}
 	if shards <= 0 {
+		level.Warn(l).Log("msg", "shards <= 0, setting to 1", "shards", shards)
 		shards = 1
 	}
-	if shards != 1 {
-		panic("labelstore: only shards=1 is currently supported")
+	if shards > maxShards {
+		level.Warn(l).Log("msg", "shards > maxShards, setting to maxShards", "shards", shards, "maxShards", maxShards)
+		shards = maxShards
 	}
 
 	s := &Service{
 		log:                 l,
-		single:              newSingle(l, r),
 		totalIDs:            prometheus.NewDesc("alloy_labelstore_global_ids_count", "Total number of global ids.", nil, nil),
 		idsInRemoteWrapping: prometheus.NewDesc("alloy_labelstore_remote_store_ids_count", "Total number of ids per remote write", []string{"remote_name"}, nil),
 	}
+
+	if shards == 1 {
+		s.single = newSingle(l, r)
+	} else {
+		s.sharded = newSharded(l, r, shards)
+	}
+
 	_ = r.Register(s)
 	return s
 }
@@ -87,12 +100,14 @@ func (s *Service) Describe(m chan<- *prometheus.Desc) {
 }
 
 func (s *Service) Collect(m chan<- prometheus.Metric) {
-	// Delegate to single implementation
 	if s.single != nil {
 		s.single.collect(m, s.totalIDs, s.idsInRemoteWrapping)
 		return
 	}
-	// TODO: delegate to sharded when implemented
+	if s.sharded != nil {
+		s.sharded.collect(m, s.totalIDs, s.idsInRemoteWrapping)
+		return
+	}
 }
 
 // Run starts a Service. Run must block until the provided
@@ -107,8 +122,9 @@ func (s *Service) Run(ctx context.Context, host alloy_service.Host) error {
 		case <-staleCheck.C:
 			if s.single != nil {
 				s.single.CheckAndRemoveStaleMarkers()
+			} else if s.sharded != nil {
+				s.sharded.CheckAndRemoveStaleMarkers()
 			}
-			// TODO: delegate to sharded when implemented
 		}
 	}
 }
@@ -141,8 +157,7 @@ func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	if s.single != nil {
 		return s.single.GetOrAddGlobalRefID(l)
 	}
-	// TODO: delegate to sharded when implemented
-	panic("labelstore: sharded implementation not yet available")
+	return s.sharded.GetOrAddGlobalRefID(l)
 }
 
 // GetLocalRefID returns the local refid for a component global combo, or 0 if not found
@@ -150,8 +165,7 @@ func (s *Service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
 	if s.single != nil {
 		return s.single.GetLocalRefID(componentID, globalRefID)
 	}
-	// TODO: delegate to sharded when implemented
-	panic("labelstore: sharded implementation not yet available")
+	return s.sharded.GetLocalRefID(componentID, globalRefID)
 }
 
 // AddLocalLink is called by a remote_write endpoint component to add mapping from local ref and global ref
@@ -160,8 +174,7 @@ func (s *Service) AddLocalLink(componentID string, globalRefID uint64, localRefI
 		s.single.AddLocalLink(componentID, globalRefID, localRefID)
 		return
 	}
-	// TODO: delegate to sharded when implemented
-	panic("labelstore: sharded implementation not yet available")
+	s.sharded.AddLocalLink(componentID, globalRefID, localRefID)
 }
 
 // ReplaceLocalLink updates an existing local to global mapping for a component.
@@ -170,8 +183,7 @@ func (s *Service) ReplaceLocalLink(componentID string, globalRefID uint64, cache
 		s.single.ReplaceLocalLink(componentID, globalRefID, cachedLocalRef, newLocalRef)
 		return
 	}
-	// TODO: delegate to sharded when implemented
-	panic("labelstore: sharded implementation not yet available")
+	s.sharded.ReplaceLocalLink(componentID, globalRefID, cachedLocalRef, newLocalRef)
 }
 
 // TrackStaleness adds a stale marker if NaN, then that reference will be removed on the next check.
@@ -180,8 +192,7 @@ func (s *Service) TrackStaleness(ids []StalenessTracker) {
 		s.single.TrackStaleness(ids)
 		return
 	}
-	// TODO: delegate to sharded when implemented
-	panic("labelstore: sharded implementation not yet available")
+	s.sharded.TrackStaleness(ids)
 }
 
 // CheckAndRemoveStaleMarkers is called to garbage collect items that have grown stale over stale duration (10m)
@@ -190,6 +201,5 @@ func (s *Service) CheckAndRemoveStaleMarkers() {
 		s.single.CheckAndRemoveStaleMarkers()
 		return
 	}
-	// TODO: delegate to sharded when implemented
-	panic("labelstore: sharded implementation not yet available")
+	s.sharded.CheckAndRemoveStaleMarkers()
 }

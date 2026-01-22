@@ -170,9 +170,9 @@ func TestLabelStoreBasicOperations(t *testing.T) {
 		shards int
 	}{
 		{"single shard", 1},
-		// TODO: add more shard counts when multi-shard is implemented
-		// {"4 shards", 4},
-		// {"32 shards", 32},
+		{"4 shards", 4},
+		{"32 shards", 32},
+		{"64 shards", 64},
 	}
 
 	for _, tc := range testCases {
@@ -205,6 +205,8 @@ func TestLabelStoreLocalMapping(t *testing.T) {
 		shards int
 	}{
 		{"single shard", 1},
+		{"4 shards", 4},
+		{"32 shards", 32},
 	}
 
 	for _, tc := range testCases {
@@ -238,6 +240,8 @@ func TestLabelStoreReplaceMapping(t *testing.T) {
 		shards int
 	}{
 		{"single shard", 1},
+		{"4 shards", 4},
+		{"32 shards", 32},
 	}
 
 	for _, tc := range testCases {
@@ -269,6 +273,8 @@ func TestLabelStoreConcurrent(t *testing.T) {
 		shards int
 	}{
 		{"single shard", 1},
+		{"4 shards", 4},
+		{"32 shards", 32},
 	}
 
 	for _, tc := range testCases {
@@ -374,8 +380,9 @@ func BenchmarkHighContention(b *testing.B) {
 	const numGoroutines = 20000
 	const numUniqueLabelSets = 10000
 	const numComponents = 5
+	const numShards = 32
 
-	ls := New(log.NewNopLogger(), prometheus.NewRegistry(), 1)
+	ls := New(log.NewNopLogger(), prometheus.NewRegistry(), numShards)
 
 	// Pre-generate label sets
 	labelSets := make([]labels.Labels, numUniqueLabelSets)
