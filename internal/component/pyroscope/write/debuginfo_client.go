@@ -17,6 +17,7 @@ import (
 
 func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, error) {
 	var creds credentials.TransportCredentials
+	var auth *basicAuthCredential
 	switch u.Scheme {
 	case "http":
 		creds = insecure.NewCredentials()
@@ -30,6 +31,10 @@ func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, e
 		} else {
 			creds = credentials.NewTLS(&tls.Config{})
 		}
+		var err error
+		if auth, err = newGrpcBasicAuthCredentials(e); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
 	}
@@ -37,9 +42,7 @@ func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, e
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
 	}
-	if auth, err := newGrpcBasicAuthCredentials(e); err != nil {
-		return nil, err
-	} else if auth != nil {
+	if auth != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(auth))
 	}
 	cc, err := grpc.NewClient(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), opts...)
