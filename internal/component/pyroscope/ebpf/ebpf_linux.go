@@ -281,8 +281,8 @@ func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
 }
 
 func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
-	extractAsFile := func(pid libpf.PID, file string) (string, error) {
-		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file), nil
+	extractAsFile := func(pid libpf.PID, file string) string {
+		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file)
 	}
 	mf := args.MappingFile.Value()
 	open := func() (process.ReadAtCloser, error) {
@@ -292,14 +292,11 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 		if args.DebuglinkFileName == "" {
 			return fallback()
 		}
-		if file, err := extractAsFile(args.Process.PID(), args.DebuglinkFileName); err != nil {
+		file := extractAsFile(args.Process.PID(), args.DebuglinkFileName)
+		if f, err := os.Open(file); err != nil {
 			return fallback()
 		} else {
-			if f, err := os.Open(file); err != nil {
-				return fallback()
-			} else {
-				return f, nil
-			}
+			return f, nil
 		}
 	}
 	c.appendable.Upload(debuginfo.UploadJob{
