@@ -200,6 +200,24 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 	}
 
 	r.result = req["PROCESS"] && req["REPLICATION CLIENT"] && req["SELECT"] && req["SHOW VIEW"]
+
+	if !r.result {
+		var missing []string
+		if !req["PROCESS"] {
+			missing = append(missing, "PROCESS")
+		}
+		if !req["REPLICATION CLIENT"] {
+			missing = append(missing, "REPLICATION CLIENT")
+		}
+		if !req["SELECT"] {
+			missing = append(missing, "SELECT on performance_schema.*")
+		}
+		if !req["SHOW VIEW"] {
+			missing = append(missing, "SHOW VIEW")
+		}
+		r.value = fmt.Sprintf("missing grants: %s", strings.Join(missing, ", "))
+	}
+
 	return r
 }
 
