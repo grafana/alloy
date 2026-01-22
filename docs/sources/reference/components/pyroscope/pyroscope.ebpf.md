@@ -41,6 +41,11 @@ You can specify multiple `pyroscope.ebpf` components by giving them different la
 pyroscope.ebpf "<LABEL>" {
   targets    = <TARGET_LIST>
   forward_to = <RECEIVER_LIST>
+
+  debug_info {
+    on_target_symbolization = <ON_TARGET_SYMBOLIZATION>
+    upload                  = <UPLOAD>
+  }
 }
 ```
 
@@ -87,7 +92,32 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Blocks
 
-The `pyroscope.ebpf` component doesn't support any blocks. You can configure this component with arguments.
+You can use the following blocks with `pyroscope.ebpf`:
+
+| Hierarchy    | Block        | Description                                             | Required |
+|--------------|--------------|---------------------------------------------------------|----------|
+| `debug_info` | [debug_info] | Configures debug information handling and remote upload. | no       |
+
+[debug_info]: #debug_info
+
+### debug_info
+
+The `debug_info` block configures how the component handles debug information for symbolization. You can use it to enable on-target symbolization, which resolves symbols locally, or to upload debug information to a remote endpoint for server-side symbolization.
+
+You can use the following arguments with the `debug_info` block:
+
+| Name                      | Type   | Description                                                            | Default | Required |
+|---------------------------|--------|------------------------------------------------------------------------|---------|----------|
+| `on_target_symbolization` | `bool` | Enables on-target symbolization using local debug information.         | `true`  | no       |
+| `upload`                  | `bool` | Enables uploading debug information to the remote endpoint.            | `false` | no       |
+| `cache_size`              | `int`  | Size of the LRU cache for tracking uploaded debug information.         | `65536` | no       |
+| `strip_text_section`      | `bool` | Strips the `.text` section from debug information before upload.       | `false` | no       |
+| `queue_size`              | `int`  | Size of the upload queue.                                              | `1024`  | no       |
+| `worker_num`              | `int`  | Number of worker goroutines for uploading debug information.           | `8`     | no       |
+
+When `on_target_symbolization` is enabled, the component resolves symbols locally using debug files found on the host. This is the default behavior and works well when debug symbols are available on the profiled system.
+
+When `upload` is enabled, the component uploads debug information to the configured `pyroscope.write` endpoint, allowing the server to perform symbolization instead. This reduces CPU and memory usage on the profiled host, which is useful in resource-constrained environments.
 
 ## Exported fields
 
