@@ -149,3 +149,4 @@ Thanks to all the people who have already contributed!
 </a>
 
 [contributors guide]: https://github.com/grafana/alloy/blob/main/docs/developer/contributing.md
+
