@@ -41,7 +41,7 @@ func (s *signature) completed() bool {
 
 // equal compares two signatures. For incomplete signatures, it compares only
 // the overlapping bytes. For complete signatures, both must be the same length and content.
-// If signature has a lenght of 0 equal will always return false.
+// If signature has a length of 0 equal will always return false.
 func (s *signature) equal(other *signature) bool {
 	len1 := len(s.d)
 	if len1 == 0 {
