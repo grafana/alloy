@@ -29,7 +29,7 @@ func TestJournal(t *testing.T) {
 		FormatAsJson: false,
 		MaxAge:       7 * time.Hour,
 		Path:         "",
-		Receivers:    []loki.LogsReceiver{lr},
+		ForwardTo:    []loki.LogsReceiver{lr},
 	})
 	require.NoError(t, err)
 	ctx := t.Context()
@@ -45,11 +45,11 @@ func TestJournal(t *testing.T) {
 		case <-ctx.Done():
 			found = true
 			// Timed out getting message
+			// FIXME: this is funny
 			require.True(t, false)
 		case msg := <-lr.Chan():
 			if strings.Contains(msg.Line, ts) {
 				found = true
-				break
 			}
 		}
 	}

@@ -116,7 +116,7 @@ func TestTailer(t *testing.T) {
 
 	relabels := parseRelabelRules(t, relabelCfg)
 	registry := prometheus.NewRegistry()
-	jt, err := newTailerWithReader(newMetrics(registry), logger, handler, ps, "test", relabels,
+	jt, err := newTailerWithReader(newMetrics(registry), logger, handler.Receiver(), ps, "test", relabels,
 		&scrapeconfig.JournalTargetConfig{}, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
@@ -170,7 +170,7 @@ func TestTailerParsingErrors(t *testing.T) {
 	var relabels []*relabel.Config
 
 	registry := prometheus.NewRegistry()
-	jt, err := newTailerWithReader(newMetrics(registry), logger, handler, ps, "test", relabels,
+	jt, err := newTailerWithReader(newMetrics(registry), logger, handler.Receiver(), ps, "test", relabels,
 		&scrapeconfig.JournalTargetConfig{}, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
@@ -243,7 +243,7 @@ func TestTailer_JSON(t *testing.T) {
 	relabels := parseRelabelRules(t, relabelCfg)
 	cfg := &scrapeconfig.JournalTargetConfig{JSON: true}
 
-	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", relabels,
+	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, "test", relabels,
 		cfg, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
@@ -295,7 +295,7 @@ func TestTailer_Since(t *testing.T) {
 		MaxAge: "4h",
 	}
 
-	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
+	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, "test", nil,
 		&cfg, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 
@@ -335,7 +335,7 @@ func TestTailer_Cursor_TooOld(t *testing.T) {
 		RealtimeTimestamp: uint64(entryTs.UnixNano()),
 	})
 
-	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
+	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, "test", nil,
 		&cfg, newMockJournalReader, journalEntry)
 	require.NoError(t, err)
 
@@ -375,7 +375,7 @@ func TestTailer_Cursor_NotTooOld(t *testing.T) {
 		RealtimeTimestamp: uint64(entryTs.UnixNano() / int64(time.Microsecond)),
 	})
 
-	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
+	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, "test", nil,
 		&cfg, newMockJournalReader, journalEntry)
 	require.NoError(t, err)
 
@@ -425,7 +425,7 @@ func TestTailer_Matches(t *testing.T) {
 		Matches: "UNIT=foo.service PRIORITY=1",
 	}
 
-	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler, ps, "test", nil,
+	jt, err := newTailerWithReader(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, "test", nil,
 		&cfg, newMockJournalReader, newMockJournalEntry(nil))
 	require.NoError(t, err)
 

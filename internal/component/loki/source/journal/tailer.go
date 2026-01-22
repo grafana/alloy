@@ -102,7 +102,7 @@ var defaultJournalEntryFunc = func(c sdjournal.JournalReaderConfig, cursor strin
 type tailer struct {
 	metrics       *metrics
 	logger        log.Logger
-	handler       loki.EntryHandler
+	recv          loki.LogsReceiver
 	positions     positions.Positions
 	positionPath  string
 	relabelConfig []*relabel.Config
@@ -117,7 +117,7 @@ type tailer struct {
 func newTailer(
 	metrics *metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	recv loki.LogsReceiver,
 	positions positions.Positions,
 	jobName string,
 	relabelConfig []*relabel.Config,
@@ -127,7 +127,7 @@ func newTailer(
 	return newTailerWithReader(
 		metrics,
 		logger,
-		handler,
+		recv,
 		positions,
 		jobName,
 		relabelConfig,
@@ -140,7 +140,7 @@ func newTailer(
 func newTailerWithReader(
 	metrics *metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	recv loki.LogsReceiver,
 	pos positions.Positions,
 	jobName string,
 	relabelConfig []*relabel.Config,
@@ -163,7 +163,7 @@ func newTailerWithReader(
 	t := &tailer{
 		metrics:       metrics,
 		logger:        logger,
-		handler:       handler,
+		recv:          recv,
 		positions:     pos,
 		positionPath:  positionPath,
 		relabelConfig: relabelConfig,
@@ -339,7 +339,7 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 
 	t.metrics.journalLines.Inc()
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
-	t.handler.Chan() <- loki.Entry{
+	t.recv.Chan() <- loki.Entry{
 		Labels: lbls,
 		Entry: push.Entry{
 			Line:      msg,
@@ -353,7 +353,6 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 func (t *tailer) Stop() error {
 	t.until <- time.Now()
 	err := t.r.Close()
-	t.handler.Stop()
 	return err
 }
 
