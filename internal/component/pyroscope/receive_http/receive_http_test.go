@@ -422,9 +422,6 @@ func startComponent(t *testing.T, appendables []pyroscope.Appendable) int {
 			HTTP: &fnet.HTTPConfig{
 				ListenAddress: "localhost",
 				ListenPort:    port,
-				HTTP2: &fnet.HTTP2Config{
-					Enabled: true,
-				},
 			},
 		},
 		ForwardTo: appendables,

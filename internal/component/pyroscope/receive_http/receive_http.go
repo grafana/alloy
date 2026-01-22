@@ -104,6 +104,11 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) update(args component.Arguments) (bool, error) {
 	shutdown := false
 	newArgs := args.(Arguments)
+	// required for debug info upload over grpc over http2 over http server port
+	if newArgs.Server.HTTP.HTTP2 == nil {
+		newArgs.Server.HTTP.HTTP2 = &fnet.HTTP2Config{}
+	}
+	newArgs.Server.HTTP.HTTP2.Enabled = true
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -126,8 +131,6 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 	serverRegistry := prometheus.NewRegistry()
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
-	// required for debug info upload over grpc over http2 over http server port
-	newArgs.Server.HTTP.HTTP2.Enabled = true
 	srv, err := fnet.NewTargetServer(c.logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
 	if err != nil {
 		return shutdown, fmt.Errorf("failed to create server: %w", err)
