@@ -42,7 +42,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
-	github.com/elastic/go-freelru v0.16.0 // indirect
+	github.com/elastic/go-freelru v0.16.0
 	github.com/fatih/color v1.18.0
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -81,7 +81,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
-	github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc
+	github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251023151319-9baba332b98a
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
@@ -1010,6 +1010,11 @@ require (
 	github.com/grafana/databricks-prometheus-exporter v0.0.0-20251219150331-5730cb38c831
 	github.com/rs/zerolog v1.34.0 // indirect
 	gotest.tools/gotestsum v1.13.0 // indirect
+)
+
+require (
+	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1
+	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1
 )
 
 require (

@@ -50,10 +50,11 @@ func newReporter() *PPROFReporter {
 	return NewPPROF(
 		nil,
 		&Config{
-			SamplesPerSecond:          97,
-			ExtraNativeSymbolResolver: nil,
+			SamplesPerSecond: 97,
 		},
 		tp,
+		nil,
+		nil,
 	)
 }
 
@@ -275,7 +276,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		addr: 0xcafe00de,
 	}
 	rep := newReporter()
-	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{
+	rep.symbols = &symbolizer{
 		symbols: map[symbolizerKey]irsymcache.SourceInfo{
 			key: {
 				LineNumber:   9,
@@ -362,7 +363,7 @@ Mappings
 
 func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 	rep := newReporter()
-	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{}
+	rep.symbols = &symbolizer{}
 	rep.cfg.ReporterUnsymbolizedStubs = true
 
 	frames := make(libpf.Frames, 0, 1)

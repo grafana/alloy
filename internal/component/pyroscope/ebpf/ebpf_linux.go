@@ -5,7 +5,9 @@ package ebpf
 import (
 	"context"
 	"os"
+	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -16,17 +18,21 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
 	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
+	"go.opentelemetry.io/ebpf-profiler/process"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	reporter2 "go.opentelemetry.io/ebpf-profiler/reporter"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
@@ -38,6 +44,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			arguments := args.(Arguments)
+
 			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
@@ -57,19 +64,21 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	nfs, err := irsymcache.NewFSCache(irsymcache.TableTableFactory{
-		Options: []lidia.Option{
-			lidia.WithFiles(),
-			lidia.WithLines(),
-		},
-	}, irsymcache.Options{
-		SizeEntries: uint32(args.SymbCacheSizeEntries),
-		Path:        args.SymbCachePath,
-	})
-	if err != nil {
-		return nil, err
+	var symbols *irsymcache.Resolver
+	if args.DebugInfoOptions.OnTargetSymbolizationEnabled {
+		symbols, err = irsymcache.NewFSCache(irsymcache.TableTableFactory{
+			Options: []lidia.Option{
+				lidia.WithFiles(),
+				lidia.WithLines(),
+			},
+		}, irsymcache.Options{
+			SizeEntries: uint32(args.SymbCacheSizeEntries),
+			Path:        args.SymbCachePath,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	cfg.ExecutableReporter = nfs
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -86,18 +95,23 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		targetFinder:           discovery,
 		dynamicProfilingPolicy: dynamicProfilingPolicy,
 		argsUpdate:             make(chan Arguments, 4),
+		symbols:                symbols,
 	}
 
-	cfg.Reporter = reporter.NewPPROF(logger, &reporter.Config{
+	r := reporter.NewPPROF(logger, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
-		ExtraNativeSymbolResolver: nfs,
-		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
+	}, discovery,
+		symbols,
+		func(ctx context.Context, ps []reporter.PPROF) {
 			res.sendProfiles(ctx, ps)
-		}),
-	}, discovery)
+		})
+
+	cfg.Reporter = r
+	cfg.ExecutableReporter = res
+
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -118,6 +132,7 @@ type Component struct {
 
 	healthMut sync.RWMutex
 	health    component.Health
+	symbols   *irsymcache.Resolver
 }
 
 func (c *Component) Run(ctx context.Context) error {
@@ -158,6 +173,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var g run.Group
+
 	g.Add(func() error {
 		for {
 			select {
@@ -252,6 +268,47 @@ func (c *Component) checkTraceFS() {
 	}
 }
 
+func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
+	if md.MappingFile == (libpf.FrameMappingFile{}) {
+		return
+	}
+	if c.symbols != nil {
+		c.symbols.ReportExecutable(md)
+	}
+	if c.args.DebugInfoOptions.UploadEnabled {
+		c.reportExecutableForDebugInfoUpload(md)
+	}
+}
+
+func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
+	extractAsFile := func(pid libpf.PID, file string) (string, error) {
+		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file), nil
+	}
+	mf := args.MappingFile.Value()
+	open := func() (process.ReadAtCloser, error) {
+		fallback := func() (process.ReadAtCloser, error) {
+			return args.Process.OpenMappingFile(args.Mapping)
+		}
+		if args.DebuglinkFileName == "" {
+			return fallback()
+		}
+		if file, err := extractAsFile(args.Process.PID(), args.DebuglinkFileName); err != nil {
+			return fallback()
+		} else {
+			if f, err := os.Open(file); err != nil {
+				return fallback()
+			} else {
+				return f, nil
+			}
+		}
+	}
+	c.appendable.Upload(debuginfo.UploadJob{
+		FrameMappingFileData: mf,
+		Open:                 open,
+		InitArguments:        c.args.DebugInfoOptions,
+	})
+}
+
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
@@ -271,6 +328,15 @@ func NewDefaultArguments() Arguments {
 		UProbeLinks:     []string{},
 		VerboseMode:     false,
 		LazyMode:        false,
+
+		DebugInfoOptions: debuginfo.Arguments{
+			OnTargetSymbolizationEnabled: true,
+			UploadEnabled:                false,
+			CacheSize:                    65536,
+			StripTextSection:             false,
+			QueueSize:                    1024,
+			WorkerNum:                    8,
+		},
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
