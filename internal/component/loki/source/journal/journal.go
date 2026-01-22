@@ -147,7 +147,7 @@ func (c *Component) CurrentHealth() component.Health {
 	if c.healthErr == nil {
 		return component.Health{
 			Health:     component.HealthTypeHealthy,
-			Message:    "journal target is running",
+			Message:    "journal tailer is running",
 			UpdateTime: time.Now(),
 		}
 	}
@@ -168,25 +168,25 @@ func (c *Component) reloadTailer() {
 	rcs := alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
 	c.mut.RUnlock()
 
-	// Stop existing target
+	// Stop existing tailer
 	if tailerToStop != nil {
 		err := tailerToStop.Stop()
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error stopping journal target", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "error stopping journal tailer", "err", err)
 		}
 	}
 
-	// Create new target
+	// Create new tailer
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	c.tailer = nil
 
-	newTarget, err := newTailer(c.metrics, c.opts.Logger, c.recv, c.positions, c.opts.ID, rcs, convertArgs(c.opts.ID, c.args))
+	tailer, err := newTailer(c.metrics, c.opts.Logger, c.recv, c.positions, c.opts.ID, rcs, convertArgs(c.opts.ID, c.args))
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "error creating journal target", "err", err, "path", c.args.Path)
-		c.healthErr = fmt.Errorf("error creating journal target: %w", err)
+		level.Error(c.opts.Logger).Log("msg", "error creating journal tailer", "err", err, "path", c.args.Path)
+		c.healthErr = fmt.Errorf("error creating journal tailer: %w", err)
 	} else {
-		c.tailer = newTarget
+		c.tailer = tailer
 		c.healthErr = nil
 	}
 }
