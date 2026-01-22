@@ -6,6 +6,7 @@ headless: true
 
 | Name                       | Type       | Description                                                                                                                  | Default | Required |
 |----------------------------|------------|------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `default_sample_limit`     | `int`      | The default maximum samples per scrape. Used as the default if the target resource doesn't provide a sample limit.           |         | no       |
 | `default_scrape_interval`  | `duration` | The default interval between scraping targets. Used as the default if the target resource doesn't provide a scrape interval. | `1m`    | no       |
 | `default_scrape_timeout`   | `duration` | The default timeout for scrape requests. Used as the default if the target resource doesn't provide a scrape timeout.        | `10s`   | no       |
 | `scrape_native_histograms` | `bool`     | Whether to scrape native histograms from targets.                                                                            | `false` | no       |
