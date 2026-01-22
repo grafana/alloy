@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -39,8 +38,8 @@ var _ component.Component = (*Component)(nil)
 // Component represents reading from a journal
 type Component struct {
 	mut            sync.RWMutex
-	t              *target.JournalTarget
-	metrics        *target.Metrics
+	t              *JournalTarget
+	metrics        *Metrics
 	o              component.Options
 	handler        chan loki.Entry
 	positions      positions.Positions
@@ -72,7 +71,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		metrics:        target.NewMetrics(o.Registerer),
+		metrics:        NewMetrics(o.Registerer),
 		o:              o,
 		handler:        make(chan loki.Entry),
 		positions:      positionsFile,
@@ -197,7 +196,7 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 
 	// Grab current state
 	c.mut.RLock()
-	var targetToStop *target.JournalTarget
+	var targetToStop *JournalTarget
 	if c.t != nil {
 		targetToStop = c.t
 	}
@@ -221,7 +220,7 @@ func (c *Component) reloadTargets(parentCtx context.Context) {
 	c.t = nil
 	entryHandler := loki.NewEntryHandler(c.handler, func() {})
 
-	newTarget, err := target.NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, c.args))
+	newTarget, err := NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, c.args))
 	if err != nil {
 		level.Error(c.o.Logger).Log("msg", "error creating journal target", "err", err, "path", c.args.Path)
 		c.healthErr = fmt.Errorf("error creating journal target: %w", err)

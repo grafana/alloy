@@ -1,6 +1,6 @@
 //go:build linux && cgo && promtail_journal_enabled
 
-package target
+package journal
 
 // This code is copied from Promtail (https://github.com/grafana/loki/blob/baaaa83c78c03c6b9257afddc0854daec928a755/clients/pkg/promtail/targets/journal/journaltarget.go#L4)
 // with minor edits. The target package is used to configure and run the targets that can read journal entries and forward them
