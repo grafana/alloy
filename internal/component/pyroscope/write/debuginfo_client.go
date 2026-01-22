@@ -45,7 +45,15 @@ func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, e
 	if auth != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(auth))
 	}
-	cc, err := grpc.NewClient(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), opts...)
+	target := u.Host
+	if u.Port() == "" {
+		defaultPort := "80"
+		if u.Scheme == "https" {
+			defaultPort = "443"
+		}
+		target = fmt.Sprintf("%s:%s", u.Hostname(), defaultPort)
+	}
+	cc, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, err
 	}
