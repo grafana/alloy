@@ -4,6 +4,7 @@ package fileext
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -112,4 +113,72 @@ func getFileStandardInfo(f *os.File) (*fileStandardInfo, error) {
 	}
 	runtime.KeepAlive(f)
 	return si, nil
+}
+
+// AtomicWrite performs an atomic write on Windows using ReplaceFileW.
+// This allows replacing a file when it's open with FILE_SHARE_DELETE.
+func AtomicWrite(name string, content []byte) error {
+	var (
+		kernel32     = windows.NewLazySystemDLL("kernel32.dll")
+		replaceFileW = kernel32.NewProc("ReplaceFileW")
+	)
+	dir, filename := filepath.Dir(name), filepath.Base(name)
+
+	// Create temp file in the same directory
+	tmp, err := os.CreateTemp(dir, filename+".tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+
+	// Write content to temp file
+	_, err = tmp.Write(content)
+	if err != nil {
+		tmp.Close()
+		return err
+	}
+
+	// Sync to ensure data is written
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+
+	// Close the temp file before replacing
+	tmp.Close()
+
+	// Convert paths to UTF-16 for ReplaceFileW
+	replacedPath, err := syscall.UTF16PtrFromString(name)
+	if err != nil {
+		return err
+	}
+
+	replacementPath, err := syscall.UTF16PtrFromString(tmpName)
+	if err != nil {
+		return err
+	}
+
+	// Use ReplaceFileW to atomically replace the target file with the temp file
+	// This works even when target file is open with FILE_SHARE_DELETE.
+	// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew
+	ret, _, errno := replaceFileW.Call(
+		uintptr(unsafe.Pointer(replacedPath)),
+		uintptr(unsafe.Pointer(replacementPath)),
+		0, // NULL backup file
+		0, // No flags
+		0, // NULL exclude
+		0, // NULL reserved
+	)
+
+	if ret == 0 {
+		err = errno
+	}
+
+	if err != nil {
+		// Clean up temp file if replace failed
+		return &os.PathError{Op: "AtomicWrite", Path: name, Err: err}
+	}
+
+	return nil
 }
