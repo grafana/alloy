@@ -9,7 +9,6 @@ weight: 200
 # Why {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} simplifies telemetry collection by consolidating multiple collectors into one solution.
-This page explains the problems it solves and helps you determine when it's the right choice.
 
 ## The telemetry collection challenge
 
@@ -30,7 +29,7 @@ Before long, you're managing multiple collectors, learning different configurati
 {{< param "PRODUCT_NAME" >}} addresses these challenges by handling all signal types in a single deployment with one configuration language.
 You learn one tool, deploy one collector, and maintain one system.
 
-## When to use {{< param "PRODUCT_NAME" >}}
+## When to use {{% param "PRODUCT_NAME" %}}
 
 {{< param "PRODUCT_NAME" >}} excels in several scenarios.
 The following sections help you identify whether it fits your needs.
@@ -41,7 +40,7 @@ The following sections help you identify whether it fits your needs.
 
 If you're running separate collectors for metrics and traces, or planning to add log collection to your metrics pipeline, {{< param "PRODUCT_NAME" >}} lets you consolidate into a single solution.
 
-For example, if you monitor infrastructure with Prometheus but want to add distributed tracing for your microservices, you can use {{< param "PRODUCT_NAME" >}} to handle both with one collector instead of deploying the OpenTelemetry Collector alongside your setup.
+For example, if you monitor infrastructure with Prometheus but want to add distributed tracing for your microservices, you can use {{< param "PRODUCT_NAME" >}} to handle both with one collector instead of deploying multiple collectors.
 
 ### You want to reduce collector complexity
 
@@ -97,7 +96,7 @@ The module system allows you to create custom components that combine multiple s
 
 Your platform team can create a standard monitoring module that application teams import and configure with their specific settings, without understanding the underlying complexity.
 
-## When {{< param "PRODUCT_NAME" >}} might not be the right choice
+## When {{% param "PRODUCT_NAME" %}} might not be the right choice
 
 {{< param "PRODUCT_NAME" >}} is powerful and flexible, but it's not always the best fit.
 

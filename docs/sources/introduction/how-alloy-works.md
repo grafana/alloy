@@ -9,7 +9,6 @@ weight: 300
 # How {{% param "FULL_PRODUCT_NAME" %}} works
 
 Understanding the architecture and design of {{< param "PRODUCT_NAME" >}} helps you use it effectively.
-This page explains where it fits in your observability stack and what makes it powerful.
 
 ## Where {{< param "PRODUCT_NAME" >}} fits
 
