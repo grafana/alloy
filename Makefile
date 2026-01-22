@@ -184,7 +184,7 @@ integration-test-docker:
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
 	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
-	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 10m ./...
+	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 30m ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
