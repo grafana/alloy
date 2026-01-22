@@ -74,6 +74,10 @@ func (c *Client) Client() debuginfogrpc.DebuginfoServiceClient {
 }
 
 func (c *Client) Upload(j UploadJob) {
+	cc := c.Client()
+	if cc == nil {
+		return
+	}
 	c.uploaderOnce.Do(func() {
 		var err error
 		c.uploader, err = c.newUploader(j)
@@ -87,7 +91,8 @@ func (c *Client) Upload(j UploadJob) {
 		_ = level.Error(c.logger).Log("msg", "debuginfo uploader not initialized")
 		return
 	}
-	c.uploader.upload(c.client, j)
+
+	c.uploader.upload(cc, j)
 }
 
 func (c *Client) Run(ctx context.Context) error {
