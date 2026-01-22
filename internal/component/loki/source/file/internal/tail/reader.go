@@ -125,9 +125,9 @@ func (r *reader) position() int64 {
 
 // reset prepares the reader for a new file handle, assuming the same encoding.
 // It skips the BOM, resets the buffered reader and decoder, and clears pending data.
-func (r *reader) reset(f *os.File) {
+func (r *reader) reset(f *os.File, offset int64) {
 	// Skip BOM if needed, we asume that the rotated file have the same encoding.
-	offset, _ := skipBOM(f, 0)
+	offset, _ = skipBOM(f, offset)
 	r.pos = offset
 	r.br.Reset(f)
 	r.decoder.Reset()

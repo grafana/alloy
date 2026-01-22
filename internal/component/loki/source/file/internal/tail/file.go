@@ -35,15 +35,22 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		cfg.WatcherConfig = defaultWatcherConfig
 	}
 
-	if cfg.Offset != 0 {
-		// Seek to provided offset
+	sig, err := newSignatureFromFile(f)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	if cfg.Offset > 0 {
 		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
+			f.Close()
 			return nil, err
 		}
 	}
 
-	scanner, err := newReader(f, cfg.Offset, cfg.Encoding)
+	reader, err := newReader(f, cfg.Offset, cfg.Encoding)
 	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
@@ -51,12 +58,13 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:    cfg,
-		logger: logger,
-		file:   f,
-		reader: scanner,
-		ctx:    ctx,
-		cancel: cancel,
+		cfg:       cfg,
+		logger:    logger,
+		file:      f,
+		reader:    reader,
+		ctx:       ctx,
+		cancel:    cancel,
+		signature: sig,
 	}, nil
 }
 
@@ -67,10 +75,10 @@ type File struct {
 	cfg    *Config
 	logger log.Logger
 
-	// protects file, reader, and lastOffset.
-	mu     sync.Mutex
-	file   *os.File
-	reader *reader
+	mu        sync.Mutex
+	file      *os.File
+	reader    *reader
+	signature *signature
 
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
@@ -114,9 +122,22 @@ read:
 		return nil, err
 	}
 
+	offset := f.reader.position()
+
+	// Recompute signature if we've crossed a threshold and haven't reached it yet.
+	// This progressively builds a more complete signature as the file grows.
+	if f.signature.shouldRecompute(offset) {
+		sig, err := newSignatureFromFile(f.file)
+		if err != nil {
+			return nil, err
+		}
+
+		f.signature = sig
+	}
+
 	return &Line{
 		Text:   text,
-		Offset: f.reader.position(),
+		Offset: offset,
 		Time:   time.Now(),
 	}, nil
 }
@@ -205,7 +226,6 @@ func (f *File) drain() {
 			}
 			return
 		}
-
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,
 			Offset: f.reader.position(),
@@ -268,8 +288,32 @@ func (f *File) reopen(truncated bool) error {
 			continue
 		}
 
+		// Compute a new signature and compare it with the previous one to detect atomic writes.
+		// When a file is replaced atomically, the file handle changes but the
+		// initial content may be the same. If signatures match, it's the same file content,
+		// so we continue from the previous offset. If they differ, it's a different
+		// file, so we start from the beginning.
+		sig, err := newSignatureFromFile(file)
+		if err != nil {
+			file.Close()
+			return err
+		}
+
+		var offset int64
+		if !f.signature.equal(sig) {
+			offset = 0
+		} else {
+			offset = min(f.reader.position(), nf.Size())
+		}
+
 		f.file = file
-		f.reader.reset(f.file)
+		f.signature = sig
+		if _, err := f.file.Seek(offset, io.SeekStart); err != nil {
+			file.Close()
+			return err
+		}
+		f.reader.reset(f.file, offset)
+
 		break
 	}
 
