@@ -143,7 +143,13 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 
 ### `rule`
 
+The `rule` block configures relabeling rules to apply to discovered scrape targets.
+The `drop` and `keep` actions filter targets, not individual metrics.
+To filter or relabel metrics after scraping, use a [`prometheus.relabel`][prometheus.relabel] component.
+
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+[prometheus.relabel]: ../prometheus.relabel/
 
 ### `scrape`
 
