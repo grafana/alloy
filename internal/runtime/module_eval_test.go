@@ -365,7 +365,7 @@ func testOptions(t *testing.T) runtime.Options {
 			http_service.New(http_service.Options{}),
 			clusterService,
 			otelService,
-			labelstore.New(nil, prometheus.DefaultRegisterer, 1),
+			labelstore.New(nil, prometheus.DefaultRegisterer, 2),
 			remotecfgService,
 		},
 	}
