@@ -39,7 +39,7 @@ func NewClient(logger log.Logger, newClient func() (*grpc.ClientConn, error),
 		dataPath:  dataPath,
 
 		logger:       logger,
-		uploaderChan: make(chan *uploader),
+		uploaderChan: make(chan *uploader, 1),
 	}
 }
 
