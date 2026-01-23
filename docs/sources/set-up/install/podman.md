@@ -8,16 +8,30 @@ weight: 700
 
 # Run {{% param "FULL_PRODUCT_NAME" %}} in a Podman container
 
-Podman is a container engine that runs without a daemon for developing, managing, and running Open Container Initiative (OCI) containers on Linux systems.
+Podman is a container engine that runs without a daemon for developing, managing, and running Open Container Initiative (OCI) containers.
 You can use Podman as a drop-in replacement for Docker to run {{< param "PRODUCT_NAME" >}}.
 
-{{< param "PRODUCT_NAME" >}} container images are available on the following platforms:
+{{< param "PRODUCT_NAME" >}} is available as a Docker container image that you can use with Podman on the following platforms:
 
-* Linux containers for AMD64 and ARM64.
+* Linux for AMD64 and ARM64.
+* macOS for AMD64 (Intel) and ARM64 (Apple Silicon).
+* Windows for AMD64.
+
+{{< admonition type="note" >}}
+On macOS and Windows, Podman runs containers in a Linux virtual machine managed by `podman machine`.
+The container commands are the same across all platforms once the machine is running.
+{{< /admonition >}}
 
 ## Before you begin
 
-* Install [Podman][] on your computer.
+* Install [Podman][] or [Podman Desktop][] on your computer.
+* On macOS or Windows, initialize and start the Podman machine:
+
+  ```shell
+  podman machine init
+  podman machine start
+  ```
+
 * Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```alloy
@@ -46,9 +60,9 @@ Replace the following:
 * _`<CONFIG_FILE_PATH>`_: The absolute path of the configuration file on your host system.
 
 {{< admonition type="note" >}}
-The `:Z` suffix on the volume mount is required for systems with Security-Enhanced Linux enabled (such as Fedora, RHEL, and CentOS) to set the correct security context for the mounted file.
+The `:Z` suffix on the volume mount is required on Linux systems with Security-Enhanced Linux enabled (such as Fedora, RHEL, and CentOS) to set the correct security context for the mounted file.
 
-If you're running on a system without Security-Enhanced Linux, you can omit the `:Z` suffix.
+If you're running on macOS, Windows, or a Linux system without Security-Enhanced Linux, you can omit the `:Z` suffix.
 {{< /admonition >}}
 
 You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
@@ -76,9 +90,9 @@ Replace the following:
 
 * _`<CONFIG_FILE_PATH>`_: The absolute path of the configuration file on your host system.
 
-## Run with systemd integration
+## Run with systemd integration on Linux
 
-Podman integrates with systemd to manage containers as services.
+On Linux, Podman integrates with systemd to manage containers as services.
 To generate a systemd unit file for {{< param "PRODUCT_NAME" >}}:
 
 1. Run the container with a name:
@@ -172,6 +186,7 @@ podman ps
 * [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Podman]: https://podman.io/
+[Podman Desktop]: https://podman-desktop.io/
 [run]: ../../../reference/cli/run/
 [UI]: ../../../troubleshoot/debug/
 [Configure]: ../../../configure/linux/
