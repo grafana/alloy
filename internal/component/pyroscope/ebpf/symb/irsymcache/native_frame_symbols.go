@@ -23,16 +23,12 @@ func SymbolizeNativeFrame(
 	fileID libpf.FileID,
 	symbolize func(si SourceInfo),
 ) {
+
 	var (
-		si  SourceInfo
-		err error
+		si SourceInfo
 	)
 	if mappingName != process.VdsoPathName {
-		si, err = resolver.ResolveAddress(fileID, uint64(addr))
-		if err != nil {
-			//level.Debug(resolver.logger).Log("msg", "failed to symbolize",
-			//	"fileID", fileID.StringNoQuotes(), "addr", addr, "err", err)
-		}
+		si, _ = resolver.ResolveAddress(fileID, uint64(addr))
 	}
 	symbolize(si)
 }

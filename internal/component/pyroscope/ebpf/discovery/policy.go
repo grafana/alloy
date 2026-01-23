@@ -10,7 +10,7 @@ func (s *ServiceDiscoveryTargetsOnlyPolicy) ProfilingEnabled(
 	p process.Process,
 	containerID string,
 ) bool {
+
 	target := s.Discovery.FindTarget(uint32(p.PID()), containerID)
 	return target != nil
 }
-

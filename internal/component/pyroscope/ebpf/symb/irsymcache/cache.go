@@ -113,6 +113,7 @@ func NewFSCache(logger log.Logger, impl TableFactory, opt Options) (*Resolver, e
 		opt.SizeEntries,
 		func(id libpf.FileID,
 		) uint32 {
+
 			return id.Hash32()
 		})
 	cache.SetOnEvict(func(id libpf.FileID, marker cachedMarker) {
@@ -220,6 +221,7 @@ func (c *Resolver) convert(
 	fid libpf.FileID,
 	md *reporter.ExecutableMetadata,
 ) error {
+
 	var err error
 	var dst *os.File
 	var src *os.File
@@ -284,6 +286,7 @@ func (c *Resolver) ResolveAddress(
 	fid libpf.FileID,
 	addr uint64,
 ) (SourceInfo, error) {
+
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	v, known := c.cache.Get(fid)

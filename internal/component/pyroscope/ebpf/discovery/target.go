@@ -35,7 +35,8 @@ func NewTarget(cid containerID, pid uint32, target DiscoveredTarget) *Target {
 	lset := make(map[string]string, len(target))
 	for k, v := range target {
 		if strings.HasPrefix(k, model.ReservedLabelPrefix) &&
-			k != labels.MetricName {
+			k != "__name__" {
+
 			continue
 		}
 		lset[k] = v
@@ -121,6 +122,7 @@ type targetProducer struct {
 func NewTargetProducer(
 	options TargetsOptions,
 ) TargetProducer {
+
 	res := &targetProducer{}
 	res.setTargets(options)
 	return res
@@ -162,9 +164,6 @@ func (tf *targetProducer) setTargets(opts TargetsOptions) {
 			containerID2Target[cid] = oco(tf.cid2target[cid], t)
 		}
 	}
-	if len(opts.Targets) > 0 && len(containerID2Target) == 0 && len(pid2Target) == 0 {
-		// log.Warn("targetProducer: No targets found")
-	}
 	tf.cid2target = containerID2Target
 	tf.pid2target = pid2Target
 	if opts.TargetsOnly {
@@ -173,8 +172,6 @@ func (tf *targetProducer) setTargets(opts TargetsOptions) {
 		t := NewTarget("", 0, opts.DefaultTarget)
 		tf.defaultTarget = oco(tf.defaultTarget, t)
 	}
-	//log.Debugf("targetProducer: created targets cids %d pids %d",
-	//	len(tf.cid2target), len(tf.pid2target))
 }
 
 func (tf *targetProducer) findTarget(pid uint32, cid string) *Target {
