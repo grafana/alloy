@@ -48,7 +48,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
-1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`..
+1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`.
 1. Run the following command as Administrator.
 
    {{< code >}}
