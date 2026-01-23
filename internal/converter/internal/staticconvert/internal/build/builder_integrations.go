@@ -51,6 +51,7 @@ import (
 	metricsutils_v2 "github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/windows_exporter"
+	"github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/grafana/alloy/syntax/scanner"
 )
 
@@ -194,11 +195,15 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 		return b.jobNameToCompLabel(jobName)
 	}
 
-	// Extract WAL settings from common config
+	// Extract WAL settings from common config, falling back to instance defaults when unset
+	truncateFrequency := commonConfig.WALTruncateFrequency
+	if truncateFrequency == 0 {
+		truncateFrequency = instance.DefaultConfig.WALTruncateFrequency
+	}
 	walOptions := &remotewrite.WALOptions{
-		TruncateFrequency: commonConfig.WALTruncateFrequency,
-		MinKeepaliveTime:  remotewrite.DefaultWALOptions.MinKeepaliveTime,
-		MaxKeepaliveTime:  remotewrite.DefaultWALOptions.MaxKeepaliveTime,
+		TruncateFrequency: truncateFrequency,
+		MinKeepaliveTime:  instance.DefaultConfig.MinWALTime,
+		MaxKeepaliveTime:  instance.DefaultConfig.MaxWALTime,
 	}
 
 	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, b.globalCtx.IntegrationsRemoteWriteExports, walOptions))
@@ -337,11 +342,23 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 				Receiver: common.ConvertAppendable{Expr: "prometheus.remote_write." + label + ".receiver"},
 			}
 
-			// Extract WAL settings from metrics instance config
+			// Extract WAL settings from metrics instance config, falling back to instance defaults when unset
+			truncFreq := metrics.WALTruncateFrequency
+			if truncFreq == 0 {
+				truncFreq = instance.DefaultConfig.WALTruncateFrequency
+			}
+			minWAL := metrics.MinWALTime
+			if minWAL == 0 {
+				minWAL = instance.DefaultConfig.MinWALTime
+			}
+			maxWAL := metrics.MaxWALTime
+			if maxWAL == 0 {
+				maxWAL = instance.DefaultConfig.MaxWALTime
+			}
 			walOptions = &remotewrite.WALOptions{
-				TruncateFrequency: metrics.WALTruncateFrequency,
-				MinKeepaliveTime:  metrics.MinWALTime,
-				MaxKeepaliveTime:  metrics.MaxWALTime,
+				TruncateFrequency: truncFreq,
+				MinKeepaliveTime:  minWAL,
+				MaxKeepaliveTime:  maxWAL,
 			}
 			break
 		}

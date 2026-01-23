@@ -7,6 +7,11 @@ prometheus.remote_write "metrics_test1" {
 
 		metadata_config { }
 	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
+	}
 }
 
 prometheus.remote_write "metrics_test2" {
@@ -18,6 +23,11 @@ prometheus.remote_write "metrics_test2" {
 		queue_config { }
 
 		metadata_config { }
+	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
 	}
 }
 
@@ -41,6 +51,11 @@ prometheus.remote_write "metrics_test3" {
 
 		metadata_config { }
 	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
+	}
 }
 
 prometheus.remote_write "metrics_test4_sigv4_defaults" {
@@ -53,6 +68,11 @@ prometheus.remote_write "metrics_test4_sigv4_defaults" {
 		metadata_config { }
 
 		sigv4 { }
+	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
 	}
 }
 
@@ -73,6 +93,11 @@ prometheus.remote_write "metrics_test5_sigv4_explicit" {
 			role_arn   = "fake_role_arn"
 		}
 	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
+	}
 }
 
 prometheus.remote_write "metrics_test6_azuread_defaults" {
@@ -89,6 +114,11 @@ prometheus.remote_write "metrics_test6_azuread_defaults" {
 				client_id = "00000000-0000-0000-0000-000000000000"
 			}
 		}
+	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
 	}
 }
 
@@ -107,5 +137,10 @@ prometheus.remote_write "metrics_test7_azuread_explicit" {
 			}
 			cloud = "AzureGovernment"
 		}
+	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
 	}
 }
