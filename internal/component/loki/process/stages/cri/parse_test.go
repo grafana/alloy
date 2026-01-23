@@ -75,7 +75,7 @@ func TestParse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, ok := ParseCRI([]byte(tt.line))
+			got, ok := ParseCRI(tt.line)
 			require.Equal(t, tt.wantValid, ok, "valid")
 			require.Equal(t, tt.wantTS, got.Timestamp, "timestamp")
 			require.Equal(t, tt.wantStream, got.Stream, "stream")

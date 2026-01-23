@@ -1,7 +1,7 @@
 package cri
 
 import (
-	"bytes"
+	"strings"
 	"unicode"
 )
 
@@ -63,9 +63,9 @@ type Parsed struct {
 // The returned values are safe to retain (Timestamp/Content are owned strings).
 // ParseCRI only allocates if the line is valid CRI; for non-CRI lines it returns
 // (Parsed{}, false).
-func ParseCRI(line []byte) (Parsed, bool) {
+func ParseCRI(line string) (Parsed, bool) {
 	var (
-		timestamp []byte
+		timestamp string
 		stream    Stream
 		flag      Flag
 	)
@@ -80,35 +80,35 @@ func ParseCRI(line []byte) (Parsed, bool) {
 	flag, line = parseFlag(line)
 
 	return Parsed{
-		Timestamp: string(timestamp),
+		Timestamp: timestamp,
 		Stream:    stream,
 		Flag:      flag,
-		Content:   string(line),
+		Content:   line,
 	}, true
 }
 
-func parseTimestamp(line []byte) ([]byte, []byte) {
-	i := bytes.IndexFunc(line, unicode.IsSpace)
+func parseTimestamp(line string) (string, string) {
+	i := strings.IndexFunc(line, unicode.IsSpace)
 	if i == -1 {
-		return nil, line
+		return "", line
 	}
 	return line[0:i], skipWhitespaces(line[i:])
 }
 
-func parseStream(line []byte) (Stream, []byte) {
+func parseStream(line string) (Stream, string) {
 	stream := StreamUnknown
 
 	// Optimize this!!
-	if bytes.HasPrefix(line, []byte("stdout")) {
+	if strings.HasPrefix(line, "stdout") {
 		stream, line = StreamStdOut, line[len("stdout"):]
-	} else if bytes.HasPrefix(line, []byte("stderr")) {
+	} else if strings.HasPrefix(line, "stderr") {
 		stream, line = StreamStdErr, line[len("stderr"):]
 	}
 
 	return stream, skipWhitespaces(line)
 }
 
-func parseFlag(line []byte) (Flag, []byte) {
+func parseFlag(line string) (Flag, string) {
 	if len(line) == 0 {
 		return FlagFull, line
 	}
@@ -129,7 +129,7 @@ func parseFlag(line []byte) (Flag, []byte) {
 	return flag, skipWhitespaces(line)
 }
 
-func skipWhitespaces(b []byte) []byte {
+func skipWhitespaces(b string) string {
 	i := 0
 	for i < len(b) {
 		switch b[i] {

@@ -69,7 +69,7 @@ func (c *cri2) Name() string { return StageTypeCRI }
 
 func (c *cri2) Run(in chan Entry) chan Entry {
 	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
-		parsed, ok := crip.ParseCRI([]byte(e.Line))
+		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
 			return []Entry{e}, false
 		}
