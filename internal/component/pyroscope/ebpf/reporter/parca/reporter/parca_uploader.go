@@ -292,7 +292,6 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 	} else {
 		f, err := os.Create(filepath.Join(u.tmp, fileID.StringNoQuotes()))
 		if err != nil {
-			os.Remove(f.Name())
 			return fmt.Errorf("create file: %w", err)
 		}
 		defer os.Remove(f.Name())
