@@ -15,25 +15,28 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
 	"go.opentelemetry.io/ebpf-profiler/process"
-	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+
 	reporter2 "go.opentelemetry.io/ebpf-profiler/reporter"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
@@ -59,14 +62,14 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		return nil, err
 	}
 	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
-	discovery := discovery2.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
+	discovery := alloydiscovery.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
 	ms := newMetrics(reg)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	var symbols *irsymcache.Resolver
+	var nfs *irsymcache.Resolver
 	if args.DebugInfoOptions.OnTargetSymbolizationEnabled {
-		symbols, err = irsymcache.NewFSCache(irsymcache.TableTableFactory{
+		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
 			Options: []lidia.Option{
 				lidia.WithFiles(),
 				lidia.WithLines(),
@@ -81,7 +84,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	}
 
 	if dynamicProfilingPolicy {
-		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
+		cfg.Policy = &alloydiscovery.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
 	} else {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
 	}
@@ -95,9 +98,13 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		targetFinder:           discovery,
 		dynamicProfilingPolicy: dynamicProfilingPolicy,
 		argsUpdate:             make(chan Arguments, 4),
-		symbols:                symbols,
+		symbols:                nfs,
 	}
 
+	var symbols irsymcache.NativeSymbolResolver
+	if nfs != nil {
+		symbols = nfs
+	}
 	r := reporter.NewPPROF(logger, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
@@ -125,7 +132,7 @@ type Component struct {
 	dynamicProfilingPolicy bool
 	argsUpdate             chan Arguments
 	appendable             *pyroscope.Fanout
-	targetFinder           discovery2.TargetProducer
+	targetFinder           alloydiscovery.TargetProducer
 
 	metrics *metrics
 	cfg     *controller.Config
@@ -398,15 +405,15 @@ func (args *Arguments) tracers() string {
 	return strings.Join(tracers, ",")
 }
 
-func (args *Arguments) targetsOptions(dynamicProfilingPolicy bool) discovery2.TargetsOptions {
-	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
+func (args *Arguments) targetsOptions(dynamicProfilingPolicy bool) alloydiscovery.TargetsOptions {
+	targets := make([]alloydiscovery.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
 		targets = append(targets, t.AsMap())
 	}
-	return discovery2.TargetsOptions{
+	return alloydiscovery.TargetsOptions{
 		Targets:     targets,
 		TargetsOnly: dynamicProfilingPolicy,
-		DefaultTarget: discovery2.DiscoveredTarget{
+		DefaultTarget: alloydiscovery.DiscoveredTarget{
 			"service_name": "ebpf/unspecified",
 		},
 	}
