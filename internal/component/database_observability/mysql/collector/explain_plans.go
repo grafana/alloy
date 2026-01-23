@@ -397,9 +397,9 @@ type ExplainPlansArguments struct {
 	DB              *sql.DB
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
+	InitialLookback time.Time
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
-	InitialLookback time.Time
 	DBVersion       string
 
 	Logger log.Logger
@@ -427,12 +427,12 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		dbConnection:   args.DB,
 		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
+		perScrapeRatio: args.PerScrapeRatio,
+		excludeSchemas: args.ExcludeSchemas,
+		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]*queryInfo),
-		excludeSchemas: args.ExcludeSchemas,
-		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
-		lastSeen:       args.InitialLookback,
 		logger:         log.With(args.Logger, "collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
 	}, nil

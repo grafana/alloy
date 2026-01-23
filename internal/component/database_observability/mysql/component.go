@@ -60,6 +60,7 @@ type Arguments struct {
 	Targets                       []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
+	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
@@ -110,10 +111,9 @@ type SetupActorsArguments struct {
 }
 
 type ExplainPlansArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+	InitialLookback time.Duration `alloy:"initial_lookback,attr,optional"`
 }
 
 type LocksArguments struct {
@@ -133,6 +133,7 @@ type HealthCheckArguments struct {
 }
 
 var DefaultArguments = Arguments{
+	ExcludeSchemas:                []string{},
 	AllowUpdatePerfSchemaSettings: false,
 
 	QueryDetailsArguments: QueryDetailsArguments{
@@ -568,10 +569,11 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DB:              c.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
+			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlansCollector, "create", err)
