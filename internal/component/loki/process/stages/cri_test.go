@@ -218,33 +218,23 @@ func TestCRI_tags(t *testing.T) {
 	}
 }
 
-var benchTime = time.Now()
-var benchEnty Entry
-
-const benchLine = "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test"
+var (
+	benchCRITime  = time.Now()
+	benchCRIEntry Entry
+	benchCRILine  = "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test"
+)
 
 func BenchmarkCRI(b *testing.B) {
-	p, _ := NewCRI(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	benchCRI(b, p)
-}
-
-func BenchmarkCRI2(b *testing.B) {
 	p, _ := NewCRI2(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	benchCRI(b, p)
-}
-
-func benchCRI(b *testing.B, stage Stage) {
-	e := newEntry(nil, model.LabelSet{}, benchLine, benchTime)
+	e := newEntry(nil, model.LabelSet{}, benchCRILine, benchCRITime)
 	in := make(chan Entry)
-	out := stage.Run(in)
+	out := p.Run(in)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
-		// FIXME: its not great that we spawn goroutines and allocate on each iteration, it's not really fair...
 		in <- e
-		benchEnty = <-out
-
+		benchCRIEntry = <-out
 	}
 }

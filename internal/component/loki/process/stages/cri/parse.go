@@ -8,14 +8,15 @@ import (
 type Flag int8
 
 const (
+	// FlagFull indicates a full log line.
 	FlagFull Flag = iota
+	// FlagPartial indicates a partial log line.
 	FlagPartial
 )
 
+// String returns the CRI flag representation ("F" or "P").
 func (f Flag) String() string {
 	switch f {
-	case FlagFull:
-		return "F"
 	case FlagPartial:
 		return "P"
 	default:
@@ -26,11 +27,15 @@ func (f Flag) String() string {
 type Stream int8
 
 const (
+	// StreamUnknown indicates the line is not recognized as CRI.
 	StreamUnknown Stream = iota
+	// StreamStdOut indicates stdout log stream.
 	StreamStdOut
+	// StreamStdErr indicates stderr log stream.
 	StreamStdErr
 )
 
+// String returns the CRI stream representation ("stdout" or "stderr").
 func (s Stream) String() string {
 	switch s {
 	case StreamStdOut:
@@ -38,17 +43,26 @@ func (s Stream) String() string {
 	case StreamStdErr:
 		return "stderr"
 	default:
-		return ""
+		return "unknown"
 	}
 }
 
 type Parsed struct {
+	// Timestamp is the raw CRI timestamp field.
 	Timestamp string
-	Stream    Stream
-	Flag      Flag
-	Content   string
+	// Stream is the CRI stream field (stdout/stderr).
+	Stream Stream
+	// Flag is the CRI flag field (F/P).
+	Flag Flag
+	// Content is the log content after the CRI header.
+	Content string
 }
 
+// ParseCRI parses a CRI formatted log line in a lenient way.
+//
+// The returned values are safe to retain (Timestamp/Content are owned strings).
+// ParseCRI only allocates if the line is valid CRI; for non-CRI lines it returns
+// (Parsed{}, false).
 func ParseCRI(line []byte) (Parsed, bool) {
 	var (
 		timestamp []byte
@@ -115,8 +129,6 @@ func parseFlag(line []byte) (Flag, []byte) {
 	return flag, skipWhitespaces(line)
 }
 
-// Not sure if we care about unicode
-// FIXME: I think it's enough to skip only one..
 func skipWhitespaces(b []byte) []byte {
 	i := 0
 	for i < len(b) {
