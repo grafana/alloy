@@ -65,7 +65,9 @@ func (f *Fanout) Client() debuginfogrpc.DebuginfoServiceClient {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 	for _, c := range f.children {
-		return c.Client()
+		if client := c.Client(); client != nil {
+			return client
+		}
 	}
 	return nil
 }
