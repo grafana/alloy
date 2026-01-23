@@ -191,9 +191,8 @@ func (c *cri2) Name() string { return StageTypeCRI }
 
 func (c *cri2) Run(in chan Entry) chan Entry {
 	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
-		parsed := crip.ParseCRI(e.Line)
-
-		if !parsed.Valid() {
+		parsed, ok := crip.ParseCRI([]byte(e.Line))
+		if !ok {
 			return []Entry{e}, false
 		}
 
@@ -203,7 +202,6 @@ func (c *cri2) Run(in chan Entry) chan Entry {
 		e.Extracted["stream"] = parsed.Stream.String()
 
 		e.Line = parsed.Content
-
 		// FIXME, there is some non obvious behaviour when using timestamp stage..
 		ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
 		if err == nil {

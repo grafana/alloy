@@ -1,14 +1,14 @@
 package cri
 
 import (
-	"strings"
+	"bytes"
 	"unicode"
 )
 
 type Flag int8
 
 const (
-	FlagFull Flag = iota + 1
+	FlagFull Flag = iota
 	FlagPartial
 )
 
@@ -26,9 +26,9 @@ func (f Flag) String() string {
 type Stream int8
 
 const (
-	StreamStdOut Stream = iota + 1
+	StreamUnknown Stream = iota
+	StreamStdOut
 	StreamStdErr
-	StreamUnknown
 )
 
 func (s Stream) String() string {
@@ -42,55 +42,59 @@ func (s Stream) String() string {
 	}
 }
 
-// FIXME: avoid unnessisary allocation.
-
 type Parsed struct {
-	// Maybe borrowed string??
 	Timestamp string
 	Stream    Stream
 	Flag      Flag
-
-	// Maybe borrowed string??
-	Content string
+	Content   string
 }
 
-func (p Parsed) Valid() bool {
-	return p.Stream != StreamUnknown
-}
+func ParseCRI(line []byte) (Parsed, bool) {
+	var (
+		timestamp []byte
+		stream    Stream
+		flag      Flag
+	)
 
-func ParseCRI(line string) Parsed {
-	var parsed Parsed
+	timestamp, line = parseTimestamp(line)
 
-	parsed.Timestamp, line = parseTimestamp(line)
-	parsed.Stream, line = parseStream(line)
-	parsed.Flag, line = parseFlag(line)
-	parsed.Content = line
-
-	return parsed
-}
-
-func parseTimestamp(line string) (string, string) {
-	i := strings.IndexFunc(line, unicode.IsSpace)
-	if i == -1 {
-		return "", line
+	stream, line = parseStream(line)
+	if stream == StreamUnknown {
+		return Parsed{}, false
 	}
-	return line[0:i], skipWhitespace(line[i:])
+
+	flag, line = parseFlag(line)
+
+	return Parsed{
+		Timestamp: string(timestamp),
+		Stream:    stream,
+		Flag:      flag,
+		Content:   string(line),
+	}, true
 }
 
-func parseStream(line string) (Stream, string) {
+func parseTimestamp(line []byte) ([]byte, []byte) {
+	i := bytes.IndexFunc(line, unicode.IsSpace)
+	if i == -1 {
+		return nil, line
+	}
+	return line[0:i], skipWhitespaces(line[i:])
+}
+
+func parseStream(line []byte) (Stream, []byte) {
 	stream := StreamUnknown
 
 	// Optimize this!!
-	if strings.HasPrefix(line, "stdout") {
+	if bytes.HasPrefix(line, []byte("stdout")) {
 		stream, line = StreamStdOut, line[len("stdout"):]
-	} else if strings.HasPrefix(line, "stderr") {
+	} else if bytes.HasPrefix(line, []byte("stderr")) {
 		stream, line = StreamStdErr, line[len("stderr"):]
 	}
 
-	return stream, skipWhitespace(line)
+	return stream, skipWhitespaces(line)
 }
 
-func parseFlag(line string) (Flag, string) {
+func parseFlag(line []byte) (Flag, []byte) {
 	if len(line) == 0 {
 		return FlagFull, line
 	}
@@ -108,17 +112,20 @@ func parseFlag(line string) (Flag, string) {
 		line = line[1:]
 	}
 
-	return flag, skipWhitespace(line)
+	return flag, skipWhitespaces(line)
 }
 
-func skipWhitespace(line string) string {
-	// Iterate over runes starting at byte index i
-	for i, r := range line {
-		if !unicode.IsSpace(r) {
-			return line[i:]
+// Not sure if we care about unicode
+// FIXME: I think it's enough to skip only one..
+func skipWhitespaces(b []byte) []byte {
+	i := 0
+	for i < len(b) {
+		switch b[i] {
+		case ' ':
+			i++
+		default:
+			return b[i:]
 		}
 	}
-
-	// Only whitespace until end
-	return line
+	return b
 }
