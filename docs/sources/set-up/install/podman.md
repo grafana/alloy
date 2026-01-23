@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/set-up/install/podman/
 description: Learn how to run Grafana Alloy in a Podman container
 menuTitle: Podman
 title: Run Grafana Alloy in a Podman container
-weight: 110
+weight: 700
 ---
 
 # Run {{% param "FULL_PRODUCT_NAME" %}} in a Podman container

@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Linux
 menuTitle: Linux
 title: Install Grafana Alloy on Linux
-weight: 300
+weight: 200
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Linux

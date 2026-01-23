@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/set-up/install/openshift/
 description: Learn how to deploy Grafana Alloy on OpenShift
 menuTitle: OpenShift
 title: Deploy Grafana Alloy on OpenShift
-weight: 530
+weight: 650
 ---
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}} on OpenShift

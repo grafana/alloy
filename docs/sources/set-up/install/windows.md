@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Windows
 menuTitle: Windows
 title: Install Grafana Alloy on Windows
-weight: 500
+weight: 300
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Windows

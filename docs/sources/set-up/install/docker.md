@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Docker
 menuTitle: Docker
 title: Run Grafana Alloy in a Docker container
-weight: 100
+weight: 350
 ---
 
 # Run {{% param "FULL_PRODUCT_NAME" %}} in a Docker container
