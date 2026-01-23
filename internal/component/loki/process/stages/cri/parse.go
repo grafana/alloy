@@ -58,11 +58,11 @@ type Parsed struct {
 	Content string
 }
 
-// ParseCRI parses a CRI formatted log line in a lenient way.
-//
-// The returned values are safe to retain (Timestamp/Content are owned strings).
-// ParseCRI only allocates if the line is valid CRI; for non-CRI lines it returns
-// (Parsed{}, false).
+// ParseCRI parses a CRI formatted log line, <TIMESTAMP> <STREAM> <FLAG> <CONTENT>.
+// STREAM is "stdout" or "stderr" and FLAG is "F" (full) or "P" (partial).
+// Parsing is not strict: multiple spaces between fields are accepted; FLAG may be
+// omitted (defaults to full); CONTENT may be empty; and TIMESTAMP is treated as
+// the first non-space token without validation.
 func ParseCRI(line string) (Parsed, bool) {
 	var (
 		timestamp string
