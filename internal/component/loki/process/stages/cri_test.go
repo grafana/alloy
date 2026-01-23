@@ -14,89 +14,84 @@ import (
 )
 
 var (
-	dockerRaw       = `{"log":"level=info ts=2019-04-30T02:12:41.844179Z caller=filetargetmanager.go:180 msg=\"Adding target\" key=\"{com_docker_deploy_namespace=\\\"docker\\\", com_docker_fry=\\\"compose.api\\\", com_docker_image_tag=\\\"v0.4.12\\\", container_name=\\\"compose\\\", instance=\\\"compose-api-cbff6dfc9-cqfr8\\\", job=\\\"docker/compose-api\\\", namespace=\\\"docker\\\", pod_template_hash=\\\"769928975\\\"}\"\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}`
-	dockerProcessed = `level=info ts=2019-04-30T02:12:41.844179Z caller=filetargetmanager.go:180 msg="Adding target" key="{com_docker_deploy_namespace=\"docker\", com_docker_fry=\"compose.api\", com_docker_image_tag=\"v0.4.12\", container_name=\"compose\", instance=\"compose-api-cbff6dfc9-cqfr8\", job=\"docker/compose-api\", namespace=\"docker\", pod_template_hash=\"769928975\"}"
-`
-	dockerInvalidTimestampRaw = `{"log":"log message\n","stream":"stderr","time":"hi!"}`
-	dockerTestTimeNow         = time.Now()
-)
-
-func TestNewDocker(t *testing.T) {
-	loc, err := time.LoadLocation("UTC")
-	if err != nil {
-		t.Fatal("could not parse timezone", err)
-	}
-
-	tests := map[string]struct {
-		entry          string
-		expectedEntry  string
-		t              time.Time
-		expectedT      time.Time
-		labels         map[string]string
-		expectedLabels map[string]string
-	}{
-		"happy path": {
-			dockerRaw,
-			dockerProcessed,
-			time.Now(),
-			time.Date(2019, 4, 30, 02, 12, 41, 844351500, loc),
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
-			},
-		},
-		"invalid timestamp": {
-			dockerInvalidTimestampRaw,
-			"log message\n",
-			dockerTestTimeNow,
-			dockerTestTimeNow,
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
-			},
-		},
-		"invalid json": {
-			"i'm not json!",
-			"i'm not json!",
-			dockerTestTimeNow,
-			dockerTestTimeNow,
-			map[string]string{},
-			map[string]string{},
-		},
-	}
-
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
-			t.Parallel()
-			p, err := NewDocker(log.NewNopLogger(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if err != nil {
-				t.Fatalf("failed to create Docker parser: %s", err)
-			}
-			out := processEntries(p, newEntry(nil, toLabelSet(tt.labels), tt.entry, tt.t))[0]
-
-			assertLabels(t, tt.expectedLabels, out.Labels)
-			assert.Equal(t, tt.expectedEntry, out.Line, "did not receive expected log entry")
-			if out.Timestamp.Unix() != tt.expectedT.Unix() {
-				t.Fatalf("mismatch ts want: %s got:%s", tt.expectedT, tt.t)
-			}
-		})
-	}
-}
-
-var (
 	criTestTimeStr = "2019-01-01T01:00:00.000000001Z"
 	criTestTime, _ = time.Parse(time.RFC3339Nano, criTestTimeStr)
 	criTestTime2   = time.Now()
 )
 
-type testEntry struct {
-	labels model.LabelSet
-	line   string
+func TestCRI(t *testing.T) {
+	tests := map[string]struct {
+		entry          string
+		expectedLine   string
+		ts             time.Time
+		expectedTs     time.Time
+		expectedLabels model.LabelSet
+	}{
+		"happy path": {
+			criTestTimeStr + " stderr F message",
+			"message",
+			time.Now(),
+			criTestTime,
+			model.LabelSet{
+				"stream": "stderr",
+			},
+		},
+		"multi line pass": {
+			criTestTimeStr + " stderr F message\nmessage2",
+			"message\nmessage2",
+			time.Now(),
+			criTestTime,
+			model.LabelSet{
+				"stream": "stderr",
+			},
+		},
+		"invalid timestamp": {
+			"3242 stderr F message",
+			"message",
+			criTestTime2,
+			criTestTime2,
+			model.LabelSet{
+				"stream": "stderr",
+			},
+		},
+		"invalid line": {
+			"i'm invalid!!!",
+			"i'm invalid!!!",
+			criTestTime2,
+			criTestTime2,
+			model.LabelSet{},
+		},
+		"gracefully handle without flag": {
+			entry:          "something stderr looks like it could be cri",
+			expectedLine:   "looks like it could be cri",
+			ts:             criTestTime2,
+			expectedTs:     criTestTime2,
+			expectedLabels: model.LabelSet{"stream": "stderr"},
+		},
+	}
+
+	for tName, tt := range tests {
+		t.Run(tName, func(t *testing.T) {
+			t.Parallel()
+
+			p, err := NewCRI2(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			require.NoError(t, err)
+
+			out := processEntries(p, newEntry(nil, model.LabelSet{}, tt.entry, tt.ts))[0]
+			assert.EqualValues(t, tt.expectedLabels, out.Labels)
+			assert.Equal(t, tt.expectedLine, out.Line, "did not receive expected log entry")
+			assert.Equal(t, tt.expectedTs.Unix(), out.Timestamp.Unix())
+		})
+	}
 }
 
 func TestCRI_tags(t *testing.T) {
-	cases := []struct {
+	type testEntry struct {
+		labels model.LabelSet
+		line   string
+	}
+
+	type testCase struct {
 		name                       string
 		lines                      []string
 		expected                   []string
@@ -105,7 +100,9 @@ func TestCRI_tags(t *testing.T) {
 		maxPartialLineSizeTruncate bool
 		entries                    []testEntry
 		err                        error
-	}{
+	}
+
+	cases := []testCase{
 		{
 			name:            "tag F",
 			maxPartialLines: 100,
@@ -133,7 +130,6 @@ func TestCRI_tags(t *testing.T) {
 			name: "tag P multi-stream with maxPartialLines exceeded",
 			entries: []testEntry{
 				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 1 ", labels: model.LabelSet{"label1": "val1", "label2": "val2"}},
-
 				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 2 ", labels: model.LabelSet{"label1": "val1"}},
 				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 3 ", labels: model.LabelSet{"label1": "val1", "label2": "val2"}},
 				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 4 ", labels: model.LabelSet{"label1": "val3"}},
@@ -193,7 +189,7 @@ func TestCRI_tags(t *testing.T) {
 				MaxPartialLineSize:         tt.maxPartialLineSize,
 				MaxPartialLineSizeTruncate: tt.maxPartialLineSizeTruncate,
 			}
-			p, err := NewCRI(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI2(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			got := make([]string, 0)
@@ -222,71 +218,33 @@ func TestCRI_tags(t *testing.T) {
 	}
 }
 
-func TestNewCri(t *testing.T) {
-	tests := map[string]struct {
-		entry          string
-		expectedEntry  string
-		t              time.Time
-		expectedT      time.Time
-		labels         map[string]string
-		expectedLabels map[string]string
-	}{
-		"happy path": {
-			criTestTimeStr + " stderr F message",
-			"message",
-			time.Now(),
-			criTestTime,
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
-			},
-		},
-		"multi line pass": {
-			criTestTimeStr + " stderr F message\nmessage2",
-			"message\nmessage2",
-			time.Now(),
-			criTestTime,
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
-			},
-		},
-		"invalid timestamp": {
-			"3242 stderr F message",
-			"message",
-			criTestTime2,
-			criTestTime2,
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
-			},
-		},
-		"invalid line": {
-			"i'm invalid!!!",
-			"i'm invalid!!!",
-			criTestTime2,
-			criTestTime2,
-			map[string]string{},
-			map[string]string{},
-		},
-	}
+var benchTime = time.Now()
+var benchEnty Entry
 
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
-			t.Parallel()
-			cfg := DefaultCRIConfig
-			p, err := NewCRI(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if err != nil {
-				t.Fatalf("failed to create CRI parser: %s", err)
-			}
-			out := processEntries(p, newEntry(nil, toLabelSet(tt.labels), tt.entry, tt.t))[0]
+const benchLine = "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test"
 
-			assertLabels(t, tt.expectedLabels, out.Labels)
-			assert.Equal(t, tt.expectedEntry, out.Line, "did not receive expected log entry")
-			if out.Timestamp.Unix() != tt.expectedT.Unix() {
-				t.Fatalf("mismatch ts want: %s got:%s", tt.expectedT, tt.t)
-			}
-		})
+func BenchmarkCRI(b *testing.B) {
+	p, _ := NewCRI(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	benchCRI(b, p)
+}
+
+func BenchmarkCRI2(b *testing.B) {
+	p, _ := NewCRI2(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	benchCRI(b, p)
+}
+
+func benchCRI(b *testing.B, stage Stage) {
+	e := newEntry(nil, model.LabelSet{}, benchLine, benchTime)
+	in := make(chan Entry)
+	out := stage.Run(in)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		// FIXME: its not great that we spawn goroutines and allocate on each iteration, it's not really fair...
+		in <- e
+		benchEnty = <-out
+
 	}
 }
