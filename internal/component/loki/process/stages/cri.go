@@ -50,24 +50,24 @@ func (args *CRIConfig) Validate() error {
 }
 
 func NewCRI(logger log.Logger, cfg CRIConfig, _ prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
-	return &cri2{
+	return &cri{
 		logger:       logger,
 		cfg:          cfg,
 		partialLines: make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
 	}, nil
 }
 
-var _ Stage = (*cri2)(nil)
+var _ Stage = (*cri)(nil)
 
-type cri2 struct {
+type cri struct {
 	logger       log.Logger
 	cfg          CRIConfig
 	partialLines map[model.Fingerprint]Entry
 }
 
-func (c *cri2) Name() string { return StageTypeCRI }
+func (c *cri) Name() string { return StageTypeCRI }
 
-func (c *cri2) Run(in chan Entry) chan Entry {
+func (c *cri) Run(in chan Entry) chan Entry {
 	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
 		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
@@ -138,10 +138,10 @@ func (c *cri2) Run(in chan Entry) chan Entry {
 	})
 }
 
-func (c *cri2) ensureTruncateIfRequired(e *Entry) {
+func (c *cri) ensureTruncateIfRequired(e *Entry) {
 	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
 		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
 	}
 }
 
-func (c *cri2) Cleanup() {}
+func (c *cri) Cleanup() {}
