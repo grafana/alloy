@@ -74,7 +74,7 @@ func TestCRI(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 
-			p, err := NewCRI2(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			out := processEntries(p, newEntry(nil, model.LabelSet{}, tt.entry, tt.ts))[0]
@@ -93,13 +93,11 @@ func TestCRI_tags(t *testing.T) {
 
 	type testCase struct {
 		name                       string
-		lines                      []string
 		expected                   []string
 		maxPartialLines            int
 		maxPartialLineSize         uint64
 		maxPartialLineSizeTruncate bool
 		entries                    []testEntry
-		err                        error
 	}
 
 	cases := []testCase{
@@ -189,7 +187,7 @@ func TestCRI_tags(t *testing.T) {
 				MaxPartialLineSize:         tt.maxPartialLineSize,
 				MaxPartialLineSizeTruncate: tt.maxPartialLineSizeTruncate,
 			}
-			p, err := NewCRI2(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			got := make([]string, 0)
@@ -225,7 +223,7 @@ var (
 )
 
 func BenchmarkCRI(b *testing.B) {
-	p, _ := NewCRI2(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, _ := NewCRI(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	e := newEntry(nil, model.LabelSet{}, benchCRILine, benchCRITime)
 	in := make(chan Entry)
 	out := p.Run(in)
