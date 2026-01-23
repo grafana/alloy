@@ -8,6 +8,6 @@ headless: true
 > Grafana doesn't offer commercial support for this component.
 > To enable and use community components, you must set the `--feature.community-components.enabled` [flag][] to `true`.
 >
-> Refer to [Community components](get-started/components/community-components/) for more information.
+> Refer to [Community components](../../../get-started/components/community-components/) for more information.
 
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
