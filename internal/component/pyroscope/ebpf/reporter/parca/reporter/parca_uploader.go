@@ -81,6 +81,15 @@ func NewParcaSymbolUploader(
 	}
 
 	if err := filepath.Walk(cacheDirectory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			level.Warn(logger).Log("msg", "failed to access cached file during walk", "path", path, "err", err)
+			return nil
+		}
+
+		if info == nil {
+			level.Warn(logger).Log("msg", "filepath.Walk returned nil FileInfo", "path", path)
+			return nil
+		}
 		if info.IsDir() {
 			return nil
 		}
