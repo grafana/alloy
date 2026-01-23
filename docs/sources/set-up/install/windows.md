@@ -117,7 +117,7 @@ To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the
 
 ### Uninstall with WinGet
 
-To install {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
+To uninstall {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
 
 {{< code >}}
 

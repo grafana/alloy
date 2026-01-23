@@ -65,11 +65,11 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
             ensure   => 'present',
             name     => 'grafana',
             descr    => 'grafana',
-            baseurl  => 'https://packages.grafana.com/oss/rpm',
-            gpgkey   => 'https://packages.grafana.com/gpg.key',
+            baseurl  => 'https://rpm.grafana.com',
+            gpgkey   => 'https://rpm.grafana.com/gpg.key',
             enabled  => '1',
             gpgcheck => '1',
-            target   => '/etc/yum.repo.d/grafana.repo',
+            target   => '/etc/yum.repos.d/grafana.repo',
           } -> package { 'alloy':
           } -> service { 'alloy':
             ensure    => running,

@@ -125,7 +125,7 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
    ```
 
    ```rhel-fedora
-   sudo rm -i /etc/yum.repos.d/rpm.grafana.repo
+   sudo rm -i /etc/yum.repos.d/grafana.repo
    ```
 
    ```suse-opensuse

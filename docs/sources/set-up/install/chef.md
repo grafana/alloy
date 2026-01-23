@@ -49,7 +49,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
       elsif platform_family?('rhel', 'amazon', 'fedora')
         yum_repository 'grafana' do
           description 'grafana'
-          baseurl 'https://rpm.grafana.com/oss/rpm'
+          baseurl 'https://rpm.grafana.com'
           gpgcheck true
           gpgkey 'https://rpm.grafana.com/gpg.key'
           enabled true
