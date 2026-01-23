@@ -110,10 +110,10 @@ type SetupActorsArguments struct {
 }
 
 type ExplainPlansArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+	InitialLookback time.Duration `alloy:"initial_lookback,attr,optional"`
+	ExcludeSchemas  []string      `alloy:"exclude_schemas,attr,optional"`
 }
 
 type LocksArguments struct {
@@ -160,6 +160,7 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 		InitialLookback: 24 * time.Hour,
+		ExcludeSchemas:  []string{},
 	},
 
 	LocksArguments: LocksArguments{
@@ -568,10 +569,11 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DB:              c.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeSchemas:  c.args.ExplainPlansArguments.ExcludeSchemas,
+			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlansCollector, "create", err)

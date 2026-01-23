@@ -210,14 +210,13 @@ func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset ti
 }
 
 type ExplainPlansArguments struct {
-	DB              *sql.DB
-	DSN             string
-	ScrapeInterval  time.Duration
-	PerScrapeRatio  float64
-	ExcludeSchemas  []string
-	EntryHandler    loki.EntryHandler
-	InitialLookback time.Time
-	DBVersion       string
+	DB             *sql.DB
+	DSN            string
+	ScrapeInterval time.Duration
+	PerScrapeRatio float64
+	ExcludeSchemas []string
+	EntryHandler   loki.EntryHandler
+	DBVersion      string
 
 	Logger log.Logger
 }
@@ -247,11 +246,11 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		dbDSN:               args.DSN,
 		dbConnectionFactory: defaultDbConnectionFactory,
 		scrapeInterval:      args.ScrapeInterval,
+		perScrapeRatio:      args.PerScrapeRatio,
+		excludeSchemas:      args.ExcludeSchemas,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
 		finishedQueryCache:  make(map[string]*queryInfo),
-		excludeSchemas:      args.ExcludeSchemas,
-		perScrapeRatio:      args.PerScrapeRatio,
 		entryHandler:        args.EntryHandler,
 		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),

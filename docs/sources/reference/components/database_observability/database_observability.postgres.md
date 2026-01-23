@@ -122,11 +122,11 @@ The `azure` block supplies the identifying information for the database being mo
 
 ### `explain_plans`
 
-| Name                           | Type           | Description                                          | Default | Required |
-|--------------------------------|----------------|------------------------------------------------------|---------|----------|
-| `collect_interval`             | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
-| `per_collect_ratio`            | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
-| `explain_plan_exclude_schemas` | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
+| Name                | Type           | Description                                          | Default | Required |
+|---------------------|----------------|------------------------------------------------------|---------|----------|
+| `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
+| `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| `exclude_schemas`   | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
 
 ### `health_check`
 

@@ -133,7 +133,7 @@ The `azure` block supplies the identifying information for the database being mo
 | Name                           | Type           | Description                                                                     | Default | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`             | `duration`     | How frequently to collect information from database.                            | `"1m"`  | no       |
-| `explain_plan_exclude_schemas` | `list(string)` | List of schemas to exclude from explain plan collection.                        |         | no       |
+| `exclude_schemas`              | `list(string)` | List of schemas to exclude from explain plan collection.                        | `[]`    | no       |
 | `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
 | `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
 

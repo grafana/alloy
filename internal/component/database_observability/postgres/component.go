@@ -70,7 +70,7 @@ type Arguments struct {
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
 	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
 }
 
@@ -121,19 +121,20 @@ var DefaultArguments = Arguments{
 		CacheSize:       256,
 		CacheTTL:        10 * time.Minute,
 	},
-	ExplainPlanArguments: ExplainPlanArguments{
+	ExplainPlansArguments: ExplainPlansArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
+		ExcludeSchemas:  []string{},
 	},
 	HealthCheckArguments: HealthCheckArguments{
 		CollectInterval: 1 * time.Hour,
 	},
 }
 
-type ExplainPlanArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+type ExplainPlansArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+	ExcludeSchemas  []string      `alloy:"exclude_schemas,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -464,8 +465,9 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
 			DB:             c.dbConnection,
 			DSN:            string(c.args.DataSourceName),
-			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
+			ScrapeInterval: c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio: c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeSchemas: c.args.ExplainPlansArguments.ExcludeSchemas,
 			Logger:         c.opts.Logger,
 			DBVersion:      engineVersion,
 			EntryHandler:   entryHandler,

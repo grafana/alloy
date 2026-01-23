@@ -2261,15 +2261,14 @@ func TestNewExplainPlan(t *testing.T) {
 		require.NoError(t, err)
 
 		args := ExplainPlansArguments{
-			DB:              db,
-			DSN:             "postgres://user:pass@localhost:5432/testdb",
-			ScrapeInterval:  time.Minute,
-			PerScrapeRatio:  0.1,
-			ExcludeSchemas:  []string{"information_schema", "pg_catalog"},
-			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-time.Hour),
-			DBVersion:       pre17ver,
-			Logger:          logger,
+			DB:             db,
+			DSN:            "postgres://user:pass@localhost:5432/testdb",
+			ScrapeInterval: time.Minute,
+			PerScrapeRatio: 0.1,
+			ExcludeSchemas: []string{"information_schema", "pg_catalog"},
+			EntryHandler:   entryHandler,
+			DBVersion:      pre17ver,
+			Logger:         logger,
 		}
 
 		explainPlan, err := NewExplainPlan(args)
