@@ -80,7 +80,7 @@ func (c *cri) Run(in chan Entry) chan Entry {
 		e.Extracted["stream"] = parsed.Stream.String()
 
 		e.Line = parsed.Content
-		// FIXME, there is some non obvious behaviour when using timestamp stage..
+
 		ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
 		if err == nil {
 			e.Timestamp = ts

@@ -98,7 +98,6 @@ func parseTimestamp(line string) (string, string) {
 func parseStream(line string) (Stream, string) {
 	stream := StreamUnknown
 
-	// Optimize this!!
 	if strings.HasPrefix(line, "stdout") {
 		stream, line = StreamStdOut, line[len("stdout"):]
 	} else if strings.HasPrefix(line, "stderr") {
