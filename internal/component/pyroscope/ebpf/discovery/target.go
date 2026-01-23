@@ -47,7 +47,7 @@ func NewTarget(cid containerID, pid uint32, target DiscoveredTarget) *Target {
 		lset[labelContainerID] = string(cid)
 	}
 	if pid != 0 {
-		lset[labelPID] = strconv.Itoa(int(pid))
+		lset[labelPID] = strconv.FormatUint(uint64(pid), 10)
 	}
 	ls := labels.FromMap(lset)
 	return &Target{
