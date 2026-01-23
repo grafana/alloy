@@ -210,13 +210,13 @@ func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset ti
 }
 
 type ExplainPlansArguments struct {
-	DB             *sql.DB
-	DSN            string
-	ScrapeInterval time.Duration
-	PerScrapeRatio float64
-	ExcludeSchemas []string
-	EntryHandler   loki.EntryHandler
-	DBVersion      string
+	DB               *sql.DB
+	DSN              string
+	ScrapeInterval   time.Duration
+	PerScrapeRatio   float64
+	ExcludeDatabases []string
+	EntryHandler     loki.EntryHandler
+	DBVersion        string
 
 	Logger log.Logger
 }
@@ -230,7 +230,7 @@ type ExplainPlans struct {
 	queryCache          map[string]*queryInfo
 	queryDenylist       map[string]*queryInfo
 	finishedQueryCache  map[string]*queryInfo
-	excludeSchemas      []string
+	excludeDatabases    []string
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
@@ -247,7 +247,7 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		dbConnectionFactory: defaultDbConnectionFactory,
 		scrapeInterval:      args.ScrapeInterval,
 		perScrapeRatio:      args.PerScrapeRatio,
-		excludeSchemas:      args.ExcludeSchemas,
+		excludeDatabases:    args.ExcludeDatabases,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
 		finishedQueryCache:  make(map[string]*queryInfo),
@@ -379,7 +379,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 			return fmt.Errorf("failed to scan query for explain plan: %w", err)
 		}
 
-		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
+		if slices.ContainsFunc(c.excludeDatabases, func(schema string) bool {
 			return strings.EqualFold(schema, datname)
 		}) {
 

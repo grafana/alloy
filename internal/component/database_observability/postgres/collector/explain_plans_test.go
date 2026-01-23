@@ -2261,14 +2261,14 @@ func TestNewExplainPlan(t *testing.T) {
 		require.NoError(t, err)
 
 		args := ExplainPlansArguments{
-			DB:             db,
-			DSN:            "postgres://user:pass@localhost:5432/testdb",
-			ScrapeInterval: time.Minute,
-			PerScrapeRatio: 0.1,
-			ExcludeSchemas: []string{"information_schema", "pg_catalog"},
-			EntryHandler:   entryHandler,
-			DBVersion:      pre17ver,
-			Logger:         logger,
+			DB:               db,
+			DSN:              "postgres://user:pass@localhost:5432/testdb",
+			ScrapeInterval:   time.Minute,
+			PerScrapeRatio:   0.1,
+			ExcludeDatabases: []string{"information_schema", "pg_catalog"},
+			EntryHandler:     entryHandler,
+			DBVersion:        pre17ver,
+			Logger:           logger,
 		}
 
 		explainPlan, err := NewExplainPlan(args)
@@ -2280,7 +2280,7 @@ func TestNewExplainPlan(t *testing.T) {
 		assert.Equal(t, pre17semver, explainPlan.dbVersion)
 		assert.Equal(t, args.ScrapeInterval, explainPlan.scrapeInterval)
 		assert.Equal(t, args.PerScrapeRatio, explainPlan.perScrapeRatio)
-		assert.Equal(t, args.ExcludeSchemas, explainPlan.excludeSchemas)
+		assert.Equal(t, args.ExcludeDatabases, explainPlan.excludeDatabases)
 		assert.Equal(t, entryHandler, explainPlan.entryHandler)
 		assert.NotNil(t, explainPlan.queryCache)
 		assert.NotNil(t, explainPlan.queryDenylist)
@@ -2519,7 +2519,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				queryCache:         make(map[string]*queryInfo),
 				queryDenylist:      make(map[string]*queryInfo),
 				finishedQueryCache: make(map[string]*queryInfo),
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             logger,
 				entryHandler:       lokiClient,
@@ -2559,7 +2559,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				queryCache:         make(map[string]*queryInfo),
 				queryDenylist:      make(map[string]*queryInfo),
 				finishedQueryCache: make(map[string]*queryInfo),
-				excludeSchemas:     []string{"information_schema"},
+				excludeDatabases:   []string{"information_schema"},
 				perScrapeRatio:     0.5,
 				logger:             logger,
 				entryHandler:       lokiClient,
@@ -2747,7 +2747,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
 		finishedQueryCache:  make(map[string]*queryInfo),
-		excludeSchemas:      []string{},
+		excludeDatabases:    []string{},
 		perScrapeRatio:      1.0,
 		logger:              logger,
 	}
@@ -2793,7 +2793,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
@@ -2848,7 +2848,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
@@ -2901,7 +2901,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				currentBatchSize:   1,
@@ -2968,7 +2968,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				currentBatchSize:   1,
@@ -3035,7 +3035,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				currentBatchSize:   1,

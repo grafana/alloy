@@ -33,6 +33,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `targets`            | `list(map(string))`  | List of targets to scrape.                                  |         | yes      |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
 
 The following collectors are configurable:
 
@@ -126,7 +127,6 @@ The `azure` block supplies the identifying information for the database being mo
 |---------------------|----------------|------------------------------------------------------|---------|----------|
 | `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
-| `exclude_schemas`   | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
 
 ### `health_check`
 
