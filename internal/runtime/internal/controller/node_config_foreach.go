@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -200,13 +201,9 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 		// Extract Id from collection if exists
 		if args.Id != "" {
-			if m, ok := args.Collection[i].(map[string]any); ok {
-				if val, exists := m[args.Id]; exists {
-					// Use the field's value for fingerprinting
-					id = val
-				} else {
-					level.Warn(fn.logger).Log("msg", "specified id not found in collection item", "id", args.Id)
-				}
+			if val, ok := collectionItemID(args.Collection[i], args.Id, fn.logger); ok {
+				// Use the field's value for fingerprinting
+				id = val
 			}
 		}
 
@@ -442,6 +439,57 @@ func objectFingerprint(id any, hashId bool) string {
 	default:
 		return computeHash(fmt.Sprintf("%#v", v))
 	}
+}
+
+func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
+	switch value := item.(type) {
+	case map[string]any:
+		// Inline object literals in Alloy decode into map[string]any.
+		val, ok := value[key]
+		if !ok {
+			logMissingCollectionID(logger, key)
+			return nil, false
+		}
+		return val, true
+	case map[string]string:
+		// Object values sourced from Go (e.g., vars) often use map[string]string.
+		val, ok := value[key]
+		if !ok {
+			logMissingCollectionID(logger, key)
+			return nil, false
+		}
+		return val, true
+	case map[string]syntax.Value:
+		// Capsules converted to objects use map[string]syntax.Value (VM canonical form).
+		val, ok := value[key]
+		if !ok {
+			logMissingCollectionID(logger, key)
+			return nil, false
+		}
+		return val.Interface(), true
+	case syntax.ConvertibleIntoCapsule:
+		return collectionItemIDFromCapsule(value, key, logger)
+	default:
+		return nil, false
+	}
+}
+
+func collectionItemIDFromCapsule(value syntax.ConvertibleIntoCapsule, key string, logger log.Logger) (any, bool) {
+	var obj map[string]syntax.Value
+	if err := value.ConvertInto(&obj); err == nil {
+		val, ok := obj[key]
+		if ok {
+			return val.Interface(), true
+		}
+		logMissingCollectionID(logger, key)
+		return nil, false
+	}
+
+	return nil, false
+}
+
+func logMissingCollectionID(logger log.Logger, key string) {
+	level.Warn(logger).Log("msg", "specified id not found in collection item", "id", key)
 }
 
 func replaceNonAlphaNumeric(s string) string {

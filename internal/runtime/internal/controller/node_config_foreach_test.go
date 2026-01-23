@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/vm"
@@ -336,6 +337,47 @@ func TestStringIDHashWithKeySameValue(t *testing.T) {
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_1", "foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_2"})
+}
+
+func TestForeachCollectionMapAnyUsesId(t *testing.T) {
+	config := `foreach "default" {
+		collection = [obj1, obj2]
+		var = "each"
+		id = "netbox_id"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	vars := map[string]interface{}{
+		"obj1": map[string]any{
+			"netbox_id": "9101",
+		},
+		"obj2": map[string]any{
+			"netbox_id": "9102",
+		},
+	}
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_9101_1", "foreach_9102_1"})
+}
+
+func TestForeachCollectionSyntaxValueUsesId(t *testing.T) {
+	config := `foreach "default" {
+		collection = [obj1]
+		var = "each"
+		id = "netbox_id"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	vars := map[string]interface{}{
+		"obj1": map[string]syntax.Value{
+			"netbox_id": syntax.ValueFromString("9103"),
+		},
+	}
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_9103_1"})
 }
 
 func TestCollectionNonArrayValue(t *testing.T) {
