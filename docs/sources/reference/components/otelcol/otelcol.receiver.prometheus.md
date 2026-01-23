@@ -22,6 +22,13 @@ You can specify multiple `otelcol.receiver.prometheus` components by giving them
 `otelcol.receiver.prometheus` is a custom component built on a fork of the upstream OpenTelemetry receiver.
 {{< /admonition >}}
 
+As of Alloy v1.13.0, `otelcol.receiver.prometheus` no longer sets a [start time][otlp-start-time] for the translated OTLP metric datapoint.
+Start time is a way to tell when a cumulative metric such as an OTLP "sum" or a Prometheus "counter" was last reset.
+If your database requires start times for OTLP metrics, you can use `otelcol.processor.metric_start_time` to set it. 
+To add the start time in the same way that `otelcol.receiver.prometheus` did it prior to Alloy v1.13.0, set `strategy` to `true_reset_point`.
+
+[otlp-start-time]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.9.0/opentelemetry/proto/metrics/v1/metrics.proto#L181-L187
+
 ## Usage
 
 ```alloy
@@ -35,11 +42,6 @@ otelcol.receiver.prometheus "<LABEL>" {
 ## Arguments
 
 The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
-
-{{< admonition type="note" >}}
-`otelcol.receiver.prometheus` will translate Prometheus native histograms into 
-OTLP exponential histograms if Alloy is ran with the `--stability.level=experimental` configuration flag.
-{{< /admonition >}}
 
 ## Blocks
 
