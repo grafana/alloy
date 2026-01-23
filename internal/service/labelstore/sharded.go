@@ -1,7 +1,6 @@
 package labelstore
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -60,12 +59,8 @@ const (
 func newSharded(l log.Logger, r prometheus.Registerer, numShards int) *sharded {
 	shards := make([]*single, numShards)
 	for i := 0; i < numShards; i++ {
-		// Each shard gets its own prometheus registry namespace to avoid metric collisions
-		shardReg := prometheus.WrapRegistererWith(
-			prometheus.Labels{"labelstore_shard": fmt.Sprintf("%d", i)},
-			r,
-		)
-		shards[i] = newSingle(l, shardReg)
+		// Each shard uses the same registerer since metrics are aggregated by collect()
+		shards[i] = newSingle(l, r)
 	}
 
 	return &sharded{
@@ -186,28 +181,46 @@ func (sh *sharded) CheckAndRemoveStaleMarkers() {
 	wg.Wait()
 }
 
-// collect gathers metrics from all shards in parallel.
+// collect gathers and aggregates metrics from all shards.
+// We must aggregate the counts instead of forwarding raw metrics to avoid duplicates.
 func (sh *sharded) collect(m chan<- prometheus.Metric, totalIDsDesc *prometheus.Desc, idsInRemoteDesc *prometheus.Desc) {
-	var wg sync.WaitGroup
+	var (
+		mu              sync.Mutex
+		totalGlobalIDs  int
+		remoteIDsByName = make(map[string]int)
+		wg              sync.WaitGroup
+	)
+
 	wg.Add(len(sh.shards))
 
 	for _, shard := range sh.shards {
 		go func(shard *single) {
 			defer wg.Done()
 
-			// Collect from this shard - metrics have shard labels from wrapped registerer
-			shardCh := make(chan prometheus.Metric, 10)
-			go func() {
-				shard.collect(shardCh, totalIDsDesc, idsInRemoteDesc)
-				close(shardCh)
-			}()
-
-			// Forward metrics to the main channel
-			for metric := range shardCh {
-				m <- metric
+			// Lock shard and read its counts
+			shard.mut.Lock()
+			globalIDCount := len(shard.labelsHashToGlobal)
+			mappingCounts := make(map[string]int)
+			for name, rw := range shard.mappings {
+				mappingCounts[name] = len(rw.globalToLocal)
 			}
+			shard.mut.Unlock()
+
+			// Aggregate into totals
+			mu.Lock()
+			totalGlobalIDs += globalIDCount
+			for name, count := range mappingCounts {
+				remoteIDsByName[name] += count
+			}
+			mu.Unlock()
 		}(shard)
 	}
 
 	wg.Wait()
+
+	// Emit aggregated metrics
+	m <- prometheus.MustNewConstMetric(totalIDsDesc, prometheus.GaugeValue, float64(totalGlobalIDs))
+	for name, count := range remoteIDsByName {
+		m <- prometheus.MustNewConstMetric(idsInRemoteDesc, prometheus.GaugeValue, float64(count), name)
+	}
 }

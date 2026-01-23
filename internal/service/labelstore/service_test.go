@@ -343,6 +343,62 @@ func TestLabelStoreConcurrent(t *testing.T) {
 	}
 }
 
+// TestMetricsAggregation verifies that sharded labelstore aggregates metrics correctly
+// and doesn't emit duplicate metrics that would cause collection errors.
+func TestMetricsAggregation(t *testing.T) {
+	testCases := []struct {
+		name   string
+		shards int
+	}{
+		{"single shard", 1},
+		{"4 shards", 4},
+		{"32 shards", 32},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Use a custom registry to catch duplicate metric errors
+			reg := prometheus.NewRegistry()
+			ls := New(log.NewNopLogger(), reg, tc.shards)
+
+			// Add some data across multiple components
+			for i := 0; i < 100; i++ {
+				l := labels.FromStrings("__name__", "test", "id", strconv.Itoa(i))
+				globalID := ls.GetOrAddGlobalRefID(l)
+
+				// Add local mappings to different components
+				ls.AddLocalLink("component1", globalID, uint64(i))
+				ls.AddLocalLink("component2", globalID, uint64(i*10))
+				ls.AddLocalLink("component3", globalID, uint64(i*100))
+			}
+
+			// Collect metrics multiple times to ensure no duplicates
+			for attempt := 0; attempt < 3; attempt++ {
+				ch := make(chan prometheus.Metric, 100)
+				go func() {
+					ls.Collect(ch)
+					close(ch)
+				}()
+
+				metricsCount := 0
+				for range ch {
+					// Just count metrics - the registry would catch duplicates
+					metricsCount++
+				}
+
+				// Should get at least totalIDs + 3 remote component metrics
+				require.GreaterOrEqual(t, metricsCount, 4,
+					"should emit totalIDs + at least 3 component metrics")
+			}
+
+			// Final test: try to gather from registry (will fail on duplicate metrics)
+			metrics, err := reg.Gather()
+			require.NoError(t, err, "gathering metrics should not fail")
+			require.NotEmpty(t, metrics, "should have collected metrics")
+		})
+	}
+}
+
 func BenchmarkStaleness(b *testing.B) {
 	b.StopTimer()
 	ls := New(log.NewNopLogger(), prometheus.DefaultRegisterer, 1)
@@ -380,7 +436,7 @@ func BenchmarkHighContention(b *testing.B) {
 	const numGoroutines = 20000
 	const numUniqueLabelSets = 10000
 	const numComponents = 5
-	const numShards = 32
+	const numShards = 256
 
 	ls := New(log.NewNopLogger(), prometheus.NewRegistry(), numShards)
 
