@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy as a standalone binary
 menuTitle: Standalone
 title: Install Grafana Alloy as a standalone binary
-weight: 600
+weight: 500
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} as a standalone binary
