@@ -5,7 +5,7 @@ aliases:
 description: Learn how to deploy Grafana Alloy on Kubernetes
 menuTitle: Kubernetes
 title: Deploy Grafana Alloy on Kubernetes
-weight: 200
+weight: 400
 ---
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
