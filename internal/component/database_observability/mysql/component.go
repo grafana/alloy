@@ -60,13 +60,14 @@ type Arguments struct {
 	Targets                       []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
+	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
 	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
-	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
-	SchemaTablesArguments   SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
+	QueryDetailsArguments   QueryDetailsArguments   `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments  SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
@@ -88,8 +89,9 @@ type AzureCloudProviderInfo struct {
 	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
-type QueryTablesArguments struct {
+type QueryDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	StatementsLimit int           `alloy:"statements_limit,attr,optional"`
 }
 
 type SchemaDetailsArguments struct {
@@ -109,10 +111,9 @@ type SetupActorsArguments struct {
 }
 
 type ExplainPlansArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+	InitialLookback time.Duration `alloy:"initial_lookback,attr,optional"`
 }
 
 type LocksArguments struct {
@@ -132,13 +133,15 @@ type HealthCheckArguments struct {
 }
 
 var DefaultArguments = Arguments{
+	ExcludeSchemas:                []string{},
 	AllowUpdatePerfSchemaSettings: false,
 
-	QueryTablesArguments: QueryTablesArguments{
+	QueryDetailsArguments: QueryDetailsArguments{
 		CollectInterval: 1 * time.Minute,
+		StatementsLimit: 250,
 	},
 
-	SchemaTablesArguments: SchemaDetailsArguments{
+	SchemaDetailsArguments: SchemaDetailsArguments{
 		CollectInterval: 1 * time.Minute,
 		CacheEnabled:    true,
 		CacheSize:       256,
@@ -445,7 +448,8 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	if collectors[collector.QueryDetailsCollector] {
 		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
-			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
+			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -462,10 +466,10 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
-			CollectInterval: c.args.SchemaTablesArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaTablesArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaTablesArguments.CacheSize,
-			CacheTTL:        c.args.SchemaTablesArguments.CacheTTL,
+			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -565,10 +569,11 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DB:              c.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
+			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlansCollector, "create", err)

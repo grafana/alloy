@@ -136,6 +136,8 @@ func checkAlloyVersion(ctx context.Context, db *sql.DB) healthCheckResult {
 }
 
 // checkRequiredGrants verifies required privileges are present.
+// Requires: PROCESS, REPLICATION CLIENT, SHOW VIEW on *.*
+// and SELECT on performance_schema.*
 func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "RequiredGrantsPresent"}
 	req := map[string]bool{
@@ -160,11 +162,36 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 		}
 		up := strings.ToUpper(grantLine)
 
-		// Mark individual privileges if present on *.* scope.
-		for k := range req {
-			if strings.Contains(up, " ON *.*") && strings.Contains(up, k) {
-				req[k] = true
+		if strings.Contains(up, "SELECT") {
+			if strings.Contains(up, " ON `PERFORMANCE_SCHEMA`.*") ||
+				strings.Contains(up, " ON PERFORMANCE_SCHEMA.*") ||
+				strings.Contains(up, " ON `PERFORMANCE_SCHEMA`.") ||
+				strings.Contains(up, " ON *.*") {
+
+				req["SELECT"] = true
 			}
+		}
+
+		if strings.Contains(up, "ALL PRIVILEGES") {
+			if strings.Contains(up, " ON `PERFORMANCE_SCHEMA`.*") ||
+				strings.Contains(up, " ON PERFORMANCE_SCHEMA.*") ||
+				strings.Contains(up, " ON `PERFORMANCE_SCHEMA`.") ||
+				strings.Contains(up, " ON *.*") {
+
+				req["SELECT"] = true
+			}
+		}
+
+		if strings.Contains(up, "SHOW VIEW") {
+			req["SHOW VIEW"] = true
+		}
+
+		if strings.Contains(up, "PROCESS") && strings.Contains(up, " ON *.*") {
+			req["PROCESS"] = true
+		}
+
+		if strings.Contains(up, "REPLICATION CLIENT") && strings.Contains(up, " ON *.*") {
+			req["REPLICATION CLIENT"] = true
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -172,16 +199,23 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 		return r
 	}
 
-	r.result = true
-	for k, found := range req {
-		if !found {
-			r.result = false
-			if r.value == "" {
-				r.value = "missing: " + k
-			} else {
-				r.value += "," + k
-			}
+	r.result = req["PROCESS"] && req["REPLICATION CLIENT"] && req["SELECT"] && req["SHOW VIEW"]
+
+	if !r.result {
+		var missing []string
+		if !req["PROCESS"] {
+			missing = append(missing, "PROCESS")
 		}
+		if !req["REPLICATION CLIENT"] {
+			missing = append(missing, "REPLICATION CLIENT")
+		}
+		if !req["SELECT"] {
+			missing = append(missing, "SELECT on performance_schema.*")
+		}
+		if !req["SHOW VIEW"] {
+			missing = append(missing, "SHOW VIEW")
+		}
+		r.value = fmt.Sprintf("missing grants: %s", strings.Join(missing, ", "))
 	}
 
 	return r

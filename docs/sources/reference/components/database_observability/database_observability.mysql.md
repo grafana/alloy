@@ -33,6 +33,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `targets`                                  | `list(map(string))`  | List of targets to scrape.                                                  |         | yes      |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
+| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               |         | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -117,6 +118,7 @@ The `azure` block supplies the identifying information for the database being mo
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `250`   | no       |
 
 ### `schema_details`
 
@@ -132,7 +134,6 @@ The `azure` block supplies the identifying information for the database being mo
 | Name                           | Type           | Description                                                                     | Default | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`             | `duration`     | How frequently to collect information from database.                            | `"1m"`  | no       |
-| `explain_plan_exclude_schemas` | `list(string)` | List of schemas to exclude from explain plan collection.                        |         | no       |
 | `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
 | `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
 

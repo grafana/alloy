@@ -450,6 +450,7 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			scrapeOptions: operator.ScrapeOptions{
 				DefaultScrapeInterval: 30 * time.Second,
 				DefaultScrapeTimeout:  5 * time.Second,
+				DefaultSampleLimit:    100,
 			},
 			expectedInterval:         30 * time.Second,
 			expectedTimeout:          5 * time.Second,
@@ -466,6 +467,7 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			assert.Equal(t, model.Duration(tt.expectedInterval), got.ScrapeInterval)
 			assert.Equal(t, model.Duration(tt.expectedTimeout), got.ScrapeTimeout)
 			assert.Equal(t, tt.expectedFallbackProtocol, got.ScrapeFallbackProtocol)
+			assert.Equal(t, tt.scrapeOptions.DefaultSampleLimit, got.SampleLimit)
 		})
 	}
 }

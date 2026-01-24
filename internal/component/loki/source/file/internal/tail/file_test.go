@@ -371,6 +371,53 @@ func TestFile(t *testing.T) {
 
 		verify(t, file, &Line{Text: "Hello, 世界", Offset: 18}, nil)
 	})
+
+	t.Run("should handle atomic writes", func(t *testing.T) {
+		name := createFile(t, "atomicwrite", "line1\nline2\nline3\nline4\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		// Read first two lines
+		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+		atomicWrite(t, name, "line1\nline2\nline3\nline4\nnewline1\n")
+		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
+		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verify(t, file, &Line{Text: "newline1", Offset: 33}, nil)
+	})
+
+	t.Run("should handle atomic writes with new content", func(t *testing.T) {
+		name := createFile(t, "atomicwrite", "line1\nline2\nline3\nline4\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		// Read first two lines
+		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+		atomicWrite(t, name, "newline1\n")
+		// Because we buffer lines when file is deleted we still get line3 and line4.
+		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
+		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
+	})
 }
 
 func createFile(t *testing.T, name, content string) string {
