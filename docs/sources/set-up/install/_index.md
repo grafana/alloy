@@ -30,4 +30,4 @@ Installing {{< param "PRODUCT_NAME" >}} on other operating systems is possible, 
 By default, {{< param "PRODUCT_NAME" >}} sends anonymous usage information to Grafana Labs.
 Refer to [data collection][] for more information about what data Grafana collects and how you can opt-out.
 
-[data collection]: "../../../../data-collection/
+[data collection]: ../../../data-collection/
