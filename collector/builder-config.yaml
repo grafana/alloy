@@ -20,7 +20,7 @@ extensions:
 
 exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.142.0
-#   TODO: fix build errors on FreeBSD or decide to officially not support this component
+#   TODO: Address this as part of https://github.com/grafana/alloy/issues/5348
 #  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.142.0
