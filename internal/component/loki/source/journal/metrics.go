@@ -1,3 +1,5 @@
+//go:build linux && cgo && promtail_journal_enabled
+
 package journal
 
 // This code is copied from Promtail (https://github.com/grafana/loki/commit/954df433e98f659d006ced52b23151cb5eb2fdfa) with minor edits. The target package is used to
