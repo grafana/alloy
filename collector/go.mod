@@ -12,7 +12,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.142.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.142.0
@@ -665,6 +664,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/oliver006/redis_exporter v1.74.0 // indirect
 	github.com/open-telemetry/opamp-go v0.22.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.142.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.142.0 // indirect
