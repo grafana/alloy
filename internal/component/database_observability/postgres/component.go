@@ -199,7 +199,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		registry:          prometheus.NewRegistry(),
 		healthErr:         atomic.NewString(""),
 		openSQL:           openFn,
-		queryHashRegistry: collector.NewQueryHashRegistry(10000, time.Hour),
+		queryHashRegistry: collector.NewQueryHashRegistry(1000, time.Hour),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
