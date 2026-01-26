@@ -1055,7 +1055,7 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
-// Fork to grafana repo to address issue with freebsd build tags This can be removed once is https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 fixed
+// Fork to grafana repo to address issue with freebsd build tags. This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
 
 // END GENERATED REPLACES
