@@ -180,18 +180,18 @@ Complete the following steps to create a sample task.
      - For the Prometheus exporter:
        - `PROMETHEUS_REMOTE_WRITE_URL`
        - `PROMETHEUS_USERNAME`
+       - `PROMETHEUS_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
+   - In the Docker configuration, change the **Entrypoint** to `/bin/sh,-c`. This allows the command to use shell features like redirection and chaining.
    - _`{{command}}`_: For the native receiver, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --stability.level=experimental --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. The `--stability.level=experimental` flag enables the use of the `otelcol.receiver.awsecscontainermetrics` component.
 
      For the Prometheus exporter, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`.
-
-     For the Prometheus exporter, use `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec /bin/alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`.
 
      Make sure you don't omit the double quotes around the command.
    - **Prometheus exporter only:** Add the Prometheus ECS exporter as a sidecar container:
 
      1. Add a container to the task.
      1. Set the container name to `ecs-exporter`.
-     1. Set the image to `quay.io/prometheuscommunity/ecs-exporter:latest`.
+     1. Set the image to a pinned version of the exporter, for example `quay.io/prometheuscommunity/ecs-exporter:v0.1.1`. Check the [ecs_exporter releases](https://github.com/prometheus-community/ecs_exporter/releases) for the latest stable version. You should avoid using the `latest` tag in production.
      1. Add `tcp/9779` as a port mapping.
 
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
