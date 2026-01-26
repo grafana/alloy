@@ -1026,6 +1026,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/pganalyze/pg_query_go/v6 v6.1.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
 )
 

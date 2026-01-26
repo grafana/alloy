@@ -9,6 +9,7 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -43,20 +44,22 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
-	TableRegistry   *TableRegistry
+	DB                *sql.DB
+	CollectInterval   time.Duration
+	EntryHandler      loki.EntryHandler
+	TableRegistry     *TableRegistry
+	QueryHashRegistry *QueryHashRegistry
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
-	tableRegistry   *TableRegistry
-	normalizer      *sqllexer.Normalizer
+	dbConnection      *sql.DB
+	collectInterval   time.Duration
+	entryHandler      loki.EntryHandler
+	tableRegistry     *TableRegistry
+	queryHashRegistry *QueryHashRegistry
+	normalizer        *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -66,13 +69,14 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		tableRegistry:   args.TableRegistry,
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
-		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:         &atomic.Bool{},
+		dbConnection:      args.DB,
+		collectInterval:   args.CollectInterval,
+		entryHandler:      args.EntryHandler,
+		tableRegistry:     args.TableRegistry,
+		queryHashRegistry: args.QueryHashRegistry,
+		normalizer:        sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
+		logger:            log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:           &atomic.Bool{},
 	}, nil
 }
 
@@ -144,6 +148,17 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		queryHash, err := calculateQueryHash(queryText)
+		if err != nil {
+			level.Debug(c.logger).Log("msg", "failed to calculate query hash", "err", err)
+			queryHash = ""
+		}
+
+		// Store the queryid->queryhash mapping in the registry for Prometheus metric
+		if queryHash != "" && c.queryHashRegistry != nil {
+			c.queryHashRegistry.Set(queryID, queryHash, string(databaseName))
+		}
+
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
@@ -203,4 +218,12 @@ func removeComments(normalizer *sqllexer.Normalizer, sqlText string) (string, er
 	}
 
 	return strings.TrimSpace(sqlText), nil
+}
+
+func calculateQueryHash(queryText string) (string, error) {
+	fingerprint, err := pg_query.Fingerprint(queryText)
+	if err != nil {
+		return "", fmt.Errorf("failed to calculate query fingerprint: %w", err)
+	}
+	return fingerprint, nil
 }

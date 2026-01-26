@@ -171,18 +171,19 @@ type Collector interface {
 }
 
 type Component struct {
-	opts         component.Options
-	args         Arguments
-	mut          sync.RWMutex
-	receivers    []loki.LogsReceiver
-	handler      loki.LogsReceiver
-	registry     *prometheus.Registry
-	baseTarget   discovery.Target
-	collectors   []Collector
-	instanceKey  string
-	dbConnection *sql.DB
-	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	opts              component.Options
+	args              Arguments
+	mut               sync.RWMutex
+	receivers         []loki.LogsReceiver
+	handler           loki.LogsReceiver
+	registry          *prometheus.Registry
+	baseTarget        discovery.Target
+	collectors        []Collector
+	instanceKey       string
+	dbConnection      *sql.DB
+	healthErr         *atomic.String
+	openSQL           func(driverName, dataSourceName string) (*sql.DB, error)
+	queryHashRegistry *collector.QueryHashRegistry
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -191,13 +192,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:              opts,
+		args:              args,
+		receivers:         args.ForwardTo,
+		handler:           loki.NewLogsReceiver(),
+		registry:          prometheus.NewRegistry(),
+		healthErr:         atomic.NewString(""),
+		openSQL:           openFn,
+		queryHashRegistry: collector.NewQueryHashRegistry(10000, time.Hour),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -384,6 +386,9 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		startErrors = append(startErrors, errorString)
 	}
 
+	// Register the query hash metrics collector
+	c.registry.MustRegister(collector.NewQueryHashMetricsCollector(c.queryHashRegistry, systemID))
+
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
 
 	var tableRegistry *collector.TableRegistry
@@ -412,11 +417,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
-			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
-			EntryHandler:    entryHandler,
-			TableRegistry:   tableRegistry,
-			Logger:          c.opts.Logger,
+			DB:                c.dbConnection,
+			CollectInterval:   c.args.QueryTablesArguments.CollectInterval,
+			EntryHandler:      entryHandler,
+			TableRegistry:     tableRegistry,
+			QueryHashRegistry: c.queryHashRegistry,
+			Logger:            c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
