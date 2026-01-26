@@ -475,6 +475,7 @@ func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
 		// Example: collection = discovery.kubernetes.pods.targets
 		return collectionItemIDFromCapsule(value, key, logger)
 	default:
+		level.Debug(logger).Log("msg", "unsupported collection item type encountered in foreach", "item", fmt.Sprintf("%#v", item))
 		return nil, false
 	}
 }
