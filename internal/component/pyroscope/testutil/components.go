@@ -4,6 +4,8 @@ package testutil
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -13,12 +15,14 @@ import (
 )
 
 // CreateWriteComponent creates a pyroscope.write component that forwards to the given endpoint
-func CreateWriteComponent(l log.Logger, reg prometheus.Registerer, endpoint string) (pyroscope.Appendable, error) {
+func CreateWriteComponent(l log.Logger, reg prometheus.Registerer, endpoint string) (pyroscope.Appendable, *write.Component, error) {
 	var receiver pyroscope.Appendable
 	e := write.GetDefaultEndpointOptions()
 	e.URL = endpoint
 
-	_, err := write.New(
+	dataPath := filepath.Join(os.TempDir(), "alloy-pyroscope-write-test")
+
+	c, err := write.New(
 		log.With(l, "component", "pyroscope.write"),
 		noop.Tracer{},
 		reg,
@@ -27,10 +31,11 @@ func CreateWriteComponent(l log.Logger, reg prometheus.Registerer, endpoint stri
 		},
 		"test",
 		"",
+		dataPath,
 		write.Arguments{Endpoints: []*write.EndpointOptions{&e}},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error creating write component: %w", err)
+		return nil, nil, fmt.Errorf("error creating write component: %w", err)
 	}
-	return receiver, nil
+	return receiver, c, nil
 }
