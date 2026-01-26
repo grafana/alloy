@@ -105,7 +105,7 @@ otelcol.receiver.awsecscontainermetrics "default" {
 
 otelcol.exporter.otlphttp "default" {
   client {
-    endpoint = env("OTLP_ENDPOINT")
+    endpoint = sys.env("OTLP_ENDPOINT")
 
     auth = otelcol.auth.basic.default.handler
   }
@@ -113,8 +113,8 @@ otelcol.exporter.otlphttp "default" {
 
 otelcol.auth.basic "default" {
   client_auth {
-    username = env("OTLP_USERNAME")
-    password = env("OTLP_PASSWORD")
+    username = sys.env("OTLP_USERNAME")
+    password = sys.env("OTLP_PASSWORD")
   }
 }
 ```
@@ -135,11 +135,11 @@ prometheus.scrape "ecs" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = env("PROMETHEUS_REMOTE_WRITE_URL")
+    url = sys.env("PROMETHEUS_REMOTE_WRITE_URL")
 
     basic_auth {
-      username = env("PROMETHEUS_USERNAME")
-      password = env("PROMETHEUS_PASSWORD")
+      username = sys.env("PROMETHEUS_USERNAME")
+      password = sys.env("PROMETHEUS_PASSWORD")
     }
   }
 }
