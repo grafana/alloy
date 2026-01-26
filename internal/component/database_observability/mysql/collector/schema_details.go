@@ -26,15 +26,15 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-const (
-	selectSchemaName = `
+const selectSchemaNameTemplate = `
 	SELECT
 		SCHEMA_NAME
 	FROM
 		information_schema.schemata
 	WHERE
-		SCHEMA_NAME NOT IN ` + EXCLUDED_SCHEMAS
+		SCHEMA_NAME NOT IN %s`
 
+const (
 	selectTableName = `
 	SELECT
 		TABLE_NAME,
@@ -98,6 +98,7 @@ const (
 type SchemaDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
+	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	CacheEnabled bool
@@ -110,6 +111,7 @@ type SchemaDetailsArguments struct {
 type SchemaDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
+	excludeSchemas  []string
 	entryHandler    loki.EntryHandler
 
 	// Cache of table definitions. Entries are removed after a configurable TTL.
@@ -168,6 +170,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
+		excludeSchemas:  args.ExcludeSchemas,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
@@ -227,7 +230,8 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectSchemaName)
+	query := fmt.Sprintf(selectSchemaNameTemplate, buildExcludedSchemasClause(c.excludeSchemas))
+	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query schemata: %w", err)
 	}
