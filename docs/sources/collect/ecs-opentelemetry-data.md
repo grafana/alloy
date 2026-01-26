@@ -119,7 +119,7 @@ otelcol.auth.basic "default" {
 
 This configuration collects ECS task and container metrics every 60 seconds and exports them to an OTLP endpoint.
 
-Replace the following placeholders:
+Replace the following:
 
 - _`<OTLP_ENDPOINT>`_: The URL of your OTLP-compatible endpoint, for example `https://otlp-gateway-prod-us-central-0.grafana.net/otlp`.
 - _`<OTLP_USERNAME>`_: The username for authentication.
@@ -151,7 +151,7 @@ prometheus.remote_write "default" {
 
 This configuration scrapes metrics from the ECS exporter running on port 9779 and exports them to a Prometheus endpoint.
 
-Replace the following placeholders:
+Replace the following:
 
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of your Prometheus remote write endpoint.
 - _`<PROMETHEUS_USERNAME>`_: The username for authentication.
