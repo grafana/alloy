@@ -358,7 +358,7 @@ func TestFile(t *testing.T) {
 	t.Run("should detect UTF-8 encoding from BOM", func(t *testing.T) {
 		bytes := []byte("Hello, 世界\r\n")
 
-		name := createFile(t, "utf-8", string(append(bomUTF8, bytes...)))
+		name := createFile(t, "utf-8", string(append(bomUTF8Bytes, bytes...)))
 		defer removeFile(t, name)
 
 		file, err := NewFile(log.NewNopLogger(), &Config{

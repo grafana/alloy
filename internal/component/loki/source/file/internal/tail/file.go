@@ -41,13 +41,6 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Offset > 0 {
-		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-			f.Close()
-			return nil, err
-		}
-	}
-
 	reader, err := newReader(f, cfg.Offset, cfg.Encoding)
 	if err != nil {
 		f.Close()
@@ -308,11 +301,10 @@ func (f *File) reopen(truncated bool) error {
 
 		f.file = file
 		f.signature = sig
-		if _, err := f.file.Seek(offset, io.SeekStart); err != nil {
+		if err := f.reader.reset(f.file, offset); err != nil {
 			file.Close()
 			return err
 		}
-		f.reader.reset(f.file, offset)
 
 		break
 	}

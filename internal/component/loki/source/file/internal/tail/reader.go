@@ -3,6 +3,7 @@ package tail
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"os"
 	"unsafe"
 
@@ -11,10 +12,15 @@ import (
 
 const defaultBufSize = 4096
 
+// newReader creates a new reader that is used to read from file.
+// It is important that the provided file is positioned at the start of the file.
 func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
-	var bomBytes []byte
-	offset, bomBytes = skipBOM(f, offset)
-	enc = resolveEncodingFromBOM(bomBytes, enc)
+	// FIXME: compression??
+	br := bufio.NewReader(f)
+
+	var bom BOM
+	offset, bom = detectBOM(br, offset)
+	enc = resolveEncodingFromBOM(bom, enc)
 
 	var (
 		decoder = enc.NewDecoder()
@@ -31,11 +37,17 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error)
 		return nil, err
 	}
 
+	if offset > 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return nil, err
+		}
+		br.Reset(f)
+	}
+
 	reader := &reader{
 		pos:     offset,
-		br:      bufio.NewReader(f),
+		br:      br,
 		decoder: decoder,
-		enc:     enc, // Store the encoding (after BOM detection) for use in reset
 		nl:      nl,
 		lastNl:  nl[len(nl)-1],
 		cr:      cr,
@@ -49,11 +61,11 @@ type reader struct {
 	pos     int64
 	br      *bufio.Reader
 	decoder *encoding.Decoder
-	enc     encoding.Encoding
 
-	nl      []byte
-	lastNl  byte
-	cr      []byte
+	nl     []byte
+	lastNl byte
+	cr     []byte
+
 	pending []byte
 }
 
@@ -64,7 +76,6 @@ func (r *reader) next() (string, error) {
 	}
 
 	for {
-
 		// Read more data up until the last byte of nl.
 		chunk, err := r.br.ReadBytes(r.lastNl)
 		if len(chunk) > 0 {
@@ -124,14 +135,20 @@ func (r *reader) position() int64 {
 }
 
 // reset prepares the reader for a new file handle, assuming the same encoding.
-// It skips the BOM, resets the buffered reader and decoder, and clears pending data.
-func (r *reader) reset(f *os.File, offset int64) {
-	// Skip BOM if needed, we asume that the rotated file have the same encoding.
-	offset, _ = skipBOM(f, offset)
-	r.pos = offset
+// It is important that the provided file is positioned at the start of the file.
+func (r *reader) reset(f *os.File, offset int64) error {
 	r.br.Reset(f)
-	r.decoder.Reset()
+	offset, _ = detectBOM(r.br, offset)
+	if offset != 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return err
+		}
+		r.br.Reset(f)
+	}
+
+	r.pos = offset
 	r.pending = make([]byte, 0, defaultBufSize)
+	return nil
 }
 
 func encodedNewline(e *encoding.Encoder) ([]byte, error) {
