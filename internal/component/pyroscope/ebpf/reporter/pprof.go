@@ -10,17 +10,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
 	"go.opentelemetry.io/ebpf-profiler/process"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 )
@@ -30,40 +29,35 @@ type PPROF struct {
 	Labels labels.Labels
 	Origin libpf.Origin
 }
-type PPROFConsumer interface {
-	ConsumePprofProfiles(ctx context.Context, p []PPROF)
-}
 
-type PPROFConsumerFunc func(ctx context.Context, p []PPROF)
-
-func (f PPROFConsumerFunc) ConsumePprofProfiles(ctx context.Context, p []PPROF) {
-	f(ctx, p)
-}
+type PPROFConsumer func(ctx context.Context, p []PPROF)
 
 type Config struct {
 	ReportInterval            time.Duration
 	SamplesPerSecond          int64
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
-
-	ExtraNativeSymbolResolver irsymcache.NativeSymbolResolver
-	Consumer                  PPROFConsumer
 }
 type PPROFReporter struct {
 	cfg *Config
 	log log.Logger
 
+	consumer PPROFConsumer
+	symbols  irsymcache.NativeSymbolResolver
+
 	traceEvents xsync.RWMutex[samples.TraceEventsTree]
 
-	sd              discovery.TargetProducer
+	sd discovery.TargetProducer
+
 	wg              sync.WaitGroup
 	cancelReporting context.CancelFunc
 }
 
-func NewPPROF(
-	log log.Logger,
+func NewPPROF(log log.Logger,
 	cfg *Config,
 	sd discovery.TargetProducer,
+	symbols irsymcache.NativeSymbolResolver,
+	consumer PPROFConsumer,
 ) *PPROFReporter {
 
 	tree := make(samples.TraceEventsTree)
@@ -72,6 +66,8 @@ func NewPPROF(
 		log:         log,
 		traceEvents: xsync.NewRWMutex(tree),
 		sd:          sd,
+		consumer:    consumer,
+		symbols:     symbols,
 	}
 }
 
@@ -170,7 +166,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 		}
 	}
 
-	p.cfg.Consumer.ConsumePprofProfiles(ctx, profiles)
+	p.consumer(ctx, profiles)
 	sz := 0
 	for _, it := range profiles {
 		sz += len(it.Raw)
@@ -180,8 +176,8 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 
 func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
 	defer func() {
-		if p.cfg.ExtraNativeSymbolResolver != nil {
-			p.cfg.ExtraNativeSymbolResolver.Cleanup()
+		if p.symbols != nil {
+			p.symbols.Cleanup()
 		}
 	}()
 
@@ -242,8 +238,8 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 				location.Address = uint64(fr.AddressOrLineno)
 				switch fr.Type {
 				case libpf.NativeFrame:
+					p.symbolizeNativeFrame(b, location, fr)
 					if fr.FunctionName == libpf.NullString {
-						p.symbolizeNativeFrame(b, location, fr)
 						if location.Line == nil && p.cfg.ReporterUnsymbolizedStubs {
 							p.symbolizeStub(b, location, fr)
 						}
@@ -329,10 +325,10 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	if mappingFile.FileName == process.VdsoPathName {
 		return
 	}
-	if p.cfg.ExtraNativeSymbolResolver == nil {
+	if p.symbols == nil {
 		return
 	}
-	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, fr.AddressOrLineno, mappingFile.FileID, func(si irsymcache.SourceInfo) {
+	irsymcache.SymbolizeNativeFrame(p.symbols, mappingFile.FileName, fr.AddressOrLineno, mappingFile.FileID, func(si irsymcache.SourceInfo) {
 		name := si.FunctionName
 		if name == libpf.NullString && si.FilePath == libpf.NullString {
 			return

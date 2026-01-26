@@ -116,6 +116,7 @@ body:
       - otelcol.processor.interval
       - otelcol.processor.k8sattributes
       - otelcol.processor.memory_limiter
+      - otelcol.processor.metric_start_time
       - otelcol.processor.probabilistic_sampler
       - otelcol.processor.resourcedetection
       - otelcol.processor.span

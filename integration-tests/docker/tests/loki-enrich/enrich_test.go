@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -47,18 +46,6 @@ func TestEnrichWithMissingLabels(t *testing.T) {
 	})
 }
 
-func getLokiAPIEndpoint() string {
-	host := os.Getenv(common.AlloyHostEnv)
-	port := os.Getenv(common.AlloyPortEnv)
-
-	if host != "" && port != "" {
-		return fmt.Sprintf("http://%s:%s/loki/api/v1/push", host, port)
-	}
-
-	// Fallback for manual testing
-	return "http://localhost:1514/loki/api/v1/push"
-}
-
 func sendTestLogsForDevice(t *testing.T, hostname string) {
 	networkLogs := []string{
 		"%LINK-3-UPDOWN: Interface GigabitEthernet1/0/1, changed state to up",
@@ -89,7 +76,7 @@ func sendTestLogsForDevice(t *testing.T, hostname string) {
 	body, err := json.Marshal(pushReq)
 	require.NoError(t, err)
 
-	resp, err := http.Post(getLokiAPIEndpoint(), "application/json", bytes.NewReader(body))
+	resp, err := http.Post("http://localhost:1514/loki/api/v1/push", "application/json", bytes.NewReader(body))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)

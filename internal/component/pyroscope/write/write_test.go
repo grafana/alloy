@@ -100,6 +100,7 @@ func Test_Write_FanOut(t *testing.T) {
 			},
 			"Alloy/239",
 			"",
+			t.TempDir(),
 			arg,
 		)
 		require.NoError(t, err)
@@ -179,6 +180,7 @@ func Test_Write_Update(t *testing.T) {
 		},
 		"Alloy/239",
 		"",
+		t.TempDir(),
 		argument,
 	)
 	require.NoError(t, err)
@@ -320,6 +322,7 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 		},
 		"Alloy/239",
 		"",
+		s.T().TempDir(),
 		argument,
 	)
 	s.Require().NoError(err)
@@ -603,6 +606,7 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 		},
 		"Alloy/239",
 		"",
+		t.TempDir(),
 		argument,
 	)
 	require.NoError(t, err)

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/trace/noop"
 
@@ -22,6 +23,7 @@ import (
 
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/util"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -543,6 +545,14 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	}
 	a.lastProfile = newProfile
 	return a.appendErr
+}
+
+func (a *testAppender) Client() debuginfogrpc.DebuginfoServiceClient {
+	return nil
+}
+
+func (a *testAppender) Upload(_ debuginfo.UploadJob) {
+	// no-op for tests
 }
 
 // TestUpdateArgs verifies that the component can be updated with new arguments. This explicitly also makes sure that the server is restarted when the server configuration changes. And there are no metric registration conflicts.

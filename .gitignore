@@ -1,5 +1,4 @@
 /.rpmdb/
-/.idea
 /.published
 /.pkg
 /.cache
@@ -34,6 +33,7 @@ node_modules
 .tag-only
 .image-tag
 /alloy
+collector/otel_engine
 
 # local testing files
 /targets.yaml

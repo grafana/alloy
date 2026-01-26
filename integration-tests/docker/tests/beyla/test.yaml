@@ -1,0 +1,9 @@
+alloy_container:
+  privileged: true
+  cap_add:
+    - "SYS_ADMIN"
+    - "SYS_PTRACE"
+    - "SYS_RESOURCE"
+  security_opt:
+    - "apparmor:unconfined"
+  pid_mode: "host"

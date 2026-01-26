@@ -464,6 +464,11 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 
 var userAgent = useragent.Get()
 
+const (
+	contentType     = "application/x-protobuf"
+	contentEncoding = "snappy"
+)
+
 // send performs the HTTP POST request to send a batch to Loki.
 func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Timeout)
@@ -473,9 +478,9 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 		return -1, err
 	}
 
-	const contentType = "application/x-protobuf"
-	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Encoding", contentEncoding)
 
 	// If the tenant ID is not empty alloy is running in multi-tenant mode, so
 	// we should send it to Loki

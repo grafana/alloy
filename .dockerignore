@@ -8,3 +8,4 @@ packaging/windows/LICENSE
 packaging/windows/agent-windows-amd64.exe
 cmd/grafana-agent/Dockerfile
 alloy
+collector/data-alloy/
