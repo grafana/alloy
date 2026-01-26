@@ -22,11 +22,13 @@ pyroscope.write "local_pyroscope" {
 }
 
 pyroscope.ebpf "default" {
+    sample_rate = 19
 	targets      = discovery.relabel.all_process_targets.output
 	targets_only = false
 	forward_to   = [pyroscope.write.local_pyroscope.receiver]
 	demangle     = "full"
 	go_enabled   = false
+	reporter_unsymbolized_stubs = false
 
 	debug_info {
 		upload                  = true
