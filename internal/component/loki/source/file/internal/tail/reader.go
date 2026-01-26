@@ -3,6 +3,7 @@ package tail
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"io"
 	"os"
 	"unsafe"
@@ -14,9 +15,13 @@ const defaultBufSize = 4096
 
 // newReader creates a new reader that is used to read from file.
 // It is important that the provided file is positioned at the start of the file.
-func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
-	// FIXME: compression??
-	br := bufio.NewReader(f)
+func newReader(f *os.File, offset int64, enc encoding.Encoding, compression string) (*reader, error) {
+	rr, err := newReaderAt(f, compression, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	br := bufio.NewReader(rr)
 
 	var bom BOM
 	offset, bom = detectBOM(br, offset)
@@ -37,14 +42,15 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error)
 		return nil, err
 	}
 
-	if offset > 0 {
-		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+	if offset != 0 {
+		rr, err = newReaderAt(f, compression, offset)
+		if err != nil {
 			return nil, err
 		}
-		br.Reset(f)
+		br.Reset(rr)
 	}
 
-	reader := &reader{
+	return &reader{
 		pos:     offset,
 		br:      br,
 		decoder: decoder,
@@ -52,21 +58,20 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error)
 		lastNl:  nl[len(nl)-1],
 		cr:      cr,
 		pending: make([]byte, 0, defaultBufSize),
-	}
-
-	return reader, nil
+	}, nil
 }
 
 type reader struct {
 	pos     int64
 	br      *bufio.Reader
-	decoder *encoding.Decoder
+	pending []byte
+
+	compression string
+	decoder     *encoding.Decoder
 
 	nl     []byte
 	lastNl byte
 	cr     []byte
-
-	pending []byte
 }
 
 func (r *reader) next() (string, error) {
@@ -137,13 +142,19 @@ func (r *reader) position() int64 {
 // reset prepares the reader for a new file handle, assuming the same encoding.
 // It is important that the provided file is positioned at the start of the file.
 func (r *reader) reset(f *os.File, offset int64) error {
-	r.br.Reset(f)
+	rr, err := newReaderAt(f, r.compression, 0)
+	if err != nil {
+		return err
+	}
+	r.br.Reset(rr)
+
 	offset, _ = detectBOM(r.br, offset)
 	if offset != 0 {
-		if _, err := f.Seek(offset, io.SeekStart); err != nil {
-			return err
+		rr, err = newReaderAt(f, r.compression, offset)
+		if err != nil {
+			return nil
 		}
-		r.br.Reset(f)
+		r.br.Reset(rr)
 	}
 
 	r.pos = offset
@@ -161,4 +172,27 @@ func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
 	out := make([]byte, 10)
 	nDst, _, err := e.Transform(out, []byte{'\r'}, true)
 	return out[:nDst], err
+}
+
+func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error) {
+	switch compression {
+	case "gzip":
+		stat, err := f.Stat()
+		if err != nil {
+			return nil, err
+		}
+
+		r, err := gzip.NewReader(io.NewSectionReader(f, offset, stat.Size()))
+		if err != nil {
+			return nil, err
+		}
+		return r, nil
+	default:
+		if offset != 0 {
+			if _, err := f.Seek(offset, io.SeekStart); err != nil {
+				return nil, err
+			}
+		}
+		return f, nil
+	}
 }

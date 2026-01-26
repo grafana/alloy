@@ -18,6 +18,8 @@ type Config struct {
 	// and the file is assumed to be UTF-8.
 	Encoding encoding.Encoding
 
+	Compression string
+
 	// WatcherConfig controls how the file system is polled for changes.
 	WatcherConfig WatcherConfig
 }

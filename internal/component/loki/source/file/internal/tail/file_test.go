@@ -1,7 +1,9 @@
 package tail
 
 import (
+	"compress/gzip"
 	"context"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -16,6 +18,7 @@ func TestFile(t *testing.T) {
 	verify := func(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
 		t.Helper()
 		line, err := f.Next()
+
 		require.ErrorIs(t, err, expectedErr)
 		if expectedLine == nil {
 			require.Nil(t, line)
@@ -418,6 +421,25 @@ func TestFile(t *testing.T) {
 		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
 		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
 	})
+
+	t.Run("handle gzip", func(t *testing.T) {
+		name := createCompressedFile(t, "test.txt.gz", "line1\nline2\nline3\n", "gzip")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+			Compression: "gzip",
+		})
+		require.NoError(t, err)
+
+		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
+	})
 }
 
 func createFile(t *testing.T, name, content string) string {
@@ -450,4 +472,17 @@ func rotateFile(t *testing.T, name, newContent string) {
 	removeFile(t, name)
 	// Create new file with same name
 	require.NoError(t, os.WriteFile(name, []byte(newContent), 0600))
+}
+
+func createCompressedFile(t *testing.T, name, content, _ string) string {
+	path := t.TempDir() + "/" + name
+	f, err := os.Create(path)
+	require.NoError(t, err)
+
+	gzwriter := gzip.NewWriter(f)
+	_, err = io.Copy(gzwriter, strings.NewReader(content))
+	require.NoError(t, err)
+	require.NoError(t, gzwriter.Close())
+	require.NoError(t, f.Close())
+	return path
 }

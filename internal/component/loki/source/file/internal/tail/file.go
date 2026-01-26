@@ -41,7 +41,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	reader, err := newReader(f, cfg.Offset, cfg.Encoding)
+	reader, err := newReader(f, cfg.Offset, cfg.Encoding, cfg.Compression)
 	if err != nil {
 		f.Close()
 		return nil, err
@@ -58,6 +58,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		ctx:       ctx,
 		cancel:    cancel,
 		signature: sig,
+		waitAtEOF: cfg.Compression == "",
 	}, nil
 }
 
@@ -79,6 +80,8 @@ type File struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	waitAtEOF bool
 }
 
 // Next reads and returns the next line from the file.
@@ -106,7 +109,7 @@ read:
 
 	text, err := f.reader.next()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) && f.waitAtEOF {
 			if err := f.wait(); err != nil {
 				return nil, err
 			}
