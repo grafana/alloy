@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `dnsConfig` support (@vdbe)
+
 1.5.2 (2026-01-12)
 ----------
 
