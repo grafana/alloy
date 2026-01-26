@@ -84,7 +84,7 @@ Complete the following steps to create a sample task. Refer to the [ADOT doc][ad
 
 #### Native receiver
 
-The `otelcol.receiver.awsecscontainermetrics` component reads the [ECS Task Metadata Endpoint V4][ecs-metadata-v4] and provides access to 52 task and container-level metrics including CPU, memory, network, and disk usage.
+The `otelcol.receiver.awsecscontainermetrics` component reads the reads AWS ECS task- and container-level metadata, and resource usage metrics such as CPU, memory, network, and disk, and forwards them to other otelcol.* components.
 
 {{< admonition type="note" >}}
 The `otelcol.receiver.awsecscontainermetrics` component is experimental. You must set the `--stability.level=experimental` flag to use it. Refer to [Permitted stability levels][stability-levels] for more information.
