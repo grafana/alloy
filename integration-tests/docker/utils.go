@@ -152,12 +152,12 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 }
 
 // Configure the test command with appropriate environment variables if needed
-func setupTestCommand(testDir string, testTimeout time.Duration) (*exec.Cmd, error) {
+func setupTestCommand(testDir string, testTimeout time.Duration) *exec.Cmd {
 	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests")
 	testCmd.Dir = testDir
 
 	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
-	return testCmd, nil
+	return testCmd
 }
 
 var logMux sync.Mutex
@@ -251,15 +251,7 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 	}()
 
 	// Setup and run test command
-	testCmd, err := setupTestCommand(testDir, testTimeout)
-	if err != nil {
-		addLog(TestLog{
-			TestDir:  dirName,
-			AlloyLog: fmt.Sprintf("failed to setup test command: %v", err),
-			IsError:  true,
-		})
-		return
-	}
+	testCmd := setupTestCommand(testDir, testTimeout)
 	if stateful {
 		testCmd.Env = append(testCmd.Environ(),
 			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
