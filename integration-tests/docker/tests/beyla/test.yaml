@@ -1,4 +1,4 @@
-container:
+alloy_container:
   privileged: true
   cap_add:
     - "SYS_ADMIN"

@@ -137,14 +137,6 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 			hc.CapAdd = cfg.Container.CapAdd
 			hc.SecurityOpt = cfg.Container.SecurityOpt
 			hc.PidMode = container.PidMode(cfg.Container.PIDMode)
-
-			if dirName == "beyla" {
-				hc.Privileged = true
-				hc.CapAdd = []string{"SYS_ADMIN", "SYS_PTRACE", "SYS_RESOURCE"}
-				hc.SecurityOpt = []string{"apparmor:unconfined"}
-				hc.PidMode = container.PidMode("host")
-			}
-
 		},
 		Files: containerFiles,
 		Networks: []string{

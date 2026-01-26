@@ -1,4 +1,4 @@
-container: 
+alloy_container: 
   ports:
     - container: 1514
       host: 1514

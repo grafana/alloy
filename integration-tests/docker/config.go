@@ -2,7 +2,7 @@ package main
 
 // TestConfig is used by tests to describe special setup requirements.
 type TestConfig struct {
-	Container ContainerConfig `yaml:"container"`
+	Container ContainerConfig `yaml:"alloy_container"`
 }
 
 // ContainerConfig is used to configure alloy container used for the test.
