@@ -133,8 +133,10 @@ func TestForwardsMetrics(t *testing.T) {
 			},
 			GRPC: testGRPCConfig(t),
 		},
-		ForwardTo: testAppendable(actualSamples),
+		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+		ForwardTo:                           testAppendable(actualSamples),
 	}
+
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
@@ -192,7 +194,8 @@ func TestForwardsMetricsTLS(t *testing.T) {
 			},
 			GRPC: testGRPCConfig(t),
 		},
-		ForwardTo: testAppendable(actualSamples),
+		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+		ForwardTo:                           testAppendable(actualSamples),
 	}
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
@@ -320,7 +323,8 @@ func TestUpdate(t *testing.T) {
 			},
 			GRPC: testGRPCConfig(t),
 		},
-		ForwardTo: testAppendable(actualSamples),
+		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+		ForwardTo:                           testAppendable(actualSamples),
 	}
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
@@ -373,13 +377,15 @@ func TestServerRestarts(t *testing.T) {
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
-				ForwardTo: []storage.Appendable{},
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           []storage.Appendable{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
-				ForwardTo: []storage.Appendable{},
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           []storage.Appendable{},
 			},
 			shouldRestart: false,
 		},
@@ -389,13 +395,15 @@ func TestServerRestarts(t *testing.T) {
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
-				ForwardTo: []storage.Appendable{},
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           []storage.Appendable{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
-				ForwardTo: testAppendable(nil),
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           testAppendable(nil),
 			},
 			shouldRestart: false,
 		},
@@ -405,7 +413,8 @@ func TestServerRestarts(t *testing.T) {
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
-				ForwardTo: []storage.Appendable{},
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           []storage.Appendable{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -421,13 +430,15 @@ func TestServerRestarts(t *testing.T) {
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
-				ForwardTo: []storage.Appendable{},
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           []storage.Appendable{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: otherPort},
 				},
-				ForwardTo: testAppendable(nil),
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+				ForwardTo:                           testAppendable(nil),
 			},
 			shouldRestart: true,
 		},
