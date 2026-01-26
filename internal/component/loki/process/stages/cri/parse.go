@@ -20,7 +20,7 @@ func (f Flag) String() string {
 	case FlagPartial:
 		return "P"
 	default:
-		return ""
+		return "F"
 	}
 }
 
