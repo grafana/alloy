@@ -88,6 +88,8 @@ The `otelcol.receiver.awsecscontainermetrics` component reads the [ECS Task Meta
 
 {{< admonition type="note" >}}
 The `otelcol.receiver.awsecscontainermetrics` component is experimental. You must set the `--stability.level=experimental` flag to use it. Refer to [Permitted stability levels][stability-levels] for more information.
+
+[stability-levels]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/#permitted-stability-levels
 {{< /admonition >}}
 
 Use the following as a starting point for your {{< param "PRODUCT_NAME" >}} configuration:
@@ -248,7 +250,6 @@ You can also send everything directly to your final destination.
 [ecs-default-config]: https://github.com/aws-observability/aws-otel-collector/blob/main/config/ecs/ecs-default-config.yaml
 [awsecscontainermetrics]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/otelcol.receiver.awsecscontainermetrics/
 [ecs-metadata-v4]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html
-[stability-levels]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/#permitted-stability-levels
 [fargate-template]: https://github.com/aws-observability/aws-otel-collector/blob/main/examples/ecs/aws-cloudwatch/ecs-fargate-sidecar.json
 [ec2-template]: https://github.com/aws-observability/aws-otel-collector/blob/main/examples/ecs/aws-prometheus/ecs-ec2-task-def.json
 [task]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html
