@@ -10,7 +10,7 @@ weight: 50
 
 # Supported platforms
 
-The following operating systems and hardware architecture are supported.
+The following operating systems and hardware architectures are supported.
 
 ## Linux
 
