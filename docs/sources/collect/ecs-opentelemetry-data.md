@@ -184,15 +184,15 @@ Complete the following steps to create a sample task.
    - _`{{ecsTaskExecutionRoleArn}}`_: The AWSOTTaskExecutionRole ARN.
    - Set the container image to `grafana/alloy:<VERSION>`, for example `grafana/alloy:latest` or a specific version such as `grafana/alloy:v1.8.0`.
    - Add a custom environment variable named `ALLOY_CONFIG_CONTENT`. Select **ValueFrom** to tell ECS to get the value from the Parameter Store, and set the value to `collector-config`. {{< param "PRODUCT_NAME" >}} doesn't read this variable directly, but you use it with the command below to pass the configuration.
-   - Add environment variables for your endpoint. For the native receiver:
-      - `OTLP_ENDPOINT`
-      - `OTLP_USERNAME`
-      - `OTLP_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
-
-     For the Prometheus exporter:
-      - `PROMETHEUS_REMOTE_WRITE_URL`
-      - `PROMETHEUS_USERNAME`
-      - `PROMETHEUS_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
+   - Add environment variables for your endpoint.
+     - For the native receiver:
+       - `OTLP_ENDPOINT`
+       - `OTLP_USERNAME`
+       - `OTLP_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
+     - For the Prometheus exporter:
+       - `PROMETHEUS_REMOTE_WRITE_URL`
+       - `PROMETHEUS_USERNAME`
+       - `PROMETHEUS_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
    - In the Docker configuration, change the **Entrypoint** to `/bin/bash,-c`.
    - _`{{command}}`_: For the native receiver, use `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec /bin/alloy run --stability.level=experimental --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. The `--stability.level=experimental` flag enables the use of the `otelcol.receiver.awsecscontainermetrics` component.
 
@@ -201,10 +201,10 @@ Complete the following steps to create a sample task.
      Make sure you don't omit the double quotes around the command.
    - **Prometheus exporter only:** Add the Prometheus ECS exporter as a sidecar container:
 
-      1. Add a container to the task.
-      1. Set the container name to `ecs-exporter`.
-      1. Set the image to `quay.io/prometheuscommunity/ecs-exporter:latest`.
-      1. Add `tcp/9779` as a port mapping.
+     1. Add a container to the task.
+     1. Set the container name to `ecs-exporter`.
+     1. Set the image to `quay.io/prometheuscommunity/ecs-exporter:latest`.
+     1. Add `tcp/9779` as a port mapping.
 
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
@@ -212,7 +212,7 @@ Complete the following steps to create a sample task.
 
 For ECS Clusters running on EC2, you can collect instance metrics by using AWS ADOT or {{< param "PRODUCT_NAME" >}} in a separate ECS task deployed as a daemon.
 
-### {{% param "PRODUCT_NAME" %}}
+### Collect metrics with {{% param "PRODUCT_NAME" %}}
 
 You can follow the steps described in [Configure {{< param "PRODUCT_NAME" >}}](#configure-alloy) to create another task, with the following changes:
 
@@ -221,7 +221,7 @@ You can follow the steps described in [Configure {{< param "PRODUCT_NAME" >}}](#
 - Update your {{< param "PRODUCT_NAME" >}} configuration to collect metrics from the instance.
    The configuration varies depending on the type of EC2 node. Refer to the [`collect`](https://grafana.com/docs/alloy/latest/collect/) documentation for details.
 
-### ADOT
+### Collect metrics with ADOT
 
 The approach described in [the AWS OpenTelemetry documentation](https://aws-otel.github.io/docs/setup/ecs#3-setup-the-adot-collector-for-ecs-ec2-instance-metrics) uses the `awscontainerinsightreceiver` receiver from OpenTelemetry. ADOT includes this receiver.
 
