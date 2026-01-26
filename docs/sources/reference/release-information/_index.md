@@ -10,6 +10,6 @@ weight: 750
 
 This section provides information about {{< param "PRODUCT_NAME" >}} versioning policies and release schedules.
 
-For product lifecycle information, refer to [Grafana Cloud product lifecycle](https://grafana.com/docs/grafana-cloud/account-mgmt/product-lifecycle/).
+For product lifecycle information, refer to [Grafana Cloud product lifecycle](https://grafana.com/docs/release-life-cycle/).
 
 {{< section >}}

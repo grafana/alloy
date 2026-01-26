@@ -12,7 +12,7 @@ weight: 10
 It's an [OpenTelemetry Collector distribution][OpenTelemetry] with built-in Prometheus pipelines and native support for Loki, Pyroscope, and other observability backends.
 
 {{< param "PRODUCT_NAME" >}} collects metrics, logs, traces, and profiles in one unified solution.
-Instead of running separate collectors for each signal type, you configure a single tool that works with both OpenTelemetry and Prometheus ecosystems.
+Instead of running separate collectors for each signal type, you configure a single tool that handles all your telemetry needs.
 This approach reduces operational complexity while giving you the flexibility to send data to any compatible backend, whether that's Grafana Cloud, a self-managed Grafana stack, or other observability platforms.
 
 {{< youtube bFyGd_Sr5W4 >}}
@@ -24,6 +24,7 @@ This approach reduces operational complexity while giving you the flexibility to
 - [Install][Install] {{< param "PRODUCT_NAME" >}} on your platform
 - Learn core [concepts][Concepts] including components, expressions, and pipelines
 - Follow [tutorials][tutorials] for hands-on experience
+- Explore [alloy-scenarios][scenarios] for real-world configuration examples
 - Try the [Alloy for Beginners][beginners] workshop for interactive, scenario-based learning
 - Explore the [component reference][reference] to see available components
 
@@ -46,3 +47,4 @@ This approach reduces operational complexity while giving you the flexibility to
 [Estimate resource usage]: ../set-up/estimate-resource-usage/
 [migrate]: ../set-up/migrate/
 [beginners]: https://github.com/grafana/Grafana-Alloy-for-Beginners
+[scenarios]: https://github.com/grafana/alloy-scenarios

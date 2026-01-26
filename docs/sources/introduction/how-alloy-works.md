@@ -98,7 +98,7 @@ You can also connect to other ecosystems, including InfluxDB, Elasticsearch, and
 {{< param "PRODUCT_NAME" >}} can consolidate multiple collectors.
 Replace Prometheus Agent to gain the same functionality plus support for logs, traces, and profiles.
 Replace the OpenTelemetry Collector to add native Prometheus support alongside OTLP.
-Replace specialized log collectors like Promtail, `Fluentd`, or `Filebeat` with a unified collection approach.
+Replace specialized log collectors like Promtail, Fluentd, or Filebeat with a unified collection approach.
 
 You can also run {{< param "PRODUCT_NAME" >}} alongside collectors during migration to transition gradually without disrupting your observability.
 Refer to the [migration guides][migrate] for step-by-step instructions.

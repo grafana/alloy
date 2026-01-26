@@ -51,7 +51,7 @@ You have to learn different configuration languages, manage separate deployments
 You learn one configuration language, manage one deployment, and use a single built-in UI for debugging.
 This unified approach reduces both complexity and resource consumption.
 
-For example, if your team runs Prometheus for metrics, `Fluentd` for logs, and Jaeger agents for traces, {{< param "PRODUCT_NAME" >}} can replace all three and simplify your telemetry architecture.
+For example, if your team runs Prometheus for metrics, Fluentd for logs, and Jaeger agents for traces, {{< param "PRODUCT_NAME" >}} can replace all three and simplify your telemetry architecture.
 
 ### You need both Prometheus and OpenTelemetry
 
