@@ -46,10 +46,8 @@ func TestParse(t *testing.T) {
 			wantBody:   "my super cool message",
 		},
 		{
-			name:       "unknown stream is invalid",
-			wantValid:  false,
-			wantStream: StreamUnknown,
-			wantFlag:   FlagFull,
+			name:      "unknown stream is invalid",
+			wantValid: false,
 		},
 	}
 

@@ -27,10 +27,8 @@ func (f Flag) String() string {
 type Stream int8
 
 const (
-	// StreamUnknown indicates the line is not recognized as CRI.
-	StreamUnknown Stream = iota
 	// StreamStdOut indicates stdout log stream.
-	StreamStdOut
+	StreamStdOut = iota
 	// StreamStdErr indicates stderr log stream.
 	StreamStdErr
 )
@@ -77,8 +75,8 @@ func ParseCRI(line string) (Parsed, bool) {
 		return zero, false
 	}
 
-	stream, line = parseStream(line)
-	if stream == StreamUnknown {
+	stream, line, ok = parseStream(line)
+	if !ok {
 		return zero, false
 	}
 
@@ -107,13 +105,13 @@ func parseTimestamp(line string) (string, string) {
 	return line[0:i], line[i:]
 }
 
-func parseStream(line string) (Stream, string) {
+func parseStream(line string) (Stream, string, bool) {
 	if strings.HasPrefix(line, "stdout") {
-		return StreamStdOut, line[len("stdout"):]
+		return StreamStdOut, line[len("stdout"):], true
 	} else if strings.HasPrefix(line, "stderr") {
-		return StreamStdErr, line[len("stderr"):]
+		return StreamStdErr, line[len("stderr"):], true
 	}
-	return StreamUnknown, line
+	return StreamStdOut, line, false
 }
 
 func parseFlag(line string) (Flag, string) {

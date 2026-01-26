@@ -67,6 +67,13 @@ type cri struct {
 
 func (c *cri) Name() string { return StageTypeCRI }
 
+const (
+	criTime    = "time"
+	criFlags   = "flags"
+	criStream  = "stream"
+	criContent = "content"
+)
+
 func (c *cri) Run(in chan Entry) chan Entry {
 	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
 		parsed, ok := crip.ParseCRI(e.Line)
@@ -74,10 +81,10 @@ func (c *cri) Run(in chan Entry) chan Entry {
 			return []Entry{e}, false
 		}
 
-		e.Extracted["content"] = parsed.Content
-		e.Extracted["time"] = parsed.Timestamp
-		e.Extracted["flags"] = parsed.Flag.String()
-		e.Extracted["stream"] = parsed.Stream.String()
+		e.Extracted[criTime] = parsed.Timestamp
+		e.Extracted[criFlags] = parsed.Flag.String()
+		e.Extracted[criStream] = parsed.Stream.String()
+		e.Extracted[criContent] = parsed.Content
 
 		e.Line = parsed.Content
 
@@ -86,7 +93,7 @@ func (c *cri) Run(in chan Entry) chan Entry {
 			e.Timestamp = ts
 		}
 
-		e.Labels["stream"] = model.LabelValue(parsed.Stream.String())
+		e.Labels[criStream] = model.LabelValue(parsed.Stream.String())
 
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
