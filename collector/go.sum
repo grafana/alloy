@@ -1884,6 +1884,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalproc
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor v0.142.0/go.mod h1:Ggho2ol6+k+WvicHJqGlD26ARkJt5NEPoz7bdOUYzdE=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.142.0 h1:oq+Qai4+JgqvDkbVy9ObqD4p527ObwyDRvtThtT5FZ0=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.142.0/go.mod h1:/rXd9kVmBw277+LEDcJGJ/RRb2rVL89hNL95FUaMN9k=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.142.0 h1:RMdnEzbfqBmNI3UT8K5//1Z1HpD8Adq1RIzCItmdgaw=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.142.0/go.mod h1:DbnNU+vFFh3sYuJRfCDRV80fPr1GJT0YSSvqSF/2Q8c=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.142.0 h1:HZMvNV/HhFqUipmTGj1vZj+V6MSG/wQs4p0fAMbDF4o=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.142.0/go.mod h1:Ss0gY7Lj+RZAKKCUp3wzc0JFloI+f0L6OFTX+I003Qs=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.142.0 h1:JHsjepWLopcut4j2+NH545OP6V6A7mfFiEKfddOM4Jg=
