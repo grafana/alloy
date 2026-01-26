@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/ebpf-profiler/libpf/pfelf"
@@ -14,9 +16,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
-
-	discovery "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 )
 
 func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, funcName, sourceFile string, sourceLine libpf.SourceLineno) libpf.Frames {
@@ -50,10 +49,11 @@ func newReporter() *PPROFReporter {
 	return NewPPROF(
 		nil,
 		&Config{
-			SamplesPerSecond:          97,
-			ExtraNativeSymbolResolver: nil,
+			SamplesPerSecond: 97,
 		},
 		tp,
+		nil,
+		nil,
 	)
 }
 
@@ -275,7 +275,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		addr: 0xcafe00de,
 	}
 	rep := newReporter()
-	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{
+	rep.symbols = &symbolizer{
 		symbols: map[symbolizerKey]irsymcache.SourceInfo{
 			key: {
 				LineNumber:   9,
@@ -362,7 +362,7 @@ Mappings
 
 func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 	rep := newReporter()
-	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{}
+	rep.symbols = &symbolizer{}
 	rep.cfg.ReporterUnsymbolizedStubs = true
 
 	frames := make(libpf.Frames, 0, 1)

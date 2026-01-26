@@ -50,11 +50,12 @@ func TestPyroscopeJavaIntegration(t *testing.T) {
 
 	reg := prometheus.NewRegistry()
 
-	writeComponent, err := testutil.CreateWriteComponent(l, reg, pyroscopeEndpoint)
+	writeReceiver, writeComponent, err := testutil.
+		CreateWriteComponent(l, reg, pyroscopeEndpoint)
 	require.NoError(t, err, "Failed to create write component")
 
 	args := java.DefaultArguments()
-	args.ForwardTo = []pyroscope.Appendable{writeComponent}
+	args.ForwardTo = []pyroscope.Appendable{writeReceiver}
 	args.ProfilingConfig.Interval = time.Second
 	args.Targets = []discovery.Target{
 		discovery.NewTargetFromMap(map[string]string{
@@ -70,7 +71,11 @@ func TestPyroscopeJavaIntegration(t *testing.T) {
 	)
 	require.NoError(t, err, "Failed to create java component")
 
-	wg.Add(2)
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		_ = writeComponent.Run(ctx)
+	}()
 	go func() {
 		defer wg.Done()
 		_ = javaComponent.Run(ctx)

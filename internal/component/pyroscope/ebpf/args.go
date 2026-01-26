@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 )
 
 type Arguments struct {
@@ -27,6 +28,8 @@ type Arguments struct {
 	VerboseMode         bool                   `alloy:"verbose_mode,attr,optional"`
 	LazyMode            bool                   `alloy:"lazy_mode,attr,optional"`
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
+
+	DebugInfoOptions debuginfo.Arguments `alloy:"debug_info,block,optional"`
 
 	// undocumented
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
