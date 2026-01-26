@@ -180,9 +180,9 @@ Complete the following steps to create a sample task.
      - For the Prometheus exporter:
        - `PROMETHEUS_REMOTE_WRITE_URL`
        - `PROMETHEUS_USERNAME`
-       - `PROMETHEUS_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
-   - In the Docker configuration, change the **Entrypoint** to `/bin/bash,-c`.
-   - _`{{command}}`_: For the native receiver, use `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec /bin/alloy run --stability.level=experimental --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. The `--stability.level=experimental` flag enables the use of the `otelcol.receiver.awsecscontainermetrics` component.
+   - _`{{command}}`_: For the native receiver, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --stability.level=experimental --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. The `--stability.level=experimental` flag enables the use of the `otelcol.receiver.awsecscontainermetrics` component.
+
+     For the Prometheus exporter, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`.
 
      For the Prometheus exporter, use `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec /bin/alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`.
 
