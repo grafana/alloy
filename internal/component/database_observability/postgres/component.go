@@ -93,6 +93,7 @@ type AzureCloudProviderInfo struct {
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	BaseThrottleInterval  time.Duration `alloy:"base_throttle_interval,attr,optional"`
 	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
 }
 
@@ -112,6 +113,7 @@ var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
+		BaseThrottleInterval:  1 * time.Minute,
 		ExcludeCurrentUser:    true,
 	},
 	QueryTablesArguments: QueryTablesArguments{
@@ -434,6 +436,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
+			BaseThrottleInterval:  c.args.QuerySampleArguments.BaseThrottleInterval,
 			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
 		})
 		if err != nil {
