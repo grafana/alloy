@@ -452,7 +452,8 @@ func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
 		}
 		return val, true
 	case map[string]string:
-		// Object values sourced from Go (e.g., vars) often use map[string]string.
+		// Object values sourced from Go code may be map[string]string, although in practice they are usually
+		// converted to Target capsules to optimize performance. We keep it here for maximum compatibility.
 		val, ok := value[key]
 		if !ok {
 			logMissingCollectionID(logger, key)
@@ -460,13 +461,14 @@ func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
 		}
 		return val, true
 	case map[string]syntax.Value:
-		// Capsules converted to objects use map[string]syntax.Value (VM canonical form).
+		// Capsules converted to objects use map[string]syntax.Value (e.g. collection = discovery.kubernetes.pods.targets).
 		val, ok := value[key]
 		if !ok {
 			logMissingCollectionID(logger, key)
 			return nil, false
 		}
 		return val.Interface(), true
+	// If we get a Target or other supported capsule, we will attempt to convert it to a map[string]syntax.Value.
 	case syntax.ConvertibleIntoCapsule:
 		return collectionItemIDFromCapsule(value, key, logger)
 	default:

@@ -343,17 +343,17 @@ func TestForeachCollectionMapAnyUsesId(t *testing.T) {
 	config := `foreach "default" {
 		collection = [obj1, obj2]
 		var = "each"
-		id = "netbox_id"
+		id = "selected_id"
 		template {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	vars := map[string]interface{}{
 		"obj1": map[string]any{
-			"netbox_id": "9101",
+			"selected_id": "9101",
 		},
 		"obj2": map[string]any{
-			"netbox_id": "9102",
+			"selected_id": "9102",
 		},
 	}
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
@@ -365,14 +365,14 @@ func TestForeachCollectionSyntaxValueUsesId(t *testing.T) {
 	config := `foreach "default" {
 		collection = [obj1]
 		var = "each"
-		id = "netbox_id"
+		id = "selected_id"
 		template {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	vars := map[string]interface{}{
 		"obj1": map[string]syntax.Value{
-			"netbox_id": syntax.ValueFromString("9103"),
+			"selected_id": syntax.ValueFromString("9103"),
 		},
 	}
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))

@@ -1,3 +1,4 @@
+// controller_test package helps avoid a circular dependency when testing using discovery.Target capsules.
 package controller_test
 
 import (
@@ -23,7 +24,7 @@ func TestForeachCollectionTargetsUsesId(t *testing.T) {
 	config := `foreach "default" {
 		collection = targets
 		var = "each"
-		id = "netbox_id"
+		id = "selected_id"
 		template {
 		}
 	}`
@@ -33,12 +34,12 @@ func TestForeachCollectionTargetsUsesId(t *testing.T) {
 		"targets": []discovery.Target{
 			discovery.NewTargetFromMap(map[string]string{
 				"__address__": "192.0.2.10",
-				"netbox_id":   "8201",
+				"selected_id":   "8201",
 				"instance":    "192.0.2.10",
 			}),
 			discovery.NewTargetFromMap(map[string]string{
 				"__address__": "198.51.100.24",
-				"netbox_id":   "8202",
+				"selected_id":   "8202",
 				"instance":    "198.51.100.24",
 			}),
 		},
