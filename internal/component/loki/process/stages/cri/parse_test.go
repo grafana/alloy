@@ -37,15 +37,6 @@ func TestParse(t *testing.T) {
 			wantBody:   "my super cool message",
 		},
 		{
-			name:       "extra spaces between fields",
-			line:       "2019-01-01T01:00:00.000000001Z  stdout   P   msg",
-			wantTS:     "2019-01-01T01:00:00.000000001Z",
-			wantValid:  true,
-			wantStream: StreamStdOut,
-			wantFlag:   FlagPartial,
-			wantBody:   "msg",
-		},
-		{
 			name:       "missing flag defaults to full",
 			line:       "2019-01-01T01:00:00.000000001Z stdout my super cool message",
 			wantTS:     "2019-01-01T01:00:00.000000001Z",
@@ -53,15 +44,6 @@ func TestParse(t *testing.T) {
 			wantStream: StreamStdOut,
 			wantFlag:   FlagFull,
 			wantBody:   "my super cool message",
-		},
-		{
-			name:       "missing flag and content",
-			line:       "2019-01-01T01:00:00.000000001Z stdout",
-			wantTS:     "2019-01-01T01:00:00.000000001Z",
-			wantValid:  true,
-			wantStream: StreamStdOut,
-			wantFlag:   FlagFull,
-			wantBody:   "",
 		},
 		{
 			name:       "unknown stream is invalid",

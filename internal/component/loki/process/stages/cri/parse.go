@@ -68,17 +68,29 @@ func ParseCRI(line string) (Parsed, bool) {
 		timestamp string
 		stream    Stream
 		flag      Flag
+		zero      Parsed
 	)
 
 	timestamp, line = parseTimestamp(line)
+	line, ok := skipWhitespace(line)
+	if !ok {
+		return zero, false
+	}
 
 	stream, line = parseStream(line)
 	if stream == StreamUnknown {
-		return Parsed{}, false
+		return zero, false
 	}
 
-	flag, line = parseFlag(line)
+	line, ok = skipWhitespace(line)
+	if !ok {
+		return zero, false
+	}
 
+	// NOTE: because we only optionally require flag we also don't care if we had
+	// a whitespace or not.
+	flag, line = parseFlag(line)
+	line, _ = skipWhitespace(line)
 	return Parsed{
 		Timestamp: timestamp,
 		Stream:    stream,
@@ -92,19 +104,16 @@ func parseTimestamp(line string) (string, string) {
 	if i == -1 {
 		return "", line
 	}
-	return line[0:i], skipWhitespaces(line[i:])
+	return line[0:i], line[i:]
 }
 
 func parseStream(line string) (Stream, string) {
-	stream := StreamUnknown
-
 	if strings.HasPrefix(line, "stdout") {
-		stream, line = StreamStdOut, line[len("stdout"):]
+		return StreamStdOut, line[len("stdout"):]
 	} else if strings.HasPrefix(line, "stderr") {
-		stream, line = StreamStdErr, line[len("stderr"):]
+		return StreamStdErr, line[len("stderr"):]
 	}
-
-	return stream, skipWhitespaces(line)
+	return StreamUnknown, line
 }
 
 func parseFlag(line string) (Flag, string) {
@@ -112,31 +121,19 @@ func parseFlag(line string) (Flag, string) {
 		return FlagFull, line
 	}
 
-	var (
-		b    = line[0]
-		flag = FlagFull
-	)
-
-	switch b {
+	switch line[0] {
 	case 'P':
-		flag = FlagPartial
-		line = line[1:]
+		return FlagPartial, line[1:]
 	case 'F':
-		line = line[1:]
+		return FlagFull, line[1:]
 	}
 
-	return flag, skipWhitespaces(line)
+	return FlagFull, line
 }
 
-func skipWhitespaces(b string) string {
-	i := 0
-	for i < len(b) {
-		switch b[i] {
-		case ' ':
-			i++
-		default:
-			return b[i:]
-		}
+func skipWhitespace(line string) (string, bool) {
+	if len(line) > 0 && line[0] == ' ' {
+		return line[1:], true
 	}
-	return b
+	return line, false
 }
