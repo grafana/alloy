@@ -1177,6 +1177,8 @@ github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd h1:FW1K
 github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd/go.mod h1:iEFA+REkm+0WRvVxy0cA1bBhJlFcQB998yymb45TqMU=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 h1:Ab3Z4AXC1Hffr4NbeYq0vTQhJbiGTTO2xd0ZV0kC1v8=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
+github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966 h1:flIED1bVVc8XGgEM9J2M8oRnllD0R+Gydf/mXHSeww0=
+github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966/go.mod h1:TeJMg8YjVMx9w+vYu6HD15o37zW2HUizPZrh58hUSGY=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11 h1:Pi46xuPzRjAeB6XB4PzdF8kV93jl4NB58OZj08Bi33U=
@@ -1913,8 +1915,6 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver 
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.142.0/go.mod h1:Lqa348mf7+Uds6a4TirRVy2RuSZOhISrlZxrF50tTwE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.142.0 h1:PiArV40Tn4GrwLtL9RWfrN3vC+lx69uVAy1p+Zo+Y7k=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.142.0/go.mod h1:WyUGg8RamQ3HnKTTVy6AEROyro5W/qB++VXMboz12rI=
-github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.142.0 h1:L59G0cUxF7ZsLomfVHi1PMXKGAjulKmm2hjLTgt3uic=
-github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.142.0/go.mod h1:TeJMg8YjVMx9w+vYu6HD15o37zW2HUizPZrh58hUSGY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.142.0 h1:MVWXMTn2ja/RZlJNdjqD4aD6foCaRvbUqaG7+D806j8=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.142.0/go.mod h1:Uib/zzXO/SPxG+WH45ztKUM3dDgN4ztLMwq9+qsvDVg=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.142.0 h1:CiIPboEMYQxAc0BQvz+6UioozEH/Q/bkWZJn6hXrNMs=

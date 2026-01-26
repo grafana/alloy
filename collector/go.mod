@@ -1060,3 +1060,5 @@ replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
+
+replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
