@@ -2,17 +2,15 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.enrich/
 description: Learn about pyroscope.enrich
 labels:
+  stage: experimental
   products:
     - oss
-  tags:
-    - text: Community
-      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: pyroscope.enrich
 ---
 
 # `pyroscope.enrich`
 
-{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.enrich` enriches profiles with additional labels from service discovery targets.
 It matches a label from incoming profiles against a label from discovered targets, and copies specified labels from the matched target to the profile.

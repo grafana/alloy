@@ -2,17 +2,15 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.awsecscontainermetrics/
 description: Learn about otelcol.receiver.awsecscontainermetrics
 labels:
+  stage: experimental
   products:
     - oss
-  tags:
-    - text: Community
-      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.receiver.awsecscontainermetrics
 ---
 
 # `otelcol.receiver.awsecscontainermetrics`
 
-{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.awsecscontainermetrics` reads AWS ECS task- and container-level metadata, and resource usage metrics such as CPU, memory, network, and disk, and forwards them to other `otelcol.*` components.
 
