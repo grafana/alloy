@@ -100,7 +100,7 @@ You can use the following arguments with `prometheus.scrape`:
 > 
 > Metadata support for Remote Write v1 in `prometheus.remote_write` will be added soon.
 >
-> > **EXPERIMENTAL**: The `enable_type_and_unit_labels` argument is an [experimental][] feature.
+> **EXPERIMENTAL**: The `enable_type_and_unit_labels` argument is an [experimental][] feature.
 > When enabled and available from the scrape, the metric type and unit are added as labels to each scraped sample.
 > This provides additional schema information about metrics directly in the label set.
 > This feature doesn't require downstream components to support Remote Write v2.
