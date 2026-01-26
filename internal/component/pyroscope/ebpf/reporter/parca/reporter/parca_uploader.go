@@ -245,9 +245,13 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 		return err
 	}
 
-	level.Debug(u.logger).Log("msg", "ShouldInitiateUpload result",
+	l := log.With(u.logger,
 		"file_name", fileName,
+		"file_id", fileID,
 		"build_id", buildID,
+	)
+
+	level.Debug(l).Log("msg", "ShouldInitiateUpload result",
 		"should_initiate_upload", shouldInitiateUploadResp.ShouldInitiateUpload,
 		"reason", shouldInitiateUploadResp.Reason)
 
@@ -358,8 +362,6 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 
 		r = f
 	}
-
-	level.Debug(u.logger).Log("msg", "attempting to upload", "file_name", fileName, "build_id", buildID)
 	initiateUploadResp, err := client.InitiateUpload(ctx, &debuginfopb.InitiateUploadRequest{
 		BuildId:     buildID,
 		BuildIdType: buildIDType,
@@ -369,6 +371,7 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 	})
 
 	if err != nil {
+		level.Debug(u.logger).Log("msg", "InitiateUpload", "err", err)
 		if status.Code(err) == codes.FailedPrecondition {
 			// This is a race that can happen when multiple agents are trying
 			// to upload the same file. This happens when another upload is
@@ -391,6 +394,7 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 		}
 		return err
 	}
+	level.Debug(u.logger).Log("msg", "InitiateUpload", "res", fmt.Sprintf("%+v", initiateUploadResp))
 
 	if initiateUploadResp.UploadInstructions == nil {
 		u.retry.Add(fileID, struct{}{})

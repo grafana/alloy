@@ -2,7 +2,7 @@
   <configuration default="false" name="run pyroscope ebpf.txt" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="alloy" />
     <working_directory value="$PROJECT_DIR$/collector" />
-    <parameters value="run $PROJECT_DIR$/data-alloy/ebpf.txt" />
+    <parameters value="run $PROJECT_DIR$/internal/component/pyroscope/util/internal/configurations/ebpf.txt" />
     <sudo value="true" />
     <kind value="PACKAGE" />
     <package value="github.com/grafana/alloy/otel_engine" />
