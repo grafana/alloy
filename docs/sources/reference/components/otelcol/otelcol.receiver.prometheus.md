@@ -13,11 +13,13 @@ title: otelcol.receiver.prometheus
 # `otelcol.receiver.prometheus`
 
 `otelcol.receiver.prometheus` receives Prometheus metrics, converts them to the OpenTelemetry metrics format, and forwards them to other `otelcol.*` components.
+This is a custom component built on a fork of the upstream OpenTelemetry Collector receiver.
 
 You can specify multiple `otelcol.receiver.prometheus` components by giving them different labels.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.prometheus` is a custom component built on a fork of the upstream OpenTelemetry Collector receiver.
+Support for translating Prometheus native histograms into OTLP exponential histograms is a public preview feature.
+To enable native histogram translation, run {{< param "PRODUCT_NAME" >}} with the `--stability.level=public-preview` configuration flag.
 {{< /admonition >}}
 
 ## Usage
@@ -33,10 +35,6 @@ otelcol.receiver.prometheus "<LABEL>" {
 ## Arguments
 
 The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
-
-{{< admonition type="note" >}}
-`otelcol.receiver.prometheus` translates Prometheus native histograms into OTLP exponential histograms if you run {{< param "PRODUCT_NAME" >}} with the `--stability.level=public-preview` configuration flag.
-{{< /admonition >}}
 
 ## Blocks
 
