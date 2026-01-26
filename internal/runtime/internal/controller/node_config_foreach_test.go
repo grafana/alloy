@@ -30,7 +30,7 @@ func TestCreateCustomComponents(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
 	keys := make([]string, 0, len(foreachConfigNode.customComponents))
@@ -48,7 +48,7 @@ func TestCreateCustomComponentsDuplicatedIds(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_1_2"})
 	keys := make([]string, 0, len(foreachConfigNode.customComponents))
@@ -66,7 +66,7 @@ func TestCreateCustomComponentsWithUpdate(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
 	keys := make([]string, 0, len(foreachConfigNode.customComponents))
@@ -83,7 +83,7 @@ func TestCreateCustomComponentsWithUpdate(t *testing.T) {
 	}`
 	foreachConfigNode.moduleController.(*ModuleControllerMock).Reset()
 	foreachConfigNode.UpdateBlock(getBlockFromConfig(t, newConfig))
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds = foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 
 	// Only the 2nd "1" item in the collection is created because the two others were already created.
@@ -105,7 +105,7 @@ func TestRunCustomComponents(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	ctx, cancel := context.WithCancel(t.Context())
 	go foreachConfigNode.Run(ctx)
 
@@ -133,7 +133,7 @@ func TestRunCustomComponentsAfterUpdate(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	ctx, cancel := context.WithCancel(t.Context())
 	go foreachConfigNode.Run(ctx)
 
@@ -152,7 +152,7 @@ func TestRunCustomComponentsAfterUpdate(t *testing.T) {
 	}`
 	foreachConfigNode.moduleController.(*ModuleControllerMock).Reset()
 	foreachConfigNode.UpdateBlock(getBlockFromConfig(t, newConfig))
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 
 	newComponentIds := []string{"foreach_1_1", "foreach_2_1", "foreach_1_2"}
 	// check that all new custom components are running correctly
@@ -180,7 +180,7 @@ func TestCreateCustomComponentsCollectionObjectsWithUpdate(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"obj1": map[string]string{
 			"label1": "a",
 			"label2": "b",
@@ -204,7 +204,7 @@ func TestCreateCustomComponentsCollectionObjectsWithUpdate(t *testing.T) {
 		template {
 		}
 	}`
-	vars2 := map[string]interface{}{
+	vars2 := map[string]any{
 		"obj1": map[string]string{
 			"label1": "a",
 			"label2": "b",
@@ -237,7 +237,7 @@ func TestNonAlphaNumericString(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__st_4__1"})
 }
@@ -254,7 +254,7 @@ func TestNonAlphaNumericString2(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__s4_1", "foreach_123__s4_2"})
 }
@@ -270,7 +270,7 @@ func TestNonAlphaNumericString3(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	// TODO: It's not very clear which item became "foreach_123__s4_1_1".
 	// To avoid confusion, maybe we should log a mapping?
@@ -286,7 +286,7 @@ func TestStringIDHash(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_1"})
 }
@@ -301,7 +301,7 @@ func TestStringIDHashWithKey(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"obj1": map[string]string{
 			"label1": "123./st%4$",
 			"label2": "b",
@@ -325,7 +325,7 @@ func TestStringIDHashWithKeySameValue(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"obj1": map[string]string{
 			"label1": "123./st%4$",
 			"label2": "b",
@@ -348,7 +348,7 @@ func TestForeachCollectionMapAnyUsesId(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"obj1": map[string]any{
 			"selected_id": "9101",
 		},
@@ -370,7 +370,7 @@ func TestForeachCollectionSyntaxValueUsesId(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"obj1": map[string]syntax.Value{
 			"selected_id": syntax.ValueFromString("9103"),
 		},
@@ -388,7 +388,7 @@ func TestCollectionNonArrayValue(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.ErrorContains(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))), `"aaa" should be array, got string`)
+	require.ErrorContains(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))), `"aaa" should be array, got string`)
 }
 
 func TestModuleControllerUpdate(t *testing.T) {
@@ -399,12 +399,12 @@ func TestModuleControllerUpdate(t *testing.T) {
 		}
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
 
 	// Re-evaluate, the module controller should still contain the same custom components
-	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]any))))
 	customComponentIds = foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
 }

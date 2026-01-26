@@ -30,16 +30,16 @@ func TestForeachCollectionTargetsUsesId(t *testing.T) {
 	}`
 	moduleController := &moduleControllerStub{}
 	foreachConfigNode := controller.NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t, moduleController), nil)
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"targets": []discovery.Target{
 			discovery.NewTargetFromMap(map[string]string{
 				"__address__": "192.0.2.10",
-				"selected_id":   "8201",
+				"selected_id": "8201",
 				"instance":    "192.0.2.10",
 			}),
 			discovery.NewTargetFromMap(map[string]string{
 				"__address__": "198.51.100.24",
-				"selected_id":   "8202",
+				"selected_id": "8202",
 				"instance":    "198.51.100.24",
 			}),
 		},
