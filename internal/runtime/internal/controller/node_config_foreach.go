@@ -444,7 +444,8 @@ func objectFingerprint(id any, hashId bool) string {
 func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
 	switch value := item.(type) {
 	case map[string]any:
-		// Inline object literals in Alloy decode into map[string]any.
+		// Inline object literals with simple values.
+		// Example: collection = [{name = "one", port = "8080"}, {name = "two", port = "8081"}]
 		val, ok := value[key]
 		if !ok {
 			logMissingCollectionID(logger, key)
@@ -452,8 +453,8 @@ func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
 		}
 		return val, true
 	case map[string]string:
-		// Object values sourced from Go code may be map[string]string, although in practice they are usually
-		// converted to Target capsules to optimize performance. We keep it here for maximum compatibility.
+		// Plain Go maps - used to be common, but are now replaced by Target capsules for performance.
+		// We keep it for maximum compatibility in case it's needed in the future.
 		val, ok := value[key]
 		if !ok {
 			logMissingCollectionID(logger, key)
@@ -461,15 +462,17 @@ func collectionItemID(item any, key string, logger log.Logger) (any, bool) {
 		}
 		return val, true
 	case map[string]syntax.Value:
-		// Capsules converted to objects use map[string]syntax.Value (e.g. collection = discovery.kubernetes.pods.targets).
+		// Inline object literals with expressions or computed values.
+		// Example: collection = [{name = "one", url = "http://" + hostname}]
 		val, ok := value[key]
 		if !ok {
 			logMissingCollectionID(logger, key)
 			return nil, false
 		}
 		return val.Interface(), true
-	// If we get a Target or other supported capsule, we will attempt to convert it to a map[string]syntax.Value.
 	case syntax.ConvertibleIntoCapsule:
+		// Capsules from component exports, such as discovery.Target.
+		// Example: collection = discovery.kubernetes.pods.targets
 		return collectionItemIDFromCapsule(value, key, logger)
 	default:
 		return nil, false
