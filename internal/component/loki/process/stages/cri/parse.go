@@ -56,11 +56,11 @@ type Parsed struct {
 	Content string
 }
 
-// ParseCRI parses a CRI formatted log line, <TIMESTAMP> <STREAM> <FLAG> <CONTENT>.
-// STREAM is "stdout" or "stderr" and FLAG is "F" (full) or "P" (partial).
-// Parsing is not strict: multiple spaces between fields are accepted; FLAG may be
-// omitted (defaults to full); CONTENT may be empty; and TIMESTAMP is treated as
-// the first non-space token without validation.
+// ParseCRI parses a CRI formatted log line, <TIMESTAMP> <STREAM> <FLAGS> <CONTENT>.
+// To be compatible with previous implementation using regex we are a bit lenient
+// with the format:
+// 1. We don't validate that the timestamp is RFC 3339Nano.
+// 2. FLAGS are optional and we assume 'F' if not set.
 func ParseCRI(line string) (Parsed, bool) {
 	var (
 		timestamp string
@@ -85,7 +85,7 @@ func ParseCRI(line string) (Parsed, bool) {
 		return zero, false
 	}
 
-	// NOTE: because we only optionally require flag we also don't care if we had
+	// NOTE: because we only optionally require flag we also don't care if we have
 	// a whitespace or not.
 	flag, line = parseFlag(line)
 	line, _ = skipWhitespace(line)

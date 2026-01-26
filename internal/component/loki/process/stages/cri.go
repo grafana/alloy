@@ -81,6 +81,11 @@ func (c *cri) Run(in chan Entry) chan Entry {
 			return []Entry{e}, false
 		}
 
+		// NOTE: Previous implementation used a "sub-pipeline"
+		// to parse CRI logs where the regex stage added these fields
+		// as "extracted" values so the other stages could operate on them.
+		// We don't need this anymore but it would be a breaking change to
+		// no longer set these.
 		e.Extracted[criTime] = parsed.Timestamp
 		e.Extracted[criFlags] = parsed.Flag.String()
 		e.Extracted[criStream] = parsed.Stream.String()
