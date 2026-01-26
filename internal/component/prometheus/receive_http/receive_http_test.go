@@ -37,6 +37,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -793,9 +794,10 @@ func TestRemoteWriteV2(t *testing.T) {
 					},
 					GRPC: testGRPCConfig(t),
 				},
-				ForwardTo:               testAppendableWithMetadata(actualSamples, actualMetadata),
-				AppendMetadata:          tc.appendMetadata,
-				EnableTypeAndUnitLabels: tc.enableTypeAndUnitLabels,
+				ForwardTo:                           testAppendableWithMetadata(actualSamples, actualMetadata),
+				AppendMetadata:                      tc.appendMetadata,
+				EnableTypeAndUnitLabels:             tc.enableTypeAndUnitLabels,
+				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType), string(remote.WriteV2MessageType)},
 			}
 			comp, err := New(testOptions(t), args)
 			require.NoError(t, err)
@@ -904,4 +906,98 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 		alloyprom.WithAppendHook(appendHook),
 		alloyprom.WithMetadataHook(metadataHook),
 	)}
+}
+
+func TestAcceptedRemoteWriteProtobufMessages(t *testing.T) {
+	testCases := []struct {
+		name                                string
+		acceptedRemoteWriteProtobufMessages []string
+		useExperimentalStability            bool
+		expectError                         bool
+		expectedErrorContains               string
+	}{
+		{
+			name:                                "invalid protocol version",
+			acceptedRemoteWriteProtobufMessages: []string{"invalid.protocol"},
+			useExperimentalStability:            false,
+			expectError:                         true,
+			expectedErrorContains:               "unsupported protocol version",
+		},
+		{
+			name:                                "v2 without experimental stability",
+			acceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV2MessageType)},
+			useExperimentalStability:            false,
+			expectError:                         true,
+			expectedErrorContains:               "experimental feature",
+		},
+		{
+			name:                                "v2 with experimental stability",
+			acceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV2MessageType)},
+			useExperimentalStability:            true,
+			expectError:                         false,
+		},
+		{
+			name:                                "v1 only (default configuration)",
+			acceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
+			useExperimentalStability:            false,
+			expectError:                         false,
+		},
+		{
+			name:                                "empty list",
+			acceptedRemoteWriteProtobufMessages: []string{},
+			useExperimentalStability:            false,
+			expectError:                         true,
+			expectedErrorContains:               "must not be empty",
+		},
+		{
+			name:                                "duplicate message types",
+			acceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType), string(remote.WriteV1MessageType)},
+			useExperimentalStability:            false,
+			expectError:                         false,
+		},
+		{
+			name:                                "both v1 and v2 with experimental",
+			acceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType), string(remote.WriteV2MessageType)},
+			useExperimentalStability:            true,
+			expectError:                         false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			port, err := freeport.GetFreePort()
+			require.NoError(t, err)
+
+			args := Arguments{
+				Server: &fnet.ServerConfig{
+					HTTP: &fnet.HTTPConfig{
+						ListenAddress: "localhost",
+						ListenPort:    port,
+					},
+					GRPC: testGRPCConfig(t),
+				},
+				ForwardTo:                           []storage.Appendable{alloyprom.NewFanout(nil, "", prometheus.NewRegistry(), nil)},
+				AcceptedRemoteWriteProtobufMessages: tc.acceptedRemoteWriteProtobufMessages,
+			}
+
+			opts := testOptions(t)
+			opts.MinStability = featuregate.StabilityGenerallyAvailable
+			if tc.useExperimentalStability {
+				opts.MinStability = featuregate.StabilityExperimental
+			}
+
+			comp, err := New(opts, args)
+
+			if tc.expectError {
+				require.Error(t, err)
+				if tc.expectedErrorContains != "" {
+					require.Contains(t, err.Error(), tc.expectedErrorContains)
+				}
+				require.Nil(t, comp)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, comp)
+			}
+		})
+	}
 }

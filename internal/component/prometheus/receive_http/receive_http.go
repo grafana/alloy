@@ -44,12 +44,15 @@ type Arguments struct {
 	AppendMetadata bool `alloy:"append_metadata,attr,optional"`
 	// Whether the metric type and unit should be added as labels
 	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
+	// Supported remote write protobuf message types. Valid values are "prometheus.WriteRequest" and "io.prometheus.write.v2.Request".
+	AcceptedRemoteWriteProtobufMessages []string `alloy:"accepted_remote_write_protobuf_messages,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Server: fnet.DefaultServerConfig(),
+		Server:                              fnet.DefaultServerConfig(),
+		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
 	}
 }
 
@@ -82,7 +85,24 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
-	supportedRemoteWriteProtoMsgs := remote.MessageTypes{remote.WriteV1MessageType, remote.WriteV2MessageType}
+	if len(args.AcceptedRemoteWriteProtobufMessages) == 0 {
+		return nil, fmt.Errorf("accepted_remote_write_protobuf_messages must not be empty")
+	}
+
+	supportedRemoteWriteProtoMsgs := remote.MessageTypes{}
+	for _, version := range args.AcceptedRemoteWriteProtobufMessages {
+		switch version {
+		case string(remote.WriteV1MessageType):
+			supportedRemoteWriteProtoMsgs = append(supportedRemoteWriteProtoMsgs, remote.WriteV1MessageType)
+		case string(remote.WriteV2MessageType):
+			if !opts.MinStability.Permits(featuregate.StabilityExperimental) {
+				return nil, fmt.Errorf("using %q in supported_protocol_versions is an experimental feature, and must be enabled by setting the stability.level flag to experimental", remote.WriteV2MessageType)
+			}
+			supportedRemoteWriteProtoMsgs = append(supportedRemoteWriteProtoMsgs, remote.WriteV2MessageType)
+		default:
+			return nil, fmt.Errorf("unsupported protocol version %q: valid values are %q and %q", version, remote.WriteV1MessageType, remote.WriteV2MessageType)
+		}
+	}
 
 	c := &Component{
 		opts: opts,
