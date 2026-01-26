@@ -36,12 +36,10 @@ const (
 // String returns the CRI stream representation ("stdout" or "stderr").
 func (s Stream) String() string {
 	switch s {
-	case StreamStdOut:
-		return "stdout"
 	case StreamStdErr:
 		return "stderr"
 	default:
-		return "unknown"
+		return "stdout"
 	}
 }
 
