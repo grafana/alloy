@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.metric_start_time/
-aliases:
-  - ../otelcol.processor.metric_start_time/ # /docs/alloy/latest/reference/otelcol.processor.metric_start_time/
 description: Learn about otelcol.processor.metric_start_time
 labels:
   stage: general-availability
@@ -12,10 +10,8 @@ title: otelcol.processor.metric_start_time
 
 # `otelcol.processor.metric_start_time`
 
-`otelcol.processor.metric_start_time` accepts metrics from other `otelcol` components and sets the start time for cumulative metric points when the start time is unknown.
+`otelcol.processor.metric_start_time` accepts metrics from other `otelcol` components and sets the start time for cumulative metric datapoints which do not already have a start time.
 This processor is commonly used with `otelcol.receiver.prometheus`, which produces metric points without a [start time][otlp-start-time].
-
-`otelcol.processor.metric_start_time` does not modify metric datapoints which already have a start time, 
 
 {{< admonition type="note" >}}
 `otelcol.processor.metric_start_time` is a wrapper over the upstream OpenTelemetry Collector [`metricstarttime`][] processor.
