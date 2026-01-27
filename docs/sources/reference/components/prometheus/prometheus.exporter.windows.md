@@ -416,15 +416,14 @@ For example, you can set `enabled_list` to `["metrics"]`.
 | `directories`         | `list(string)` | The list of directories containing files to ingest.   | _see below_ | no       |
 | `text_file_directory` | `string`       | Deprecated. The directory containing files to ingest. |             | no       |
 
-For backwards compatibility, you can also configure the `textfile` collector with the deprecated `text_file` block.
-If you configure both `text_file` and `textfile`, the component concatenates the distinct values from each.
-
-If you configure both `text_file_directory` and `directories`, the component splits `text_file_directory` by `,` and appends the values to the `directories` list.
-The default value remains in `text_file_directory` for backward compatibility.
-
-The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
-By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
+By default, `directories` contains the `textfile_inputs` directory in the {{< param "PRODUCT_NAME" >}} installation directory.
 For example, if you install {{< param "PRODUCT_NAME" >}} in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+
+The deprecated `text_file_directory` attribute accepts a comma-separated string of directories.
+If you set both `text_file_directory` and `directories`, the component combines them into a single list.
+
+For backwards compatibility, you can also use the deprecated `text_file` block to configure the `textfile` collector.
+If you configure both blocks, the component combines the distinct directory values from each.
 
 The component only reads files with the `.prom` extension inside the specified directories.
 
@@ -439,15 +438,14 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 | `directories`         | `list(string)` | The list of directories containing files to ingest.   | _see below_ | no       |
 | `text_file_directory` | `string`       | Deprecated. The directory containing files to ingest. |             | no       |
 
-For backwards compatibility, you can also configure the `textfile` collector with the deprecated `text_file` block.
-If you configure both `text_file` and `textfile`, the component concatenates the distinct values from each.
-
-If you configure both `text_file_directory` and `directories`, the component splits `text_file_directory` by `,` and appends the values to the `directories` list.
-The default value remains in `text_file_directory` for backward compatibility.
-
-The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
-By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
+By default, `directories` contains the `textfile_inputs` directory in the {{< param "PRODUCT_NAME" >}} installation directory.
 For example, if you install {{< param "PRODUCT_NAME" >}} in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+
+The deprecated `text_file_directory` attribute accepts a comma-separated string of directories.
+If you set both `text_file_directory` and `directories`, the component combines them into a single list.
+
+For backwards compatibility, you can also use the `textfile` block to configure the `textfile` collector.
+If you configure both blocks, the component combines the distinct directory values from each.
 
 The component only reads files with the `.prom` extension inside the specified directories.
 
