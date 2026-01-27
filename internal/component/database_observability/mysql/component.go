@@ -450,6 +450,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -467,6 +468,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
 			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
 			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
 			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
@@ -492,6 +494,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DB:                          c.dbConnection,
 			EngineVersion:               parsedEngineVersion,
 			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
+			ExcludeSchemas:              c.args.ExcludeSchemas,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,
 			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
