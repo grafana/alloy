@@ -68,29 +68,50 @@ func TestScheduler_Synchronize(t *testing.T) {
 		require.NoError(t, sched.Close())
 	})
 
-	t.Run("Removes stale jobs", func(t *testing.T) {
+	t.Run("Runnables which no longer exist are shutdown before new ones are created", func(t *testing.T) {
 		var started, finished sync.WaitGroup
-		started.Add(1)
-		finished.Add(1)
+		started.Add(2)
 
-		runFunc := func(ctx context.Context) error {
+		var lock sync.Mutex
+
+		basicRun := func(ctx context.Context) error {
 			defer finished.Done()
 			started.Done()
 			<-ctx.Done()
 			return nil
 		}
 
+		sharedResourceRun := func(ctx context.Context) error {
+			defer finished.Done()
+			started.Done()
+
+			if !lock.TryLock() {
+				t.Fatal("failed to claim lock - already held by another component")
+				return nil
+			}
+			defer lock.Unlock()
+			<-ctx.Done()
+			return nil
+		}
+
 		sched := controller.NewScheduler(logger, 1*time.Minute)
 
-		sched.Synchronize([]controller.RunnableNode{
-			fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},
-		})
+		comp1 := fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: sharedResourceRun}}
+		comp2 := fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}}
+		comp3 := fakeRunnable{ID: "component-c", Component: mockComponent{RunFunc: sharedResourceRun}}
+
+		sched.Synchronize([]controller.RunnableNode{comp1, comp2})
 		started.Wait()
 
-		sched.Synchronize([]controller.RunnableNode{})
-
+		started.Add(1)
+		finished.Add(1)
+		sched.Synchronize([]controller.RunnableNode{comp2, comp3})
+		started.Wait()
 		finished.Wait()
+
+		finished.Add(2)
 		require.NoError(t, sched.Close())
+		finished.Wait()
 	})
 }
 

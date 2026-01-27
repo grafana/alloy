@@ -51,26 +51,30 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 	}
 }
 
-// Synchronize synchronizes the running components to those defined by rr.
+// Synchronize adjusts the set of running components based on the provided
+// RunnableNodes in the following way,
 //
-// New RunnableNodes will be launched as new goroutines. RunnableNodes already
-// managed by Scheduler will be kept running, while running RunnableNodes that
-// are not in rr will be shut down and removed.
+// 1. Nodes already managed by the scheduler will unchanged.
+// 2. RunnableNodes which are no longer present will be shutdown.
+// 3. New RunnableNodes will then be launched as new goroutines.
+//
+// Nodes are shutdown first to ensure any shared resources, such as ports,
+// are allowed to be freed before new nodes are scheduled.
 //
 // Existing components will be restarted if they stopped since the previous
 // call to Synchronize.
 func (s *Scheduler) Synchronize(rr []RunnableNode) error {
-	s.tasksMut.Lock()
-
 	if s.ctx.Err() != nil {
 		return fmt.Errorf("Scheduler is closed")
 	}
 
 	newRunnables := make(map[string]RunnableNode, len(rr))
 	for _, r := range rr {
+		level.Debug(s.logger).Log("msg", "Found new runnable", "node", r.NodeID())
 		newRunnables[r.NodeID()] = r
 	}
 
+	s.tasksMut.Lock()
 	// Stop tasks that are not defined in rr.
 	var stopping sync.WaitGroup
 	for id, t := range s.tasks {
@@ -78,23 +82,24 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			continue
 		}
 
+		level.Debug(s.logger).Log("msg", "Stopping Task", "node", id)
 		stopping.Add(1)
 		go func(t *task) {
 			defer stopping.Done()
 			t.Stop()
 		}(t)
 	}
+	// Stopping tasks implicitly takes tasksMut in order for tasks to
+	// shutdown we need to release it.
+	s.tasksMut.Unlock()
+	stopping.Wait()
 
 	// Launch new runnables that have appeared.
-	for id, r := range newRunnables {
-		if _, exist := s.tasks[id]; exist {
+	s.tasksMut.Lock()
+	for nodeID, newRunnable := range newRunnables {
+		if _, exist := s.tasks[nodeID]; exist {
 			continue
 		}
-
-		var (
-			nodeID      = id
-			newRunnable = r
-		)
 
 		opts := taskOptions{
 			context:  s.ctx,
@@ -117,13 +122,11 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 		}
 
 		s.running.Add(1)
+		level.Debug(s.logger).Log("msg", "Starting Task", "node", nodeID)
 		s.tasks[nodeID] = newTask(opts)
 	}
-
-	// Unlock the tasks mutex so that Stop calls can complete.
 	s.tasksMut.Unlock()
-	// Wait for all stopping runnables to exit.
-	stopping.Wait()
+
 	return nil
 }
 
