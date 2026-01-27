@@ -76,6 +76,8 @@ type reader struct {
 	cr     []byte
 }
 
+// next reads and returns the next complete line from the file.
+// It will return EOF if there is no more data to read.
 func (r *reader) next() (string, error) {
 	// First we check if we already have a full line buffered.
 	if line, ok := r.consumeLine(); ok {
@@ -101,6 +103,20 @@ func (r *reader) next() (string, error) {
 
 		return "", err
 	}
+}
+
+// flush returns any remaining buffered data as a line, even if it doesn't end with a newline.
+// This should be used when reaching EOF to handle the final partial line in the file.
+// Returns io.EOF if there is no pending data.
+func (r *reader) flush() (string, error) {
+	if len(r.pending) == 0 {
+		return "", io.EOF
+	}
+
+	line := r.pending[:]
+	r.pos += int64(len(line))
+	r.pending = make([]byte, 0, defaultBufSize)
+	return r.decode(bytes.TrimSuffix(line, r.nl))
 }
 
 func (r *reader) decode(line []byte) (string, error) {
@@ -190,7 +206,7 @@ func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error
 	)
 
 	switch compression {
-	case "gzip":
+	case "gz":
 		reader, err = gzip.NewReader(f)
 	case "z":
 		reader, err = zlib.NewReader(f)

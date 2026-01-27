@@ -81,6 +81,8 @@ type File struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
+	// waitAtEOF controls whether we should wait for file events
+	// when we get EOF
 	waitAtEOF bool
 }
 
@@ -115,7 +117,23 @@ read:
 			}
 			goto read
 		}
-		return nil, err
+
+		// If we should wait at EOF we go an unexpected error
+		// here and can just return.
+		if f.waitAtEOF {
+			return nil, err
+		}
+
+		if !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+
+		// If we should return at EOF we want to flush all remaning
+		// data from reader.
+		text, err = f.reader.flush()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	offset := f.reader.position()
@@ -220,6 +238,17 @@ func (f *File) drain() {
 					Time:   time.Now(),
 				})
 			}
+
+			// flush any remaning data in buffer
+			text, _ = f.reader.flush()
+			if text != "" {
+				f.bufferedLines = append(f.bufferedLines, Line{
+					Text:   text,
+					Offset: f.reader.position(),
+					Time:   time.Now(),
+				})
+			}
+
 			return
 		}
 		f.bufferedLines = append(f.bufferedLines, Line{

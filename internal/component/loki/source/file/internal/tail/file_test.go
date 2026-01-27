@@ -207,7 +207,7 @@ func TestFile(t *testing.T) {
 	})
 
 	t.Run("file rotation drains remaining lines from old file", func(t *testing.T) {
-		name := createFile(t, "rotation", "line1\nline2\nline3\nline4\n")
+		name := createFile(t, "rotation", "line1\nline2\nline3\nline4\npartial")
 		defer removeFile(t, name)
 
 		file, err := NewFile(log.NewNopLogger(), &Config{
@@ -232,6 +232,7 @@ func TestFile(t *testing.T) {
 		// Verify we get the remaining old lines first, then new lines
 		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
 		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, &Line{Text: "partial", Offset: 31}, nil)
 		verifyResult(t, file, &Line{Text: "newline1", Offset: 9}, nil)
 		verifyResult(t, file, &Line{Text: "newline2", Offset: 18}, nil)
 	})
@@ -418,9 +419,9 @@ func TestFile(t *testing.T) {
 	)
 
 	t.Run("read gzip", func(t *testing.T) {
-		compressionTest(t, "plain", "gzip", encoding.Nop.NewEncoder(), utf8offsets)
-		compressionTest(t, "utf-16be", "gzip", unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
-		compressionTest(t, "utf-16le", "gzip", unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
+		compressionTest(t, "plain", "gz", encoding.Nop.NewEncoder(), utf8offsets)
+		compressionTest(t, "utf-16be", "gz", unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
+		compressionTest(t, "utf-16le", "gz", unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
 	})
 
 	t.Run("read zlib", func(t *testing.T) {
@@ -514,7 +515,7 @@ func createCompressedFile(t *testing.T, name, compression string, reader io.Read
 	)
 
 	switch compression {
-	case "gzip":
+	case "gz":
 		writer = gzip.NewWriter(f)
 	case "z":
 		writer = zlib.NewWriter(f)
