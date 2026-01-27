@@ -277,6 +277,7 @@ func (t *tailer) readLines(done chan struct{}) {
 	for {
 		line, err := t.file.Next()
 		if err != nil {
+			fmt.Println("Exit due to error here")
 			// We get context.Canceled if tail.File was stopped so we don't have to log it.
 			// If we get context.Canceld it means that tail.File was stopped. If we get EOF
 			// that means that we consumed the file fully and don't wait for more events, this

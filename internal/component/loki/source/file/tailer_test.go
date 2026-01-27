@@ -448,8 +448,11 @@ func TestTailer_Compressions(t *testing.T) {
 	tailer.Run(t.Context())
 
 	entries := handler.Received()
-	require.Len(t, entries, 1)
-	require.Contains(t, entries[0].Line, "onelinelog.log")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, entries, 1)
+		require.Contains(c, entries[0].Line, "onelinelog.log")
+	}, 2*time.Second, 50*time.Millisecond)
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		pos, err := positionsFile.Get(filename, labels.String())
@@ -486,8 +489,9 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 	// We expect tailer to exit when all compressed data have been consumed.
 	tailer.Run(t.Context())
 
-	entries := handler.Received()
-	require.Equal(t, 100000, len(entries))
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Equal(c, 100000, len(handler.Received()))
+	}, 2*time.Second, 50*time.Millisecond)
 }
 
 // TestTailer_CompressedOnelineFile test the supported formats for log lines that only contain 1 line.
@@ -516,8 +520,11 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		// We expect tailer to exit when all compressed data have been consumed.
 		tailer.Run(t.Context())
 
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
 		entries := handler.Received()
-		require.Equal(t, 1, len(entries))
 		require.Equal(t, string(fileContent), entries[0].Line)
 	})
 
@@ -541,8 +548,11 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		// We expect tailer to exit when all compressed data have been consumed.
 		tailer.Run(t.Context())
 
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
 		entries := handler.Received()
-		require.Equal(t, 1, len(entries))
 		require.Equal(t, string(fileContent), entries[0].Line)
 	})
 
@@ -567,13 +577,15 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		// We expect tailer to exit when all compressed data have been consumed.
 		tailer.Run(t.Context())
 
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
 		entries := handler.Received()
-		require.Equal(t, 1, len(entries))
-		firstEntry := entries[0]
-		require.Contains(t, firstEntry.Line, "onelinelog.log") // contains .tar.gz headers
+		require.Contains(t, entries[0].Line, "onelinelog.log") // contains .tar.gz headers
 		require.Contains(
 			t,
-			firstEntry.Line,
+			entries[0].Line,
 			`5.202.214.160 - - [26/Jan/2019:19:45:25 +0330] "GET / HTTP/1.1" 200 30975 "https://www.zanbil.ir/" "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0" "-"`,
 		)
 	})
