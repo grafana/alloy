@@ -30,7 +30,7 @@ This can significantly increase API server load and memory usage, and may cause 
 For better performance and reduced API load:
 
 - Use the [`namespaces`](#namespaces) block to limit discovery to specific namespaces.
-- Use [`selectors`](#selectors) to filter resources by labels or fields.  
+- Use [`selectors`](#selectors) to filter resources by labels or fields.
 - Consider the node-local example in [Limit to only Pods on the same node](#limit-to-only-pods-on-the-same-node).
 - Use [`discovery.kubelet`](../discovery.kubelet/) for DaemonSet deployments to discover only Pods on the local node.
 - Use clustering mode for larger deployments to distribute the discovery load.
@@ -132,7 +132,7 @@ Discovered Pods include the following labels:
 - `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod object.
 - `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod object.
 - `__meta_kubernetes_pod_container_id`: ID of the container the target address points to. The ID is in the form `<type>://<container_id>`.
-- `__meta_kubernetes_pod_container_image`: The image the container is using.
+- `__meta_kubernetes_pod_container_image`: The container image.
 - `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
 - `__meta_kubernetes_pod_container_name`: Name of the container the target address points to.
 - `__meta_kubernetes_pod_container_port_name`: Name of the container port.
@@ -146,7 +146,7 @@ Discovered Pods include the following labels:
 - `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod object.
 - `__meta_kubernetes_pod_name`: The name of the Pod object.
 - `__meta_kubernetes_pod_node_name`: The name of the node where the Pod runs.
-- `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
+- `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed`, or `Unknown` in the lifecycle.
 - `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
 - `__meta_kubernetes_pod_uid`: The UID of the Pod object.
 
@@ -160,8 +160,8 @@ Discovered endpoints include the following labels:
 
 - `__meta_kubernetes_endpoints_label_<labelname>`: Each label from the endpoints object.
 - `__meta_kubernetes_endpoints_labelpresent_<labelname>`: `true` for each label from the endpoints object.
-- `__meta_kubernetes_endpoints_name:` The names of the endpoints object.
-- `__meta_kubernetes_namespace:` The namespace of the endpoints object.
+- `__meta_kubernetes_endpoints_name`: The name of the endpoints object.
+- `__meta_kubernetes_namespace`: The namespace of the endpoints object.
 
 - The component attaches the following labels to all targets discovered directly from the endpoints list:
   - `__meta_kubernetes_endpoint_address_target_kind`: Kind of the endpoint address target.
@@ -190,14 +190,14 @@ Discovered endpoint slices include the following labels:
 
   - `__meta_kubernetes_endpointslice_address_target_kind`: Kind of the referenced object.
   - `__meta_kubernetes_endpointslice_address_target_name`: Name of the referenced object.
-  - `__meta_kubernetes_endpointslice_address_type`: The IP protocol family of the address of the target.
+  - `__meta_kubernetes_endpointslice_address_type`: The IP protocol family of the target address.
   - `__meta_kubernetes_endpointslice_endpoint_conditions_ready`: Set to `true` or `false` for the referenced endpoint's ready state.
   - `__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname`: Name of the node hosting the referenced endpoint.
   - `__meta_kubernetes_endpointslice_endpoint_topology_present_kubernetes_io_hostname`: `true` if the referenced object has a `kubernetes.io/hostname` annotation.
   - `__meta_kubernetes_endpointslice_endpoint_hostname`: Hostname of the referenced endpoint.
-  - `__meta_kubernetes_endpointslice_endpoint_node_name`: Name of the Node hosting the referenced endpoint.
-  - `__meta_kubernetes_endpointslice_endpoint_zone`: Zone the referenced endpoint exists in. Only available when using the `discovery.k8s.io/v1` API group.
-  - `__meta_kubernetes_endpointslice_port_name`: Named port of the referenced endpoint.
+  - `__meta_kubernetes_endpointslice_endpoint_node_name`: Name of the node hosting the referenced endpoint.
+  - `__meta_kubernetes_endpointslice_endpoint_zone`: The zone where the referenced endpoint exists. Only available when using the `discovery.k8s.io/v1` API group.
+  - `__meta_kubernetes_endpointslice_port_name`: Name of the port for the referenced endpoint.
   - `__meta_kubernetes_endpointslice_port_protocol`: Protocol of the referenced endpoint.
   - `__meta_kubernetes_endpointslice_port`: Port of the referenced endpoint.
 
@@ -219,7 +219,7 @@ Discovered ingress objects include the following labels:
 - `__meta_kubernetes_ingress_labelpresent_<labelname>`: `true` for each label from the ingress object.
 - `__meta_kubernetes_ingress_name`: The name of the ingress object.
 - `__meta_kubernetes_ingress_path`: Path from ingress spec. Defaults to `/`.
-- `__meta_kubernetes_ingress_scheme`: Protocol scheme of ingress, `https` when TLS is configured. Defaults to `http`.
+- `__meta_kubernetes_ingress_scheme`: Protocol scheme of ingress, `https` when using TLS. Defaults to `http`.
 - `__meta_kubernetes_namespace`: The namespace of the ingress object.
 
 ## Blocks
@@ -327,7 +327,7 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 ## Component health
 
-`discovery.kubernetes` is reported as unhealthy when given an invalid configuration.
+`discovery.kubernetes` reports as unhealthy when you provide an invalid configuration.
 In those cases, exported fields retain their last healthy values.
 
 ## Debug information
@@ -372,7 +372,7 @@ Replace the following:
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-### Kubeconfig file authentication
+### `kubeconfig` file authentication
 
 This example uses a `kubeconfig` file to authenticate to the Kubernetes API:
 
