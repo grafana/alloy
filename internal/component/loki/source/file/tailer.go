@@ -278,7 +278,7 @@ func (t *tailer) readLines(done chan struct{}) {
 		line, err := t.file.Next()
 		if err != nil {
 			// We get context.Canceled if tail.File was stopped so we don't have to log it.
-			// If we get context.Canceld it means that tail.File was stopped. If we get EOF
+			// If we get context.Canceled it means that tail.File was stopped. If we get EOF
 			// that means that we consumed the file fully and don't wait for more events, this
 			// happens when compression is configured..
 			if !errors.Is(err, context.Canceled) || errors.Is(err, io.EOF) {
