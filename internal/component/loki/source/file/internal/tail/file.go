@@ -110,8 +110,6 @@ read:
 	}
 
 	text, err := f.reader.next()
-	fmt.Println("text 1: ", text)
-	fmt.Println("error 1: ", err)
 	if err != nil {
 		if errors.Is(err, io.EOF) && f.waitAtEOF {
 			if err := f.wait(); err != nil {
@@ -133,8 +131,6 @@ read:
 		// If we should return at EOF we want to flush all remaining
 		// data from reader.
 		text, err = f.reader.flush()
-		fmt.Println("text 2: ", text)
-		fmt.Println("error 2: ", err)
 		if err != nil {
 			return nil, err
 		}
