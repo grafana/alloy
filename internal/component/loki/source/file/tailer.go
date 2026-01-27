@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
-	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
@@ -46,8 +45,9 @@ type tailer struct {
 
 	report sync.Once
 
-	file *tail.File
-	enc  encoding.Encoding
+	file          *tail.File
+	encoding      string
+	decompression DecompressionConfig
 }
 
 func newTailer(
@@ -57,14 +57,9 @@ func newTailer(
 	pos positions.Positions,
 	componentStopping func() bool,
 	opts sourceOptions,
-) (*tailer, error) {
+) *tailer {
 
-	enc, err := getEncoding(opts.encoding)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get decoder: %w", err)
-	}
-
-	tailer := &tailer{
+	return &tailer{
 		metrics:              metrics,
 		logger:               log.With(logger, "component", "tailer", "path", opts.path),
 		receiver:             receiver,
@@ -81,10 +76,9 @@ func newTailer(
 		},
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-		enc:               enc,
+		encoding:          opts.encoding,
+		decompression:     opts.decompressionConfig,
 	}
-
-	return tailer, nil
 }
 
 // getLastLinePosition returns the offset of the start of the last line in the file at the given path.
@@ -240,7 +234,8 @@ func (t *tailer) initRun() error {
 	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
-		Encoding:      t.enc,
+		Encoding:      t.encoding,
+		Compression:   t.decompression.GetFormat(),
 		WatcherConfig: t.watcherConfig,
 	})
 
@@ -258,7 +253,7 @@ func (t *tailer) initRun() error {
 // position tracking periodically. It exits when Next() returns an error,
 // this happens when the tail.File is stopped or or we have a unrecoverable error.
 func (t *tailer) readLines(done chan struct{}) {
-	level.Info(t.logger).Log("msg", "tail routine: started")
+	level.Info(t.logger).Log("msg", "tail routine  started")
 	var (
 		entries             = t.receiver.Chan()
 		lastOffset          = int64(0)
@@ -267,7 +262,7 @@ func (t *tailer) readLines(done chan struct{}) {
 	)
 
 	defer func() {
-		level.Info(t.logger).Log("msg", "tail routine: exited")
+		level.Info(t.logger).Log("msg", "tail routine exited")
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
 		close(done)
@@ -277,8 +272,11 @@ func (t *tailer) readLines(done chan struct{}) {
 		line, err := t.file.Next()
 		if err != nil {
 			// We get context.Canceled if tail.File was stopped so we don't have to log it.
-			if !errors.Is(err, context.Canceled) {
-				level.Error(t.logger).Log("msg", "tail routine: stopping tailer", "err", err)
+			// If we get context.Canceld it means that tail.File was stopped. If we get EOF
+			// that means that we consumed the file fully and don't wait for more events, this
+			// happens when compression is configured..
+			if !errors.Is(err, context.Canceled) || errors.Is(err, io.EOF) {
+				level.Error(t.logger).Log("msg", "failed to tail file", "err", err)
 			}
 			return
 		}
@@ -313,19 +311,19 @@ func (t *tailer) stop(done chan struct{}) {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
-			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "error", err)
+			level.Debug(t.logger).Log("msg", "failed to stop tailer", "error", err)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// Log as error for other reasons, as a resource leak may have happened.
-			level.Error(t.logger).Log("msg", "error stopping tailer", "error", err)
+			level.Error(t.logger).Log("msg", "failed to stop tailer", "error", err)
 		}
 	}
 
-	level.Debug(t.logger).Log("msg", "waiting for readline and position marker to exit", "path", t.key.Path)
+	level.Debug(t.logger).Log("msg", "waiting for readLines to exit")
 
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 	<-done
 
-	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.key.Path)
+	level.Info(t.logger).Log("msg", "stopped tailing file")
 
 	// We need to cleanup created metrics
 	t.cleanupMetrics()
