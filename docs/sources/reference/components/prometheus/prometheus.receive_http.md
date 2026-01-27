@@ -23,7 +23,7 @@ This means that other [`prometheus.remote_write`][prometheus.remote_write] compo
 ## Usage
 
 ```alloy
-prometheus.receive_http "<LABEL?" {
+prometheus.receive_http "<LABEL>" {
   http {
     listen_address = "<LISTEN_ADDRESS>"
     listen_port = <PORT>
@@ -35,19 +35,19 @@ prometheus.receive_http "<LABEL?" {
 The component starts an HTTP server supporting the following endpoint:
 
 * `POST /api/v1/metrics/write`: Sends metrics to the component, which in turn is forwarded to the receivers as configured in `forward_to` argument.
-  The request format must match that of the [Prometheus `remote_write` API][prometheus-remote-write-docs], supporting both remote write v1 and v2 formats.
+  The request format must be compatible with the [Prometheus remote_write API][prometheus-remote-write-docs] and can use either the v1 or v2 format.
   One way to send valid requests to this component is to use another {{< param "PRODUCT_NAME" >}} with a [`prometheus.remote_write`][prometheus.remote_write] component.
 
 ## Arguments
 
 You can use the following arguments with `prometheus.receive_http`:
 
-| Name                                      | Type                    | Description                                                                  | Default                      | Required |
-| ----------------------------------------- | ----------------------- | ---------------------------------------------------------------------------- | ---------------------------- | -------- |
-| `forward_to`                              | `list(MetricsReceiver)` | List of receivers to send metrics to.                                        |                              | yes      |
-| `append_metadata`                         | `bool`                  | Whether metric metadata should be passed to downstream components.           | `false`                      | no       |
-| `enable_type_and_unit_labels`             | `bool`                  | Whether metric type and unit should be added as labels to the metric.        | `false`                      | no       |
-| `accepted_remote_write_protobuf_messages` | `list(string)`          | Accepted remote write protobuf message types.                                | `["prometheus.WriteRequest"]` | no       |
+| Name                                      | Type                    | Description                                                           | Default                       | Required |
+| ----------------------------------------- | ----------------------- | --------------------------------------------------------------------- | ----------------------------- | -------- |
+| `forward_to`                              | `list(MetricsReceiver)` | List of receivers to send metrics to.                                 |                               | yes      |
+| `accepted_remote_write_protobuf_messages` | `list(string)`          | Accepted remote write protobuf message types.                         | `["prometheus.WriteRequest"]` | no       |
+| `append_metadata`                         | `bool`                  | Pass metric metadata to downstream components.                        | `false`                       | no       |
+| `enable_type_and_unit_labels`             | `bool`                  | Add the metric type and unit as labels to the metric.                 | `false`                       | no       |
 
 > **EXPERIMENTAL**: The `append_metadata`, `enable_type_and_unit_labels`, and using `"io.prometheus.write.v2.Request"` in `accepted_remote_write_protobuf_messages` are [experimental][] features.
 >
