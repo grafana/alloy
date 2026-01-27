@@ -448,11 +448,13 @@ Replace the following:
 ### Limit to only Pods on the same node
 
 This example limits the search to Pods on the same node as this {{< param "PRODUCT_NAME" >}}.
-This configuration could be useful if you are running {{< param "PRODUCT_NAME" >}} as a DaemonSet.
+This configuration is recommended when running {{< param "PRODUCT_NAME" >}} as a DaemonSet because it significantly reduces API server load and memory usage by only watching local Pods instead of all Pods cluster-wide.
 
 {{< admonition type="note" >}}
 This example assumes you have used Helm chart to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes and sets `HOSTNAME` to the Kubernetes host name.
-If you have a custom Kubernetes Deployment, you must adapt this example to your configuration.
+If you have a custom Kubernetes deployment, you must adapt this example to your configuration.
+
+As an alternative, you can use [`discovery.kubelet`](../discovery.kubelet/) which queries the local Kubelet API directly and only returns Pods running on the same node.
 {{< /admonition >}}
 
 ```alloy
