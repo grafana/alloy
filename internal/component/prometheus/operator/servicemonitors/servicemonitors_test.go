@@ -3,8 +3,10 @@ package servicemonitors
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -24,10 +26,11 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/common"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/grafana/alloy/internal/util/testappender"
 )
 
@@ -52,10 +55,21 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 	appender := testappender.NewCollectingAppender()
 	mockAppendable := testappender.ConstantAppendable{Inner: appender}
 
+	// Create a synchronized log buffer to capture logs for detecting "informers started"
+	logBuffer := &syncbuffer.Buffer{}
+
+	// Create a logger that writes to both the buffer and stderr
+	multiWriter := io.MultiWriter(logBuffer, os.Stderr)
+	logger, err := logging.New(multiWriter, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	// Create component options
 	opts := component.Options{
 		ID:         "prometheus.operator.servicemonitors.test",
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     logger,
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
@@ -90,6 +104,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 	// Create a test factory that provides access to internal components
 	testFactory := &common.TestCrdManagerFactory{
 		K8sClient: fakeK8s,
+		LogBuffer: logBuffer,
 	}
 
 	// Inject our test factory

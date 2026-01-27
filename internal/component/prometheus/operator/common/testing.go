@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 // SetCrdManagerFactory sets a custom crdManagerFactory on the component.
@@ -218,6 +220,8 @@ func (f *FakeInformer) Delete(obj interface{}) {
 // It injects a FakeK8sFactory that provides fake Kubernetes clients and caches.
 type TestCrdManagerFactory struct {
 	K8sClient kubernetes.Interface
+	// LogBuffer is a synchronized buffer that captures log output.
+	LogBuffer *syncbuffer.Buffer
 
 	mu         sync.RWMutex
 	manager    *crdManager
@@ -240,8 +244,8 @@ func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Clus
 	return m
 }
 
-// readyManager returns the manager if it exists and is ready (discovery and scrape managers initialized).
-// Returns nil if not ready. All access is properly synchronized.
+// readyManager returns the manager if it exists and is ready (informers started).
+// Returns nil if not ready. Checks the LogBuffer for "informers started" to avoid data races.
 func (f *TestCrdManagerFactory) readyManager() *crdManager {
 	f.mu.RLock()
 	m := f.manager
@@ -249,10 +253,8 @@ func (f *TestCrdManagerFactory) readyManager() *crdManager {
 	if m == nil {
 		return nil
 	}
-	m.mut.Lock()
-	ready := m.discoveryManager != nil && m.scrapeManager != nil
-	m.mut.Unlock()
-	if !ready {
+	// Check if the manager is ready by looking for "informers started" in the log buffer
+	if f.LogBuffer == nil || !strings.Contains(f.LogBuffer.String(), "informers started") {
 		return nil
 	}
 	return m
