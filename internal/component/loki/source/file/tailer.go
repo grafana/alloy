@@ -254,6 +254,12 @@ func (t *tailer) initRun() error {
 // this happens when the tail.File is stopped or or we have a unrecoverable error.
 func (t *tailer) readLines(done chan struct{}) {
 	level.Info(t.logger).Log("msg", "tail routine  started")
+
+	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
+		level.Info(t.logger).Log("msg", "sleeping before reading file", "duration", t.decompression.InitialDelay.String())
+		time.Sleep(t.decompression.InitialDelay)
+	}
+
 	var (
 		entries             = t.receiver.Chan()
 		lastOffset          = int64(0)
