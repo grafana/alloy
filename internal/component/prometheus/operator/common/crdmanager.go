@@ -173,9 +173,9 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}
 
 	// Start prometheus service discovery manager
-	discoveryManager := discovery.NewManager(ctx, slog.New(logging.NewSlogGoKitHandler(c.logger)), unregisterer, sdMetrics, discovery.Name(c.opts.ID))
+	c.discoveryManager = discovery.NewManager(ctx, slog.New(logging.NewSlogGoKitHandler(c.logger)), unregisterer, sdMetrics, discovery.Name(c.opts.ID))
 	go func() {
-		err := discoveryManager.Run()
+		err := c.discoveryManager.Run()
 		if err != nil {
 			level.Error(c.logger).Log("msg", "discovery manager stopped", "err", err)
 		}
@@ -190,25 +190,19 @@ func (c *crdManager) Run(ctx context.Context) error {
 		AppendMetadata:        c.args.Scrape.HonorMetadata,
 		PassMetadataInContext: c.args.Scrape.HonorMetadata,
 	}
-	scrapeManager, err := scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
-	defer scrapeManager.Stop()
+	defer c.scrapeManager.Stop()
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 	go func() {
-		err := scrapeManager.Run(targetSetsChan)
+		err := c.scrapeManager.Run(targetSetsChan)
 		level.Info(c.logger).Log("msg", "scrape manager stopped")
 		if err != nil {
 			level.Error(c.logger).Log("msg", "scrape manager failed", "err", err)
 		}
 	}()
-
-	// Assign managers under lock to avoid races with apply() and other methods
-	c.mut.Lock()
-	c.discoveryManager = discoveryManager
-	c.scrapeManager = scrapeManager
-	c.mut.Unlock()
 
 	// run informers after everything else is running
 	if err := c.runInformers(ctx); err != nil {
