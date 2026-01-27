@@ -121,7 +121,7 @@ You can still include this block in your configuration files, but it has no effe
 
 | Name              | Type           | Description                            | Default                            | Required |
 | ----------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
-| `sources_enabled` | `list(string)` | A list of DFSR Perflib sources to use. | `["connection","folder","volume"]` | no       |
+| `sources_enabled` | `list(string)` | A list of DFSR `Perflib` sources to use. | `["connection","folder","volume"]` | no       |
 
 ### `dns`
 
@@ -193,11 +193,11 @@ For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `net`
 
-| Name           | Type           | Description                            | Default                   | Required |
-| -------------- | -------------- | -------------------------------------- | ------------------------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use.           | `["metrics", "nic_info"]` | no       |
-| `exclude`      | `string`       | Regular expression of NICs to exclude. | `"^$"`                    | no       |
-| `include`      | `string`       | Regular expression of NICs to include. | `"^.+$"`                  | no       |
+| Name           | Type           | Description                                                      | Default                   | Required |
+| -------------- | -------------- | ---------------------------------------------------------------- | ------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use.                                     | `["metrics", "nic_info"]` | no       |
+| `exclude`      | `string`       | Regular expression of network interface cards (NICs) to exclude. | `"^$"`                    | no       |
+| `include`      | `string`       | Regular expression of NICs to include.                           | `"^.+$"`                  | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
@@ -321,7 +321,7 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 The `counter_version` may be `0`, `1`, or `2`.
 
 - A value of `1` uses the Windows `Process` performance counters through the [registry][] API.
-- A value of `2` uses the Windows `Process V2` performance counters through the [pdh][] API. These counters are available starting in Windows 11.
+- A value of `2` uses the Windows `Process V2` performance counters through the [Performance Data Helper (PDH)][pdh] API. These counters are available starting in Windows 11.
 - A value of `0` checks if `Process V2` counters are available and falls back to `Process` counters if they aren't.
 
 The component includes processes that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
@@ -370,7 +370,7 @@ The collectors specified by `enabled_list` can include the following:
 
 - `ServerShares`
 
-For example, `enabled_list` may be set to `["ServerShares"]`.
+For example, you can set `enabled_list` to `["ServerShares"]`.
 
 ### `smb_client`
 
@@ -382,7 +382,7 @@ The collectors specified by `enabled_list` can include the following:
 
 - `ClientShares`
 
-For example, `enabled_list` may be set to `["ClientShares"]`.
+For example, you can set `enabled_list` to `["ClientShares"]`.
 
 ### `smtp`
 
@@ -419,7 +419,7 @@ For backwards compatibility, you can also configure the `textfile` collector wit
 If you configure both `text_file` and `textfile`, the component concatenates the distinct values from each.
 
 The component splits `text_file_directory` by `,` and appends the values to the list provided in `directories` if you configure both.
-The default value remains in `text_file_directory` for backward compatibility until the deprecated field is removed.
+The default value remains in `text_file_directory` for backward compatibility.
 
 The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
@@ -442,7 +442,7 @@ For backwards compatibility, you can also configure the `textfile` collector wit
 If you configure both `text_file` and `textfile`, the component concatenates the distinct values from each.
 
 The component splits `text_file_directory` by `,` and appends the values to the list provided in `directories` if you configure both.
-The default value remains in `text_file_directory` for backward compatibility until the deprecated field is removed.
+The default value remains in `text_file_directory` for backward compatibility.
 
 The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
@@ -488,7 +488,7 @@ Some collector blocks such as [`scheduled_task`][scheduled_task] accept a regula
 `prometheus.exporter.windows` prefixes some regular expression string arguments with `^(?:` and suffixes them with `)$`.
 For example, if a user sets an `exclude` argument to `".*"`, Alloy sets it to `"^(?:.*)$"`.
 
-To find out if a particular regular expression argument will be wrapped, refer to the collector block documentation.
+To find out if the component wraps a particular regular expression argument, refer to the collector block documentation.
 
 {{< admonition type="note" >}}
 The wrapping may change the behaviour of your regular expression.
