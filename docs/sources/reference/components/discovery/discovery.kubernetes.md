@@ -21,7 +21,11 @@ A kubeconfig file or manual connection settings can be used to override the defa
 ## Performance considerations
 
 By default, `discovery.kubernetes` discovers resources across all namespaces in your cluster.
-In DaemonSet deployments, this means every {{< param "PRODUCT_NAME" >}} Pod watches all resources, which can increase API server load.
+
+{{< admonition type="caution" >}}
+In DaemonSet deployments, each {{< param "PRODUCT_NAME" >}} Pod discovers and watches all resources across the cluster by default.
+This can significantly increase API server load and memory usage, and may cause API throttling on managed Kubernetes services such as AKS, EKS, or GKE.
+{{< /admonition >}}
 
 For better performance and reduced API load:
 
