@@ -22,12 +22,21 @@ You can specify multiple `otelcol.receiver.prometheus` components by giving them
 `otelcol.receiver.prometheus` is a custom component built on a fork of the upstream OpenTelemetry receiver.
 {{< /admonition >}}
 
-As of Alloy v1.13.0, `otelcol.receiver.prometheus` no longer sets a [start time][otlp-start-time] for the translated OTLP metric datapoint.
-Start time is a way to tell when a cumulative metric such as an OTLP "sum" or a Prometheus "counter" was last reset.
-If your database requires start times for OTLP metrics, you can use `otelcol.processor.metric_start_time` to set it. 
-To add the start time in the same way that `otelcol.receiver.prometheus` did it prior to Alloy v1.13.0, set `strategy` to `true_reset_point`.
 
+{{< admonition type="warning" >}}
+In Alloy v1.14.0 `otelcol.receiver.prometheus` has been changed to no longer set a [start time][otlp-start-time]
+for the translated OTLP metric datapoint if the incoming Prometheus metric lacks a ["created time"][om-suffixes].
+
+Start time is a way to tell when a cumulative metric such as an OTLP "sum" or a Prometheus "counter" was last reset.
+If your database uses start times for OTLP metrics, you can use `otelcol.processor.metric_start_time` to set it.
+Mimir's OTLP endpoint and Grafana Cloud's OTLP Gateway both support OTLP metric start time.
+
+To add the start time in the same way that `otelcol.receiver.prometheus` did it prior to Alloy v1.14.0, 
+configure `otelcol.processor.metric_start_time` with `strategy` set to `true_reset_point`.
+
+[om-suffixes]: https://github.com/prometheus/OpenMetrics/blob/v1.0.0/specification/OpenMetrics.md#suffixes
 [otlp-start-time]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.9.0/opentelemetry/proto/metrics/v1/metrics.proto#L181-L187
+{{< /admonition >}}
 
 ## Usage
 
