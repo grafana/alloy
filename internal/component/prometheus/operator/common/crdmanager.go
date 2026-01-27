@@ -25,12 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/grafana/alloy/internal/component"
+	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
@@ -60,6 +60,42 @@ func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster
 	return newCrdManager(opts, cluster, logger, args, kind, ls)
 }
 
+// CacheFactory creates controller-runtime caches with the given options.
+// This is returned by K8sFactory.New and can be called multiple times (e.g., once per namespace).
+type CacheFactory func(opts cache.Options) (cache.Cache, error)
+
+// K8sFactory creates Kubernetes clients and cache factories.
+// This allows tests to inject fake implementations while production code uses real ones.
+type K8sFactory interface {
+	// New creates a Kubernetes client and a cache factory.
+	// The cache factory can be called multiple times to create caches with different options.
+	New(clientConfig commonk8s.ClientArguments, logger log.Logger) (kubernetes.Interface, CacheFactory, error)
+}
+
+// realK8sFactory is the production implementation that creates real Kubernetes clients and caches.
+type realK8sFactory struct{}
+
+func (realK8sFactory) New(clientConfig commonk8s.ClientArguments, logger log.Logger) (kubernetes.Interface, CacheFactory, error) {
+	restConfig, err := clientConfig.BuildRESTConfig(logger)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating rest config: %w", err)
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating kubernetes client: %w", err)
+	}
+
+	cacheFactory := func(opts cache.Options) (cache.Cache, error) {
+		return cache.New(restConfig, opts)
+	}
+
+	return k8sClient, cacheFactory, nil
+}
+
+// defaultK8sFactory is the production K8sFactory used when none is injected.
+var defaultK8sFactory K8sFactory = realK8sFactory{}
+
 // crdManager is all of the fields required to run a crd based component.
 // on update, this entire thing should be recreated and restarted
 type crdManager struct {
@@ -84,7 +120,9 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
-	client kubernetes.Interface
+	client       kubernetes.Interface
+	k8sFactory   K8sFactory
+	cacheFactory CacheFactory
 
 	kind string
 }
@@ -114,23 +152,16 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.L
 		kind:              kind,
 		clusteringUpdated: make(chan struct{}, 1),
 		ls:                ls,
+		k8sFactory:        defaultK8sFactory,
 	}
 }
 
 func (c *crdManager) Run(ctx context.Context) error {
-	// Build REST config (used for both k8s client and informers)
-	// Only build if client is not already set (i.e., not injected by tests)
-	var restConfig *rest.Config
-	if c.client == nil {
-		var err error
-		restConfig, err = c.args.Client.BuildRESTConfig(c.logger)
-		if err != nil {
-			return fmt.Errorf("creating rest config: %w", err)
-		}
-		c.client, err = kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			return fmt.Errorf("creating kubernetes client: %w", err)
-		}
+	// Create Kubernetes client and cache factory
+	var err error
+	c.client, c.cacheFactory, err = c.k8sFactory.New(c.args.Client, c.logger)
+	if err != nil {
+		return fmt.Errorf("creating kubernetes client and cache factory: %w", err)
 	}
 
 	unregisterer := util.WrapWithUnregisterer(c.opts.Registerer)
@@ -180,14 +211,10 @@ func (c *crdManager) Run(ctx context.Context) error {
 	c.mut.Unlock()
 
 	// run informers after everything else is running
-	// restConfig is nil when client was injected (e.g., in tests), in which case we skip informers
-	// TODO: Use a fake k8s cache so that the tests can go through more of the k8s code?
-	if restConfig != nil {
-		if err := c.runInformers(restConfig, ctx); err != nil {
-			return err
-		}
-		level.Info(c.logger).Log("msg", "informers started")
+	if err := c.runInformers(ctx); err != nil {
+		return err
 	}
+	level.Info(c.logger).Log("msg", "informers started")
 
 	var cachedTargets map[string][]*targetgroup.Group
 	// Start the target discovery loop to update the scrape manager with new targets.
@@ -295,7 +322,7 @@ func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 }
 
 // runInformers starts all the informers that are required to discover CRDs.
-func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) error {
+func (c *crdManager) runInformers(ctx context.Context) error {
 	scheme := runtime.NewScheme()
 	for _, add := range []func(*runtime.Scheme) error{
 		promopv1.AddToScheme,
@@ -323,12 +350,12 @@ func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) 
 		if ls != labels.Nothing() {
 			opts.DefaultLabelSelector = ls
 		}
-		cache, err := cache.New(restConfig, opts)
+		informerCache, err := c.cacheFactory(opts)
 		if err != nil {
 			return err
 		}
 
-		informers := cache
+		informers := informerCache
 
 		go func() {
 			err := informers.Start(ctx)
