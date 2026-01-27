@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -27,8 +26,9 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Encoding == nil {
-		cfg.Encoding = encoding.Nop
+	encoding, err := getEncoding(cfg.Encoding)
+	if err != nil {
+		return nil, err
 	}
 
 	if cfg.WatcherConfig == (WatcherConfig{}) {
@@ -41,7 +41,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	reader, err := newReader(f, cfg.Offset, cfg.Encoding, cfg.Compression)
+	reader, err := newReader(f, cfg.Offset, encoding, cfg.Compression)
 	if err != nil {
 		f.Close()
 		return nil, err

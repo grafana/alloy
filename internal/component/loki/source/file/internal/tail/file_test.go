@@ -311,7 +311,7 @@ func TestFile(t *testing.T) {
 	t.Run("UTF-16LE", func(t *testing.T) {
 		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: "testdata/mssql.log",
-			Encoding: unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM),
+			Encoding: "UTF-16LE",
 		})
 		require.NoError(t, err)
 		defer file.Stop()
@@ -336,7 +336,7 @@ func TestFile(t *testing.T) {
 		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
 			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
+			Encoding: "UTF-8",
 		})
 		require.NoError(t, err)
 
@@ -351,8 +351,8 @@ func TestFile(t *testing.T) {
 		// Reopen file from last offset to make sure it handles that.
 		file, err = NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
+			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
 			Offset:   24,
 		})
 		require.NoError(t, err)
@@ -370,8 +370,8 @@ func TestFile(t *testing.T) {
 
 		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
+			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
 		})
 		require.NoError(t, err)
 
@@ -386,8 +386,8 @@ func TestFile(t *testing.T) {
 		// Reopen file from last offset.
 		file, err = NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
+			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
 			Offset:   24,
 		})
 		require.NoError(t, err)
@@ -404,8 +404,7 @@ func TestFile(t *testing.T) {
 
 		file, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: name,
-			// We are setting UTF-16BE here but still expect to decode the file using UTF-8
-			Encoding: unicode.UTF16(unicode.BigEndian, unicode.UseBOM),
+			Encoding: "UTF-16",
 		})
 		require.NoError(t, err)
 		defer file.Stop()
