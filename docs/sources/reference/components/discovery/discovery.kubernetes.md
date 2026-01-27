@@ -54,8 +54,8 @@ You can use the following arguments with `discovery.kubernetes`:
 | `api_server`             | `string`            | URL of Kubernetes API server.                                                                    |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
-| `enable_http2`           | `bool`              | Whether to support HTTP2 for requests.                                                           | `true`  | no       |
-| `follow_redirects`       | `bool`              | Whether to follow redirects returned by the server.                                              | `true`  | no       |
+| `enable_http2`           | `bool`              | Support HTTP2 for requests.                                                                      | `true`  | no       |
+| `follow_redirects`       | `bool`              | Follow redirects returned by the server.                                                         | `true`  | no       |
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to send with each request. The map key is the header name.                   |         | no       |
 | `kubeconfig_file`        | `string`            | Path of `kubeconfig` file to use for connecting to Kubernetes.                                   |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
