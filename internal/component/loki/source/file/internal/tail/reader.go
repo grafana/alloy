@@ -3,7 +3,9 @@ package tail
 import (
 	"bufio"
 	"bytes"
+	"compress/bzip2"
 	"compress/gzip"
+	"compress/zlib"
 	"io"
 	"os"
 	"unsafe"
@@ -175,24 +177,47 @@ func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
 }
 
 func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error) {
+	// NOTE: If compression is used we always need to read from the beginning.
+	if compression != "" && offset != 0 {
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+	}
+
+	var (
+		reader io.Reader
+		err    error
+	)
+
 	switch compression {
 	case "gzip":
-		stat, err := f.Stat()
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := gzip.NewReader(io.NewSectionReader(f, offset, stat.Size()))
-		if err != nil {
-			return nil, err
-		}
-		return r, nil
+		reader, err = gzip.NewReader(f)
+	case "z":
+		reader, err = zlib.NewReader(f)
+	case "bz2":
+		reader = bzip2.NewReader(f)
 	default:
 		if offset != 0 {
 			if _, err := f.Seek(offset, io.SeekStart); err != nil {
 				return nil, err
 			}
 		}
-		return f, nil
+
+		reader = f
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE: If compression is used there is no easy way to seek to correct offset in the file
+	// because the offset we store is for uncompressed data. Instead we can discard until the correct
+	// offset.
+	if compression != "" && offset != 0 {
+		if _, err := io.CopyN(io.Discard, reader, offset); err != nil {
+			return nil, err
+		}
+	}
+
+	return reader, nil
 }
