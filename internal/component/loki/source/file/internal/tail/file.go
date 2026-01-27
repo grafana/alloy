@@ -128,7 +128,7 @@ read:
 			return nil, err
 		}
 
-		// If we should return at EOF we want to flush all remaning
+		// If we should return at EOF we want to flush all remaining
 		// data from reader.
 		text, err = f.reader.flush()
 		if err != nil {
@@ -239,7 +239,7 @@ func (f *File) drain() {
 				})
 			}
 
-			// flush any remaning data in buffer
+			// flush any remaining data in buffer
 			text, _ = f.reader.flush()
 			if text != "" {
 				f.bufferedLines = append(f.bufferedLines, Line{

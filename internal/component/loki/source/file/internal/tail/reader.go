@@ -142,7 +142,7 @@ func (r *reader) consumeLine() ([]byte, bool) {
 
 	// Extract everything up until newline.
 	line := r.pending[:i]
-	// Keep everything except the line we extraxted and newline.
+	// Keep everything except the line we extracted and newline.
 	rem := r.pending[i+len(r.nl):]
 	r.pending = append(make([]byte, 0, defaultBufSize), rem...)
 
