@@ -447,9 +447,8 @@ func TestTailer_Compressions(t *testing.T) {
 	// We expect tailer to exit when all compressed data have been consumed.
 	tailer.Run(t.Context())
 
-	entries := handler.Received()
-
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		entries := handler.Received()
 		require.Len(c, entries, 1)
 		require.Contains(c, entries[0].Line, "onelinelog.log")
 	}, 2*time.Second, 50*time.Millisecond)
@@ -465,7 +464,7 @@ func TestTailer_Compressions(t *testing.T) {
 	// Run the decompressor again
 	tailer.Run(t.Context())
 
-	entries = handler.Received()
+	entries := handler.Received()
 	require.Len(t, entries, 0)
 }
 
