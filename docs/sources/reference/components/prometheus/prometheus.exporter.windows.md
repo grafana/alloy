@@ -268,11 +268,24 @@ prometheus.exporter.windows "default" {
 The `performance_counters.yaml` file should be a YAML file that represents an array of objects matching the schema in the documentation, like the example below.
 
 ```yaml
+# Monitor Memory performance counters
 - name: memory
   object: "Memory"
   counters:
     - name: "Cache Faults/sec"
-      type: "counter" # optional
+      type: "counter"  # Use 'counter' for cumulative/rate metrics
+    - name: "Available Bytes"
+      type: "gauge"    # Use 'gauge' for point-in-time values
+
+# Monitor Processor performance counters
+- name: processor
+  object: "Processor"
+  instances: ["_Total"]  # Optional: filter to specific instances
+  counters:
+    - name: "% Processor Time"
+      type: "gauge"
+    - name: "Interrupts/sec"
+      type: "counter"
 ```
 
 [documentation]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.performancecounter.md
