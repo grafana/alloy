@@ -120,9 +120,8 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
-	client       kubernetes.Interface
-	k8sFactory   K8sFactory
-	cacheFactory CacheFactory
+	client     kubernetes.Interface
+	k8sFactory K8sFactory
 
 	kind string
 }
@@ -159,7 +158,8 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.L
 func (c *crdManager) Run(ctx context.Context) error {
 	// Create Kubernetes client and cache factory
 	var err error
-	c.client, c.cacheFactory, err = c.k8sFactory.New(c.args.Client, c.logger)
+	var cacheFactory CacheFactory
+	c.client, cacheFactory, err = c.k8sFactory.New(c.args.Client, c.logger)
 	if err != nil {
 		return fmt.Errorf("creating kubernetes client and cache factory: %w", err)
 	}
@@ -205,7 +205,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// run informers after everything else is running
-	if err := c.runInformers(ctx); err != nil {
+	if err := c.runInformers(cacheFactory, ctx); err != nil {
 		return err
 	}
 	level.Info(c.logger).Log("msg", "informers started")
@@ -316,7 +316,7 @@ func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 }
 
 // runInformers starts all the informers that are required to discover CRDs.
-func (c *crdManager) runInformers(ctx context.Context) error {
+func (c *crdManager) runInformers(cacheFactory CacheFactory, ctx context.Context) error {
 	scheme := runtime.NewScheme()
 	for _, add := range []func(*runtime.Scheme) error{
 		promopv1.AddToScheme,
@@ -344,7 +344,7 @@ func (c *crdManager) runInformers(ctx context.Context) error {
 		if ls != labels.Nothing() {
 			opts.DefaultLabelSelector = ls
 		}
-		informerCache, err := c.cacheFactory(opts)
+		informerCache, err := cacheFactory(opts)
 		if err != nil {
 			return err
 		}
