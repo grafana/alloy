@@ -198,7 +198,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-otel-collector-distro
+alloy:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
