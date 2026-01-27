@@ -16,6 +16,7 @@ type Config struct {
 	// and the file is assumed to be UTF-8.
 	Encoding string
 
+	// Compression used for file. Supported values are gz (gzip), z (zlib) and bz2 (bzip2).
 	Compression string
 
 	// WatcherConfig controls how the file system is polled for changes.
