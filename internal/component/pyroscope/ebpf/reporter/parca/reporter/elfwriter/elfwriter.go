@@ -1,3 +1,5 @@
+//go:build unix
+
 // Copyright (C) 2025 go-delve, parca-agent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
