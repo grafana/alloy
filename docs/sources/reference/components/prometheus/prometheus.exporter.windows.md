@@ -194,11 +194,11 @@ For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `net`
 
-| Name           | Type           | Description                                                      | Default                   | Required |
-| -------------- | -------------- | ---------------------------------------------------------------- | ------------------------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use.                                     | `["metrics", "nic_info"]` | no       |
-| `exclude`      | `string`       | Regular expression of network interface cards (NICs) to exclude. | `"^$"`                    | no       |
-| `include`      | `string`       | Regular expression of NICs to include.                           | `"^.+$"`                  | no       |
+| Name           | Type           | Description                            | Default                   | Required |
+| -------------- | -------------- | -------------------------------------- | ------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use.           | `["metrics", "nic_info"]` | no       |
+| `exclude`      | `string`       | Regular expression of NICs to exclude. | `"^$"`                    | no       |
+| `include`      | `string`       | Regular expression of NICs to include. | `"^.+$"`                  | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
@@ -245,7 +245,7 @@ For example, you can set `enabled_list` to `["clrjit"]`.
 | --------- | -------- | ------------------------------------------------- | ------- | -------- |
 | `objects` | `string` | YAML string representing the counters to monitor. | `""`    | no       |
 
-The `objects` field must contain a YAML string that satisfies the schema in the exporter's [documentation] for the `performancecounter` collector.
+The `objects` field accepts a YAML string that satisfies the schema in the exporter's [documentation] for the `performancecounter` collector.
 You can construct this directly in {{< param "PRODUCT_NAME" >}} syntax with [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings], but the best way to configure this collector is to use a `local.file` component.
 
 ```alloy
