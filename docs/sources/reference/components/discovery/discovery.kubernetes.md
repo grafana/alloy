@@ -32,6 +32,7 @@ For better performance and reduced API load:
 - Use the [`namespaces`](#namespaces) block to limit discovery to specific namespaces.
 - Use [`selectors`](#selectors) to filter resources by labels or fields.  
 - Consider the node-local example in [Limit to only Pods on the same node](#limit-to-only-pods-on-the-same-node).
+- Use [`discovery.kubelet`](../discovery.kubelet/) for DaemonSet deployments to discover only Pods on the local node.
 - Use clustering mode for larger deployments to distribute the discovery load.
 - Monitor API server metrics like request rate, throttling, and memory usage, especially on managed clusters.
 
