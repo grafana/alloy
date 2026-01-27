@@ -13,10 +13,10 @@ title: discovery.kubernetes
 # `discovery.kubernetes`
 
 `discovery.kubernetes` allows you to find scrape targets from Kubernetes resources.
-It watches cluster state, and ensures targets are continually synced with what's currently running in your cluster.
+It watches cluster state and ensures targets are continually synced with what's running in your cluster.
 
 If you supply no connection information, this component defaults to an in-cluster configuration.
-A kubeconfig file or manual connection settings can be used to override the defaults.
+You can use a `kubeconfig` file or manual connection settings to override the defaults.
 
 ## Performance considerations
 
@@ -24,7 +24,7 @@ By default, `discovery.kubernetes` discovers resources across all namespaces in 
 
 {{< admonition type="caution" >}}
 In DaemonSet deployments, each {{< param "PRODUCT_NAME" >}} Pod discovers and watches all resources across the cluster by default.
-This can significantly increase API server load and memory usage, and may cause API throttling on managed Kubernetes services such as AKS, EKS, or GKE.
+This can significantly increase API server load and memory usage, and may cause API throttling on managed Kubernetes services such as Azure Kubernetes Service (AKS), Amazon Elastic Kubernetes Service (EKS), or Google Kubernetes Engine (GKE).
 {{< /admonition >}}
 
 For better performance and reduced API load:
@@ -80,7 +80,7 @@ The `role` argument is required to specify what type of targets to discover.
 
 ### `node` role
 
-The `node` role discovers one target per cluster node with the address defaulting to the HTTP port of the kubelet daemon.
+The `node` role discovers one target per cluster node with the address defaulting to the HTTP port of the `kubelet` daemon.
 The target address defaults to the first address of the Kubernetes node object in the address type order of `NodeInternalIP`, `NodeExternalIP`, `NodeLegacyHostIP`, and `NodeHostName`.
 
 The following labels are included for discovered nodes:
@@ -177,7 +177,7 @@ The following labels are included for discovered endpoints:
 
 ### `endpointslice` role
 
-The `endpointslice` role discovers targets from existing Kubernetes endpoint slices.
+The `endpointslice` role discovers targets from Kubernetes endpoint slices.
 For each endpoint address referenced in the `EndpointSlice` object, one target is discovered.
 If the endpoint is backed by a Pod, all container ports of a Pod are discovered as targets even if they're not bound to an endpoint port.
 
@@ -219,7 +219,7 @@ The following labels are included for discovered ingress objects:
 * `__meta_kubernetes_ingress_labelpresent_<labelname>`: `true` for each label from the ingress object.
 * `__meta_kubernetes_ingress_name`: The name of the ingress object.
 * `__meta_kubernetes_ingress_path`: Path from ingress spec. Defaults to /.
-* `__meta_kubernetes_ingress_scheme`: Protocol scheme of ingress, `https` if TLS config is set. Defaults to `http`.
+* `__meta_kubernetes_ingress_scheme`: Protocol scheme of ingress, `https` if TLS configuration is set. Defaults to `http`.
 * `__meta_kubernetes_namespace`: The namespace of the ingress object.
 
 ## Blocks
@@ -252,10 +252,10 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 
 The `attach_metadata` block allows you to attach node metadata to discovered targets.
 
-| Name        | Type   | Description                                                                                                                                                               | Default | Required |
-|-------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `node`      | `bool` | Attach node metadata. Alloy must have permissions to list/watch Nodes. This is valid for the `pod`, `endpoints`, and `endpointslice` roles.                               |         | no       |
-| `namespace` | `bool` | Attach namespace metadata. Alloy must have permissions to list/watch Namespaces. Valid for roles the `pod`, `endpoints`, `endpointslice`, `service`, and `ingress` roles. |         | no       |
+| Name        | Type   | Description                                                                                                                                                  | Default | Required |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `node`      | `bool` | Attach node metadata. Valid for the `pod`, `endpoints`, and `endpointslice` roles. Requires permissions to list/watch Nodes.                                 |         | no       |
+| `namespace` | `bool` | Attach namespace metadata. Valid for the `pod`, `endpoints`, `endpointslice`, `service`, and `ingress` roles. Requires permissions to list/watch Namespaces. |         | no       |
 
 ### `authorization`
 
@@ -302,10 +302,10 @@ The Pod role supports node selectors when configured with `attach_metadata: {nod
 Other roles only support selectors matching the role itself. For example, node role can only contain node selectors.
 
 {{< admonition type="note" >}}
-Using multiple `discovery.kubernetes` components with different selectors may result in a bigger load against the Kubernetes API.
+Using multiple `discovery.kubernetes` components with different selectors may increase load on the Kubernetes API.
 
-Selectors are recommended for retrieving a small set of resources in a very large cluster.
-Smaller clusters are recommended to avoid selectors in favor of filtering with [a `discovery.relabel` component](../discovery.relabel/) instead.
+Use selectors to retrieve a small set of resources in a very large cluster.
+For smaller clusters, use a [`discovery.relabel` component](../discovery.relabel/) to filter targets instead.
 {{< /admonition >}}
 
 [Field selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
@@ -372,9 +372,9 @@ Replace the following:
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-### Kubeconfig authentication
+### Kubeconfig file authentication
 
-This example uses a Kubeconfig file to authenticate to the Kubernetes API:
+This example uses a `kubeconfig` file to authenticate to the Kubernetes API:
 
 ```alloy
 discovery.kubernetes "k8s_pods" {
@@ -405,9 +405,9 @@ Replace the following:
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-### Limit searched namespaces and filter by labels value
+### Limit searched namespaces and filter by label
 
-This example limits the searched namespaces and only selects Pods with a specific label value attached to them:
+This example limits the searched namespaces and selects only Pods with a specific label:
 
 ```alloy
 discovery.kubernetes "k8s_pods" {
@@ -452,10 +452,10 @@ This example limits the search to Pods on the same node as this {{< param "PRODU
 This configuration is recommended when running {{< param "PRODUCT_NAME" >}} as a DaemonSet because it significantly reduces API server load and memory usage by only watching local Pods instead of all Pods cluster-wide.
 
 {{< admonition type="note" >}}
-This example assumes you have used Helm chart to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes and sets `HOSTNAME` to the Kubernetes host name.
-If you have a custom Kubernetes deployment, you must adapt this example to your configuration.
+This example assumes you used the Helm chart to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes and that `HOSTNAME` is set to the Kubernetes host name.
+If you have a custom Kubernetes Deployment, you must adapt this example to your configuration.
 
-As an alternative, you can use [`discovery.kubelet`](../discovery.kubelet/) which queries the local Kubelet API directly and only returns Pods running on the same node.
+As an alternative, you can use [`discovery.kubelet`](../discovery.kubelet/) which queries the local `kubelet` API directly and only returns Pods running on the same node.
 {{< /admonition >}}
 
 ```alloy
