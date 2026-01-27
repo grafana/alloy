@@ -114,6 +114,7 @@ You can still include this block in your configuration files, but it has no effe
 [smb]: #smb
 [smtp]: #smtp
 [textfile]: #textfile
+[text_file]: #text_file-deprecated-use-textfile-instead
 [tcp]: #tcp
 [update]: #update
 
@@ -181,7 +182,7 @@ The collectors specified by `enabled_list` can include the following:
 - `network`
 - `node`
 - `resource`
-- `resouregroup`
+- `resourcegroup`
 
 For example, you can set `enabled_list` to `["cluster"]`.
 
@@ -244,8 +245,8 @@ For example, you can set `enabled_list` to `["clrjit"]`.
 | --------- | -------- | ------------------------------------------------- | ------- | -------- |
 | `objects` | `string` | YAML string representing the counters to monitor. | `""`    | no       |
 
-The `objects` field should contain a YAML file as a string that satisfies the schema shown in the exporter's [documentation] for the `performancecounter` collector.
-While there are ways to construct this directly in {{< param "PRODUCT_NAME" >}} syntax using [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings] for example, the best way to configure this collector is to use a `local.file` component.
+The `objects` field must contain a YAML string that satisfies the schema in the exporter's [documentation] for the `performancecounter` collector.
+You can construct this directly in {{< param "PRODUCT_NAME" >}} syntax with [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings], but the best way to configure this collector is to use a `local.file` component.
 
 ```alloy
 local.file "counters" {
@@ -418,14 +419,14 @@ For example, you can set `enabled_list` to `["metrics"]`.
 For backwards compatibility, you can also configure the `textfile` collector with the deprecated `text_file` block.
 If you configure both `text_file` and `textfile`, the component concatenates the distinct values from each.
 
-The component splits `text_file_directory` by `,` and appends the values to the list provided in `directories` if you configure both.
+If you configure both `text_file_directory` and `directories`, the component splits `text_file_directory` by `,` and appends the values to the `directories` list.
 The default value remains in `text_file_directory` for backward compatibility.
 
 The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
 For example, if you install {{< param "PRODUCT_NAME" >}} in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
 
-The component only reads files with the extension `.prom` inside the specified directories.
+The component only reads files with the `.prom` extension inside the specified directories.
 
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
@@ -441,14 +442,14 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 For backwards compatibility, you can also configure the `textfile` collector with the deprecated `text_file` block.
 If you configure both `text_file` and `textfile`, the component concatenates the distinct values from each.
 
-The component splits `text_file_directory` by `,` and appends the values to the list provided in `directories` if you configure both.
+If you configure both `text_file_directory` and `directories`, the component splits `text_file_directory` by `,` and appends the values to the `directories` list.
 The default value remains in `text_file_directory` for backward compatibility.
 
 The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
 For example, if you install {{< param "PRODUCT_NAME" >}} in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
 
-The component only reads files with the extension `.prom` inside the specified directories.
+The component only reads files with the `.prom` extension inside the specified directories.
 
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
@@ -537,8 +538,8 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`remote_fx`][remote_fx]                   | RemoteFX protocol (RDP) metrics                                |                    |
 | [`scheduled_task`][scheduled_task]         | Scheduled Tasks metrics                                        |                    |
 | [`service`][service]                       | Service state metrics                                          | Yes                |
-| [`smb`][smb]                               | IIS SMTP Server                                                |                    |
-| [`smb_client`][smb_client]                 | IIS SMTP Server                                                |                    |
+| [`smb`][smb]                               | SMB Server shares                                              |                    |
+| [`smb_client`][smb_client]                 | SMB Client shares                                              |                    |
 | [`smtp`][smtp]                             | IIS SMTP Server                                                |                    |
 | [`system`][system]                         | System calls                                                   | Yes                |
 | [`tcp`][tcp]                               | TCP connections                                                |                    |
