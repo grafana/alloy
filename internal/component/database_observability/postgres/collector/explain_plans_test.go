@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"go.uber.org/goleak"
 	"golang.org/x/tools/txtar"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -2261,15 +2262,14 @@ func TestNewExplainPlan(t *testing.T) {
 		require.NoError(t, err)
 
 		args := ExplainPlansArguments{
-			DB:              db,
-			DSN:             "postgres://user:pass@localhost:5432/testdb",
-			ScrapeInterval:  time.Minute,
-			PerScrapeRatio:  0.1,
-			ExcludeSchemas:  []string{"information_schema", "pg_catalog"},
-			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-time.Hour),
-			DBVersion:       pre17ver,
-			Logger:          logger,
+			DB:               db,
+			DSN:              "postgres://user:pass@localhost:5432/testdb",
+			ScrapeInterval:   time.Minute,
+			PerScrapeRatio:   0.1,
+			ExcludeDatabases: []string{"information_schema", "pg_catalog"},
+			EntryHandler:     entryHandler,
+			DBVersion:        pre17ver,
+			Logger:           logger,
 		}
 
 		explainPlan, err := NewExplainPlan(args)
@@ -2281,7 +2281,7 @@ func TestNewExplainPlan(t *testing.T) {
 		assert.Equal(t, pre17semver, explainPlan.dbVersion)
 		assert.Equal(t, args.ScrapeInterval, explainPlan.scrapeInterval)
 		assert.Equal(t, args.PerScrapeRatio, explainPlan.perScrapeRatio)
-		assert.Equal(t, args.ExcludeSchemas, explainPlan.excludeSchemas)
+		assert.Equal(t, args.ExcludeDatabases, explainPlan.excludeDatabases)
 		assert.Equal(t, entryHandler, explainPlan.entryHandler)
 		assert.NotNil(t, explainPlan.queryCache)
 		assert.NotNil(t, explainPlan.queryDenylist)
@@ -2520,7 +2520,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				queryCache:         make(map[string]*queryInfo),
 				queryDenylist:      make(map[string]*queryInfo),
 				finishedQueryCache: make(map[string]*queryInfo),
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             logger,
 				entryHandler:       lokiClient,
@@ -2534,7 +2534,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")).WillReturnRows(rows)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause)).WillReturnRows(rows)
 
 			ctx := context.Background()
 			err = explainPlan.populateQueryCache(ctx)
@@ -2560,7 +2560,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				queryCache:         make(map[string]*queryInfo),
 				queryDenylist:      make(map[string]*queryInfo),
 				finishedQueryCache: make(map[string]*queryInfo),
-				excludeSchemas:     []string{"information_schema"},
+				excludeDatabases:   []string{"information_schema"},
 				perScrapeRatio:     0.5,
 				logger:             logger,
 				entryHandler:       lokiClient,
@@ -2568,10 +2568,10 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
-				AddRow("information_schema", "789012", "SELECT * FROM tables", int64(5), time.Now()).
 				AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
+			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}))
+			mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
 
 			ctx := context.Background()
 			err = explainPlan.populateQueryCache(ctx)
@@ -2582,7 +2582,6 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			assert.Contains(t, explainPlan.queryCache, "testdb123456")
 			assert.Contains(t, explainPlan.queryCache, "testdb2345678")
-			assert.NotContains(t, explainPlan.queryCache, "information_schema789012")
 
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
@@ -2605,7 +2604,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()))
 
@@ -2631,7 +2630,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now()))
 
@@ -2658,7 +2657,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now().Add(-time.Minute)))
 
@@ -2748,7 +2747,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
 		finishedQueryCache:  make(map[string]*queryInfo),
-		excludeSchemas:      []string{},
+		excludeDatabases:    []string{},
 		perScrapeRatio:      1.0,
 		logger:              logger,
 	}
@@ -2758,7 +2757,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).WillReturnRows(rows)
 
 		ctx := context.Background()
 		err = explainPlan.fetchExplainPlans(ctx)
@@ -2794,7 +2793,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
@@ -2849,7 +2848,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
@@ -2902,7 +2901,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				currentBatchSize:   1,
@@ -2969,7 +2968,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				currentBatchSize:   1,
@@ -3036,7 +3035,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
-				excludeSchemas:     []string{},
+				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				currentBatchSize:   1,
@@ -3078,4 +3077,48 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 	})
+}
+
+func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	post17ver := semver.MustParse("17.0.0")
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	// Create ExplainPlans with excluded database
+	explainPlan := &ExplainPlans{
+		dbConnection:       db,
+		dbVersion:          post17ver,
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeDatabases:   []string{"excluded_db"},
+		perScrapeRatio:     1.0,
+		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		entryHandler:       lokiClient,
+	}
+
+	// Verify the query uses the custom exclusion clause that includes both default and user-provided exclusions
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}))
+
+	// Return only non-excluded database rows (simulating SQL-level filtering)
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("included_db", "222222", "SELECT * FROM included_table", int64(10), time.Now())
+
+	mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
+
+	err = explainPlan.populateQueryCache(context.Background())
+	require.NoError(t, err)
+
+	// Verify only included_db query is in the cache
+	assert.Len(t, explainPlan.queryCache, 1)
+	assert.Contains(t, explainPlan.queryCache, "included_db222222")
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

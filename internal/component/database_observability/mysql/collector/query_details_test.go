@@ -378,7 +378,7 @@ func TestQueryTables(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"digest",
@@ -439,7 +439,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest", // not enough columns
@@ -447,7 +447,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -505,7 +505,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -568,9 +568,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -608,4 +608,34 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
+}
+
+func TestQueryDetailsExcludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		StatementsLimit: 250,
+		ExcludeSchemas:  []string{"excluded_schema"},
+		EntryHandler:    lokiClient,
+		Logger:          log.NewLogfmtLogger(os.Stderr),
+	})
+	require.NoError(t, err)
+
+	// Verify the query uses the custom exclusion clause
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, buildExcludedSchemasClause([]string{"excluded_schema"}), 250)).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"digest", "digest_text", "schema_name", "query_sample_text",
+	}))
+
+	c.tablesFromEventsStatements(t.Context())
+	require.NoError(t, mock.ExpectationsWereMet())
 }

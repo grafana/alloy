@@ -1,3 +1,7 @@
+buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1 h1:/vx/oPlucRbONzmIhz1Fu+2DvCoURXBL/ZfZNRyUlAg=
+buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1/go.mod h1:RxD81JbL/yeDU/D5qmGNM36Ujw66t2SdkoZQ4fKMcf4=
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1 h1:e2rrifzV3Scn1NLa8cM0Ixn+dLgd+vRF/a7tYWqW8Sc=
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1/go.mod h1:TR9iiFuhuMGsEil3U6KZnYmvZ1W2SY6uw5HPP+4mJU4=
 cel.dev/expr v0.24.0 h1:56OvJKSH3hDGL0ml5uSxZmz3/3Pq4tJ+fb1unVLAFcY=
 cel.dev/expr v0.24.0/go.mod h1:hLPLo1W4QUmuYdA72RBX06QTs6MXw941piREPl3Yfiw=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -1159,12 +1163,14 @@ github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd h1:FW1K
 github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd/go.mod h1:iEFA+REkm+0WRvVxy0cA1bBhJlFcQB998yymb45TqMU=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 h1:Ab3Z4AXC1Hffr4NbeYq0vTQhJbiGTTO2xd0ZV0kC1v8=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
+github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966 h1:flIED1bVVc8XGgEM9J2M8oRnllD0R+Gydf/mXHSeww0=
+github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966/go.mod h1:TeJMg8YjVMx9w+vYu6HD15o37zW2HUizPZrh58hUSGY=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11 h1:Pi46xuPzRjAeB6XB4PzdF8kV93jl4NB58OZj08Bi33U=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11/go.mod h1:rrgRM6X22UVa3bKaoNz43ab59Qx0CNrVOc2uiCVfBwU=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260108094543-6d4ae039eecb h1:/2286v5lwpgUV3OhwUAxJzjzfweeL/a60/bMp6q6z6U=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260108094543-6d4ae039eecb/go.mod h1:IxZn86Ex+JDfuG6Rs91ajfoS8QH8e7dpzPuZ/pKXiwE=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260123050037-c33a6e86a2f5 h1:980MvxRoQVxo+GDFsGGgtqJqQgQ2ftXa1gLut/8ivYU=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260123050037-c33a6e86a2f5/go.mod h1:oqSk8XwYnL4saX2ZdpfnTJV9vURSNaVjK6yomOAVIPI=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363 h1:/vCopugIegPx9brm+E9+4bMQ6uIsZujCoE7su3bLLbk=
@@ -1175,8 +1181,8 @@ github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxR
 github.com/grafana/pyroscope/api v1.2.0/go.mod h1:CCWrMnwvTB5O+VBZfT+jO2RAvgm0GxdG2//kAWuMDhA=
 github.com/grafana/pyroscope/ebpf v0.4.11 h1:QpXj3xIWveFy1Zx7M9YzCq7z+d70LQ2pF/qEzD/tXWo=
 github.com/grafana/pyroscope/ebpf v0.4.11/go.mod h1:LhmNuYZpxlmjsLK36j1nD+eJ/CNebBRDPCzRJPVHZbI=
-github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc h1:aaY+Oax8VpaoyGZlBq3h+XIT/aTHkZPm2Op4IVRLykY=
-github.com/grafana/pyroscope/lidia v0.0.2-0.20251216080959-a49b562cd2fc/go.mod h1:4AxmVrn7RJPBStqSw+0erQN2kr+I6MW6LmaawOM8Nlo=
+github.com/grafana/pyroscope/lidia v0.0.2 h1:DsZiUjWfB+6w9wKGosEQQTFuDvkay7kUECw3Os7Xno0=
+github.com/grafana/pyroscope/lidia v0.0.2/go.mod h1:4AxmVrn7RJPBStqSw+0erQN2kr+I6MW6LmaawOM8Nlo=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
@@ -1732,6 +1738,8 @@ github.com/open-telemetry/opamp-go v0.22.0 h1:7UnsQgFFS7ffM09JQk+9aGVBAAlsLfcooZ
 github.com/open-telemetry/opamp-go v0.22.0/go.mod h1:339N71soCPrhHywbAcKUZJDODod581ZOxCpTkrl3zYQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.142.0 h1:zDntB1s/YjfwIrzuJQDe6X7/o6idKJczEUl9hoQeN1E=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.142.0/go.mod h1:9/6Jj8yifyRDUEPA35QQ3sZ3Knlw+Z3hKCMXS7xJCR0=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.142.0 h1:gOscW1MmngDXfN9EsEUXuUJ2E1iF+ZJO+3nYhD52Pug=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.142.0/go.mod h1:LNS5iHwfRTQ96kZQKqUSPGjxQPPxatr+Fu+TpjD3U7E=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.142.0 h1:gUWJVueEPsCHQxqldPvH5lyBgeiKixURotpspp0PZS0=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.142.0/go.mod h1:1m6QXwJpU6qSj6Bpa2bTrJRfCBvifxZPEhHnr8ePJzo=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.142.0 h1:36uZ/NP9YyGJULi+QjIVWD2cxSn5WKAeQ1IlY+X/v/o=
@@ -1802,6 +1810,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.142.0/go.mod h1:ZmMdcBia20ih8NYia5b4dNhfNLT68xHgaqF+fNW+TLM=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.142.0 h1:fAl09gr9B7LyZBvhBVsvNYMdm8sofMT4lgb3MHjfuRM=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.142.0/go.mod h1:TL+PKrQbFZw9z5N/2egn0bV/UmOFWUnKq4m9Vh86IoM=
+github.com/open-telemetry/opentelemetry-collector-contrib/internal/gopsutilenv v0.142.0 h1:dWesj+gA1TVz8fRsPqN73JbV7JjOVvlF/qL3Bz/M6hE=
+github.com/open-telemetry/opentelemetry-collector-contrib/internal/gopsutilenv v0.142.0/go.mod h1:Xa18FtJ9co6rnl0y1bpcspNEIhPRxrfKCS3HgeugnBQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/healthcheck v0.142.0 h1:MXX7W+nwaPz0R7uvwvEj06zu6ex6Zgj8uAPja0Xr32o=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/healthcheck v0.142.0/go.mod h1:ugQkddTr3sOZC3j3mCsVTNor+02KED12uqQU5HFCKpI=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.142.0 h1:NSnnveRKurFrpBxyuY6wZ+acBh5A/zE3Z1IEMH68iFM=
@@ -1824,6 +1834,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.1
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.142.0/go.mod h1:jpvcWt3roQEeUZCZJvrUWV9EAbVdXOUPDBBCc3ExxcA=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.142.0 h1:Oj4O8Igkm2BPIGY4jvecJscRzc0kjeOllhpVrRysD+M=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.142.0/go.mod h1:VyGN2LJpdokmsdKVH9IaZjjwoywC2YCo8HkzqoB0/ZY=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/experimentalmetricmetadata v0.142.0 h1:DxmzuF38A4R3zMmdpiqnkY6ZsIeAkjlvao/RWK/cFsA=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/experimentalmetricmetadata v0.142.0/go.mod h1:dhgxI7FxMfzgUE4BkxeCD/U5vrNFIxHQ4tFAeQYoJVo=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.142.0 h1:N5J6TArF3DZr8xibVA3vht5onHGjevWYc1mhBi3kmBI=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.142.0/go.mod h1:zNkIEuXEi5nOcKE2RUbWwFcGZ+S7eHhsVf0kG+KB6O4=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.142.0 h1:2/Z7Zxg911+2A/aMuOnNUzn6F+42PdJJc2XUX1ME39A=
@@ -1858,6 +1870,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometh
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.142.0/go.mod h1:vqrxUspQ5sYFuy8ccbX7PXVe64AEXJV9oh9mtTagPHE=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.142.0 h1:9yZTdgSz2zdxxjszjf1Xv/iDg3r+dafWMP2T2gXuX88=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.142.0/go.mod h1:0guVg9cTJHN2w4egMmxaybQsZ5CABpj1iTZ9yZvSCF4=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.142.0 h1:a0ENR1mtubC89WMiXHBDYOm7WWb/zu6WW2WTUU6ea4M=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.142.0/go.mod h1:oHASqzYgg9+AEXfZZTz5xFKXVWtMUMHpd+AvXvgSvO0=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.142.0 h1:B7uEQqy0lgbnsJBK1V9y7TfDndbGUUwkEGNHnvTxYOg=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.142.0/go.mod h1:0XDrrd/GcSMUB7g0FtAb3pifYbIVCbU8W9df/t6a4NQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.142.0 h1:+kSCQPM3XpsFOXgJtCeWCbGHsyhWe6R69K49JfgUotI=
@@ -1874,6 +1888,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalproc
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor v0.142.0/go.mod h1:Ggho2ol6+k+WvicHJqGlD26ARkJt5NEPoz7bdOUYzdE=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.142.0 h1:oq+Qai4+JgqvDkbVy9ObqD4p527ObwyDRvtThtT5FZ0=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.142.0/go.mod h1:/rXd9kVmBw277+LEDcJGJ/RRb2rVL89hNL95FUaMN9k=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.142.0 h1:RMdnEzbfqBmNI3UT8K5//1Z1HpD8Adq1RIzCItmdgaw=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.142.0/go.mod h1:DbnNU+vFFh3sYuJRfCDRV80fPr1GJT0YSSvqSF/2Q8c=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.142.0 h1:HZMvNV/HhFqUipmTGj1vZj+V6MSG/wQs4p0fAMbDF4o=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.142.0/go.mod h1:Ss0gY7Lj+RZAKKCUp3wzc0JFloI+f0L6OFTX+I003Qs=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.142.0 h1:JHsjepWLopcut4j2+NH545OP6V6A7mfFiEKfddOM4Jg=
@@ -1900,12 +1916,12 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver 
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.142.0/go.mod h1:Lqa348mf7+Uds6a4TirRVy2RuSZOhISrlZxrF50tTwE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.142.0 h1:PiArV40Tn4GrwLtL9RWfrN3vC+lx69uVAy1p+Zo+Y7k=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.142.0/go.mod h1:WyUGg8RamQ3HnKTTVy6AEROyro5W/qB++VXMboz12rI=
-github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.142.0 h1:L59G0cUxF7ZsLomfVHi1PMXKGAjulKmm2hjLTgt3uic=
-github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.142.0/go.mod h1:TeJMg8YjVMx9w+vYu6HD15o37zW2HUizPZrh58hUSGY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.142.0 h1:MVWXMTn2ja/RZlJNdjqD4aD6foCaRvbUqaG7+D806j8=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.142.0/go.mod h1:Uib/zzXO/SPxG+WH45ztKUM3dDgN4ztLMwq9+qsvDVg=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.142.0 h1:CiIPboEMYQxAc0BQvz+6UioozEH/Q/bkWZJn6hXrNMs=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.142.0/go.mod h1:6NCC/2rSWg+B2zhM1ILka00vwSuHpLU9UkqmYb8AO+A=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.142.0 h1:YNnphtz6PC3N6pDm7T2mGPPqvV5ynv00WNFjwAz2D4c=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.142.0/go.mod h1:NFNazUgXeRHg527kmlulZAoSBIUAmEoocg0vM2MoPSs=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.142.0 h1:eJpeg8Z7hvuRX/J9iWOdzOl31QNKJh1S0DGgp7/By+Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.142.0/go.mod h1:/5ut6KWjhkSQSEoA1Ya94ULorWizRQPQS9LHyMmlOw4=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.142.0 h1:asBjiVAEo6ik0egTb4GP8sc7LYZbLdihUmrVyLyy6kU=
@@ -2586,6 +2602,8 @@ go.opentelemetry.io/collector/scraper v0.142.0 h1:f37NTJBicYpVr5dcnINCuKc3AHgZOP
 go.opentelemetry.io/collector/scraper v0.142.0/go.mod h1:GLN3c0B/c+xTaCe5oxO4T8RQ7+zHAYfZrxJdZ92NiqM=
 go.opentelemetry.io/collector/scraper/scraperhelper v0.142.0 h1:1FzLPll3R+X1MC1MLMTyHVC6XngGTOijsQ/KAccfh+4=
 go.opentelemetry.io/collector/scraper/scraperhelper v0.142.0/go.mod h1:jibHXSU+6MK1E0qXzCB7OSMxw2LImKXM7Zv3cNvMzMM=
+go.opentelemetry.io/collector/scraper/scrapertest v0.142.0 h1:j57Cb5sRg4VSh7KDO1ns+HKItk7OYCoNXkMT/ajtW4I=
+go.opentelemetry.io/collector/scraper/scrapertest v0.142.0/go.mod h1:6ad9eiqrwPTnUbLye5Xoygaa+FfC3dN6T5y6v9WGgeI=
 go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685 h1:XCN7qkZRNzRYfn6chsMZkbFZxoFcW6fZIsZs2aCzcbc=
 go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685/go.mod h1:OPXer4l43X23cnjLXIZnRj/qQOjSuq4TgBLI76P9hns=
 go.opentelemetry.io/collector/service v0.142.0 h1:3p2V3E3v97bmjJB591VkHlZQ+ez/PjGDHDF247jImLo=

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,7 +112,7 @@ func TestTailer(t *testing.T) {
 		"filename": model.LabelValue(logFile.Name()),
 		"foo":      "bar",
 	}
-	tailer, err := newTailer(
+	tailer := newTailer(
 		newMetrics(nil),
 		l,
 		ch1,
@@ -206,7 +208,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		"filename": model.LabelValue(logFile.Name()),
 		"foo":      "bar",
 	}
-	tailer, err := newTailer(
+	tailer := newTailer(
 		newMetrics(nil),
 		l,
 		ch1,
@@ -271,7 +273,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		"filename": model.LabelValue(logFile.Name()),
 		"foo":      "bar",
 	}
-	tailer, err := newTailer(
+	tailer := newTailer(
 		newMetrics(nil),
 		l,
 		ch1,
@@ -329,7 +331,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		"foo":      "bar",
 	}
 	positionsFile.PutString(logFile.Name(), labels.String(), "\\0\\0\\0\\0123") // Corrupted position entry
-	tailer, err := newTailer(
+	tailer := newTailer(
 		newMetrics(nil),
 		l,
 		ch1,
@@ -345,7 +347,6 @@ func TestTailerCorruptedPositions(t *testing.T) {
 			onPositionsFileError: OnPositionsFileErrorRestartEnd,
 		},
 	)
-	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
@@ -408,4 +409,183 @@ func TestTailerCorruptedPositions(t *testing.T) {
 
 	positionsFile.Stop()
 	require.NoError(t, logFile.Close())
+}
+
+func TestTailer_Compressions(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	logger := log.NewNopLogger()
+	positionsFile, err := positions.New(logger, positions.Config{
+		SyncPeriod:    50 * time.Millisecond,
+		PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
+	})
+	require.NoError(t, err)
+	defer positionsFile.Stop()
+
+	filename := "testdata/onelinelog.tar.gz"
+	labels := model.LabelSet{
+		"filename": model.LabelValue(filename),
+		"foo":      "bar",
+	}
+
+	tailer := newTailer(
+		newMetrics(nil),
+		logger,
+		handler.Receiver(),
+		positionsFile,
+		func() bool { return true },
+		sourceOptions{
+			path:                 filename,
+			labels:               labels,
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+			decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
+		},
+	)
+
+	// We expect tailer to exit when all compressed data have been consumed.
+	tailer.Run(t.Context())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		entries := handler.Received()
+		require.Len(c, entries, 1)
+		require.Contains(c, entries[0].Line, "onelinelog.log")
+	}, 2*time.Second, 50*time.Millisecond)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		pos, err := positionsFile.Get(filename, labels.String())
+		assert.NoError(c, err)
+		// FIXME: Previously we stored line posistion..
+		assert.Equal(c, int64(10240), pos)
+	}, time.Second, 50*time.Millisecond)
+
+	handler.Clear()
+	// Run the decompressor again
+	tailer.Run(t.Context())
+
+	entries := handler.Received()
+	require.Len(t, entries, 0)
+}
+
+func TestTailer_GigantiqueGunzipFile(t *testing.T) {
+	file := "testdata/long-access.gz"
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	tailer := newTailer(
+		newMetrics(prometheus.NewRegistry()),
+		log.NewNopLogger(),
+		handler.Receiver(),
+		positions.NewNop(),
+		func() bool { return false },
+		sourceOptions{
+			path:                file,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
+	)
+
+	// We expect tailer to exit when all compressed data have been consumed.
+	tailer.Run(t.Context())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Equal(c, 100000, len(handler.Received()))
+	}, 2*time.Second, 50*time.Millisecond)
+}
+
+// TestTailer_CompressedOnelineFile test the supported formats for log lines that only contain 1 line.
+// Based on our experience, this is the scenario with the most edge cases.
+func TestTailer_CompressedOnelineFile(t *testing.T) {
+	fileContent, err := os.ReadFile("testdata/onelinelog.log")
+	require.NoError(t, err)
+	t.Run("gunzip file", func(t *testing.T) {
+		file := "testdata/onelinelog.log.gz"
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+
+		tailer := newTailer(
+			newMetrics(prometheus.NewRegistry()),
+			log.NewNopLogger(),
+			handler.Receiver(),
+			positions.NewNop(),
+			func() bool { return false },
+			sourceOptions{
+				path:                file,
+				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+			},
+		)
+		require.NoError(t, err)
+
+		// We expect tailer to exit when all compressed data have been consumed.
+		tailer.Run(t.Context())
+
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entries := handler.Received()
+		require.Equal(t, string(fileContent), entries[0].Line)
+	})
+
+	t.Run("bzip2 file", func(t *testing.T) {
+		file := "testdata/onelinelog.log.bz2"
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+
+		tailer := newTailer(
+			newMetrics(prometheus.NewRegistry()),
+			log.NewNopLogger(),
+			handler.Receiver(),
+			positions.NewNop(),
+			func() bool { return false },
+			sourceOptions{
+				path:                file,
+				decompressionConfig: DecompressionConfig{Enabled: true, Format: "bz2"},
+			},
+		)
+
+		// We expect tailer to exit when all compressed data have been consumed.
+		tailer.Run(t.Context())
+
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entries := handler.Received()
+		require.Equal(t, string(fileContent), entries[0].Line)
+	})
+
+	t.Run("tar.gz file", func(t *testing.T) {
+		file := "testdata/onelinelog.tar.gz"
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+
+		tailer := newTailer(
+			newMetrics(prometheus.NewRegistry()),
+			log.NewNopLogger(),
+			handler.Receiver(),
+			positions.NewNop(),
+			func() bool { return false },
+			sourceOptions{
+				path:                file,
+				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+			},
+		)
+		require.NoError(t, err)
+
+		// We expect tailer to exit when all compressed data have been consumed.
+		tailer.Run(t.Context())
+
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entries := handler.Received()
+		require.Contains(t, entries[0].Line, "onelinelog.log") // contains .tar.gz headers
+		require.Contains(
+			t,
+			entries[0].Line,
+			`5.202.214.160 - - [26/Jan/2019:19:45:25 +0330] "GET / HTTP/1.1" 200 30975 "https://www.zanbil.ir/" "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0" "-"`,
+		)
+	})
 }

@@ -96,11 +96,6 @@ jobs:
           "update_jsonnet_attribute_configs": [
             {
               "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
-              "jsonnet_key": "dev_canary",
-              "jsonnet_value_file": ".image-tag"
-            },
-            {
-              "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
               "jsonnet_key": "dev0",
               "jsonnet_value_file": ".image-tag"
             }
