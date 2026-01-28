@@ -104,7 +104,6 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 
 	if hasTokenAuth && hasGitHubAppAuth {
 		err := fmt.Errorf("cannot use both token authentication and GitHub App authentication")
-		level.Error(logger).Log("msg", "invalid authentication configuration", "err", err)
 		return nil, err
 	}
 
@@ -114,11 +113,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		conf.SetGitHubAppKeyPath(c.GitHubAppKeyPath)
 		conf.SetGitHubAppId(c.GitHubAppID)
 		conf.SetGitHubAppInstallationId(c.GitHubAppInstallationID)
-		if c.GitHubRateLimit > 0 {
-			conf.SetGitHubRateLimit(c.GitHubRateLimit)
-		} else {
-			conf.SetGitHubRateLimit(DefaultConfig.GitHubRateLimit)
-		}
+		conf.SetGitHubRateLimit(c.GitHubRateLimit)
 		err = conf.SetAPITokenFromGitHubApp()
 		if err != nil {
 			level.Error(logger).Log("msg", "unable to authenticate with GitHub App", "err", err)
