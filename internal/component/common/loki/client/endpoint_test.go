@@ -518,7 +518,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 			// After 200 milliseconds we read one request to unblock the queue.
 			time.Sleep(200 * time.Millisecond)
 			// We just need to finish one request in order for all entries to be successfully enqueued.
-			_ = <-receivedReqsChan
+			<-receivedReqsChan
 		}()
 		require.NoError(t, e.enqueue(entry1, 0))
 		require.NoError(t, e.enqueue(entry2, 0))
