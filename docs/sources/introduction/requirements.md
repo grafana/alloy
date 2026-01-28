@@ -138,7 +138,7 @@ For more detail, refer to [Deploy Grafana Alloy][deploy].
 - **macOS:** Run as a launchd service or standalone binary. Refer to [Run on macOS][run macos].
 - **Docker:** Run as a container. Refer to [Run in a Docker container][docker].
 
-## Cluster and scale
+## Clustering and scaling behavior
 
 Some {{< param "PRODUCT_NAME" >}} behavior depends on how you deploy it, not just on configuration.
 
