@@ -41,7 +41,7 @@ You can use the following arguments with `prometheus.exporter.github`:
 ### Authentication
 
 GitHub uses an aggressive rate limit for unauthenticated requests based on IP address.
-To use authenticated requests, configure token or GitHub App authentication.
+To allow more API requests, we recommend that you configure either token or GitHub App authentication.
 
 * **Token authentication**: Set `api_token` or `api_token_file` with a personal access token or classic token.
 * **GitHub App authentication**: Set `github_app_id`, `github_app_installation_id`, and `github_app_key_path` to authenticate as a GitHub App.
