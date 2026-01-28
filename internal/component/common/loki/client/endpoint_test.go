@@ -411,6 +411,8 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.Client = config.DefaultHTTPClientConfig
 			tt.endpointConfig.BackoffConfig = backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 3}
 			tt.endpointConfig.Timeout = 1 * time.Second
+			tt.endpointConfig.QueueConfig.BlockOnOverflow = true
+			tt.endpointConfig.QueueConfig.DrainTimeout = 30 * time.Second
 
 			m := newMetrics(reg)
 			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger(), internal.NewNopMarkerHandler())
