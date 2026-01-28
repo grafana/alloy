@@ -10,7 +10,7 @@ internal API changes are not present.
 Unreleased
 ----------
 
-### Bug fixes
+### Enhancements
 
 - Remove `nodes/proxy` RBAC rule and replace with `nodes/pods`. (@petewall)
 
