@@ -2,10 +2,14 @@ package file
 
 import (
 	"context"
+	"encoding"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -123,6 +127,53 @@ type DecompressionConfig struct {
 	Enabled      bool              `alloy:"enabled,attr"`
 	InitialDelay time.Duration     `alloy:"initial_delay,attr,optional"`
 	Format       CompressionFormat `alloy:"format,attr"`
+}
+
+func (d DecompressionConfig) GetFormat() string {
+	if d.Enabled {
+		return d.Format.String()
+	}
+	return ""
+}
+
+func supportedCompressedFormats() map[string]struct{} {
+	return map[string]struct{}{
+		"gz":  {},
+		"z":   {},
+		"bz2": {},
+		// TODO: add support for zip.
+	}
+}
+
+type CompressionFormat string
+
+var (
+	_ encoding.TextMarshaler   = CompressionFormat("")
+	_ encoding.TextUnmarshaler = (*CompressionFormat)(nil)
+)
+
+func (ut CompressionFormat) String() string {
+	return string(ut)
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (ut CompressionFormat) MarshalText() (text []byte, err error) {
+	return []byte(ut.String()), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (ut *CompressionFormat) UnmarshalText(text []byte) error {
+	s := string(text)
+	_, ok := supportedCompressedFormats()[s]
+	if !ok {
+		return fmt.Errorf(
+			"unsupported compression format: %q - please use one of %q",
+			s,
+			strings.Join(slices.Collect(maps.Keys(supportedCompressedFormats())), ", "),
+		)
+	}
+	*ut = CompressionFormat(s)
+	return nil
 }
 
 var _ component.Component = (*Component)(nil)
@@ -352,21 +403,7 @@ type sourceOptions struct {
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.
 func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
-	if opts.decompressionConfig.Enabled {
-		decompressor, err := newDecompressor(
-			c.metrics,
-			c.opts.Logger,
-			c.handler,
-			c.posFile,
-			c.IsStopping,
-			opts,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create decompressor %w", err)
-		}
-		return decompressor, nil
-	}
-	tailer, err := newTailer(
+	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
 		c.handler,
@@ -374,9 +411,12 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 		c.IsStopping,
 		opts,
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create tailer %w", err)
+
+	// When decompression is enabled we don't retry starting tailer.
+	if opts.decompressionConfig.Enabled {
+		return tailer, nil
 	}
+
 	return source.NewSourceWithRetry(tailer, backoff.Config{
 		MinBackoff: 1 * time.Second,
 		MaxBackoff: 10 * time.Second,

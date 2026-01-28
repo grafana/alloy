@@ -29,15 +29,13 @@ const (
 )
 
 const (
-	excludedDatabases = `('azure_maintenance')`
-
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
 	selectAllDatabases = `
 		SELECT datname
 		FROM pg_database
 		WHERE datistemplate = false
 			AND has_database_privilege(datname, 'CONNECT')
-			AND datname NOT IN ` + excludedDatabases
+			AND datname NOT IN %s`
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
@@ -213,9 +211,11 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
-type database string
-type schema string
-type table string
+type (
+	database string
+	schema   string
+	table    string
+)
 
 // TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
 type TableRegistry struct {
@@ -285,10 +285,11 @@ func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
 }
 
 type SchemaDetailsArguments struct {
-	DB              *sql.DB
-	DSN             string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
+	DB               *sql.DB
+	DSN              string
+	CollectInterval  time.Duration
+	ExcludeDatabases []string
+	EntryHandler     loki.EntryHandler
 
 	CacheEnabled bool
 	CacheSize    int
@@ -304,6 +305,7 @@ type SchemaDetails struct {
 	dbDSN               string
 	dbConnectionFactory databaseConnectionFactory
 	collectInterval     time.Duration
+	excludeDatabases    []string
 	entryHandler        loki.EntryHandler
 
 	// Cache of table definitions. Entries are removed after a configurable TTL.
@@ -330,6 +332,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbDSN:               args.DSN,
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
+		excludeDatabases:    args.ExcludeDatabases,
 		entryHandler:        args.EntryHandler,
 		tableRegistry:       NewTableRegistry(),
 		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
@@ -394,7 +397,8 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	rows, err := c.initialConnection.QueryContext(ctx, selectAllDatabases)
+	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(c.excludeDatabases))
+	rows, err := c.initialConnection.QueryContext(ctx, query)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
 		return nil, fmt.Errorf("failed to discover databases: %w", err)

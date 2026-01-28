@@ -1,4 +1,4 @@
-package file
+package tail
 
 import (
 	"golang.org/x/text/encoding"

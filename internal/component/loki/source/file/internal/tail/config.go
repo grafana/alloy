@@ -2,8 +2,6 @@ package tail
 
 import (
 	"time"
-
-	"golang.org/x/text/encoding"
 )
 
 // Config holds configuration for tailing a file.
@@ -14,9 +12,12 @@ type Config struct {
 	// If 0, tailing starts from the beginning of the file.
 	Offset int64
 
-	// Encoding used for file. If none is provided encoding.Nop is used
+	// Encoding used for file. If none is provided no encoding is used
 	// and the file is assumed to be UTF-8.
-	Encoding encoding.Encoding
+	Encoding string
+
+	// Compression used for file. Supported values are gz (gzip), z (zlib) and bz2 (bzip2).
+	Compression string
 
 	// WatcherConfig controls how the file system is polled for changes.
 	WatcherConfig WatcherConfig

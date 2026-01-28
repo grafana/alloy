@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +41,7 @@ const selectDigestsForExplainPlan = `
 	WHERE LAST_SEEN > ?
 	AND QUERY_SAMPLE_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND SCHEMA_NAME NOT IN ` + EXCLUDED_SCHEMAS
+	AND SCHEMA_NAME NOT IN %s`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
@@ -520,7 +519,8 @@ func (c *ExplainPlans) Stop() {
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan, c.lastSeen)
+	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
 		return err
@@ -535,23 +535,6 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
-		}
-		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
-			return strings.EqualFold(schema, schemaName)
-		}) {
-
-			err := c.sendExplainPlansOutput(
-				schemaName,
-				digest,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query belongs to excluded schema",
-				nil,
-			)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send excluded schema skip explain plan output", "err", err)
-			}
-			continue
 		}
 
 		qi := newQueryInfo(schemaName, digest, queryText)

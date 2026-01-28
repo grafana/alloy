@@ -50,7 +50,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -157,7 +157,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -372,7 +372,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		initialConnectionMock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		initialConnectionMock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{"datname"}).
 					AddRow("db1").
@@ -462,7 +462,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -575,7 +575,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -631,7 +631,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -742,7 +742,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -848,7 +848,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -955,7 +955,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1063,7 +1063,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// first run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1127,7 +1127,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// second run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1192,7 +1192,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// declare mocks for two runs
 		for i := 0; i < 2; i++ {
-			mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"datname",
@@ -1277,7 +1277,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectAllDatabases).
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).
 			WillReturnRows(
 				sqlmock.NewRows([]string{"datname"}).
 					AddRow("testdb").
@@ -1609,7 +1609,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1707,11 +1707,37 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 	})
 }
 
-func Test_Postgres_SchemaDetails_query_excludes_databases(t *testing.T) {
-	assert.Equal(t, `
-		SELECT datname
-		FROM pg_database
-		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')
-			AND datname NOT IN ('azure_maintenance')`, selectAllDatabases)
+func Test_Postgres_SchemaDetails_ExcludeDatabases(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	collector, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:               db,
+		DSN:              "postgres://user:pass@localhost:5432/testdb",
+		CollectInterval:  time.Millisecond,
+		ExcludeDatabases: []string{"excluded_database"},
+		EntryHandler:     lokiClient,
+		CacheEnabled:     false,
+		Logger:           log.NewLogfmtLogger(os.Stderr),
+		dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+			return db, nil
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	// Verify the query uses the custom exclusion clause that includes both default and user-provided exclusions
+	expectedQuery := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause([]string{"excluded_database"}))
+	mock.ExpectQuery(expectedQuery).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"datname"}))
+
+	_, err = collector.getAllDatabases(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }

@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -27,8 +26,9 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Encoding == nil {
-		cfg.Encoding = encoding.Nop
+	encoding, err := getEncoding(cfg.Encoding)
+	if err != nil {
+		return nil, err
 	}
 
 	if cfg.WatcherConfig == (WatcherConfig{}) {
@@ -41,14 +41,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Offset > 0 {
-		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-			f.Close()
-			return nil, err
-		}
-	}
-
-	reader, err := newReader(f, cfg.Offset, cfg.Encoding)
+	reader, err := newReader(f, cfg.Offset, encoding, cfg.Compression)
 	if err != nil {
 		f.Close()
 		return nil, err
@@ -65,6 +58,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		ctx:       ctx,
 		cancel:    cancel,
 		signature: sig,
+		waitAtEOF: cfg.Compression == "",
 	}, nil
 }
 
@@ -86,6 +80,10 @@ type File struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	// waitAtEOF controls whether we should wait for file events
+	// when we get EOF
+	waitAtEOF bool
 }
 
 // Next reads and returns the next line from the file.
@@ -113,13 +111,29 @@ read:
 
 	text, err := f.reader.next()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) && f.waitAtEOF {
 			if err := f.wait(); err != nil {
 				return nil, err
 			}
 			goto read
 		}
-		return nil, err
+
+		// If we should wait at EOF we go an unexpected error
+		// here and can just return.
+		if f.waitAtEOF {
+			return nil, err
+		}
+
+		if !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+
+		// If we should return at EOF we want to flush all remaining
+		// data from reader.
+		text, err = f.reader.flush()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	offset := f.reader.position()
@@ -224,6 +238,17 @@ func (f *File) drain() {
 					Time:   time.Now(),
 				})
 			}
+
+			// flush any remaining data in buffer
+			text, _ = f.reader.flush()
+			if text != "" {
+				f.bufferedLines = append(f.bufferedLines, Line{
+					Text:   text,
+					Offset: f.reader.position(),
+					Time:   time.Now(),
+				})
+			}
+
 			return
 		}
 		f.bufferedLines = append(f.bufferedLines, Line{
@@ -308,11 +333,10 @@ func (f *File) reopen(truncated bool) error {
 
 		f.file = file
 		f.signature = sig
-		if _, err := f.file.Seek(offset, io.SeekStart); err != nil {
+		if err := f.reader.reset(f.file, offset); err != nil {
 			file.Close()
 			return err
 		}
-		f.reader.reset(f.file, offset)
 
 		break
 	}

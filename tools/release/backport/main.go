@@ -189,9 +189,6 @@ func createBackportPR(ctx context.Context, client *gh.Client, params backportCre
 
 This PR backports #%d to %s.
 
-### Original PR Title
-%s
-
 ### Original PR Author
 @%s
 
@@ -204,7 +201,6 @@ This PR backports #%d to %s.
 		params.OriginalPR.GetNumber(),
 		params.OriginalPR.GetNumber(),
 		params.TargetBranch,
-		params.OriginalPR.GetTitle(),
 		params.OriginalPR.GetUser().GetLogin(),
 		params.OriginalPR.GetBody(),
 	)

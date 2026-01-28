@@ -1,3 +1,5 @@
+//go:build unix
+
 package discovery
 
 import "go.opentelemetry.io/ebpf-profiler/process"
