@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -157,7 +158,7 @@ func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *walEn
 
 // walEndpointAdapter is an adapter between watcher and endpoint. This component attests to the wal.WriteTo interface,
 // which allows it to be injected in the wal.Watcher as a destination where to write series and entries. As the watcher
-// reads from the WAL, entires are forwarded here so it can be written to endpoint.
+// reads from the WAL, entries are forwarded here so it can be written to endpoint.
 type walEndpointAdapter struct {
 	logger  log.Logger
 	metrics *walEndpointMetrics
@@ -197,20 +198,33 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
-	var maxSeenTimestamp int64 = -1
+
+	var (
+		queuedEntries    int
+		maxSeenTimestamp int64 = -1
+	)
+
 	if ok {
 		for _, e := range entries.Entries {
-			// FIXME: we probably need to be able to signal stopped or dropped entries.
-			ok := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
-			if !ok {
+			err := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
+			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
+			// Here we just skip the entry and try with the next one.
+			if errors.Is(err, errQueueIsFull) {
+				continue
+			}
+			// NOTE: The only other error that can be returned is context.Canceled and that happens
+			// if endpoint was stopped.
+			if err != nil {
 				return nil
 			}
+
+			queuedEntries += 1
 			if e.Timestamp.Unix() > maxSeenTimestamp {
 				maxSeenTimestamp = e.Timestamp.Unix()
 			}
 		}
-		// count all enqueued appended entries as received from WAL
-		c.markerHandler.UpdateReceivedData(segment, len(entries.Entries))
+		// update marker with all successfully queued entries.
+		c.markerHandler.UpdateReceivedData(segment, queuedEntries)
 	} else {
 		// TODO(thepalbi): Add metric here
 		level.Debug(c.logger).Log("msg", "series for entry not found")

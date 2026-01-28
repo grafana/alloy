@@ -478,12 +478,12 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		// NOTE: We have configured batch size to 1 so only one entry will fit in each batch.
 		// To fill up the queue we need to pass 4 entries. We have one batch that we are actively trying
 		// to send, one batch that is queued and one batch that we are currently working with filling up.
-		require.True(t, e.enqueue(entry, 0))
-		require.True(t, e.enqueue(entry, 0))
+		require.NoError(t, e.enqueue(entry, 0))
+		require.NoError(t, e.enqueue(entry, 0))
 		// The third enqueue is a bit flaky because it will depend if a shard has grabbed a queued batch or not.
 		// So we ignore this and the fourth one will for sure fail.
 		e.enqueue(entry, 0)
-		require.False(t, e.enqueue(entry, 0))
+		require.ErrorIs(t, e.enqueue(entry, 0), errQueueIsFull)
 	})
 
 	t.Run("should block until queue has space when BlockOnOverflow is true", func(t *testing.T) {
@@ -520,9 +520,9 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 			// We just need to finish one request in order for all entries to be successfully enqueued.
 			_ = <-receivedReqsChan
 		}()
-		require.True(t, e.enqueue(entry1, 0))
-		require.True(t, e.enqueue(entry2, 0))
-		require.True(t, e.enqueue(entry3, 0))
-		require.True(t, e.enqueue(entry4, 0))
+		require.NoError(t, e.enqueue(entry1, 0))
+		require.NoError(t, e.enqueue(entry2, 0))
+		require.NoError(t, e.enqueue(entry3, 0))
+		require.NoError(t, e.enqueue(entry4, 0))
 	})
 }

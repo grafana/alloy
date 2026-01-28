@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,11 +12,13 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type endpoint struct {
 	cfg     Config
 	metrics *metrics
+	logger  log.Logger
 	entries chan loki.Entry
 
 	ctx    context.Context
@@ -36,6 +39,7 @@ func newEndpoint(metrics *metrics, cfg Config, logger log.Logger, markerHandler 
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &endpoint{
 		cfg:     cfg,
+		logger:  logger,
 		metrics: metrics,
 		entries: make(chan loki.Entry),
 		ctx:     ctx,
@@ -51,26 +55,30 @@ func newEndpoint(metrics *metrics, cfg Config, logger log.Logger, markerHandler 
 	return c, nil
 }
 
-// enqueue will try to enqueue entry. It will return false if it could not enqueue entry, this can happen
-// if context is canceled or BlockOnOverflow is set to false and queue is full.
-func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) bool {
+var errQueueIsFull = errors.New("queue is full")
+
+// enqueue tries to enqueue an entry. It returns an error if the entry could not be enqueued.
+// errQueueIsFull when the queue is full and BlockOnOverflow is false, or context.Canceled when
+// endpoint is stopped.
+func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) error {
 	defer e.backoff.Reset()
 
 	tenantID := getTenantID(e.cfg, entry)
 	for !e.shards.enqueue(tenantID, entry, segmentNum) {
 		if !e.cfg.QueueConfig.BlockOnOverflow {
+			level.Warn(e.logger).Log("msg", "dropping entry", "err", errQueueIsFull)
 			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
 			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
-			return false
+			return errQueueIsFull
 		}
 
 		e.backoff.Wait()
 		if !e.backoff.Ongoing() {
-			return false
+			return e.backoff.Err()
 		}
 	}
 
-	return true
+	return nil
 }
 
 func (e *endpoint) stop() {
