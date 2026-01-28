@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestJournal(t *testing.T) {
@@ -22,14 +23,14 @@ func TestJournal(t *testing.T) {
 	lr := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:         "loki.source.journal.test",
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     log.NewNopLogger(),
 		DataPath:   tmp,
 		Registerer: prometheus.DefaultRegisterer,
 	}, Arguments{
 		FormatAsJson: false,
 		MaxAge:       7 * time.Hour,
 		Path:         "",
-		Receivers:    []loki.LogsReceiver{lr},
+		ForwardTo:    []loki.LogsReceiver{lr},
 	})
 	require.NoError(t, err)
 	ctx := t.Context()
@@ -39,19 +40,14 @@ func TestJournal(t *testing.T) {
 	ts := time.Now().String()
 	err = journal.Send(ts, journal.PriInfo, nil)
 	require.NoError(t, err)
-	found := false
-	for !found {
-		select {
-		case <-ctx.Done():
-			found = true
-			// Timed out getting message
-			require.True(t, false)
-		case msg := <-lr.Chan():
-			if strings.Contains(msg.Line, ts) {
-				found = true
-				break
-			}
+
+	select {
+	case <-ctx.Done():
+		t.Error("did not get entry in time")
+		return
+	case msg := <-lr.Chan():
+		if strings.Contains(msg.Line, ts) {
+			return
 		}
 	}
-	require.True(t, found)
 }
