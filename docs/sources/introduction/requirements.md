@@ -123,30 +123,12 @@ Refer to component documentation for specific authentication options.
 
 ## Deployment patterns
 
-{{< param "PRODUCT_NAME" >}} supports multiple deployment patterns.
-Most environments naturally fit into a small number of common shapes.
+{{< param "PRODUCT_NAME" >}} supports edge, gateway, and hybrid deployment patterns.
+Refer to [How {{< param "PRODUCT_NAME" >}} works][how alloy works] for guidance on choosing the right pattern for your architecture.
 
-### Kubernetes environments
+For detailed setup instructions, refer to [Deploy {{< param "PRODUCT_NAME" >}}][deploy].
 
-- **DaemonSet**
-  - Best suited for host-level metrics, logs, traces, and profiles
-  - Runs one {{< param "PRODUCT_NAME" >}} instance per node
-
-- **Deployment or StatefulSet**
-  - Best suited for centralized collection, routing, and processing
-  - Fewer instances and simpler capacity planning
-  - Use a StatefulSet with persistent storage for Prometheus metrics collection to preserve the Write-Ahead Log (WAL)
-
-- **Hybrid setups**
-  - Common in larger or multi-tenant clusters
-  - Edge collectors handle local collection and forward data to centralized gateways
-
-Centralized deployments are usually easier to operate as a starting point.
-DaemonSets are most useful when you need node-local data.
-
-For more detail, refer to [Deploy Grafana Alloy][deploy].
-
-### Non-Kubernetes environments
+### Run outside Kubernetes
 
 {{< param "PRODUCT_NAME" >}} also runs outside Kubernetes:
 
@@ -228,7 +210,7 @@ Refer to [Set up meta-monitoring][metamonitoring] for configuration examples.
 Each {{< param "PRODUCT_NAME" >}} component has its own capabilities and limits.
 Before you rely on a component in production, check:
 
-- Which signal types it accepts and emits: metrics, logs, traces, profiles
+- Which signal types it accepts and emits: metrics, logs, traces, and profiles
 - Whether the component is stable or still evolving
 - Whether it's a native {{< param "PRODUCT_NAME" >}} component or wraps upstream OpenTelemetry Collector functionality
 
@@ -247,7 +229,6 @@ Most issues come down to mismatched expectations rather than incorrect configura
 ## Next steps
 
 - [Set up {{< param "PRODUCT_NAME" >}}][set up]
-- [Understand how {{< param "PRODUCT_NAME" >}} works][how alloy works]
 - [Learn about clustering][clustering]
 - [Explore components][reference]
 

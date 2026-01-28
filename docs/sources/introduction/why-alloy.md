@@ -96,6 +96,16 @@ The module system allows you to create custom components that combine multiple s
 
 Your platform team can create a standard monitoring module that application teams import and configure with their specific settings, without understanding the underlying complexity.
 
+## What {{% param "PRODUCT_NAME" %}} replaces
+
+{{< param "PRODUCT_NAME" >}} can consolidate multiple collectors.
+Replace Prometheus Agent to gain the same functionality plus support for logs, traces, and profiles.
+Replace the OpenTelemetry Collector to add native Prometheus support alongside OTLP.
+Replace specialized log collectors like Promtail, Fluentd, or Filebeat with a unified collection approach.
+
+You can also run {{< param "PRODUCT_NAME" >}} alongside collectors during migration to transition gradually without disrupting your observability.
+Refer to the [migration guides][migrate] for step-by-step instructions.
+
 ## When {{% param "PRODUCT_NAME" %}} might not be the right choice
 
 {{< param "PRODUCT_NAME" >}} is powerful and flexible, but it's not always the best fit.
@@ -105,12 +115,13 @@ Similarly, if you're deeply integrated with a specific collector's ecosystem and
 
 ## Next steps
 
+- Learn [how {{< param "PRODUCT_NAME" >}} works][how alloy works] to understand the architecture
 - Review [requirements and expectations][requirements] to understand deployment considerations
 - [Install][Install] {{< param "PRODUCT_NAME" >}} to get started
-- Learn about the [architecture and components][Concepts]
 - Follow a [tutorial][tutorial] for hands-on experience
 
+[how alloy works]: ../how-alloy-works/
 [requirements]: ../requirements/
 [Install]: ../../set-up/install/
-[Concepts]: ../../get-started/
 [tutorial]: ../../tutorials/
+[migrate]: ../../set-up/migrate/

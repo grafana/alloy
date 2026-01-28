@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/how-alloy-works/
 description: Learn how Grafana Alloy works and where it fits in your observability architecture
 menuTitle: How Alloy works
 title: How Grafana Alloy works
-weight: 300
+weight: 220
 ---
 
 # How {{% param "FULL_PRODUCT_NAME" %}} works
@@ -93,16 +93,6 @@ It also works with the broader Prometheus ecosystem through full compatibility w
 
 You can also connect to other ecosystems, including InfluxDB, Elasticsearch, and cloud platforms like AWS, Google Cloud Platform, and Azure.
 
-## What {{% param "PRODUCT_NAME" %}} replaces
-
-{{< param "PRODUCT_NAME" >}} can consolidate multiple collectors.
-Replace Prometheus Agent to gain the same functionality plus support for logs, traces, and profiles.
-Replace the OpenTelemetry Collector to add native Prometheus support alongside OTLP.
-Replace specialized log collectors like Promtail, Fluentd, or Filebeat with a unified collection approach.
-
-You can also run {{< param "PRODUCT_NAME" >}} alongside collectors during migration to transition gradually without disrupting your observability.
-Refer to the [migration guides][migrate] for step-by-step instructions.
-
 ## Next steps
 
 - Review [requirements and expectations][requirements] to understand deployment considerations
@@ -125,4 +115,3 @@ Refer to the [migration guides][migrate] for step-by-step instructions.
 [Clustering]: ../../get-started/clustering/
 [debug]: ../../troubleshoot/debug/
 [deploy]: ../../set-up/deploy/
-[migrate]: ../../set-up/migrate/
