@@ -478,7 +478,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
 
 		// NOTE: We have configured batch size to 1 so only one entry will fit in each batch.
-		// To fill up the queue we need to pass 4 entries. We have one batch that we are actively trying
+		// To exceed the queue's capacity we need to pass 4 entries. We have one batch that we are actively trying
 		// to send, one batch that is queued and one batch that we are currently working with filling up.
 		require.NoError(t, e.enqueue(entry, 0))
 		require.NoError(t, e.enqueue(entry, 0))
