@@ -37,16 +37,12 @@ Keeping these expectations in mind makes it easier to reason about configuration
 
 ## Supported platforms
 
-{{< param "PRODUCT_NAME" >}} runs on the following platforms:
+{{< param "PRODUCT_NAME" >}} runs on the following [platforms][supported platforms]:
 
 - **Linux:** AMD64, ARM64
 - **Windows:** Server 2016 or later, Windows 10 or later, AMD64
 - **macOS:** 10.13 or later, Intel and Apple Silicon
 - **FreeBSD:** AMD64
-
-If an operating system isn't listed here, {{< param "PRODUCT_NAME" >}} doesn't support that platform.
-
-For authoritative details, including lifecycle information, refer to [Supported platforms][supported platforms].
 
 ## Network requirements
 
