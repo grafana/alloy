@@ -48,14 +48,14 @@ var (
 
 // UnmarshalYAML implements yaml.Unmarshaler. Full unmarshaling is deferred until
 // setVersion is invoked.
-func (c *VersionedIntegrations) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *VersionedIntegrations) UnmarshalYAML(unmarshal func(any) error) error {
 	c.ConfigV1 = nil
 	c.ConfigV2 = nil
 	return unmarshal(&c.raw)
 }
 
 // MarshalYAML implements yaml.Marshaler.
-func (c VersionedIntegrations) MarshalYAML() (interface{}, error) {
+func (c VersionedIntegrations) MarshalYAML() (any, error) {
 	switch {
 	case c.ConfigV1 != nil:
 		return c.ConfigV1, nil

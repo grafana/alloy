@@ -296,7 +296,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			WaitTime       sql.NullFloat64
 		}{}
 
-		scanArgs := []interface{}{
+		scanArgs := []any{
 			&row.Schema,
 			&row.ThreadID,
 			&row.StatementEventID,

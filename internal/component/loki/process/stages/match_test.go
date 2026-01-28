@@ -85,7 +85,7 @@ func TestMatchStage(t *testing.T) {
 
 	// Process the second log line which should extract the output from the `msg` field
 	e.Line = testMatchLogLineApp2
-	e.Extracted = map[string]interface{}{}
+	e.Extracted = map[string]any{}
 	in <- e
 	e = <-out
 	assert.Equal(t, "app2 log line", e.Line)
@@ -169,7 +169,7 @@ func TestMatcher(t *testing.T) {
 				return
 			}
 			if s != nil {
-				out := processEntries(s, newEntry(map[string]interface{}{
+				out := processEntries(s, newEntry(map[string]any{
 					"test_label": "unimportant value",
 				}, toLabelSet(tt.labels), "foo", time.Now()))
 

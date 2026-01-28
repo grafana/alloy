@@ -35,7 +35,7 @@ func (faroExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*faroexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)

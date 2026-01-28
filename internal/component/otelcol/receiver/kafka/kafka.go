@@ -172,7 +172,7 @@ func (args *ErrorBackOffArguments) Convert() *configretry.BackOffConfig {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 	input["auth"] = args.Authentication.Convert()
 
 	var result kafkareceiver.Config

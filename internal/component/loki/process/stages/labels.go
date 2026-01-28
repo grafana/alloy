@@ -64,7 +64,7 @@ type labelStage struct {
 }
 
 // Process implements Stage
-func (l *labelStage) Process(labels model.LabelSet, extracted map[string]interface{}, _ *time.Time, _ *string) {
+func (l *labelStage) Process(labels model.LabelSet, extracted map[string]any, _ *time.Time, _ *string) {
 	processLabelsConfigs(l.logger, extracted, l.labelsConfig, func(labelName model.LabelName, labelValue model.LabelValue) {
 		labels[labelName] = labelValue
 	})
@@ -72,7 +72,7 @@ func (l *labelStage) Process(labels model.LabelSet, extracted map[string]interfa
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
 
-func processLabelsConfigs(logger log.Logger, extracted map[string]interface{}, labelsConfig map[string]string, consumer labelsConsumer) {
+func processLabelsConfigs(logger log.Logger, extracted map[string]any, labelsConfig map[string]string, consumer labelsConsumer) {
 	for lName, lSrc := range labelsConfig {
 		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)

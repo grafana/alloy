@@ -30,7 +30,7 @@ type Target interface {
 	// Labels returns labels that are added to this target and its stream.
 	Labels() model.LabelSet
 	// Details is additional information about this target specific to its type
-	Details() interface{}
+	Details() any
 }
 
 type RunnableTarget interface {

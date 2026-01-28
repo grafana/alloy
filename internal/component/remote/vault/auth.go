@@ -451,7 +451,7 @@ type AuthCustom struct {
 
 // Login implements vault.AuthMethod.
 func (a *AuthCustom) Login(ctx context.Context, client *vault.Client) (*vault.Secret, error) {
-	data := make(map[string]interface{}, len(a.Data))
+	data := make(map[string]any, len(a.Data))
 	for k, v := range a.Data {
 		data[k] = string(v)
 	}

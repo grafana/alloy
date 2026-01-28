@@ -354,7 +354,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	sample := QuerySamplesInfo{}
-	scanArgs := []interface{}{
+	scanArgs := []any{
 		&sample.Now,
 		&sample.DatabaseName,
 		&sample.PID,

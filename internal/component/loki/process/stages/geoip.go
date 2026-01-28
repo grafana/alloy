@@ -152,7 +152,7 @@ func (*geoIPStage) Cleanup() {
 	// no-op
 }
 
-func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]interface{}) {
+func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
 	var ip net.IP
 	if g.cfgs.Source != nil {
 		if _, ok := extracted[*g.cfgs.Source]; !ok {
@@ -216,7 +216,7 @@ func (g *geoIPStage) close() {
 	}
 }
 
-func (g *geoIPStage) populateExtractedWithCityData(extracted map[string]interface{}, record *geoip2.City) {
+func (g *geoIPStage) populateExtractedWithCityData(extracted map[string]any, record *geoip2.City) {
 	for field, label := range fields {
 		switch field {
 		case CITYNAME:
@@ -280,7 +280,7 @@ func (g *geoIPStage) populateExtractedWithCityData(extracted map[string]interfac
 	}
 }
 
-func (g *geoIPStage) populateExtractedWithASNData(extracted map[string]interface{}, record *geoip2.ASN) {
+func (g *geoIPStage) populateExtractedWithASNData(extracted map[string]any, record *geoip2.ASN) {
 	for field, label := range fields {
 		switch field {
 		case ASN:
@@ -297,7 +297,7 @@ func (g *geoIPStage) populateExtractedWithASNData(extracted map[string]interface
 	}
 }
 
-func (g *geoIPStage) populateExtractedWithCountryData(extracted map[string]interface{}, record *geoip2.Country) {
+func (g *geoIPStage) populateExtractedWithCountryData(extracted map[string]any, record *geoip2.Country) {
 	for field, label := range fields {
 		switch field {
 		case COUNTRYNAME:
@@ -324,7 +324,7 @@ func (g *geoIPStage) populateExtractedWithCountryData(extracted map[string]inter
 	}
 }
 
-func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[string]interface{}) {
+func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[string]any) {
 	var record any
 	if err := g.mmdb.Lookup(ip, &record); err != nil {
 		level.Error(g.logger).Log("msg", "unable to lookup record for the ip", "err", err, "ip", ip)

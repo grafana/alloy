@@ -17,7 +17,7 @@ type testArguments struct {
 	Server *ServerConfig `alloy:",squash"`
 }
 
-func (t *testArguments) UnmarshalAlloy(f func(v interface{}) error) error {
+func (t *testArguments) UnmarshalAlloy(f func(v any) error) error {
 	// apply server defaults from here since the fields are squashed
 	*t = testArguments{
 		Server: DefaultServerConfig(),

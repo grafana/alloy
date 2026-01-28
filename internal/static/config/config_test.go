@@ -399,7 +399,7 @@ logs:
 		return LoadBytes([]byte(cfg), true, c)
 	})
 	require.NoError(t, err)
-	pipelineStages := myCfg.Logs.Configs[0].ScrapeConfig[0].PipelineStages[0].(map[interface{}]interface{})
+	pipelineStages := myCfg.Logs.Configs[0].ScrapeConfig[0].PipelineStages[0].(map[any]any)
 	expected := `\\temp\\Logs\\(?P<log_app>.+?)\\`
 	require.Equal(t, expected, pipelineStages["expression"].(string))
 }

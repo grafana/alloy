@@ -625,7 +625,7 @@ func BuildTargetStatuses(targets map[string][]*scrape.Target) []TargetStatus {
 }
 
 // DebugInfo implements component.DebugComponent
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	return ScraperStatus{
 		TargetStatus: BuildTargetStatuses(c.scraper.TargetsActive()),
 	}

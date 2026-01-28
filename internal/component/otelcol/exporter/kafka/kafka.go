@@ -239,7 +239,7 @@ func (args *Arguments) Validate() error {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 	input["auth"] = args.Authentication.Convert()
 
 	var result kafkaexporter.Config

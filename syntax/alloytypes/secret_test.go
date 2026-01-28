@@ -32,14 +32,14 @@ func TestSecret(t *testing.T) {
 	})
 }
 
-func decodeTo(t *testing.T, input interface{}, target interface{}) error {
+func decodeTo(t *testing.T, input any, target any) error {
 	t.Helper()
 
 	expr, err := parser.ParseExpression("val")
 	require.NoError(t, err)
 
 	eval := vm.New(expr)
-	return eval.Evaluate(vm.NewScope(map[string]interface{}{
+	return eval.Evaluate(vm.NewScope(map[string]any{
 		"val": input,
 	}), target)
 }

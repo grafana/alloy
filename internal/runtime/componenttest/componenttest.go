@@ -181,7 +181,7 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 		DataPath:      dataPath,
 		OnStateChange: c.onStateChange,
 		Registerer:    c.PromRegistry,
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case labelstore.ServiceName:
 				return labelstore.New(nil, prometheus.DefaultRegisterer), nil

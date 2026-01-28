@@ -136,7 +136,7 @@ func Test_MaxmindAsn(t *testing.T) {
 		cfgs:              config,
 	}
 
-	extracted := map[string]interface{}{}
+	extracted := map[string]any{}
 	testStage.populateExtractedWithASNData(extracted, &record)
 
 	for _, field := range []string{
@@ -180,7 +180,7 @@ func Test_MaxmindCity(t *testing.T) {
 		cfgs:              config,
 	}
 
-	extracted := map[string]interface{}{}
+	extracted := map[string]any{}
 	testStage.populateExtractedWithCityData(extracted, &record)
 
 	for _, field := range []string{
@@ -234,7 +234,7 @@ func Test_MaxmindCountry(t *testing.T) {
 		cfgs:              config,
 	}
 
-	extracted := map[string]interface{}{}
+	extracted := map[string]any{}
 	testStage.populateExtractedWithCountryData(extracted, &record)
 
 	for _, field := range []string{

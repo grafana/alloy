@@ -36,7 +36,7 @@ func NewBlockWithOverrideFn(name []string, label string, args component.Argument
 // GetAlloyTypesOverrideHook returns a hook for overriding the go value of
 // specific go types for converting configs from one type to another.
 func GetAlloyTypesOverrideHook() builder.ValueOverrideHook {
-	return func(val interface{}) interface{} {
+	return func(val any) any {
 		switch value := val.(type) {
 		case alloytypes.Secret:
 			return string(value)
@@ -69,7 +69,7 @@ func GetAlloyTypesOverrideHook() builder.ValueOverrideHook {
 
 // LabelForParts generates a consistent component label for a set of parts
 // delimited with an underscore.
-func LabelForParts(parts ...interface{}) string {
+func LabelForParts(parts ...any) string {
 	var sParts []string
 	for _, part := range parts {
 		if part != "" {
@@ -82,7 +82,7 @@ func LabelForParts(parts ...interface{}) string {
 // LabelWithIndex generates a consistent component label for a set of parts
 // delimited with an underscore and suffixed with the provided index. If the
 // index is 0, the label is generated without the index.
-func LabelWithIndex(index int, parts ...interface{}) string {
+func LabelWithIndex(index int, parts ...any) string {
 	if index == 0 {
 		return LabelForParts(parts...)
 	}

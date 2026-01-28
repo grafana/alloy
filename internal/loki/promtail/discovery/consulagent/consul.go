@@ -54,7 +54,7 @@ var defaultSDConfig = SDConfig{
 	RefreshInterval: model.Duration(30 * time.Second),
 }
 
-func (c *SDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *SDConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = defaultSDConfig
 	type plain SDConfig
 	err := unmarshal((*plain)(c))
