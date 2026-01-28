@@ -281,7 +281,7 @@ func (t *tailer) readLines(done chan struct{}) {
 			// If we get context.Canceled it means that tail.File was stopped. If we get EOF
 			// that means that we consumed the file fully and don't wait for more events, this
 			// happens when compression is configured.
-			if !errors.Is(err, context.Canceled) || errors.Is(err, io.EOF) {
+			if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
 				level.Error(t.logger).Log("msg", "failed to tail file", "err", err)
 			}
 			return
