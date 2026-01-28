@@ -47,7 +47,7 @@ require (
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/github/smimesign v0.2.0
-	github.com/githubexporter/github-exporter v0.0.0-20231025122338-656e7dc33fe7
+	github.com/githubexporter/github-exporter v1.3.1
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-kit/log v0.2.1
@@ -1016,9 +1016,11 @@ require (
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/orchestrator/util v0.74.0-rc.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
+	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
+	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
 )

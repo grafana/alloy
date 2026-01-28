@@ -248,6 +248,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e // indirect
+	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/burningalchemist/sql_exporter v0.0.0-20240103092044-466b38b6abc4 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500 // indirect
@@ -323,7 +324,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/gavv/monotime v0.0.0-20190418164738-30dba4353424 // indirect
 	github.com/github/smimesign v0.2.0 // indirect
-	github.com/githubexporter/github-exporter v0.0.0-20231025122338-656e7dc33fe7 // indirect
+	github.com/githubexporter/github-exporter v1.3.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-git/go-git/v5 v5.16.2 // indirect
@@ -388,6 +389,7 @@ require (
 	github.com/google/flatbuffers v25.9.23+incompatible // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/go-tpm v0.9.7 // indirect
 	github.com/google/pprof v0.0.0-20250923004556-9e5a51aed1e8 // indirect
