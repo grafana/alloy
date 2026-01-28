@@ -298,7 +298,7 @@ data:
 
     // Test prometheus.operator.servicemonitors
     prometheus.operator.servicemonitors "default" {
-      forward_to = [prometheus.remote_write.mimir.receiver]
+      forward_to = [prometheus.relabel.servicemonitors.receiver]
       namespaces = ["testing"]
       scrape {
         honor_metadata = true
@@ -308,6 +308,10 @@ data:
           alloy = "yes",
         }
       }
+    }
+
+    prometheus.relabel "servicemonitors" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
       rule {
         action       = "replace"
         target_label = "alloy_int_test"
@@ -325,7 +329,7 @@ data:
 
     // Test prometheus.operator.podmonitors
     prometheus.operator.podmonitors "default" {
-      forward_to = [prometheus.remote_write.mimir.receiver]
+      forward_to = [prometheus.relabel.podmonitors.receiver]
       namespaces = ["testing"]
       scrape {
         honor_metadata = true
@@ -335,6 +339,10 @@ data:
           alloy = "yes",
         }
       }
+    }
+
+    prometheus.relabel "podmonitors" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
       rule {
         action       = "replace"
         target_label = "alloy_int_test"
@@ -352,7 +360,7 @@ data:
 
     // Test prometheus.operator.probes
     prometheus.operator.probes "default" {
-      forward_to = [prometheus.remote_write.mimir.receiver]
+      forward_to = [prometheus.relabel.probes.receiver]
       namespaces = ["testing"]
       scrape {
         honor_metadata = true
@@ -362,6 +370,10 @@ data:
           alloy = "yes",
         }
       }
+    }
+
+    prometheus.relabel "probes" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
       rule {
         action       = "replace"
         target_label = "alloy_int_test"
@@ -379,7 +391,7 @@ data:
 
     // Test prometheus.operator.scrapeconfigs
     prometheus.operator.scrapeconfigs "default" {
-      forward_to = [prometheus.remote_write.mimir.receiver]
+      forward_to = [prometheus.relabel.scrapeconfigs.receiver]
       namespaces = ["testing"]
       scrape {
         honor_metadata = true
@@ -389,6 +401,10 @@ data:
           alloy = "yes",
         }
       }
+    }
+
+    prometheus.relabel "scrapeconfigs" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
       rule {
         action       = "replace"
         target_label = "alloy_int_test"
