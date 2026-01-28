@@ -2,17 +2,17 @@ package collector
 
 import "github.com/grafana/alloy/internal/component/database_observability"
 
-var defaultExcludedSchemas = []string{"mysql", "performance_schema", "sys", "information_schema"}
+var excludedSchemas = []string{"mysql", "performance_schema", "sys", "information_schema"}
 
-var defaultExclusionClause = database_observability.BuildExclusionClause(defaultExcludedSchemas)
+var exclusionClause = database_observability.BuildExclusionClause(excludedSchemas)
 
-func buildExcludedSchemasClause(excludedSchemas []string) string {
-	if len(excludedSchemas) == 0 {
-		return defaultExclusionClause
+func buildExcludedSchemasClause(schemas []string) string {
+	if len(schemas) == 0 {
+		return exclusionClause
 	}
 
-	schemas := make([]string, 0, len(defaultExcludedSchemas)+len(excludedSchemas))
-	schemas = append(schemas, defaultExcludedSchemas...)
-	schemas = append(schemas, excludedSchemas...)
-	return database_observability.BuildExclusionClause(schemas)
+	all := make([]string, 0, len(excludedSchemas)+len(schemas))
+	all = append(all, excludedSchemas...)
+	all = append(all, schemas...)
+	return database_observability.BuildExclusionClause(all)
 }

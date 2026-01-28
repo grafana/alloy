@@ -2534,7 +2534,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", defaultExclusionClause)).WillReturnRows(rows)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause)).WillReturnRows(rows)
 
 			ctx := context.Background()
 			err = explainPlan.populateQueryCache(ctx)
@@ -2604,7 +2604,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", defaultExclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()))
 
@@ -2630,7 +2630,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", defaultExclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now()))
 
@@ -2657,7 +2657,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", defaultExclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now().Add(-time.Minute)))
 
@@ -2757,7 +2757,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", defaultExclusionClause)).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).WillReturnRows(rows)
 
 		ctx := context.Background()
 		err = explainPlan.fetchExplainPlans(ctx)

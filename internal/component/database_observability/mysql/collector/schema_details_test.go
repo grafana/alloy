@@ -40,7 +40,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -184,7 +184,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -331,7 +331,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -498,7 +498,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -645,7 +645,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -815,7 +815,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -962,7 +962,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -1049,7 +1049,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		// second loop, table info will be read from cache
 		// and no further queries will be executed
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -1129,7 +1129,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -1264,7 +1264,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows(
 				[]string{"schema_name"},
 			).AddRow(
@@ -1313,7 +1313,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"schema_name",
 			}).AddRow(
@@ -1381,9 +1381,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, defaultExclusionClause)).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"schema_name",
 			}).AddRow(

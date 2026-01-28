@@ -2,17 +2,17 @@ package collector
 
 import "github.com/grafana/alloy/internal/component/database_observability"
 
-var defaultExcludedDatabases = []string{"azure_maintenance"}
+var excludedDatabases = []string{"azure_maintenance"}
 
-var defaultExclusionClause = database_observability.BuildExclusionClause(defaultExcludedDatabases)
+var exclusionClause = database_observability.BuildExclusionClause(excludedDatabases)
 
-func buildExcludedDatabasesClause(excludedDatabases []string) string {
-	if len(excludedDatabases) == 0 {
-		return defaultExclusionClause
+func buildExcludedDatabasesClause(databases []string) string {
+	if len(databases) == 0 {
+		return exclusionClause
 	}
 
-	databases := make([]string, 0, len(defaultExcludedDatabases)+len(excludedDatabases))
-	databases = append(databases, defaultExcludedDatabases...)
-	databases = append(databases, excludedDatabases...)
-	return database_observability.BuildExclusionClause(databases)
+	all := make([]string, 0, len(excludedDatabases)+len(databases))
+	all = append(all, excludedDatabases...)
+	all = append(all, databases...)
+	return database_observability.BuildExclusionClause(all)
 }
