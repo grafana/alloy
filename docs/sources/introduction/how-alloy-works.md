@@ -105,11 +105,13 @@ Refer to the [migration guides][migrate] for step-by-step instructions.
 
 ## Next steps
 
+- Review [requirements and expectations][requirements] to understand deployment considerations
 - [Install][Install] {{< param "PRODUCT_NAME" >}} to get started
 - Learn core [concepts][Concepts] including components, expressions, and pipelines
 - Follow [tutorials][tutorials] for hands-on experience
 - Explore the [component reference][reference] to see available components
 
+[requirements]: ../requirements/
 [Install]: ../../set-up/install/
 [Concepts]: ../../get-started/
 [tutorials]: ../../tutorials/

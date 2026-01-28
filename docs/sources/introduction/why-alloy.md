@@ -105,12 +105,12 @@ Similarly, if you're deeply integrated with a specific collector's ecosystem and
 
 ## Next steps
 
+- Review [requirements and expectations][requirements] to understand deployment considerations
 - [Install][Install] {{< param "PRODUCT_NAME" >}} to get started
-- Review [supported platforms][supported platforms] to confirm compatibility
 - Learn about the [architecture and components][Concepts]
 - Follow a [tutorial][tutorial] for hands-on experience
 
+[requirements]: ../requirements/
 [Install]: ../../set-up/install/
-[supported platforms]: ../../set-up/supported-platforms/
 [Concepts]: ../../get-started/
 [tutorial]: ../../tutorials/

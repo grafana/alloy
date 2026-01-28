@@ -32,6 +32,7 @@ This approach reduces operational complexity while giving you the flexibility to
 
 - [Why Alloy][Why Alloy]: Understand when {{< param "PRODUCT_NAME" >}} is the right choice
 - [How Alloy works][How Alloy works]: Learn about the architecture and key capabilities
+- [Requirements and expectations][Requirements]: Review deployment considerations and constraints
 - [Supported platforms][Supported platforms]: Check platform compatibility
 - [Estimate resource usage][Estimate resource usage]: Plan your deployment
 - [Migrate from other collectors][migrate]: Move from OpenTelemetry Collector, Prometheus Agent, or Grafana Agent
@@ -43,6 +44,7 @@ This approach reduces operational complexity while giving you the flexibility to
 [reference]: ../reference/
 [Why Alloy]: ./why-alloy/
 [How Alloy works]: ./how-alloy-works/
+[Requirements]: ./requirements/
 [Supported platforms]: ../set-up/supported-platforms/
 [Estimate resource usage]: ../set-up/estimate-resource-usage/
 [migrate]: ../set-up/migrate/
