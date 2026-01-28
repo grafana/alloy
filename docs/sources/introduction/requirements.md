@@ -18,6 +18,23 @@ Before a first deployment, people usually want answers to a few basic questions:
 
 The guidance here focuses on the common, supported paths that work well for most users, without diving into every possible edge case.
 
+## Design expectations
+
+{{< param "FULL_PRODUCT_NAME" >}} makes telemetry collection explicit and predictable, even when that means exposing trade-offs that other tools try to hide.
+
+A few design choices are worth keeping in mind:
+
+- {{< param "PRODUCT_NAME" >}} favors explicit configuration over implicit behavior.
+  You define pipelines, routing, and scaling decisions in configuration rather than relying on automatic inference.
+- {{< param "PRODUCT_NAME" >}} exposes deployment and scaling choices instead of masking them.
+  Changes in topology—such as switching from a DaemonSet to a centralized deployment—can affect behavior, and those effects are intentional and visible.
+- {{< param "PRODUCT_NAME" >}} consolidates multiple collectors, but it doesn't replicate every default or assumption from these other collectors.
+  Similar concepts may behave differently when the underlying goals differ.
+- {{< param "PRODUCT_NAME" >}} prioritizes predictability over "magic" defaults.
+  Understanding how components connect and how work distributes is part of operating {{< param "PRODUCT_NAME" >}} successfully.
+
+Keeping these expectations in mind makes it easier to reason about configuration changes, scaling decisions, and observed behavior in production.
+
 ## Supported platforms
 
 {{< param "PRODUCT_NAME" >}} runs on the following platforms:
