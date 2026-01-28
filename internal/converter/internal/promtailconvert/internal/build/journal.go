@@ -32,6 +32,7 @@ func (s *ScrapeConfigBuilder) AppendJournalConfig() {
 		FormatAsJson: jc.JSON,
 		MaxAge:       maxAge,
 		Path:         jc.Path,
+		Matches:      jc.Matches,
 		Receivers:    s.getOrNewProcessStageReceivers(),
 		Labels:       convertPromLabels(jc.Labels),
 		RelabelRules: alloyrelabel.Rules{},

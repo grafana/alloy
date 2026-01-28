@@ -108,6 +108,11 @@ prometheus.remote_write "metrics_agent" {
 
 		metadata_config { }
 	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
+	}
 }
 
 logging {

@@ -7,6 +7,11 @@ prometheus.remote_write "metrics_remote_write_name" {
 
 		metadata_config { }
 	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
+	}
 }
 
 otelcol.extension.jaeger_remote_sampling "default_0" {

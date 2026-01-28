@@ -15,8 +15,8 @@ import (
 	"github.com/prometheus/sigv4"
 )
 
-func AppendPrometheusRemoteWrite(pb *build.PrometheusBlocks, globalConfig prom_config.GlobalConfig, remoteWriteConfigs []*prom_config.RemoteWriteConfig, label string) *remotewrite.Exports {
-	remoteWriteArgs := toRemotewriteArguments(globalConfig, remoteWriteConfigs)
+func AppendPrometheusRemoteWrite(pb *build.PrometheusBlocks, globalConfig prom_config.GlobalConfig, remoteWriteConfigs []*prom_config.RemoteWriteConfig, label string, walOptions *remotewrite.WALOptions) *remotewrite.Exports {
+	remoteWriteArgs := toRemotewriteArguments(globalConfig, remoteWriteConfigs, walOptions)
 
 	remoteWriteLabel := label
 	if remoteWriteLabel == "" {
@@ -48,16 +48,22 @@ func ValidateRemoteWriteConfig(remoteWriteConfig *prom_config.RemoteWriteConfig)
 	return diags
 }
 
-func toRemotewriteArguments(globalConfig prom_config.GlobalConfig, remoteWriteConfigs []*prom_config.RemoteWriteConfig) *remotewrite.Arguments {
+func toRemotewriteArguments(globalConfig prom_config.GlobalConfig, remoteWriteConfigs []*prom_config.RemoteWriteConfig, walOptions *remotewrite.WALOptions) *remotewrite.Arguments {
 	externalLabels := globalConfig.ExternalLabels.Map()
 	if len(externalLabels) == 0 {
 		externalLabels = nil
 	}
 
+	// Use provided WAL options or fall back to defaults
+	walOpts := remotewrite.DefaultWALOptions
+	if walOptions != nil {
+		walOpts = *walOptions
+	}
+
 	return &remotewrite.Arguments{
 		ExternalLabels: externalLabels,
 		Endpoints:      getEndpointOptions(remoteWriteConfigs),
-		WALOptions:     remotewrite.DefaultWALOptions,
+		WALOptions:     walOpts,
 	}
 }
 
