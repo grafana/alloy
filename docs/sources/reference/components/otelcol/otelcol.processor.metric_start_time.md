@@ -13,6 +13,8 @@ title: otelcol.processor.metric_start_time
 `otelcol.processor.metric_start_time` accepts metrics from other `otelcol` components and sets the start time for cumulative metric datapoints which do not already have a start time.
 This processor is commonly used with `otelcol.receiver.prometheus`, which produces metric points without a [start time][otlp-start-time].
 
+Grafana Mimir supports OTLP metric start times only if it is configured with `-distributor.otel-created-timestamp-zero-ingestion-enabled`.
+
 {{< admonition type="note" >}}
 `otelcol.processor.metric_start_time` is a wrapper over the upstream OpenTelemetry Collector [`metricstarttime`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
