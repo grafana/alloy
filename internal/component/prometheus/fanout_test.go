@@ -13,7 +13,7 @@ import (
 )
 
 func TestRollback(t *testing.T) {
-	ls := labelstore.New(nil, prometheus.DefaultRegisterer)
+	ls := labelstore.New(nil, prometheus.DefaultRegisterer, 4)
 	fanout := NewFanout([]storage.Appendable{NewFanout(nil, "1", prometheus.DefaultRegisterer, ls)}, "", prometheus.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Rollback()
@@ -21,7 +21,7 @@ func TestRollback(t *testing.T) {
 }
 
 func TestCommit(t *testing.T) {
-	ls := labelstore.New(nil, prometheus.DefaultRegisterer)
+	ls := labelstore.New(nil, prometheus.DefaultRegisterer, 4)
 	fanout := NewFanout([]storage.Appendable{NewFanout(nil, "1", prometheus.DefaultRegisterer, ls)}, "", prometheus.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Commit()

@@ -184,7 +184,7 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
 			case labelstore.ServiceName:
-				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
+				return labelstore.New(nil, prometheus.DefaultRegisterer, 4), nil
 			case livedebugging.ServiceName:
 				return livedebugging.NewLiveDebugging(), nil
 			default:
