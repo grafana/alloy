@@ -163,7 +163,6 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		case entry := <-c.receiver.Chan():
-			c.mut.RLock()
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.LokiLog,
@@ -177,16 +176,23 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
 				},
 			))
+
+			// Load the processIn channel while holding the lock, then release it
+			// before sending. This prevents deadlock when Update() needs to stop
+			// the old entry handler while we're blocked on a channel send.
+			c.mut.RLock()
+			processIn := c.processIn
+			c.mut.RUnlock()
+
 			select {
 			case <-ctx.Done():
 				return
-			case c.processIn <- entry.Clone():
+			case processIn <- entry.Clone():
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
 				// approach instead, so that the copy only gets made on the
 				// first stage that needs to modify the entry's labels.
 			}
-			c.mut.RUnlock()
 		}
 	}
 }
