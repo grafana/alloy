@@ -37,7 +37,7 @@ This approach reduces operational complexity while giving you the flexibility to
 - [Estimate resource usage][Estimate resource usage]: Plan your deployment
 - [Migrate from other collectors][migrate]: Move from OpenTelemetry Collector, Prometheus Agent, or Grafana Agent
 
-[OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
+[OpenTelemetry]: https://opentelemetry.io/docs/collector/distributions/
 [Install]: ../set-up/install/
 [Concepts]: ../get-started/
 [tutorials]: ../tutorials/
