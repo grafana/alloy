@@ -1529,7 +1529,7 @@ func TestExplainPlans(t *testing.T) {
 
 		t.Run("uses argument value on first request", func(t *testing.T) {
 			nextSeen := lastSeen.Add(time.Second * 45)
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_text",
@@ -1551,7 +1551,7 @@ func TestExplainPlans(t *testing.T) {
 		})
 
 		t.Run("uses oldest last seen value on subsequent requests", func(t *testing.T) {
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_text",
@@ -1594,7 +1594,7 @@ func TestExplainPlans(t *testing.T) {
 
 		t.Run("skips truncated queries", func(t *testing.T) {
 			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1629,7 +1629,7 @@ func TestExplainPlans(t *testing.T) {
 		t.Run("skips non-select queries", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1678,7 +1678,7 @@ func TestExplainPlans(t *testing.T) {
 
 		t.Run("skips no row result", func(t *testing.T) {
 			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1710,7 +1710,7 @@ func TestExplainPlans(t *testing.T) {
 		t.Run("passes queries beginning in select", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1747,7 +1747,7 @@ func TestExplainPlans(t *testing.T) {
 		t.Run("passes queries beginning in with", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1809,7 +1809,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -1841,7 +1841,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 		lokiClient.Clear()
 		logBuffer.Reset()
 
-		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, defaultExclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 			"schema_name",
 			"digest",
 			"query_sample_text",

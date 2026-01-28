@@ -391,14 +391,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
-			DSN:             string(c.args.DataSourceName),
-			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			CacheEnabled:     c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:        c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:         c.args.SchemaDetailsArguments.CacheTTL,
+			EntryHandler:     entryHandler,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -412,11 +413,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
-			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
-			EntryHandler:    entryHandler,
-			TableRegistry:   tableRegistry,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			EntryHandler:     entryHandler,
+			TableRegistry:    tableRegistry,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -431,6 +433,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:      c.args.ExcludeDatabases,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,

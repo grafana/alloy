@@ -378,7 +378,7 @@ func TestQueryTables(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, defaultExclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"digest",
@@ -439,7 +439,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, defaultExclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest", // not enough columns
@@ -447,7 +447,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, defaultExclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -505,7 +505,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, defaultExclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -568,9 +568,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, defaultExclusionClause, 250)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, defaultExclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
