@@ -18,12 +18,12 @@ The HTTP API exposed is compatible with [Prometheus `remote_write` API][promethe
 This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_NAME" >}} as a proxy for Prometheus metrics.
 
 [prometheus.remote_write]: ../prometheus.remote_write/
-[prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/2.45/querying/api/#remote-write-receiver
+[prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/latest/querying/api/#remote-write-receiver
 
 ## Usage
 
 ```alloy
-prometheus.receive_http "<LABEL?" {
+prometheus.receive_http "<LABEL>" {
   http {
     listen_address = "<LISTEN_ADDRESS>"
     listen_port = <PORT>
@@ -35,16 +35,31 @@ prometheus.receive_http "<LABEL?" {
 The component starts an HTTP server supporting the following endpoint:
 
 * `POST /api/v1/metrics/write`: Sends metrics to the component, which in turn is forwarded to the receivers as configured in `forward_to` argument.
-  The request format must match that of [Prometheus `remote_write` API][prometheus-remote-write-docs].
+  The request format must be compatible with the [Prometheus remote_write API][prometheus-remote-write-docs] and can use either the v1 or v2 format.
   One way to send valid requests to this component is to use another {{< param "PRODUCT_NAME" >}} with a [`prometheus.remote_write`][prometheus.remote_write] component.
 
 ## Arguments
 
-You can use the following argument with `prometheus.receive_http`:
+You can use the following arguments with `prometheus.receive_http`:
 
-| Name         | Type                    | Description                           | Default | Required |
-| ------------ | ----------------------- | ------------------------------------- | ------- | -------- |
-| `forward_to` | `list(MetricsReceiver)` | List of receivers to send metrics to. |         | yes      |
+| Name                                      | Type                    | Description                                                           | Default                       | Required |
+| ----------------------------------------- | ----------------------- | --------------------------------------------------------------------- | ----------------------------- | -------- |
+| `forward_to`                              | `list(MetricsReceiver)` | List of receivers to send metrics to.                                 |                               | yes      |
+| `accepted_remote_write_protobuf_messages` | `list(string)`          | Accepted remote write protobuf message types.                         | `["prometheus.WriteRequest"]` | no       |
+| `append_metadata`                         | `bool`                  | Pass metric metadata to downstream components.                        | `false`                       | no       |
+| `enable_type_and_unit_labels`             | `bool`                  | Add the metric type and unit as labels to the metric.                 | `false`                       | no       |
+
+> **EXPERIMENTAL**: The `append_metadata`, `enable_type_and_unit_labels`, and using `"io.prometheus.write.v2.Request"` in `accepted_remote_write_protobuf_messages` are [experimental][] features.
+>
+> The `append_metadata` and `enable_type_and_unit_labels` arguments only apply to remote write v2 payloads and only when metadata is included in those payloads.
+> Enabling support for remote write v2 payloads requires that `"io.prometheus.write.v2.Request"` is included in `accepted_remote_write_protobuf_messages`.
+> Remote write v1 payloads (`accepted_remote_write_protobuf_messages = ["prometheus.WriteRequest"]`) cannot support these features.
+>
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 ## Blocks
 
