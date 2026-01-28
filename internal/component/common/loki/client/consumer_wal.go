@@ -200,6 +200,7 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	var maxSeenTimestamp int64 = -1
 	if ok {
 		for _, e := range entries.Entries {
+			// FIXME: we probably need to be able to signal stopped or dropped entries.
 			ok := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
 			if !ok {
 				return nil
