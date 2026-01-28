@@ -90,7 +90,7 @@ type QuerySamplesInfo struct {
 	WaitEvent       sql.NullString
 	State           sql.NullString
 	BackendType     sql.NullString
-	BackendXID      sql.NullInt32
+	BackendXID      sql.NullInt64
 	BackendXmin     sql.NullInt64
 	QueryID         sql.NullInt64
 	Query           sql.NullString
@@ -514,7 +514,7 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		clientAddr,
 		state.LastRow.BackendType.String,
 		state.LastRow.State.String,
-		state.LastRow.BackendXID.Int32,
+		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		xactDuration,
 		queryDuration,
@@ -543,7 +543,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
 		we.LastState,
-		state.LastRow.BackendXID.Int32,
+		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		we.LastWaitTime,
 		we.WaitEventType,
