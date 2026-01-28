@@ -38,25 +38,28 @@ var selectQueriesFromActivity = `
 				WITHIN GROUP (ORDER BY total_exec_time)
 				FROM pg_stat_statements
 		)
+		AND pg_database.datname NOT IN %s
 	ORDER BY total_exec_time DESC
 	LIMIT 100
 `
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
-	TableRegistry   *TableRegistry
+	DB               *sql.DB
+	CollectInterval  time.Duration
+	ExcludeDatabases []string
+	EntryHandler     loki.EntryHandler
+	TableRegistry    *TableRegistry
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
-	tableRegistry   *TableRegistry
-	normalizer      *sqllexer.Normalizer
+	dbConnection     *sql.DB
+	collectInterval  time.Duration
+	excludeDatabases []string
+	entryHandler     loki.EntryHandler
+	tableRegistry    *TableRegistry
+	normalizer       *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -66,13 +69,14 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		tableRegistry:   args.TableRegistry,
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
-		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:         &atomic.Bool{},
+		dbConnection:     args.DB,
+		collectInterval:  args.CollectInterval,
+		excludeDatabases: args.ExcludeDatabases,
+		entryHandler:     args.EntryHandler,
+		tableRegistry:    args.TableRegistry,
+		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
+		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:          &atomic.Bool{},
 	}, nil
 }
 
@@ -123,7 +127,8 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
+	query := fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause(c.excludeDatabases))
+	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
 	}
