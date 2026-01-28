@@ -1,7 +1,7 @@
 name: alloy-integration-tests
 services:
   mimir:
-    image: grafana/mimir:3.0.0
+    image: grafana/mimir:3.0.2@sha256:4231caf9be780e5d9113449e57a0258d388124aca74c0a14b9cf8857e23aad76
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:
@@ -28,7 +28,7 @@ services:
       - integration-tests
 
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:latest@sha256:3f7b939115cd4872e9cee9369d80bd69712fde55f9902f46d793f64848dedc75
     container_name: kafka
     ports:
       - "9092:9092"
@@ -64,7 +64,7 @@ services:
       - integration-tests
 
   loki:
-    image: grafana/loki:3.5.8
+    image: grafana/loki:3.6.4@sha256:be31579ac047e9f78b81e48f3b69d3af709e7299b431d5aa78bcda43382f9511
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
@@ -97,14 +97,14 @@ services:
       - integration-tests
 
   redis:
-    image: redis:6.0.9-alpine
+    image: redis:6.2.20-alpine@sha256:77697a75da9f94e9357b61fcaf8345f69e3d9d32e9d15032c8415c21263977dc
     ports:
       - "6379:6379"
     networks:
       - integration-tests
 
   redis-init:
-    image: redis:6.0.9-alpine
+    image: redis:6.2.20-alpine@sha256:77697a75da9f94e9357b61fcaf8345f69e3d9d32e9d15032c8415c21263977dc
     depends_on:
       - redis
     volumes:
@@ -115,7 +115,7 @@ services:
       - integration-tests
 
   snmp-simulator:
-    image: tandrup/snmpsim:v0.4
+    image: tandrup/snmpsim:v0.4@sha256:a080b493042d91c4cec9282a83403e334660ed1c2c71e7e3afa920c3f1c42d7e
     container_name: snmpsim
     ports:
       - "161:161/udp"
