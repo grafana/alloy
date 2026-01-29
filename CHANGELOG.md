@@ -95,6 +95,8 @@
 
 - Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
 
+- `faro.receiver` can now fetch sourcemaps from remote locations. When multiple locations are configured, local on-disk paths will be checked before remote paths. (@Oxel40)
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
