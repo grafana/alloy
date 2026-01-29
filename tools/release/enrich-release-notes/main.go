@@ -114,8 +114,8 @@ func main() {
 func addContributorInfo(ctx context.Context, client *gh.Client, body string) string {
 	lines := strings.Split(body, "\n")
 	// Match commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
-	// This captures the short SHA from the link text
-	commitPattern := regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)\s*$`)
+	// This captures the short SHA from the link text, regardless of surrounding context
+	commitPattern := regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)`)
 
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "" {
