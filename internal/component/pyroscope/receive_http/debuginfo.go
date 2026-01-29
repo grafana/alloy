@@ -15,6 +15,7 @@ import (
 
 var errNoDebugInfoClient = status.Error(codes.Unavailable, "no debug info client available")
 
+//nolint:unused
 func (c *Component) mountDebugInfo(router *mux.Router) {
 	c.grpcServer = NewGrpcServer(c.server.Config())
 	debuginfogrpc.RegisterDebuginfoServiceServer(c.grpcServer, c)
