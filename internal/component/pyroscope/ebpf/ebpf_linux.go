@@ -67,20 +67,17 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	var nfs *irsymcache.Resolver
-	if args.DebugInfoOptions.OnTargetSymbolizationEnabled {
-		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
-			Options: []lidia.Option{
-				lidia.WithFiles(),
-				lidia.WithLines(),
-			},
-		}, irsymcache.Options{
-			SizeEntries: uint32(args.SymbCacheSizeEntries),
-			Path:        args.SymbCachePath,
-		})
-		if err != nil {
-			return nil, err
-		}
+	nfs, err := irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
+		Options: []lidia.Option{
+			lidia.WithFiles(),
+			lidia.WithLines(),
+		},
+	}, irsymcache.Options{
+		SizeEntries: uint32(args.SymbCacheSizeEntries),
+		Path:        args.SymbCachePath,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if dynamicProfilingPolicy {
@@ -282,9 +279,6 @@ func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
 	if c.symbols != nil {
 		c.symbols.ReportExecutable(md)
 	}
-	if c.args.DebugInfoOptions.UploadEnabled {
-		c.reportExecutableForDebugInfoUpload(md)
-	}
 }
 
 func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
@@ -309,7 +303,6 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 	c.appendable.Upload(debuginfo.UploadJob{
 		FrameMappingFileData: mf,
 		Open:                 open,
-		InitArguments:        c.args.DebugInfoOptions,
 	})
 }
 
@@ -332,15 +325,6 @@ func NewDefaultArguments() Arguments {
 		UProbeLinks:     []string{},
 		VerboseMode:     false,
 		LazyMode:        false,
-
-		DebugInfoOptions: debuginfo.Arguments{
-			OnTargetSymbolizationEnabled: true,
-			UploadEnabled:                false,
-			CacheSize:                    65536,
-			StripTextSection:             false,
-			QueueSize:                    1024,
-			WorkerNum:                    8,
-		},
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
