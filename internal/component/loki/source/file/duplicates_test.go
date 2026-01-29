@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -17,13 +16,14 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/grafana/alloy/syntax"
 )
 
 func TestDuplicateDetectionWithMultipleDifferingLabels(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	var logBuf bytes.Buffer
+	var logBuf syncbuffer.Buffer
 	testLogger := log.NewLogfmtLogger(&logBuf)
 
 	registry := prometheus.NewRegistry()
