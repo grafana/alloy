@@ -15,7 +15,7 @@ weight: 200
 Telemetry collection in production environments can quickly become complex as different teams develop different needs over time.
 
 Consider a common scenario.
-You start with infrastructure observability, using Prometheus Node Exporter to collect and export metrics.
+You start with infrastructure observability, using Prometheus to scrape metrics from Node Exporter.
 Your metrics flow to a Prometheus database, and you visualize them in Grafana dashboards.
 This works well for monitoring infrastructure.
 
@@ -111,7 +111,8 @@ Refer to the [migration guides][migrate] for step-by-step instructions.
 {{< param "PRODUCT_NAME" >}} is powerful and flexible, but it's not always the best fit.
 
 Consider alternatives if you only need basic Prometheus metrics scraping with no additional features, as Prometheus Agent might be simpler.
-Similarly, if you're deeply integrated with a specific collector's ecosystem and don't need multi-signal support, or if you have very specific requirements that available components don't address, evaluate whether the benefits outweigh staying with your current solution.
+If you're deeply integrated with a specific collector's ecosystem and don't need multi-signal support, staying with your current solution may make more sense.
+If you have very specific requirements that available components don't address, evaluate whether the benefits outweigh the effort of migration.
 
 ## Next steps
 
