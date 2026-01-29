@@ -253,7 +253,7 @@ func (t *tailer) initRun() error {
 // position tracking periodically. It exits when Next() returns an error,
 // this happens when the tail.File is stopped or or we have a unrecoverable error.
 func (t *tailer) readLines(done chan struct{}) {
-	level.Info(t.logger).Log("msg", "tail routine  started")
+	level.Info(t.logger).Log("msg", "start tailing file")
 
 	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
 		level.Info(t.logger).Log("msg", "sleeping before reading file", "duration", t.decompression.InitialDelay.String())
@@ -268,7 +268,6 @@ func (t *tailer) readLines(done chan struct{}) {
 	)
 
 	defer func() {
-		level.Info(t.logger).Log("msg", "tail routine exited")
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
 		close(done)
