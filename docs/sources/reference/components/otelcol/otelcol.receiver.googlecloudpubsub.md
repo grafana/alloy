@@ -2,7 +2,6 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.googlecloudpubsub/
 description: Learn about otelcol.receiver.googlecloudpubsub
 labels:
-  stage: experimental
   products:
     - oss
   tags:
@@ -45,7 +44,7 @@ otelcol.receiver.googlecloudpubsub "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.googlecloudpubsub`:
 
 | Name                    | Type       | Description                                                                                                                                                                                                                | Default | Required |
-|-------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------| -------- |
+| ----------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `subscription`          | `string`   | The subscription name to receive OTLP data from. The subscription name should be a fully qualified resource name, for example: `projects/otel-project/subscriptions/otlp`.                                                 | `""`    | yes      |
 | `compression`           | `string`   | The compression used on data received from the subscription. Only `gzip` is supported. This is only used when no content-encoding attribute is present.                                                                    | `""`    | no       |
 | `encoding`              | `string`   | The encoding used to receive data from the subscription. This can either be `otlp_proto_trace`, `otlp_proto_metric`, `otlp_proto_log` or an encoding extension. This is only used when no media type attribute is present. | `""`    | no       |
@@ -62,7 +61,7 @@ You can use the following arguments with `otelcol.receiver.googlecloudpubsub`:
 You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 
 | Block                            | Description                                                                | Required |
-|----------------------------------|----------------------------------------------------------------------------|----------|
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
