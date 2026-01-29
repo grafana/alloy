@@ -195,8 +195,9 @@ func newServerAndEndpointConfig(t *testing.T) (Config, chan util.RemoteWriteRequ
 			MaxRetries: 0,
 		},
 		QueueConfig: QueueConfig{
-			Capacity:     10, // buffered channel of size 10
-			DrainTimeout: time.Second * 10,
+			Capacity:        10,
+			DrainTimeout:    time.Second * 10,
+			BlockOnOverflow: true,
 		},
 	}
 	return endpointConfig, receivedReqsChan, func() {

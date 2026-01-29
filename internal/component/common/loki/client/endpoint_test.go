@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -410,6 +411,8 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.Client = config.DefaultHTTPClientConfig
 			tt.endpointConfig.BackoffConfig = backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 3}
 			tt.endpointConfig.Timeout = 1 * time.Second
+			tt.endpointConfig.QueueConfig.BlockOnOverflow = true
+			tt.endpointConfig.QueueConfig.DrainTimeout = 30 * time.Second
 
 			m := newMetrics(reg)
 			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger(), internal.NewNopMarkerHandler())
@@ -447,4 +450,81 @@ func TestEndpoint(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestEndpointBlockOnOverflow(t *testing.T) {
+	t.Run("should drop entry when queue is full and BlockOnOverflow is false", func(t *testing.T) {
+		receivedReqsChan := make(chan util.RemoteWriteRequest)
+		server := util.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
+
+		var url flagext.URLValue
+		require.NoError(t, url.Set(server.URL))
+
+		m := newMetrics(prometheus.NewRegistry())
+		e, err := newEndpoint(m, Config{
+			URL:       url,
+			BatchWait: 1 * time.Hour,
+			BatchSize: 1,
+			Client:    config.DefaultHTTPClientConfig,
+			QueueConfig: QueueConfig{
+				Capacity:        1,
+				MinShards:       1,
+				BlockOnOverflow: false,
+			},
+		}, log.NewNopLogger(), internal.NewNopMarkerHandler())
+		require.NoError(t, err)
+		defer e.stop()
+
+		entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
+
+		// NOTE: We have configured batch size to 1 so only one entry will fit in each batch.
+		// To exceed the queue's capacity we need to pass 4 entries. We have one batch that we are actively trying
+		// to send, one batch that is queued and one batch that we are currently working with filling up.
+		require.NoError(t, e.enqueue(entry, 0))
+		require.NoError(t, e.enqueue(entry, 0))
+		// The third enqueue is a bit flaky because it will depend if a shard has grabbed a queued batch or not.
+		// So we ignore this and the fourth one will for sure fail.
+		e.enqueue(entry, 0)
+		require.ErrorIs(t, e.enqueue(entry, 0), errQueueIsFull)
+	})
+
+	t.Run("should block until queue has space when BlockOnOverflow is true", func(t *testing.T) {
+		receivedReqsChan := make(chan util.RemoteWriteRequest)
+		server := util.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
+
+		var url flagext.URLValue
+		require.NoError(t, url.Set(server.URL))
+
+		m := newMetrics(prometheus.NewRegistry())
+		e, err := newEndpoint(m, Config{
+			URL:       url,
+			BatchWait: 1 * time.Hour,
+			BatchSize: 1,
+			Timeout:   20 * time.Second,
+			Client:    config.DefaultHTTPClientConfig,
+			QueueConfig: QueueConfig{
+				Capacity:        1,
+				MinShards:       1,
+				BlockOnOverflow: true,
+			},
+		}, log.NewNopLogger(), internal.NewNopMarkerHandler())
+		require.NoError(t, err)
+		defer e.stop()
+
+		entry1 := loki.Entry{Entry: push.Entry{Line: "1"}}
+		entry2 := loki.Entry{Entry: push.Entry{Line: "2"}}
+		entry3 := loki.Entry{Entry: push.Entry{Line: "3"}}
+		entry4 := loki.Entry{Entry: push.Entry{Line: "4"}}
+
+		go func() {
+			// After 200 milliseconds we read one request to unblock the queue.
+			time.Sleep(200 * time.Millisecond)
+			// We just need to finish one request in order for all entries to be successfully enqueued.
+			<-receivedReqsChan
+		}()
+		require.NoError(t, e.enqueue(entry1, 0))
+		require.NoError(t, e.enqueue(entry2, 0))
+		require.NoError(t, e.enqueue(entry3, 0))
+		require.NoError(t, e.enqueue(entry4, 0))
+	})
 }

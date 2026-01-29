@@ -632,6 +632,9 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 		client.Config{
 			URL:     url,
 			Timeout: 5 * time.Second,
+			QueueConfig: client.QueueConfig{
+				BlockOnOverflow: true,
+			},
 		},
 	)
 	require.NoError(t, err)

@@ -108,7 +108,7 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = reasonStreamLimited
 		}
-		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(len(entry.Line)))
+		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(entry.Size()))
 		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Inc()
 	}
 
@@ -356,11 +356,10 @@ func (s *shards) runShard(q *queue) {
 // enqueue routes a log entry to the appropriate shard based on its label fingerprint.
 // Returns false if we could not enqueue the entry, either because the shard is shutting down or the queue is full.
 // It is up to the caller to retry or drop the entry.
-func (s *shards) enqueue(entry loki.Entry, segmentNum int) bool {
+func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	entry, tenantID := s.processEntry(entry)
 	if _, ok := s.tenants[tenantID]; !ok {
 		s.tenants[tenantID] = struct{}{}
 		s.initBatchMetrics(tenantID)
@@ -391,15 +390,6 @@ func (s *shards) initBatchMetrics(tenantID string) {
 	}
 }
 
-func (s *shards) processEntry(e loki.Entry) (loki.Entry, string) {
-	// Check if it has been overridden while processing the pipeline stages
-	if value, ok := e.Labels[ReservedLabelTenantID]; ok {
-		return e, string(value)
-	}
-
-	return e, s.cfg.TenantID
-}
-
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch) {
 	defer batch.reportAsSentData(s.markerHandler)
@@ -417,8 +407,8 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 	var status int
 	for {
 		start := time.Now()
-		// send uses `timeout` internally, so `context.Background` is good enough.
-		status, err = s.send(context.Background(), tenantID, buf)
+		// We pass s.ctx so that all inflight requests are canceled when we are doing a hard shutdown.
+		status, err = s.send(s.ctx, tenantID, buf)
 
 		s.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), s.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
 
