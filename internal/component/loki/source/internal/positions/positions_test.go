@@ -143,32 +143,64 @@ func TestConvertLegacyPositionsFileJournal(t *testing.T) {
 	require.Equal(t, journalCursor, pos)
 }
 
-func TestReadPositionsOK(t *testing.T) {
-	temp := tempFilename(t)
-	defer func() {
-		_ = os.Remove(temp)
-	}()
+func TestReadPositions(t *testing.T) {
+	t.Run("current structure", func(t *testing.T) {
+		temp := tempFilename(t)
+		defer func() {
+			_ = os.Remove(temp)
+		}()
 
-	yaml := []byte(`
+		yaml := []byte(`
 positions:
   ? path: /tmp/random.log
     labels: '{job="tmp"}'
   : "17623"
 `)
-	err := os.WriteFile(temp, yaml, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+		err := os.WriteFile(temp, yaml, 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	pos, err := readPositionsFile(Config{
-		PositionsFile: temp,
-	}, log.NewNopLogger())
+		pos, err := readPositionsFile(Config{
+			PositionsFile: temp,
+		}, log.NewNopLogger())
 
-	require.NoError(t, err)
-	require.Equal(t, "17623", pos[Entry{
-		Path:   "/tmp/random.log",
-		Labels: `{job="tmp"}`,
-	}])
+		require.NoError(t, err)
+		require.Equal(t, "17623", pos[Entry{
+			Path:   "/tmp/random.log",
+			Labels: `{job="tmp"}`,
+		}])
+	})
+
+	t.Run("unknown properties", func(t *testing.T) {
+		temp := tempFilename(t)
+		defer func() {
+			_ = os.Remove(temp)
+		}()
+
+		yaml := []byte(`
+Version: v2
+positions:
+  ? path: /tmp/random.log
+    labels: '{job="tmp"}'
+  : "17623"
+`)
+		err := os.WriteFile(temp, yaml, 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		pos, err := readPositionsFile(Config{
+			PositionsFile: temp,
+		}, log.NewNopLogger())
+
+		require.NoError(t, err)
+		require.Equal(t, "17623", pos[Entry{
+			Path:   "/tmp/random.log",
+			Labels: `{job="tmp"}`,
+		}])
+	})
+
 }
 
 func TestReadPositionsEmptyFile(t *testing.T) {
