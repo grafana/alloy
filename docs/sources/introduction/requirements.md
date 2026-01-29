@@ -37,12 +37,16 @@ Keeping these expectations in mind makes it easier to reason about configuration
 
 ## Supported platforms
 
-{{< param "PRODUCT_NAME" >}} runs on the following [platforms][supported platforms]:
+{{< param "PRODUCT_NAME" >}} runs on the following platforms:
 
-- **Linux:** AMD64, ARM64
-- **Windows:** Server 2016 or later, Windows 10 or later, AMD64
-- **macOS:** 10.13 or later, Intel and Apple Silicon
-- **FreeBSD:** AMD64
+- Linux
+- Windows
+- macOS
+- FreeBSD
+
+For supported architectures and version requirements, refer to [Supported platforms][supported platforms].
+
+For setup instructions, refer to [Set up {{< param "PRODUCT_NAME" >}}][set up].
 
 ## Network requirements
 
@@ -53,17 +57,7 @@ Keeping these expectations in mind makes it easier to reason about configuration
 {{< param "PRODUCT_NAME" >}} runs an HTTP server for its UI, API, and metrics endpoints.
 By default, it listens on `127.0.0.1:12345`.
 
-The HTTP server exposes:
-
-- `/` - Debugging UI
-- `/metrics` - Internal metrics in Prometheus format
-- `/-/ready` - Readiness check
-- `/-/healthy` - Health check
-- `/-/reload` - Configuration reload endpoint
-
-In Kubernetes, the Helm chart defaults to `0.0.0.0:12345` to allow access from other pods.
-
-Refer to [HTTP endpoints][http] for the complete list.
+For more information, refer to [HTTP endpoints][http].
 
 ### Outbound connectivity
 
@@ -77,7 +71,7 @@ Ensure firewall rules and egress rules allow connections to:
 
 ### Cluster communication
 
-When you enable clustering, {{< param "PRODUCT_NAME" >}} nodes communicate over HTTP/2 using the same HTTP server port.
+When you enable [clustering][], {{< param "PRODUCT_NAME" >}} nodes communicate over HTTP/2 using the same HTTP server port.
 Each node must be reachable by other cluster members on the configured listen address.
 
 ## Permissions and access
@@ -94,28 +88,23 @@ This requirement most often comes up when collecting:
 Not every component can run in a fully locked-down environment.
 When {{< param "PRODUCT_NAME" >}} runs with restricted permissions, certain components might fail or behave unexpectedly.
 
+For information about running as a non-root user, refer to [Run as a non-root user][nonroot].
+
 When you enable a component, check its documented requirements first.
 Refer to the [component reference][reference] for component-specific constraints and limitations.
 
 ## Security
 
-{{< param "PRODUCT_NAME" >}} supports TLS and authentication for secure communication.
-
-### TLS for backends
-
-Most exporter and receiver components support TLS configuration for connecting to backends.
-Configure TLS in the component's `tls` block or client configuration.
-
-### Cluster TLS
-
-When running in clustered mode, you can enable TLS for peer-to-peer communication using the `--cluster.enable-tls` flag and related certificate flags.
+{{< param "PRODUCT_NAME" >}} supports TLS for secure communication.
+Configure TLS in component `tls` blocks for backend connections, or use the [`--cluster.enable-tls` flag][run] for [clustered mode][clustering].
+Authentication methods such as basic auth, OAuth2, and bearer tokens are configured per component.
 
 ### Secrets management
 
 Store sensitive values like API keys and passwords outside your configuration files.
-{{< param "PRODUCT_NAME" >}} supports environment variable references and can integrate with secret management solutions.
+{{< param "PRODUCT_NAME" >}} supports environment variable references and integrations such as HashiCorp Vault, Kubernetes Secrets, AWS S3, and local files.
 
-Refer to component documentation for specific authentication options.
+Refer to the [component documentation][reference] for specific options.
 
 ## Deployment patterns
 
@@ -123,15 +112,6 @@ Refer to component documentation for specific authentication options.
 Refer to [How {{< param "PRODUCT_NAME" >}} works][how alloy works] for guidance on choosing the right pattern for your architecture.
 
 For detailed setup instructions, refer to [Deploy {{< param "PRODUCT_NAME" >}}][deploy].
-
-### Run outside Kubernetes
-
-{{< param "PRODUCT_NAME" >}} also runs outside Kubernetes:
-
-- **Linux:** Run as a systemd service. Refer to [Run on Linux][run linux].
-- **Windows:** Run as a Windows service. Refer to [Run on Windows][run windows].
-- **macOS:** Run as a launchd service or standalone binary. Refer to [Run on macOS][run macos].
-- **Docker:** Run as a container. Refer to [Run in a Docker container][docker].
 
 ## Clustering and scaling behavior
 
@@ -141,9 +121,10 @@ Some {{< param "PRODUCT_NAME" >}} behavior depends on how you deploy it, not jus
 Clustering uses a gossip protocol and consistent hashing to distribute scrape targets automatically.
 
 {{< admonition type="note" >}}
-Target auto-distribution only works when you explicitly enable it.
-Add a `clustering { enabled = true }` block to components that should participate in work distribution.
-Without this block, each instance processes all targets independently.
+Target auto-distribution requires enabling clustering at both the instance level and the component level.
+Refer to [Clustering][clustering] for configuration details.
+
+[clustering]: ../../get-started/clustering/
 {{< /admonition >}}
 
 A few things that often surprise users:
@@ -152,32 +133,14 @@ A few things that often surprise users:
 - A switch between DaemonSet and centralized deployments can change observed series counts.
 - Scaling clustered collectors changes how targets distribute, even when the target list stays the same.
 
-Validate changes in deployment topology as part of any rollout.
-
-For resource planning, a common rule of thumb for Prometheus metrics collection is approximately 10 KB of memory per active series.
-Refer to [Estimate resource usage][estimate resource usage] for detailed guidance.
-
-## Kubernetes integrations
-
-{{< param "PRODUCT_NAME" >}} integrates well with Kubernetes, but it doesn't automatically behave like every Prometheus-based setup.
-
-{{< param "PRODUCT_NAME" >}} supports the following Prometheus Operator CRDs through dedicated components:
-
-- `ServiceMonitor` through `prometheus.operator.servicemonitors`
-- `PodMonitor` through `prometheus.operator.podmonitors`
-- `Probe` through `prometheus.operator.probes`
-- `ScrapeConfig` through `prometheus.operator.scrapeconfigs`
-
-Generic Kubernetes discovery components don't interpret these CRDs on their own.
-When you use Prometheus Operator resources, configure the corresponding `prometheus.operator.*` components instead of relying on generic discovery.
+For resource planning guidance, refer to [Estimate resource usage][estimate resource usage].
 
 ## Data durability
 
-{{< param "PRODUCT_NAME" >}} uses a Write-Ahead Log (WAL) for Prometheus metrics to handle temporary backend outages.
+{{< param "PRODUCT_NAME" >}} uses a Write-Ahead Log (WAL) for metrics to handle temporary backend outages.
 The WAL buffers data locally and retries sending when the backend becomes available.
 
-For the WAL to persist across restarts, configure persistent storage using the `--storage.path` flag.
-In Kubernetes, use a StatefulSet with a PersistentVolumeClaim.
+For the WAL to persist across restarts, configure persistent storage using the [`--storage.path` flag][run].
 
 {{< admonition type="note" >}}
 Without persistent storage, {{< param "PRODUCT_NAME" >}} loses buffered data on restart.
@@ -185,7 +148,7 @@ By default, {{< param "PRODUCT_NAME" >}} stores data in a temporary directory.
 {{< /admonition >}}
 
 Push-based pipelines for logs, traces, and profiles have different durability characteristics.
-Refer to component documentation for specific delivery guarantees.
+Refer to [component documentation][reference] for more information.
 
 ## Monitor Alloy
 
@@ -196,8 +159,6 @@ Key monitoring capabilities:
 - **Internal metrics:** Controller and component metrics in Prometheus format
 - **Health endpoints:** `/-/ready` and `/-/healthy` for load balancer checks
 - **Debugging UI:** Visual component graph and live debugging at `/`
-
-Use the `prometheus.exporter.self` component to scrape {{< param "PRODUCT_NAME" >}}'s own metrics and forward them to your monitoring backend.
 
 Refer to [Set up meta-monitoring][metamonitoring] for configuration examples.
 
@@ -217,10 +178,8 @@ Refer to the [component reference][reference] for this information.
 If something doesn't behave as expected after deployment:
 
 1. Review [Troubleshooting and debugging][debug].
-1. Check the component documentation.
+1. Check the [component documentation][reference].
 1. Revisit deployment patterns and clustering assumptions.
-
-Most issues come down to mismatched expectations rather than incorrect configuration.
 
 ## Next steps
 
@@ -231,11 +190,9 @@ Most issues come down to mismatched expectations rather than incorrect configura
 [supported platforms]: ../../set-up/supported-platforms/
 [http]: ../../reference/http/
 [reference]: ../../reference/
+[run]: ../../reference/cli/run/
+[nonroot]: ../../configure/nonroot/
 [deploy]: ../../set-up/deploy/
-[run linux]: ../../set-up/run/linux/
-[run windows]: ../../set-up/run/windows/
-[run macos]: ../../set-up/run/macos/
-[docker]: ../../set-up/install/docker/
 [clustering]: ../../get-started/clustering/
 [estimate resource usage]: ../../set-up/estimate-resource-usage/
 [metamonitoring]: ../../collect/metamonitoring/
