@@ -17,7 +17,6 @@ import (
 
 	"github.com/go-kit/log"
 	"gopkg.in/yaml.v2"
-	yamlv3 "gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -340,7 +339,7 @@ func readPositionsFile(cfg Config, logger log.Logger) (map[Entry]string, error) 
 	}
 
 	var p File
-	err = yamlv3.Unmarshal(buf, &p)
+	err = yaml.Unmarshal(buf, &p)
 	if err != nil {
 		// return empty if cfg option enabled
 		if cfg.IgnoreInvalidYaml {
