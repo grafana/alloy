@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ func main() {
 		log.Fatalf("failed to copy alloy main template: %v", err)
 	}
 
-	if err := replaceCmdFactory(*otelGeneratedMain); err != nil {
+	if err := replaceSectionsOfGeneratedMainFile(*otelGeneratedMain); err != nil {
 		log.Fatalf("failed to replace command factory: %v", err)
 	}
 }
@@ -52,19 +53,46 @@ func copyAlloyMainTemplateFromFile(templatePath, dstPath string) error {
 	return nil
 }
 
-// replaceCmdFactory reads the file at filePath, finds the line containing
-// "cmd := otelcol.NewCommand(params)", and replaces it with
-// "cmd := newAlloyCommand(params)" while preserving the line's indentation.
-func replaceCmdFactory(filePath string) error {
-	const target = "cmd := otelcol.NewCommand(params)"
-	const replacement = "cmd := newAlloyCommand(params)"
-
+func replaceSectionsOfGeneratedMainFile(filePath string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("read file: %w", err)
 	}
 
 	lines := strings.Split(string(data), "\n")
+	lines, err = replaceCmdFactory(lines)
+
+	if err != nil {
+		return fmt.Errorf("error replacing command factory in %s: %w", filePath, err)
+	}
+
+	lines, err = addReleasePleaseVersioning(lines)
+
+	if err != nil {
+		return fmt.Errorf("error setting collector veresion in %s: %w", filePath, err)
+	}
+
+	newContent := strings.Join(lines, "\n")
+	fi, err := os.Stat(filePath)
+	var mode os.FileMode = 0o644
+	if err == nil {
+		mode = fi.Mode()
+	}
+
+	if err := os.WriteFile(filePath, []byte(newContent), mode); err != nil {
+		return fmt.Errorf("error writing file: %w", err)
+	}
+
+	return nil
+}
+
+// replaceCmdFactory processes incoming lines and will search for
+// "cmd := otelcol.NewCommand(params)" and replace it with
+// "cmd := newAlloyCommand(params)"
+func replaceCmdFactory(lines []string) ([]string, error) {
+	const target = "cmd := otelcol.NewCommand(params)"
+	const replacement = "cmd := newAlloyCommand(params)"
+
 	replaced := false
 	for i, line := range lines {
 		if strings.Contains(line, target) {
@@ -75,19 +103,29 @@ func replaceCmdFactory(filePath string) error {
 	}
 
 	if !replaced {
-		return fmt.Errorf("target line not found in %s", filePath)
+		return nil, fmt.Errorf("target line not found")
 	}
 
-	newContent := strings.Join(lines, "\n")
+	return lines, nil
+}
 
-	fi, err := os.Stat(filePath)
-	var mode os.FileMode = 0o644
-	if err == nil {
-		mode = fi.Mode()
+// replaceCmdFactory processes incoming lines and will search for
+// `Version: "..."` and replace it with
+// `Version: CollectorVersion()`
+func addReleasePleaseVersioning(lines []string) ([]string, error) {
+	versionPattern := regexp.MustCompile(`^(\s+Version:\s+)"[^"]+"(,)(\s*//.*)?$`)
+	versionReplaced := false
+	for i, line := range lines {
+		if matches := versionPattern.FindStringSubmatch(line); matches != nil {
+			lines[i] = matches[1] + `CollectorVersion()` + matches[2]
+			versionReplaced = true
+			break
+		}
 	}
 
-	if err := os.WriteFile(filePath, []byte(newContent), mode); err != nil {
-		return fmt.Errorf("write file: %w", err)
+	if !versionReplaced {
+		return nil, fmt.Errorf("Version field not found")
 	}
-	return nil
+
+	return lines, nil
 }

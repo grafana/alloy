@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.12.2](https://github.com/grafana/alloy/compare/v1.12.1...v1.12.2) (2026-01-08)
+
+
+### Bug Fixes 🐛
+
+* Add missing configuration parameter `deployment_name_from_replicaset` to k8sattributes processor ([5b90a9d](https://github.com/grafana/alloy/commit/5b90a9d391d222eb9c8ea1e40e38a9dbbbd06ffd))
+* **database_observability:** Fix schema_details collector to fetch column definitions with case sensitive table names ([#4872](https://github.com/grafana/alloy/issues/4872)) ([560dff4](https://github.com/grafana/alloy/commit/560dff4ccef090e2db85ef6dd9e59aeacf54e3f2))
+* **deps:** Update jose2go to 1.7.0 ([#4858](https://github.com/grafana/alloy/issues/4858)) ([dfdd341](https://github.com/grafana/alloy/commit/dfdd341c8da5e7b972905d166a497e3093323be2))
+* **deps:** Update npm dependencies [backport] ([#5201](https://github.com/grafana/alloy/issues/5201)) ([8e06c26](https://github.com/grafana/alloy/commit/8e06c2673c0f5790eba84e9f7091270b3ab0bf2d))
+* Ensure the squid exporter wrapper properly brackets ipv6 addresses [backport] ([#5205](https://github.com/grafana/alloy/issues/5205)) ([e329cc6](https://github.com/grafana/alloy/commit/e329cc6ebdfd7fb52034b5f215082e2fac9640f6))
+* Preserve meta labels in loki.source.podlogs ([#5097](https://github.com/grafana/alloy/issues/5097)) ([ab4b21e](https://github.com/grafana/alloy/commit/ab4b21ec0c8b4e892ffa39035c6a53149ee05555))
+* Prevent panic in import.git when update fails [backport] ([#5204](https://github.com/grafana/alloy/issues/5204)) ([c82fbae](https://github.com/grafana/alloy/commit/c82fbae5431dca9fe3ba071c99978babc2f9b5b1))
+* show correct fallback alloy version instead of v1.13.0 ([#5110](https://github.com/grafana/alloy/issues/5110)) ([b72be99](https://github.com/grafana/alloy/commit/b72be995908ac761c0ea9a4f881367dc6ec6da13))
+
 ## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
 
 
