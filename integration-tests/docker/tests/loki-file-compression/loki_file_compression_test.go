@@ -15,19 +15,19 @@ func TestReadCompressedFiles(t *testing.T) {
 			Labels: map[string]string{
 				"compression": "gz",
 			},
-			EntryCount: 100,
+			EntryCount: 300,
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
 				"compression": "z",
 			},
-			EntryCount: 100,
+			EntryCount: 300,
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
 				"compression": "bz2",
 			},
-			EntryCount: 100,
+			EntryCount: 300,
 		},
 	)
 }
