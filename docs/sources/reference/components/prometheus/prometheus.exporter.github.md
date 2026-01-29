@@ -48,7 +48,7 @@ To allow more API requests, we recommend that you configure either token or GitH
 
 When provided, `api_token_file` takes precedence over `api_token`.
 
-You cannot use both token authentication and GitHub App authentication simultaneously.
+You can't use both token authentication and GitHub App authentication simultaneously.
 
 ## Blocks
 
@@ -72,6 +72,8 @@ In those cases, exported fields retain their last healthy values.
 `prometheus.exporter.github` doesn't expose any component-specific debug metrics.
 
 ## Examples
+
+The following examples demonstrate token authentication and GitHub App authentication.
 
 ### Token authentication
 
