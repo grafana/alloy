@@ -97,7 +97,7 @@ You can use the following arguments with `prometheus.scrape`:
 > * `otelcol.receiver.prometheus`
 > * `prometheus.remote_write` only when configured for Remote Write v2.
 > * `prometheus.write_queue`
-> 
+>
 > **EXPERIMENTAL**: The `enable_type_and_unit_labels` argument is an [experimental][] feature.
 > When enabled and available from the scrape, the metric type and unit are added as labels to each scraped sample.
 > This provides additional schema information about metrics directly in the label set.
