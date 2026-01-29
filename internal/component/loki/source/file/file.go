@@ -182,7 +182,8 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts component.Options
 
-	metrics *metrics
+	metrics           *metrics
+	duplicateDetector *duplicateDetector
 
 	// mut is used to protect access to args, resolver and scheduler.
 	mut sync.RWMutex
@@ -230,14 +231,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	m := newMetrics(o.Registerer)
 	c := &Component{
-		opts:      o,
-		metrics:   newMetrics(o.Registerer),
-		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
-		posFile:   positionsFile,
-		scheduler: source.NewScheduler[positions.Entry](),
-		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
+		opts:              o,
+		metrics:           m,
+		duplicateDetector: newDuplicateDetector(o.Logger, m.duplicateFilesTally),
+		handler:           loki.NewLogsReceiver(),
+		fanout:            loki.NewFanout(args.ForwardTo),
+		posFile:           positionsFile,
+		scheduler:         source.NewScheduler[positions.Entry](),
+		watcher:           time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -324,10 +327,13 @@ func (c *Component) Update(args component.Arguments) error {
 // match the desired state.
 // Caller must hold write lock on c.mut before calling this function.
 func (c *Component) scheduleSources() {
+	// Collect targets, detect duplicates, and get an iterator for reconciliation.
+	targets := c.duplicateDetector.Detect(c.resolver.Resolve(c.args.Targets))
+
 	source.Reconcile(
 		c.opts.Logger,
 		c.scheduler,
-		c.resolver.Resolve(c.args.Targets),
+		targets,
 		func(target resolvedTarget) positions.Entry {
 			return positions.Entry{Path: target.Path, Labels: target.Labels.String()}
 		},

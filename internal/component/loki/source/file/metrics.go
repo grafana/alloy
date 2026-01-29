@@ -15,10 +15,11 @@ type metrics struct {
 	reg prometheus.Registerer
 
 	// File-specific metrics
-	readBytes   *prometheus.GaugeVec
-	totalBytes  *prometheus.GaugeVec
-	readLines   *prometheus.CounterVec
-	filesActive prometheus.Gauge
+	readBytes           *prometheus.GaugeVec
+	totalBytes          *prometheus.GaugeVec
+	readLines           *prometheus.CounterVec
+	filesActive         prometheus.Gauge
+	duplicateFilesTally prometheus.Gauge
 }
 
 // newMetrics creates a new set of file metrics. If reg is non-nil, the metrics
@@ -43,12 +44,17 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		Name: "loki_source_file_files_active_total",
 		Help: "Number of active files.",
 	})
+	m.duplicateFilesTally = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "loki_source_file_duplicate_files",
+		Help: "Number of files being tailed multiple times due to targets with different label sets. Non-zero values indicate duplicate log line ingestion. Check logs for details.",
+	})
 
 	if reg != nil {
 		m.readBytes = util.MustRegisterOrGet(reg, m.readBytes).(*prometheus.GaugeVec)
 		m.totalBytes = util.MustRegisterOrGet(reg, m.totalBytes).(*prometheus.GaugeVec)
 		m.readLines = util.MustRegisterOrGet(reg, m.readLines).(*prometheus.CounterVec)
 		m.filesActive = util.MustRegisterOrGet(reg, m.filesActive).(prometheus.Gauge)
+		m.duplicateFilesTally = util.MustRegisterOrGet(reg, m.duplicateFilesTally).(prometheus.Gauge)
 	}
 
 	return &m
