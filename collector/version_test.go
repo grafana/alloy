@@ -7,7 +7,7 @@ import (
 )
 
 func Test_VersionFromFile(t *testing.T) {
-	in := `1.2.3 #x-release-please-version`
+	in := "1.2.3 #x-release-please-version \n"
 	expect := "v1.2.3"
 
 	actual := CollectorVersionFromFile(in)
