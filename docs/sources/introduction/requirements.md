@@ -70,10 +70,10 @@ Refer to [HTTP endpoints][http] for the complete list.
 {{< param "PRODUCT_NAME" >}} needs outbound network access to send telemetry to your backends.
 Ensure firewall rules and egress rules allow connections to:
 
-- Remote write endpoints for metrics
-- Loki endpoints for logs
-- Tempo or OTLP endpoints for traces
-- Pyroscope endpoints for profiles
+- Remote write or OTLP endpoints for metrics, such as Mimir, Prometheus, or Thanos
+- Log ingestion endpoints, such as Loki, Elasticsearch, or OTLP-compatible backends
+- Trace ingestion endpoints, such as Tempo, Jaeger, or OTLP-compatible backends
+- Profile ingestion endpoints, such as Pyroscope
 
 ### Cluster communication
 
