@@ -1,0 +1,24 @@
+prometheus.remote_write "metrics_test_wal" {
+	endpoint {
+		name = "test_wal-6e4c88"
+		url  = "http://localhost:9009/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+
+	wal {
+		truncate_frequency = "30m0s"
+		min_keepalive_time = "10m0s"
+		max_keepalive_time = "2h0m0s"
+	}
+}
+
+prometheus.scrape "metrics_test_wal_prometheus" {
+	targets = [{
+		__address__ = "localhost:9090",
+	}]
+	forward_to = [prometheus.remote_write.metrics_test_wal.receiver]
+	job_name   = "prometheus"
+}

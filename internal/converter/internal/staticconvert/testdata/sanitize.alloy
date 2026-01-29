@@ -12,6 +12,11 @@ prometheus.remote_write "metrics_integrations" {
 
 		metadata_config { }
 	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
+	}
 }
 
 loki.process "logs_integrations_integrations_windows_exporter_application" {
@@ -144,5 +149,10 @@ prometheus.remote_write "integrations" {
 		queue_config { }
 
 		metadata_config { }
+	}
+
+	wal {
+		truncate_frequency = "1h0m0s"
+		max_keepalive_time = "4h0m0s"
 	}
 }

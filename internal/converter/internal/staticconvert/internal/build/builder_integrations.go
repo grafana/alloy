@@ -51,6 +51,7 @@ import (
 	metricsutils_v2 "github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/windows_exporter"
+	"github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/grafana/alloy/syntax/scanner"
 )
 
@@ -194,7 +195,18 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 		return b.jobNameToCompLabel(jobName)
 	}
 
-	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, b.globalCtx.IntegrationsRemoteWriteExports))
+	// Extract WAL settings from common config, falling back to instance defaults when unset
+	truncateFrequency := commonConfig.WALTruncateFrequency
+	if truncateFrequency == 0 {
+		truncateFrequency = instance.DefaultConfig.WALTruncateFrequency
+	}
+	walOptions := &remotewrite.WALOptions{
+		TruncateFrequency: truncateFrequency,
+		MinKeepaliveTime:  instance.DefaultConfig.MinWALTime,
+		MaxKeepaliveTime:  instance.DefaultConfig.MaxWALTime,
+	}
+
+	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, b.globalCtx.IntegrationsRemoteWriteExports, walOptions))
 	b.globalCtx.InitializeIntegrationsRemoteWriteExports()
 }
 
@@ -317,6 +329,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 
 	var remoteWriteExports *remotewrite.Exports
+	var walOptions *remotewrite.WALOptions
 	for _, metrics := range b.cfg.Metrics.Configs {
 		if metrics.Name == commonConfig.Autoscrape.MetricsInstance {
 			// This must match the name of the existing remote write config in the metrics config:
@@ -327,6 +340,25 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 
 			remoteWriteExports = &remotewrite.Exports{
 				Receiver: common.ConvertAppendable{Expr: "prometheus.remote_write." + label + ".receiver"},
+			}
+
+			// Extract WAL settings from metrics instance config, falling back to instance defaults when unset
+			truncFreq := metrics.WALTruncateFrequency
+			if truncFreq == 0 {
+				truncFreq = instance.DefaultConfig.WALTruncateFrequency
+			}
+			minWAL := metrics.MinWALTime
+			if minWAL == 0 {
+				minWAL = instance.DefaultConfig.MinWALTime
+			}
+			maxWAL := metrics.MaxWALTime
+			if maxWAL == 0 {
+				maxWAL = instance.DefaultConfig.MaxWALTime
+			}
+			walOptions = &remotewrite.WALOptions{
+				TruncateFrequency: truncFreq,
+				MinKeepaliveTime:  minWAL,
+				MaxKeepaliveTime:  maxWAL,
 			}
 			break
 		}
@@ -346,7 +378,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	}
 
 	// Need to pass in the remote write reference from the metrics config here:
-	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, remoteWriteExports))
+	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, remoteWriteExports, walOptions))
 }
 
 func (b *ConfigBuilder) jobNameToCompLabel(jobName string) string {

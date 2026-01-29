@@ -9,6 +9,7 @@ import (
 	prom_config "github.com/prometheus/prometheus/config"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
@@ -19,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	"github.com/grafana/alloy/internal/static/config"
 	"github.com/grafana/alloy/internal/static/logs"
+	instancecfg "github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
 
@@ -110,6 +112,25 @@ func appendStaticPrometheus(f *builder.File, staticConfig *config.Config) diag.D
 			return name
 		}
 
+		// Extract WAL settings from instance config, falling back to instance defaults when unset
+		truncateFrequency := instance.WALTruncateFrequency
+		if truncateFrequency == 0 {
+			truncateFrequency = instancecfg.DefaultConfig.WALTruncateFrequency
+		}
+		minWALTime := instance.MinWALTime
+		if minWALTime == 0 {
+			minWALTime = instancecfg.DefaultConfig.MinWALTime
+		}
+		maxWALTime := instance.MaxWALTime
+		if maxWALTime == 0 {
+			maxWALTime = instancecfg.DefaultConfig.MaxWALTime
+		}
+		walOptions := &remotewrite.WALOptions{
+			TruncateFrequency: truncateFrequency,
+			MinKeepaliveTime:  minWALTime,
+			MaxKeepaliveTime:  maxWALTime,
+		}
+
 		// There is an edge case here with label collisions that will be caught
 		// by a validation [common.ValidateNodes].
 		// For example,
@@ -120,7 +141,7 @@ func appendStaticPrometheus(f *builder.File, staticConfig *config.Config) diag.D
 		//   scrape config job_name = "test_prometheus"
 		//
 		//   results in two prometheus.scrape components with the label "metrics_agent_test_prometheus"
-		diags.AddAll(prometheusconvert.AppendAllNested(f, promConfig, jobNameToCompLabelsFunc, []discovery.Target{}, nil))
+		diags.AddAll(prometheusconvert.AppendAllNested(f, promConfig, jobNameToCompLabelsFunc, []discovery.Target{}, nil, walOptions))
 	}
 
 	return diags

@@ -1,0 +1,17 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: systemd
+    journal:
+      json: true
+      max_age: 12h
+      matches: _SYSTEMD_UNIT=sshd.service
+      labels:
+        job: systemd-journal
+  - job_name: kernel
+    journal:
+      matches: _TRANSPORT=kernel
+      labels:
+        job: kernel-logs
+tracing: {enabled: false}
+server: {register_instrumentation: false}
