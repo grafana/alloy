@@ -102,6 +102,7 @@ func TestCRI_tags(t *testing.T) {
 		maxPartialLineSizeTruncate  bool
 		entries                     []testEntry
 		expectedPartialLinesFlushed int // expected value of the partial lines flushed metric
+		expectedLinesTruncated      int // expected value of the lines truncated metric
 	}
 
 	cases := []testCase{
@@ -114,6 +115,7 @@ func TestCRI_tags(t *testing.T) {
 			},
 			expected:                    []string{"some full line", "log"},
 			expectedPartialLinesFlushed: 0,
+			expectedLinesTruncated:      0,
 		},
 		{
 			name:            "tag P multi-stream",
@@ -129,6 +131,7 @@ func TestCRI_tags(t *testing.T) {
 				"partial line 2 another full log", // belongs to stream `{foo="bar2"}
 			},
 			expectedPartialLinesFlushed: 0,
+			expectedLinesTruncated:      0,
 		},
 		{
 			name: "tag P multi-stream with maxPartialLines exceeded",
@@ -152,6 +155,7 @@ func TestCRI_tags(t *testing.T) {
 				"partial line 5 yet an another full log",
 			},
 			expectedPartialLinesFlushed: 3, // 3 partial lines were flushed when limit was exceeded
+			expectedLinesTruncated:      0,
 		},
 		{
 			name: "tag P single stream",
@@ -169,6 +173,7 @@ func TestCRI_tags(t *testing.T) {
 				"another full log",
 			},
 			expectedPartialLinesFlushed: 0, // single stream, no flush due to limit (partial lines merge within same stream)
+			expectedLinesTruncated:      0,
 		},
 		{
 			name: "tag P multi-stream with truncation",
@@ -186,6 +191,7 @@ func TestCRI_tags(t *testing.T) {
 				"partialfull",
 			},
 			expectedPartialLinesFlushed: 0,
+			expectedLinesTruncated:      2, // 2 lines were truncated due to max_partial_line_size
 		},
 	}
 
@@ -223,12 +229,15 @@ func TestCRI_tags(t *testing.T) {
 
 			assert.Equal(t, expectedMap, gotMap)
 
-			// Verify the partial lines flushed metric
+			// Verify the metrics
 			expectedMetrics := fmt.Sprintf(`
+# HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
+# TYPE loki_process_cri_lines_truncated_total counter
+loki_process_cri_lines_truncated_total %d
 # HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total %d
-`, tt.expectedPartialLinesFlushed)
+`, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
 			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 		})
 	}
