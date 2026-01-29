@@ -13,6 +13,10 @@ import (
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
 
+// commitPattern matches a commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
+// It captures the short SHA from the link text, regardless of surrounding context.
+var commitPattern = regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)`)
+
 // commitAuthorsQuery is the GraphQL query to fetch all authors for a commit.
 const commitAuthorsQuery = `query($owner: String!, $repo: String!, $oid: GitObjectID!) {
 	repository(owner: $owner, name: $repo) {
@@ -109,13 +113,20 @@ func main() {
 	fmt.Println("✅ Release notes updated successfully")
 }
 
+// extractCommitSHA extracts a commit SHA from a changelog line.
+// Returns the SHA if found, or an empty string if no commit link is present.
+func extractCommitSHA(line string) string {
+	matches := commitPattern.FindStringSubmatch(line)
+	if matches == nil {
+		return ""
+	}
+	return matches[1]
+}
+
 // addContributorInfo adds contributor usernames to changelog entries.
 // It extracts commit SHAs from each line and looks up the author + co-authors.
 func addContributorInfo(ctx context.Context, client *gh.Client, body string) string {
 	lines := strings.Split(body, "\n")
-	// Match commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
-	// This captures the short SHA from the link text, regardless of surrounding context
-	commitPattern := regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)`)
 
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "" {
@@ -124,12 +135,11 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 
 		fmt.Printf("   Processing line %d: %s\n", i, line)
 
-		matches := commitPattern.FindStringSubmatch(line)
-		if matches == nil {
+		sha := extractCommitSHA(line)
+		if sha == "" {
 			fmt.Printf("   No commit SHA found in line %d\n", i)
 			continue
 		}
-		sha := matches[1]
 
 		contributors, err := getCommitContributors(ctx, client, sha)
 		if err != nil {
