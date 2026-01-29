@@ -30,6 +30,10 @@
         {
           "type": "generic",
           "path": "collector/builder-config.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "collector/VERSION"
         }
       ]
     }
