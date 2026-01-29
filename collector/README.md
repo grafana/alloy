@@ -12,6 +12,7 @@ The Alloy Collector Distro is built using the [OpenTelemetry Collector Builder (
 collector/
 ├── builder-config.yaml        # OCB configuration file (source)
 ├── generate.go                # Entry point for code generation (source)
+├── version.go                 # Exposes the current version of the collector distro (source)
 ├── generator/                 # Custom templating and generation code (source)
 │   ├── generator.go          # Generator tool that post-processes OCB output
 │   └── main_alloy.tpl        # Template for main_alloy.go
