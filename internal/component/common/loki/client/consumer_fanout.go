@@ -58,7 +58,8 @@ type FanoutConsumer struct {
 func (c *FanoutConsumer) run() {
 	for e := range c.recv {
 		for _, c := range c.endpoints {
-			c.enqueue(e, 0)
+			// NOTE: For now it's fine to ignore error because we can't act on it.
+			_ = c.enqueue(e, 0)
 		}
 	}
 }
