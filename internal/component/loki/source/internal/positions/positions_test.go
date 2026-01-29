@@ -200,7 +200,6 @@ positions:
 			Labels: `{job="tmp"}`,
 		}])
 	})
-
 }
 
 func TestReadPositionsEmptyFile(t *testing.T) {
