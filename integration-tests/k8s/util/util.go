@@ -2,20 +2,30 @@ package util
 
 import (
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"strconv"
 )
 
 type CleanupFunc func()
 
-func BootstrapTest(testDir, clusterName string, stateful bool) CleanupFunc {
+// Running the test in a stateful way means that k8s resources won't be deleted at the end.
+// It's useful for debugging. You can run the test like this:
+// ALLOY_STATEFUL_K8S_TEST=true make integration-test-k8s
+//
+// After you're done with the test, run a command like this to clean up:
+// minikube delete -p prometheus-operator
+func isStateful() bool {
+	stateful, _ := strconv.ParseBool(os.Getenv(envVarStateful))
+	return stateful
+}
+
+// clusterName will be prefixed with "alloy-int-test-" before the cluster is created.
+func BootstrapTest(testDir, clusterName string) CleanupFunc {
 	image := "grafana/alloy:latest"
+
+	clusterName = "alloy-int-test-" + clusterName
 
 	// Create a new cluster
 	// Minikube will raise an error if the cluster already exists.
@@ -25,7 +35,7 @@ func BootstrapTest(testDir, clusterName string, stateful bool) CleanupFunc {
 		fmt.Sprintf("Creating the `%s` cluster", clusterName))
 
 	var cleanupFunc CleanupFunc
-	if stateful {
+	if isStateful() {
 		// In stateful mode, don't delete the cluster to allow for fast iteration
 		cleanupFunc = func() {
 			fmt.Printf("Stateful mode enabled: Skipping cluster deletion for `%s`\n", clusterName)
@@ -88,14 +98,4 @@ func ExecuteBackgroundCommand(command string, args []string, taskDescription str
 			log.Fatalf("Error: %s\n", err)
 		}
 	}
-}
-
-func Curl(c *assert.CollectT, url string) string {
-	resp, err := http.Get(url)
-	require.NoError(c, err)
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(c, err)
-
-	return string(body)
 }
