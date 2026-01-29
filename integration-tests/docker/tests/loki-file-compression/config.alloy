@@ -1,0 +1,68 @@
+loki.source.file "gz" {
+	targets = [
+		{__path__ = "/etc/alloy/*.log.gz", compression = "gz"},
+	]
+
+	decompression {
+		enabled = true
+		format  = "gz"
+	}
+
+	file_match {
+		enabled = true
+	}
+
+	forward_to = [loki.process.test.receiver]
+}
+
+loki.source.file "z" {
+	targets = [
+		{__path__ = "/etc/alloy/*.log.z", compression = "z"},
+	]
+
+	decompression {
+		enabled = true
+		format  = "z"
+	}
+	
+	file_match {
+		enabled = true
+	}
+
+	forward_to = [loki.process.test.receiver]
+}
+
+loki.source.file "bz2" {
+	targets = [
+		{__path__ = "/etc/alloy/*.log.bz2", compression = "bz2"},
+	]
+
+	decompression {
+		enabled = true
+		format  = "bz2"
+	}
+
+	file_match {
+		enabled = true
+	}
+
+	forward_to = [loki.process.test.receiver]
+}
+
+loki.process "test" {
+	stage.label_drop {
+		values = ["filename"]
+	}
+
+	forward_to = [loki.write.test.receiver]
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+
+	external_labels = {
+		test_name = "readcompressedfiles",
+	}
+}
