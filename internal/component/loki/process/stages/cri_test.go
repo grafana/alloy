@@ -1,11 +1,14 @@
 package stages
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,12 +95,13 @@ func TestCRI_tags(t *testing.T) {
 	}
 
 	type testCase struct {
-		name                       string
-		expected                   []string
-		maxPartialLines            int
-		maxPartialLineSize         uint64
-		maxPartialLineSizeTruncate bool
-		entries                    []testEntry
+		name                        string
+		expected                    []string
+		maxPartialLines             int
+		maxPartialLineSize          uint64
+		maxPartialLineSizeTruncate  bool
+		entries                     []testEntry
+		expectedPartialLinesFlushed int // expected value of the partial lines flushed metric
 	}
 
 	cases := []testCase{
@@ -108,7 +112,8 @@ func TestCRI_tags(t *testing.T) {
 				{line: "2019-05-07T18:57:50.904275087+00:00 stdout F some full line", labels: model.LabelSet{"foo": "bar"}},
 				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F log", labels: model.LabelSet{"foo": "bar"}},
 			},
-			expected: []string{"some full line", "log"},
+			expected:                    []string{"some full line", "log"},
+			expectedPartialLinesFlushed: 0,
 		},
 		{
 			name:            "tag P multi-stream",
@@ -123,6 +128,7 @@ func TestCRI_tags(t *testing.T) {
 				"partial line 1 log finished",     // belongs to stream `{foo="bar"}`
 				"partial line 2 another full log", // belongs to stream `{foo="bar2"}
 			},
+			expectedPartialLinesFlushed: 0,
 		},
 		{
 			name: "tag P multi-stream with maxPartialLines exceeded",
@@ -145,6 +151,7 @@ func TestCRI_tags(t *testing.T) {
 				"another full log",
 				"partial line 5 yet an another full log",
 			},
+			expectedPartialLinesFlushed: 3, // 3 partial lines were flushed when limit was exceeded
 		},
 		{
 			name: "tag P single stream",
@@ -161,6 +168,7 @@ func TestCRI_tags(t *testing.T) {
 				"partial line 1 partial line 2 partial line 3 partial line 4 log finished",
 				"another full log",
 			},
+			expectedPartialLinesFlushed: 0, // single stream, no flush due to limit (partial lines merge within same stream)
 		},
 		{
 			name: "tag P multi-stream with truncation",
@@ -177,17 +185,19 @@ func TestCRI_tags(t *testing.T) {
 				"partial lin",
 				"partialfull",
 			},
+			expectedPartialLinesFlushed: 0,
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			registry := prometheus.NewRegistry()
 			cfg := CRIConfig{
 				MaxPartialLines:            tt.maxPartialLines,
 				MaxPartialLineSize:         tt.maxPartialLineSize,
 				MaxPartialLineSizeTruncate: tt.maxPartialLineSizeTruncate,
 			}
-			p, err := NewCRI(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(log.NewNopLogger(), cfg, registry, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			got := make([]string, 0)
@@ -212,6 +222,14 @@ func TestCRI_tags(t *testing.T) {
 			}
 
 			assert.Equal(t, expectedMap, gotMap)
+
+			// Verify the partial lines flushed metric
+			expectedMetrics := fmt.Sprintf(`
+# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
+# TYPE loki_process_cri_partial_lines_flushed_total counter
+loki_process_cri_partial_lines_flushed_total %d
+`, tt.expectedPartialLinesFlushed)
+			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 		})
 	}
 }

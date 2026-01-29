@@ -2059,6 +2059,7 @@ The following fields are exported and can be referenced by other components:
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
 * `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
 * `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured_metadata values truncated as part of a `truncate` stage.
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
 
 ## Example
 
