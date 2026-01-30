@@ -190,7 +190,7 @@ func (f *FakeInformer) IsStopped() bool {
 }
 
 // Add triggers an Add event for the given object.
-func (f *FakeInformer) Add(obj interface{}) {
+func (f *FakeInformer) Add(obj any) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	for _, h := range f.handlers {
@@ -199,7 +199,7 @@ func (f *FakeInformer) Add(obj interface{}) {
 }
 
 // Update triggers an Update event for the given objects.
-func (f *FakeInformer) Update(oldObj, newObj interface{}) {
+func (f *FakeInformer) Update(oldObj, newObj any) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	for _, h := range f.handlers {
@@ -208,7 +208,7 @@ func (f *FakeInformer) Update(oldObj, newObj interface{}) {
 }
 
 // Delete triggers a Delete event for the given object.
-func (f *FakeInformer) Delete(obj interface{}) {
+func (f *FakeInformer) Delete(obj any) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	for _, h := range f.handlers {
