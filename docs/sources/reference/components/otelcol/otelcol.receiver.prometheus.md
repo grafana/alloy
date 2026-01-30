@@ -23,9 +23,8 @@ You can specify multiple `otelcol.receiver.prometheus` components by giving them
 {{< /admonition >}}
 
 
-{{< admonition type="warning" >}}
-In Alloy v1.14.0 `otelcol.receiver.prometheus` has been changed to no longer set a [start time][otlp-start-time]
-for the translated OTLP metric datapoint if the incoming Prometheus metric lacks a ["created time"][om-suffixes].
+{{< admonition type="note" >}}
+In Alloy v1.14.0, `otelcol.receiver.prometheus` no longer sets OTLP metric [start times][otlp-start-time] for Prometheus metrics. The receiver forwards metrics without adding start times when the Prometheus input does not have a [created time][om-suffixes].
 
 Start time is a way to tell when a cumulative metric such as an OTLP "sum" or a Prometheus "counter" was last reset.
 If your database uses start times for OTLP metrics, you can use `otelcol.processor.metric_start_time` to set it.
