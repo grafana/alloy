@@ -34,7 +34,7 @@ alloy otel --config=<CONFIG_FILE> [<FLAGS> ...]
 Replace the following:
 
 * _`<CONFIG_FILE>`_: Path to an OpenTelemetry Collector configuration file.
-* _`<FLAGS>`_: One or more flags that configure the OpenTelemetry Collector.
+* _`<FLAGS>`_: One or more flags that configure the OpenTelemetry Collector. Please note that these flags are the same as upstream, to find a complete list you can run `alloy otel --help`
 
 ## Configuration
 
