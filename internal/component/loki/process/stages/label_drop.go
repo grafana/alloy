@@ -30,7 +30,7 @@ type labelDropStage struct {
 }
 
 // Process implements Stage.
-func (l *labelDropStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (l *labelDropStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	for _, label := range l.config.Values {
 		delete(labels, model.LabelName(label))
 	}

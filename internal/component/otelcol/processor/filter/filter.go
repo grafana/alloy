@@ -73,7 +73,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 // convertImpl is a helper function which returns the real type of the config,
 // instead of the otelcomponent.Config interface.
 func (args Arguments) convertImpl() (*filterprocessor.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 
 	input["error_mode"] = args.ErrorMode
 

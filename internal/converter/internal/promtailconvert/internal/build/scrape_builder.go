@@ -80,7 +80,7 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 	}
 
 	targets := s.getAllRelabeledTargetsExpr()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		if _, ok := val.([]discovery.Target); ok {
 			return common.CustomTokenizer{Expr: targets}
 		}
@@ -161,7 +161,7 @@ func (s *ScrapeConfigBuilder) appendDiscoveryRelabel() {
 		RelabelConfigs: relabelConfigs,
 	}
 
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		if _, ok := val.([]discovery.Target); ok {
 			return common.CustomTokenizer{Expr: s.getAllTargetsJoinedExpr()}
 		}
@@ -248,7 +248,7 @@ func logsReceiversToExpr(r []loki.LogsReceiver) string {
 	return "[" + strings.Join(exprs, ", ") + "]"
 }
 
-func toAlloyExpression(goValue interface{}) (string, error) {
+func toAlloyExpression(goValue any) (string, error) {
 	e := builder.NewExpr()
 	e.SetValue(goValue)
 	var buff bytes.Buffer

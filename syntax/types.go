@@ -25,7 +25,7 @@ type Unmarshaler interface {
 	// should be called with a pointer to a value to decode into. UnmarshalAlloy
 	// will not be called on types which are squashed into the parent struct
 	// using `alloy:",squash"`.
-	UnmarshalAlloy(f func(v interface{}) error) error
+	UnmarshalAlloy(f func(v any) error) error
 }
 
 // The Defaulter interface allows a type to implement default functionality
@@ -80,7 +80,7 @@ type ConvertibleFromCapsule interface {
 	//
 	// ConvertFrom should return ErrNoConversion if no conversion is available
 	// from src. Other errors are treated as an Alloy decoding error.
-	ConvertFrom(src interface{}) error
+	ConvertFrom(src any) error
 }
 
 // ConvertibleIntoCapsule is a Capsule which supports custom conversion into
@@ -93,7 +93,7 @@ type ConvertibleIntoCapsule interface {
 	//
 	// ConvertInto should return ErrNoConversion if no conversion into dst is
 	// available. Other errors are treated as an Alloy decoding error.
-	ConvertInto(dst interface{}) error
+	ConvertInto(dst any) error
 }
 
 // Value represents an Alloy value. See the value.Value for more details.

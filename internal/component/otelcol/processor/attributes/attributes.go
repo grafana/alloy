@@ -60,7 +60,7 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 
 	if actions := args.Actions.Convert(); len(actions) > 0 {
 		input["actions"] = actions

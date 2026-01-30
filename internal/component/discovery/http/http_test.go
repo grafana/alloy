@@ -103,7 +103,7 @@ func TestComponent(t *testing.T) {
 				cancel()
 			},
 			Registerer: prometheus.NewRegistry(),
-			GetServiceData: func(name string) (interface{}, error) {
+			GetServiceData: func(name string) (any, error) {
 				switch name {
 				case livedebugging.ServiceName:
 					return livedebugging.NewLiveDebugging(), nil

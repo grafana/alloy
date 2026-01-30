@@ -16,7 +16,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
-		expected map[string]interface{}
+		expected map[string]any
 		errMsg   string
 	}{
 		{
@@ -24,7 +24,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "propagate",
 			},
 		},
@@ -34,7 +34,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			error_mode = "ignore"
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
 			},
 		},
@@ -49,10 +49,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"traces": map[string]interface{}{
-					"span": []interface{}{
+				"traces": map[string]any{
+					"span": []any{
 						`attributes["http.request.method"] == nil`,
 					},
 				},
@@ -91,31 +91,31 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"traces": map[string]interface{}{
-					"span": []interface{}{
+				"traces": map[string]any{
+					"span": []any{
 						`attributes["container.name"] == "app_container_1"`,
 						`resource.attributes["host.name"] == "localhost"`,
 						`name == "app_1"`,
 					},
-					"spanevent": []interface{}{
+					"spanevent": []any{
 						`attributes["grpc"] == true`,
 						`IsMatch(name, ".*grpc.*")`,
 					},
 				},
-				"metrics": map[string]interface{}{
-					"metric": []interface{}{
+				"metrics": map[string]any{
+					"metric": []any{
 						`name == "my.metric" and resource.attributes["my_label"] == "abc123"`,
 						`type == METRIC_DATA_TYPE_HISTOGRAM`,
 					},
-					"datapoint": []interface{}{
+					"datapoint": []any{
 						`metric.type == METRIC_DATA_TYPE_SUMMARY`,
 						`resource.attributes["service.name"] == "my_service_name"`,
 					},
 				},
-				"logs": map[string]interface{}{
-					"log_record": []interface{}{
+				"logs": map[string]any{
+					"log_record": []any{
 						`IsMatch(body, ".*password.*")`,
 						`severity_number < SEVERITY_NUMBER_WARN`,
 					},
@@ -134,10 +134,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"metrics": map[string]interface{}{
-					"metric": []interface{}{
+				"metrics": map[string]any{
+					"metric": []any{
 						`HasAttrKeyOnDatapoint("http.method")`,
 						`HasAttrOnDatapoint("http.method", "GET")`,
 					},

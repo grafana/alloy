@@ -149,7 +149,7 @@ func inferMetadata(args component.Arguments, exports component.Exports) Metadata
 	return m
 }
 
-func hasFieldOfType(obj interface{}, fieldType reflect.Type) bool {
+func hasFieldOfType(obj any, fieldType reflect.Type) bool {
 	objValue := reflect.ValueOf(obj)
 
 	// If the object is a pointer, dereference it

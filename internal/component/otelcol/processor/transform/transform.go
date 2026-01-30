@@ -126,12 +126,12 @@ func convertNoContext(stmts Statements) ContextStatementsSlice {
 	}
 }
 
-func (stmts *ContextStatementsSlice) convert() []interface{} {
+func (stmts *ContextStatementsSlice) convert() []any {
 	if stmts == nil {
 		return nil
 	}
 
-	res := make([]interface{}, 0, len(*stmts))
+	res := make([]any, 0, len(*stmts))
 
 	if len(*stmts) == 0 {
 		return res
@@ -143,12 +143,12 @@ func (stmts *ContextStatementsSlice) convert() []interface{} {
 	return res
 }
 
-func (args *ContextStatements) convert() map[string]interface{} {
+func (args *ContextStatements) convert() map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"context":    args.Context,
 		"statements": args.Statements,
 		"conditions": args.Conditions,
@@ -164,7 +164,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 // convertImpl is a helper function which returns the real type of the config,
 // instead of the otelcomponent.Config interface.
 func (args Arguments) convertImpl() (*transformprocessor.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 
 	input["error_mode"] = args.ErrorMode
 

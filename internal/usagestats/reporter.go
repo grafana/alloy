@@ -34,7 +34,7 @@ func NewReporter(logger log.Logger) (*Reporter, error) {
 }
 
 // Start inits the reporter seed and start sending report for every interval
-func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]interface{}) error {
+func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]any) error {
 	level.Info(rep.logger).Log("msg", "running usage stats reporter")
 	rep.seed = alloyseed.Get()
 
@@ -69,7 +69,7 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]in
 }
 
 // reportUsage reports the usage to grafana.com.
-func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metrics map[string]interface{}) error {
+func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metrics map[string]any) error {
 	backoff := backoff.New(ctx, backoff.Config{
 		MinBackoff: time.Second,
 		MaxBackoff: 30 * time.Second,

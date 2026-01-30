@@ -464,7 +464,7 @@ func getEntry() loki.Entry {
 	}
 }
 
-func getServiceData(name string) (interface{}, error) {
+func getServiceData(name string) (any, error) {
 	switch name {
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil

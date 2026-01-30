@@ -68,7 +68,7 @@ func TestComponent(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func getServiceData(name string) (interface{}, error) {
+func getServiceData(name string) (any, error) {
 	switch name {
 	case cluster.ServiceName:
 		return cluster.Mock(), nil

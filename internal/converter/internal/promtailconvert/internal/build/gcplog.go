@@ -49,7 +49,7 @@ func (s *ScrapeConfigBuilder) AppendGCPLog() {
 		RelabelRules: make(relabel.Rules, 0),
 	}
 
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}

@@ -43,7 +43,7 @@ type Config struct {
 var _ integrations.Config = (*Config)(nil)
 
 // UnmarshalYAML implements the Unmarshaler interface.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 	type plain Config
 	return unmarshal((*plain)(c))

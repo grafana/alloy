@@ -90,7 +90,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 				ID:         "prometheus.operator.servicemonitors.test",
 				Logger:     logger,
 				Registerer: prometheus_client.NewRegistry(),
-				GetServiceData: func(name string) (interface{}, error) {
+				GetServiceData: func(name string) (any, error) {
 					switch name {
 					case http_service.ServiceName:
 						return http_service.Data{

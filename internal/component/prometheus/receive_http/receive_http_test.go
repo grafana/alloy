@@ -646,7 +646,7 @@ func testOptions(t *testing.T) component.Options {
 		ID:         "prometheus.receive_http.test",
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 		},
 	}

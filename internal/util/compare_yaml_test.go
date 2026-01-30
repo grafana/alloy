@@ -73,7 +73,7 @@ func TestCompareNotEqualWithSecrets(t *testing.T) {
 	require.False(t, CompareYAMLWithHook(s1, s3, noScrubbedSecretsHook))
 }
 
-func noScrubbedSecretsHook(in interface{}) (ok bool, out interface{}, err error) {
+func noScrubbedSecretsHook(in any) (ok bool, out any, err error) {
 	switch v := in.(type) {
 	case config_util.Secret:
 		return true, string(v), nil

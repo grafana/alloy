@@ -295,7 +295,7 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 }
 
 // DebugInfo returns information about the status of tailed targets.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 

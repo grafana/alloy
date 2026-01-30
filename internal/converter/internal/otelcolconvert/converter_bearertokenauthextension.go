@@ -40,7 +40,7 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id compo
 		block = common.NewBlockWithOverride([]string{"otelcol", "auth", "bearer"}, label, args)
 	} else {
 		args, fileContents := toBearerTokenAuthExtensionWithFilename(state, bcfg)
-		overrideHook := func(val interface{}) interface{} {
+		overrideHook := func(val any) any {
 			switch value := val.(type) {
 			case alloytypes.Secret:
 				return common.CustomTokenizer{Expr: fileContents}

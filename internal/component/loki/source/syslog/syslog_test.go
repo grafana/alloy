@@ -343,7 +343,7 @@ func TestLiveDebuggingServiceWorks(t *testing.T) {
 		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			require.Equal(t, name, livedebugging.ServiceName)
 			return livedebugging.NewLiveDebugging(), nil
 		},

@@ -27,7 +27,7 @@ func init() {
 	Analyzer.Flags.StringVar(&checkPackage, "import-package", checkPackage, "Package that should import components")
 }
 
-func run(p *analysis.Pass) (interface{}, error) {
+func run(p *analysis.Pass) (any, error) {
 	// Our linter works as follows:
 	//
 	// 1. Retrieve the list of direct imports of the package we are performing

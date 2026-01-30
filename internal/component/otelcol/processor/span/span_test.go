@@ -17,7 +17,7 @@ import (
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		alloyCfg             string
-		otelCfg              map[string]interface{}
+		otelCfg              map[string]any
 		expectUnmarshalError bool
 	}{
 		{
@@ -29,7 +29,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
+			otelCfg: map[string]any{
 				"name": spanprocessor.Name{
 					FromAttributes: []string{"db.svc", "operation", "id"},
 					Separator:      "::",
@@ -44,7 +44,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
+			otelCfg: map[string]any{
 				"name": spanprocessor.Name{
 					FromAttributes: []string{"db.svc", "operation", "id"},
 				},
@@ -60,7 +60,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
+			otelCfg: map[string]any{
 				"name": spanprocessor.Name{
 					ToAttributes: &spanprocessor.ToAttributes{
 						Rules: []string{`^\/api\/v1\/document\/(?P<documentId>.*)\/update$`},
@@ -79,7 +79,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
+			otelCfg: map[string]any{
 				"name": spanprocessor.Name{
 					ToAttributes: &spanprocessor.ToAttributes{
 						KeepOriginalName: true,
@@ -107,13 +107,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
-				"include": map[string]interface{}{
+			otelCfg: map[string]any{
+				"include": map[string]any{
 					"match_type": "regexp",
 					"services":   []string{"banks"},
 					"span_names": []string{`^(.*?)/(.*?)$`},
 				},
-				"exclude": map[string]interface{}{
+				"exclude": map[string]any{
 					"match_type": "strict",
 					"span_names": []string{`donot/change`},
 				},
@@ -133,7 +133,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
+			otelCfg: map[string]any{
 				"status": spanprocessor.Status{
 					Code:        "Error",
 					Description: "some additional error description",
@@ -155,11 +155,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			otelCfg: map[string]interface{}{
-				"include": map[string]interface{}{
+			otelCfg: map[string]any{
+				"include": map[string]any{
 					"match_type": "strict",
-					"attributes": []interface{}{
-						map[string]interface{}{
+					"attributes": []any{
+						map[string]any{
 							"key":   "http.status_code",
 							"value": 400,
 						},

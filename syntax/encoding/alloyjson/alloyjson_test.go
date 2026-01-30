@@ -14,7 +14,7 @@ import (
 func TestValues(t *testing.T) {
 	tt := []struct {
 		name       string
-		input      interface{}
+		input      any
 		expectJSON string
 	}{
 		{
@@ -53,7 +53,7 @@ func TestValues(t *testing.T) {
 		},
 		{
 			name:  "nested array",
-			input: []interface{}{"testing", []int{0, 1, 2}},
+			input: []any{"testing", []int{0, 1, 2}},
 			expectJSON: `{
 				"type": "array",
 				"value": [
@@ -395,7 +395,7 @@ type capsuleConvertibleToObject struct {
 	address string
 }
 
-func (c capsuleConvertibleToObject) ConvertInto(dst interface{}) error {
+func (c capsuleConvertibleToObject) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
 		result := map[string]syntax.Value{

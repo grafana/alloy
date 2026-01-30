@@ -162,7 +162,7 @@ func simpleEntry(line, label string) Entry {
 	// lines, making the test Flaky on Windows runners.
 	time.Sleep(1 * time.Millisecond)
 	return Entry{
-		Extracted: map[string]interface{}{},
+		Extracted: map[string]any{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": model.LabelValue(label)},
 			Entry: push.Entry{
@@ -186,7 +186,7 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 	}
 
 	line1 := Entry{
-		Extracted: map[string]interface{}{},
+		Extracted: map[string]any{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": "one"},
 			Entry: push.Entry{
@@ -203,7 +203,7 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 	}
 	time.Sleep(1 * time.Millisecond)
 	line2 := Entry{
-		Extracted: map[string]interface{}{},
+		Extracted: map[string]any{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": "one"},
 			Entry: push.Entry{

@@ -634,7 +634,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	r.stop()
 }
 
-func getServiceData(name string) (interface{}, error) {
+func getServiceData(name string) (any, error) {
 	switch name {
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil
@@ -643,7 +643,7 @@ func getServiceData(name string) (interface{}, error) {
 	}
 }
 
-func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (interface{}, error) {
+func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (any, error) {
 	ld := livedebugging.NewLiveDebugging()
 	host := &testlivedebugging.FakeServiceHost{
 		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
@@ -658,7 +658,7 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
 	)
 
-	return func(name string) (interface{}, error) {
+	return func(name string) (any, error) {
 		switch name {
 		case livedebugging.ServiceName:
 			return ld, nil

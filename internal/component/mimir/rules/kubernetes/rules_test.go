@@ -195,7 +195,7 @@ func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger log.
 		ID:         "mimir.rules.kubernetes",
 		Logger:     logger,
 		Registerer: reg,
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			if name == cluster.ServiceName {
 				return &fakeCluster{}, nil
 			}

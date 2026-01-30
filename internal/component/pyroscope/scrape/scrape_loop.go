@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	payloadBuffers  = pool.New(1e3, 1e6, 3, func(sz int) interface{} { return make([]byte, 0, sz) })
+	payloadBuffers  = pool.New(1e3, 1e6, 3, func(sz int) any { return make([]byte, 0, sz) })
 	userAgentHeader = useragent.Get()
 )
 
