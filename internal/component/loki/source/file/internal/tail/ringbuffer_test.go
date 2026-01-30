@@ -21,34 +21,34 @@ func TestRingBuffer(t *testing.T) {
 		require.True(t, bytes.Equal([]byte("hello"), rb.Bytes()))
 	})
 
-	t.Run("commit", func(t *testing.T) {
+	t.Run("advance", func(t *testing.T) {
 		rb := newRingBuffer(8)
 		rb.Append([]byte("hello"))
-		rb.Commit(2)
+		rb.Advance(2)
 		require.Equal(t, 3, rb.Len())
 		require.True(t, bytes.Equal([]byte("llo"), rb.Bytes()))
 	})
 
-	t.Run("commit all", func(t *testing.T) {
+	t.Run("advance all", func(t *testing.T) {
 		rb := newRingBuffer(8)
 		rb.Append([]byte("hello"))
-		rb.Commit(5)
+		rb.Advance(5)
 		require.Equal(t, 0, rb.Len())
 		require.Nil(t, rb.Bytes())
 	})
 
-	t.Run("commit more than cap", func(t *testing.T) {
+	t.Run("advance more than cap", func(t *testing.T) {
 		rb := newRingBuffer(8)
 		rb.Append([]byte("hi"))
-		rb.Commit(10)
+		rb.Advance(10)
 		require.Equal(t, 0, rb.Len())
 		require.Nil(t, rb.Bytes())
 	})
 
-	t.Run("append after commit", func(t *testing.T) {
+	t.Run("append after advance", func(t *testing.T) {
 		rb := newRingBuffer(8)
 		rb.Append([]byte("hello"))
-		rb.Commit(2)
+		rb.Advance(2)
 		rb.Append([]byte("world"))
 		require.Equal(t, 8, rb.Len())
 		require.True(t, bytes.Equal([]byte("lloworld"), rb.Bytes()))
@@ -66,17 +66,17 @@ func TestRingBuffer(t *testing.T) {
 	t.Run("bytes when wrapped", func(t *testing.T) {
 		rb := newRingBuffer(4)
 		rb.Append([]byte("ab"))
-		rb.Commit(2)              // head=2, tail=2
+		rb.Advance(2)              // head=2, tail=2
 		rb.Append([]byte("cdef")) // wraps: tail goes to 2 (writes at 2,3,0,1)
 		require.Equal(t, 4, rb.Len())
 		require.True(t, bytes.Equal([]byte("cdef"), rb.Bytes()))
 	})
 
-	t.Run("commit when at end of buffer", func(t *testing.T) {
-		// Regression: commit exactly to end (head=len) must not wrap head to 0.
+	t.Run("advance when at end of buffer", func(t *testing.T) {
+		// Regression: advance exactly to end (head=len) must not wrap head to 0.
 		rb := newRingBuffer(4)
 		rb.Append([]byte("abcd"))
-		rb.Commit(4)
+		rb.Advance(4)
 		require.Equal(t, 0, rb.Len())
 		rb.Append([]byte("x"))
 		require.Equal(t, 1, rb.Len())
@@ -103,12 +103,12 @@ func TestRingBuffer(t *testing.T) {
 		require.True(t, bytes.Equal([]byte("hi"), rb.Bytes()))
 	})
 
-	t.Run("commit zero or negative is no-op", func(t *testing.T) {
+	t.Run("advance zero or negative is no-op", func(t *testing.T) {
 		rb := newRingBuffer(8)
 		rb.Append([]byte("hello"))
-		rb.Commit(0)
+		rb.Advance(0)
 		require.Equal(t, 5, rb.Len())
-		rb.Commit(-1)
+		rb.Advance(-1)
 		require.Equal(t, 5, rb.Len())
 	})
 }

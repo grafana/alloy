@@ -66,7 +66,7 @@ func (rb *ringBuffer) grow(need int) {
 }
 
 // Bytes returns a view of all bytes in the buffer.
-// The slice is valid until the next call to Commit or Append.
+// The slice is valid until the next call to Advance or Append.
 func (rb *ringBuffer) Bytes() []byte {
 	if rb.Len() == 0 {
 		return nil
@@ -92,8 +92,8 @@ func (rb *ringBuffer) linearizeInto(dst []byte) []byte {
 	return append(dst, rb.buf[:rb.tail]...)
 }
 
-// Commit discards the n bytes from the buffer.
-func (rb *ringBuffer) Commit(n int) {
+// Advance discards the first n bytes from the buffer.
+func (rb *ringBuffer) Advance(n int) {
 	if n <= 0 {
 		return
 	}

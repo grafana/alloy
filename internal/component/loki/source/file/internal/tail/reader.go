@@ -86,7 +86,7 @@ func (r *reader) next() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		r.pending.Commit(len(line) + len(r.nl))
+		r.pending.Advance(len(line) + len(r.nl))
 		return s, nil
 	}
 
@@ -99,7 +99,7 @@ func (r *reader) next() (string, error) {
 				if err != nil {
 					return "", err
 				}
-				r.pending.Commit(len(line) + len(r.nl))
+				r.pending.Advance(len(line) + len(r.nl))
 				return s, nil
 			}
 		}
@@ -124,7 +124,7 @@ func (r *reader) flush() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	r.pending.Commit(len(line))
+	r.pending.Advance(len(line))
 	return s, nil
 }
 
