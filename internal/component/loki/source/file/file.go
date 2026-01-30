@@ -361,6 +361,24 @@ func (c *Component) scheduleSources() {
 			})
 		},
 	)
+
+	var (
+		duplicationCount = float64(0)
+		scheduled        = make(map[string]struct{}, c.scheduler.Len())
+	)
+
+	for s := range c.scheduler.Sources() {
+		path := s.Key().Path
+		if _, ok := scheduled[path]; ok {
+			duplicationCount += 1
+			level.Warn(c.opts.Logger).Log(
+				"msg", "multiple targets with different labels which will cause duplicate log lines",
+				"path", path,
+			)
+		}
+		scheduled[path] = struct{}{}
+	}
+	c.metrics.duplicatedFiles.Set(float64(duplicationCount))
 }
 
 type debugInfo struct {
