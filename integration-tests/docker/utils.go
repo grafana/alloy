@@ -24,6 +24,7 @@ import (
 )
 
 const alloyImageName = "alloy-integration-tests"
+const dockerComposeFile = "docker-compose.yaml"
 
 type TestLog struct {
 	TestDir    string
@@ -88,13 +89,7 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 
 // Create a container request based on the test directory
 func createContainerRequest(dirName, testDir string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig) testcontainers.ContainerRequest {
-	// Determine which port to wait for during startup
-	waitPort := port
-	if cfg.Container.WaitPort > 0 {
-		waitPort = cfg.Container.WaitPort
-	}
-
-	natPort, err := nat.NewPort("tcp", strconv.Itoa(waitPort))
+	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build natPort: %v", err))
 	}
@@ -131,8 +126,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		})
 	}
 
-	// Determine command and config file based on configuration
-	cmd := buildContainerCommand(cfg, port)
+	cmd := []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
 
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImageName,
@@ -160,35 +154,6 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	return req
 }
 
-// buildContainerCommand constructs the command line arguments for the alloy container
-// based on the test configuration. Supports both "run" (default) and "otel" commands.
-func buildContainerCommand(cfg TestConfig, port int) []string {
-	command := cfg.Container.Command
-	if command == "" {
-		command = "run"
-	}
-
-	configFile := cfg.Container.ConfigFile
-	if configFile == "" {
-		if command == "otel" {
-			configFile = "config.yaml"
-		} else {
-			configFile = "config.alloy"
-		}
-	}
-
-	configPath := fmt.Sprintf("/etc/alloy/%s", configFile)
-
-	switch command {
-	case "otel":
-		// For otel command, use OTel Collector style flags
-		return []string{"otel", fmt.Sprintf("--config=%s", configPath)}
-	default:
-		// For run command (default), use Alloy style flags
-		return []string{"run", configPath, "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
-	}
-}
-
 // Configure the test command with appropriate environment variables if needed
 func setupTestCommand(testDir string, testTimeout time.Duration) *exec.Cmd {
 	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests")
@@ -201,7 +166,9 @@ func setupTestCommand(testDir string, testTimeout time.Duration) *exec.Cmd {
 var logMux sync.Mutex
 var logs []TestLog
 
-func runSingleTest(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
+// runTestWithTestcontainers runs a test using testcontainers to create the Alloy container.
+// This is used for tests that don't have their own docker-compose.yaml.
+func runTestWithTestcontainers(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
 	info, err := os.Stat(testDir)
 	if err != nil {
 		panic(err)
@@ -313,6 +280,23 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 	addLog(testLogs)
 }
 
+// hasComposeFile returns true if the test directory contains a docker-compose.yaml file.
+func hasComposeFile(testDir string) bool {
+	composeFile := filepath.Join(testDir, dockerComposeFile)
+	_, err := os.Stat(composeFile)
+	return err == nil
+}
+
+// runTest runs a single test, automatically detecting whether to use docker-compose
+// or testcontainers based on the presence of a docker-compose.yaml file.
+func runTest(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
+	if hasComposeFile(testDir) {
+		runComposeTest(ctx, testDir, stateful, testTimeout)
+	} else {
+		runTestWithTestcontainers(ctx, testDir, port, stateful, testTimeout)
+	}
+}
+
 func runAllTests(ctx context.Context) {
 	testDirs, err := filepath.Glob("./tests/*")
 	if err != nil {
@@ -325,10 +309,81 @@ func runAllTests(ctx context.Context) {
 		wg.Add(1)
 		go func(td string, offset int) {
 			defer wg.Done()
-			runSingleTest(ctx, td, port+offset, stateful, testTimeout)
+			runTest(ctx, td, port+offset, stateful, testTimeout)
 		}(testDir, i)
 	}
 	wg.Wait()
+}
+
+// runComposeTest runs a test that has its own docker-compose.yaml defining
+// test infrastructure (Alloy, data generators, etc.).
+func runComposeTest(ctx context.Context, testDir string, stateful bool, testTimeout time.Duration) {
+	dirName := filepath.Base(testDir)
+	absTestDir, err := filepath.Abs(testDir)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get absolute path of testDir: %v", err))
+	}
+
+	composeFile := filepath.Join(absTestDir, dockerComposeFile)
+	projectName := "test-" + dirName
+
+	// Start test-specific services
+	fmt.Printf("Starting compose services for %s...\n", dirName)
+	upCmd := exec.Command("docker", "compose", "-f", composeFile, "-p", projectName, "up", "-d", "--build", "--wait")
+	upCmd.Dir = absTestDir
+	upOutput, err := upCmd.CombinedOutput()
+	if err != nil {
+		addLog(TestLog{
+			TestDir:  dirName,
+			AlloyLog: fmt.Sprintf("failed to start compose services: %v\nOutput: %s", err, string(upOutput)),
+			IsError:  true,
+		})
+		return
+	}
+
+	// Ensure cleanup happens
+	defer func() {
+		fmt.Printf("Stopping compose services for %s...\n", dirName)
+		downCmd := exec.Command("docker", "compose", "-f", composeFile, "-p", projectName, "down")
+		downCmd.Dir = absTestDir
+		if output, err := downCmd.CombinedOutput(); err != nil {
+			fmt.Printf("Warning: failed to stop compose services for %s: %v\nOutput: %s\n", dirName, err, string(output))
+		}
+	}()
+
+	// Create a context with timeout to enforce test duration limit
+	testCtx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	// Setup and run test command with context for timeout enforcement
+	testCmd := exec.CommandContext(testCtx, "go", "test", "-tags", "alloyintegrationtests")
+	testCmd.Dir = testDir
+	testCmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
+	if stateful {
+		testCmd.Env = append(testCmd.Env, fmt.Sprintf("%s=true", common.TestStatefulEnv))
+	}
+
+	testOutput, errTest := testCmd.CombinedOutput()
+
+	// Collect logs from the alloy container
+	logsCmd := exec.Command("docker", "compose", "-f", composeFile, "-p", projectName, "logs", "alloy")
+	logsCmd.Dir = absTestDir
+	alloyLogOutput, _ := logsCmd.CombinedOutput()
+
+	testLogs := TestLog{
+		TestDir:    dirName,
+		AlloyLog:   string(alloyLogOutput),
+		TestOutput: string(testOutput),
+	}
+
+	if errTest != nil {
+		testLogs.IsError = true
+		// Check if the error was due to context timeout
+		if testCtx.Err() == context.DeadlineExceeded {
+			testLogs.TestOutput = fmt.Sprintf("TEST TIMEOUT: test exceeded %v limit\n%s", testTimeout, testOutput)
+		}
+	}
+	addLog(testLogs)
 }
 
 func addLog(testLog TestLog) {
@@ -387,5 +442,6 @@ func shouldExcludeFile(name string) bool {
 		return true
 	}
 
-	return filepath.Base(name) == "test.yaml"
+	base := filepath.Base(name)
+	return base == "test.yaml" || base == dockerComposeFile
 }

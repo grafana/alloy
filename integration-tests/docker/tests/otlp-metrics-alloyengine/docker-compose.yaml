@@ -1,0 +1,35 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    container_name: alloy-otlp-metrics-alloyengine
+    command: ["otel", "--config=/etc/alloy/config.yaml"]
+    volumes:
+      - ./config.yaml:/etc/alloy/config.yaml:ro
+      - ./alloy-config.alloy:/etc/alloy/alloy-config.alloy:ro
+    ports:
+      - "13143:13133"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/13133"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - alloy-integration-tests_integration-tests
+
+  otel-gen:
+    build:
+      context: ../../../../
+      dockerfile: ./integration-tests/docker/configs/otel-gen/Dockerfile
+    container_name: otelgen-otlp-metrics-alloyengine
+    environment:
+      # Send to the Alloy OTLP receiver (defined in alloy-config.alloy)
+      - OTEL_EXPORTER_ENDPOINT=alloy:4318
+    depends_on:
+      alloy:
+        condition: service_healthy
+    networks:
+      - alloy-integration-tests_integration-tests
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true

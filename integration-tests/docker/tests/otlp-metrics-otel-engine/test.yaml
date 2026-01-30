@@ -1,8 +1,0 @@
-alloy_container:
-  command: otel
-  config_file: config.yaml
-  wait_port: 13133
-  ports:
-    - container: 13133
-      protocol: tcp
-      host: 13133

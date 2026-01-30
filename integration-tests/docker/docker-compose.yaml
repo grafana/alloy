@@ -80,17 +80,6 @@ services:
     networks:
       - integration-tests
 
-  otel-gen:
-    build:
-      dockerfile: ./integration-tests/docker/configs/otel-gen/Dockerfile
-      context: ../../
-    environment:
-      - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-alloy-otlp-metrics:4318}
-    networks:
-      - integration-tests
-    ports:
-      - "8443:8443"
-
   prom-gen:
     build:
       dockerfile: ./integration-tests/docker/configs/prom-gen/Dockerfile
