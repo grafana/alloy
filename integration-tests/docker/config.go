@@ -7,6 +7,18 @@ type TestConfig struct {
 
 // ContainerConfig is used to configure alloy container used for the test.
 type ContainerConfig struct {
+	// Command specifies which alloy subcommand to use.
+	// Supported values are "run" (default) and "otel".
+	// When "otel" is used, ConfigFile should point to a YAML configuration file.
+	Command string `yaml:"command"`
+	// ConfigFile specifies the configuration file to use.
+	// For "run" command, defaults to "config.alloy".
+	// For "otel" command, defaults to "config.yaml".
+	ConfigFile string `yaml:"config_file"`
+	// WaitPort specifies which port to wait for during container startup.
+	// If not specified, defaults to the server HTTP port (12345 for "run").
+	// For "otel" command, this should typically be set to the health_check extension port.
+	WaitPort int `yaml:"wait_port"`
 	// UseMount when set to true will create "mount" directory inside test
 	// folder that will be mounted into the countainer.
 	UseMount bool `yaml:"use_mount"`

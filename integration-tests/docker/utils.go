@@ -88,7 +88,13 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 
 // Create a container request based on the test directory
 func createContainerRequest(dirName, testDir string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig) testcontainers.ContainerRequest {
-	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
+	// Determine which port to wait for during startup
+	waitPort := port
+	if cfg.Container.WaitPort > 0 {
+		waitPort = cfg.Container.WaitPort
+	}
+
+	natPort, err := nat.NewPort("tcp", strconv.Itoa(waitPort))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build natPort: %v", err))
 	}
@@ -125,11 +131,14 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		})
 	}
 
+	// Determine command and config file based on configuration
+	cmd := buildContainerCommand(cfg, port)
+
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImageName,
 		ExposedPorts: exposedPorts,
 		WaitingFor:   wait.ForListeningPort(natPort),
-		Cmd:          []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"},
+		Cmd:          cmd,
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.PortBindings = portBindings
 			hc.Mounts = append(hc.Mounts, mounts...)
@@ -149,6 +158,35 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	}
 
 	return req
+}
+
+// buildContainerCommand constructs the command line arguments for the alloy container
+// based on the test configuration. Supports both "run" (default) and "otel" commands.
+func buildContainerCommand(cfg TestConfig, port int) []string {
+	command := cfg.Container.Command
+	if command == "" {
+		command = "run"
+	}
+
+	configFile := cfg.Container.ConfigFile
+	if configFile == "" {
+		if command == "otel" {
+			configFile = "config.yaml"
+		} else {
+			configFile = "config.alloy"
+		}
+	}
+
+	configPath := fmt.Sprintf("/etc/alloy/%s", configFile)
+
+	switch command {
+	case "otel":
+		// For otel command, use OTel Collector style flags
+		return []string{"otel", fmt.Sprintf("--config=%s", configPath)}
+	default:
+		// For run command (default), use Alloy style flags
+		return []string{"run", configPath, "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
+	}
 }
 
 // Configure the test command with appropriate environment variables if needed
