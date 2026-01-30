@@ -86,13 +86,13 @@ func TestPipeline_Regex(t *testing.T) {
 	tests := map[string]struct {
 		config          string
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 		expectedLables  model.LabelSet
 	}{
 		"successfully run a pipeline with 1 regex stage without source": {
 			testRegexAlloySingleStageWithoutSource,
 			testRegexLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -110,7 +110,7 @@ func TestPipeline_Regex(t *testing.T) {
 		"successfully run a pipeline with 2 regex stages with source": {
 			testRegexAlloyMultiStageWithSource,
 			testRegexLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
 				"user":             "frank",
@@ -129,7 +129,7 @@ func TestPipeline_Regex(t *testing.T) {
 		"successfully run a pipeline with 2 regex stages with source and labels from groups": {
 			testRegexAlloyMultiStageWithSourceAndLabelFromGroups,
 			testRegexLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
 				"user":             "frank",
@@ -160,7 +160,7 @@ func TestPipeline_Regex(t *testing.T) {
 		"successfully run a pipeline with regex stage labels overriding existing labels with labels_from_groups": {
 			testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups,
 			testRegexLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -225,7 +225,7 @@ func TestPipelineWithMissingKey_Regex(t *testing.T) {
 func TestRegexConfig_validate(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
-		config interface{}
+		config any
 		err    error
 	}{
 		"empty config": {
@@ -233,30 +233,30 @@ func TestRegexConfig_validate(t *testing.T) {
 			ErrExpressionRequired,
 		},
 		"missing regex_expression": {
-			map[string]interface{}{},
+			map[string]any{},
 			ErrExpressionRequired,
 		},
 		"invalid regex_expression": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts[0-9]+).*",
 			},
 			errors.New(ErrCouldNotCompileRegex.Error() + ": error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
 		},
 		"empty source": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts>[0-9]+).*",
 				"source":     "",
 			},
 			ErrEmptyRegexStageSource,
 		},
 		"valid without source": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts>[0-9]+).*",
 			},
 			nil,
 		},
 		"valid with source": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts>[0-9]+).*",
 				"source":     "log",
 			},
@@ -289,20 +289,20 @@ func TestRegexParser_Parse(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
 		config          RegexConfig
-		extracted       map[string]interface{}
+		extracted       map[string]any
 		labels          model.LabelSet
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 		expectedLabels  model.LabelSet
 	}{
 		"successfully match expression on entry": {
 			RegexConfig{
 				Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			regexLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -322,10 +322,10 @@ func TestRegexParser_Parse(t *testing.T) {
 				Expression:       "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
 				LabelsFromGroups: true,
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			regexLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -357,12 +357,12 @@ func TestRegexParser_Parse(t *testing.T) {
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "HTTP/1.1",
 			},
 			model.LabelSet{},
 			regexLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
 			},
@@ -374,14 +374,14 @@ func TestRegexParser_Parse(t *testing.T) {
 				Source:           &protocolStr,
 				LabelsFromGroups: true,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "HTTP/1.1",
 			},
 			model.LabelSet{
 				"protocol": "HTTP/1.1",
 			},
 			regexLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
 			},
@@ -394,10 +394,10 @@ func TestRegexParser_Parse(t *testing.T) {
 			RegexConfig{
 				Expression: "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<message>.*)$",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			"blahblahblah",
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 		},
 		"failed to match expression on extracted[source]": {
@@ -405,12 +405,12 @@ func TestRegexParser_Parse(t *testing.T) {
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "unknown",
 			},
 			model.LabelSet{},
 			"unknown/unknown",
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "unknown",
 			},
 			model.LabelSet{},
@@ -419,10 +419,10 @@ func TestRegexParser_Parse(t *testing.T) {
 			RegexConfig{
 				Expression: "(?i)(?P<bad>panic:|core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted)",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			"A Terrible Error has occurred!!!",
-			map[string]interface{}{
+			map[string]any{
 				"bad": "Error",
 			},
 			model.LabelSet{},
@@ -432,10 +432,10 @@ func TestRegexParser_Parse(t *testing.T) {
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			"blahblahblah",
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 		},
 		"invalid data type in extracted[source]": {
@@ -443,12 +443,12 @@ func TestRegexParser_Parse(t *testing.T) {
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": true,
 			},
 			model.LabelSet{},
 			"unknown/unknown",
-			map[string]interface{}{
+			map[string]any{
 				"protocol": true,
 			},
 			model.LabelSet{},
@@ -490,7 +490,7 @@ func BenchmarkRegexStage(b *testing.B) {
 			}
 			labels := model.LabelSet{}
 			ts := time.Now()
-			extr := map[string]interface{}{}
+			extr := map[string]any{}
 
 			in := make(chan Entry)
 			out := stage.Run(in)

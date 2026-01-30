@@ -267,7 +267,7 @@ func (args Arguments) ConvertDetectors() []string {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 
 	input["detectors"] = args.ConvertDetectors()
 	input["override"] = args.Override

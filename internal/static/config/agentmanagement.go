@@ -26,7 +26,7 @@ type RemoteConfiguration struct {
 }
 
 // UnmarshalYAML implement YAML Unmarshaler
-func (rc *RemoteConfiguration) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (rc *RemoteConfiguration) UnmarshalYAML(unmarshal func(any) error) error {
 	// Apply defaults
 	*rc = defaultRemoteConfiguration
 	type plain RemoteConfiguration

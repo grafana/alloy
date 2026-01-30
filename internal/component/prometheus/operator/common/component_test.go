@@ -49,7 +49,7 @@ func (c *crdManagerHungRun) Run(ctx context.Context) error {
 
 func (c *crdManagerHungRun) ClusteringUpdated() {}
 
-func (c *crdManagerHungRun) DebugInfo() interface{} {
+func (c *crdManagerHungRun) DebugInfo() any {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func TestRunExit(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{

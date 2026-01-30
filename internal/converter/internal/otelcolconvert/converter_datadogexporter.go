@@ -35,7 +35,7 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case extension.ExtensionHandler:
 			queue := cfg.(*datadogOtelconfig.Config).QueueSettings.GetOrInsertDefault()

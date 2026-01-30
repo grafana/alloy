@@ -170,7 +170,7 @@ func (h *HerokuTarget) Ready() bool {
 	return true
 }
 
-func (h *HerokuTarget) Details() interface{} {
+func (h *HerokuTarget) Details() any {
 	return map[string]string{}
 }
 

@@ -21,7 +21,7 @@ func TestVM_Capsule_Conversion(t *testing.T) {
 	tt := []struct {
 		name        string
 		input       string
-		expect      interface{}
+		expect      any
 		expectError string
 	}{
 		{

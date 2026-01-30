@@ -254,7 +254,7 @@ func (c *Component) CurrentHealth() component.Health {
 }
 
 // DebugInfo implements component.DebugComponent.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	type DebugInfo struct {
 		SHA       string `alloy:"sha,attr"`
 		RepoError string `alloy:"repo_error,attr,optional"`

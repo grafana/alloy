@@ -327,7 +327,7 @@ func (w *WinEventLog) shouldProcessField(field string) (should bool, list string
 	return false, "excluded"
 }
 
-func (w *WinEventLog) shouldExcludeEmptyField(field string, fieldType string, fieldValue interface{}) (should bool) {
+func (w *WinEventLog) shouldExcludeEmptyField(field string, fieldType string, fieldValue any) (should bool) {
 	for _, pattern := range w.ExcludeEmpty {
 		if matched, _ := filepath.Match(pattern, field); matched {
 			switch fieldType {

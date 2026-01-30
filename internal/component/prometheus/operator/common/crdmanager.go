@@ -46,7 +46,7 @@ import (
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
 	ClusteringUpdated()
-	DebugInfo() interface{}
+	DebugInfo() any
 	GetScrapeConfig(ns, name string) []*config.ScrapeConfig
 }
 
@@ -288,7 +288,7 @@ func nonMetaLabelString(l model.LabelSet) string {
 }
 
 // DebugInfo returns debug information for the CRDManager.
-func (c *crdManager) DebugInfo() interface{} {
+func (c *crdManager) DebugInfo() any {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
@@ -555,18 +555,18 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 	c.addDebugInfo(pm.Namespace, pm.Name, err)
 }
 
-func (c *crdManager) onAddPodMonitor(obj interface{}) {
+func (c *crdManager) onAddPodMonitor(obj any) {
 	pm := obj.(*promopv1.PodMonitor)
 	level.Info(c.logger).Log("msg", "found pod monitor", "name", pm.Name)
 	c.addPodMonitor(pm)
 }
-func (c *crdManager) onUpdatePodMonitor(oldObj, newObj interface{}) {
+func (c *crdManager) onUpdatePodMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addPodMonitor(newObj.(*promopv1.PodMonitor))
 }
 
-func (c *crdManager) onDeletePodMonitor(obj interface{}) {
+func (c *crdManager) onDeletePodMonitor(obj any) {
 	pm := obj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -611,18 +611,18 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	c.addDebugInfo(sm.Namespace, sm.Name, err)
 }
 
-func (c *crdManager) onAddServiceMonitor(obj interface{}) {
+func (c *crdManager) onAddServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	level.Info(c.logger).Log("msg", "found service monitor", "name", pm.Name)
 	c.addServiceMonitor(pm)
 }
-func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj interface{}) {
+func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addServiceMonitor(newObj.(*promopv1.ServiceMonitor))
 }
 
-func (c *crdManager) onDeleteServiceMonitor(obj interface{}) {
+func (c *crdManager) onDeleteServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -658,18 +658,18 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 	c.addDebugInfo(p.Namespace, p.Name, err)
 }
 
-func (c *crdManager) onAddProbe(obj interface{}) {
+func (c *crdManager) onAddProbe(obj any) {
 	pm := obj.(*promopv1.Probe)
 	level.Info(c.logger).Log("msg", "found probe", "name", pm.Name)
 	c.addProbe(pm)
 }
-func (c *crdManager) onUpdateProbe(oldObj, newObj interface{}) {
+func (c *crdManager) onUpdateProbe(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.Probe)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addProbe(newObj.(*promopv1.Probe))
 }
 
-func (c *crdManager) onDeleteProbe(obj interface{}) {
+func (c *crdManager) onDeleteProbe(obj any) {
 	pm := obj.(*promopv1.Probe)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -711,18 +711,18 @@ func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
 	c.addDebugInfo(pm.Namespace, pm.Name, err)
 }
 
-func (c *crdManager) onAddScrapeConfig(obj interface{}) {
+func (c *crdManager) onAddScrapeConfig(obj any) {
 	pm := obj.(*promopv1alpha1.ScrapeConfig)
 	level.Info(c.logger).Log("msg", "found scrape config", "name", pm.Name)
 	c.addScrapeConfig(pm)
 }
-func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj interface{}) {
+func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj any) {
 	pm := oldObj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addScrapeConfig(newObj.(*promopv1alpha1.ScrapeConfig))
 }
 
-func (c *crdManager) onDeleteScrapeConfig(obj interface{}) {
+func (c *crdManager) onDeleteScrapeConfig(obj any) {
 	pm := obj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {

@@ -153,7 +153,7 @@ func (p *Pipeline) Wrap(next loki.EntryHandler) loki.EntryHandler {
 		defer close(pipelineIn)
 		for e := range handlerIn {
 			pipelineIn <- Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry:     e,
 			}
 		}

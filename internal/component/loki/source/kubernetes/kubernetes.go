@@ -248,7 +248,7 @@ func (c *Component) getTailerOptions(args Arguments) (*kubetail.Options, error) 
 }
 
 // DebugInfo returns debug information for loki.source.kubernetes.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var info DebugInfo
 
 	for _, target := range c.tailer.Targets() {
