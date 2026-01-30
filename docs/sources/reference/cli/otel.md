@@ -44,88 +44,12 @@ For information about configuration options, refer to the [OpenTelemetry Collect
 
 ### Optionally Running the Default Engine
 
-The Alloy Collector Distro includes the option to run pipelines using the Default Engine alongside the OTel Engine using the built in Alloy Engine extension. More information on how to run the extension can be found [here](https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md)
+The Alloy Collector Distro includes the option to run pipelines using the Default Engine alongside the OTel Engine using the built in Alloy Engine extension.
 
 This will run a Default Engine pipeline _in parallel_ to the OTel Engine pipeline - the two pipelines cannot natively interact.
 
-### Available Components
-
-The included components are based off the upstream core distribution, in order to ensure that full end-to-end pipelines are accessible for most use cases. In addition to upstream components, we also integrate some of our own components that enable functionality to work well within the Alloy ecosystem.
-
-To view the full list of components and their versioning, please refer to the [OCB manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml)
-
-## Examples
-
-### Running with OTel Engine only
-
-This example runs the OTel Engine without the Alloy Engine extension:
-
-```shell
-alloy otel --config=config.yaml
-```
-
-Example `config.yaml`:
-
-```yaml
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-
-processors:
-  batch:
-
-exporters:
-  debug:
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [debug]
-```
-
-### Running with OTel Engine and Alloy Engine extension
-
-This example runs both the OTel Engine and the Alloy Engine extension in parallel:
-
-```shell
-alloy otel --config=config.yaml
-```
-
-Example `config.yaml`:
-
-```yaml
-extensions:
-  alloyengine:
-    config:
-      file: path/to/alloy-config.alloy
-    flags:
-      server.http.listen-addr: 0.0.0.0:12345
-      stability.level: experimental
-
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-
-processors:
-  batch:
-
-exporters:
-  debug:
-
-service:
-  extensions: [alloyengine]
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [debug]
-```
+### Examples
+Concrete examples on running the OTel Engine and Alloy Engine Extension can be found [here](../../open-telemetry/getting-started.md)
 
 ## Related documentation
 * [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/): Official OpenTelemetry Collector documentation.
