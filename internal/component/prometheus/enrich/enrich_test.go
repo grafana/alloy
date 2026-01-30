@@ -148,7 +148,7 @@ func TestEnricher(t *testing.T) {
 func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case labelstore.ServiceName:
-		return labelstore.New(nil, prom.DefaultRegisterer), nil
+		return labelstore.New(nil, prom.DefaultRegisterer, 2), nil
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}

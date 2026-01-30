@@ -647,7 +647,7 @@ func testOptions(t *testing.T) component.Options {
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
-			return labelstore.New(nil, prometheus.DefaultRegisterer), nil
+			return labelstore.New(nil, prometheus.DefaultRegisterer, 2), nil
 		},
 	}
 }

@@ -218,7 +218,7 @@ func testOptions(t *testing.T, alloyMetricsReg *client.Registry, fakeCluster *fa
 			case cluster.ServiceName:
 				return fakeCluster, nil
 			case labelstore.ServiceName:
-				return labelstore.New(nil, alloyMetricsReg), nil
+				return labelstore.New(nil, alloyMetricsReg, 4), nil
 			case livedebugging.ServiceName:
 				return livedebugging.NewLiveDebugging(), nil
 			default:
