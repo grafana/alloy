@@ -5,7 +5,6 @@ import (
 	"context"
 	"regexp"
 	"sync"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
@@ -124,18 +123,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		useStartTimeMetric   = false
 		startTimeMetricRegex *regexp.Regexp
 
-		// Start time for Summary, Histogram and Sum metrics can be retrieved from `_created` metrics.
-		useCreatedMetric = false
-
 		// Trimming the metric suffixes is used to remove the metric type and the unit and the end of the metric name.
 		// To trim the unit, the opentelemetry code uses the MetricMetadataStore which is currently not supported by Alloy.
 		// When supported, this could be added as an arg.
 		trimMetricSuffixes = false
-
-		// TODO(ptodev): Remove this once we have stable support for native histograms.
-		enableNativeHistograms = c.opts.MinStability.Permits(featuregate.StabilityPublicPreview)
-
-		gcInterval = 5 * time.Minute
 	)
 
 	mp := metricNoop.NewMeterProvider()
@@ -170,11 +161,9 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	appendable, err := internal.NewAppendable(
 		metricsSink,
 		settings,
-		gcInterval,
 		useStartTimeMetric,
 		startTimeMetricRegex,
-		useCreatedMetric,
-		enableNativeHistograms,
+		true,
 		labels.Labels{},
 		trimMetricSuffixes,
 	)
