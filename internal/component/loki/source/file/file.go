@@ -182,8 +182,7 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts component.Options
 
-	metrics           *metrics
-	duplicateDetector *duplicateDetector
+	metrics *metrics
 
 	// mut is used to protect access to args, resolver and scheduler.
 	mut sync.RWMutex
@@ -233,14 +232,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	m := newMetrics(o.Registerer)
 	c := &Component{
-		opts:              o,
-		metrics:           m,
-		duplicateDetector: newDuplicateDetector(o.Logger, m.duplicateFilesTally),
-		handler:           loki.NewLogsReceiver(),
-		fanout:            loki.NewFanout(args.ForwardTo),
-		posFile:           positionsFile,
-		scheduler:         source.NewScheduler[positions.Entry](),
-		watcher:           time.NewTicker(args.FileMatch.SyncPeriod),
+		opts:      o,
+		metrics:   m,
+		handler:   loki.NewLogsReceiver(),
+		fanout:    loki.NewFanout(args.ForwardTo),
+		posFile:   positionsFile,
+		scheduler: source.NewScheduler[positions.Entry](),
+		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -327,13 +325,13 @@ func (c *Component) Update(args component.Arguments) error {
 // match the desired state.
 // Caller must hold write lock on c.mut before calling this function.
 func (c *Component) scheduleSources() {
-	// Collect targets, detect duplicates, and get an iterator for reconciliation.
-	targets := c.duplicateDetector.Detect(c.resolver.Resolve(c.args.Targets))
+	// Create duplicate detector for this reconciliation cycle.
+	duplicateDetector := newDuplicateDetector(c.opts.Logger, c.metrics.duplicateFilesTally)
 
 	source.Reconcile(
 		c.opts.Logger,
 		c.scheduler,
-		targets,
+		c.resolver.Resolve(c.args.Targets),
 		func(target resolvedTarget) positions.Entry {
 			return positions.Entry{Path: target.Path, Labels: target.Labels.String()}
 		},
@@ -353,6 +351,10 @@ func (c *Component) scheduleSources() {
 				return nil, source.ErrSkip
 			}
 
+			// Track this file for duplicate detection. We only track files that
+			// pass all validation checks and will actually be tailed.
+			duplicateDetector.Track(target.Path, target.Labels, fi)
+
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
 			return c.newSource(sourceOptions{
@@ -367,6 +369,9 @@ func (c *Component) scheduleSources() {
 			})
 		},
 	)
+
+	// Report duplicates after reconciliation is complete, so that we don't slow it down.
+	duplicateDetector.Report()
 }
 
 type debugInfo struct {

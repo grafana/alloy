@@ -1,7 +1,6 @@
 package file
 
 import (
-	"iter"
 	"os"
 	"slices"
 	"strings"
@@ -16,18 +15,23 @@ import (
 
 // duplicateDetector detects when the same file is being tailed multiple times
 // with different label sets, which causes duplicate log lines.
+//
+// Usage:
+//  1. Create a new instance for each reconciliation cycle
+//  2. Call Track() for each file that will actually be tailed
+//  3. Call Report() after reconciliation to detect and log duplicates
 type duplicateDetector struct {
 	logger log.Logger
 	metric prometheus.Gauge
+
+	// fileKeyToTargets accumulates target info during reconciliation.
+	// It maps file key (inode+device or path) to the list of targets for that file.
+	fileKeyToTargets map[fileKey][]targetInfo
 }
 
-// newDuplicateDetector creates a new duplicate detector.
-func newDuplicateDetector(logger log.Logger, metric prometheus.Gauge) *duplicateDetector {
-	return &duplicateDetector{
-		logger: logger,
-		metric: metric,
-	}
-}
+// fileKey is a unique identifier for a file, using inode+device on POSIX
+// systems or the file path on Windows.
+type fileKey string
 
 // targetInfo holds information about a target for duplicate detection.
 type targetInfo struct {
@@ -35,45 +39,37 @@ type targetInfo struct {
 	labels model.LabelSet
 }
 
-// Detect iterates through all targets, collects them, and checks for files
-// that have multiple targets with different label sets. It returns an iterator
-// over the collected targets for further processing.
-func (d *duplicateDetector) Detect(it iter.Seq[resolvedTarget]) iter.Seq[resolvedTarget] {
-	var targets []resolvedTarget
-	fileIDToTargets := make(map[string][]targetInfo)
-
-	for target := range it {
-		targets = append(targets, target)
-
-		// Stat for duplicate detection.
-		fi, err := os.Stat(target.Path)
-		if err != nil {
-			continue
-		}
-
-		fileKey := getFileKey(target.Path, fi)
-		fileIDToTargets[fileKey] = append(fileIDToTargets[fileKey], targetInfo{
-			path:   target.Path,
-			labels: target.Labels,
-		})
-	}
-
-	d.detectDuplicates(fileIDToTargets)
-
-	return func(yield func(resolvedTarget) bool) {
-		for _, t := range targets {
-			if !yield(t) {
-				return
-			}
-		}
+// newDuplicateDetector creates a new duplicate detector.
+func newDuplicateDetector(logger log.Logger, metric prometheus.Gauge) *duplicateDetector {
+	return &duplicateDetector{
+		logger:           logger,
+		metric:           metric,
+		fileKeyToTargets: make(map[fileKey][]targetInfo),
 	}
 }
 
+// Track records a file that will be tailed for duplicate detection.
+// This should be called during reconciliation for each file that passes
+// validation and will actually be tailed.
+func (d *duplicateDetector) Track(path string, labels model.LabelSet, fi os.FileInfo) {
+	key := getFileKey(path, fi)
+	d.fileKeyToTargets[key] = append(d.fileKeyToTargets[key], targetInfo{
+		path:   path,
+		labels: labels,
+	})
+}
+
+// Report processes the accumulated state and reports any duplicates found.
+// This should be called after reconciliation is complete.
+func (d *duplicateDetector) Report() {
+	d.detectDuplicates(d.fileKeyToTargets)
+}
+
 // detectDuplicates processes the grouped targets and reports duplicates.
-func (d *duplicateDetector) detectDuplicates(fileIDToTargets map[string][]targetInfo) {
+func (d *duplicateDetector) detectDuplicates(fileKeyToTargets map[fileKey][]targetInfo) {
 	duplicateCount := 0
 
-	for fileKey, targets := range fileIDToTargets {
+	for key, targets := range fileKeyToTargets {
 		if len(targets) <= 1 {
 			continue
 		}
@@ -96,7 +92,7 @@ func (d *duplicateDetector) detectDuplicates(fileIDToTargets map[string][]target
 
 		level.Warn(d.logger).Log(
 			"msg", "file has multiple targets with different labels which will cause duplicate log lines",
-			"file_id", fileKey,
+			"file_id", key,
 			"paths", strings.Join(paths, ", "),
 			"target_count", len(targets),
 			"differing_labels", strings.Join(differingLabels, ", "),
@@ -108,12 +104,12 @@ func (d *duplicateDetector) detectDuplicates(fileIDToTargets map[string][]target
 
 // getFileKey returns a unique key for a file, using inode+device when available
 // (on POSIX systems), or falling back to the file path on Windows.
-func getFileKey(path string, fi os.FileInfo) string {
+func getFileKey(path string, fi os.FileInfo) fileKey {
 	if fileID, ok := fileext.NewFileID(fi); ok {
-		return fileID.String()
+		return fileKey(fileID.String())
 	}
 	// Fall back to path on systems where file identity isn't available.
-	return path
+	return fileKey(path)
 }
 
 // findDifferingLabels returns the names of labels that have different values
@@ -132,6 +128,10 @@ func findDifferingLabels(labelSets []model.LabelSet) []string {
 	}
 
 	// Check which labels have differing values.
+	// We compare all label sets against the first one rather than doing pairwise
+	// comparisons. This is sufficient because if all values are identical, they'll
+	// all match the first; if any value differs, at least one will differ from the
+	// first. This gives us O(n) comparisons instead of O(n²).
 	var differing []string
 	for name := range allNames {
 		firstValue, firstHas := labelSets[0][name]
