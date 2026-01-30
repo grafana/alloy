@@ -67,14 +67,14 @@ import (
 //
 // Refer to the package documentation for details around how to build proper
 // Arguments implementations.
-type Arguments interface{}
+type Arguments any
 
 // Exports contains the current set of outputs for a specific component, which
 // is then marshaled to Alloy.
 //
 // Refer to the package documentation for details around how to build proper
 // Exports implementations.
-type Exports interface{}
+type Exports any
 
 // Component is the base interface for a component. Components may implement
 // extension interfaces (named <Extension>Component) to implement extra known
@@ -111,7 +111,7 @@ type DebugComponent interface {
 	// expressions.
 	//
 	// DebugInfo must be safe for calling concurrently.
-	DebugInfo() interface{}
+	DebugInfo() any
 }
 
 // LiveDebugging is a marker interface to check if a component supports live debugging.

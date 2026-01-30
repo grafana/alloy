@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Windows
 menuTitle: Windows
 title: Install Grafana Alloy on Windows
-weight: 500
+weight: 300
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Windows
@@ -48,7 +48,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
-1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`..
+1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`.
 1. Run the following command as Administrator.
 
    {{< code >}}
@@ -117,7 +117,7 @@ To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the
 
 ### Uninstall with WinGet
 
-To install {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
+To uninstall {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
 
 {{< code >}}
 

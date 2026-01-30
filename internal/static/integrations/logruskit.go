@@ -57,7 +57,7 @@ func (o output) Write(data []byte) (n int, err error) {
 		return 0, fmt.Errorf("too many fields: %d", len(ll.Data))
 	}
 
-	vals := make([]interface{}, 0, 2*len(ll.Data)+2)
+	vals := make([]any, 0, 2*len(ll.Data)+2)
 	for _, k := range keys {
 		vals = append(vals, k, ll.Data[k])
 	}

@@ -196,7 +196,7 @@ func Test_TruncateStage_Process(t *testing.T) {
 			registry := prometheus.NewRegistry()
 			m, err := newTruncateStage(logger, *cfg, registry)
 			require.NoError(t, err)
-			entry := newEntry(map[string]interface{}{}, toLabelSet(tt.labels), tt.entry, tt.t)
+			entry := newEntry(map[string]any{}, toLabelSet(tt.labels), tt.entry, tt.t)
 			if tt.extracted != nil {
 				entry.Extracted = tt.extracted
 			}

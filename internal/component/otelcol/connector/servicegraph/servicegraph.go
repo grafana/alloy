@@ -13,6 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
+	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
 
 func init() {
@@ -50,9 +51,9 @@ type Arguments struct {
 	// StoreExpirationLoop defines how often to expire old entries from the store.
 	StoreExpirationLoop time.Duration `alloy:"store_expiration_loop,attr,optional"`
 	// VirtualNodePeerAttributes the list of attributes need to match, the higher the front, the higher the priority.
-	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-	// the "processor.servicegraph.virtualNode" feature gate.
-	// VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
+	VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
+	// VirtualNodeExtraLabel enables the `virtual_node` label to be added to the spans.
+	VirtualNodeExtraLabel bool `alloy:"virtual_node_extra_label,attr,optional"`
 
 	// MetricsFlushInterval is the interval at which metrics are flushed to the exporter.
 	// If set to 0, metrics are flushed on every received batch of traces.
@@ -115,20 +116,11 @@ func (args *Arguments) SetToDefault() {
 		Dimensions:             []string{},
 		CacheLoop:              1 * time.Minute,
 		StoreExpirationLoop:    2 * time.Second,
-		DatabaseNameAttributes: []string{"db.name"},
-		MetricsFlushInterval:   60 * time.Second,
-		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-		// the "processor.servicegraph.virtualNode" feature gate.
-		// VirtualNodePeerAttributes: []string{
-		// 	semconv.AttributeDBName,
-		// 	semconv.AttributeNetSockPeerAddr,
-		// 	semconv.AttributeNetPeerName,
-		// 	semconv.AttributeRPCService,
-		// 	semconv.AttributeNetSockPeerName,
-		// 	semconv.AttributeNetPeerName,
-		// 	semconv.AttributeHTTPURL,
-		// 	semconv.AttributeHTTPTarget,
-		// },
+		DatabaseNameAttributes: []string{string(semconv.DBNameKey)},
+		VirtualNodePeerAttributes: []string{
+			string(semconv.PeerServiceKey), string(semconv.DBNameKey), string(semconv.DBSystemKey),
+		},
+		MetricsFlushInterval: 60 * time.Second,
 	}
 	args.Store.SetToDefault()
 	args.DebugMetrics.SetToDefault()
@@ -170,12 +162,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		},
 		CacheLoop:                   args.CacheLoop,
 		StoreExpirationLoop:         args.StoreExpirationLoop,
+		VirtualNodePeerAttributes:   args.VirtualNodePeerAttributes,
+		VirtualNodeExtraLabel:       args.VirtualNodeExtraLabel,
 		MetricsFlushInterval:        &args.MetricsFlushInterval,
 		DatabaseNameAttributes:      args.DatabaseNameAttributes,
 		ExponentialHistogramMaxSize: args.ExponentialHistogramMaxSize,
-		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-		// the "processor.servicegraph.virtualNode" feature gate.
-		// VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,
 	}, nil
 }
 

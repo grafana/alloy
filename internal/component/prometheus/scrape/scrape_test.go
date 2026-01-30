@@ -13,6 +13,7 @@ import (
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/schema"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
@@ -165,7 +166,7 @@ func TestCustomDialer(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{
@@ -624,6 +625,16 @@ func setupTestMetrics() *prometheus_client.Registry {
 }
 
 func TestScrapingAllMetricTypes(t *testing.T) {
+	// Test both with and without type and unit labels
+	for _, enableTypeAndUnitLabels := range []bool{false, true} {
+		testName := fmt.Sprintf("EnableTypeAndUnitLabels=%t", enableTypeAndUnitLabels)
+		t.Run(testName, func(t *testing.T) {
+			testScrapingAllMetricTypes(t, enableTypeAndUnitLabels)
+		})
+	}
+}
+
+func testScrapingAllMetricTypes(t *testing.T, enableTypeAndUnitLabels bool) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
@@ -745,7 +756,7 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{
@@ -770,6 +781,7 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 	var args Arguments
 	args.SetToDefault()
 	args.HonorMetadata = true
+	args.EnableTypeAndUnitLabels = enableTypeAndUnitLabels
 	args.Targets = []discovery.Target{
 		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
 	}
@@ -824,6 +836,17 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 		for _, sample := range actualSamples {
 			if sample.Labels.Get("__name__") == expected.name {
 				require.Equal(t, expected.value, sample.Value, "Value should match for sample %s", expected.name)
+
+				metadata := schema.NewMetadataFromLabels(sample.Labels)
+				if enableTypeAndUnitLabels {
+					require.NotEqual(t, model.MetricTypeUnknown, metadata.Type)
+					// Unit is not current exposed to configure in client_golang https://github.com/prometheus/client_golang/pull/1392
+					// require.NotEmpty(t, metadata.Unit)
+				} else {
+					require.Equal(t, model.MetricTypeUnknown, metadata.Type)
+					require.Empty(t, metadata.Unit)
+				}
+
 				found = true
 				break
 			}
@@ -858,6 +881,17 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 					require.Equal(t, float64(expected.expectedCount), histogram.FloatHistogram.Count, "Float histogram count should match for %s", expected.name)
 					require.Equal(t, expected.expectedSum, histogram.FloatHistogram.Sum, "Float histogram sum should match for %s", expected.name)
 				}
+
+				metadata := schema.NewMetadataFromLabels(histogram.Labels)
+				if enableTypeAndUnitLabels {
+					require.NotEqual(t, model.MetricTypeUnknown, metadata.Type)
+					// Unit is not current exposed to configure in client_golang https://github.com/prometheus/client_golang/pull/1392
+					// require.NotEmpty(t, metadata.Unit)
+				} else {
+					require.Equal(t, model.MetricTypeUnknown, metadata.Type)
+					require.Empty(t, metadata.Unit)
+				}
+
 				found = true
 				break
 			}

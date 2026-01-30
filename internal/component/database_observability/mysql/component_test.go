@@ -92,6 +92,56 @@ func Test_parseCloudProvider(t *testing.T) {
 
 		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
 	})
+
+	t.Run("parse azure cloud provider block with all fields", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		cloud_provider {
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+				server_name     = "my-mysql-server"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.Azure)
+		assert.Equal(t, "sub-12345-abcde", args.CloudProvider.Azure.SubscriptionID)
+		assert.Equal(t, "my-resource-group", args.CloudProvider.Azure.ResourceGroup)
+		assert.Equal(t, "my-mysql-server", args.CloudProvider.Azure.ServerName)
+	})
+
+	t.Run("parse azure cloud provider block without optional server_name", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		cloud_provider {
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.Azure)
+		assert.Equal(t, "sub-12345-abcde", args.CloudProvider.Azure.SubscriptionID)
+		assert.Equal(t, "my-resource-group", args.CloudProvider.Azure.ResourceGroup)
+		assert.Empty(t, args.CloudProvider.Azure.ServerName)
+	})
+
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
@@ -298,7 +348,7 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	opts := cmp.Options{
 		ID:     "test.mysql",
 		Logger: kitlog.NewNopLogger(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
 	}
@@ -324,12 +374,15 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			Threshold:       time.Second,
 		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
 	}
 	var gotExports cmp.Exports
 	opts := cmp.Options{
 		ID:     "test.mysql",
 		Logger: kitlog.NewNopLogger(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
 		OnStateChange: func(e cmp.Exports) { gotExports = e },

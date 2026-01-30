@@ -2,6 +2,8 @@ package syslog
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -10,10 +12,13 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
+
+var _ component.LiveDebugging = (*Component)(nil)
 
 func init() {
 	component.Register(component.Registration{
@@ -40,24 +45,29 @@ type Component struct {
 	opts    component.Options
 	metrics *st.Metrics
 
-	mut     sync.RWMutex
-	args    Arguments
-	fanout  []loki.LogsReceiver
-	targets []*st.SyslogTarget
+	mut             sync.RWMutex
+	args            Arguments
+	fanout          []loki.LogsReceiver
+	targets         []*st.SyslogTarget
+	liveDbgListener st.DebugListener
 
 	targetsUpdated chan struct{}
 	handler        loki.LogsReceiver
 }
 
+// LiveDebugging implements component.LiveDebugging.
+func (*Component) LiveDebugging() {}
+
 // New creates a new loki.source.syslog component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:           o,
-		metrics:        st.NewMetrics(o.Registerer),
-		handler:        loki.NewLogsReceiver(),
-		fanout:         args.ForwardTo,
-		targetsUpdated: make(chan struct{}, 1),
-		targets:        []*st.SyslogTarget{},
+		opts:            o,
+		metrics:         st.NewMetrics(o.Registerer),
+		handler:         loki.NewLogsReceiver(),
+		fanout:          args.ForwardTo,
+		targetsUpdated:  make(chan struct{}, 1),
+		targets:         []*st.SyslogTarget{},
+		liveDbgListener: newLiveDebuggingListener(o),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -109,6 +119,10 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+	if err := c.checkExperimentalFeatures(newArgs); err != nil {
+		return err
+	}
+
 	prevArgs := c.args
 	c.fanout = newArgs.ForwardTo
 
@@ -119,6 +133,25 @@ func (c *Component) Update(args component.Arguments) error {
 		select {
 		case c.targetsUpdated <- struct{}{}:
 		default:
+		}
+	}
+
+	return nil
+}
+
+func (c *Component) checkExperimentalFeatures(args Arguments) error {
+	isExperimental := c.opts.MinStability.Permits(featuregate.StabilityExperimental)
+	if isExperimental {
+		return nil
+	}
+
+	for _, listener := range args.SyslogListeners {
+		if listener.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+			return fmt.Errorf("%q syslog format is available only at experimental stability level", scrapeconfig.SyslogFormatRaw)
+		}
+
+		if listener.RFC3164CiscoComponents != nil {
+			return errors.New("rfc3164_cisco_components block is available only at experimental stability level")
 		}
 	}
 
@@ -184,7 +217,14 @@ func (c *Component) reloadTargets() {
 			continue
 		}
 
-		t, err := st.NewSyslogTarget(c.metrics, c.opts.Logger, entryHandler, rcs, promtailCfg)
+		t, err := st.NewSyslogTarget(st.TargetParams{
+			Metrics:       c.metrics,
+			Logger:        c.opts.Logger,
+			Handler:       entryHandler,
+			Relabel:       rcs,
+			Config:        promtailCfg,
+			DebugListener: c.liveDbgListener,
+		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
 			continue
@@ -194,7 +234,7 @@ func (c *Component) reloadTargets() {
 }
 
 // DebugInfo returns information about the status of listeners.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	var res readerDebugInfo
@@ -222,6 +262,7 @@ type listenerInfo struct {
 func listenersChanged(prev, next []ListenerConfig) bool {
 	return !reflect.DeepEqual(prev, next)
 }
+
 func relabelRulesChanged(prev, next alloy_relabel.Rules) bool {
 	return !reflect.DeepEqual(prev, next)
 }

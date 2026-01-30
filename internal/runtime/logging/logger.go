@@ -146,7 +146,7 @@ func (l *Logger) RemoveTemporaryWriter() {
 }
 
 // Log implements log.Logger.
-func (l *Logger) Log(kvps ...interface{}) error {
+func (l *Logger) Log(kvps ...any) error {
 	// Buffer logs before confirming log format is configured in `logging` block
 	l.bufferMut.RLock()
 	if !l.hasLogFormat {
@@ -287,7 +287,7 @@ func (w *writerVar) Write(p []byte) (int, error) {
 }
 
 type bufferedItem struct {
-	kvps    []interface{}
+	kvps    []any
 	handler *deferredSlogHandler
 	record  slog.Record
 }

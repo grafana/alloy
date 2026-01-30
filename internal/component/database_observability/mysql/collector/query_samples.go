@@ -67,8 +67,8 @@ LEFT JOIN
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 WHERE
 	statements.DIGEST IS NOT NULL
-	AND statements.CURRENT_SCHEMA NOT IN ` + EXCLUDED_SCHEMAS +
-	` %s %s`
+	AND statements.CURRENT_SCHEMA NOT IN %s
+	%s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -79,6 +79,7 @@ type QuerySamplesArguments struct {
 	DB                          *sql.DB
 	EngineVersion               semver.Version
 	CollectInterval             time.Duration
+	ExcludeSchemas              []string
 	EntryHandler                loki.EntryHandler
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
@@ -91,6 +92,7 @@ type QuerySamples struct {
 	dbConnection                *sql.DB
 	engineVersion               semver.Version
 	collectInterval             time.Duration
+	excludeSchemas              []string
 	entryHandler                loki.EntryHandler
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
@@ -110,6 +112,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		dbConnection:                args.DB,
 		engineVersion:               args.EngineVersion,
 		collectInterval:             args.CollectInterval,
+		excludeSchemas:              args.ExcludeSchemas,
 		entryHandler:                args.EntryHandler,
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
@@ -232,15 +235,17 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		textNotNullClause = digestTextNotNullClause
 	}
 
+	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
+
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, textField, excludedSchemasClause, textNotNullClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
 		additionalFields := cpuTimeField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
@@ -291,7 +296,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			WaitTime       sql.NullFloat64
 		}{}
 
-		scanArgs := []interface{}{
+		scanArgs := []any{
 			&row.Schema,
 			&row.ThreadID,
 			&row.StatementEventID,

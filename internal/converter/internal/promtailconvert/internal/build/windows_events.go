@@ -25,7 +25,7 @@ func (s *ScrapeConfigBuilder) AppendWindowsEventsConfig() {
 		Labels:               convertPromLabels(winCfg.Labels),
 	}
 
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch val.(type) {
 		case []loki.LogsReceiver:
 			return common.CustomTokenizer{Expr: s.getOrNewLokiRelabel()}

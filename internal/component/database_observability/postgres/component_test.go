@@ -335,7 +335,7 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	opts := cmp.Options{
 		ID:     "test.postgres",
 		Logger: kitlog.NewNopLogger(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
 	}
@@ -402,5 +402,91 @@ func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *te
 		assert.False(t, args.SchemaDetailsArguments.CacheEnabled)
 		assert.Equal(t, 512, args.SchemaDetailsArguments.CacheSize)
 		assert.Equal(t, 5*time.Minute, args.SchemaDetailsArguments.CacheTTL)
+	})
+}
+
+func Test_parseCloudProvider(t *testing.T) {
+	t.Run("parse aws cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.AWS)
+		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
+	})
+
+	t.Run("parse azure cloud provider block with all fields", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+				server_name     = "my-postgres-server"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.Azure)
+		assert.Equal(t, "sub-12345-abcde", args.CloudProvider.Azure.SubscriptionID)
+		assert.Equal(t, "my-resource-group", args.CloudProvider.Azure.ResourceGroup)
+		assert.Equal(t, "my-postgres-server", args.CloudProvider.Azure.ServerName)
+	})
+
+	t.Run("parse azure cloud provider block without optional server_name", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.Azure)
+		assert.Equal(t, "sub-12345-abcde", args.CloudProvider.Azure.SubscriptionID)
+		assert.Equal(t, "my-resource-group", args.CloudProvider.Azure.ResourceGroup)
+		assert.Empty(t, args.CloudProvider.Azure.ServerName)
+	})
+
+	t.Run("empty cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Nil(t, args.CloudProvider)
 	})
 }

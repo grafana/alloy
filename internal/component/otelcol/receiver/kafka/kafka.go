@@ -3,7 +3,6 @@ package kafka
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -38,15 +37,14 @@ type Arguments struct {
 	ProtocolVersion   string        `alloy:"protocol_version,attr"`
 	SessionTimeout    time.Duration `alloy:"session_timeout,attr,optional"`
 	HeartbeatInterval time.Duration `alloy:"heartbeat_interval,attr,optional"`
-	Topic             string        `alloy:"topic,attr,optional"`    // Deprecated
 	Encoding          string        `alloy:"encoding,attr,optional"` // Deprecated
 	GroupID           string        `alloy:"group_id,attr,optional"`
 	ClientID          string        `alloy:"client_id,attr,optional"`
 	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
 
-	Logs    *KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
-	Metrics *KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
-	Traces  *KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
+	Logs    KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
+	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
+	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
@@ -99,6 +97,18 @@ func (args *Arguments) SetToDefault() {
 		GroupRebalanceStrategy: "range",
 		RackID:                 "",
 		UseLeaderEpoch:         true,
+		Logs: KafkaReceiverTopicEncodingConfig{
+			Topics:   []string{"otlp_logs"},
+			Encoding: "otlp_proto",
+		},
+		Metrics: KafkaReceiverTopicEncodingConfig{
+			Topics:   []string{"otlp_metrics"},
+			Encoding: "otlp_proto",
+		},
+		Traces: KafkaReceiverTopicEncodingConfig{
+			Topics:   []string{"otlp_spans"},
+			Encoding: "otlp_proto",
+		},
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -109,23 +119,6 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	var signals []string
-
-	if len(args.Topic) > 0 {
-		if len(args.Output.Logs) > 0 {
-			signals = append(signals, "logs")
-		}
-		if len(args.Output.Metrics) > 0 {
-			signals = append(signals, "metrics")
-		}
-		if len(args.Output.Traces) > 0 {
-			signals = append(signals, "traces")
-		}
-		if len(signals) > 1 {
-			return fmt.Errorf("only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: %s", strings.Join(signals, ", "))
-		}
-	}
-
 	if args.ErrorBackOff.Enabled {
 		if args.ErrorBackOff.Multiplier <= 1 {
 			return fmt.Errorf("multiplier must be greater than 1.0")
@@ -146,48 +139,10 @@ func (args *Arguments) Validate() error {
 }
 
 type KafkaReceiverTopicEncodingConfig struct {
-	Topic    string `alloy:"topic,attr,optional"`
-	Encoding string `alloy:"encoding,attr,optional"`
-}
-
-// A utility struct for handling deprecated arguments.
-type deprecatedArg struct {
-	// The value to which the deprecated argument is set.
-	value string
-
-	// The default value to use if neither the deprecated argument
-	// nor the "new" argument have a non-empty value.
-	defaultValue string
-}
-
-func (c *KafkaReceiverTopicEncodingConfig) convert(topic, encoding deprecatedArg) kafkareceiver.TopicEncodingConfig {
-	result := kafkareceiver.TopicEncodingConfig{}
-
-	if c != nil { // Use values from the new block if set.
-		if len(c.Topic) > 0 {
-			result.Topic = c.Topic
-		}
-		if len(c.Encoding) > 0 {
-			result.Encoding = c.Encoding
-		}
-	} else { // Try to use deprecated attributes only if the new block is not set.
-		if len(topic.value) > 0 {
-			result.Topic = topic.value
-		}
-
-		if len(encoding.value) > 0 {
-			result.Encoding = encoding.value
-		}
-	}
-
-	if len(result.Topic) == 0 {
-		result.Topic = topic.defaultValue
-	}
-	if len(result.Encoding) == 0 {
-		result.Encoding = encoding.defaultValue
-	}
-
-	return result
+	Topic         string   `alloy:"topic,attr,optional"`
+	Topics        []string `alloy:"topics,attr,optional"`
+	Encoding      string   `alloy:"encoding,attr,optional"`
+	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
 }
 
 type ErrorBackOffArguments struct {
@@ -217,7 +172,7 @@ func (args *ErrorBackOffArguments) Convert() *configretry.BackOffConfig {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 	input["auth"] = args.Authentication.Convert()
 
 	var result kafkareceiver.Config
@@ -251,38 +206,26 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.UseLeaderEpoch = args.UseLeaderEpoch
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
-	result.Logs = args.Logs.convert(
-		deprecatedArg{
-			value:        args.Topic,
-			defaultValue: "otlp_logs",
-		},
-		deprecatedArg{
-			value:        args.Encoding,
-			defaultValue: "otlp_proto",
-		},
-	)
+	result.Logs = kafkareceiver.TopicEncodingConfig{
+		Topic:         args.Logs.Topic,
+		Topics:        args.Logs.Topics,
+		Encoding:      args.Logs.Encoding,
+		ExcludeTopics: args.Logs.ExcludeTopics,
+	}
 
-	result.Metrics = args.Metrics.convert(
-		deprecatedArg{
-			value:        args.Topic,
-			defaultValue: "otlp_metrics",
-		},
-		deprecatedArg{
-			value:        args.Encoding,
-			defaultValue: "otlp_proto",
-		},
-	)
+	result.Metrics = kafkareceiver.TopicEncodingConfig{
+		Topic:         args.Metrics.Topic,
+		Topics:        args.Metrics.Topics,
+		Encoding:      args.Metrics.Encoding,
+		ExcludeTopics: args.Metrics.ExcludeTopics,
+	}
 
-	result.Traces = args.Traces.convert(
-		deprecatedArg{
-			value:        args.Topic,
-			defaultValue: "otlp_spans",
-		},
-		deprecatedArg{
-			value:        args.Encoding,
-			defaultValue: "otlp_proto",
-		},
-	)
+	result.Traces = kafkareceiver.TopicEncodingConfig{
+		Topic:         args.Traces.Topic,
+		Topics:        args.Traces.Topics,
+		Encoding:      args.Traces.Encoding,
+		ExcludeTopics: args.Traces.ExcludeTopics,
+	}
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()

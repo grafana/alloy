@@ -114,7 +114,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
@@ -146,7 +146,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
@@ -177,7 +177,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
@@ -206,7 +206,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{
+				Extracted: map[string]any{
 					"extr1": "etr1val",
 					"extr2": "etr2val",
 				},
@@ -240,7 +240,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{
+				Extracted: map[string]any{
 					"extr1": "etr1val",
 					"extr2": []int{1, 2, 3},
 				},
@@ -274,7 +274,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{
+				Extracted: map[string]any{
 					"extr1":   "etr1val",
 					"ex\"tr2": `"fd"`,
 				},
@@ -308,7 +308,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: true,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",

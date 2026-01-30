@@ -95,6 +95,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.catchpoint](../components/prometheus/prometheus.exporter.catchpoint)
 - [prometheus.exporter.cloudwatch](../components/prometheus/prometheus.exporter.cloudwatch)
 - [prometheus.exporter.consul](../components/prometheus/prometheus.exporter.consul)
+- [prometheus.exporter.databricks](../components/prometheus/prometheus.exporter.databricks)
 - [prometheus.exporter.dnsmasq](../components/prometheus/prometheus.exporter.dnsmasq)
 - [prometheus.exporter.elasticsearch](../components/prometheus/prometheus.exporter.elasticsearch)
 - [prometheus.exporter.gcp](../components/prometheus/prometheus.exporter.gcp)
@@ -187,6 +188,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.echo](../components/prometheus/prometheus.echo)
 - [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
@@ -318,6 +320,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
+- [otelcol.exporter.file](../components/otelcol/otelcol.exporter.file)
 - [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
 - [otelcol.exporter.googlecloudpubsub](../components/otelcol/otelcol.exporter.googlecloudpubsub)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
@@ -338,6 +341,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
+- [otelcol.processor.metric_start_time](../components/otelcol/otelcol.processor.metric_start_time)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
 - [otelcol.processor.resourcedetection](../components/otelcol/otelcol.processor.resourcedetection)
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
@@ -379,6 +383,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
+- [otelcol.processor.metric_start_time](../components/otelcol/otelcol.processor.metric_start_time)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
 - [otelcol.processor.resourcedetection](../components/otelcol/otelcol.processor.resourcedetection)
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
@@ -398,7 +403,6 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)
 - [otelcol.receiver.loki](../components/otelcol/otelcol.receiver.loki)
-- [otelcol.receiver.opencensus](../components/otelcol/otelcol.receiver.opencensus)
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
 - [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)

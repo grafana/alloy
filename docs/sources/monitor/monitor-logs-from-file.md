@@ -114,7 +114,7 @@ The [`local.file_match`][local.file_match] component discovers files on the loca
 In this example, the component requires the following arguments:
 
 * `path_targets`: Targets to expand. Looks for glob patterns on the `__path__` key.
-* `sync_period`: How often to sync the filesystem and targets.
+* `sync_period`: How often to sync the filesystem and targets. When files are added or removed, the list of targets is automatically updated based on this configuration. When files are removed, the stored position is removed in the next filesystem sync.
 
 ```alloy
 local.file_match "local_files" {

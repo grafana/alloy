@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grafana/regexp"
+	"github.com/prometheus/client_golang/exp/api/remote"
 	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -23,8 +24,8 @@ import (
 
 // Defaults for config blocks.
 var (
-	PrometheusProtobufMessageV1 = string(config.RemoteWriteProtoMsgV1)
-	PrometheusProtobufMessageV2 = string(config.RemoteWriteProtoMsgV2)
+	PrometheusProtobufMessageV1 = string(remote.WriteV1MessageType)
+	PrometheusProtobufMessageV2 = string(remote.WriteV2MessageType)
 
 	DefaultArguments = Arguments{
 		WALOptions: DefaultWALOptions,
@@ -137,7 +138,7 @@ func (r *EndpointOptions) Validate() error {
 		}
 	}
 
-	if err := config.RemoteWriteProtoMsg(r.ProtobufMessage).Validate(); err != nil {
+	if err := remote.WriteMessageType(r.ProtobufMessage).Validate(); err != nil {
 		return fmt.Errorf("invalid protobuf_message %q for endpoint %q: %w", r.ProtobufMessage, r.Name, err)
 	}
 
@@ -253,7 +254,7 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			Name:                 rw.Name,
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
-			ProtobufMessage:      config.RemoteWriteProtoMsg(rw.ProtobufMessage),
+			ProtobufMessage:      remote.WriteMessageType(rw.ProtobufMessage),
 			WriteRelabelConfigs:  alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
 			HTTPClientConfig:     *rw.HTTPClientConfig.Convert(),
 			QueueConfig:          rw.QueueOptions.toPrometheusType(),

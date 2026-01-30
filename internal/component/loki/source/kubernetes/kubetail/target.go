@@ -57,7 +57,7 @@ type Target struct {
 }
 
 // NewTarget creates a new Target which can be passed to a tailer.
-func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
+func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels bool) *Target {
 	// Precompute some values based on labels so we don't have to continually
 	// search them.
 	var (
@@ -70,7 +70,7 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
 		uid           = lset.Get(LabelPodUID)
 
 		id           = fmt.Sprintf("%s:%s", namespacedName, containerName)
-		publicLabels = publicLabels(lset)
+		publicLabels = publicLabels(lset, preserveMetaLabels)
 	)
 
 	// Precompute the hash of the target from the public labels and the ID of the
@@ -93,10 +93,14 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
 	}
 }
 
-func publicLabels(lset labels.Labels) labels.Labels {
+func publicLabels(lset labels.Labels, preserveMetaLabels bool) labels.Labels {
 	lb := labels.NewBuilder(lset)
 
 	lset.Range(func(l labels.Label) {
+		if preserveMetaLabels && strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
+			return
+		}
+
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
 			lb.Del(l.Name)
 		}

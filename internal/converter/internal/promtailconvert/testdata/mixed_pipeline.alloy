@@ -1,6 +1,11 @@
 discovery.kubernetes "uber_pipeline" {
 	role            = "pod"
 	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
 }
 
 discovery.consulagent "uber_pipeline" {

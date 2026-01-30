@@ -12,6 +12,7 @@ The following arguments are supported:
 | `auth`                    | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                       |            | no       |
 | `compression`             | `string`                   | Compression mechanism to use for requests.                                                                         | `"gzip"`   | no       |
 | `disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           | `false`    | no       |
+| `force_attempt_http2`     | `bool`                     | Force the HTTP client to try to use the HTTP/2 protocol.                                                           | `true`     | no       |
 | `headers`                 | `map(string)`              | Additional headers to send with the request.                                                                       | `{}`       | no       |
 | `http2_ping_timeout`      | `duration`                 | Timeout after which the connection will be closed if a response to Ping isn't received.                            | `"15s"`    | no       |
 | `http2_read_idle_timeout` | `duration`                 | Timeout after which a health check using ping frame will be carried out if no frame is received on the connection. | `"0s"`     | no       |
@@ -35,5 +36,8 @@ Before enabling this option, consider whether changes to idle connection setting
 If `http2_ping_timeout` is unset or set to `0s`, it will default to `15s`.
 
 If `http2_read_idle_timeout` is unset or set to `0s`, then no health check will be performed.
+
+Golang's default HTTP transport attempts HTTP/2 by default, however some settings (`max_conns_per_host`, `max_idle_conns_per_host`, `max_idle_conns`) are only relevant for HTTP/1.
+The `force_attempt_http2` attribute allows a user to only attempt HTTP/1.
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}

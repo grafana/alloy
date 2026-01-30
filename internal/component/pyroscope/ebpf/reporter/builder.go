@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/klauspost/compress/gzip"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/support"
 )
 
@@ -78,7 +78,7 @@ func (b *ProfileBuilders) BuilderForSample(
 	case support.TraceOriginOffCPU:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	case support.TraceOriginUProbe:
+	case support.TraceOriginProbe:
 		sampleType = []*profile.ValueType{{Type: "uprobe", Unit: "count"}}
 		periodType = &profile.ValueType{Type: "uprobe", Unit: "count"}
 		period = 1

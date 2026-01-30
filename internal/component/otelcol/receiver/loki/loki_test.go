@@ -62,7 +62,7 @@ func Test(t *testing.T) {
 		exports.Receiver.Chan() <- entry
 	}()
 
-	wantAttributes := map[string]interface{}{
+	wantAttributes := map[string]any{
 		"env":                   "dev",
 		"filename":              "/var/log/app/errors.log",
 		"log.file.name":         "errors.log",

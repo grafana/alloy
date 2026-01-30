@@ -8,9 +8,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
-	"go.uber.org/atomic"
-
-	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 // Interceptor is a storage.Appendable which invokes callback functions upon
@@ -26,12 +23,6 @@ type Interceptor struct {
 	// next is the next appendable to pass in the chain.
 	next storage.Appendable
 
-	ls labelstore.LabelStore
-
-	// lastSeriesCount stores the number of series that were sent through the last interceptappender. It helps to estimate how
-	// much memory to allocate for the staleness trackers.
-	lastSeriesCount atomic.Int64
-
 	componentID string
 }
 
@@ -39,10 +30,9 @@ var _ storage.Appendable = (*Interceptor)(nil)
 
 // NewInterceptor creates a new Interceptor storage.Appendable. Options can be
 // provided to NewInterceptor to install custom hooks for different methods.
-func NewInterceptor(next storage.Appendable, ls labelstore.LabelStore, opts ...InterceptorOption) *Interceptor {
+func NewInterceptor(next storage.Appendable, opts ...InterceptorOption) *Interceptor {
 	i := &Interceptor{
 		next: next,
-		ls:   ls,
 	}
 	for _, opt := range opts {
 		opt(i)
@@ -102,27 +92,23 @@ func WithComponentID(id string) InterceptorOption {
 }
 
 // Appender satisfies the Appendable interface.
-func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
+func (i *Interceptor) Appender(ctx context.Context) storage.Appender {
 	app := &interceptappender{
-		interceptor:       f,
-		ls:                f.ls,
-		stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
+		interceptor: i,
 	}
-	if f.next != nil {
-		app.child = f.next.Appender(ctx)
+	if i.next != nil {
+		app.child = i.next.Appender(ctx)
 	}
 	return app
 }
 
-func (f *Interceptor) String() string {
-	return f.componentID + ".receiver"
+func (i *Interceptor) String() string {
+	return i.componentID + ".receiver"
 }
 
 type interceptappender struct {
-	interceptor       *Interceptor
-	child             storage.Appender
-	ls                labelstore.LabelStore
-	stalenessTrackers []labelstore.StalenessTracker
+	interceptor *Interceptor
+	child       storage.Appender
 }
 
 func (a *interceptappender) SetOptions(opts *storage.AppendOptions) {
@@ -135,15 +121,6 @@ var _ storage.Appender = (*interceptappender)(nil)
 
 // Append satisfies the Appender interface.
 func (a *interceptappender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
-	a.stalenessTrackers = append(a.stalenessTrackers, labelstore.StalenessTracker{
-		GlobalRefID: uint64(ref),
-		Labels:      l,
-		Value:       v,
-	})
-
 	if a.interceptor.onAppend != nil {
 		return a.interceptor.onAppend(ref, l, t, v, a.child)
 	}
@@ -155,8 +132,6 @@ func (a *interceptappender) Append(ref storage.SeriesRef, l labels.Labels, t int
 
 // Commit satisfies the Appender interface.
 func (a *interceptappender) Commit() error {
-	a.interceptor.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
-	a.ls.TrackStaleness(a.stalenessTrackers)
 	if a.child == nil {
 		return nil
 	}
@@ -165,8 +140,6 @@ func (a *interceptappender) Commit() error {
 
 // Rollback satisfies the Appender interface.
 func (a *interceptappender) Rollback() error {
-	a.interceptor.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
-	a.ls.TrackStaleness(a.stalenessTrackers)
 	if a.child == nil {
 		return nil
 	}
@@ -179,10 +152,6 @@ func (a *interceptappender) AppendExemplar(
 	l labels.Labels,
 	e exemplar.Exemplar,
 ) (storage.SeriesRef, error) {
-
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
 
 	if a.interceptor.onAppendExemplar != nil {
 		return a.interceptor.onAppendExemplar(ref, l, e, a.child)
@@ -199,10 +168,6 @@ func (a *interceptappender) UpdateMetadata(
 	l labels.Labels,
 	m metadata.Metadata,
 ) (storage.SeriesRef, error) {
-
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
 
 	if a.interceptor.onUpdateMetadata != nil {
 		return a.interceptor.onUpdateMetadata(ref, l, m, a.child)
@@ -221,10 +186,6 @@ func (a *interceptappender) AppendHistogram(
 	fh *histogram.FloatHistogram,
 ) (storage.SeriesRef, error) {
 
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
-	// TODO histograms are not currently tracked for staleness causing them to be held forever
 	if a.interceptor.onAppendHistogram != nil {
 		return a.interceptor.onAppendHistogram(ref, l, t, h, fh, a.child)
 	}
@@ -239,10 +200,6 @@ func (a *interceptappender) AppendCTZeroSample(
 	l labels.Labels,
 	t, ct int64,
 ) (storage.SeriesRef, error) {
-
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
 
 	if a.interceptor.onAppendCTZeroSample != nil {
 		return a.interceptor.onAppendCTZeroSample(ref, l, t, ct, a.child)
@@ -260,10 +217,6 @@ func (a *interceptappender) AppendHistogramCTZeroSample(
 	h *histogram.Histogram,
 	fh *histogram.FloatHistogram,
 ) (storage.SeriesRef, error) {
-
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
 
 	if a.child == nil {
 		return 0, nil

@@ -191,7 +191,7 @@ func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, nam
 	}
 }
 
-func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[string]interface{}, name string, val interface{}, truncated map[string]struct{}) {
+func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[string]any, name string, val any, truncated map[string]struct{}) {
 	if strVal, ok := val.(string); ok && len(strVal) > int(rule.effectiveLimit) {
 		extracted[name] = strVal[:rule.effectiveLimit] + rule.Suffix
 		markTruncated(m.truncatedCount, truncated, truncateExtractedField)

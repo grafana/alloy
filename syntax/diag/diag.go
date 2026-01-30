@@ -40,7 +40,7 @@ type Diagnostic struct {
 }
 
 // As allows d to be interpreted as a list of Diagnostics.
-func (d Diagnostic) As(v interface{}) bool {
+func (d Diagnostic) As(v any) bool {
 	switch v := v.(type) {
 	case *Diagnostics:
 		if v == nil {
