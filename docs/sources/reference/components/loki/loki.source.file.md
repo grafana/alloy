@@ -160,6 +160,7 @@ The component periodically scans the filesystem based on `sync_period` and autom
 
 ## Debug metrics
 
+* `loki_source_file_duplicate_files` (gauge): Number of files being tailed multiple times due to targets with different label sets. Non-zero values indicate duplicate log line ingestion. Check component logs for details on which files and labels are affected.
 * `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
 * `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
 * `loki_source_file_files_active_total` (gauge): Number of active files.
