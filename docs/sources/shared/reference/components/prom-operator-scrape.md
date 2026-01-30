@@ -9,9 +9,9 @@ headless: true
 | `default_sample_limit`        | `int`      | The default maximum samples per scrape. Used as the default if the target resource doesn't provide a sample limit.           |         | no       |
 | `default_scrape_interval`     | `duration` | The default interval between scraping targets. Used as the default if the target resource doesn't provide a scrape interval. | `1m`    | no       |
 | `default_scrape_timeout`      | `duration` | The default timeout for scrape requests. Used as the default if the target resource doesn't provide a scrape timeout.        | `10s`   | no       |
-| `scrape_native_histograms`    | `bool`     | Whether to scrape native histograms from targets.                                                                            | `false` | no       |
-| `honor_metadata`              | `bool`     | (Experimental) Indicates whether to send metric metadata to downstream components.                                           | `false` | no       |
 | `enable_type_and_unit_labels` | `bool`     | (Experimental) Whether the metric type and unit should be added as labels to scraped metrics.                                | `false` | no       |
+| `honor_metadata`              | `bool`     | (Experimental) Indicates whether to send metric metadata to downstream components.                                           | `false` | no       |
+| `scrape_native_histograms`    | `bool`     | Whether to scrape native histograms from targets.                                                                            | `false` | no       |
 
 > **EXPERIMENTAL**: The `honor_metadata` and `enable_type_and_unit_labels` arguments are [experimental][] features.
 > 
