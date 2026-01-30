@@ -36,9 +36,9 @@ type DockerLog struct {
 }
 
 const (
-	dockerTime   = "time"
-	dockerStream = "stream"
-	dockerOutput = "output"
+	dockerStream    = "stream"
+	dockerOutput    = "output"
+	dockerTimestamp = "timestamp"
 )
 
 func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
@@ -56,9 +56,9 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 	// as "extracted" values so the other stages could operate on them.
 	// We don't need this anymore but it would be a breaking change to
 	// no longer set these.
-	extracted[dockerTime] = log.Time
 	extracted[dockerOutput] = log.Log
 	extracted[dockerStream] = log.Stream
+	extracted[dockerTimestamp] = log.Time
 
 	*entry = log.Log
 	labels["stream"] = model.LabelValue(log.Stream)
