@@ -15,7 +15,7 @@ headless: true
 
 > **EXPERIMENTAL**: The `honor_metadata` and `enable_type_and_unit_labels` arguments are [experimental][] features.
 > 
-> If you enable the `enable_type_and_unit_labels` argument, resource consumption may increase, particularly if you ingest many metrics with different names.
+> If you enable the `honor_metadata` argument, resource consumption may increase, particularly if you ingest many metrics with different names.
 > Some downstream components aren't compatible with Prometheus metadata.
 > The following components are compatible:
 >
