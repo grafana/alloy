@@ -110,6 +110,8 @@ func getDropCountMetric(registerer prometheus.Registerer) *prometheus.CounterVec
 	}, []string{"reason"})
 	err := registerer.Register(dropCount)
 	if err != nil {
+		// TODO: This code should neither panic nor use AlreadyRegisteredError.
+		//       Register it without these, and return error if it fails.
 		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			dropCount = existing.ExistingCollector.(*prometheus.CounterVec)
 		} else {
