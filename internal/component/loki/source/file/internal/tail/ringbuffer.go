@@ -9,8 +9,8 @@ type ringBuffer struct {
 	linearBuf []byte
 }
 
-// NewRingBuffer creates a new ring buffer with the given initial capacity.
-func NewRingBuffer(initialCap int) *ringBuffer {
+// newRingBuffer creates a new ring buffer with the given initial capacity.
+func newRingBuffer(initialCap int) *ringBuffer {
 	return &ringBuffer{
 		buf: make([]byte, initialCap),
 	}
