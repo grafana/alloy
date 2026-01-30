@@ -154,7 +154,8 @@ func (a *Arguments) Validate() error {
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets           []discovery.Target `alloy:"targets,attr"`
+	ErrorLogsReceiver loki.LogsReceiver  `alloy:"error_logs_receiver,attr,optional"`
 }
 
 var (
@@ -183,6 +184,9 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+
+	errorLogsReceiver loki.LogsReceiver
+	errorLogsIn       chan loki.Entry
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -191,13 +195,15 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:              opts,
+		args:              args,
+		receivers:         args.ForwardTo,
+		handler:           loki.NewLogsReceiver(),
+		registry:          prometheus.NewRegistry(),
+		healthErr:         atomic.NewString(""),
+		openSQL:           openFn,
+		errorLogsReceiver: loki.NewLogsReceiver(),
+		errorLogsIn:       make(chan loki.Entry),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -211,6 +217,13 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		return nil, err
 	}
 	c.baseTarget = baseTarget
+
+	// Export error_logs receiver immediately (stable for component lifetime).
+	// Prevents nil pointer panics in loki.source.file when database is unavailable.
+	opts.OnStateChange(Exports{
+		Targets:           []discovery.Target{},
+		ErrorLogsReceiver: c.errorLogsReceiver,
+	})
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -232,9 +245,79 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RUnlock()
 	}()
 
+	// Bridge exported receiver to internal channel or drop if collector not running
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		drainMode := false
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case entry := <-c.errorLogsReceiver.Chan():
+				c.mut.RLock()
+				hasErrorLogsCollector := false
+				for _, collector := range c.collectors {
+					if collector.Name() == "error_logs" {
+						hasErrorLogsCollector = true
+						break
+					}
+				}
+				c.mut.RUnlock()
+
+				if !hasErrorLogsCollector {
+					if !drainMode {
+						level.Warn(c.opts.Logger).Log(
+							"msg", "database unavailable: dropping error log entries (error_logs collector not started)",
+						)
+						drainMode = true
+					}
+				} else {
+					if drainMode {
+						level.Info(c.opts.Logger).Log("msg", "database reconnected: error_logs collector now processing entries")
+						drainMode = false
+					}
+					select {
+					case c.errorLogsIn <- entry:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	// Automatic reconnection ticker
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.mut.RLock()
+				hasCollectors := len(c.collectors) > 0
+				c.mut.RUnlock()
+
+				if !hasCollectors {
+					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+					if err := c.tryReconnect(ctx); err == nil {
+						level.Info(c.opts.Logger).Log("msg", "successfully reconnected to database and started collectors")
+					}
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			return nil
 		case entry := <-c.handler.Chan():
 			c.mut.RLock()
@@ -244,6 +327,93 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RUnlock()
 		}
 	}
+}
+
+func (c *Component) tryReconnect(ctx context.Context) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if err := c.connectAndStartCollectors(ctx); err != nil {
+		return err
+	}
+
+	c.healthErr.Store("")
+	return nil
+}
+
+func (c *Component) connectAndStartCollectors(ctx context.Context) error {
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+		c.dbConnection = nil
+	}
+
+	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
+	if err != nil {
+		return fmt.Errorf("failed to open database connection: %w", err)
+	}
+
+	if dbConnection == nil {
+		return fmt.Errorf("nil DB connection")
+	}
+
+	if err = dbConnection.Ping(); err != nil {
+		dbConnection.Close()
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+	c.dbConnection = dbConnection
+
+	rs := dbConnection.QueryRowContext(ctx, selectServerInfo)
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to query engine version: %w", err)
+	}
+
+	var systemID, systemIP, systemPort, engineVersion sql.NullString
+	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
+		return fmt.Errorf("failed to scan engine version: %w", err)
+	}
+
+	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
+
+	var cp *database_observability.CloudProvider
+	if c.args.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+		if err != nil {
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
+		}
+		cp = cloudProvider
+	} else {
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		if err != nil {
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
+		}
+		cp = cloudProvider
+	}
+
+	allTargets := append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(allTargets))
+	for _, t := range allTargets {
+		builder := discovery.NewTargetBuilderFrom(t)
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID, cp)...) {
+			targets = append(targets, builder.Target())
+		}
+	}
+
+	exports := Exports{
+		Targets:           targets,
+		ErrorLogsReceiver: c.errorLogsReceiver,
+	}
+	c.opts.OnStateChange(exports)
+
+	for _, collector := range c.collectors {
+		collector.Stop()
+	}
+	c.collectors = nil
+
+	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
+		return fmt.Errorf("failed to start collectors: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Component) getBaseTarget() (discovery.Target, error) {
@@ -271,79 +441,10 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
-	}
-
 	c.args = args.(Arguments)
 
-	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
-	if err != nil {
-		c.reportError("failed to open database connection", err)
-		return nil
-	}
-
-	if dbConnection == nil {
-		c.reportError("nil DB connection", nil)
-		return nil
-	}
-	if err = dbConnection.Ping(); err != nil {
-		c.reportError("failed to ping database", err)
-		return nil
-	}
-	c.dbConnection = dbConnection
-
-	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	err = rs.Err()
-	if err != nil {
-		c.reportError("failed to query engine version", err)
-		return nil
-	}
-
-	var systemID, systemIP, systemPort, engineVersion sql.NullString
-	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
-		c.reportError("failed to scan engine version", err)
-		return nil
-	}
-
-	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
-
-	var cp *database_observability.CloudProvider
-	if c.args.CloudProvider != nil {
-		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
-		if err != nil {
-			c.reportError("failed to collect cloud provider information from config", err)
-			return nil
-		}
-		cp = cloudProvider
-	} else {
-		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
-		if err != nil {
-			c.reportError("failed to collect cloud provider information from DSN", err)
-			return nil
-		}
-		cp = cloudProvider
-	}
-
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
-		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID, cp)...) {
-			targets = append(targets, builder.Target())
-		}
-	}
-	c.opts.OnStateChange(Exports{
-		Targets: targets,
-	})
-
-	for _, collector := range c.collectors {
-		collector.Stop()
-	}
-	c.collectors = nil
-
-	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
-		c.reportError("failed to start collectors", err)
+	if err := c.connectAndStartCollectors(context.Background()); err != nil {
+		c.reportError("failed to connect and start collectors", err)
 		return nil
 	}
 
@@ -352,7 +453,6 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
-	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		collector.QueryDetailsCollector:  true,
 		collector.QuerySamplesCollector:  true,
@@ -448,7 +548,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		c.collectors = append(c.collectors, aCollector)
 	}
 
-	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
@@ -496,8 +595,30 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	} else {
 		if err := hcCollector.Start(context.Background()); err != nil {
 			logStartError(collector.HealthCheckCollector, "start", err)
+		} else {
+			c.collectors = append(c.collectors, hcCollector)
 		}
-		c.collectors = append(c.collectors, hcCollector)
+	}
+
+	// ErrorLogs collector is always enabled
+	errorLogsInternalReceiver := loki.NewLogsReceiver(loki.WithChannel(c.errorLogsIn))
+
+	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
+		Receiver:     errorLogsInternalReceiver,
+		EntryHandler: entryHandler,
+		Logger:       c.opts.Logger,
+		InstanceKey:  c.instanceKey,
+		SystemID:     systemID,
+		Registry:     c.registry,
+	})
+	if err != nil {
+		logStartError(collector.ErrorLogsCollector, "create", err)
+	} else {
+		if err := elCollector.Start(context.Background()); err != nil {
+			logStartError(collector.ErrorLogsCollector, "start", err)
+		} else {
+			c.collectors = append(c.collectors, elCollector)
+		}
 	}
 
 	if len(startErrors) > 0 {
