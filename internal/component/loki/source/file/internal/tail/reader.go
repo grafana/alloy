@@ -57,8 +57,8 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding, compression stri
 		br:      br,
 		decoder: decoder,
 		nl:      nl,
-		lastNl:  nl[len(nl)-1],
 		cr:      cr,
+		readBuf: make([]byte, defaultBufSize),
 		pending: newRingBuffer(defaultBufSize),
 	}, nil
 }
@@ -68,13 +68,13 @@ type reader struct {
 	br  *bufio.Reader
 
 	pending *ringBuffer
+	readBuf []byte
 
 	compression string
 	decoder     *encoding.Decoder
 
-	nl     []byte
-	lastNl byte
-	cr     []byte
+	nl []byte
+	cr []byte
 }
 
 // next reads and returns the next complete line from the file.
@@ -91,10 +91,9 @@ func (r *reader) next() (string, error) {
 	}
 
 	for {
-		// Read more data up until the last byte of nl.
-		chunk, err := r.br.ReadBytes(r.lastNl)
-		if len(chunk) > 0 {
-			r.pending.Append(chunk)
+		n, err := r.br.Read(r.readBuf)
+		if n > 0 {
+			r.pending.Append(r.readBuf[:n])
 			if line, ok := r.consumeLine(); ok {
 				s, err := r.decode(line)
 				if err != nil {
@@ -105,13 +104,9 @@ func (r *reader) next() (string, error) {
 			}
 		}
 
-		// If we did not get an error and did not find a full line we
-		// need to read more data.
-		if err == nil {
-			continue
+		if err != nil {
+			return "", err
 		}
-
-		return "", err
 	}
 }
 
