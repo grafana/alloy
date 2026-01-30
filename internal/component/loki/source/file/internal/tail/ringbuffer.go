@@ -56,7 +56,7 @@ func (rb *ringBuffer) grow(need int) {
 		// Fast path: buffer is not wrapped so we can copy as is
 		rb.tail = copy(newBuf, rb.buf[rb.head:rb.tail])
 	} else {
-		// Slow path: buffered is wrapped so we need to create a linear view.
+		// Slow path: buffer is wrapped so we need to create a linear view.
 		linear := rb.linearizeInto(newBuf[:0])
 		rb.tail = len(linear)
 	}
@@ -77,7 +77,7 @@ func (rb *ringBuffer) Bytes() []byte {
 		return rb.buf[rb.head:rb.tail]
 	}
 
-	// Slow path: buffered is wrapped so we need to create a linear view.
+	// Slow path: buffer is wrapped so we need to create a linear view.
 	l := rb.Len()
 	if cap(rb.linearBuf) < l {
 		rb.linearBuf = make([]byte, l, l*2)
