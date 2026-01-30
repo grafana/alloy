@@ -71,7 +71,7 @@ const (
 	criFlags     = "flags"
 	criStream    = "stream"
 	criContent   = "content"
-	criTimestamp = "time"
+	criTimestamp = "timestamp"
 )
 
 func (c *cri) Run(in chan Entry) chan Entry {
