@@ -68,8 +68,10 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 //
 // Synchronize is not goroutine safe and should not be called concurrently.
 func (s *Scheduler) Synchronize(rr []RunnableNode) error {
-	if s.ctx.Err() != nil {
-		return fmt.Errorf("Scheduler is closed")
+	select {
+	case <-s.ctx.Done():
+		return fmt.Errorf("scheduler is closed")
+	default:
 	}
 
 	newRunnables := make(map[string]RunnableNode, len(rr))
