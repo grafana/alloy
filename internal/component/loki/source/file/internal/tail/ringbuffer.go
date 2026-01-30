@@ -105,7 +105,6 @@ func (rb *ringBuffer) Commit(n int) {
 	if rb.head > len(rb.buf) {
 		rb.head -= len(rb.buf)
 	}
-	rb.linearBuf = nil
 }
 
 // Len returns the number of bytes in the buffer.
@@ -120,5 +119,4 @@ func (rb *ringBuffer) Len() int {
 func (rb *ringBuffer) Reset() {
 	rb.head = 0
 	rb.tail = 0
-	rb.linearBuf = nil
 }
