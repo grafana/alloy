@@ -81,7 +81,7 @@ replaces:
 
   - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
-    replacement: github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+    replacement: ../../postgres_exporter
 
   - comment: TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
     dependency: github.com/prometheus/mysqld_exporter
