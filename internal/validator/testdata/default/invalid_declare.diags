@@ -7,7 +7,7 @@ Error: main.alloy:12:3: unrecognized attribute name "test"
 
 Error: main.alloy:17:3: unrecognized attribute name "test"
 
-16 |         value = ""            
+16 |         value = ""
 17 |         test = ""
    |         ^^^^^^^^^
 18 |     }
