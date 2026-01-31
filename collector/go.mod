@@ -91,7 +91,7 @@ require (
 	go.opentelemetry.io/collector/receiver v1.49.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.142.0
 	go.opentelemetry.io/collector/service v0.142.0
-	golang.org/x/sys v0.39.0
+	golang.org/x/sys v0.40.0
 )
 
 require (
@@ -1056,7 +1056,7 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
+replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.8
 
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
