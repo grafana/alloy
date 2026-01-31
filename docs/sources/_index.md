@@ -11,6 +11,9 @@ cascade:
   BEYLA_VERSION: v2.8.5
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
+  FULL_OTEL_ENGINE: Alloy OpenTelemetry Engine
+  OTEL_ENGINE: OTel Engine
+  DEFAULT_ENGINE: Default Engine
 hero:
   title: Grafana Alloy
   level: 1
