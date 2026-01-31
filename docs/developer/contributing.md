@@ -248,6 +248,36 @@ Contributors are expected to work with upstream to make their changes acceptable
 If upstream is unresponsive, consider choosing a different dependency or making a hard fork (i.e.,
 creating a new Go module with the same source).
 
+### Managing replace directives
+
+Alloy uses a centralized tool to manage `replace` directives across multiple `go.mod` files and the OTel Engine's `builder-config.yaml`. This ensures consistency and makes it easier to track why replacements are needed.
+
+For this reason, do not manually edit `replace` directives in `go.mod` files or the `builder-config.yaml` between the `BEGIN GENERATED REPLACES` and `END GENERATED REPLACES` markers. These sections are automatically generated and will be overwritten.
+
+To add or modify a replace directive:
+
+1. Edit `dependency-replacements.yaml` in the root of the repository:
+   - Add a new entry to the `replaces` list with:
+     - `comment`: A brief explanation and link to upstream issue/PR
+     - `dependency`: The module path to replace
+     - `replacement`: The replacement module path and version
+
+2. Run `make generate-module-dependencies`
+
+3. This will:
+   - Generate replace directives for all modules defined in `dependency-replacements.yaml`
+   - Inject them into the appropriate `go.mod` files and `builder-config.yaml`
+   - Run `go mod tidy` for affected modules
+
+4. Since the OTel Engine code is generated, additionally run `make generate-otel-collector-distro` to ensure that the dependencies in the `builder-config.yaml` are applied to the generated `collector/go.mod` file
+
+5. Commit all changes, including any generated files
+
+**Note:** Local replacement directives (pointing to local modules, e.g., `replace github.com/grafana/alloy => ../`) should be added directly to `go.mod` files outside of the generated markers, as they are not managed by the centralized tool.
+
+For more details about how the tool works, see the [generate-module-dependencies README](../../tools/generate-module-dependencies/README.md).
+
+
 [new-issue]: https://github.com/grafana/alloy/issues/new
 [code-review-comments]: https://code.google.com/p/go-wiki/wiki/CodeReviewComments
 [best-practices]: https://peter.bourgon.org/go-in-production/#formatting-and-style
