@@ -1,10 +1,10 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.21@sha256:27f9262d43452075f3c410287a2c43f5ef1bf7ec2bb06e8c9eeb1b8d453087bc
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.26 AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.26@sha256:54ef2371fc6b049d932c58d4622c88b573b45c393b7622fe6cca492ac4525dbe AS ui-build
 ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
     npm install                                               \
     && npm run build
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.26 AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.26@sha256:54ef2371fc6b049d932c58d4622c88b573b45c393b7622fe6cca492ac4525dbe AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 ###
 
-FROM public.ecr.aws/ubuntu/ubuntu:noble
+FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:6b4c0f97bc73e76ac20ef992258e9b8c831b7755d2047d83109da8eb279881fe
 
 # Username and uid for alloy user
 ARG UID="473"
