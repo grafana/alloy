@@ -185,10 +185,10 @@ func (c *crdManager) Run(ctx context.Context) error {
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 
 	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
-	// TODO: Expose EnableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
 	scrapeOpts := &scrape.Options{
-		AppendMetadata:        c.args.Scrape.HonorMetadata,
-		PassMetadataInContext: c.args.Scrape.HonorMetadata,
+		AppendMetadata:          c.args.Scrape.HonorMetadata,
+		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
+		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
 	}
 	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
@@ -560,6 +560,7 @@ func (c *crdManager) onAddPodMonitor(obj any) {
 	level.Info(c.logger).Log("msg", "found pod monitor", "name", pm.Name)
 	c.addPodMonitor(pm)
 }
+
 func (c *crdManager) onUpdatePodMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
@@ -616,6 +617,7 @@ func (c *crdManager) onAddServiceMonitor(obj any) {
 	level.Info(c.logger).Log("msg", "found service monitor", "name", pm.Name)
 	c.addServiceMonitor(pm)
 }
+
 func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
@@ -663,6 +665,7 @@ func (c *crdManager) onAddProbe(obj any) {
 	level.Info(c.logger).Log("msg", "found probe", "name", pm.Name)
 	c.addProbe(pm)
 }
+
 func (c *crdManager) onUpdateProbe(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.Probe)
 	c.clearConfigs(pm.Namespace, pm.Name)
@@ -716,6 +719,7 @@ func (c *crdManager) onAddScrapeConfig(obj any) {
 	level.Info(c.logger).Log("msg", "found scrape config", "name", pm.Name)
 	c.addScrapeConfig(pm)
 }
+
 func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj any) {
 	pm := oldObj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
