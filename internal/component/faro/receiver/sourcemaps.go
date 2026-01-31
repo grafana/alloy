@@ -312,14 +312,30 @@ func (store *sourceMapsStoreImpl) Stop() {
 func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
 	// Attempt to find the source map in the filesystem first.
 	for _, loc := range store.locs {
+		if hasHttpPrefix(loc.Path) {
+			continue
+		}
+
 		content, sourceMapURL, err = store.getSourceMapFromFileSystem(sourceURL, release, loc)
 		if content != nil || err != nil {
 			return content, sourceMapURL, err
 		}
 	}
 
+	// Attempt to find the source map in the remote locations.
+	for _, loc := range store.locs {
+		if !(hasHttpPrefix(loc.Path)) {
+			continue
+		}
+
+		content, sourceMapURL, err = store.getSourceMapFromRemote(sourceURL, release, loc)
+		if content != nil || err != nil {
+			return content, sourceMapURL, err
+		}
+	}
+
 	// Attempt to download the sourcemap if enabled.
-	if strings.HasPrefix(sourceURL, "http") && urlMatchesOrigins(sourceURL, store.args.DownloadFromOrigins) && store.args.Download {
+	if store.args.Download && hasHttpPrefix(sourceURL) && urlMatchesOrigins(sourceURL, store.args.DownloadFromOrigins) {
 		return store.downloadSourceMapContent(sourceURL)
 	}
 	return nil, "", nil
@@ -364,6 +380,34 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "error").Inc()
 	} else {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "ok").Inc()
+	}
+
+	return content, sourceURL, err
+}
+
+func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, release string, loc *sourcemapFileLocation) (content []byte, sourceMapURL string, err error) {
+	if len(sourceURL) == 0 || !strings.HasPrefix(sourceURL, loc.MinifiedPathPrefix) || strings.HasSuffix(sourceURL, "/") {
+		return nil, "", nil
+	}
+
+	var rootPath bytes.Buffer
+
+	err = loc.pathTemplate.Execute(&rootPath, struct{ Release string }{Release: cleanFilePathPart(release)})
+	if err != nil {
+		return nil, "", err
+	}
+
+	subPath := strings.TrimPrefix(strings.Split(sourceURL, "?")[0], loc.MinifiedPathPrefix) + ".map"
+	mapURL, err := url.JoinPath(rootPath.String(), subPath)
+	if err != nil {
+		level.Debug(store.log).Log("msg", "failed to construct sourcemap url for remote location", "base_path", rootPath, "sub_path", subPath, "err", err)
+		return nil, "", err
+	}
+
+	content, err = store.downloadFileContents(mapURL)
+	if err != nil {
+		level.Debug(store.log).Log("msg", "failed to download sourcemap file from remote location", "url", mapURL, "err", err)
+		return nil, "", err
 	}
 
 	return content, sourceURL, err
@@ -466,6 +510,10 @@ func urlMatchesOrigins(URL string, origins []string) bool {
 		}
 	}
 	return false
+}
+
+func hasHttpPrefix(URL string) bool {
+	return strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://")
 }
 
 func cleanFilePathPart(x string) string {
