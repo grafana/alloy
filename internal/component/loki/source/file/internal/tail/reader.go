@@ -57,23 +57,24 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding, compression stri
 		br:      br,
 		decoder: decoder,
 		nl:      nl,
-		lastNl:  nl[len(nl)-1],
 		cr:      cr,
-		pending: make([]byte, 0, defaultBufSize),
+		readBuf: make([]byte, defaultBufSize),
+		pending: newRingBuffer(defaultBufSize),
 	}, nil
 }
 
 type reader struct {
-	pos     int64
-	br      *bufio.Reader
-	pending []byte
+	pos int64
+	br  *bufio.Reader
+
+	pending *ringBuffer
+	readBuf []byte
 
 	compression string
 	decoder     *encoding.Decoder
 
-	nl     []byte
-	lastNl byte
-	cr     []byte
+	nl []byte
+	cr []byte
 }
 
 // next reads and returns the next complete line from the file.
@@ -81,27 +82,31 @@ type reader struct {
 func (r *reader) next() (string, error) {
 	// First we check if we already have a full line buffered.
 	if line, ok := r.consumeLine(); ok {
-		return r.decode(line)
+		s, err := r.decode(line)
+		if err != nil {
+			return "", err
+		}
+		r.pending.Advance(len(line) + len(r.nl))
+		return s, nil
 	}
 
 	for {
-		// Read more data up until the last byte of nl.
-		chunk, err := r.br.ReadBytes(r.lastNl)
-		if len(chunk) > 0 {
-			r.pending = append(r.pending, chunk...)
-
+		n, err := r.br.Read(r.readBuf)
+		if n > 0 {
+			r.pending.Append(r.readBuf[:n])
 			if line, ok := r.consumeLine(); ok {
-				return r.decode(line)
+				s, err := r.decode(line)
+				if err != nil {
+					return "", err
+				}
+				r.pending.Advance(len(line) + len(r.nl))
+				return s, nil
 			}
 		}
 
-		// If we did not get an error and did not find a full line we
-		// need to read more data.
-		if err == nil {
-			continue
+		if err != nil {
+			return "", err
 		}
-
-		return "", err
 	}
 }
 
@@ -109,14 +114,18 @@ func (r *reader) next() (string, error) {
 // This should be used when reaching EOF to handle the final partial line in the file.
 // Returns io.EOF if there is no pending data.
 func (r *reader) flush() (string, error) {
-	if len(r.pending) == 0 {
+	if r.pending.Len() == 0 {
 		return "", io.EOF
 	}
 
-	line := r.pending[:]
+	line := r.pending.Bytes()
 	r.pos += int64(len(line))
-	r.pending = make([]byte, 0, defaultBufSize)
-	return r.decode(bytes.TrimSuffix(line, r.nl))
+	s, err := r.decode(bytes.TrimSuffix(line, r.nl))
+	if err != nil {
+		return "", err
+	}
+	r.pending.Advance(len(line))
+	return s, nil
 }
 
 func (r *reader) decode(line []byte) (string, error) {
@@ -134,17 +143,15 @@ func (r *reader) decode(line []byte) (string, error) {
 // consumeLine checks pending for the delimiter; if found, it splits
 // pending into line and remainder.
 func (r *reader) consumeLine() ([]byte, bool) {
+	view := r.pending.Bytes()
 	// Check if pending contains a full line.
-	i := bytes.Index(r.pending, r.nl)
+	i := bytes.Index(view, r.nl)
 	if i < 0 {
 		return nil, false
 	}
 
 	// Extract everything up until newline.
-	line := r.pending[:i]
-	// Keep everything except the line we extracted and newline.
-	rem := r.pending[i+len(r.nl):]
-	r.pending = append(make([]byte, 0, defaultBufSize), rem...)
+	line := view[:i]
 
 	// Advance the position on bytes we have consumed as a full line.
 	r.pos += int64(len(line) + len(r.nl))
@@ -170,13 +177,13 @@ func (r *reader) reset(f *os.File, offset int64) error {
 	if offset != 0 {
 		rr, err = newReaderAt(f, r.compression, offset)
 		if err != nil {
-			return nil
+			return err
 		}
 		r.br.Reset(rr)
 	}
 
 	r.pos = offset
-	r.pending = make([]byte, 0, defaultBufSize)
+	r.pending.Reset()
 	return nil
 }
 
