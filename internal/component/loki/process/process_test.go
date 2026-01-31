@@ -881,9 +881,11 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 
 	t.component.Update(args)
 
-	// Check the component metrics.
+	// Check the component metrics. Filter for only the custom stage metrics
+	// that this test is interested in (exclude forward queue metrics).
 	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsBeforeSendingLogs)); err != nil {
+		strings.NewReader(expectedMetricsBeforeSendingLogs),
+		"loki_process_custom_paulin_test", "loki_process_custom_paulin_test_3"); err != nil {
 		require.NoError(t.t, err)
 	}
 
@@ -904,9 +906,175 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 		}
 	}
 
-	// Check the component metrics.
+	// Check the component metrics. Filter for only the custom stage metrics
+	// that this test is interested in (exclude forward queue metrics).
 	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
+		strings.NewReader(expectedMetricsAfterSendingLogs),
+		"loki_process_custom_paulin_test", "loki_process_custom_paulin_test_3"); err != nil {
 		require.NoError(t.t, err)
+	}
+}
+
+// TestBlockedReceiverDoesNotBlockOthers verifies that when one downstream
+// receiver is blocked, other receivers continue to receive logs.
+// This is a regression test for https://github.com/grafana/alloy/issues/2194
+func TestBlockedReceiverDoesNotBlockOthers(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	// blockedReceiver simulates a downstream component that is not consuming logs
+	// (e.g., loki.write with a blocked remote endpoint)
+	blockedReceiver := loki.NewLogsReceiver()
+
+	// healthyReceiver simulates a downstream component that is consuming logs normally
+	healthyReceiver := loki.NewLogsReceiver()
+
+	// Create and run the component with both receivers
+	opts := component.Options{
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{blockedReceiver, healthyReceiver},
+		Stages:    nil, // No stages, just fanout
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		c.Run(ctx)
+		wg.Done()
+	}()
+
+	// Send multiple log entries
+	numLogs := 5
+	for i := 0; i < numLogs; i++ {
+		logEntry := loki.Entry{
+			Labels: model.LabelSet{"test": "blocked_receiver"},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("log message %d", i),
+			},
+		}
+		c.receiver.Chan() <- logEntry
+	}
+
+	// The healthy receiver should receive all logs even though blockedReceiver is not consuming
+	receivedCount := 0
+	timeout := time.After(2 * time.Second)
+
+	for receivedCount < numLogs {
+		select {
+		case <-healthyReceiver.Chan():
+			receivedCount++
+		case <-timeout:
+			t.Fatalf("healthy receiver only received %d/%d logs; blocked receiver is blocking other destinations", receivedCount, numLogs)
+		}
+	}
+
+	require.Equal(t, numLogs, receivedCount, "healthy receiver should receive all logs")
+}
+
+// TestSlowReceiverPreservesOrdering verifies that when one downstream receiver
+// is slow (but not fully blocked), log ordering is preserved for all receivers.
+// This ensures the per-destination queue implementation maintains FIFO ordering.
+func TestSlowReceiverPreservesOrdering(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	// slowReceiver simulates a downstream component that processes logs slowly
+	slowReceiver := loki.NewLogsReceiver()
+
+	// fastReceiver simulates a downstream component that processes logs quickly
+	fastReceiver := loki.NewLogsReceiver()
+
+	// Create and run the component with both receivers
+	opts := component.Options{
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{slowReceiver, fastReceiver},
+		Stages:    nil,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		c.Run(ctx)
+		wg.Done()
+	}()
+
+	// Send multiple log entries with sequential identifiers
+	numLogs := 20
+	for i := 0; i < numLogs; i++ {
+		logEntry := loki.Entry{
+			Labels: model.LabelSet{"test": "ordering", "seq": model.LabelValue(fmt.Sprintf("%d", i))},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("log message %d", i),
+			},
+		}
+		c.receiver.Chan() <- logEntry
+	}
+
+	// Collect logs from both receivers and verify ordering
+	collectLogs := func(receiver loki.LogsReceiver, name string) []int {
+		var received []int
+		timeout := time.After(5 * time.Second)
+		for len(received) < numLogs {
+			select {
+			case entry := <-receiver.Chan():
+				seq := int(entry.Labels["seq"][0] - '0')
+				if len(entry.Labels["seq"]) > 1 {
+					seq = seq*10 + int(entry.Labels["seq"][1]-'0')
+				}
+				received = append(received, seq)
+				// Simulate slow processing for slowReceiver
+				if name == "slow" {
+					time.Sleep(10 * time.Millisecond)
+				}
+			case <-timeout:
+				t.Fatalf("%s receiver only received %d/%d logs", name, len(received), numLogs)
+			}
+		}
+		return received
+	}
+
+	// Start collecting from both receivers concurrently
+	var slowLogs, fastLogs []int
+	var collectWg sync.WaitGroup
+	collectWg.Add(2)
+
+	go func() {
+		defer collectWg.Done()
+		slowLogs = collectLogs(slowReceiver, "slow")
+	}()
+
+	go func() {
+		defer collectWg.Done()
+		fastLogs = collectLogs(fastReceiver, "fast")
+	}()
+
+	collectWg.Wait()
+
+	// Verify ordering is preserved for both receivers
+	for i := 0; i < numLogs; i++ {
+		require.Equal(t, i, slowLogs[i], "slow receiver logs should be in order")
+		require.Equal(t, i, fastLogs[i], "fast receiver logs should be in order")
 	}
 }
