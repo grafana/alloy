@@ -15,8 +15,8 @@ title: prometheus.exporter.smartctl
 
 {{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `prometheus.exporter.smartctl` component collects S.M.A.R.T. disk health metrics from storage devices on the local system.
-It uses the `smartctl` utility from smartmontools to query device health, temperature, power-on hours, and other attributes.
+The `prometheus.exporter.smartctl` component collects SMART disk health metrics from storage devices on the local system.
+It uses the `smartctl` from the smartmontools package to query device health, temperature, power-on hours, and other attributes.
 
 ## Usage
 
@@ -31,47 +31,47 @@ You can use the following arguments with `prometheus.exporter.smartctl`:
 
 | Name                | Type           | Description                                                | Default                | Required |
 | ------------------- | -------------- | ---------------------------------------------------------- | ---------------------- | -------- |
-| `smartctl_path`     | `string`       | Path to the smartctl binary.                               | `"/usr/sbin/smartctl"` | no       |
-| `scan_interval`     | `duration`     | How often to poll smartctl for device data.                | `"60s"`                | no       |
-| `rescan_interval`   | `duration`     | How often to rescan for new or removed devices.            | `"10m"`                | no       |
-| `devices`           | `list(string)` | List of specific devices to monitor.                       | `[]`                   | no       |
 | `device_exclude`    | `string`       | Regex pattern to exclude devices from automatic scanning.  | `""`                   | no       |
 | `device_include`    | `string`       | Regex pattern to include only matching devices.            | `""`                   | no       |
-| `scan_device_types` | `list(string)` | Device types to scan (for example, `sat`, `scsi`, `nvme`). | `[]`                   | no       |
+| `devices`           | `list(string)` | List of specific devices to monitor.                       | `[]`                   | no       |
 | `powermode_check`   | `string`       | Power mode threshold to skip checking devices.             | `"standby"`            | no       |
+| `rescan_interval`   | `duration`     | How often to rescan for added or removed devices.          | `"10m"`                | no       |
+| `scan_device_types` | `list(string)` | Device types to scan (for example, `sat`, `scsi`, `nvme`). | `[]`                   | no       |
+| `scan_interval`     | `duration`     | How often to poll smartctl for device data.                | `"60s"`                | no       |
+| `smartctl_path`     | `string`       | Path to the smartctl binary.                               | `"/usr/sbin/smartctl"` | no       |
 
-The `smartctl_path` must point to a smartctl binary version 7.0 or later with JSON output support.
+The `smartctl_path` must point to a `smartctl` binary version 7.0 or later with JSON output support.
 
 The `scan_interval` controls how frequently device metrics are collected.
 Smartctl queries can be slow, especially with many drives, so a 60-second interval prevents system overload.
 
-The `rescan_interval` controls how often the component rescans for new or removed devices.
+The `rescan_interval` controls how often the component rescans for added or removed devices.
 This only applies when using automatic device discovery.
 Set to `0` to disable automatic rescanning.
 
 The `devices` argument specifies an explicit list of devices to monitor, for example `["/dev/sda", "/dev/nvme0n1"]`.
-When specified, automatic device discovery is disabled.
+When specified, the component disables automatic device discovery.
 
 The `device_exclude` and `device_include` arguments are mutually exclusive.
-Use them to filter which devices are monitored during automatic discovery:
+Use them to filter which devices the component monitors during automatic discovery:
 
-- `device_exclude`: Exclude devices matching the regex, for example `"^(ram|loop|fd)\\d+$"` excludes RAM disks, loop devices, and floppy drives.
-- `device_include`: Only include devices matching the regex, for example `"^(sd|nvme)"` includes only SATA and NVMe devices.
+- `device_exclude`: Exclude devices matching the regular expression, for example `"^(ram|loop|fd)\\d+$"` excludes RAM disks, loop devices, and floppy drives.
+- `device_include`: Only include devices matching the regular expression, for example `"^(sd|nvme)"` includes only SATA and NVMe devices.
 
 The `scan_device_types` argument controls which device types to scan.
 Common values include:
 
 - `sat`: SATA devices
-- `scsi`: SAS/SCSI devices
+- `scsi`: SAS and SCSI devices
 - `nvme`: NVMe devices
-- `auto`: Auto-detect device type (default when not specified)
+- `auto`: Auto-detect device type, which is the default when not specified
 
 The `powermode_check` argument determines when to skip checking devices based on their power state to avoid waking sleeping drives.
 Valid values are:
 
 - `never`: Always check devices regardless of power state
 - `sleep`: Skip devices in sleep mode or deeper
-- `standby`: Skip devices in standby mode or deeper (default)
+- `standby`: Default, skip devices in standby mode or deeper
 - `idle`: Skip devices in idle mode or deeper
 
 ## Blocks
@@ -84,11 +84,11 @@ The `prometheus.exporter.smartctl` component doesn't support any blocks. You can
 
 ## Component health
 
-`prometheus.exporter.smartctl` is only reported as unhealthy if given an invalid configuration.
+`prometheus.exporter.smartctl` is only reported as unhealthy when given an invalid configuration.
 In those cases, exported fields retain their last healthy values.
 
-Smartctl execution failures don't affect component health.
-Instead, the `smartctl_device_scrape_success` metric is set to 0 for devices that fail to scrape.
+The `smartctl` command execution failures don't affect component health.
+Instead, the component sets the `smartctl_device_scrape_success` metric to 0 for devices that fail to scrape.
 
 ## Debug information
 
@@ -106,11 +106,11 @@ The `prometheus.exporter.smartctl` component collects the following metrics:
 
 | Metric name                            | Type  | Description                                          |
 | -------------------------------------- | ----- | ---------------------------------------------------- |
-| `smartctl_version`                     | gauge | Smartctl version information                         |
+| `smartctl_version`                     | gauge | `smartctl` version information                       |
 | `smartctl_device`                      | gauge | Device information with labels                       |
 | `smartctl_device_smart_status`         | gauge | Device SMART overall-health test result (1 = PASSED) |
 | `smartctl_device_status`               | gauge | Device status (1 = available, 0 = unavailable)       |
-| `smartctl_device_smartctl_exit_status` | gauge | Exit status from smartctl                            |
+| `smartctl_device_smartctl_exit_status` | gauge | Exit status from `smartctl`                          |
 
 ### Capacity and hardware metrics
 
@@ -153,18 +153,18 @@ The `prometheus.exporter.smartctl` component collects the following metrics:
 | `smartctl_device_available_spare_threshold` | counter | Available spare threshold percentage |
 | `smartctl_device_critical_warning`          | counter | Critical warning status              |
 
-### SMART attributes (ATA/SATA only)
+### SMART attributes for ATA and SATA only
 
 | Metric name                 | Type  | Description                                                |
 | --------------------------- | ----- | ---------------------------------------------------------- |
-| `smartctl_device_attribute` | gauge | SMART attribute values (normalized, raw, worst, threshold) |
+| `smartctl_device_attribute` | gauge | SMART attribute values: normalized, raw, worst, threshold  |
 
 ### Scrape metrics
 
 | Metric name                               | Type  | Description                                     |
 | ----------------------------------------- | ----- | ----------------------------------------------- |
 | `smartctl_device_scrape_success`          | gauge | Whether the scrape was successful (1 = success) |
-| `smartctl_device_scrape_duration_seconds` | gauge | Duration of the smartctl scrape in seconds      |
+| `smartctl_device_scrape_duration_seconds` | gauge | Duration of the `smartctl` scrape in seconds    |
 
 All device metrics include a `device` label with the device path, for example `/dev/sda`.
 
@@ -175,39 +175,39 @@ The `smartctl_device` metric includes comprehensive device information labels:
 - `model_family`: Device model family
 - `serial_number`: Device serial number
 - `firmware_version`: Firmware version
-- `interface`: Interface type (for example, SAT, NVMe)
-- `protocol`: Protocol (for example, ATA, NVMe)
-- `form_factor`: Form factor (for example, 2.5 inches, M.2)
+- `interface`: Interface type, for example, SAT or NVMe
+- `protocol`: Protocol, for example, ATA or NVMe
+- `form_factor`: Form factor, for example, 2.5 inches or M.2
 - `ata_version`: ATA version string
 - `sata_version`: SATA version string
 
 The `smartctl_device_attribute` metric includes labels:
 
 - `device`: Device path
-- `attribute_id`: SMART attribute ID (for example, 5 for Reallocated Sectors)
+- `attribute_id`: SMART attribute ID, for example 5 for Reallocated Sectors
 - `attribute_name`: SMART attribute name
-- `attribute_value_type`: Type of value (normalized, raw, worst, threshold)
+- `attribute_value_type`: Type of value: normalized, raw, worst, threshold
 - `attribute_flags_short`: Short flags string
-- `attribute_flags_long`: Long flags string (comma-separated)
+- `attribute_flags_long`: Long flags string with comma-separated values
 
 ## Prerequisites
 
-Before using `prometheus.exporter.smartctl`, ensure the following requirements are met:
+Before using `prometheus.exporter.smartctl`, ensure you meet the following requirements:
 
-1. **smartmontools** version 7.0 or later must be installed on the system:
+1. Install `smartmontools` version 7.0 or later:
 
    - Debian/Ubuntu: `sudo apt-get install smartmontools`
    - RHEL/CentOS: `sudo yum install smartmontools`
    - macOS: `brew install smartmontools`
 
-2. **Permissions**: The smartctl binary requires elevated privileges to access device data.
-   Grafana Alloy must run with one of the following:
+1. Make sure the `smartctl` binary has the appropriate elevated privileges to access device data.
+   {{< param "PRODUCT_NAME" >}} must run with one of the following:
 
-   - Root permissions (not recommended for production)
+   - Root permissions, not recommended for production
    - `CAP_SYS_RAWIO` capability on Linux
    - Appropriate device permissions
 
-3. **Kernel modules** (Linux only): Ensure appropriate kernel modules are loaded for your devices:
+3. On Linux only, make sure the appropriate kernel modules are loaded for your devices:
    - SATA/SCSI: Usually enabled by default
    - NVMe: `nvme` kernel module
 
