@@ -49,6 +49,7 @@ The Alloy Collector Distro includes the option to run pipelines using the Defaul
 This will run a Default Engine pipeline _in parallel_ to the OTel Engine pipeline - the two pipelines cannot natively interact.
 
 ### Examples
+
 Concrete examples on running the OTel Engine and Alloy Engine Extension can be found in [Getting Started](../../open-telemetry/get-started/).
 
 ## Related documentation
