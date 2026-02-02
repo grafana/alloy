@@ -52,5 +52,5 @@ To retrieve them, follow the steps above but search for the `alloy-boringcrypto`
 
 * [Run {{< param "PRODUCT_NAME" >}}][Run]
 
-[release]: https://github.com/grafana/alloy/releases/tag/<RELEASE_VERSION>
+[release]: https://github.com/grafana/alloy/releases/<RELEASE_VERSION>
 [Run]: ../../run/binary/
