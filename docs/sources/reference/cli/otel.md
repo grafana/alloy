@@ -34,7 +34,7 @@ alloy otel --config=<CONFIG_FILE> [<FLAGS> ...]
 Replace the following:
 
 * _`<CONFIG_FILE>`_: Path to an OpenTelemetry Collector configuration file.
-* _`<FLAGS>`_: One or more flags that configure the OpenTelemetry Collector. Please note that these flags are the same as upstream, to find a complete list you can run `alloy otel --help`
+* _`<FLAGS>`_: One or more flags that configure the OpenTelemetry Collector. These flags are the same as upstream. Run `alloy otel --help` to show the complete list of supported flags.
 
 ## Configuration
 
@@ -44,12 +44,12 @@ For information about configuration options, refer to the [OpenTelemetry Collect
 
 ### Optionally Running the Default Engine
 
-The Alloy Collector Distro includes the option to run pipelines using the Default Engine alongside the OTel Engine using the built in Alloy Engine extension.
+The Alloy Collector Distro includes the option to run pipelines using the Default Engine alongside the OTel Engine using the built-in Alloy Engine extension.
 
 This will run a Default Engine pipeline _in parallel_ to the OTel Engine pipeline - the two pipelines cannot natively interact.
 
 ### Examples
-Concrete examples on running the OTel Engine and Alloy Engine Extension can be found in [Getting Started](../../open-telemetry/get-started.md).
+Concrete examples on running the OTel Engine and Alloy Engine Extension can be found in [Getting Started](../../open-telemetry/get-started/).
 
 ## Related documentation
 * [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/): Official OpenTelemetry Collector documentation.

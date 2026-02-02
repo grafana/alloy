@@ -1,14 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/opentelemetry/
 description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OTel Collector
-menuTitle: Open Telemetry
-title: Open Telemetry With Grafana Alloy
+menuTitle: OpenTelemetry
+title: OpenTelemetry With Grafana Alloy
 _build:
   list: false
 noindex: true
 weight: 10
 ---
 
+# OpenTelemetry With {{% param "FULL_PRODUCT_NAME" %}}
 ## Overview
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
@@ -142,5 +143,6 @@ To view the full list of components and their versioning, refer to the [OCB mani
 
 ## Next steps
 
-- [Get started](get-started.md) with the {{< param "OTEL_ENGINE" >}}
-- [OTel CLI](../reference/cli/otel.md) reference documentation
+- [Get started](./get-started/) with the {{< param "OTEL_ENGINE" >}}
+- [OTel CLI](../reference/cli/otel)/ reference documentation
+

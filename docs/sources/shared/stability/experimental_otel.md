@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/shared/stability/experimental_feature/
+canonical: https://grafana.com/docs/alloy/latest/shared/stability/experimental_otel/
 description: Shared content, experimental
 headless: true
 ---

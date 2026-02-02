@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/opentelemetry/get-started
-description: Getting Started with the Alloy OpenTelemetry Engine 
+description: Getting Started with the Alloy OpenTelemetry Engine
 menuTitle: Get Started
 title: Get Started with the Alloy OpenTelemetry Engine
 _build:
@@ -17,7 +17,7 @@ You can run the {{< param "OTEL_ENGINE" >}} using the CLI, Helm chart, or servic
 
 The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" >}} `otel` command.
 The CLI is the easiest way to experiment locally or on a single host.
-Refer to the [OTel CLI](../reference/cli/otel.md) documentation for more information.
+Refer to the [OTel CLI](../reference/cli/otel/) documentation for more information.
 
 The following example configuration file accepts OTLP and sends it to the Grafana Cloud OTLP gateway.
 You can adapt the endpoint and credentials for your region and tenant.
@@ -59,7 +59,7 @@ service:
 To start the {{< param "OTEL_ENGINE" >}}, run the following command:
 
 ```shell
-alloy otel --config=<CONFIG_FILE> [<FLAGS> ...] 
+alloy otel --config=<CONFIG_FILE> [<FLAGS> ...]
 ```
 
 {{< param "PRODUCT_NAME" >}} then accepts incoming OTLP data on `0.0.0.0:4317` for gRPC and `0.0.0.0:4318` for HTTP requests.
@@ -116,7 +116,7 @@ This example adds the `alloyengine` block in the extension declarations and enab
 You can then run {{< param "PRODUCT_NAME" >}} with the exact same command as before:
 
 ```shell
-alloy otel --config=<CONFIG_FILE> [<FLAGS> ...] 
+alloy otel --config=<CONFIG_FILE> [<FLAGS> ...]
 ```
 
 This starts both the {{< param "DEFAULT_ENGINE" >}} and {{< param "OTEL_ENGINE" >}}.
