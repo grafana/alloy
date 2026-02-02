@@ -21,6 +21,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 
 	expected := Arguments{
 		URI:             "mongodb://127.0.0.1:27017",
+		LogLevel:        "info",
 		DirectConnect:   true,
 		DiscoveringMode: true,
 		CompatibleMode:  true,
@@ -49,5 +50,6 @@ func TestConvert(t *testing.T) {
 		CompatibleMode:  true,
 		CollectAll:      true,
 	}
+	_ = expected.LogLevel.Set("info")
 	require.Equal(t, expected, *res)
 }
