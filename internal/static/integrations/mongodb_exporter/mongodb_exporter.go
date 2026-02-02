@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/percona/mongodb_exporter/exporter"
@@ -36,10 +38,42 @@ var DefaultConfig = Config{
 	EnablePBMMetrics:         false,
 }
 
+// LogLevel holds the level for logging.
+type LogLevel struct {
+	slog.Level
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (l *LogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	return l.Set(s)
+}
+
+// Set sets the level.
+func (l *LogLevel) Set(s string) error {
+	switch strings.ToLower(s) {
+	case "debug":
+		l.Level = slog.LevelDebug
+	case "info":
+		l.Level = slog.LevelInfo
+	case "warn":
+		l.Level = slog.LevelWarn
+	case "error":
+		l.Level = slog.LevelError
+	default:
+		return fmt.Errorf("unrecognized log level %q", s)
+	}
+	return nil
+}
+
 // Config controls mongodb_exporter
 type Config struct {
 	// MongoDB connection URI. example:mongodb://user:pass@127.0.0.1:27017/admin?ssl=true"
 	URI                      config_util.Secret `yaml:"mongodb_uri"`
+	LogLevel                 LogLevel           `yaml:"log_level,omitempty"`
 	CompatibleMode           bool               `yaml:"compatible_mode,omitempty"`
 	CollectAll               bool               `yaml:"collect_all,omitempty"`
 	DirectConnect            bool               `yaml:"direct_connect,omitempty"`
@@ -92,11 +126,18 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	logrusLogger := slog.New(logging.NewSlogGoKitHandler(logger))
+	logLevel := &slog.LevelVar{}
+	logLevel.Set(c.LogLevel.Level)
+	slogLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+	if _, ok := os.LookupEnv("IN_TEST"); ok {
+		slogLogger = slog.New(logging.NewSlogGoKitHandler(logger))
+	}
 
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),
-		Logger:                 logrusLogger,
+		Logger:                 slogLogger,
 		DisableDefaultRegistry: true,
 
 		CompatibleMode:           c.CompatibleMode,
