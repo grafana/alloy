@@ -66,7 +66,7 @@ func (t *TruncateSourceType) UnmarshalText(text []byte) error {
 
 // MarshalText implements encoding.TextMarshaler.
 func (t TruncateSourceType) MarshalText() (text []byte, err error) {
-	return []byte(text), nil
+	return []byte(t), nil
 }
 
 const (
