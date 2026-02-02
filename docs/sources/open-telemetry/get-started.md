@@ -13,6 +13,15 @@ weight: 10
 
 You can run the {{< param "OTEL_ENGINE" >}} using the CLI, Helm chart, or service installation.
 
+## Prequisites
+There are none! The tools needed to run the OTel Engine are all shipped within Alloy.
+
+Before starting, it is a good idea to validate your Open Telemetry YAML config. This can be done using the `validate` command
+
+```bash
+./build/alloy otel validate --config=<CONFIG_FILE>
+```
+
 ## Run with the CLI
 
 The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" >}} `otel` command.
@@ -132,3 +141,11 @@ TODO
 Service installation support for systemd, launchd, and similar systems isn't included in the initial experimental release.
 Service installers will work seamlessly with the {{< param "OTEL_ENGINE" >}} as the feature progresses.
 In the meantime, use the CLI or Helm options for testing.
+
+## Considerations
+
+1. The {{< param "DEFAULT_ENGINE" >}} accepts the --storage.path flag in which you can point to a base directory for running components to store data on disk. The {{< param "OTEL_ENGINE" >}} does not accept any such flag, but our distribution includes the file_system extension which can be configured for components to use. More information on this can be found in the [upstream documentation](https://opentelemetry.io/docs/collector/resiliency/#persistent-storage-write-ahead-log---wal)
+
+2. The {{< param "DEFAULT_ENGINE" >}} exposes its admin server on its default port `12345`. The OTel Engine however exposes its admin server on it's own default port of `8888`. The admin server for the OTel Engine currently does not expose a UI, support bundles, or reload endpoint functionality like the Default Engine. The experience currently mirrors that of the upstream collector.
+
+3. Fleet management is **not** yet supported for the OTel Engine. The input configuration must be defined and managed manually.
