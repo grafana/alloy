@@ -1,7 +1,9 @@
 package stages
 
 import (
+	"encoding"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -42,7 +44,30 @@ type RuleConfig struct {
 	effectiveLimit units.Base2Bytes
 }
 
+var (
+	_ encoding.TextMarshaler   = TruncateSourceType("")
+	_ encoding.TextUnmarshaler = (*TruncateSourceType)(nil)
+)
+
 type TruncateSourceType string
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (t *TruncateSourceType) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case string(TruncateSourceLine), string(TruncateSourceLabel), string(TruncateSourceStructuredMetadata), string(TruncateSourceExtractedMap):
+		*t = TruncateSourceType(str)
+	default:
+		return fmt.Errorf("unknown source_type: %s", str)
+	}
+
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (t TruncateSourceType) MarshalText() (text []byte, err error) {
+	return []byte(text), nil
+}
 
 const (
 	TruncateSourceLine               TruncateSourceType = "line"
