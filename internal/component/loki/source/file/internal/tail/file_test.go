@@ -553,7 +553,7 @@ func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) 
 var benchLine *Line
 
 func BenchmarkFile(b *testing.B) {
-	// we create a file with 1000 lines and each line is 500 bytes
+	// we create a file with 1000 lines and each line is 500 bytes.
 	line := bytes.Repeat([]byte{'a'}, 500)
 	lines := strings.Repeat(string(line)+"\n", 1000)
 	name := createFile(b, "benchfile", lines)
@@ -567,7 +567,7 @@ func BenchmarkFile(b *testing.B) {
 			WatcherConfig: WatcherConfig{},
 		})
 		require.NoError(b, err)
-		// we set EOF here so tailer will stop after we have consumed the whole file
+		// Disable waiting at EOF so Next returns io.EOF after the file is fully consumed.
 		file.waitAtEOF = false
 
 		for {
@@ -576,6 +576,9 @@ func BenchmarkFile(b *testing.B) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
+			require.NoError(b, err)
 		}
+
+		file.Stop()
 	}
 }
