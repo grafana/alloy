@@ -349,12 +349,11 @@ func (t *transaction) AppendHistogram(_ storage.SeriesRef, ls labels.Labels, atM
 	}
 	if err != nil {
 		t.logger.Warn("failed to add histogram datapoint", zap.Error(err), zap.String("metric_name", metricName), zap.Any("labels", ls))
-		// never return errors, as that fails the while scrape
+		// Individual datapoint failures should not return an error, as that fails the whole scrape
 		// return ref==0 indicating that the series was not added
 		return 0, nil
 	}
 
-	// never return errors, as that fails the whole scrape
 	// return ref==1 indicating that the series was added and needs staleness tracking
 	return 1, nil
 }
