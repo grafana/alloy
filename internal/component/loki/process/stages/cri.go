@@ -68,10 +68,10 @@ type cri struct {
 func (c *cri) Name() string { return StageTypeCRI }
 
 const (
-	criFlags     = "flags"
-	criStream    = "stream"
-	criContent   = "content"
-	criTimestamp = "timestamp"
+	criFlags   = "flags"
+	criStream  = "stream"
+	criContent = "content"
+	criTime    = "time"
 )
 
 func (c *cri) Run(in chan Entry) chan Entry {
@@ -89,7 +89,7 @@ func (c *cri) Run(in chan Entry) chan Entry {
 		e.Extracted[criFlags] = parsed.Flag.String()
 		e.Extracted[criStream] = parsed.Stream.String()
 		e.Extracted[criContent] = parsed.Content
-		e.Extracted[criTimestamp] = parsed.Timestamp
+		e.Extracted[criTime] = parsed.Timestamp
 
 		e.Line = parsed.Content
 
