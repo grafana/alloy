@@ -152,7 +152,7 @@ To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as
 - [Run {{< param "PRODUCT_NAME" >}}][Run]
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-[releases]: https://github.com/grafana/alloy/releases/<RELEASE_VERSION>
+[releases]: https://github.com/grafana/alloy/releases/latest
 [data collection]: ../../../data-collection/
 [Run]: ../../run/windows/
 [Configure]: ../../../configure/windows/
