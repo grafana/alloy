@@ -10,7 +10,6 @@ weight: 10
 ---
 
 # OpenTelemetry With {{% param "FULL_PRODUCT_NAME" %}}
-## Overview
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
 The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}} that lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to existing features and integrations.
