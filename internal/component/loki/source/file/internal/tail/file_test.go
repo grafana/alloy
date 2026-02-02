@@ -1,6 +1,7 @@
 package tail
 
 import (
+	"bytes"
 	"compress/gzip"
 	"compress/zlib"
 	"context"
@@ -472,9 +473,9 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 	})
 }
 
-func createFile(t *testing.T, name, content string) string {
-	path := t.TempDir() + "/" + name
-	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
+func createFile(tb testing.TB, name, content string) string {
+	path := tb.TempDir() + "/" + name
+	require.NoError(tb, os.WriteFile(path, []byte(content), 0600))
 	return path
 }
 
@@ -494,8 +495,8 @@ func truncateFile(t *testing.T, name, content string) {
 	require.NoError(t, err)
 }
 
-func removeFile(t *testing.T, name string) {
-	require.NoError(t, os.Remove(name))
+func removeFile(tb testing.TB, name string) {
+	require.NoError(tb, os.Remove(name))
 }
 
 func rotateFile(t *testing.T, name, newContent string) {
@@ -546,5 +547,38 @@ func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) 
 	} else {
 		require.Equal(t, expectedLine.Text, line.Text)
 		require.Equal(t, expectedLine.Offset, line.Offset)
+	}
+}
+
+var benchLine *Line
+
+func BenchmarkFile(b *testing.B) {
+	// we create a file with 1000 lines and each line is 500 bytes.
+	line := bytes.Repeat([]byte{'a'}, 500)
+	lines := strings.Repeat(string(line)+"\n", 1000)
+	name := createFile(b, "benchfile", lines)
+	defer removeFile(b, name)
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:      name,
+			WatcherConfig: WatcherConfig{},
+		})
+		require.NoError(b, err)
+		// Disable waiting at EOF so Next returns io.EOF after the file is fully consumed.
+		file.waitAtEOF = false
+
+		for {
+			var err error
+			benchLine, err = file.Next()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			require.NoError(b, err)
+		}
+
+		file.Stop()
 	}
 }
