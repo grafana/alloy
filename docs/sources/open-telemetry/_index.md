@@ -143,5 +143,5 @@ To view the full list of components and their versioning, refer to the [OCB mani
 ## Next steps
 
 - [Get started](./get-started/) with the {{< param "OTEL_ENGINE" >}}
-- [OTel CLI](../reference/cli/otel)/ reference documentation
+- [OTel CLI](../reference/cli/otel/) reference documentation
 
