@@ -1,9 +1,8 @@
 package tail
 
 import (
+	"bufio"
 	"bytes"
-	"io"
-	"os"
 
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
@@ -11,82 +10,72 @@ import (
 
 // BOM byte sequences
 var (
-	bomUTF32BE = []byte{0x00, 0x00, 0xFE, 0xFF}
-	bomUTF32LE = []byte{0xFF, 0xFE, 0x00, 0x00}
-	bomUTF8    = []byte{0xEF, 0xBB, 0xBF}
-	bomUTF16BE = []byte{0xFE, 0xFF}
-	bomUTF16LE = []byte{0xFF, 0xFE}
+	bomUTF8Bytes    = []byte{0xEF, 0xBB, 0xBF}
+	bomUTF16BEBytes = []byte{0xFE, 0xFF}
+	bomUTF16LEBytes = []byte{0xFF, 0xFE}
+	bomUTF32BEBytes = []byte{0x00, 0x00, 0xFE, 0xFF}
+	bomUTF32LEBytes = []byte{0xFF, 0xFE, 0x00, 0x00}
 )
 
-// skipBOM detects and skips a BOM at the beginning of the file.
-// It takes the current offset and returns the final offset
-// and the BOM bytes that were detected.
-// The file is positioned at the start to read the BOM, then
-// seeks to the final offset for subsequent reads.
-func skipBOM(f *os.File, offset int64) (int64, []byte) {
-	// Make sure we are reading from the start of the file.
-	f.Seek(0, io.SeekStart)
+type BOM int
 
-	// Read up to 4 bytes (longest BOM)
-	var buf [4]byte
-	n, err := f.Read(buf[:])
-	if err != nil && n == 0 {
-		return offset, nil
+const (
+	bomUNKNOWN BOM = iota
+	bomUTF8
+	bomUTF16BE
+	bomUTF16LE
+	bomUTF32BE
+	bomUTF32LE
+)
+
+// detectBOM tries to detect a BOM from reader. It is important that the reader
+// and underlying file are positioned at the beginning of the file
+// when calling this function, as it peeks at the first bytes to detect the BOM.
+func detectBOM(br *bufio.Reader, offset int64) (int64, BOM) {
+	// Peek up to 4 bytes (longest BOM)
+	buf, err := br.Peek(4)
+	if err != nil {
+		return offset, bomUNKNOWN
 	}
 
-	bomLen := detectBom(buf[:n])
-
-	// If a BOM was detected and its length is greater than or equal to the
-	// provided offset, use the BOM length as the offset. Otherwise, use the
-	// provided offset (which may be beyond the BOM).
-	if bomLen >= offset {
-		offset = bomLen
+	var bom BOM
+	switch {
+	case bytes.HasPrefix(buf, bomUTF8Bytes):
+		bom = bomUTF8
+		offset = max(3, offset)
+	case bytes.HasPrefix(buf, bomUTF16BEBytes):
+		bom = bomUTF16BE
+		offset = max(2, offset)
+	case bytes.HasPrefix(buf, bomUTF16LEBytes):
+		bom = bomUTF16LE
+		offset = max(2, offset)
+	case bytes.HasPrefix(buf, bomUTF32BEBytes):
+		bom = bomUTF32BE
+		offset = max(4, offset)
+	case bytes.HasPrefix(buf, bomUTF32LEBytes):
+		bom = bomUTF32LE
+		offset = max(4, offset)
 	}
 
-	f.Seek(offset, io.SeekStart)
-	return offset, buf[:bomLen]
+	return offset, bom
 }
 
-// detectBom detects a BOM in the given bytes and returns the length
-// of the BOM (0 if no BOM was detected).
-func detectBom(b []byte) int64 {
-	switch {
-	case bytes.HasPrefix(b, bomUTF8):
-		return 3
-	case bytes.HasPrefix(b, bomUTF16BE):
-		return 2
-	case bytes.HasPrefix(b, bomUTF16LE):
-		return 2
-	case bytes.HasPrefix(b, bomUTF32BE):
-		return 4
-	case bytes.HasPrefix(b, bomUTF32LE):
-		return 4
-	default:
-		return 0
-	}
-}
-
-// resolveEncodingFromBOM takes the BOM bytes and the original encoding,
-// and returns the resolved encoding. If a UTF-16 BOM is detected, it returns
-// an encoding with the correct endianness and IgnoreBOM mode.
-// Otherwise, it returns the original encoding.
-func resolveEncodingFromBOM(bomBytes []byte, originalEnc encoding.Encoding) encoding.Encoding {
-	if len(bomBytes) == 0 {
-		return originalEnc
+// resolveEncodingFromBOM takes the detected BOM and the original encoding,
+// and returns the resolved encoding.
+func resolveEncodingFromBOM(bom BOM, enc encoding.Encoding) encoding.Encoding {
+	if bom == bomUNKNOWN {
+		return enc
 	}
 
-	switch {
-	case bytes.HasPrefix(bomBytes, bomUTF8):
-		// UTF-8 BOM detected - return encoding
+	switch bom {
+	case bomUTF8:
 		return encoding.Nop
-	case bytes.HasPrefix(bomBytes, bomUTF16BE):
-		// UTF-16 BE BOM detected - return encoding with IgnoreBOM since we skip it
+	case bomUTF16BE:
 		return unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM)
-	case bytes.HasPrefix(bomBytes, bomUTF16LE):
-		// UTF-16 LE BOM detected - return encoding with IgnoreBOM since we skip it
+	case bomUTF16LE:
 		return unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
 	default:
-		// Other BOMs (UTF-8, UTF-32) don't affect encoding selection
-		return originalEnc
+		// Other BOMs don't affect encoding selection
+		return enc
 	}
 }
