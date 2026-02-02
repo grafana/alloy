@@ -131,6 +131,29 @@ func TestBlockUntilEvent(t *testing.T) {
 		require.Equal(t, eventDeleted, event)
 	})
 
+	t.Run("should return delete event if file is renamed and new one is created", func(t *testing.T) {
+		f := createEmptyFile(t, "startempty")
+		require.NoError(t, f.Close())
+
+		// NOTE: important for windows that we open with correct flags.
+		f, err := fileext.OpenFile(f.Name())
+		require.NoError(t, err)
+		defer f.Close()
+
+		removeFile(t, f.Name())
+
+		f2 := createEmptyFile(t, "startempty")
+		defer f2.Close()
+
+		event, err := blockUntilEvent(context.Background(), f, 0, &Config{
+			Filename:      f.Name(),
+			WatcherConfig: watcherConfig,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, eventDeleted, event)
+	})
+
 	t.Run("should return truncated event", func(t *testing.T) {
 		f := createFileWithContent(t, "truncate", "content")
 		defer f.Close()
