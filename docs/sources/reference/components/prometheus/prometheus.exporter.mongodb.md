@@ -37,7 +37,7 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 | Name                           | Type     | Description                                                                                                                            | Default | Required |
 | ------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `mongodb_uri`                  | `secret` | MongoDB node connection URI.                                                                                                           |         | yes      |
-| `log_level`                    | `string` | Set logging level (debug, info, warn, error)                                                                                           | `info`  | no       |
+| `log_level`                    | `string` | Set logging level to `debug`, `info`, `warn`, or `error`.                                                                                           | `info`  | no       |
 | `collect_all`                  | `bool`   | Enables all collectors.                                                                                                                | `true`  | no       |
 | `compatible_mode`              | `bool`   | Enables metric names compatible with `mongodb_exporter` <v0.20.0.                                                                      | `true`  | no       |
 | `direct_connect`               | `bool`   | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | `false` | no       |
