@@ -162,6 +162,28 @@ func TestRemovingStaleness(t *testing.T) {
 	require.Len(t, mapping.staleGlobals, 0)
 }
 
+func TestHashCollisions(t *testing.T) {
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	// These two series have the same XXHash; thanks to https://github.com/pstibrany/labels_hash_collisions
+	ls1 := labels.FromStrings("__name__", "metric", "lbl", "HFnEaGl")
+	ls2 := labels.FromStrings("__name__", "metric", "lbl", "RqcXatm")
+
+	if ls1.Hash() != ls2.Hash() {
+		// These ones are the same when using -tags slicelabels
+		ls1 = labels.FromStrings("__name__", "metric", "lbl1", "value", "lbl2", "l6CQ5y")
+		ls2 = labels.FromStrings("__name__", "metric", "lbl1", "value", "lbl2", "v7uDlF")
+	}
+
+	if ls1.Hash() != ls2.Hash() {
+		t.Fatalf("This code needs to be updated: find new labels with colliding hash values.")
+	}
+
+	globalID1 := mapping.GetOrAddGlobalRefID(ls1)
+	globalID2 := mapping.GetOrAddGlobalRefID(ls2)
+
+	require.NotEqual(t, globalID1, globalID2)
+}
+
 func BenchmarkStaleness(b *testing.B) {
 	b.StopTimer()
 	ls := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
