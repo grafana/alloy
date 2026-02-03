@@ -170,11 +170,6 @@ func TestRelabelPipeline(t *testing.T) {
 
 type refTrackingConfig struct {
 	useLabelStore bool
-
-	// forceUniqueRemoteWriteRefs will ensure when multiple remote write components are used that they will
-	// generate different refs for the same labelset. This is only respected when not using labelstore and is meant
-	// to simulate the "worst case" scenario when not using labelstore with multiple remote_write components.
-	forceUniqueRemoteWriteRefs bool
 }
 
 func (ref refTrackingConfig) TestNameString() string {
@@ -182,11 +177,7 @@ func (ref refTrackingConfig) TestNameString() string {
 		return "labelstore"
 	}
 
-	if ref.forceUniqueRemoteWriteRefs {
-		return "seriestracking-uniquerefs"
-	}
-
-	return "seriestracking-samerefs"
+	return "seriesrefmapping"
 }
 
 // go test -bench="BenchmarkPipelines" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
@@ -225,16 +216,7 @@ func BenchmarkPipelines(b *testing.B) {
 		{
 			numberOfRWComponents: 1,
 			refTrackingConfig: refTrackingConfig{
-				useLabelStore:              false,
-				forceUniqueRemoteWriteRefs: false,
-			},
-			skipFor: map[string]struct{}{"relabel-remote_write": {}},
-		},
-		{
-			numberOfRWComponents: 1,
-			refTrackingConfig: refTrackingConfig{
-				useLabelStore:              false,
-				forceUniqueRemoteWriteRefs: true,
+				useLabelStore: false,
 			},
 		},
 		{
@@ -247,23 +229,14 @@ func BenchmarkPipelines(b *testing.B) {
 		{
 			numberOfRWComponents: 2,
 			refTrackingConfig: refTrackingConfig{
-				useLabelStore:              false,
-				forceUniqueRemoteWriteRefs: false,
-			},
-			skipFor: map[string]struct{}{"relabel-remote_write": {}},
-		},
-		{
-			numberOfRWComponents: 2,
-			refTrackingConfig: refTrackingConfig{
-				useLabelStore:              false,
-				forceUniqueRemoteWriteRefs: true,
+				useLabelStore: false,
 			},
 			skipFor: map[string]struct{}{"relabel-remote_write": {}},
 		},
 	}
 
 	// Simulates appending various numbers of new metrics sequentially
-	numberOfMetrics := []int{1000}
+	numberOfMetrics := []int{10, 1000}
 	for _, n := range numberOfMetrics {
 		for _, pipelineType := range pipelineTypes {
 			for _, config := range testConfigs {
@@ -275,24 +248,23 @@ func BenchmarkPipelines(b *testing.B) {
 					pipelineType.name, config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
 
 				b.Run(testName, func(b *testing.B) {
-					pipeline, _, clearCache := pipelineType.pipelineBuilder(b, log.NewNopLogger(), config.numberOfRWComponents, config.refTrackingConfig)
+					pipeline, ls, clearCache := pipelineType.pipelineBuilder(b, log.NewNopLogger(), config.numberOfRWComponents, config.refTrackingConfig)
 					metrics := setupMetrics(n)
 					b.ReportAllocs()
 					b.ResetTimer()
 
 					for b.Loop() {
+						for range n {
+							a := pipeline.Appender(b.Context())
+							for i, metric := range metrics {
+								ls.GetOrAddGlobalRefID(metric)
+								a.Append(0, metric, time.Now().UnixMilli(), float64(i))
+							}
+							a.Commit()
+						}
 						b.StopTimer()
 						clearCache()
 						b.StartTimer()
-
-						for i := 0; i < n; i++ {
-							a := pipeline.Appender(b.Context())
-							for i, metric := range metrics {
-								_, err := a.Append(0, metric, time.Now().UnixMilli(), float64(i))
-								require.NoError(b, err)
-							}
-							require.NoError(b, a.Commit())
-						}
 					}
 				})
 			}
@@ -300,7 +272,7 @@ func BenchmarkPipelines(b *testing.B) {
 	}
 
 	// Simulate concurrently appending from multiple scrapers for known metrics
-	concurrency := []int{1000}
+	concurrency := []int{10, 1000}
 	for _, c := range concurrency {
 		for _, pipelineType := range pipelineTypes {
 			for _, config := range testConfigs {
@@ -335,7 +307,7 @@ func BenchmarkPipelines(b *testing.B) {
 					for b.Loop() {
 						var wg sync.WaitGroup
 
-						for appenderIndex := 0; appenderIndex < c; appenderIndex++ {
+						for appenderIndex := range c {
 							wg.Add(1)
 							go func(appenderIndex int) {
 								defer wg.Done()
@@ -360,7 +332,7 @@ func BenchmarkPipelines(b *testing.B) {
 
 func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 	metrics := make([]labels.Labels, 0, numberOfMetrics)
-	for i := 0; i < numberOfMetrics; i++ {
+	for i := range numberOfMetrics {
 		key := fmt.Sprintf("metric-%d", i)
 		value := fmt.Sprintf("%d", i)
 		lbls := labels.FromStrings(key, value)
@@ -381,24 +353,12 @@ func newRemoteWritePipeline(t testing.TB, logger log.Logger, numberOfRemoteWrite
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 
 	rwAppendables := make([]storage.Appendable, 0, numberOfRemoteWriteComponents)
-	for i := 0; i < numberOfRemoteWriteComponents; i++ {
+	for range numberOfRemoteWriteComponents {
 		rwAppendable := newRemoteWriteComponent(t, logger, ls, destAppendable)
-
-		// We force uniqueRemoteWriteRefs by appending 0 - n dummy metrics to each remote write component. This
-		// will ensure each component is not starting at the same ref number and will hand out different refs for the same labelset.
-		if config.forceUniqueRemoteWriteRefs && !config.useLabelStore {
-			app := rwAppendable.Appender(t.Context())
-			for j := 0; j < i; j++ {
-				_, err := app.Append(0, labels.FromStrings(fmt.Sprintf("%d", j+1), "ref"), time.Now().UnixMilli(), 0)
-				require.NoError(t, err)
-			}
-			require.NoError(t, app.Commit())
-		}
-
 		rwAppendables = append(rwAppendables, rwAppendable)
 	}
 	pipelineAppendable := prometheus.NewFanout(rwAppendables, "", promclient.DefaultRegisterer, ls)
-	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", livedebugging.NewLiveDebugging(), pipelineAppendable)
+	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() { pipelineAppendable.Clear() }
 }
@@ -411,7 +371,7 @@ func newRelabelPipeline(t testing.TB, logger log.Logger, destination storage.App
 	rwAppendable := newRemoteWriteComponent(t, logger, ls, destAppendable)
 	relabelAppendable := newRelabelComponent(t, logger, []storage.Appendable{rwAppendable}, ls)
 	pipelineAppendable := prometheus.NewFanout([]storage.Appendable{relabelAppendable}, "", promclient.DefaultRegisterer, ls)
-	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", livedebugging.NewLiveDebugging(), pipelineAppendable)
+	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() { pipelineAppendable.Clear() }
 }
@@ -435,7 +395,7 @@ func newRemoteWriteComponent(t testing.TB, logger log.Logger, ls *labelstore.Ser
 		walStorage.Close()
 	})
 
-	return remotewrite.NewInterceptor("prometheus.remote_write.test", &atomic.Bool{}, livedebugging.NewLiveDebugging(), ls, store)
+	return remotewrite.NewInterceptor("prometheus.remote_write.test", &atomic.Bool{}, noopDebugDataPublisher{}, ls, store)
 }
 
 type testStorage struct {
@@ -496,3 +456,8 @@ func sendMetric(t testing.TB, appender storage.Appender, labels labels.Labels, t
 
 	return uint64(ref)
 }
+
+// noopDebugDataPublisher is a no-op implementation of livedebugging.DebugDataPublisher for testing.
+type noopDebugDataPublisher struct{}
+
+func (n noopDebugDataPublisher) PublishIfActive(livedebugging.Data) {}

@@ -234,3 +234,40 @@ func getServiceData(name string) (any, error) {
 		return nil, fmt.Errorf("service not found %s", name)
 	}
 }
+
+// TestHashCollision demonstrates that the cache can return incorrect results when
+// two different labelsets have the same hash. This is a known limitation of using
+// hash as the cache key without collision detection.
+func TestHashCollision(t *testing.T) {
+	relabeller := generateRelabel(t)
+
+	// These two series have the same XXHash; thanks to https://github.com/pstibrany/labels_hash_collisions
+	ls1 := labels.FromStrings("__name__", "metric", "lbl", "HFnEaGl")
+	ls2 := labels.FromStrings("__name__", "metric", "lbl", "RqcXatm")
+
+	if ls1.Hash() != ls2.Hash() {
+		// These ones are the same when using -tags slicelabels
+		ls1 = labels.FromStrings("__name__", "metric", "lbl1", "value", "lbl2", "l6CQ5y")
+		ls2 = labels.FromStrings("__name__", "metric", "lbl1", "value", "lbl2", "v7uDlF")
+	}
+
+	if ls1.Hash() != ls2.Hash() {
+		t.Skip("Unable to find colliding label hashes for this labels implementation")
+	}
+
+	// Relabel the first labelset - this will cache the result
+	relabeled1 := relabeller.relabel(0, ls1)
+	require.NotEmpty(t, relabeled1)
+
+	// Relabel the second labelset - due to hash collision, this will return
+	// the cached result from ls1 instead of relabeling ls2
+	relabeled2 := relabeller.relabel(0, ls2)
+	require.NotEmpty(t, relabeled2)
+
+	// This documents an inherited deficiency
+	t.Log("Expected failure: hash collision causes cache to return wrong labels")
+	require.True(t, labels.Equal(relabeled1, relabeled2),
+		"Hash collision: different input labels produced same cached output. "+
+			"ls1=%s, ls2=%s, relabeled1=%s, relabeled2=%s",
+		ls1.String(), ls2.String(), relabeled1.String(), relabeled2.String())
+}

@@ -91,7 +91,7 @@ type Component struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 
 	cacheMut sync.RWMutex
-	cache    *lru.Cache[string, labels.Labels]
+	cache    *lru.Cache[uint64, labels.Labels]
 }
 
 var (
@@ -101,7 +101,7 @@ var (
 
 // New creates a new prometheus.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	cache, err := lru.New[string, labels.Labels](args.CacheSize)
+	cache, err := lru.New[uint64, labels.Labels](args.CacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -297,13 +297,12 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	return relabelled
 }
 
-// TODO create benchmark to show cache key options, string was better than bytes
-
 func (c *Component) getFromCache(lbls labels.Labels) (labels.Labels, bool) {
 	c.cacheMut.RLock()
 	defer c.cacheMut.RUnlock()
 
-	fm, found := c.cache.Get(lbls.StringNoSpace())
+	hash := lbls.Hash()
+	fm, found := c.cache.Get(hash)
 
 	return fm, found
 }
@@ -313,13 +312,14 @@ func (c *Component) deleteFromCache(lbls labels.Labels) {
 	defer c.cacheMut.Unlock()
 	c.cacheDeletes.Inc()
 
-	c.cache.Remove(lbls.StringNoSpace())
+	hash := lbls.Hash()
+	c.cache.Remove(hash)
 }
 
 func (c *Component) clearCache(cacheSize int) {
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
-	cache, _ := lru.New[string, labels.Labels](cacheSize)
+	cache, _ := lru.New[uint64, labels.Labels](cacheSize)
 	c.cache = cache
 }
 
@@ -327,11 +327,12 @@ func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
 
+	hash := lbls.Hash()
 	if !keep {
-		c.cache.Add(lbls.StringNoSpace(), labels.EmptyLabels())
+		c.cache.Add(hash, labels.EmptyLabels())
 		return
 	}
-	c.cache.Add(lbls.StringNoSpace(), relabeled)
+	c.cache.Add(hash, relabeled)
 }
 
 func (c *Component) LiveDebugging() {}
