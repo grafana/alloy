@@ -1,0 +1,46 @@
+name: Trigger Alloy Rollout
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  trigger-argo-deploy:
+    runs-on: ubuntu-x64
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set short SHA
+        id: short-sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Extract tag name
+        id: tag
+        run: |
+          # Remove 'refs/tags/' prefix if present, and 'v' prefix if present
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Detected tag: ${TAG_NAME}"
+
+      - name: Trigger ArgoCD Workflow
+        uses: grafana/shared-workflows/actions/trigger-argo-workflow@e100806688f1209051080dfea5719fbbd1d18cc0 # trigger-argo-workflow/v1.2.1
+        with:
+          instance: "ops"
+          namespace: "alloy-cd"
+          workflow_template: "alloy"
+          parameters: |
+            dockertag=${{ steps.tag.outputs.tag }}
+            imageName=grafana/alloy
+            prCommentContext= This deployment was triggered by pushing tag ${{ steps.tag.outputs.tag }}.
+            commit_author=${{ github.actor }}
+            commit_link=https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+          extra_args: "--name alloy-${{ steps.short-sha.outputs.sha }}"
+
