@@ -186,8 +186,8 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, af appenderFu
 
 	// Note: there's another optimization where we could use the returned ref if all the non zero refs
 	//  are the same value. This isn't safe as we will mix downstream refs with unique refs which could
-	//  collide.We could start at max unit64 for unique refs and go backwards lessening the chance of
-	// 	collisions. But it's rather dangerous for an unlikely edge case. If two components are returning
+	//  collide. We could start at max unit64 for unique refs and go backwards lessening the chance of
+	// 	collisions but it's rather dangerous for an unlikely edge case. If two components are returning
 	// 	the same ref it's two remote_write components which should probably be merged in to one.
 	for _, child := range s.children {
 		childRef, err := af(child, ref)

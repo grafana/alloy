@@ -19,7 +19,7 @@ import (
 
 func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher livedebugging.DebugDataPublisher, ls labelstore.LabelStore, store storage.Storage) *prometheus.Interceptor {
 	liveDebuggingComponentID := livedebugging.ComponentID(componentID)
-	
+
 	labelStoreEnv, exists := os.LookupEnv("ALLOY_USE_LABEL_STORE")
 	useLabelStore := true
 	if exists && strings.EqualFold(labelStoreEnv, "false") {
