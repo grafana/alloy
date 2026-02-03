@@ -1,18 +1,18 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/opentelemetry/
-description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OTel Collector
-menuTitle: OpenTelemetry
-title: OpenTelemetry With Grafana Alloy
+description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector
+menuTitle: OpenTelemetry Engine
+title: The OpenTelemetry Engine
 _build:
   list: false
 noindex: true
 weight: 10
 ---
 
-# OpenTelemetry With {{% param "FULL_PRODUCT_NAME" %}}
+# The {{% param "FULL_OTEL_ENGINE" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
-The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}} that lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to existing features and integrations.
+The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}} that lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -20,10 +20,11 @@ The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distri
 
 {{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension:
 
-- **{{< param "DEFAULT_ENGINE" >}}**: The existing {{< param "PRODUCT_NAME" >}} runtime and configuration syntax.
-  This remains the non-breaking, primary experience for existing {{< param "PRODUCT_NAME" >}} users.
+- **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../get-started/syntax/).
+  This remains the default, stable experience with [backward compatibility](../introduction/backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
 
-- **{{< param "OTEL_ENGINE" >}}**: The new runtime that runs our OpenTelemetry distribution inside {{< param "PRODUCT_NAME" >}}, using standard [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
+- **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
+  It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
 
 - **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that allows you to run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} in parallel.
 
@@ -31,7 +32,8 @@ The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distri
 
 The {{< param "OTEL_ENGINE" >}} bundle includes:
 
-- Standard components from the OpenTelemetry Collector core and contributor repositories
+- Standard components from the OpenTelemetry Collector core
+- A curated selection of components from contributor repositories
 - The `alloyengine` extension
 
 The following sections list all included components:
@@ -138,7 +140,7 @@ The following sections list all included components:
 
 {{< /collapse >}}
 
-To view the full list of components and their versioning, refer to the [OCB manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml)
+To view the full list of components and their versions, refer to the [OpenTelemetry Collector Builder manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml).
 
 ## Next steps
 

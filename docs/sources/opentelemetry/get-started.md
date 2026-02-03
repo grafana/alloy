@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/opentelemetry/get-started
-description: Getting Started with the Alloy OpenTelemetry Engine
+description: Get started with the Alloy OpenTelemetry Engine
 menuTitle: Get Started
 title: Get Started with the Alloy OpenTelemetry Engine
 _build:
@@ -13,10 +13,12 @@ weight: 10
 
 You can run the {{< param "OTEL_ENGINE" >}} using the CLI, Helm chart, or service installation.
 
-## Prequisites
-There are none! The tools needed to run the OTel Engine are all shipped within Alloy.
+## Prerequisites
 
-Before starting, it is a good idea to validate your Open Telemetry YAML config. This can be done using the `validate` command
+There are no additional prerequisites.
+The tools needed to run the {{< param "OTEL_ENGINE" >}} are shipped within {{< param "PRODUCT_NAME" >}}.
+
+Before you start, validate your OpenTelemetry YAML configuration with the `validate` command:
 
 ```bash
 ./build/alloy otel validate --config=<CONFIG_FILE>
@@ -28,16 +30,15 @@ The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" 
 The CLI is the easiest way to experiment locally or on a single host.
 Refer to the [OTel CLI](../../reference/cli/otel/) documentation for more information.
 
-The following example configuration file accepts OTLP and sends it to the Grafana Cloud OTLP gateway.
+The following example configuration file accepts telemetry over OTLP and sends it to the Grafana Cloud OTLP gateway.
 You can adapt the endpoint and credentials for your region and tenant.
-For more information about where to find your `INSTANCE_ID`, `API_TOKEN`, and `GRAFANA_URL`, refer to [Send data using OpenTelemetry Protocol](https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/).
 
 ```yaml
 extensions:
   basicauth/grafana_cloud:
     client_auth:
-      username: INSTANCE_ID
-      password: API_TOKEN
+      username: <INSTANCE_ID>
+      password: <API_TOKEN>
 
 receivers:
   otlp:
@@ -52,7 +53,7 @@ processors:
 
 exporters:
   otlphttp/grafana_cloud:
-    endpoint: GRAFANA_URL
+    endpoint: <GRAFANA_URL>
     auth:
       authenticator: basicauth/grafana_cloud
 
@@ -64,6 +65,14 @@ service:
       processors: [batch]
       exporters: [otlphttp/grafana_cloud]
 ```
+
+Replace the following:
+
+- _`<INSTANCE_ID>`_: Your Grafana Cloud instance ID.
+- _`<API_TOKEN>`_: Your Grafana Cloud API token.
+- _`<GRAFANA_URL>`_: Your Grafana Cloud OTLP endpoint URL.
+
+For more information about where to find these values, refer to [Send data using OpenTelemetry Protocol](https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/).
 
 To start the {{< param "OTEL_ENGINE" >}}, run the following command:
 
@@ -86,11 +95,11 @@ The following example shows the configuration:
 extensions:
   basicauth/grafana_cloud:
     client_auth:
-      username: INSTANCE_ID
-      password: API_TOKEN
+      username: <INSTANCE_ID>
+      password: <API_TOKEN>
   alloyengine:
     config:
-      file: path/to/alloy-config.alloy
+      file: <ALLOY_CONFIG_PATH>
     flags:
       server.http.listen-addr: 0.0.0.0:12345
       stability.level: experimental
@@ -108,7 +117,7 @@ processors:
 
 exporters:
   otlphttp/grafana_cloud:
-    endpoint: GRAFANA_URL
+    endpoint: <GRAFANA_URL>
     auth:
       authenticator: basicauth/grafana_cloud
 
@@ -120,6 +129,13 @@ service:
       processors: [batch]
       exporters: [otlphttp/grafana_cloud]
 ```
+
+Replace the following:
+
+- _`<ALLOY_CONFIG_PATH>`_: The path to your {{< param "DEFAULT_ENGINE" >}} configuration file.
+- _`<INSTANCE_ID>`_: Your Grafana Cloud instance ID.
+- _`<API_TOKEN>`_: Your Grafana Cloud API token.
+- _`<GRAFANA_URL>`_: Your Grafana Cloud OTLP endpoint URL.
 
 This example adds the `alloyengine` block in the extension declarations and enables the extension in the `service` block.
 You can then run {{< param "PRODUCT_NAME" >}} with the exact same command as before:
@@ -139,13 +155,16 @@ TODO
 ## Run with service installation
 
 Service installation support for systemd, launchd, and similar systems isn't included in the initial experimental release.
-Service installers will work seamlessly with the {{< param "OTEL_ENGINE" >}} as the feature progresses.
+Service installers will work seamlessly with the {{< param "OTEL_ENGINE" >}} as the feature matures.
 In the meantime, use the CLI or Helm options for testing.
 
 ## Considerations
 
-1. The {{< param "DEFAULT_ENGINE" >}} accepts the --storage.path flag in which you can point to a base directory for running components to store data on disk. The {{< param "OTEL_ENGINE" >}} does not accept any such flag, but our distribution includes the file_system extension which can be configured for components to use. More information on this can be found in the [upstream documentation](https://opentelemetry.io/docs/collector/resiliency/#persistent-storage-write-ahead-log---wal)
-
-2. The {{< param "DEFAULT_ENGINE" >}} exposes its admin server on its default port `12345`. The OTel Engine however exposes its admin server on it's own default port of `8888`. The admin server for the OTel Engine currently does not expose a UI, support bundles, or reload endpoint functionality like the Default Engine. The experience currently mirrors that of the upstream collector.
-
-3. Fleet management is **not** yet supported for the OTel Engine. The input configuration must be defined and managed manually.
+1. **Storage configuration**: The {{< param "DEFAULT_ENGINE" >}} accepts the `--storage.path` flag to set a base directory for components to store data on disk.
+   The {{< param "OTEL_ENGINE" >}} uses the `filestorage` extension instead of a CLI flag.
+   Refer to the [upstream documentation](https://opentelemetry.io/docs/collector/resiliency/#persistent-storage-write-ahead-log---wal) for more information.
+1. **Server ports**: The {{< param "DEFAULT_ENGINE" >}} exposes its HTTP server on port `12345`.
+   The {{< param "OTEL_ENGINE" >}} exposes its HTTP server on port `8888`.
+   The {{< param "OTEL_ENGINE" >}} HTTP server doesn't expose a UI, support bundles, or reload endpoint functionality like the {{< param "DEFAULT_ENGINE" >}}.
+1. **Fleet management**: [Grafana Fleet Management](https://grafana.com/blog/opentelemetry-and-grafana-labs-whats-new-and-whats-next-in-2026/#fleet-management) isn't supported for the {{< param "OTEL_ENGINE" >}}.
+   You must define and manage the input configuration manually.
