@@ -30,7 +30,7 @@ The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" 
 The CLI is the easiest way to experiment locally or on a single host.
 Refer to the [OTel CLI](../../reference/cli/otel/) documentation for more information.
 
-The following example configuration file accepts telemetry over OTLP and sends it to the Grafana Cloud OTLP gateway.
+The following example configuration file accepts telemetry over [OTLP](https://opentelemetry.io/docs/specs/otel/protocol/) and sends it to the Grafana Cloud OTLP gateway.
 You can adapt the endpoint and credentials for your region and tenant.
 
 ```yaml
