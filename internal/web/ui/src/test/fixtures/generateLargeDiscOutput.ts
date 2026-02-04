@@ -65,10 +65,9 @@ function generateTarget(index: number) {
 }
 
 /**
- * Generates a large discovery.kubernetes output with the specified number of targets.
- * Default count is chosen to create a large dataset that exceeds typical render limits.
+ * Generates a discovery.kubernetes output with the specified number of targets and label.
  */
-export function generateLargeDiscOutput(targetCount = 20000) {
+export function generateDiscOutput(label: string, targetCount: number) {
   const targets = [];
   for (let i = 0; i < targetCount; i++) {
     targets.push(generateTarget(i));
@@ -77,12 +76,12 @@ export function generateLargeDiscOutput(targetCount = 20000) {
   return {
     name: 'discovery.kubernetes',
     type: 'block',
-    localID: 'discovery.kubernetes.default_kubernetes',
+    localID: `discovery.kubernetes.${label}`,
     moduleID: '',
-    label: 'default_kubernetes',
+    label: label,
     referencesTo: [],
-    referencedBy: ['discovery.relabel.default_kubernetes'],
-    dataFlowEdgesTo: ['discovery.relabel.default_kubernetes'],
+    referencedBy: [`discovery.relabel.${label}`],
+    dataFlowEdgesTo: [`discovery.relabel.${label}`],
     health: {
       state: 'healthy',
       message: 'started component',
@@ -109,5 +108,14 @@ export function generateLargeDiscOutput(targetCount = 20000) {
   };
 }
 
-// Pre-generated fixture for tests - uses 5000 targets to ensure it's large enough
-export const largeDiscOutput = generateLargeDiscOutput(50000);
+// Heavy fixture - 50000 targets, requires download button
+export const heavyDiscOutput = generateDiscOutput('heavy', 50000);
+
+// Light fixture - 3 targets, renders inline without download button
+export const lightDiscOutput = generateDiscOutput('light', 3);
+
+// Backwards compatibility alias
+export const largeDiscOutput = heavyDiscOutput;
+export function generateLargeDiscOutput(targetCount = 20000) {
+  return generateDiscOutput('heavy', targetCount);
+}
