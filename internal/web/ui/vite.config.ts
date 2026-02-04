@@ -20,6 +20,28 @@ function goTemplatePlugin() {
 }
 
 /**
+ * Available mock fixtures mapped by their localID.
+ */
+const MOCK_FIXTURES = [
+  'discovery.kubernetes.heavy',
+  'discovery.kubernetes.light',
+];
+
+/**
+ * Helper to load a fixture by component ID.
+ */
+function loadFixture(componentId: string): string | null {
+  try {
+    return readFileSync(
+      join(__dirname, `src/test/generated_fixtures/${componentId}.json`),
+      'utf-8'
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Plugin to mock the Alloy API during development.
  * Serves fixture data from src/test/fixtures/ for testing without a real Alloy instance.
  *
@@ -38,42 +60,38 @@ function mockApiPlugin(): PluginOption {
         // Mock: GET /api/v0/web/components (list all components)
         if (req.url === '/api/v0/web/components') {
           res.setHeader('Content-Type', 'application/json');
-          try {
-            const fixture = readFileSync(
-              join(__dirname, 'src/test/fixtures/large_disc_output.json'),
-              'utf-8'
-            );
-            const data = JSON.parse(fixture);
-            // Return as a list with one component
-            res.end(JSON.stringify([{
-              moduleID: data.moduleID || '',
-              localID: data.localID,
-              name: data.name,
-              label: data.label,
-              health: data.health,
-              referencedBy: data.referencedBy || [],
-              referencesTo: data.referencesTo || [],
-              dataFlowEdgesTo: data.dataFlowEdgesTo || [],
-              liveDebuggingEnabled: false,
-            }]));
-          } catch {
-            res.end(JSON.stringify([]));
+          const components = [];
+          for (const fixtureId of MOCK_FIXTURES) {
+            const fixture = loadFixture(fixtureId);
+            if (fixture) {
+              const data = JSON.parse(fixture);
+              components.push({
+                moduleID: data.moduleID || '',
+                localID: data.localID,
+                name: data.name,
+                label: data.label,
+                health: data.health,
+                referencedBy: data.referencedBy || [],
+                referencesTo: data.referencesTo || [],
+                dataFlowEdgesTo: data.dataFlowEdgesTo || [],
+                liveDebuggingEnabled: false,
+              });
+            }
           }
+          res.end(JSON.stringify(components));
           return;
         }
 
         // Mock: GET /api/v0/web/components/:id (component detail)
         if (req.url.startsWith('/api/v0/web/components/')) {
+          const componentId = req.url.replace('/api/v0/web/components/', '');
           res.setHeader('Content-Type', 'application/json');
-          try {
-            const fixture = readFileSync(
-              join(__dirname, 'src/test/fixtures/large_disc_output.json'),
-              'utf-8'
-            );
+          const fixture = loadFixture(componentId);
+          if (fixture) {
             res.end(fixture);
-          } catch (err) {
+          } else {
             res.statusCode = 404;
-            res.end(JSON.stringify({ error: 'Fixture not found' }));
+            res.end(JSON.stringify({ error: `Fixture not found: ${componentId}` }));
           }
           return;
         }
