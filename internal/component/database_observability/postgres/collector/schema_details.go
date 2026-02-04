@@ -264,11 +264,20 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 			if _, ok := tables[tableName]; ok {
 				return true
 			}
+
+			// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
+			// so we try exact match first, then fall back to lowercase for PostgreSQL's identifier folding.
+			lowercaseName := table(strings.ToLower(string(tableName)))
+			if lowercaseName != tableName {
+				if _, ok := tables[lowercaseName]; ok {
+					return true
+				}
+			}
 		}
 	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
 		if tables, ok := schemas[schemaName]; ok {
-			_, ok := tables[tableName]
-			return ok
+			_, exists := tables[tableName]
+			return exists
 		}
 	}
 
@@ -276,12 +285,24 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 }
 
 // parseSchemaQualifiedIfAny returns separated schema and table if the parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+// For schema-qualified names, it normalizes identifiers according to PostgreSQL rules (quoted = preserve case, unquoted = lowercase).
+// For non-qualified names, it returns the name as-is since the go-sqllexer library doesn't preserve quote information for these cases.
 func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
 	parts := strings.SplitN(parsedTableName, ".", 2)
 	if len(parts) == 2 {
-		return schema(parts[0]), table(parts[1])
+		return schema(normalizePostgresIdentifier(parts[0])), table(normalizePostgresIdentifier(parts[1]))
 	}
 	return "", table(parsedTableName)
+}
+
+// normalizePostgresIdentifier handles PostgreSQL identifier case folding.
+// Quoted identifiers (e.g., "MyTable") preserve their exact case after stripping quotes.
+// Unquoted identifiers are folded to lowercase to match PostgreSQL's behavior.
+func normalizePostgresIdentifier(identifier string) string {
+	if len(identifier) >= 2 && identifier[0] == '"' && identifier[len(identifier)-1] == '"' {
+		return identifier[1 : len(identifier)-1]
+	}
+	return strings.ToLower(identifier)
 }
 
 type SchemaDetailsArguments struct {

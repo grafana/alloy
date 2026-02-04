@@ -74,7 +74,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
+		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
 		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:          &atomic.Bool{},
 	}, nil
