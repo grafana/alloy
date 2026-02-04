@@ -11,14 +11,17 @@ import (
 	"os"
 	"unsafe"
 
+	"github.com/go-kit/log"
 	"golang.org/x/text/encoding"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const defaultBufSize = 4096
 
 // newReader creates a new reader that is used to read from file.
 // It is important that the provided file is positioned at the start of the file.
-func newReader(f *os.File, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
+func newReader(logger log.Logger, f *os.File, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
 	rr, err := newReaderAt(f, compression, 0)
 	if err != nil {
 		return nil, err
@@ -45,7 +48,7 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding, compression stri
 	if offset == 0 && startFromEnd {
 		offset, err = lastNewline(f, nl)
 		if err != nil {
-			return nil, err
+			level.Error(logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
 		}
 	}
 
