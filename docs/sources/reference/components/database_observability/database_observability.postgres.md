@@ -165,7 +165,7 @@ The receiver does not collect logs itself - it processes logs forwarded to it:
 
 - `loki.source.file` - reads PostgreSQL log files and forwards to the receiver
 - `loki.source.cloudwatch` - reads CloudWatch Logs (RDS) and forwards to the receiver
-- `otelcol.receiver.otlp` - receives OTLP logs and forwards to the receiver
+- `otelcol.receiver.otlp` + `otelcol.exporter.loki` - receives OTLP logs and forwards to the receiver exporting to loki format
 
 ### Metrics
 
@@ -187,8 +187,6 @@ ALTER SYSTEM SET log_line_prefix = '%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a';
 -- Reload configuration
 SELECT pg_reload_conf();
 ```
-
-**For AWS RDS/Aurora**, this is typically the default format. Verify with:
 
 ```sql
 SHOW log_line_prefix;
