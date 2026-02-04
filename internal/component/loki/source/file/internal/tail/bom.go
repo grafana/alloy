@@ -34,12 +34,14 @@ const (
 func detectBOM(r io.Reader, offset int64) (int64, BOM) {
 	buf := make([]byte, 4)
 
-	_, err := r.Read(buf)
+	n, err := r.Read(buf)
 	if err != nil {
 		return offset, bomUNKNOWN
 	}
 
 	var bom BOM
+	buf = buf[:n]
+
 	switch {
 	case bytes.HasPrefix(buf, bomUTF8Bytes):
 		bom = bomUTF8
