@@ -131,7 +131,8 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		var digest, digestText, schema, sampleText string
+		var digest, digestText, schema string
+		var sampleText sql.NullString
 		if err := rs.Scan(&digest, &digestText, &schema, &sampleText); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schema, "err", err)
 			continue
@@ -139,8 +140,8 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 		var tables []string
 		var parserErr, lexerErr error
-		if tables, parserErr = c.tryParseTableNames(sampleText, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText, digestText); lexerErr != nil {
+		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
+			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
 				level.Warn(c.logger).Log("msg", "failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
 				continue
 			}
