@@ -305,7 +305,7 @@ func (t *transaction) AppendHistogram(_ storage.SeriesRef, ls labels.Labels, atM
 		schema = fh.Schema
 	}
 	t.addingNativeHistogram = true
-	t.addingNHCB = schema == -53
+	t.addingNHCB = schema == histogram.CustomBucketsSchema
 
 	if t.externalLabels.Len() != 0 {
 		b := labels.NewBuilder(ls)
@@ -372,7 +372,7 @@ func (t *transaction) AppendHistogramCTZeroSample(_ storage.SeriesRef, ls labels
 		schema = fh.Schema
 	}
 	t.addingNativeHistogram = true
-	t.addingNHCB = schema == -53
+	t.addingNHCB = schema == histogram.CustomBucketsSchema
 	return t.setCreationTimestamp(ls, atMs, ctMs)
 }
 
