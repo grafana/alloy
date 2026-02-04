@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 func Test_TruncateStage_Process(t *testing.T) {
@@ -351,6 +352,97 @@ func Test_ValidateTruncateConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTruncateStage_UnmarshalAlloy(t *testing.T) {
+	type testCase struct {
+		name    string
+		config  string
+		wantErr bool
+	}
+
+	tests := []testCase{
+		{
+			name:    "empty block",
+			config:  ``,
+			wantErr: true,
+		},
+		{
+			name: "empty rule",
+			config: `
+				rule {}
+			`,
+			wantErr: true,
+		},
+		{
+			name: "unknown source_type",
+			config: `
+				rule {
+					limit = "1b"
+					source_type = "test"
+				}
+			`,
+			wantErr: true,
+		},
+		{
+			name: "all attributes",
+			config: `
+				rule {
+					limit = "1B"
+					source_type = "line"
+					sources = ["app", "app2"]
+					suffix = "..."
+				}
+			`,
+			wantErr: false,
+		},
+		{
+			name: "multiple rules",
+			config: `
+				rule {
+					limit = "1B"
+					source_type = "line"
+					sources = ["app", "app2"]
+					suffix = "..."
+				}
+
+				rule {
+					limit = "1B"
+					source_type = "label"
+					sources = ["app", "app2"]
+					suffix = "..."
+				}
+				
+				rule {
+					limit = "1B"
+					source_type = "extracted"
+					sources = ["app", "app2"]
+					suffix = "..."
+				}
+
+				rule {
+					limit = "1B"
+					source_type = "structured_metadata"
+					sources = ["app", "app2"]
+					suffix = "..."
+				}
+			`,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg TruncateConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
 }
 
 func ptr[T any](s T) *T {
