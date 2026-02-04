@@ -50,12 +50,12 @@ const (
 // Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
 // timestamp and log entry
 type Processor interface {
-	Process(labels model.LabelSet, extracted map[string]interface{}, time *time.Time, entry *string)
+	Process(labels model.LabelSet, extracted map[string]any, time *time.Time, entry *string)
 	Name() string
 }
 
 type Entry struct {
-	Extracted map[string]interface{}
+	Extracted map[string]any
 	loki.Entry
 }
 

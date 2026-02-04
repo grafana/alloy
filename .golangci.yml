@@ -68,6 +68,11 @@ formatters:
   enable:
     - gofmt     # Check whether code was gofmt-ed
     - goimports # Check imports were formatted with gofmt
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
   exclusions:
     generated: lax
     paths:

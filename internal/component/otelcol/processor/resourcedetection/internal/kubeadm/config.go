@@ -30,8 +30,8 @@ func (c *Config) SetToDefault() {
 	*c = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"auth_type":           args.KubernetesAPIConfig.AuthType,
 		"context":             args.KubernetesAPIConfig.Context,
 		"resource_attributes": args.ResourceAttributes.Convert(),
@@ -44,8 +44,8 @@ type ResourceAttributesConfig struct {
 	K8sClusterUID  rac.ResourceAttributeConfig `alloy:"k8s.cluster.uid,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"k8s.cluster.name": r.K8sClusterName.Convert(),
 		"k8s.cluster.uid":  r.K8sClusterUID.Convert(),
 	}

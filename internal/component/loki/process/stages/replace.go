@@ -61,7 +61,7 @@ func newReplaceStage(logger log.Logger, config ReplaceConfig) (Stage, error) {
 }
 
 // Process implements Stage
-func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	// If a source key is provided, the replace stage should process it
 	// from the extracted map, otherwise should fall back to the entry
 	input := entry
@@ -162,7 +162,7 @@ func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td 
 	return result + input[previousInputEndIndex:], capturedMap, nil
 }
 
-func (r *replaceStage) getTemplateData(extracted map[string]interface{}) map[string]string {
+func (r *replaceStage) getTemplateData(extracted map[string]any) map[string]string {
 	td := make(map[string]string)
 	for k, v := range extracted {
 		s, err := getString(v)

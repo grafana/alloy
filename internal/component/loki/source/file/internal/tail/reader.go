@@ -6,6 +6,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"compress/zlib"
+	"errors"
 	"io"
 	"os"
 	"unsafe"
@@ -79,14 +80,9 @@ type reader struct {
 // next reads and returns the next complete line from the file.
 // It will return EOF if there is no more data to read.
 func (r *reader) next() (string, error) {
-	// First we check if we already have a full line buffered.
-	if line, ok := r.consumeLine(); ok {
-		return r.decode(line)
-	}
-
 	for {
 		// Read more data up until the last byte of nl.
-		chunk, err := r.br.ReadBytes(r.lastNl)
+		chunk, err := r.br.ReadSlice(r.lastNl)
 		if len(chunk) > 0 {
 			r.pending = append(r.pending, chunk...)
 
@@ -95,13 +91,12 @@ func (r *reader) next() (string, error) {
 			}
 		}
 
-		// If we did not get an error and did not find a full line we
-		// need to read more data.
-		if err == nil {
-			continue
-		}
+		// ReadSlice does not allocate; it returns a slice into bufio's buffer and advances
+		// the read position. If we did not find a full line or got ErrBufferFull, loop and call again.
+		if err != nil && !errors.Is(err, bufio.ErrBufferFull) {
+			return "", err
 
-		return "", err
+		}
 	}
 }
 
@@ -115,7 +110,7 @@ func (r *reader) flush() (string, error) {
 
 	line := r.pending[:]
 	r.pos += int64(len(line))
-	r.pending = make([]byte, 0, defaultBufSize)
+	r.pending = r.pending[:0]
 	return r.decode(bytes.TrimSuffix(line, r.nl))
 }
 
@@ -142,9 +137,9 @@ func (r *reader) consumeLine() ([]byte, bool) {
 
 	// Extract everything up until newline.
 	line := r.pending[:i]
-	// Keep everything except the line we extracted and newline.
-	rem := r.pending[i+len(r.nl):]
-	r.pending = append(make([]byte, 0, defaultBufSize), rem...)
+
+	// Reset pending. We never buffer beyond newline so it is safe to reset.
+	r.pending = r.pending[:0]
 
 	// Advance the position on bytes we have consumed as a full line.
 	r.pos += int64(len(line) + len(r.nl))

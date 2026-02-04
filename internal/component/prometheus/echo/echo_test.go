@@ -145,7 +145,7 @@ func TestComponent_Update(t *testing.T) {
 func TestAppender_WithExpfmtEncoding(t *testing.T) {
 	var loggedOutput string
 
-	logger := log.LoggerFunc(func(keyvals ...interface{}) error {
+	logger := log.LoggerFunc(func(keyvals ...any) error {
 		for i := 0; i < len(keyvals); i += 2 {
 			if keyvals[i] == "metrics" && i+1 < len(keyvals) {
 				loggedOutput = keyvals[i+1].(string)
@@ -183,7 +183,7 @@ func TestAppender_WithExpfmtEncoding(t *testing.T) {
 func TestAppender_WithOpenMetricsFormat(t *testing.T) {
 	var loggedOutput string
 
-	logger := log.LoggerFunc(func(keyvals ...interface{}) error {
+	logger := log.LoggerFunc(func(keyvals ...any) error {
 		for i := 0; i < len(keyvals); i += 2 {
 			if keyvals[i] == "metrics" && i+1 < len(keyvals) {
 				loggedOutput = keyvals[i+1].(string)

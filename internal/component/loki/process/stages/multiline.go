@@ -189,7 +189,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		return
 	}
 	// copy extracted data.
-	extracted := make(map[string]interface{}, len(s.startLineEntry.Extracted))
+	extracted := make(map[string]any, len(s.startLineEntry.Extracted))
 	for k, v := range s.startLineEntry.Extracted {
 		extracted[k] = v
 	}

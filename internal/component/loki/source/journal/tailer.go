@@ -1,6 +1,6 @@
 //go:build linux && cgo && promtail_journal_enabled
 
-package target
+package journal
 
 // This code is copied from Promtail (https://github.com/grafana/loki/blob/baaaa83c78c03c6b9257afddc0854daec928a755/clients/pkg/promtail/targets/journal/journaltarget.go#L4)
 // with minor edits. The target package is used to configure and run the targets that can read journal entries and forward them
@@ -97,12 +97,12 @@ var defaultJournalEntryFunc = func(c sdjournal.JournalReaderConfig, cursor strin
 	return journal.GetEntry()
 }
 
-// JournalTarget tails systemd journal entries.
+// tailer tails systemd journal entries.
 // nolint
-type JournalTarget struct {
-	metrics       *Metrics
+type tailer struct {
+	metrics       *metrics
 	logger        log.Logger
-	handler       loki.EntryHandler
+	recv          loki.LogsReceiver
 	positions     positions.Positions
 	positionPath  string
 	relabelConfig []*relabel.Config
@@ -113,21 +113,21 @@ type JournalTarget struct {
 	until chan time.Time
 }
 
-// NewJournalTarget configures a new JournalTarget.
-func NewJournalTarget(
-	metrics *Metrics,
+// newTailer return as new tailer
+func newTailer(
+	metrics *metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	recv loki.LogsReceiver,
 	positions positions.Positions,
 	jobName string,
 	relabelConfig []*relabel.Config,
 	targetConfig *scrapeconfig.JournalTargetConfig,
-) (*JournalTarget, error) {
+) (*tailer, error) {
 
-	return journalTargetWithReader(
+	return newTailerWithReader(
 		metrics,
 		logger,
-		handler,
+		recv,
 		positions,
 		jobName,
 		relabelConfig,
@@ -137,17 +137,17 @@ func NewJournalTarget(
 	)
 }
 
-func journalTargetWithReader(
-	metrics *Metrics,
+func newTailerWithReader(
+	metrics *metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	recv loki.LogsReceiver,
 	pos positions.Positions,
 	jobName string,
 	relabelConfig []*relabel.Config,
 	targetConfig *scrapeconfig.JournalTargetConfig,
 	readerFunc journalReaderFunc,
 	entryFunc journalEntryFunc,
-) (*JournalTarget, error) {
+) (*tailer, error) {
 
 	positionPath := positions.CursorKey(jobName)
 	position := pos.GetString(positionPath, "")
@@ -160,10 +160,10 @@ func journalTargetWithReader(
 	}
 
 	until := make(chan time.Time)
-	t := &JournalTarget{
+	t := &tailer{
 		metrics:       metrics,
 		logger:        logger,
-		handler:       handler,
+		recv:          recv,
 		positions:     pos,
 		positionPath:  positionPath,
 		relabelConfig: relabelConfig,
@@ -244,7 +244,7 @@ type journalConfigBuilder struct {
 // generateJournalConfig generates a journal config by trying to intelligently
 // determine if a time offset or the cursor should be used for the starting
 // position in the reader.
-func (t *JournalTarget) generateJournalConfig(
+func (t *tailer) generateJournalConfig(
 	cb journalConfigBuilder,
 ) sdjournal.JournalReaderConfig {
 
@@ -288,7 +288,7 @@ func (t *JournalTarget) generateJournalConfig(
 	return cfg
 }
 
-func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error) {
+func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 	ts := time.Unix(0, int64(entry.RealtimeTimestamp)*int64(time.Microsecond))
 
 	var msg string
@@ -339,7 +339,7 @@ func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error)
 
 	t.metrics.journalLines.Inc()
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
-	t.handler.Chan() <- loki.Entry{
+	t.recv.Chan() <- loki.Entry{
 		Labels: lbls,
 		Entry: push.Entry{
 			Line:      msg,
@@ -350,10 +350,9 @@ func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error)
 }
 
 // Stop shuts down the JournalTarget.
-func (t *JournalTarget) Stop() error {
+func (t *tailer) Stop() error {
 	t.until <- time.Now()
 	err := t.r.Close()
-	t.handler.Stop()
 	return err
 }
 
