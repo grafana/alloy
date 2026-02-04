@@ -31,7 +31,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.95.0
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.17
 	github.com/blang/semver/v4 v4.0.0
-	github.com/bmatcuk/doublestar/v4 v4.9.1
+	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e
 	github.com/buger/jsonparser v1.1.1
 	github.com/burningalchemist/sql_exporter v0.0.0-20240103092044-466b38b6abc4
@@ -1016,6 +1016,7 @@ require (
 require (
 	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1
 	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1
+	github.com/bmatcuk/doublestar v1.3.4
 )
 
 require (
