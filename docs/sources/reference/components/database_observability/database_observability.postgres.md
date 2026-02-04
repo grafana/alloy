@@ -146,12 +146,13 @@ The `azure` block supplies the identifying information for the database being mo
 
 ## Error Logs Collector
 
-The `error_logs` collector processes PostgreSQL error logs in real-time and exports both structured logs and Prometheus metrics.
+The `error_logs` collector processes PostgreSQL error logs received through the `error_logs_receiver` entry point and exports Prometheus metrics.
 Unlike other collectors, it **runs independently of the database connection** and starts immediately when the component is created.
 
 ### Key Features
 
-- **Always-on collection**: Collects logs even when the database is unavailable
+- **Always-on processing**: Processes logs even when the database is unavailable
+- **Entry point receiver**: Provides an `error_logs_receiver` that must be fed by log sources (e.g., `loki.source.file`, `loki.source.cloudwatch`)
 - **RDS log format support**: Parses structured PostgreSQL logs using AWS RDS format
 - **SQLSTATE extraction**: Automatically extracts and classifies errors by SQLSTATE codes
 - **Prometheus metrics**: Exports detailed error metrics with labels for severity, SQLSTATE, database, user, and instance
@@ -159,11 +160,12 @@ Unlike other collectors, it **runs independently of the database connection** an
 
 ### Exported Receiver
 
-The component exports an `error_logs_receiver` that can be consumed by log source components:
+The component exports an `error_logs_receiver` entry point that must be fed by log source components.
+The receiver does not collect logs itself - it processes logs forwarded to it:
 
-- `loki.source.file` - for reading PostgreSQL log files
-- `loki.source.cloudwatch` - for reading CloudWatch Logs (RDS)
-- `otelcol.receiver.otlp` - for receiving OTLP logs
+- `loki.source.file` - reads PostgreSQL log files and forwards to the receiver
+- `loki.source.cloudwatch` - reads CloudWatch Logs (RDS) and forwards to the receiver
+- `otelcol.receiver.otlp` - receives OTLP logs and forwards to the receiver
 
 ### Metrics
 
