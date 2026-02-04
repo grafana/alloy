@@ -217,31 +217,120 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 }
 
 func (p *profilingLoop) start() error {
+	argv := p.generateCommand()
+	stdout, stderr, err := p.profiler.Execute(argv)
+	if err != nil {
+		return fmt.Errorf("asprof failed to run: %w %s %s", err, stdout, stderr)
+	}
+	return nil
+}
+
+func (p *profilingLoop) generateCommand() []string {
 	cfg := p.getConfig()
 	p.startTime = time.Now()
 	p.sampleRate = cfg.SampleRate
-	argv := make([]string, 0, 14)
+	argv := make([]string, 0)
 	// asprof cli reference: https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options
 	argv = append(argv,
 		"-f", p.jfrFile,
 		"-o", "jfr",
 	)
+
+	if cfg.Interval > 0 {
+		argv = append(argv, "-i", strconv.Itoa(int(cfg.Interval.Microseconds())))
+	}
 	if cfg.CPU {
+		argv = append(argv, "-e", "itimer")
+	}
+	if cfg.All {
+		argv = append(argv, "--all")
+	}
+	if cfg.Event != "" {
 		argv = append(argv, "-e", cfg.Event)
-		if cfg.PerThread {
-			argv = append(argv, "-t")
-		}
-		profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
-		argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
+	}
+	if cfg.PerThread {
+		argv = append(argv, "-t")
+	}
+	if cfg.Wall != "" {
+		argv = append(argv, "--wall", cfg.Wall)
+	}
+	if cfg.AllUser {
+		argv = append(argv, "--all-user")
+	}
+	if cfg.Filter != "" {
+		argv = append(argv, "--filter", cfg.Filter)
+	}
+	if cfg.Sched {
+		argv = append(argv, "--sched")
+	}
+	if cfg.TTSP {
+		argv = append(argv, "--ttsp")
+	}
+	if cfg.Begin != "" {
+		argv = append(argv, "--begin", cfg.Begin)
+	}
+	if cfg.End != "" {
+		argv = append(argv, "--end", cfg.End)
+	}
+	if cfg.NoStop {
+		argv = append(argv, "--nostop")
+	}
+	if cfg.Proc != "" {
+		argv = append(argv, "--proc", cfg.Proc)
+	}
+	if cfg.TargetCPU > 0 {
+		argv = append(argv, "--target-cpu", strconv.Itoa(cfg.TargetCPU))
+	}
+	if cfg.RecordCPU {
+		argv = append(argv, "--record-cpu")
 	}
 	if cfg.Alloc != "" {
 		argv = append(argv, "--alloc", cfg.Alloc)
 	}
+	if cfg.Live {
+		argv = append(argv, "--live")
+	}
+	if cfg.NativeMem != "" {
+		argv = append(argv, "--nativemem", cfg.NativeMem)
+	}
+	if cfg.NoFree {
+		argv = append(argv, "--nofree")
+	}
 	if cfg.Lock != "" {
 		argv = append(argv, "--lock", cfg.Lock)
 	}
+	if cfg.NativeLock != "" {
+		argv = append(argv, "--nativelock", cfg.NativeLock)
+	}
 	if cfg.LogLevel != "" {
 		argv = append(argv, "-L", cfg.LogLevel)
+	}
+	for _, pattern := range cfg.Include {
+		argv = append(argv, "-I", pattern)
+	}
+	for _, pattern := range cfg.Exclude {
+		argv = append(argv, "-X", pattern)
+	}
+	if cfg.JStackDepth > 0 && cfg.JStackDepth != 2048 {
+		argv = append(argv, "-j", strconv.Itoa(cfg.JStackDepth))
+	}
+	if cfg.CStack != "" {
+		argv = append(argv, "--cstack", cfg.CStack)
+	}
+	if len(cfg.Features) > 0 {
+		argv = append(argv, "-F", strings.Join(cfg.Features, ","))
+	}
+	for _, trace := range cfg.Trace {
+		argv = append(argv, "--trace", trace)
+	}
+	if cfg.JFRSync != "" {
+		argv = append(argv, "--jfrsync", cfg.JFRSync)
+	}
+	if cfg.Signal != "" {
+		argv = append(argv, "--signal", cfg.Signal)
+	}
+	if cfg.Clock != "" && cfg.Clock != "tsc" {
+		argv = append(argv, "--clock", cfg.Clock)
 	}
 
 	argv = append(argv,
@@ -251,11 +340,7 @@ func (p *profilingLoop) start() error {
 	)
 
 	_ = level.Debug(p.logger).Log("cmd", strings.Join(argv, " "))
-	stdout, stderr, err := p.profiler.Execute(argv)
-	if err != nil {
-		return fmt.Errorf("asprof failed to run: %w %s %s", err, stdout, stderr)
-	}
-	return nil
+	return argv
 }
 
 func (p *profilingLoop) getConfig() ProfilingConfig {
