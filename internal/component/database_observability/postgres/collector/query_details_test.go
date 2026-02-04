@@ -80,6 +80,81 @@ func TestQueryDetails(t *testing.T) {
 			},
 		},
 		{
+			name: "select query with uppercase table name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM SOME_TABLE WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="SOME_TABLE" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"some_table": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with uppercase schema-qualified name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM PUBLIC.USERS WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="PUBLIC.USERS" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"users": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with mixed case table name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM MyTable WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="MyTable" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"mytable": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "select query containing with",
 			eventStatementsRows: [][]driver.Value{{
 				"abc123",
