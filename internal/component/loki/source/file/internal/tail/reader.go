@@ -24,9 +24,7 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding, compression stri
 		return nil, err
 	}
 
-	br := bufio.NewReader(rr)
-
-	offsetAfterBOM, bom := detectBOM(br, offset)
+	offsetAfterBOM, bom := detectBOM(rr, offset)
 	enc = resolveEncodingFromBOM(bom, enc)
 
 	var (
@@ -59,11 +57,10 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding, compression stri
 	if err != nil {
 		return nil, err
 	}
-	br.Reset(rr)
 
 	return &reader{
 		pos:     offset,
-		br:      br,
+		br:      bufio.NewReader(rr),
 		decoder: decoder,
 		nl:      nl,
 		lastNl:  nl[len(nl)-1],
@@ -167,17 +164,14 @@ func (r *reader) reset(f *os.File, offset int64) error {
 	if err != nil {
 		return err
 	}
-	r.br.Reset(rr)
 
-	offset, _ = detectBOM(r.br, offset)
-	if offset != 0 {
-		rr, err = newReaderAt(f, r.compression, offset)
-		if err != nil {
-			return err
-		}
-		r.br.Reset(rr)
+	offset, _ = detectBOM(rr, offset)
+	rr, err = newReaderAt(f, r.compression, offset)
+	if err != nil {
+		return err
 	}
 
+	r.br.Reset(rr)
 	r.pos = offset
 	r.pending = make([]byte, 0, defaultBufSize)
 	return nil
