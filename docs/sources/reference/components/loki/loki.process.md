@@ -613,6 +613,11 @@ stage.labels {
       user = "username", // Sets up a 'user' label, based on the 'username' structured metadata value.
     }
 }
+
+// Drop the converted structured metadata
+stage.structured_metadata_drop {
+    values = [ "env", "username" ]
+}
 ```
 
 ### `stage.limit`
