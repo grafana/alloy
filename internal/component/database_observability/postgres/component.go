@@ -219,8 +219,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	}
 	c.baseTarget = baseTarget
 
-	// Export error_logs receiver immediately (stable for component lifetime).
-	// Prevents nil pointer panics in loki.source.file when database is unavailable.
+	// Export error_logs receiver immediately to prevent nil pointer panics
 	opts.OnStateChange(Exports{
 		Targets:           []discovery.Target{},
 		ErrorLogsReceiver: c.errorLogsReceiver,
@@ -250,7 +249,6 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	// Start error logs collector immediately (no DB connection required)
-	// This ensures server logs are always collected, even when database is unavailable
 	entryHandler := loki.NewEntryHandler(c.errorLogsIn, func() {})
 	errorLogsInternalReceiver := loki.NewLogsReceiver(loki.WithChannel(c.errorLogsIn))
 
@@ -259,7 +257,7 @@ func (c *Component) Run(ctx context.Context) error {
 		EntryHandler: entryHandler,
 		Logger:       c.opts.Logger,
 		InstanceKey:  c.instanceKey,
-		SystemID:     "unknown", // Will be updated when DB connects
+		SystemID:     "unknown",
 		Registry:     c.registry,
 	})
 	if err != nil {
@@ -273,10 +271,9 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 
 	c.errorLogsCollector = elCollector
-	level.Info(c.opts.Logger).Log("msg", "error_logs collector started (independent of database connection)")
+	level.Info(c.opts.Logger).Log("msg", "error_logs collector started")
 
 	// Bridge exported receiver to internal channel
-	// No drain mode needed since error_logs collector is always running
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -417,7 +414,6 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
-	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		collector.QueryDetailsCollector:  true,
 		collector.QuerySamplesCollector:  true,
@@ -439,7 +435,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
+// startCollectors starts all enabled collectors
 func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
@@ -565,14 +561,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		c.collectors = append(c.collectors, hcCollector)
 	}
 
-	// ErrorLogs collector is always running (started in Run())
-	// Just update its SystemID when DB connects
+	// ErrorLogs collector is always running, just update its SystemID when DB connects
 	if c.errorLogsCollector != nil {
 		c.errorLogsCollector.UpdateSystemID(systemID)
-		level.Info(c.opts.Logger).Log(
-			"msg", "updated error_logs collector system ID",
-			"system_id", systemID,
-		)
+		level.Info(c.opts.Logger).Log("msg", "updated error_logs system_id", "system_id", systemID)
 	}
 
 	if len(startErrors) > 0 {
