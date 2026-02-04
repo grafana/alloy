@@ -166,4 +166,5 @@ In the meantime, use the CLI or Helm options for testing.
    The {{< param "OTEL_ENGINE" >}} exposes its HTTP server on port `8888`.
    The {{< param "OTEL_ENGINE" >}} HTTP server doesn't expose a UI, support bundles, or reload endpoint functionality like the {{< param "DEFAULT_ENGINE" >}}.
 1. **Fleet management**: [Grafana Fleet Management](https://grafana.com/blog/opentelemetry-and-grafana-labs-whats-new-and-whats-next-in-2026/#fleet-management) isn't supported for the {{< param "OTEL_ENGINE" >}}.
-   You must define and manage the input configuration manually.
+   You must define and manage the input configuration manually. 
+   Support is a planned feature for the {{< param "OTEL_ENGINE" >}}, with OpAmp already being built into our Fleet Management solution in Grafana Cloud. You can read more about this [here](https://grafana.com/blog/opentelemetry-and-grafana-labs-whats-new-and-whats-next-in-2026/#fleet-management)
