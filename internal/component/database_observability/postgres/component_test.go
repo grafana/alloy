@@ -499,6 +499,73 @@ func Test_parseCloudProvider(t *testing.T) {
 	})
 }
 
+func Test_ErrorLogsCollector_StartsIndependentlyOfDatabase(t *testing.T) {
+	t.Run("error_logs receiver is exported immediately on component creation", func(t *testing.T) {
+		var exports Exports
+		opts := cmp.Options{
+			ID:         "test-component",
+			Logger:     kitlog.NewNopLogger(),
+			Registerer: nil,
+			OnStateChange: func(e cmp.Exports) {
+				exports = e.(Exports)
+			},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+			ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+
+		require.NotNil(t, exports.ErrorLogsReceiver, "ErrorLogsReceiver should be exported immediately")
+		require.NotNil(t, c.errorLogsReceiver, "component should have errorLogsReceiver initialized")
+		require.NotNil(t, c.errorLogsReceiver.Chan(), "receiver channel should be initialized")
+
+		assert.Equal(t, c.errorLogsReceiver, exports.ErrorLogsReceiver,
+			"exported receiver should be the same as component's internal receiver")
+	})
+
+	t.Run("collector field exists for runtime initialization", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+			ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		assert.Nil(t, c.errorLogsCollector, "errorLogsCollector should be nil before Run() is called")
+	})
+}
+
 func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
@@ -516,7 +583,6 @@ func Test_connectAndStartCollectors(t *testing.T) {
 			},
 		}
 
-		// Use unreachable DSN to trigger connection error
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/unreachable?sslmode=disable&connect_timeout=1"),
 			ForwardTo:      []loki.LogsReceiver{},
@@ -526,16 +592,12 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		// Verify that connectAndStartCollectors returns an error
 		err = c.connectAndStartCollectors(context.Background())
 		assert.Error(t, err, "should return error when connection fails")
 		assert.Contains(t, err.Error(), "failed to", "error should indicate connection failure")
 	})
 
 	t.Run("closes existing connection before reconnecting", func(t *testing.T) {
-		// This test verifies that connectAndStartCollectors properly closes
-		// an existing connection before attempting a new one
-
 		opts := cmp.Options{
 			ID:            "test-component",
 			Logger:        kitlog.NewNopLogger(),
@@ -560,10 +622,8 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		// The component should handle nil dbConnection gracefully
 		assert.Nil(t, c.dbConnection, "dbConnection should be nil initially after failed connection")
 
-		// Calling connectAndStartCollectors again should not panic
 		err = c.connectAndStartCollectors(context.Background())
 		assert.Error(t, err, "should return error for unreachable database")
 	})
@@ -700,5 +760,15 @@ func TestPostgres_Reconnection(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("Run did not exit after context cancellation")
 		}
+=======
+		// Before Run(), errorLogsCollector should be nil
+		require.Nil(t, c.errorLogsCollector, "collector should be nil before Run()")
+
+		// In Run(), the collector gets created before DB connection attempt.
+		// Unit tests in error_logs_test.go validate:
+		// - Collectors work without any DB connection
+		// - SystemID can be updated dynamically
+		// - Logs are processed with empty systemID initially
+>>>>>>> c7618237b (feat(postgres): add error_logs collector)
 	})
 }
