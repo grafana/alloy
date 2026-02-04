@@ -142,7 +142,7 @@ func TestLabels(t *testing.T) {
 		},
 		"label value is set from name for extracted": {
 			config: LabelsConfig{
-				SourceType: LabelsSourceExtractedMap,
+				SourceType: SourceTypeExtractedMap,
 				Values: map[string]*string{
 					"l1": &lv1,
 					"l2": nil,
@@ -157,7 +157,7 @@ func TestLabels(t *testing.T) {
 		},
 		"label value is set from name for structured_metadata": {
 			config: LabelsConfig{
-				SourceType: LabelsSourceStructuredMetadata,
+				SourceType: SourceTypeStructuredMetadata,
 				Values: map[string]*string{
 					"l1": &lv1,
 					"l2": nil,
@@ -215,7 +215,7 @@ func TestLabelsStage_Process(t *testing.T) {
 		},
 		"extract_success_structured_metadata": {
 			LabelsConfig{
-				SourceType: LabelsSourceStructuredMetadata,
+				SourceType: SourceTypeStructuredMetadata,
 				Values: map[string]*string{
 					"testLabel": ptr("testStrucuturedMetadata"),
 				}},
@@ -243,7 +243,7 @@ func TestLabelsStage_Process(t *testing.T) {
 		},
 		"different_source_name_structured_metadata": {
 			LabelsConfig{
-				SourceType: LabelsSourceStructuredMetadata,
+				SourceType: SourceTypeStructuredMetadata,
 				Values: map[string]*string{
 					"testLabel": &sourceName,
 				}},
@@ -267,7 +267,7 @@ func TestLabelsStage_Process(t *testing.T) {
 		},
 		"empty_structured_metadata": {
 			LabelsConfig{
-				SourceType: LabelsSourceStructuredMetadata,
+				SourceType: SourceTypeStructuredMetadata,
 				Values: map[string]*string{
 					"testLabel": &sourceName,
 				}},
