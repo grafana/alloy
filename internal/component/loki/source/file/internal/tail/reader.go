@@ -175,18 +175,6 @@ func (r *reader) reset(f *os.File, offset int64) error {
 	return nil
 }
 
-func encodedNewline(e *encoding.Encoder) ([]byte, error) {
-	out := make([]byte, 10)
-	nDst, _, err := e.Transform(out, []byte{'\n'}, true)
-	return out[:nDst], err
-}
-
-func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
-	out := make([]byte, 10)
-	nDst, _, err := e.Transform(out, []byte{'\r'}, true)
-	return out[:nDst], err
-}
-
 func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error) {
 	// NOTE: If compression is used we always need to read from the beginning.
 	if compression != "" && offset != 0 {

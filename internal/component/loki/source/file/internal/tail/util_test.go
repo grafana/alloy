@@ -13,69 +13,69 @@ import (
 func TestLastNewline(t *testing.T) {
 	encoder := encoding.Nop.NewEncoder()
 	t.Run("empty file", func(t *testing.T) {
-		runLastNewlineTest(t, "empty", encoder, "", 0)
+		lastNewlineTest(t, "empty", encoder, "", 0)
 	})
 
 	t.Run("UTF-8 no newline", func(t *testing.T) {
-		runLastNewlineTest(t, "no-nl", encoder, "line1", 0)
+		lastNewlineTest(t, "no-nl", encoder, "line1", 0)
 	})
 
 	t.Run("UTF-8 single newline at end", func(t *testing.T) {
-		runLastNewlineTest(t, "end", encoder, "line1\n", 6)
+		lastNewlineTest(t, "end", encoder, "line1\n", 6)
 	})
 
 	t.Run("UTF-8 newline in middle", func(t *testing.T) {
-		runLastNewlineTest(t, "middle", encoder, "line1\nline2", 6)
+		lastNewlineTest(t, "middle", encoder, "line1\nline2", 6)
 	})
 
 	t.Run("UTF-8 last", func(t *testing.T) {
-		runLastNewlineTest(t, "last", encoder, "line1\nline2\nline3\n", 18)
+		lastNewlineTest(t, "last", encoder, "line1\nline2\nline3\n", 18)
 	})
 
 	encoder = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 	t.Run("UTF-16LE empty", func(t *testing.T) {
-		runLastNewlineTest(t, "empty", encoder, "", 0)
+		lastNewlineTest(t, "empty", encoder, "", 0)
 	})
 
 	t.Run("UTF-16LE no newline", func(t *testing.T) {
-		runLastNewlineTest(t, "no-nl", encoder, "line1", 0)
+		lastNewlineTest(t, "no-nl", encoder, "line1", 0)
 	})
 
 	t.Run("UTF-16LE single newline at end", func(t *testing.T) {
-		runLastNewlineTest(t, "end", encoder, "line1\n", 12)
+		lastNewlineTest(t, "end", encoder, "line1\n", 12)
 	})
 
 	t.Run("UTF-16LE newline in middle", func(t *testing.T) {
-		runLastNewlineTest(t, "middle", encoder, "line1\nline2", 12)
+		lastNewlineTest(t, "middle", encoder, "line1\nline2", 12)
 	})
 
 	t.Run("UTF-16LE last", func(t *testing.T) {
-		runLastNewlineTest(t, "last", encoder, "line1\nline2\nline3\n", 36)
+		lastNewlineTest(t, "last", encoder, "line1\nline2\nline3\n", 36)
 	})
 
 	encoder = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
 	t.Run("UTF-16BE empty", func(t *testing.T) {
-		runLastNewlineTest(t, "empty", encoder, "", 0)
+		lastNewlineTest(t, "empty", encoder, "", 0)
 	})
 
 	t.Run("UTF-16BE no newline", func(t *testing.T) {
-		runLastNewlineTest(t, "no-nl", encoder, "line1", 0)
+		lastNewlineTest(t, "no-nl", encoder, "line1", 0)
 	})
 
 	t.Run("UTF-16BE single newline at end", func(t *testing.T) {
-		runLastNewlineTest(t, "end", encoder, "line1\n", 12)
+		lastNewlineTest(t, "end", encoder, "line1\n", 12)
 	})
 
 	t.Run("UTF-16BE newline in middle", func(t *testing.T) {
-		runLastNewlineTest(t, "middle", encoder, "line1\nline2", 12)
+		lastNewlineTest(t, "middle", encoder, "line1\nline2", 12)
 	})
 
 	t.Run("UTF-16BE last", func(t *testing.T) {
-		runLastNewlineTest(t, "last", encoder, "line1\nline2\nline3\n", 36)
+		lastNewlineTest(t, "last", encoder, "line1\nline2\nline3\n", 36)
 	})
 }
 
-func runLastNewlineTest(t *testing.T, name string, encoder *encoding.Encoder, content string, expectedPos int64) {
+func lastNewlineTest(t *testing.T, name string, encoder *encoding.Encoder, content string, expectedPos int64) {
 	encoded, err := encoder.String(content)
 	require.NoError(t, err)
 
@@ -89,7 +89,6 @@ func runLastNewlineTest(t *testing.T, name string, encoder *encoding.Encoder, co
 	got, err := lastNewline(f, nl)
 	require.NoError(t, err)
 	require.Equal(t, expectedPos, got)
-
 }
 
 // createTempFile creates a temp file with content and returns the open file (read-only seekable).
