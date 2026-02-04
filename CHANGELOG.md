@@ -2,6 +2,7 @@
 
 ## [1.12.2](https://github.com/grafana/alloy/compare/v1.12.1...v1.12.2) (2026-01-08)
 
+- Fixed an issue where `loki.process`, `loki.relabel`, and `loki.secretfilter` would block all downstream receivers if one receiver was slow or blocked. Each component now uses per-destination queues with configurable `max_forward_queue_size` and optional `block_on_full` mode. (@cnygaard)
 
 ### Bug Fixes 🐛
 

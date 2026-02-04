@@ -40,6 +40,29 @@ func init() {
 type Arguments struct {
 	ForwardTo []loki.LogsReceiver  `alloy:"forward_to,attr"`
 	Stages    []stages.StageConfig `alloy:"stage,enum,optional"`
+
+	// MaxForwardQueueSize controls the maximum number of log entries buffered
+	// per downstream component. This prevents a slow destination from blocking
+	// other destinations. Default is 100000.
+	MaxForwardQueueSize int `alloy:"max_forward_queue_size,attr,optional"`
+
+	// BlockOnFull controls behavior when a destination queue is full.
+	// If false (default), log entries are dropped when the queue is full.
+	// If true, the component will retry with exponential backoff, which may
+	// slow down the entire pipeline but prevents data loss.
+	BlockOnFull bool `alloy:"block_on_full,attr,optional"`
+}
+
+// DefaultArguments provides the default arguments for the loki.process
+// component.
+var DefaultArguments = Arguments{
+	MaxForwardQueueSize: 100_000,
+	BlockOnFull:         false,
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (a *Arguments) SetToDefault() {
+	*a = DefaultArguments
 }
 
 // Exports exposes the receiver that can be used to send log entries to
@@ -64,10 +87,113 @@ type Component struct {
 	entryHandler loki.EntryHandler
 	stages       []stages.StageConfig
 
-	fanoutMut sync.RWMutex
-	fanout    []loki.LogsReceiver
+	fanoutMut           sync.RWMutex
+	fanout              []loki.LogsReceiver
+	queues              []*destinationQueue
+	maxForwardQueueSize int
+	blockOnFull         bool
 
+	metrics            *forwardMetrics
 	debugDataPublisher livedebugging.DebugDataPublisher
+}
+
+// Backoff constants for blocking mode, similar to Prometheus remote write.
+const (
+	minBackoff = 5 * time.Millisecond
+	maxBackoff = 5 * time.Second
+)
+
+// destinationQueue manages a buffered queue for a single destination to ensure
+// FIFO ordering while preventing a slow destination from blocking others.
+type destinationQueue struct {
+	receiver loki.LogsReceiver
+	buffer   chan loki.Entry
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
+}
+
+func newDestinationQueue(receiver loki.LogsReceiver, size int) *destinationQueue {
+	dq := &destinationQueue{
+		receiver: receiver,
+		buffer:   make(chan loki.Entry, size),
+		stopCh:   make(chan struct{}),
+	}
+	dq.wg.Add(1)
+	go dq.run()
+	return dq
+}
+
+func (dq *destinationQueue) run() {
+	defer dq.wg.Done()
+	for {
+		select {
+		case <-dq.stopCh:
+			return
+		case entry := <-dq.buffer:
+			select {
+			case <-dq.stopCh:
+				return
+			case dq.receiver.Chan() <- entry:
+			}
+		}
+	}
+}
+
+// send attempts to queue an entry for sending without blocking.
+// Returns true if queued, false if buffer is full.
+func (dq *destinationQueue) send(entry loki.Entry) bool {
+	select {
+	case dq.buffer <- entry:
+		return true
+	default:
+		return false
+	}
+}
+
+// sendWithBackoff attempts to queue an entry, retrying with exponential backoff
+// if the buffer is full. Returns true if queued, false if stopped during retry.
+// The metrics parameter is used to track retry attempts.
+func (dq *destinationQueue) sendWithBackoff(entry loki.Entry, metrics *forwardMetrics) bool {
+	// First try without blocking
+	select {
+	case dq.buffer <- entry:
+		return true
+	default:
+	}
+
+	// Buffer is full, retry with backoff
+	backoff := minBackoff
+	for {
+		select {
+		case <-dq.stopCh:
+			return false
+		default:
+		}
+
+		metrics.enqueueRetriesTotal.Inc()
+
+		select {
+		case <-dq.stopCh:
+			return false
+		case <-time.After(backoff):
+		}
+
+		select {
+		case dq.buffer <- entry:
+			return true
+		default:
+			// Still full, increase backoff
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+}
+
+func (dq *destinationQueue) stop() {
+	close(dq.stopCh)
+	dq.wg.Wait()
 }
 
 // New creates a new loki.process component.
@@ -79,6 +205,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               o,
+		metrics:            newForwardMetrics(o.Registerer),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -110,6 +237,14 @@ func (c *Component) Run(ctx context.Context) error {
 			wgOut.Wait()
 		}
 		c.mut.RUnlock()
+
+		// Stop all destination queues
+		c.fanoutMut.Lock()
+		for _, q := range c.queues {
+			q.stop()
+		}
+		c.queues = nil
+		c.fanoutMut.Unlock()
 	}()
 	wgIn := &sync.WaitGroup{}
 	wgIn.Add(1)
@@ -125,10 +260,28 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update c.fanout first in case anything else fails.
+	// Update fanout and queues. Each destination gets its own queue to ensure
+	// FIFO ordering while preventing a slow destination from blocking others.
+	// See https://github.com/grafana/alloy/issues/2194
+	queueSize := newArgs.MaxForwardQueueSize
+	if queueSize <= 0 {
+		queueSize = DefaultArguments.MaxForwardQueueSize
+	}
 	c.fanoutMut.Lock()
+	oldQueues := c.queues
 	c.fanout = newArgs.ForwardTo
+	c.maxForwardQueueSize = queueSize
+	c.blockOnFull = newArgs.BlockOnFull
+	c.queues = make([]*destinationQueue, len(newArgs.ForwardTo))
+	for i, receiver := range newArgs.ForwardTo {
+		c.queues[i] = newDestinationQueue(receiver, queueSize)
+	}
 	c.fanoutMut.Unlock()
+
+	// Stop old queues after releasing the lock to avoid blocking
+	for _, q := range oldQueues {
+		q.stop()
+	}
 
 	// Then update the pipeline itself.
 	c.mut.Lock()
@@ -200,7 +353,8 @@ func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
 			return
 		case entry := <-c.processOut:
 			c.fanoutMut.RLock()
-			fanout := c.fanout
+			queues := c.queues
+			blockOnFull := c.blockOnFull
 			c.fanoutMut.RUnlock()
 
 			// The log entry is the same for every fanout,
@@ -219,11 +373,20 @@ func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
 				},
 			))
 
-			for _, f := range fanout {
-				select {
-				case <-shutdownCh:
-					return
-				case f.Chan() <- entry:
+			// Send to each destination's queue. Each destination has its own
+			// buffered queue with a dedicated worker goroutine, ensuring FIFO
+			// ordering while preventing a slow destination from blocking others.
+			// See https://github.com/grafana/alloy/issues/2194
+			for _, q := range queues {
+				var sent bool
+				if blockOnFull {
+					sent = q.sendWithBackoff(entry, c.metrics)
+				} else {
+					sent = q.send(entry)
+				}
+				if !sent {
+					c.metrics.droppedEntriesTotal.Inc()
+					level.Warn(c.opts.Logger).Log("msg", "dropping log entry because destination queue is full", "labels", entry.Labels.String())
 				}
 			}
 		}
