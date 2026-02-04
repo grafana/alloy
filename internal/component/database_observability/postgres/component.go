@@ -609,11 +609,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// ErrorLogs collector is always running (started in Run())
 	// Just update its SystemID when DB connects
-	c.errorLogsCollector.UpdateSystemID(systemID)
-	level.Info(c.opts.Logger).Log(
-		"msg", "updated error_logs collector system ID",
-		"system_id", systemID,
-	)
+	if c.errorLogsCollector != nil {
+		c.errorLogsCollector.UpdateSystemID(systemID)
+		level.Info(c.opts.Logger).Log(
+			"msg", "updated error_logs collector system ID",
+			"system_id", systemID,
+		)
+	}
 
 	if len(startErrors) > 0 {
 		return fmt.Errorf("failed to start some collectors: %s", strings.Join(startErrors, ", "))
