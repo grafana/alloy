@@ -92,27 +92,26 @@ const AsyncLargeValue = ({ value }: { value: Value }) => {
   useEffect(() => {
     let cancelled = false;
 
-    // Use double-RAF to ensure the loading state is painted before blocking work starts
-    requestAnimationFrame(() => {
+    // Use setTimeout to defer blocking work to a macrotask, allowing React to
+    // commit and paint the loading state first
+    const timeoutId = setTimeout(() => {
       if (cancelled) return;
-      requestAnimationFrame(() => {
-        if (cancelled) return;
 
-        try {
-          const result = alloyStringify(value);
-          if (!cancelled) {
-            setState({ status: 'ready', result });
-          }
-        } catch {
-          if (!cancelled) {
-            setState({ status: 'ready', result: '[Error stringifying value]' });
-          }
+      try {
+        const result = alloyStringify(value);
+        if (!cancelled) {
+          setState({ status: 'ready', result });
         }
-      });
-    });
+      } catch {
+        if (!cancelled) {
+          setState({ status: 'ready', result: '[Error stringifying value]' });
+        }
+      }
+    }, 0);
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [value]);
 
