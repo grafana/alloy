@@ -760,15 +760,5 @@ func TestPostgres_Reconnection(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("Run did not exit after context cancellation")
 		}
-=======
-		// Before Run(), errorLogsCollector should be nil
-		require.Nil(t, c.errorLogsCollector, "collector should be nil before Run()")
-
-		// In Run(), the collector gets created before DB connection attempt.
-		// Unit tests in error_logs_test.go validate:
-		// - Collectors work without any DB connection
-		// - SystemID can be updated dynamically
-		// - Logs are processed with empty systemID initially
->>>>>>> c7618237b (feat(postgres): add error_logs collector)
 	})
 }

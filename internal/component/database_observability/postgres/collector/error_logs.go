@@ -22,17 +22,14 @@ const (
 	OP_ERROR_LOGS      = "error_logs"
 )
 
-// RDS log format regex pattern to validate log line structure
-// Expected format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
-// Example: 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):mybooks-app@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:...
-// Note: Timezone can be any 3-4 letter abbreviation (UTC, GMT, EST, PST, etc.)
+// RDS log format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 var rdsLogFormatRegex = regexp.MustCompile(
-	`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? [A-Z]{3,4}:` + // timestamp (%m) with timezone
-		`[^:]+:` + // host:port (%r)
-		`[^@]+@[^:]+:` + // user@database (%u@%d)
-		`\[\d*\]:` + // [pid] (%p) - may be empty if not available
-		`\d+:` + // line number (%l)
-		`[A-Z0-9]{5}:`, // SQLSTATE (%e) - exactly 5 alphanumeric chars
+	`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? [A-Z]{3,4}:` +
+		`[^:]+:` +
+		`[^@]+@[^:]+:` +
+		`\[\d*\]:` +
+		`\d+:` +
+		`[A-Z0-9]{5}:`,
 )
 
 var supportedSeverities = map[string]bool{
@@ -40,28 +37,6 @@ var supportedSeverities = map[string]bool{
 	"FATAL": true,
 	"PANIC": true,
 }
-
-// PostgreSQL Text Log Format (stderr) - RDS Format
-//
-// RDS log_line_prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
-//
-// Example log line:
-// 2025-01-12 10:30:45 UTC:10.0.1.5:54321:app-user@books_store:[9112]:4:57014:2025-01-12 10:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement
-//
-// Field mapping:
-// %m  - Timestamp with milliseconds (e.g., "2025-01-12 10:30:45 UTC")
-// %r  - Remote host:port (e.g., "10.0.1.5:54321" or "[local]")
-// %u@%d - User@Database (e.g., "app-user@books_store")
-// [%p] - Process ID in brackets (e.g., "[9112]")
-// %l  - Session line number
-// %e  - SQLSTATE error code
-// %s  - Session start timestamp
-// %v  - Virtual transaction ID
-// %x  - Transaction ID
-// %c  - Session ID
-// %q  - Query text (usually empty)
-// %a  - Application name
-// Message - Log message (severity: message text)
 
 type ParsedError struct {
 	ErrorSeverity string
@@ -98,7 +73,6 @@ type ErrorLogs struct {
 	stopped *atomic.Bool
 	wg      sync.WaitGroup
 
-	// Format validation tracking (for rate-limited warnings)
 	formatCheckMutex      sync.Mutex
 	lastFormatWarning     time.Time
 	validLogsThisMinute   int
@@ -204,8 +178,7 @@ func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
 	return c.parseTextLog(entry)
 }
 
-// parseTextLog extracts fields from stderr text format logs for metrics.
-// Parses RDS format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
+// parseTextLog extracts fields from stderr text format logs for metrics
 func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
@@ -236,11 +209,9 @@ func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
 		return fmt.Errorf("log line does not match expected RDS format")
 	}
 
-	// Track that we've seen a valid format
 	c.trackValidFormat()
 
 	// Parse RDS format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
-	// Format already validated by regex, so we can safely extract fields
 	atIdx := strings.Index(line, "@")
 	afterAt := line[atIdx+1:]
 	pidMarkerIdx := strings.Index(afterAt, ":[")
@@ -293,8 +264,7 @@ func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
 	return nil
 }
 
-// isContinuationLine checks if a line is part of a multi-line PostgreSQL error.
-// Returns true for tab-indented lines or lines starting with DETAIL, HINT, etc.
+// isContinuationLine checks if a line is part of a multi-line PostgreSQL error
 func isContinuationLine(line string) bool {
 	if strings.HasPrefix(line, "\t") {
 		return true
@@ -342,8 +312,7 @@ func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
 	).Inc()
 }
 
-// UpdateSystemID updates the system ID used in metrics labels.
-// This is thread-safe and can be called while the collector is running.
+// UpdateSystemID updates the system ID used in metrics labels
 func (c *ErrorLogs) UpdateSystemID(systemID string) {
 	c.systemIDMutex.Lock()
 	defer c.systemIDMutex.Unlock()
@@ -364,17 +333,16 @@ func (c *ErrorLogs) trackValidFormat() {
 	c.validLogsThisMinute++
 }
 
-// trackInvalidFormat tracks invalid format and emits warning if ALL logs in past minute were invalid
+// trackInvalidFormat tracks invalid format and emits warning once per minute if ALL logs were invalid
 func (c *ErrorLogs) trackInvalidFormat() {
 	c.formatCheckMutex.Lock()
 	defer c.formatCheckMutex.Unlock()
 
 	c.invalidLogsThisMinute++
 
-	// Check if we should emit a warning (once per minute)
+	// Emit warning once per minute if ALL logs were invalid
 	now := time.Now()
 	if now.Sub(c.lastFormatWarning) >= time.Minute {
-		// Only warn if ALL logs in this window were invalid
 		if c.validLogsThisMinute == 0 && c.invalidLogsThisMinute > 0 {
 			level.Warn(c.logger).Log(
 				"msg", "all PostgreSQL error logs in the last minute had invalid format",
@@ -384,7 +352,6 @@ func (c *ErrorLogs) trackInvalidFormat() {
 			)
 		}
 
-		// Reset counters for next minute window
 		c.lastFormatWarning = now
 		c.validLogsThisMinute = 0
 		c.invalidLogsThisMinute = 0
