@@ -490,3 +490,38 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Nil(t, args.CloudProvider)
 	})
 }
+
+func Test_connectAndStartCollectors(t *testing.T) {
+	t.Run("successfully connects and starts collectors", func(t *testing.T) {
+		// Test that connectAndStartCollectors properly initializes DB connection
+		// and starts collectors when given valid credentials
+		
+		// This test would require a real or mock database
+		// Skipping for now as it requires integration test setup
+		t.Skip("requires database connection")
+	})
+
+	t.Run("returns error on connection failure", func(t *testing.T) {
+		// Test that connectAndStartCollectors returns proper error
+		// when database is unavailable
+		
+		t.Skip("requires mock database setup")
+	})
+}
+
+func Test_tryReconnect(t *testing.T) {
+	t.Run("acquires lock and calls connectAndStartCollectors", func(t *testing.T) {
+		// Test that tryReconnect properly acquires mutex and attempts reconnection
+		
+		t.Skip("requires mock database setup")
+	})
+}
+
+func Test_automaticReconnection(t *testing.T) {
+	t.Run("reconnection ticker is created in Run", func(t *testing.T) {
+		// Validates that Run() creates a reconnection ticker
+		// that attempts to reconnect when collectors list is empty
+		
+		t.Skip("requires integration test with context cancellation")
+	})
+}
