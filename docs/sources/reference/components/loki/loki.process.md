@@ -143,7 +143,7 @@ Given the following log line, the subsequent key-value pairs are created in the 
 
 content: message
 stream: stdout
-timestamp: 2019-04-30T02:12:41.8443515
+time: 2019-04-30T02:12:41.8443515
 ```
 
 ### `stage.decolorize`
