@@ -41,6 +41,7 @@ const ComponentDetailPage: FC = () => {
         return;
       }
 
+      const abortController = new AbortController();
       const fetchURL = `./api/v0/web/components/${id}`;
       setLoadingEndpoint(fetchURL);
 
@@ -49,6 +50,7 @@ const ComponentDetailPage: FC = () => {
         const resp = await fetch(fetchURL, {
           cache: 'no-cache',
           credentials: 'same-origin',
+          signal: abortController.signal,
         });
         const data: ComponentDetail = await resp.json();
 
@@ -58,6 +60,7 @@ const ComponentDetailPage: FC = () => {
           const moduleComponentsResp = await fetch(modulesURL, {
             cache: 'no-cache',
             credentials: 'same-origin',
+            signal: abortController.signal,
           });
           const moduleComponents = (await moduleComponentsResp.json()) as ComponentInfo[];
 
@@ -68,7 +71,17 @@ const ComponentDetailPage: FC = () => {
         setLoadingEndpoint(null);
       };
 
-      worker().catch(console.error);
+      worker().catch((err) => {
+        // Ignore abort errors - these are expected when the effect cleans up
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        console.error(err);
+      });
+
+      return () => {
+        abortController.abort();
+      };
     },
     [id]
   );
