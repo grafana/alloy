@@ -11,23 +11,23 @@ import (
 	"os"
 	"unsafe"
 
+	"github.com/go-kit/log"
 	"golang.org/x/text/encoding"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const defaultBufSize = 4096
 
 // newReader creates a new reader that is used to read from file.
 // It is important that the provided file is positioned at the start of the file.
-func newReader(f *os.File, offset int64, enc encoding.Encoding, compression string) (*reader, error) {
+func newReader(logger log.Logger, f *os.File, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
 	rr, err := newReaderAt(f, compression, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	br := bufio.NewReader(rr)
-
-	var bom BOM
-	offset, bom = detectBOM(br, offset)
+	offsetAfterBOM, bom := detectBOM(rr, offset)
 	enc = resolveEncodingFromBOM(bom, enc)
 
 	var (
@@ -45,17 +45,25 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding, compression stri
 		return nil, err
 	}
 
-	if offset != 0 {
-		rr, err = newReaderAt(f, compression, offset)
+	if offset == 0 && startFromEnd {
+		offset, err = lastNewline(f, nl)
 		if err != nil {
-			return nil, err
+			level.Error(logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
 		}
-		br.Reset(rr)
+	}
+
+	if offsetAfterBOM > offset {
+		offset = offsetAfterBOM
+	}
+
+	rr, err = newReaderAt(f, compression, offset)
+	if err != nil {
+		return nil, err
 	}
 
 	return &reader{
 		pos:     offset,
-		br:      br,
+		br:      bufio.NewReader(rr),
 		decoder: decoder,
 		nl:      nl,
 		lastNl:  nl[len(nl)-1],
@@ -159,37 +167,22 @@ func (r *reader) reset(f *os.File, offset int64) error {
 	if err != nil {
 		return err
 	}
-	r.br.Reset(rr)
 
-	offset, _ = detectBOM(r.br, offset)
-	if offset != 0 {
-		rr, err = newReaderAt(f, r.compression, offset)
-		if err != nil {
-			return nil
-		}
-		r.br.Reset(rr)
+	offset, _ = detectBOM(rr, offset)
+	rr, err = newReaderAt(f, r.compression, offset)
+	if err != nil {
+		return err
 	}
 
+	r.br.Reset(rr)
 	r.pos = offset
 	r.pending = make([]byte, 0, defaultBufSize)
 	return nil
 }
 
-func encodedNewline(e *encoding.Encoder) ([]byte, error) {
-	out := make([]byte, 10)
-	nDst, _, err := e.Transform(out, []byte{'\n'}, true)
-	return out[:nDst], err
-}
-
-func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
-	out := make([]byte, 10)
-	nDst, _, err := e.Transform(out, []byte{'\r'}, true)
-	return out[:nDst], err
-}
-
 func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error) {
 	// NOTE: If compression is used we always need to read from the beginning.
-	if compression != "" && offset != 0 {
+	if compression != "" {
 		if _, err := f.Seek(0, io.SeekStart); err != nil {
 			return nil, err
 		}
@@ -208,10 +201,8 @@ func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error
 	case "bz2":
 		reader = bzip2.NewReader(f)
 	default:
-		if offset != 0 {
-			if _, err := f.Seek(offset, io.SeekStart); err != nil {
-				return nil, err
-			}
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return nil, err
 		}
 
 		reader = f

@@ -4,7 +4,6 @@ package file
 // tailer implements the reader interface by using the github.com/grafana/tail package to tail files.
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -81,62 +80,6 @@ func newTailer(
 	}
 }
 
-// getLastLinePosition returns the offset of the start of the last line in the file at the given path.
-// It will read chunks of bytes starting from the end of the file to return the position of the last '\n' + 1.
-// If it cannot find any '\n' it will return 0.
-func getLastLinePosition(path string) (int64, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-
-	const chunkSize = 1024
-
-	buf := make([]byte, chunkSize)
-	fi, err := file.Stat()
-	if err != nil {
-		return 0, err
-	}
-
-	if fi.Size() == 0 {
-		return 0, nil
-	}
-
-	var pos = fi.Size() - chunkSize
-	if pos < 0 {
-		pos = 0
-	}
-
-	for {
-		_, err = file.Seek(pos, io.SeekStart)
-		if err != nil {
-			return 0, err
-		}
-
-		bytesRead, err := file.Read(buf)
-		if err != nil {
-			return 0, err
-		}
-
-		idx := bytes.LastIndexByte(buf[:bytesRead], '\n')
-		// newline found
-		if idx != -1 {
-			return pos + int64(idx) + 1, nil
-		}
-
-		// no newline found in the entire file
-		if pos == 0 {
-			return 0, nil
-		}
-
-		pos -= chunkSize
-		if pos < 0 {
-			pos = 0
-		}
-	}
-}
-
 func (t *tailer) Run(ctx context.Context) {
 	// Check if context was canceled between two calls to Run.
 	select {
@@ -182,17 +125,16 @@ func (t *tailer) initRun() (int64, error) {
 		return 0, fmt.Errorf("failed to tail file: %w", err)
 	}
 
+	startFromEnd := t.tailFromEnd
+
 	pos, err := t.positions.Get(t.key.Path, t.key.Labels)
 	if err != nil {
 		switch t.onPositionsFileError {
 		case OnPositionsFileErrorSkip:
 			return 0, fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
-			pos, err = getLastLinePosition(t.key.Path)
-			if err != nil {
-				return 0, fmt.Errorf("failed to get last line position after positions error: %w", err)
-			}
-			level.Info(t.logger).Log("msg", "retrieved the position of the last line after positions error")
+			startFromEnd = true
+			level.Info(t.logger).Log("msg", "reset position to end of file after position error")
 		default:
 			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
 			fallthrough
@@ -220,20 +162,10 @@ func (t *tailer) initRun() (int64, error) {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
 
-	// If no cached position is found and the tailFromEnd option is enabled.
-	if pos == 0 && t.tailFromEnd {
-		pos, err = getLastLinePosition(t.key.Path)
-		if err != nil {
-			level.Error(t.logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
-		} else {
-			t.positions.Put(t.key.Path, t.key.Labels, pos)
-			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line")
-		}
-	}
-
 	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
+		StartFromEnd:  startFromEnd,
 		Encoding:      t.encoding,
 		Compression:   t.decompression.GetFormat(),
 		WatcherConfig: t.watcherConfig,
