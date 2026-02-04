@@ -20,23 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-func createTempFileWithContent(t *testing.T, content []byte) string {
-	t.Helper()
-	tmpfile, err := os.CreateTemp(t.TempDir(), "testfile")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-
-	_, err = tmpfile.Write(content)
-	if err != nil {
-		tmpfile.Close()
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-
-	tmpfile.Close()
-	return tmpfile.Name()
-}
-
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	l := logging.NewNop()
