@@ -1898,12 +1898,12 @@ Defines a truncation rule that will apply to the log line, labels, structured_me
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                                  | Default  | Required |
-|---------------|----------|--------------------------------------------------------------|----------|----------|
-| `limit`       | `string` | Maximum length before truncating.                            | `""`     | yes      |
-| `source`      | `string` | Source of the data to truncate. If empty, will truncate all. | `""`     | no       |
-| `source_type` | `string` | Source location of the data to truncate.                     | `"line"` | no       |
-| `suffix`      | `string` | Suffix to append to truncated values.                        | ``       | no       |
+| Name          | Type           | Description                                                   | Default  | Required |
+|---------------|----------------|---------------------------------------------------------------|----------|----------|
+| `limit`       | `string`       | Maximum length before truncating.                             | `""`     | yes      |
+| `sources`     | `list(string)` | Sources of the data to truncate. If empty, will truncate all. | `""`     | no       |
+| `source_type` | `string`       | Source location of the data to truncate.                      | `"line"` | no       |
+| `suffix`      | `string`       | Suffix to append to truncated values.                         | ``       | no       |
 
 The `limit` attribute should be expressed in logical units, for example `"1KiB"`.
 The stage checks the byte length of the log line, label values, or structured metadata values against the configured limit and truncates if it exceeds the limit.
