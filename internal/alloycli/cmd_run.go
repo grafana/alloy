@@ -372,7 +372,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	labelService := labelstore.New(l, reg)
 	alloyseed.Init(fr.storagePath, l)
 
-	f := alloy_runtime.New(alloy_runtime.Options{
+	f, err := alloy_runtime.New(alloy_runtime.Options{
 		Logger:               l,
 		Tracer:               t,
 		DataPath:             fr.storagePath,
@@ -390,6 +390,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		},
 		TaskShutdownDeadline: fr.taskShutdownDeadline,
 	})
+	if err != nil {
+		return err
+	}
 
 	ready = f.Ready
 	reload = func() (map[string][]byte, error) {
