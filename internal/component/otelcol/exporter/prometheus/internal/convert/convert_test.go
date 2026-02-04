@@ -3,11 +3,17 @@ package convert_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testappender"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -28,12 +34,13 @@ func TestConverter(t *testing.T) {
 		resourceToTelemetryConversion bool
 	}{
 		{
-			name: "Gauge",
+			name: "Gauge with metadata",
 			input: `{
 				"resource_metrics": [{
 					"scope_metrics": [{
 						"metrics": [{
 							"name": "test_metric_seconds",
+							"description": "A test gauge metric measuring duration",
 							"gauge": {
 								"data_points": [{
 									"start_time_unix_nano": 1000000000,
@@ -46,13 +53,14 @@ func TestConverter(t *testing.T) {
 				}]
 			}`,
 			expect: `
+				# HELP test_metric_seconds A test gauge metric measuring duration
 				# TYPE test_metric_seconds gauge
 				test_metric_seconds 1234.56
 			`,
 			enableOpenMetrics: true,
 		},
 		{
-			name: "Monotonic sum",
+			name: "Monotonic sum without metadata",
 			input: `{
 				"resource_metrics": [{
 					"scope_metrics": [{
@@ -118,6 +126,7 @@ func TestConverter(t *testing.T) {
 					"scope_metrics": [{
 						"metrics": [{
 							"name": "test_metric_seconds",
+							"description": "A histogram of request durations",
 							"histogram": {
 								"aggregation_temporality": 2,
 								"data_points": [{
@@ -154,6 +163,7 @@ func TestConverter(t *testing.T) {
 				}]
 			}`,
 			expect: `
+				# HELP test_metric_seconds A histogram of request durations
 				# TYPE test_metric_seconds histogram
 				test_metric_seconds_bucket{le="0.25"} 0
 				test_metric_seconds_bucket{le="0.5"} 111 # {span_id="aaaaaaaaaaaaaaaa",trace_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"} 0.3
@@ -260,12 +270,13 @@ func TestConverter(t *testing.T) {
 			enableOpenMetrics: true,
 		},
 		{
-			name: "Summary",
+			name: "Summary with metadata",
 			input: `{
 				"resource_metrics": [{
 					"scope_metrics": [{
 						"metrics": [{
 							"name": "test_metric_seconds",
+							"description": "A test summary metric measuring duration",
 							"summary": {
 								"data_points": [{
 									"start_time_unix_nano": 1000000000,
@@ -286,6 +297,7 @@ func TestConverter(t *testing.T) {
 				}]
 			}`,
 			expect: `
+				# HELP test_metric_seconds A test summary metric measuring duration
 				# TYPE test_metric_seconds summary
 				test_metric_seconds{quantile="0.0"} 100.0
 				test_metric_seconds{quantile="0.25"} 200.0
@@ -1138,6 +1150,7 @@ func TestConverter(t *testing.T) {
 						"metrics": [
 							{
 								"name": "test_metric_mono_sum_total",
+								"description": "Total count of monotonic sum operations",
 								"unit": "seconds",
 								"sum": {
 									"aggregation_temporality": 2,
@@ -1162,6 +1175,7 @@ func TestConverter(t *testing.T) {
 				}]
 			}`,
 			expect: `
+				# HELP test_metric_mono_sum Total count of monotonic sum operations
 				# TYPE test_metric_mono_sum counter
 				test_metric_mono_sum_total{bar_one="bar",foo_one="foo",instance="instance",service_instance_id="instance",job="myservice",service_name="myservice",raw="test"} 15.0 # {span_id="aaaaaaaaaaaaaaaa",trace_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"} 0.3
 			`,
@@ -1186,6 +1200,7 @@ func TestConverter(t *testing.T) {
 				IncludeScopeLabels:            tc.includeScopeLabels,
 				AddMetricSuffixes:             tc.addMetricSuffixes,
 				ResourceToTelemetryConversion: tc.resourceToTelemetryConversion,
+				HonorMetadata:                 true,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
@@ -1201,18 +1216,12 @@ func TestConverter(t *testing.T) {
 // Exponential histograms don't have a text format representation.
 // In this test we are comparing the JSON format.
 func TestConverterExponentialHistograms(t *testing.T) {
-	tt := []struct {
-		name   string
-		input  string
-		expect string
-	}{
-		{
-			name: "Exponential Histogram",
-			input: `{
+	input1 := `{
 			"resource_metrics": [{
 				"scope_metrics": [{
 					"metrics": [{
 						"name": "test_exponential_histogram",
+						"description": "An exponential histogram for latency measurements",
 						"exponential_histogram": {
 							"aggregation_temporality": 2,
 							"data_points": [{
@@ -1250,47 +1259,79 @@ func TestConverterExponentialHistograms(t *testing.T) {
 					}]
 				}]
 			}]
-		}`,
-			// The tests only allow one exemplar/series because it uses a map[series]exemplar as storage. Therefore only the exemplar "cccccccccccccccc" is stored(bbbbbbbbbbbbbbbb is out-of-order).
+		}`
+
+	tt := []struct {
+		name          string
+		input         string
+		expect        string
+		honorMetadata bool
+	}{
+		{
+			name:          "Exponential Histogram with metadata",
+			honorMetadata: true,
+			input:         input1,
+			// The tests only allow one exemplar/series because it uses a map[series]exemplar as storage.
+			// Therefore only the exemplar "cccccccccccccccc" is stored (bbbbbbbbbbbbbbbb is out-of-order).
+			// The MetricFamily includes name, help, and type fields when HonorMetadata is enabled.
+			// Type 4 = HISTOGRAM in the dto.MetricType enum.
 			expect: `{
-				"bucket": [
-				  {
-					"exemplar": {
-					  "label": [
-						{
-						  "name": "span_id",
-						  "value": "cccccccccccccccc"
-						},
-						{
-						  "name": "trace_id",
-						  "value": "cccccccccccccccccccccccccccccccc"
-						}
-					  ],
-					  "value": 1.0
+				"name": "test_exponential_histogram",
+				"help": "An exponential histogram for latency measurements",
+				"type": 4,
+				"metric": [{
+					"histogram": {
+						"bucket": [{
+							"exemplar": {
+								"label": [
+									{"name": "span_id", "value": "cccccccccccccccc"},
+									{"name": "trace_id", "value": "cccccccccccccccccccccccccccccccc"}
+								],
+								"value": 1.0
+							}
+						}],
+						"positive_delta": [2, -1, 2, -1, -2, 0, 3],
+						"positive_span": [{"length": 7, "offset": 0}],
+						"sample_count": 11,
+						"sample_sum": 158.63,
+						"schema": 0,
+						"zero_count": 0,
+						"zero_threshold": 1e-128
 					}
-				  }
-				],
-				"positive_delta": [2, -1, 2, -1, -2, 0, 3],
-				"positive_span": [
-				  {
-					"length": 7,
-					"offset": 0
-				  }
-				],
-				"sample_count": 11,
-				"sample_sum": 158.63,
-				"schema": 0,
-				"zero_count": 0,
-				"zero_threshold": 1e-128
-			  }`,
+				}]
+			}`,
 		},
 		{
-			name: "Exponential Histogram 2",
+			name:          "Exponential Histogram without metadata",
+			honorMetadata: false,
+			input:         input1,
+			// Without SendMetadata, the MetricFamily has type 3 (UNTYPED).
+			// Note: exemplar bucket data is not present without proper metadata.
+			expect: `{
+				"name": "test_exponential_histogram",
+				"type": 3,
+				"metric": [{
+					"histogram": {
+						"positive_delta": [2, -1, 2, -1, -2, 0, 3],
+						"positive_span": [{"length": 7, "offset": 0}],
+						"sample_count": 11,
+						"sample_sum": 158.63,
+						"schema": 0,
+						"zero_count": 0,
+						"zero_threshold": 1e-128
+					}
+				}]
+			}`,
+		},
+		{
+			name:          "Exponential Histogram 2 with metadata",
+			honorMetadata: true,
 			input: `{
 			"resource_metrics": [{
 				"scope_metrics": [{
 					"metrics": [{
 						"name": "test_exponential_histogram_2",
+						"description": "A second exponential histogram with negative buckets",
 						"exponential_histogram": {
 							"aggregation_temporality": 2,
 							"data_points": [{
@@ -1324,48 +1365,37 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			}]
 		}`,
 			// zero_threshold is set to 1e-128 because dp.ZeroThreshold() is not yet available.
+			// Type 4 = HISTOGRAM in the dto.MetricType enum.
 			expect: `{
-				"bucket": [
-				  {
-					"exemplar": {
-					  "label": [
-						{
-						  "name": "span_id",
-						  "value": "aaaaaaaaaaaaaaaa"
-						},
-						{
-						  "name": "trace_id",
-						  "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-						}
-					  ],
-					  "value": 3
+				"name": "test_exponential_histogram_2",
+				"help": "A second exponential histogram with negative buckets",
+				"type": 4,
+				"metric": [{
+					"histogram": {
+						"bucket": [{
+							"exemplar": {
+								"label": [
+									{"name": "span_id", "value": "aaaaaaaaaaaaaaaa"},
+									{"name": "trace_id", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+								],
+								"value": 3
+							}
+						}],
+						"negative_delta": [0, 4, -4, 2, 1, -3, 0, 3],
+						"negative_span": [{"length": 8, "offset": 1}],
+						"positive_delta": [2, -1, 0, -1, 3, -3, 0],
+						"positive_span": [
+							{"length": 0, "offset": 4},
+							{"length": 7, "offset": 4}
+						],
+						"sample_count": 19,
+						"sample_sum": 200,
+						"schema": 2,
+						"zero_count": 5,
+						"zero_threshold": 1e-128
 					}
-				  }
-				],
-				"negative_delta": [0, 4, -4, 2, 1, -3, 0, 3],
-				"negative_span": [
-				  {
-					"length": 8,
-					"offset": 1
-				  }
-				],
-				"positive_delta": [2, -1, 0, -1, 3, -3, 0],
-				"positive_span": [
-				  {
-					"length": 0,
-					"offset": 4
-				  },
-				  {
-					"length": 7,
-					"offset": 4
-				  }
-				],
-				"sample_count": 19,
-				"sample_sum": 200,
-				"schema": 2,
-				"zero_count": 5,
-				"zero_threshold": 1e-128
-			  }`,
+				}]
+			}`,
 		},
 	}
 	decoder := &pmetric.JSONUnmarshaler{}
@@ -1376,7 +1406,9 @@ func TestConverterExponentialHistograms(t *testing.T) {
 
 			var app testappender.Appender
 			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{})
+			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+				HonorMetadata: tc.honorMetadata,
+			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
 			families, err := app.MetricFamilies()
@@ -1384,11 +1416,12 @@ func TestConverterExponentialHistograms(t *testing.T) {
 
 			require.NotEmpty(t, families)
 			require.NotNil(t, families[0])
-			require.NotEmpty(t, families[0].Metric)
-			require.NotNil(t, families[0].Metric[0].Histogram)
-			histJsonRep, err := json.Marshal(families[0].Metric[0].Histogram)
+
+			// Marshal the entire MetricFamily to get a complete representation
+			// including metadata (name, type, help) when SendMetadata is enabled.
+			familyJsonRep, err := json.Marshal(families[0])
 			require.NoError(t, err)
-			require.JSONEq(t, string(histJsonRep), tc.expect)
+			require.JSONEq(t, tc.expect, string(familyJsonRep))
 		})
 	}
 }
@@ -1403,3 +1436,139 @@ var _ storage.Appendable = appenderAppendable{}
 func (aa appenderAppendable) Appender(context.Context) storage.Appender {
 	return aa.Inner
 }
+
+// TestMetadataWrittenAfterSeries verifies that metadata is written after series
+// data, so that appenders like the WAL (which require series to exist before
+// metadata can be updated) work correctly.
+func TestMetadataWrittenAfterSeries(t *testing.T) {
+	input := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "traces_service_graph_request_server_seconds",
+					"description": "Histogram of request durations",
+					"histogram": {
+						"aggregation_temporality": 2,
+						"data_points": [{
+							"start_time_unix_nano": 1000000000,
+							"time_unix_nano": 1000000000,
+							"count": 10,
+							"sum": 5.5,
+							"bucket_counts": [2, 5, 3],
+							"explicit_bounds": [0.1, 0.5, 1.0]
+						}]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	decoder := &pmetric.JSONUnmarshaler{}
+	payload, err := decoder.UnmarshalMetrics([]byte(input))
+	require.NoError(t, err)
+
+	// strictMetadataAppender requires series to exist before metadata can be updated,
+	// mimicking the behavior of the WAL appender.
+	app := &strictMetadataAppender{
+		metricFamilies: make(map[string]bool),
+	}
+
+	l := util.TestLogger(t)
+
+	// With HonorMetadata enabled, there should be NO metadata errors because
+	// the series is now created before metadata is written.
+	conv := convert.New(l, appenderAppendable{Inner: app}, convert.Options{
+		HonorMetadata: true,
+	})
+	err = conv.ConsumeMetrics(t.Context(), payload)
+	require.NoError(t, err)
+
+	// Verify that NO metadata errors occurred (the fix ensures series exists before metadata)
+	require.Equal(t, 0, app.metadataErrorCount, "expected no metadata errors when series is created before metadata")
+
+	// Verify that metadata was actually written
+	require.True(t, app.metadataWriteCount > 0, "expected metadata to be written when HonorMetadata is true")
+
+	// Reset the appender
+	app = &strictMetadataAppender{
+		metricFamilies: make(map[string]bool),
+	}
+
+	// With HonorMetadata disabled, no metadata should be written at all
+	conv = convert.New(l, appenderAppendable{Inner: app}, convert.Options{
+		HonorMetadata: false,
+	})
+	err = conv.ConsumeMetrics(t.Context(), payload)
+	require.NoError(t, err)
+
+	require.Equal(t, 0, app.metadataErrorCount, "expected no metadata errors when HonorMetadata is false")
+	require.Equal(t, 0, app.metadataWriteCount, "expected no metadata writes when HonorMetadata is false")
+}
+
+// strictMetadataAppender is a test appender that mimics the WAL behavior:
+// UpdateMetadata fails if the series doesn't exist.
+// It tracks metric family names (base names without suffixes) to allow metadata
+// to be matched against series with _sum, _count, _bucket suffixes.
+type strictMetadataAppender struct {
+	metricFamilies     map[string]bool // metric family names (base names)
+	metadataErrorCount int
+	metadataWriteCount int
+}
+
+func (a *strictMetadataAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	// Extract the metric family name (base name without suffixes)
+	name := l.Get("__name__")
+	a.metricFamilies[getMetricFamilyName(name)] = true
+	return 0, nil
+}
+
+func (a *strictMetadataAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	return 0, nil
+}
+
+func (a *strictMetadataAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
+	// Mimic WAL behavior: fail if no series with this metric family exists
+	name := l.Get("__name__")
+	if !a.metricFamilies[name] {
+		a.metadataErrorCount++
+		return 0, fmt.Errorf("unknown series when trying to add metadata with SeriesRef: %d and labels: %s", ref, l)
+	}
+	a.metadataWriteCount++
+	return 0, nil
+}
+
+func (a *strictMetadataAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	// Extract the metric family name (base name without suffixes)
+	name := l.Get("__name__")
+	a.metricFamilies[getMetricFamilyName(name)] = true
+	return 0, nil
+}
+
+// getMetricFamilyName returns the base metric name without histogram/summary suffixes.
+func getMetricFamilyName(name string) string {
+	// Remove histogram suffixes
+	for _, suffix := range []string{"_bucket", "_sum", "_count", "_total"} {
+		if strings.HasSuffix(name, suffix) {
+			return strings.TrimSuffix(name, suffix)
+		}
+	}
+	return name
+}
+
+func (a *strictMetadataAppender) Commit() error {
+	return nil
+}
+
+func (a *strictMetadataAppender) Rollback() error {
+	return nil
+}
+
+func (a *strictMetadataAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	return 0, nil
+}
+
+func (a *strictMetadataAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return 0, nil
+}
+
+func (a *strictMetadataAppender) SetOptions(o *storage.AppendOptions) {}

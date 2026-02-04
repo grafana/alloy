@@ -2915,8 +2915,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -2982,8 +2982,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS with cte as (select * from some_table where id = $1) select * from cte").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -3049,8 +3049,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))

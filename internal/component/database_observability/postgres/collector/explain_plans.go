@@ -568,6 +568,11 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	}
 	defer conn.Close()
 
+	setSearchPathStatement := fmt.Sprintf("SET SESSION search_path TO \"%s\", public", qi.datname)
+	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
+		return nil, fmt.Errorf("failed to set search path: %w", err)
+	}
+
 	preparedStatementName := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
 	preparedStatementText := fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)
 	logger := log.With(c.logger, "query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName, "preparedStatementText", preparedStatementText)
@@ -580,11 +585,6 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 			level.Error(logger).Log("msg", "failed to deallocate explain plan", "err", err)
 		}
 	}()
-
-	setSearchPathStatement := fmt.Sprintf("SET search_path TO %s, public", qi.datname)
-	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
-		return nil, fmt.Errorf("failed to set search path: %w", err)
-	}
 
 	if _, err := conn.ExecContext(ctx, "SET plan_cache_mode = force_generic_plan"); err != nil {
 		return nil, fmt.Errorf("failed to set plan cache mode: %w", err)

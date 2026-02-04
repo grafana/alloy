@@ -356,6 +356,23 @@ func TestQueryTables(t *testing.T) {
 				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
+		{
+			name: "null query_sample_text uses digest_text",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
+				"some_schema",
+				nil, // NULL query_sample_text
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
