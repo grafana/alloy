@@ -24,7 +24,7 @@ const (
 // LabelsConfig is a set of labels to be extracted
 type LabelsConfig struct {
 	Values     map[string]*string `alloy:"values,attr"`
-	SourceType string             `alloy:"source_type,attr,optional"`
+	SourceType SourceType         `alloy:"source_type,attr,optional"`
 }
 
 // validateLabelsConfig validates the Label stage configuration
@@ -34,11 +34,11 @@ func validateLabelsConfig(cfg *LabelsConfig) error {
 	}
 
 	if cfg.SourceType == "" {
-		cfg.SourceType = LabelsSourceExtractedMap
+		cfg.SourceType = SourceTypeExtractedMap
 	}
 
 	switch cfg.SourceType {
-	case LabelsSourceExtractedMap, LabelsSourceStructuredMetadata:
+	case SourceTypeExtractedMap, SourceTypeStructuredMetadata:
 	default:
 		return fmt.Errorf(ErrInvalidSourceType, cfg.SourceType)
 	}
@@ -87,9 +87,9 @@ func (l *labelStage) Run(in chan Entry) chan Entry {
 		defer close(out)
 		for e := range in {
 			switch l.cfg.SourceType {
-			case LabelsSourceExtractedMap:
+			case SourceTypeExtractedMap:
 				l.addLabelFromExtractedMap(e.Labels, e.Extracted)
-			case LabelsSourceStructuredMetadata:
+			case SourceTypeStructuredMetadata:
 				l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
 			}
 			out <- e
