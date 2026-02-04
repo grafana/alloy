@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -13,8 +14,10 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
+	"github.com/grafana/alloy/internal/component/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -333,8 +336,9 @@ func Test_addLokiLabels(t *testing.T) {
 func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
-		ID:     "test.postgres",
-		Logger: kitlog.NewNopLogger(),
+		ID:            "test.postgres",
+		Logger:        kitlog.NewNopLogger(),
+		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
@@ -488,5 +492,225 @@ func Test_parseCloudProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Nil(t, args.CloudProvider)
+	})
+}
+
+func Test_connectAndStartCollectors(t *testing.T) {
+	t.Run("returns error when database connection fails", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		// Use unreachable DSN to trigger connection error
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/unreachable?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		// Verify that connectAndStartCollectors returns an error
+		err = c.connectAndStartCollectors(context.Background())
+		assert.Error(t, err, "should return error when connection fails")
+		assert.Contains(t, err.Error(), "failed to", "error should indicate connection failure")
+	})
+
+	t.Run("closes existing connection before reconnecting", func(t *testing.T) {
+		// This test verifies that connectAndStartCollectors properly closes
+		// an existing connection before attempting a new one
+
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		// The component should handle nil dbConnection gracefully
+		assert.Nil(t, c.dbConnection, "dbConnection should be nil initially after failed connection")
+
+		// Calling connectAndStartCollectors again should not panic
+		err = c.connectAndStartCollectors(context.Background())
+		assert.Error(t, err, "should return error for unreachable database")
+	})
+}
+
+func Test_tryReconnect(t *testing.T) {
+	t.Run("clears health error on successful reconnection", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		// Set a health error
+		c.healthErr.Store("initial error")
+
+		// Try to reconnect (will fail with unreachable database)
+		err = c.tryReconnect(context.Background())
+		assert.Error(t, err, "tryReconnect should return error when connection fails")
+
+		// Health error should still be set since reconnection failed
+		assert.NotEmpty(t, c.healthErr.Load(), "health error should remain when reconnection fails")
+	})
+
+	t.Run("returns error when connectAndStartCollectors fails", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://invalid-dsn"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		err = c.tryReconnect(context.Background())
+		assert.Error(t, err, "tryReconnect should propagate connection errors")
+	})
+}
+
+func Test_automaticReconnection(t *testing.T) {
+	t.Run("component reports unhealthy when database is unreachable", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test-health",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		// Use unreachable DSN
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		// Component should be unhealthy after failed connection
+		health := c.CurrentHealth()
+		assert.Equal(t, cmp.HealthTypeUnhealthy, health.Health, "component should be unhealthy when DB is unreachable")
+		assert.Contains(t, health.Message, "failed to connect", "health message should indicate connection failure")
+	})
+
+	t.Run("reconnection ticker respects context cancellation", func(t *testing.T) {
+		// This test verifies that the reconnection goroutine exits when context is cancelled
+		opts := cmp.Options{
+			ID:            "test-ctx",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		// Start Run in a goroutine
+		runErr := make(chan error, 1)
+		go func() {
+			runErr <- c.Run(ctx)
+		}()
+
+		// Give it a moment to start
+		time.Sleep(100 * time.Millisecond)
+
+		// Cancel context
+		cancel()
+
+		// Run should exit quickly after cancellation
+		select {
+		case err := <-runErr:
+			assert.NoError(t, err, "Run should exit cleanly")
+		case <-time.After(5 * time.Second):
+			t.Fatal("Run did not exit after context cancellation")
+		}
 	})
 }

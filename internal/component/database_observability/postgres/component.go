@@ -232,9 +232,37 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RUnlock()
 	}()
 
+	// Automatic reconnection ticker
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.mut.RLock()
+				hasCollectors := len(c.collectors) > 0
+				c.mut.RUnlock()
+
+				if !hasCollectors {
+					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+					if err := c.tryReconnect(ctx); err == nil {
+						level.Info(c.opts.Logger).Log("msg", "successfully reconnected to database and started collectors")
+					}
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			return nil
 		case entry := <-c.handler.Chan():
 			c.mut.RLock()
@@ -267,43 +295,47 @@ func (c *Component) reportError(errorMsg string, err error) {
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
-func (c *Component) Update(args component.Arguments) error {
+func (c *Component) tryReconnect(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
+	if err := c.connectAndStartCollectors(ctx); err != nil {
+		return err
 	}
 
-	c.args = args.(Arguments)
+	c.healthErr.Store("")
+	return nil
+}
+
+func (c *Component) connectAndStartCollectors(ctx context.Context) error {
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+		c.dbConnection = nil
+	}
 
 	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
-		c.reportError("failed to open database connection", err)
-		return nil
+		return fmt.Errorf("failed to open database connection: %w", err)
 	}
 
 	if dbConnection == nil {
-		c.reportError("nil DB connection", nil)
-		return nil
+		return fmt.Errorf("nil DB connection")
 	}
+
 	if err = dbConnection.Ping(); err != nil {
-		c.reportError("failed to ping database", err)
-		return nil
+		dbConnection.Close()
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	c.dbConnection = dbConnection
 
-	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	err = rs.Err()
-	if err != nil {
-		c.reportError("failed to query engine version", err)
-		return nil
+	rs := dbConnection.QueryRowContext(ctx, selectServerInfo)
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to query engine version: %w", err)
 	}
 
 	var systemID, systemIP, systemPort, engineVersion sql.NullString
 	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
-		c.reportError("failed to scan engine version", err)
-		return nil
+		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
@@ -312,27 +344,26 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.args.CloudProvider != nil {
 		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from config", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
 		}
 		cp = cloudProvider
 	} else {
 		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from DSN", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
 	}
 
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
+	allTargets := append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(allTargets))
+	for _, t := range allTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
 		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
+
 	c.opts.OnStateChange(Exports{
 		Targets: targets,
 	})
@@ -343,7 +374,20 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
-		c.reportError("failed to start collectors", err)
+		return fmt.Errorf("failed to start collectors: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.args = args.(Arguments)
+
+	if err := c.connectAndStartCollectors(context.Background()); err != nil {
+		c.reportError("failed to connect and start collectors", err)
 		return nil
 	}
 
