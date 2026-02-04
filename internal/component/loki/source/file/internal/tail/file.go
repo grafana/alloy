@@ -41,7 +41,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	reader, err := newReader(f, cfg.Offset, encoding, cfg.Compression)
+	reader, err := newReader(f, cfg.Offset, encoding, cfg.Compression, cfg.StartFromEnd)
 	if err != nil {
 		f.Close()
 		return nil, err
