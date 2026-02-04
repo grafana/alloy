@@ -44,8 +44,6 @@ Replace the following:
 The `otel` command accepts standard OpenTelemetry Collector YAML configuration files.
 The configuration file defines receivers, processors, exporters, and other components that make up your telemetry pipeline.
 
-For information about configuration options, refer to the [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/configuration/).
-
 ### Run the {{% param "DEFAULT_ENGINE" %}} in parallel
 
 The {{< param "OTEL_ENGINE" >}} includes the option to run pipelines with the {{< param "DEFAULT_ENGINE" >}} alongside the {{< param "OTEL_ENGINE" >}} using the built-in {{< param "PRODUCT_NAME" >}} Engine extension.
