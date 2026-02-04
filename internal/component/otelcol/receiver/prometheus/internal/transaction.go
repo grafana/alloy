@@ -342,7 +342,7 @@ func (t *transaction) AppendHistogram(_ storage.SeriesRef, ls labels.Labels, atM
 		t.logger.Warn("dropping unsupported gauge histogram datapoint", zap.String("metric_name", metricName), zap.Any("labels", ls))
 	}
 
-	if schema == -53 {
+	if schema == histogram.CustomBucketsSchema {
 		err = curMF.addNHCBSeries(t.getSeriesRef(ls, curMF.mtype), metricName, ls, atMs, h, fh)
 	} else {
 		err = curMF.addExponentialHistogramSeries(t.getSeriesRef(ls, curMF.mtype), metricName, ls, atMs, h, fh)

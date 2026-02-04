@@ -308,7 +308,7 @@ func TestMetricGroupData_toNHCBDistributionUnitTest(t *testing.T) {
 			intervalStartTimeMs: 11,
 			labels:              labels.FromMap(map[string]string{"a": "A", "b": "B"}),
 			integerHistogram: &histogram.Histogram{
-				Schema:          -53,
+				Schema:          histogram.CustomBucketsSchema,
 				Count:           180,
 				Sum:             100.5,
 				CustomValues:    []float64{1.0, 2.0, 5.0, 10.0},
@@ -334,7 +334,7 @@ func TestMetricGroupData_toNHCBDistributionUnitTest(t *testing.T) {
 			intervalStartTimeMs: 11,
 			labels:              labels.FromMap(map[string]string{"a": "A", "b": "B"}),
 			integerHistogram: &histogram.Histogram{
-				Schema:       -53,
+				Schema:       histogram.CustomBucketsSchema,
 				Sum:          math.Float64frombits(value.StaleNaN),
 				CustomValues: []float64{1.0, 2.0, 5.0, 10.0},
 				Count:        0,
@@ -357,7 +357,7 @@ func TestMetricGroupData_toNHCBDistributionUnitTest(t *testing.T) {
 			intervalStartTimeMs: 12,
 			labels:              labels.FromMap(map[string]string{"a": "A"}),
 			floatHistogram: &histogram.FloatHistogram{
-				Schema:          -53,
+				Schema:          histogram.CustomBucketsSchema,
 				Count:           50.0,
 				Sum:             125.25,
 				CustomValues:    []float64{0.5, 2.0},
@@ -382,7 +382,7 @@ func TestMetricGroupData_toNHCBDistributionUnitTest(t *testing.T) {
 			intervalStartTimeMs: 30,
 			labels:              labels.FromMap(map[string]string{"a": "A"}),
 			integerHistogram: &histogram.Histogram{
-				Schema:          -53,
+				Schema:          histogram.CustomBucketsSchema,
 				Count:           16,
 				Sum:             10.0,
 				CustomValues:    []float64{-5.0, 0.0, 5.0},
