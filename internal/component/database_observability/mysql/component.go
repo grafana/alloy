@@ -221,6 +221,7 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	wg           sync.WaitGroup // WaitGroup for goroutine management
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -268,6 +269,35 @@ func (c *Component) Run(ctx context.Context) error {
 			c.dbConnection.Close()
 		}
 		c.mut.RUnlock()
+		c.wg.Wait()
+	}()
+
+	// Start reconnection ticker goroutine
+	reconnectTicker := time.NewTicker(30 * time.Second)
+	defer reconnectTicker.Stop()
+
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-reconnectTicker.C:
+				c.mut.RLock()
+				hasCollectors := len(c.collectors) > 0
+				c.mut.RUnlock()
+
+				if !hasCollectors {
+					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+					if err := c.tryReconnect(ctx); err != nil {
+						level.Debug(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
+					} else {
+						level.Info(c.opts.Logger).Log("msg", "successfully reconnected to database")
+					}
+				}
+			}
+		}
 	}()
 
 	for {
@@ -314,42 +344,67 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
+	c.args = args.(Arguments)
+
+	if err := c.connectAndStartCollectors(context.Background()); err != nil {
+		c.reportError("failed to connect", err)
+		return nil
 	}
 
-	c.args = args.(Arguments)
+	c.healthErr.Store("")
+	return nil
+}
+
+// tryReconnect attempts to reconnect to the database and restart collectors
+// This is called by the reconnection ticker when no collectors are running
+func (c *Component) tryReconnect(ctx context.Context) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if err := c.connectAndStartCollectors(ctx); err != nil {
+		c.reportError("reconnection failed", err)
+		return err
+	}
+
+	c.healthErr.Store("")
+	level.Info(c.opts.Logger).Log("msg", "database connection restored")
+	return nil
+}
+
+// connectAndStartCollectors handles the full connection lifecycle:
+// closes old connection, opens new one, queries server info, and starts collectors
+// Must be called with c.mut locked
+func (c *Component) connectAndStartCollectors(ctx context.Context) error {
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+		c.dbConnection = nil
+	}
 
 	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
-		c.reportError("failed to open database connection", err)
-		return nil
+		return fmt.Errorf("failed to open database connection: %w", err)
 	}
 
 	if dbConnection == nil {
-		c.reportError("nil DB connection", nil)
-		return nil
+		return fmt.Errorf("nil DB connection")
 	}
 
 	if err = dbConnection.Ping(); err != nil {
-		c.reportError("failed to ping database", err)
-		return nil
+		dbConnection.Close()
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	c.dbConnection = dbConnection
 
-	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
+	rs := c.dbConnection.QueryRowContext(ctx, selectServerInfo)
 	if err = rs.Err(); err != nil {
-		c.reportError("failed to query engine version", err)
-		return nil
+		return fmt.Errorf("failed to query engine version: %w", err)
 	}
 
 	var serverUUID, hostname, engineVersion string
 	if err := rs.Scan(&serverUUID, &hostname, &engineVersion); err != nil {
-		c.reportError("failed to scan engine version", err)
-		return nil
+		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
-	// Generate server_id hash from server_uuid and hostname, similar to Postgres collector
 	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverUUID, hostname))))
 
 	var parsedEngineVersion semver.Version
@@ -357,8 +412,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if len(matches) > 1 {
 		parsedEngineVersion, err = semver.ParseTolerant(matches[1])
 		if err != nil {
-			c.reportError("failed to parse engine version", err)
-			return nil
+			return fmt.Errorf("failed to parse engine version: %w", err)
 		}
 	}
 
@@ -366,15 +420,13 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.args.CloudProvider != nil {
 		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from config", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
 		}
 		cp = cloudProvider
 	} else {
 		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from DSN", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
 	}
@@ -398,11 +450,9 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion, cp); err != nil {
-		c.reportError("failed to start collectors", err)
-		return nil
+		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
-	c.healthErr.Store("")
 	return nil
 }
 

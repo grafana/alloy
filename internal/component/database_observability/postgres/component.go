@@ -300,6 +300,7 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	defer c.mut.Unlock()
 
 	if err := c.connectAndStartCollectors(ctx); err != nil {
+		c.reportError("reconnection failed", err)
 		return err
 	}
 

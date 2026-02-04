@@ -2,12 +2,16 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
@@ -565,25 +569,19 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	})
 }
 
-func Test_tryReconnect(t *testing.T) {
-	t.Run("clears health error on successful reconnection", func(t *testing.T) {
+func TestPostgres_Reconnection(t *testing.T) {
+	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test-component",
+			ID:            "test",
 			Logger:        kitlog.NewNopLogger(),
-			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
 			},
 		}
 
 		args := Arguments{
-			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
 			ForwardTo:      []loki.LogsReceiver{},
 			Targets:        []discovery.Target{},
 		}
@@ -591,101 +589,96 @@ func Test_tryReconnect(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		// Set a health error
 		c.healthErr.Store("initial error")
 
-		// Try to reconnect (will fail with unreachable database)
 		err = c.tryReconnect(context.Background())
-		assert.Error(t, err, "tryReconnect should return error when connection fails")
-
-		// Health error should still be set since reconnection failed
-		assert.NotEmpty(t, c.healthErr.Load(), "health error should remain when reconnection fails")
+		assert.Error(t, err)
+		assert.NotEmpty(t, c.healthErr.Load())
 	})
 
-	t.Run("returns error when connectAndStartCollectors fails", func(t *testing.T) {
+	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test-component",
+			ID:            "test",
 			Logger:        kitlog.NewNopLogger(),
-			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
 			},
 		}
 
 		args := Arguments{
-			DataSourceName: alloytypes.Secret("postgres://invalid-dsn"),
-			ForwardTo:      []loki.LogsReceiver{},
-			Targets:        []discovery.Target{},
+			DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			ForwardTo:         []loki.LogsReceiver{},
+			Targets:           []discovery.Target{},
+			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+			HealthCheckArguments: HealthCheckArguments{
+				CollectInterval: 1 * time.Hour,
+			},
 		}
 
-		c, err := New(opts, args)
+		// First mock: will fail
+		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 		require.NoError(t, err)
+		defer db1.Close()
 
+		mock1.ExpectPing().WillReturnError(assert.AnError)
+
+		c := &Component{
+			opts:      opts,
+			args:      args,
+			receivers: args.ForwardTo,
+			handler:   loki.NewLogsReceiver(),
+			registry:  prometheus.NewRegistry(),
+			healthErr: atomic.NewString(""),
+			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+		}
+		c.instanceKey = "test-instance"
+		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
+			"instance": c.instanceKey,
+			"job":      "database_observability",
+		})
+
+		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
-		assert.Error(t, err, "tryReconnect should propagate connection errors")
-	})
-}
+		assert.Error(t, err)
+		assert.NotEmpty(t, c.healthErr.Load())
 
-func Test_automaticReconnection(t *testing.T) {
-	t.Run("component reports unhealthy when database is unreachable", func(t *testing.T) {
-		opts := cmp.Options{
-			ID:            "test-health",
-			Logger:        kitlog.NewNopLogger(),
-			Registerer:    nil,
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
-			},
-		}
-
-		// Use unreachable DSN
-		args := Arguments{
-			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
-			ForwardTo:      []loki.LogsReceiver{},
-			Targets:        []discovery.Target{},
-		}
-
-		c, err := New(opts, args)
+		// Second mock: will succeed
+		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 		require.NoError(t, err)
+		defer db2.Close()
 
-		// Component should be unhealthy after failed connection
-		health := c.CurrentHealth()
-		assert.Equal(t, cmp.HealthTypeUnhealthy, health.Health, "component should be unhealthy when DB is unreachable")
-		assert.Contains(t, health.Message, "failed to connect", "health message should indicate connection failure")
+		mock2.ExpectPing()
+		mock2.ExpectQuery(`SELECT.*system_identifier.*inet_server_addr.*inet_server_port.*version`).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+
+		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
+
+		// Second attempt: connection succeeds and clears error
+		err = c.tryReconnect(context.Background())
+		assert.NoError(t, err)
+		assert.Empty(t, c.healthErr.Load())
 	})
 
-	t.Run("reconnection ticker respects context cancellation", func(t *testing.T) {
-		// This test verifies that the reconnection goroutine exits when context is cancelled
+	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test-ctx",
+			ID:            "test",
 			Logger:        kitlog.NewNopLogger(),
-			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
 			},
 		}
 
 		args := Arguments{
-			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
-			ForwardTo:      []loki.LogsReceiver{},
-			Targets:        []discovery.Target{},
+			DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			ForwardTo:         []loki.LogsReceiver{},
+			Targets:           []discovery.Target{},
+			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+			HealthCheckArguments: HealthCheckArguments{
+				CollectInterval: 1 * time.Hour,
+			},
 		}
 
 		c, err := New(opts, args)
@@ -693,22 +686,17 @@ func Test_automaticReconnection(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 
-		// Start Run in a goroutine
 		runErr := make(chan error, 1)
 		go func() {
 			runErr <- c.Run(ctx)
 		}()
 
-		// Give it a moment to start
 		time.Sleep(100 * time.Millisecond)
-
-		// Cancel context
 		cancel()
 
-		// Run should exit quickly after cancellation
 		select {
 		case err := <-runErr:
-			assert.NoError(t, err, "Run should exit cleanly")
+			assert.NoError(t, err)
 		case <-time.After(5 * time.Second):
 			t.Fatal("Run did not exit after context cancellation")
 		}
