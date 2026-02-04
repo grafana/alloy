@@ -442,7 +442,6 @@ func TestTruncateStage_UnmarshalAlloy(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func ptr[T any](s T) *T {
