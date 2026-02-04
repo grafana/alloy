@@ -102,7 +102,6 @@ extensions:
       file: <ALLOY_CONFIG_PATH>
     flags:
       server.http.listen-addr: 0.0.0.0:12345
-      stability.level: experimental
 
 receivers:
   otlp:
