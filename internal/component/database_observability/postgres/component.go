@@ -154,7 +154,8 @@ func (a *Arguments) Validate() error {
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets           []discovery.Target `alloy:"targets,attr"`
+	ErrorLogsReceiver loki.LogsReceiver  `alloy:"error_logs_receiver,attr,optional"`
 }
 
 var (
@@ -183,6 +184,10 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+
+	errorLogsReceiver  loki.LogsReceiver
+	errorLogsIn        chan loki.Entry
+	errorLogsCollector *collector.ErrorLogs // Always-running collector (no DB required)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -191,13 +196,15 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:              opts,
+		args:              args,
+		receivers:         args.ForwardTo,
+		handler:           loki.NewLogsReceiver(),
+		registry:          prometheus.NewRegistry(),
+		healthErr:         atomic.NewString(""),
+		openSQL:           openFn,
+		errorLogsReceiver: loki.NewLogsReceiver(),
+		errorLogsIn:       make(chan loki.Entry),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -211,6 +218,13 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		return nil, err
 	}
 	c.baseTarget = baseTarget
+
+	// Export error_logs receiver immediately (stable for component lifetime).
+	// Prevents nil pointer panics in loki.source.file when database is unavailable.
+	opts.OnStateChange(Exports{
+		Targets:           []discovery.Target{},
+		ErrorLogsReceiver: c.errorLogsReceiver,
+	})
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -226,14 +240,62 @@ func (c *Component) Run(ctx context.Context) error {
 		for _, collector := range c.collectors {
 			collector.Stop()
 		}
+		if c.errorLogsCollector != nil {
+			c.errorLogsCollector.Stop()
+		}
 		if c.dbConnection != nil {
 			c.dbConnection.Close()
 		}
 		c.mut.RUnlock()
 	}()
 
-	// Automatic reconnection ticker
+	// Start error logs collector immediately (no DB connection required)
+	// This ensures server logs are always collected, even when database is unavailable
+	entryHandler := loki.NewEntryHandler(c.errorLogsIn, func() {})
+	errorLogsInternalReceiver := loki.NewLogsReceiver(loki.WithChannel(c.errorLogsIn))
+	
+	elCollector, err := collector.NewErrorLogs(collector.ErrorLogsArguments{
+		Receiver:     errorLogsInternalReceiver,
+		EntryHandler: entryHandler,
+		Logger:       c.opts.Logger,
+		InstanceKey:  c.instanceKey,
+		SystemID:     "unknown", // Will be updated when DB connects
+		Registry:     c.registry,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create error_logs collector", "err", err)
+		return err
+	}
+	
+	if err := elCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start error_logs collector", "err", err)
+		return err
+	}
+	
+	c.errorLogsCollector = elCollector
+	level.Info(c.opts.Logger).Log("msg", "error_logs collector started (independent of database connection)")
+
+	// Bridge exported receiver to internal channel
+	// No drain mode needed since error_logs collector is always running
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case entry := <-c.errorLogsReceiver.Chan():
+				select {
+				case c.errorLogsIn <- entry:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	// Automatic reconnection ticker
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -365,7 +427,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 
 	exports := Exports{
-		Targets: targets,
+		Targets:           targets,
+		ErrorLogsReceiver: c.errorLogsReceiver,
 	}
 	c.opts.OnStateChange(exports)
 
@@ -544,6 +607,14 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		}
 		c.collectors = append(c.collectors, hcCollector)
 	}
+
+	// ErrorLogs collector is always running (started in Run())
+	// Just update its SystemID when DB connects
+	c.errorLogsCollector.UpdateSystemID(systemID)
+	level.Info(c.opts.Logger).Log(
+		"msg", "updated error_logs collector system ID", 
+		"system_id", systemID,
+	)
 
 	if len(startErrors) > 0 {
 		return fmt.Errorf("failed to start some collectors: %s", strings.Join(startErrors, ", "))
