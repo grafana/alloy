@@ -230,9 +230,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	m := newMetrics(o.Registerer)
 	c := &Component{
 		opts:      o,
-		metrics:   newMetrics(o.Registerer),
+		metrics:   m,
 		handler:   loki.NewLogsReceiver(),
 		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
@@ -324,6 +325,9 @@ func (c *Component) Update(args component.Arguments) error {
 // match the desired state.
 // Caller must hold write lock on c.mut before calling this function.
 func (c *Component) scheduleSources() {
+	// Create duplicate detector for this reconciliation cycle.
+	duplicateDetector := newDuplicateDetector(c.opts.Logger, c.metrics.duplicateFilesTally)
+
 	source.Reconcile(
 		c.opts.Logger,
 		c.scheduler,
@@ -347,6 +351,10 @@ func (c *Component) scheduleSources() {
 				return nil, source.ErrSkip
 			}
 
+			// Track this file for duplicate detection. We only track files that
+			// pass all validation checks and will actually be tailed.
+			duplicateDetector.Track(target.Path, target.Labels, fi)
+
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
 			return c.newSource(sourceOptions{
@@ -361,6 +369,9 @@ func (c *Component) scheduleSources() {
 			})
 		},
 	)
+
+	// Report duplicates after reconciliation is complete, so that we don't slow it down.
+	duplicateDetector.Report()
 }
 
 type debugInfo struct {

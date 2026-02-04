@@ -3,6 +3,7 @@
 package fileext
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -112,4 +113,31 @@ func getFileStandardInfo(f *os.File) (*fileStandardInfo, error) {
 	}
 	runtime.KeepAlive(f)
 	return si, nil
+}
+
+// FileID uniquely identifies a file on the filesystem.
+// On Windows, this uses the volume serial number and file index.
+// Two different paths pointing to the same file will have the same FileID.
+type FileID struct {
+	dev uint64
+	ino uint64
+}
+
+// String returns a string representation of the FileID for use in metrics and logs.
+func (f FileID) String() string {
+	return fmt.Sprintf("%d:%d", f.dev, f.ino)
+}
+
+// NewFileID extracts a unique file identifier from os.FileInfo.
+// On Windows, this uses the volume serial number and file index from
+// BY_HANDLE_FILE_INFORMATION.
+// Returns the FileID and true if successful, or an empty FileID and false
+// if the file identity could not be determined.
+func NewFileID(fi os.FileInfo) (FileID, bool) {
+	// On Windows, fi.Sys() returns *syscall.Win32FileAttributeData which doesn't
+	// contain the file index. We need to use the file path to open the file and
+	// get the full information.
+	// For now, return false to fall back to path-based detection.
+	// A full implementation would require opening the file to get BY_HANDLE_FILE_INFORMATION.
+	return FileID{}, false
 }
