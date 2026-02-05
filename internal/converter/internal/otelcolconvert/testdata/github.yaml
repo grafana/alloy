@@ -1,0 +1,45 @@
+extensions:
+  bearertokenauth:
+    token: "ghp_1234567890abcdefghijklmnopqrstuvwxyz12"
+
+receivers:
+  github:
+    collection_interval: 60s
+    initial_delay: 1s
+    scrapers:
+      scraper:
+        github_org: grafana
+        search_query: "org:grafana"
+        endpoint: https://api.github.com
+        auth:
+          authenticator: bearertokenauth
+        metrics:
+          vcs.repository.count:
+            enabled: true
+          vcs.contributor.count:
+            enabled: false
+    webhook:
+      endpoint: 0.0.0.0:8080
+      path: /events
+      health_path: /health
+      secret: webhook-secret
+      required_headers:
+        X-Custom-Header: custom-value
+      service_name: github-webhook
+      include_span_events: true
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  extensions: [bearertokenauth]
+  pipelines:
+    metrics:
+      receivers: [github]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [github]
+      processors: []
+      exporters: [otlp]
