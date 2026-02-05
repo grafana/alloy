@@ -1027,7 +1027,7 @@ replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-2025
 // TODO - remove forks when changes are merged upstream — non-singleton cadvisor
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
 
-// TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
+// TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260205090833-e7ffaa06b223
 
 // TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
