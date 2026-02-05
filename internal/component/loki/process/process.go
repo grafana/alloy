@@ -55,15 +55,16 @@ var (
 
 // Component implements the loki.process component.
 type Component struct {
-	opts component.Options
+	opts       component.Options
+	receiver   loki.LogsReceiver
+	processOut chan loki.Entry
 
 	mut          sync.RWMutex
-	receiver     loki.LogsReceiver
 	processIn    chan<- loki.Entry
-	processOut   chan loki.Entry
 	entryHandler loki.EntryHandler
 	stages       []stages.StageConfig
 
+	// FIXME: use fanout
 	fanoutMut sync.RWMutex
 	fanout    []loki.LogsReceiver
 
@@ -146,8 +147,7 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return err
 		}
-		entryHandler := loki.NewEntryHandler(c.processOut, func() { pipeline.Cleanup() })
-		c.entryHandler = pipeline.Wrap(entryHandler)
+		c.entryHandler = pipeline.Start(c.processOut)
 		c.processIn = c.entryHandler.Chan()
 		c.stages = newArgs.Stages
 	}
