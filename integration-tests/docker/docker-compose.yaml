@@ -13,8 +13,8 @@ services:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9009/ready"]
       interval: 2s
       timeout: 5s
-      retries: 30
-      start_period: 10s
+      retries: 90
+      start_period: 30s
     networks:
       - integration-tests
 
