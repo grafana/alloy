@@ -161,7 +161,6 @@ The component periodically scans the filesystem based on `sync_period` and autom
 
 ## Debug metrics
 
-* `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
 * `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
 * `loki_source_file_files_active_total` (gauge): Number of active files.
 * `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
