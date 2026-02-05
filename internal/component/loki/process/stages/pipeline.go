@@ -73,36 +73,39 @@ func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, regis
 	}, nil
 }
 
-// RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
-func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range input {
-			out <- process(e)
-		}
-	}()
-	return out
-}
+// Start will start the pipeline and forward entries to next.
+// The returned EntryHandler should be used to pass entries through the pipeline.
+func (p *Pipeline) Start(next chan<- loki.Entry) loki.EntryHandler {
+	handlerIn := make(chan loki.Entry)
 
-// RunWithSkipOrSendMany same as RunWith, except it handles sending multiple entries at the same time and it wil skip
-// sending the batch to output channel, if `process` functions returns `skip` true.
-func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, bool)) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range input {
-			results, skip := process(e)
-			if skip {
-				continue
-			}
-			for _, result := range results {
-				out <- result
+	pipelineIn := make(chan Entry)
+	pipelineOut := p.Run(pipelineIn)
+
+	var (
+		wg   sync.WaitGroup
+		once sync.Once
+	)
+	wg.Go(func() {
+		for e := range pipelineOut {
+			next <- e.Entry
+		}
+	})
+
+	wg.Go((func() {
+		defer close(pipelineIn)
+		for e := range handlerIn {
+			pipelineIn <- Entry{
+				Extracted: map[string]any{},
+				Entry:     e,
 			}
 		}
-	}()
+	}))
 
-	return out
+	return loki.NewEntryHandler(handlerIn, func() {
+		once.Do(func() { close(handlerIn) })
+		wg.Wait()
+		p.Cleanup()
+	})
 }
 
 // Run implements Stage
@@ -134,38 +137,34 @@ func (p *Pipeline) Cleanup() {
 	}
 }
 
-// Wrap implements EntryMiddleware
-func (p *Pipeline) Wrap(next loki.EntryHandler) loki.EntryHandler {
-	handlerIn := make(chan loki.Entry)
-	nextChan := next.Chan()
-	wg, once := sync.WaitGroup{}, sync.Once{}
-	pipelineIn := make(chan Entry)
-	pipelineOut := p.Run(pipelineIn)
-	wg.Add(2)
+// RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
+func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
+	out := make(chan Entry)
 	go func() {
-		defer wg.Done()
-		for e := range pipelineOut {
-			nextChan <- e.Entry
+		defer close(out)
+		for e := range input {
+			out <- process(e)
 		}
 	}()
+	return out
+}
+
+// RunWithSkipOrSendMany same as RunWith, except it handles sending multiple entries at the same time and it wil skip
+// sending the batch to output channel, if `process` functions returns `skip` true.
+func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, bool)) chan Entry {
+	out := make(chan Entry)
 	go func() {
-		defer wg.Done()
-		defer close(pipelineIn)
-		for e := range handlerIn {
-			pipelineIn <- Entry{
-				Extracted: map[string]any{},
-				Entry:     e,
+		defer close(out)
+		for e := range input {
+			results, skip := process(e)
+			if skip {
+				continue
+			}
+			for _, result := range results {
+				out <- result
 			}
 		}
 	}()
-	return loki.NewEntryHandler(handlerIn, func() {
-		once.Do(func() { close(handlerIn) })
-		wg.Wait()
-		p.Cleanup()
-	})
-}
 
-// Size gets the current number of stages in the pipeline
-func (p *Pipeline) Size() int {
-	return len(p.stages)
+	return out
 }
