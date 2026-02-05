@@ -9,6 +9,12 @@ services:
       - -config.file=/etc/mimir-config/mimir.yaml
     ports:
       - "9009:9009"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9009/ready"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     networks:
       - integration-tests
 
@@ -24,6 +30,12 @@ services:
       - "4319:4317"    # otlp grpc
       - "4320:4318"    # otlp http
       - "9411:9411"    # zipkin
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3200/ready"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     networks:
       - integration-tests
 
@@ -56,7 +68,8 @@ services:
 
   kafka-gen:
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     build:
       dockerfile: ./integration-tests/docker/configs/kafka/Dockerfile
       context: ../../
@@ -69,7 +82,7 @@ services:
     ports:
       - "3100:3100"
     healthcheck:
-      test: wget -q -O - http://localhost:3100/services | grep -v Running || true
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3100/ready"]
       interval: 1s
       timeout: 5s
       retries: 60
@@ -100,13 +113,19 @@ services:
     image: redis:6.0.9-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
     networks:
       - integration-tests
 
   redis-init:
     image: redis:6.0.9-alpine
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     volumes:
       - ./tests/redis/init_redis.sh:/init_redis.sh
     command: sh /init_redis.sh

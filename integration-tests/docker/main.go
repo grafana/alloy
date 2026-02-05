@@ -53,16 +53,13 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		buildAlloy()
 	}
 
+	start := time.Now()
 	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
+	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka", "loki", "redis"}
+	executeCommand("docker", waitArgs, "Waiting for dependent services to be healthy")
+	fmt.Printf("Environment setup completed in %s\n", time.Since(start))
 	if !stateful {
 		defer executeCommand("docker", []string{"compose", "down"}, "Stopping dependent services")
-		fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
-		time.Sleep(10 * time.Second)
-	} else {
-		// This has been the observed set of services that are required to be healthy for the tests to run. We cannot
-		// wait for all services as we have an init container that is expected to exit.
-		// After all services get a healthcheck we can use this 100% of the time instead of the hardcoded "wait 10 seconds".
-		executeCommand("docker", []string{"compose", "up", "kafka", "loki", "--wait"}, "Waiting for necessary compose services to be healthy")
 	}
 
 	if specificTest != "" {
