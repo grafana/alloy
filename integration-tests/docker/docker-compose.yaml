@@ -35,7 +35,7 @@ services:
       interval: 2s
       timeout: 5s
       retries: 30
-      start_period: 10s
+      start_period: 30s
     networks:
       - integration-tests
 
@@ -63,6 +63,7 @@ services:
       interval: 1s
       timeout: 5s
       retries: 10
+      start_period: 30s
     networks:
       - integration-tests
 
@@ -86,6 +87,7 @@ services:
       interval: 1s
       timeout: 5s
       retries: 60
+      start_period: 30s
     networks:
       - integration-tests
 
@@ -118,6 +120,7 @@ services:
       interval: 1s
       timeout: 5s
       retries: 30
+      start_period: 30s
     networks:
       - integration-tests
 
