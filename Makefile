@@ -76,6 +76,7 @@
 ##   GO_TAGS              Extra tags to use when building.
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
+##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 
 include tools/make/*.mk
 
@@ -285,6 +286,8 @@ endif
 generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_UI_BUILD),1)
+	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
 	cd ./internal/web/ui && npm install && npm run build
 endif
