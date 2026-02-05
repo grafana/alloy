@@ -159,7 +159,7 @@
                "range": true
             }
          ],
-         "title": "Memory (heap inuse)",
+         "title": "Memory (heap in use)",
          "type": "timeseries"
       },
       {
