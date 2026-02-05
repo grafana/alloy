@@ -1,7 +1,7 @@
 name: Publish Alloy release artifacts
 on:
   release:
-    types: [published]
+    types: [created]
 
 permissions:
   contents: read
