@@ -36,6 +36,7 @@ func TestComponent(t *testing.T) {
 		require.NoError(t, err)
 
 		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
 
 		ctx, cancel := context.WithCancel(context.Background())
 
