@@ -61,7 +61,7 @@ func TestComponent(t *testing.T) {
 		err = ctrl.Update(Arguments{
 			ForwardTo: []loki.LogsReceiver{collector.Receiver()},
 			Stages: []stages.StageConfig{
-				stages.StageConfig{
+				{
 					MatchConfig: &stages.MatchConfig{
 						// {} is not a valid selector.
 						Selector: "{}",
