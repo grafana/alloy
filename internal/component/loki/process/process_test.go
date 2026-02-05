@@ -1,7 +1,5 @@
 package process
 
-// NOTE: This code is copied from Promtail (07cbef92268aecc0f20d1791a6df390c2df5c072) with changes kept to the minimum.
-
 import (
 	"context"
 	"fmt"
@@ -11,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -28,8 +28,55 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/loki/pkg/push"
 )
+
+func TestComponent(t *testing.T) {
+	t.Run("update with invalid stage config", func(t *testing.T) {
+		ctrl, err := componenttest.NewControllerFromID(log.NewNopLogger(), "loki.process")
+		require.NoError(t, err)
+
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.LogsReceiver{collector.Receiver()}}))
+		})
+		require.NoError(t, ctrl.WaitExports(time.Minute))
+
+		recv := ctrl.Exports().(Exports).Receiver
+		fanout := loki.NewFanout([]loki.LogsReceiver{recv})
+
+		wg.Go(func() {
+			for {
+				// We get error if context is canceled
+				if err := fanout.Send(ctx, loki.Entry{}); err != nil {
+					return
+				}
+			}
+		})
+
+		err = ctrl.Update(Arguments{
+			ForwardTo: []loki.LogsReceiver{collector.Receiver()},
+			Stages: []stages.StageConfig{
+				{
+					MatchConfig: &stages.MatchConfig{
+						// {} is not a valid selector.
+						Selector: "{}",
+					},
+				},
+			},
+		})
+		require.Error(t, err)
+
+		// Keep sending for a while after update have failed.
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+		wg.Wait()
+	})
+}
 
 const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
 
