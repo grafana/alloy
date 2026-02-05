@@ -1,6 +1,3 @@
-// The code in this package is adapted/ported over from grafana/loki/clients/pkg/logentry.
-//
-// The last Loki commit scanned for upstream changes was 7d5475541c66a819f6f456a45f8c143a084e6831.
 package process
 
 import (
@@ -17,11 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
-
-// TODO(thampiotr): We should reconsider which parts of this component should be exported and which should
-//                  be internal before 1.0, specifically the metrics and stages configuration structures.
-//					To keep the `stages` package internal, we may need to move the `converter` logic into
-//					the `component/loki/process` package.
 
 func init() {
 	component.Register(component.Registration{
@@ -139,14 +131,16 @@ func (c *Component) Update(args component.Arguments) error {
 	// first load. This will allow a component with no stages to function
 	// properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
-		if c.entryHandler != nil {
-			c.entryHandler.Stop()
-		}
-
 		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}
+
+		// NOTE: it is important that we only stop current pipeline if we successfully created the new one.
+		if c.entryHandler != nil {
+			c.entryHandler.Stop()
+		}
+
 		c.entryHandler = pipeline.Start(c.processOut)
 		c.processIn = c.entryHandler.Chan()
 		c.stages = newArgs.Stages
