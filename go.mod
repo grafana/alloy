@@ -1043,10 +1043,6 @@ exclude (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
-// Exclude the split containerd/api module to avoid ambiguous import conflict with containerd v1.7.18
-// Requires changes in percona/mongo_exporter to use non-monorepo containerd imports.
-exclude github.com/containerd/containerd/api v1.9.0
-
 // BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
 // TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/prometheus/issues/13842
 replace go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0

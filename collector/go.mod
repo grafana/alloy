@@ -1021,10 +1021,6 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-// Exclude the split containerd/api module to avoid ambiguous import conflict with containerd v1.7.18
-// Requires changes in percona/mongo_exporter to use non-monorepo containerd imports.
-exclude github.com/containerd/containerd/api v1.9.0
-
 replace github.com/grafana/alloy => ../
 
 replace github.com/grafana/alloy/syntax => ../syntax
