@@ -249,7 +249,7 @@ func BenchmarkPipelines(b *testing.B) {
 					pipelineType.name, config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
 
 				b.Run(testName, func(b *testing.B) {
-					pipeline, ls, clearCache := pipelineType.pipelineBuilder(b, log.NewNopLogger(), config.numberOfRWComponents, config.refTrackingConfig)
+					pipeline, _, clearCache := pipelineType.pipelineBuilder(b, log.NewNopLogger(), config.numberOfRWComponents, config.refTrackingConfig)
 					metrics := setupMetrics(n)
 					b.ReportAllocs()
 					b.ResetTimer()
@@ -258,7 +258,6 @@ func BenchmarkPipelines(b *testing.B) {
 						for range n {
 							a := pipeline.Appender(b.Context())
 							for i, metric := range metrics {
-								ls.GetOrAddGlobalRefID(metric)
 								a.Append(0, metric, time.Now().UnixMilli(), float64(i))
 							}
 							a.Commit()
@@ -404,7 +403,7 @@ func BenchmarkSeriesMapping(b *testing.B) {
 				config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
 
 			b.Run(testName, func(b *testing.B) {
-				pipeline, ls, _ := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
+				pipeline, _, _ := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
 				metrics := setupMetrics(n)
 				b.ReportAllocs()
 				b.ResetTimer()
@@ -413,7 +412,6 @@ func BenchmarkSeriesMapping(b *testing.B) {
 					for range n {
 						a := pipeline.Appender(b.Context())
 						for i, metric := range metrics {
-							ls.GetOrAddGlobalRefID(metric)
 							a.Append(0, metric, time.Now().UnixMilli(), float64(i))
 						}
 						a.Commit()
