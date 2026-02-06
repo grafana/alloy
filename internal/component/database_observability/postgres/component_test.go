@@ -13,8 +13,10 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
+	"github.com/grafana/alloy/internal/component/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -488,5 +490,134 @@ func Test_parseCloudProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Nil(t, args.CloudProvider)
+	})
+}
+
+func Test_connectAndStartCollectors(t *testing.T) {
+	t.Run("successfully connects and starts collectors", func(t *testing.T) {
+		// Test that connectAndStartCollectors properly initializes DB connection
+		// and starts collectors when given valid credentials
+		
+		// This test would require a real or mock database
+		// Skipping for now as it requires integration test setup
+		t.Skip("requires database connection")
+	})
+
+	t.Run("returns error on connection failure", func(t *testing.T) {
+		// Test that connectAndStartCollectors returns proper error
+		// when database is unavailable
+		
+		t.Skip("requires mock database setup")
+	})
+}
+
+func Test_tryReconnect(t *testing.T) {
+	t.Run("acquires lock and calls connectAndStartCollectors", func(t *testing.T) {
+		// Test that tryReconnect properly acquires mutex and attempts reconnection
+		
+		t.Skip("requires mock database setup")
+	})
+}
+
+func Test_automaticReconnection(t *testing.T) {
+	t.Run("reconnection ticker is created in Run", func(t *testing.T) {
+		// Validates that Run() creates a reconnection ticker
+		// that attempts to reconnect when collectors list is empty
+		
+		t.Skip("requires integration test with context cancellation")
+	})
+}
+
+func Test_ErrorLogsCollector_StartsIndependentlyOfDatabase(t *testing.T) {
+	t.Run("error_logs receiver is exported immediately on component creation", func(t *testing.T) {
+		// This validates that the error_logs receiver is available immediately,
+		// even before Run() is called or DB connection is established.
+		
+		var exports Exports
+		opts := cmp.Options{
+			ID:       "test-component",
+			Logger:   kitlog.NewNopLogger(),
+			Registerer: nil,
+			OnStateChange: func(e cmp.Exports) {
+				exports = e.(Exports)
+			},
+			GetServiceData: func(name string) (interface{}, error) {
+				return http_service.Data{
+					HTTPListenAddr:  "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:    "/",
+					DialFunc:        nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+			ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+			Targets:        []discovery.Target{},
+		}
+
+		// Create component - should export error_logs receiver immediately
+		c, err := New(opts, args)
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		
+		// Verify error_logs receiver was exported on creation (before Run)
+		require.NotNil(t, exports.ErrorLogsReceiver, "ErrorLogsReceiver should be exported immediately")
+		require.NotNil(t, c.errorLogsReceiver, "component should have errorLogsReceiver initialized")
+		
+		// Verify we can send to the receiver (won't panic)
+		logEntry := loki.Entry{
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "test log",
+			},
+		}
+		
+		// This should not panic or block, proving receiver exists and is ready
+		select {
+		case c.errorLogsReceiver.Chan() <- logEntry:
+			// Success - receiver accepted the entry
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("receiver should accept entries immediately")
+		}
+	})
+
+	t.Run("collector field exists for runtime initialization", func(t *testing.T) {
+		// This validates the architectural change: Component has errorLogsCollector
+		// field that gets populated in Run() before DB connection.
+		
+		opts := cmp.Options{
+			ID:       "test-component",
+			Logger:   kitlog.NewNopLogger(),
+			Registerer: nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (interface{}, error) {
+				return http_service.Data{
+					HTTPListenAddr:  "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:    "/",
+					DialFunc:        nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+			ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+		
+		// Before Run(), errorLogsCollector should be nil
+		require.Nil(t, c.errorLogsCollector, "collector should be nil before Run()")
+		
+		// In Run(), the collector gets created before DB connection attempt.
+		// Unit tests in error_logs_test.go validate:
+		// - Collectors work without any DB connection
+		// - SystemID can be updated dynamically
+		// - Logs are processed with empty systemID initially
 	})
 }
