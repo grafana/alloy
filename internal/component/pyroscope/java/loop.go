@@ -226,14 +226,17 @@ func (p *profilingLoop) start() error {
 		"-f", p.jfrFile,
 		"-o", "jfr",
 	)
+
+	// If CPU profiling is enabled, force the event to the default value
 	if cfg.CPU {
-		argv = append(argv, "-e", cfg.Event)
-		if cfg.PerThread {
-			argv = append(argv, "-t")
-		}
-		profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
-		argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
+		cfg.Event = "itimer"
 	}
+	argv = append(argv, "-e", cfg.Event)
+	if cfg.PerThread {
+		argv = append(argv, "-t")
+	}
+	profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
+	argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
 	if cfg.Alloc != "" {
 		argv = append(argv, "--alloc", cfg.Alloc)
 	}
@@ -242,6 +245,9 @@ func (p *profilingLoop) start() error {
 	}
 	if cfg.LogLevel != "" {
 		argv = append(argv, "-L", cfg.LogLevel)
+	}
+	if len(cfg.ExtraArguments) > 0 {
+		argv = append(argv, cfg.ExtraArguments...)
 	}
 
 	argv = append(argv,
