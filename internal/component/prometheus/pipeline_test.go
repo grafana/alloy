@@ -477,6 +477,52 @@ func BenchmarkSeriesMapping(b *testing.B) {
 	// }
 }
 
+// go test -bench="BenchmarkStores" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
+// benchstat -row ".name /remotewritecomponents /new-metrics" -col /reftrackingconfig benchmarks
+func BenchmarkStores(b *testing.B) {
+	numberOfMetrics := []int{2000}
+	for _, n := range numberOfMetrics {
+		metrics := setupMetrics(n)
+
+		testName := fmt.Sprintf("labelstore=%d/new-metrics=%d", 1, n)
+		b.Run(testName, func(b *testing.B) {
+			ls := labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer)
+			b.ReportAllocs()
+			b.ResetTimer()
+
+			for b.Loop() {
+				for i, metric := range metrics {
+					ls.GetOrAddGlobalRefID(metric)
+					ls.GetLocalRefID("prometheus.remote_write.test.1", 0)
+					ls.AddLocalLink("prometheus.remote_write.test.1", uint64(i), uint64(i))
+					ls.GetLocalRefID("prometheus.remote_write.test.2", 0)
+					ls.AddLocalLink("prometheus.remote_write.test.2", uint64(i), uint64(i))
+				}
+				b.StopTimer()
+				ls.Clear()
+				b.StartTimer()
+			}
+		})
+
+		testName = fmt.Sprintf("seriesrefmapping=%d/new-metrics=%d", 1, n)
+		b.Run(testName, func(b *testing.B) {
+			sm := appenders.NewSeriesRefMappingStore(promclient.DefaultRegisterer)
+			b.ReportAllocs()
+			b.ResetTimer()
+
+			for b.Loop() {
+				for i, _ := range metrics {
+					sm.GetMapping(storage.SeriesRef(i))
+					sm.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i)})
+				}
+				b.StopTimer()
+				sm.Clear()
+				b.StartTimer()
+			}
+		})
+	}
+}
+
 func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 	metrics := make([]labels.Labels, 0, numberOfMetrics)
 	for i := range numberOfMetrics {

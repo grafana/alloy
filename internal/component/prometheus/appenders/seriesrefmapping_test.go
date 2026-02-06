@@ -82,7 +82,7 @@ func TestUpdateMappingWithZeroRefDoesNothing(t *testing.T) {
 func TestTrackAppendedSeriesDoesNotPanic(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
-	slice := store.GetSliceForAppendedSeries()
+	slice := store.GetCellForAppendedSeries()
 	slice = append(slice, 1, 2, 3)
 
 	require.NotPanics(t, func() {
@@ -93,11 +93,11 @@ func TestTrackAppendedSeriesDoesNotPanic(t *testing.T) {
 func TestSliceIsEmptyAfterReturn(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
-	slice1 := store.GetSliceForAppendedSeries()
+	slice1 := store.GetCellForAppendedSeries()
 	slice1 = append(slice1, 1, 2, 3)
 	store.TrackAppendedSeries(time.Now().Unix(), slice1)
 
-	slice2 := store.GetSliceForAppendedSeries()
+	slice2 := store.GetCellForAppendedSeries()
 	require.NotNil(t, slice2)
 	require.Equal(t, 0, len(slice2), "slice returned should always have length 0")
 }
@@ -112,7 +112,7 @@ func TestRefsAreEventuallyCleanedUp(t *testing.T) {
 		uniqueRef := store.CreateMapping(childRefs)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
-		slice := store.GetSliceForAppendedSeries()
+		slice := store.GetCellForAppendedSeries()
 		slice = append(slice, uniqueRef)
 		store.TrackAppendedSeries(oldTimestamp, slice)
 
@@ -137,7 +137,7 @@ func TestRecentlyTrackedRefsAreNotCleanedUp(t *testing.T) {
 		uniqueRef := store.CreateMapping(childRefs)
 
 		recentTimestamp := time.Now().Unix()
-		slice := store.GetSliceForAppendedSeries()
+		slice := store.GetCellForAppendedSeries()
 		slice = append(slice, uniqueRef)
 		store.TrackAppendedSeries(recentTimestamp, slice)
 
@@ -159,7 +159,7 @@ func TestTrackingRefAgainUpdatesTimestamp(t *testing.T) {
 		uniqueRef := store.CreateMapping(childRefs)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
-		slice1 := store.GetSliceForAppendedSeries()
+		slice1 := store.GetCellForAppendedSeries()
 		slice1 = append(slice1, uniqueRef)
 		store.TrackAppendedSeries(oldTimestamp, slice1)
 
@@ -168,7 +168,7 @@ func TestTrackingRefAgainUpdatesTimestamp(t *testing.T) {
 
 		// Track the same ref again with current timestamp
 		currentTimestamp := time.Now().Unix()
-		slice2 := store.GetSliceForAppendedSeries()
+		slice2 := store.GetCellForAppendedSeries()
 		slice2 = append(slice2, uniqueRef)
 		store.TrackAppendedSeries(currentTimestamp, slice2)
 
@@ -191,7 +191,7 @@ func TestClearRemovesAllMappings(t *testing.T) {
 		uniqueRefs = append(uniqueRefs, uniqueRef)
 
 		// Track them
-		slice := store.GetSliceForAppendedSeries()
+		slice := store.GetCellForAppendedSeries()
 		slice = append(slice, uniqueRef)
 		store.TrackAppendedSeries(time.Now().Unix(), slice)
 	}
@@ -340,7 +340,7 @@ func TestConcurrentTrackingIsCorrect(t *testing.T) {
 
 			// Each tracker tracks a subset of refs
 			for j := id; j < len(uniqueRefs); j += numTrackers {
-				slice := store.GetSliceForAppendedSeries()
+				slice := store.GetCellForAppendedSeries()
 				slice = append(slice, uniqueRefs[j])
 				store.TrackAppendedSeries(time.Now().Unix(), slice)
 			}
