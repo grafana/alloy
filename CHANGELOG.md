@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.14.0](https://github.com/grafana/alloy/compare/v1.13.0...v1.14.0) (2026-02-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **otelcol.receiver.prometheus:** `otelcol.receiver.prometheus` no longer sets start times of OTLP metrics. Grafana Cloud and Mimir do not currently use OTLP metric start times. If you do want your metrics to have them, you can use `otelcol.processor.metric_start_time` with `strategy` set to `true_reset_point` to get the same behaviour.
+
+### Features 🌟
+
+* **otel:** Add receivers used in the otel k8s helm chart presets ([#5466](https://github.com/grafana/alloy/issues/5466)) ([100f6ea](https://github.com/grafana/alloy/commit/100f6ea49056688ac93c9e82d0bcb74771bea95b))
+* **otelcol.receiver.prometheus:** Remove requirement to run Alloy with `--stability.level=experimental` in order to translate Prometheus native histograms into OTLP exponential histograms. ([#5308](https://github.com/grafana/alloy/issues/5308)) ([237e985](https://github.com/grafana/alloy/commit/237e985451f2a89b779c0c2f24ad9fe3c611b98e))
+
+
+### Bug Fixes 🐛
+
+* **loki.process:** Registration of stage.metric when used inside stage.match ([#5460](https://github.com/grafana/alloy/issues/5460)) ([81caf72](https://github.com/grafana/alloy/commit/81caf72c3d9b3d62c5874aed59e3288a90689021))
+
 ## [1.13.0](https://github.com/grafana/alloy/compare/v1.12.1...v1.13.0) (2026-02-05)
 
 
