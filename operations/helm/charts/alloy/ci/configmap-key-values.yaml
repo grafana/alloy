@@ -5,5 +5,3 @@ alloy:
       logging {
         level = "debug"
       }
-configReloader:
-  enabled: false
