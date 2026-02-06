@@ -197,7 +197,7 @@ The `event` argument specifies what to profile. It supports various event types:
 
 * `<tracepoint>` - Kernel tracepoint, for example, `syscalls:sys_enter_open`.
 * `kprobe:<func>` - Kernel probe on a function.
-* `uprobe:<func>` - Userspace probe on a function.
+* `uprobe:<func>` - User space probe on a function.
 
 Refer to [Profiling Modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) for detailed information about each profiling mode.
 
