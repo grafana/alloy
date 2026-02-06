@@ -127,28 +127,79 @@ The `profiling_config` block describes how async-profiler is invoked.
 
 The following arguments are supported:
 
-| Name          | Type       | Description                                                                                                     | Default    | Required |
-| ------------- | ---------- | --------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `alloc`       | `string`   | Allocation profiling sampling configuration  It's passed as an `--alloc` argument to async-profiler.            | `"512k"`   | no       |
-| `cpu`         | `bool`     | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                 | `true`     | no       |
-| `event`       | `string`   | Sets the CPU profiling event. Can be one of `itimer`, `cpu` or `wall`.                                          | `"itimer"` | no       |
-| `interval`    | `duration` | How frequently to collect profiles from the targets.                                                            | `"60s"`    | no       |
-| `lock`        | `string`   | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                   | `"10ms"`   | no       |
-| `log_level`   | `string`   | Sets the log level in async profiler. one of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.              | `"INFO"`   | no       |
-| `per_thread`  | `bool`     | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                      | `false`    | no       |
-| `quiet`       | `bool`     | If set, suppresses the `Profiling started/stopped` log message.                                                 | `false`    | no       |
-| `sample_rate` | `int`      | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler. | `100`      | no       |
+| Name          | Type           | Description                                                                                             | Default    | Required |
+| ------------- | -------------- | ------------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| `all`         | `bool`         | Enable all profiling types simultaneously: `cpu`, `wall`, `alloc`, `live`, `lock`, and native memory.   | `false`    | no       |
+| `all_user`    | `bool`         | Include only user-mode events. This is helpful when kernel profiling is restricted.                     | `false`    | no       |
+| `alloc`       | `string`       | Allocation profiling interval, for example, `512k` or `1m`. Empty string disables allocation profiling. | `"512k"`   | no       |
+| `begin`       | `string`       | Automatically start profiling when specified native function is executed.                               | `""`       | no       |
+| `clock`       | `string`       | Clock source for Java Flight Recording timestamps: `tsc` or `monotonic`.                                | `""`       | no       |
+| `cpu`         | `bool`         | Enable CPU profiling using the event specified in `event`.                                              | `true`     | no       |
+| `cstack`      | `string`       | C stack walking mode: `fp`, `dwarf`, `lbr`, `vm`, `vmx`, or `no`.                                       | `""`       | no       |
+| `end`         | `string`       | Automatically stop profiling when specified native function is executed.                                | `""`       | no       |
+| `event`       | `string`       | Profiling event: `cpu`, `itimer`, `wall`, `alloc`, `lock`, `nativemem`, `cache-misses`                  | `"itimer"` | no       |
+| `exclude`     | `list(string)` | Exclude stack traces matching these patterns, for example, `["*Unsafe.park*"]`.                         | `[]`       | no       |
+| `features`    | `list(string)` | Stack walking features to enable, for example, `["stats", "vtable"]`.                                   | `[]`       | no       |
+| `filter`      | `string`       | Profile only specific thread IDs, for example, `"120-127,132"`. Only applicable in wall-clock mode.     | `""`       | no       |
+| `include`     | `list(string)` | Include only stack traces matching these patterns, for example, `["Primes.*", "java/*"]`.               | `[]`       | no       |
+| `interval`    | `duration`     | How frequently to collect profiles from the targets.                                                    | `"60s"`    | no       |
+| `jfrsync`     | `string`       | Start Java Flight Recording with specified configuration, for example, `"default"` or `"profile"`.      | `""`       | no       |
+| `jstackdepth` | `int`          | Maximum Java stack depth to capture.                                                                    | `2048`     | no       |
+| `live`        | `bool`         | Retain only live objects in allocation profiling. This is useful for finding memory leaks.              | `false`    | no       |
+| `lock`        | `string`       | Lock profiling threshold, for example, `10ms` or `100us`. Empty string disables lock profiling.         | `"10ms"`   | no       |
+| `log_level`   | `string`       | Async-profiler log level: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                         | `"INFO"`   | no       |
+| `native_lock` | `string`       | Native lock `pthread` profiling threshold, for example, `10ms`.                                         | `""`       | no       |
+| `native_mem`  | `string`       | Native memory allocation profiling interval, for example, `1m`.                                         | `""`       | no       |
+| `no_free`     | `bool`         | Don't record free calls in native memory profiling.                                                     | `false`    | no       |
+| `nostop`      | `bool`         | Record profiling window between `begin` and `end` without stopping outside that window.                 | `false`    | no       |
+| `per_thread`  | `bool`         | Profile threads separately. Each stack trace ends with a thread identifier frame.                       | `false`    | no       |
+| `proc`        | `string`       | Collect system process statistics at specified interval, for example, `30s`.                            | `""`       | no       |
+| `quiet`       | `bool`         | Suppress "Profiling started/stopped" log messages.                                                      | `false`    | no       |
+| `record_cpu`  | `bool`         | Capture which CPU each sample was taken on.                                                             | `false`    | no       |
+| `sample_rate` | `int`          | CPU profiling sample rate in Hz (samples per second).                                                   | `100`      | no       |
+| `sched`       | `bool`         | Group threads by Linux scheduling policy (BATCH/IDLE/OTHER).                                            | `false`    | no       |
+| `signal`      | `string`       | Alternative signal for profiling, for example, `"SIGUSR1"` or `"SIGUSR1/SIGUSR2"` for CPU and wall.     | `""`       | no       |
+| `target_cpu`  | `int`          | Sample only threads running on specified CPU. Set to `-1` for all CPUs.                                 | `-1`       | no       |
+| `trace`       | `list(string)` | Java methods to trace with optional latency threshold, for example, `["my.pkg.Method:50ms"]`.           | `[]`       | no       |
+| `ttsp`        | `bool`         | Enable time-to-safepoint profiling.                                                                     | `false`    | no       |
+| `wall`        | `string`       | Wall-clock profiling interval, for example, `100ms`. Profiles all threads regardless of status.         | `""`       | no       |
 
-Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
+Refer to [profiler-options](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md) for more information about async-profiler configuration.
 
 #### `event`
 
-The `event` argument sets the CPU profiling event:
+The `event` argument specifies what to profile. It supports various event types:
 
-* `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) syscall, which generates a signal every time a process consumes CPU.
+**Predefined events:**
+
+* `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) system call, which generates a signal every time a process consumes CPU.
 * `cpu` - Uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available on every platform.
-* `wall` - This samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
-   For example, this can be helpful when profiling application start-up time or IO-intensive processes.
+* `wall` - Samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
+   For example, this can be helpful when profiling application start-up time or I/O-intensive processes.
+* `alloc` - Allocation profiling.
+* `lock` - Java lock profiling.
+* `nativemem` - Native memory allocation profiling.
+
+**Hardware events:**
+
+* `cache-misses`, `cycles`, `instructions`, `branch-misses`, and other PMU events.
+
+**Java method profiling:**
+
+* `ClassName.methodName` - Profile all invocations of a specific Java method, for example, `java.util.Properties.getProperty`.
+
+**Native function profiling:**
+
+* `<symbol>` - Profile calls to a native function, for example, `strcmp`, `malloc`.
+* `mem:<func>` - Hardware break point on a function or memory address.
+
+**Kernel events:**
+
+* `<tracepoint>` - Kernel tracepoint, for example, `syscalls:sys_enter_open`.
+* `kprobe:<func>` - Kernel probe on a function.
+* `uprobe:<func>` - User space probe on a function.
+
+Refer to [Profiling Modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) for detailed information about each profiling mode.
 
 #### `per_thread`
 
