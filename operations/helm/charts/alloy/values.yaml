@@ -506,7 +506,8 @@ serviceMonitor:
   #   replacement: $1
   #   action: replace
 ingress:
-  # -- Enables ingress for Alloy (Faro port)
+  # -- Enables ingress for Alloy (Faro port).
+  # When gateway.enabled is true, ingress will automatically route to the gateway service instead.
   enabled: false
   # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
   # See https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress
@@ -518,6 +519,7 @@ ingress:
     # kubernetes.io/tls-acme: "true"
   labels: {}
   path: /
+  # -- Port to use for ingress. Automatically uses gateway port when gateway.enabled is true.
   faroPort: 12347
 
   # pathType is only for k8s >= 1.1=
@@ -554,3 +556,408 @@ extraObjects: []
 #   stringData:
 #     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
 #     PROMETHEUS_USERNAME: '123456'
+
+gateway:
+  # -- Enables the NGINX gateway deployment for unified HTTP(S) entry point.
+  enabled: false
+
+  # -- Number of gateway replicas to deploy.
+  replicas: 2
+  revisionHistoryLimit: null
+  dnsConfig: {}
+  # -- Annotations to add to the gateway deployment
+  annotations: {}
+  # -- Labels to add to the the gateway deployment
+  labels: {}
+
+  image:
+    # -- NGINX image registry.
+    registry: "docker.io"
+    # -- NGINX image repository.
+    repository: nginx
+    # -- NGINX image tag.
+    tag: "1.27-alpine"
+    # -- NGINX image pull policy.
+    pullPolicy: IfNotPresent
+    # -- Optional set of image pull secrets for NGINX.
+    pullSecrets: []
+
+  # -- Port for the gateway service to listen on.
+  port: 8080
+
+  # -- Service type for the gateway.
+  service:
+    # -- Service type (ClusterIP, LoadBalancer, NodePort).
+    type: ClusterIP
+    # -- Annotations for the gateway service.
+    annotations: {}
+    # -- Labels for the gateway service.
+    labels: {}
+    # -- NodePort port. Only takes effect when `gateway.service.type: NodePort`.
+    nodePort: null
+    # -- LoadBalancer IP. Only takes effect when `gateway.service.type: LoadBalancer`.
+    loadBalancerIP: null
+    # -- LoadBalancer source ranges. Only takes effect when `gateway.service.type: LoadBalancer`.
+    loadBalancerSourceRanges: []
+
+  # -- Authentication configuration for the gateway.
+  auth:
+    # -- Enables basic authentication at the gateway level.
+    enabled: false
+    # -- Name of existing secret containing .htpasswd file.
+    # The secret must contain a key named 'auth' with htpasswd-formatted content.
+    # Create with: htpasswd -c .htpasswd user
+    existingSecret: null
+    # -- Realm for basic authentication.
+    realm: "Alloy Gateway"
+
+  # -- Protocol upstreams configuration.
+  # Configure which protocols to enable and their routing.
+  # Each key becomes an upstream name, and you can add custom upstreams.
+  upstreams:
+    # -- OTLP gRPC endpoint configuration.
+    otlpGrpc:
+      # -- Enable OTLP gRPC endpoint.
+      enabled: true
+      # -- Path for OTLP gRPC endpoint.
+      path: /opentelemetry
+      # -- Target port on Alloy service for OTLP gRPC.
+      targetPort: 4317
+      # -- Protocol type (http or grpc).
+      protocol: grpc
+      # -- Additional NGINX location block configuration for this upstream.
+      extraConfig: ""
+
+    # -- OTLP HTTP endpoint configuration.
+    otlpHttp:
+      # -- Enable OTLP HTTP endpoint.
+      enabled: true
+      # -- Path for OTLP HTTP endpoint.
+      path: /otlp/v1
+      # -- Target port on Alloy service for OTLP HTTP.
+      targetPort: 4318
+      # -- Protocol type (http or grpc).
+      protocol: http
+      # -- Additional NGINX location block configuration for this upstream.
+      extraConfig: ""
+
+    # -- Loki endpoint configuration.
+    loki:
+      # -- Enable Loki endpoint.
+      enabled: true
+      # -- Path for Loki endpoint.
+      path: /loki/api/v1/push
+      # -- Target port on Alloy service for Loki.
+      targetPort: 3100
+      # -- Protocol type (http or grpc).
+      protocol: http
+      # -- Additional NGINX location block configuration for this upstream.
+      extraConfig: ""
+
+    # -- Prometheus remote write endpoint configuration.
+    prometheus:
+      # -- Enable Prometheus endpoint.
+      enabled: true
+      # -- Path for Prometheus remote write endpoint.
+      path: /api/v1/metrics/write
+      # -- Target port on Alloy service for Prometheus.
+      targetPort: 9009
+      # -- Protocol type (http or grpc).
+      protocol: http
+      # -- Additional NGINX location block configuration for this upstream.
+      extraConfig: ""
+
+    # -- Pyroscope endpoint configuration.
+    pyroscope:
+      # -- Enable Pyroscope endpoint.
+      enabled: false
+      # -- Path for Pyroscope endpoint.
+      path: /push.v1.PusherService/Push
+      # -- Target port on Alloy service for Pyroscope.
+      targetPort: 4100
+      # -- Protocol type (http or grpc).
+      protocol: http
+      # -- Additional NGINX location block configuration for this upstream.
+      extraConfig: ""
+
+  # -- NGINX configuration settings.
+  nginxConfig:
+    # -- Worker processes for NGINX.
+    workerProcesses: auto
+    # -- Worker connections for NGINX.
+    workerConnections: 1024
+    # -- Client body buffer size.
+    clientBodyBufferSize: "128k"
+    # -- Client max body size.
+    clientMaxBodySize: "10m"
+    # -- Client header timeout.
+    clientHeaderTimeout: "10s"
+    # -- Proxy connect timeout.
+    proxyConnectTimeout: "60s"
+    # -- Proxy send timeout.
+    proxySendTimeout: "60s"
+    # -- Proxy read timeout.
+    proxyReadTimeout: "60s"
+    # -- Send timeout.
+    sendTimeout: "60s"
+    # -- Keepalive timeout.
+    keepaliveTimeout: "65s"
+    # -- Enable access logging. Disable for better performance in high-traffic environments.
+    enableAccessLog: true
+    # -- Custom log format for access logs.
+    logFormat: '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$http_x_forwarded_for"'
+    # -- Additional NGINX http block configuration.
+    extraHttpConfig: ""
+    # -- Additional NGINX server block configuration.
+    extraServerConfig: ""
+    # -- NGINX configuration file content.
+    # This is passed through 'tpl' allowing Helm variables inside.
+    file: |
+      pid /tmp/nginx.pid; # Required for readOnlyRootFilesystem
+      worker_processes {{ .Values.gateway.nginxConfig.workerProcesses | default "auto" }};
+      error_log /tmp/error.log warn;
+      
+      events {
+        worker_connections {{ .Values.gateway.nginxConfig.workerConnections | default 1024 }};
+      }
+      
+      http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+      
+        log_format main '{{ .Values.gateway.nginxConfig.logFormat }}';
+      
+        {{- if .Values.gateway.nginxConfig.enableAccessLog }}
+        map $status $loggable {
+          ~^[23]  0;
+          default 1;
+        }
+        log_format main '$remote_addr - $remote_user [$time_local]  $status '
+          '"$request" $body_bytes_sent "$http_referer" '
+          '"$http_user_agent" "$http_x_forwarded_for"';
+        access_log /var/log/nginx/access.log main if=loggable;
+        {{- else }}
+        access_log off;
+        {{- end }}
+      
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+      
+        keepalive_timeout {{ .Values.gateway.nginxConfig.keepaliveTimeout }};
+        send_timeout {{ .Values.gateway.nginxConfig.sendTimeout }};
+      
+        client_body_buffer_size {{ .Values.gateway.nginxConfig.clientBodyBufferSize }};
+        client_max_body_size {{ .Values.gateway.nginxConfig.clientMaxBodySize | default "50m" }};
+      
+        client_header_timeout {{ .Values.gateway.nginxConfig.clientHeaderTimeout}};
+        proxy_connect_timeout {{ .Values.gateway.nginxConfig.proxyConnectTimeout }};
+        proxy_send_timeout {{ .Values.gateway.nginxConfig.proxySendTimeout }};
+        proxy_read_timeout {{ .Values.gateway.nginxConfig.proxyReadTimeout }};
+      
+        proxy_buffering off;
+        proxy_request_buffering off;
+      
+        # Upstream definitions
+        {{- range $name, $upstream := .Values.gateway.upstreams }}
+        {{- if $upstream.enabled }}
+        upstream {{ include "alloy.fullname" $ }}-{{ $name }} {
+          server {{ include "alloy.fullname" $ }}.{{ include "alloy.namespace" $ }}.svc.cluster.local:{{ $upstream.targetPort }};
+          keepalive 32;
+        }
+        {{- end }}
+        {{- end }}
+      
+        {{- if .Values.gateway.nginxConfig.extraHttpConfig }}
+        {{ .Values.gateway.nginxConfig.extraHttpConfig | nindent 2 }}
+        {{- end }}
+      
+        server {
+          listen {{ .Values.gateway.port }} http2;
+          {{- if .Values.gateway.tls.enabled }}
+          listen {{ .Values.gateway.tls.port }} ssl;
+          ssl_certificate /etc/nginx/tls/tls.crt;
+          ssl_certificate_key /etc/nginx/tls/tls.key;
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_ciphers HIGH:!aNULL:!MD5;
+          ssl_prefer_server_ciphers on;
+          {{- end }}
+      
+          server_name _;
+      
+          # Health check endpoint
+          location /health {
+            access_log off;
+            return 200 "OK";
+            add_header Content-Type text/plain;
+          }
+      
+          # Stub status for monitoring
+          location /stub_status {
+            stub_status on;
+            access_log off;
+            allow 127.0.0.1;
+            deny all;
+          }
+      
+          {{- if .Values.gateway.auth.enabled }}
+          auth_basic "{{ .Values.gateway.auth.realm }}";
+          auth_basic_user_file /etc/nginx/auth/.htpasswd;
+          {{- end }}
+      
+          {{- range $name, $upstream := .Values.gateway.upstreams }}
+          {{- if $upstream.enabled }}
+          # {{ $name }} endpoint
+          location ~ {{ $upstream.path }} {
+            {{- if $upstream.extraConfig }}
+            {{ $upstream.extraConfig | nindent 6 }}
+            {{- else }}
+            {{- if eq $upstream.protocol "grpc" }}
+            grpc_pass grpc://{{ include "alloy.fullname" $ }}-{{ $name }};
+            grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            grpc_set_header X-Real-IP $remote_addr;
+            {{- else }}
+            proxy_pass http://{{ include "alloy.fullname" $ }}-{{ $name }}$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            {{- end }}
+            {{- end }}
+          }
+          {{- end }}
+          {{- end }}
+      
+          {{- if .Values.gateway.nginxConfig.extraServerConfig }}
+          {{ .Values.gateway.nginxConfig.extraServerConfig | nindent 4 }}
+          {{- end }}
+        }
+      }
+
+
+  # -- TLS configuration for the gateway.
+  tls:
+    # -- Enable TLS.
+    enabled: false
+    # -- Name of secret containing TLS certificate and key.
+    # The secret must contain 'tls.crt' and 'tls.key' keys.
+    secretName: null
+    # -- TLS port.
+    port: 8443
+
+  # -- Grace period to allow the gateway container to shut down before it is killed
+  terminationGracePeriodSeconds: 30
+
+  # -- Resource requests and limits for the gateway.
+  resources: {}
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # limits:
+  #   cpu: 200m
+  #   memory: 256Mi
+
+  # -- nodeSelector for gateway pods.
+  nodeSelector: {}
+
+  # -- Tolerations for gateway pods.
+  tolerations: []
+
+  # -- Affinity configuration for gateway pods.
+  affinity: {}
+
+  # -- Pod annotations for the gateway.
+  podAnnotations: {}
+
+  # -- Pod labels for the gateway.
+  podLabels: {}
+
+  # -- Security context for gateway pods.
+  podSecurityContext:
+    fsGroup: 101
+    runAsGroup: 101
+    runAsNonRoot: true
+    runAsUser: 101
+
+  # -- Security context for gateway container.
+  securityContext: {}
+
+  # -- The SecurityContext for gateway containers
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ ALL ]
+
+  # -- Priority class name for gateway pods.
+  priorityClassName: ""
+
+  # -- Update strategy for the gateway deployment.
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 15%
+
+  # -- PodDisruptionBudget configuration for the gateway.
+  podDisruptionBudget:
+    # -- Whether to create a PodDisruptionBudget.
+    enabled: false
+    # -- Minimum number of pods that must be available.
+    minAvailable: 1
+    # -- Maximum number of pods that can be unavailable.
+    maxUnavailable: null
+
+  # -- HorizontalPodAutoscaler configuration for the gateway.
+  autoscaling:
+    # -- Enable HorizontalPodAutoscaler.
+    enabled: false
+    # -- Minimum number of replicas.
+    minReplicas: 1
+    # -- Maximum number of replicas.
+    maxReplicas: 3
+    # -- Target CPU utilization percentage.
+    targetCPUUtilizationPercentage: 70
+    # -- Target memory utilization percentage.
+    targetMemoryUtilizationPercentage: 70
+
+  # -- ServiceMonitor configuration for the gateway.
+  serviceMonitor:
+    # -- Enable ServiceMonitor for the gateway.
+    enabled: false
+    # -- Additional labels for the service monitor.
+    additionalLabels: {}
+    # -- Scrape interval.
+    interval: ""
+    # -- Scrape path for NGINX metrics (requires nginx-prometheus-exporter sidecar).
+    path: /metrics
+    # -- Scrape port for NGINX metrics.
+    port: metrics
+
+  # -- Extra environment variables for the gateway container.
+  extraEnv: []
+
+  # -- Extra volumes for the gateway pods.
+  extraVolumes:
+    - name: tmp
+      emptyDir: {}
+    - name: varcache
+      emptyDir: {}
+
+  # -- Extra volume mounts for the gateway container.
+  extraVolumeMounts:
+    - name: tmp
+      mountPath: /tmp
+    - name: varcache
+      mountPath: /var/cache/nginx
+
+  # -- Extra containers to run in the gateway pod (e.g., nginx-prometheus-exporter).
+  extraContainers: []
+  # - name: nginx-exporter
+  #   image: nginx/nginx-prometheus-exporter:1.1.0
+  #   args:
+  #     - -nginx.scrape-uri=http://localhost:8080/stub_status
+  #   ports:
+  #   - name: metrics
+  #     containerPort: 9113
