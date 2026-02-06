@@ -39,48 +39,54 @@ func TestBatch_MaxStreams(t *testing.T) {
 func TestBatch_add(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		inputEntries      []loki.Entry
+	type testCase struct {
+		name              string
+		entries           []loki.Entry
 		expectedSizeBytes int
-	}{
-		"empty batch": {
-			inputEntries:      []loki.Entry{},
+	}
+
+	tests := []testCase{
+		{
+			name:              "empty batch",
+			entries:           []loki.Entry{},
 			expectedSizeBytes: 0,
 		},
-		"single stream with single log entry": {
-			inputEntries: []loki.Entry{
+		{
+			name: "single stream with single log entry",
+			entries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 			},
-			expectedSizeBytes: len(logEntries[0].Entry.Line),
+			expectedSizeBytes: logEntries[0].Size(),
 		},
-		"single stream with multiple log entries": {
-			inputEntries: []loki.Entry{
+		{
+			name: "single stream with multiple log entries",
+			entries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[7].Entry},
 			},
-			expectedSizeBytes: entrySize(logEntries[0].Entry) + entrySize(logEntries[0].Entry) + entrySize(logEntries[7].Entry),
+			expectedSizeBytes: logEntries[0].Size() + logEntries[0].Size() + logEntries[7].Size(),
 		},
-		"multiple streams with multiple log entries": {
-			inputEntries: []loki.Entry{
+		{
+			name: "multiple streams with multiple log entries",
+			entries: []loki.Entry{
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
 			},
-			expectedSizeBytes: len(logEntries[0].Entry.Line) + len(logEntries[1].Entry.Line) + len(logEntries[2].Entry.Line),
+			expectedSizeBytes: logEntries[0].Size() + logEntries[1].Size() + logEntries[2].Size(),
 		},
 	}
 
-	for testName, testData := range tests {
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			b := newBatch(0)
-
-			for _, entry := range testData.inputEntries {
+			for _, entry := range tt.entries {
 				err := b.add(entry, 0)
 				assert.NoError(t, err)
 			}
 
-			assert.Equal(t, testData.expectedSizeBytes, b.sizeBytes())
+			assert.Equal(t, tt.expectedSizeBytes, b.sizeBytes())
 		})
 	}
 }
@@ -88,44 +94,56 @@ func TestBatch_add(t *testing.T) {
 func TestBatch_encode(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		inputBatch           *batch
+	type testCase struct {
+		name                 string
+		entries              []loki.Entry
 		expectedEntriesCount int
-	}{
-		"empty batch": {
-			inputBatch:           newBatch(0),
+	}
+
+	tests := []testCase{
+		{
+			name:                 "empty batch",
+			entries:              []loki.Entry{},
 			expectedEntriesCount: 0,
 		},
-		"single stream with single log entry": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-			),
+		{
+			name: "single stream with single log entry",
+			entries: []loki.Entry{
+				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
+			},
 			expectedEntriesCount: 1,
 		},
-		"single stream with multiple log entries": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
-			),
+		{
+			name: "single stream with multiple log entries",
+			entries: []loki.Entry{
+				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
+				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
+			},
 			expectedEntriesCount: 2,
 		},
-		"multiple streams with multiple log entries": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
-				loki.Entry{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
-				loki.Entry{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
-			),
+		{
+			name: "multiple streams with multiple log entries",
+			entries: []loki.Entry{
+				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
+				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
+				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
+			},
 			expectedEntriesCount: 3,
 		},
 	}
 
-	for testName, testData := range tests {
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			b := newBatch(0)
+			for _, e := range tt.entries {
+				err := b.add(e, 0)
+				require.NoError(t, err)
+			}
 
-			_, entriesCount, err := testData.inputBatch.encode()
+			_, entriesCount, err := b.encode()
 			require.NoError(t, err)
-			assert.Equal(t, testData.expectedEntriesCount, entriesCount)
+			assert.Equal(t, tt.expectedEntriesCount, entriesCount)
 		})
 	}
 }
@@ -141,7 +159,7 @@ func TestHashCollisions(t *testing.T) {
 
 	const entriesPerLabel = 10
 
-	for i := 0; i < entriesPerLabel; i++ {
+	for i := range entriesPerLabel {
 		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 
 		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
@@ -172,9 +190,8 @@ func BenchmarkLabelsMapToString(b *testing.B) {
 	labelSet["label2"] = "value3"
 	labelSet["__tenant_id__"] = "another_value"
 
-	b.ResetTimer()
 	var r string
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		// store in r prevent the compiler eliminating the function call.
 		r = labelsMapToString(labelSet)
 	}
@@ -214,10 +231,10 @@ func TestLabelsMapToString(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			actual := labelsMapToString(tc.input)
-			assert.Equal(t, tc.expected, actual)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := labelsMapToString(tt.input)
+			assert.Equal(t, tt.expected, actual)
 		})
 	}
 }

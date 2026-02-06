@@ -63,7 +63,7 @@ func newBatch(maxStreams int, entries ...loki.Entry) *batch {
 // add an entry to the batch. segmentNum is used to associate batch with a segment from WAL.
 // If entry is added from non backed WAL client it can be anything and is unused.
 func (b *batch) add(entry loki.Entry, segmentNum int) error {
-	b.totalBytes += entrySize(entry.Entry)
+	b.totalBytes += entry.Size()
 
 	// Append the entry to an already existing stream (if any)
 	labels := labelsMapToString(entry.Labels)
@@ -128,7 +128,7 @@ func (b *batch) sizeBytes() int {
 // sizeBytesAfter returns the size of the batch after the input entry
 // will be added to the batch itself
 func (b *batch) sizeBytesAfter(entry push.Entry) int {
-	return b.totalBytes + entrySize(entry)
+	return b.totalBytes + entry.Size()
 }
 
 // age of the batch since its creation
@@ -177,12 +177,4 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
 	for seg, data := range b.segmentCounter {
 		h.UpdateSentData(seg, data)
 	}
-}
-
-func entrySize(entry push.Entry) int {
-	structuredMetadataSize := 0
-	for _, label := range entry.StructuredMetadata {
-		structuredMetadataSize += label.Size()
-	}
-	return len(entry.Line) + structuredMetadataSize
 }

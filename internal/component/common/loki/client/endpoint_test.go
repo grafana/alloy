@@ -22,17 +22,21 @@ import (
 )
 
 func TestEndpoint(t *testing.T) {
-	tests := map[string]struct {
+	type testCase struct {
+		name                 string
 		endpointConfig       Config
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
 		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
-	}{
-		"batch log entries together until the batch size is reached": {
+	}
+
+	tests := []testCase{
+		{
+			name: "batch log entries together until the batch size is reached",
 			endpointConfig: Config{
-				BatchSize: 10,
+				BatchSize: logEntries[0].Size() + logEntries[1].Size(),
 				BatchWait: 100 * time.Millisecond,
 			},
 			serverResponseStatus: 200,
@@ -71,7 +75,8 @@ func TestEndpoint(t *testing.T) {
                                loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                        `,
 		},
-		"batch log entries together until the batch wait time is reached": {
+		{
+			name: "batch log entries together until the batch wait time is reached",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 100 * time.Millisecond,
@@ -113,7 +118,8 @@ func TestEndpoint(t *testing.T) {
                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                        `,
 		},
-		"retry send a batch up to backoff's max retries in case the server responds with a 5xx": {
+		{
+			name: "retry send a batch up to backoff's max retries in case the server responds with a 5xx",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 10 * time.Millisecond,
@@ -158,7 +164,8 @@ func TestEndpoint(t *testing.T) {
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do not retry send a batch in case the server responds with a 4xx": {
+		{
+			name: "do not retry send a batch in case the server responds with a 4xx",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 10 * time.Millisecond,
@@ -195,7 +202,8 @@ func TestEndpoint(t *testing.T) {
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do retry sending a batch in case the server responds with a 429": {
+		{
+			name: "do retry sending a batch in case the server responds with a 429",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 10 * time.Millisecond,
@@ -240,7 +248,8 @@ func TestEndpoint(t *testing.T) {
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do not retry in case of 429 when endpoint is configured to drop rate limited batches": {
+		{
+			name: "do not retry in case of 429 when endpoint is configured to drop rate limited batches",
 			endpointConfig: Config{
 				BatchSize:              10,
 				BatchWait:              10 * time.Millisecond,
@@ -278,7 +287,8 @@ func TestEndpoint(t *testing.T) {
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"batch log entries together honoring the endpoint tenant ID": {
+		{
+			name: "batch log entries together honoring the endpoint tenant ID",
 			endpointConfig: Config{
 				BatchSize: 100,
 				BatchWait: 100 * time.Millisecond,
@@ -316,7 +326,8 @@ func TestEndpoint(t *testing.T) {
                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
                        `,
 		},
-		"batch log entries together honoring the tenant ID overridden while processing the pipeline stages": {
+		{
+			name: "batch log entries together honoring the tenant ID overridden while processing the pipeline stages",
 			endpointConfig: Config{
 				BatchSize: 100,
 				BatchWait: 100 * time.Millisecond,
@@ -390,8 +401,8 @@ func TestEndpoint(t *testing.T) {
 		},
 	}
 
-	for testName, tt := range tests {
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
