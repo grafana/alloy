@@ -34,7 +34,7 @@ type Defaulter interface {
 type Unmarshaler interface {
 	// UnmarshalAlloy is called when decoding a value. f should be invoked to
 	// continue decoding with a value to decode into.
-	UnmarshalAlloy(f func(v interface{}) error) error
+	UnmarshalAlloy(f func(v any) error) error
 }
 
 // The Validator interface allows a type to implement validation functionality
@@ -70,7 +70,7 @@ type Validator interface {
 // the non-pointer type.
 //
 // Decode will panic if target is not a pointer.
-func Decode(val Value, target interface{}) error {
+func Decode(val Value, target any) error {
 	rt := reflect.ValueOf(target)
 	if rt.Kind() != reflect.Pointer {
 		panic("syntax/value: Decode called with non-pointer value")
@@ -84,7 +84,7 @@ func Decode(val Value, target interface{}) error {
 //
 // Unlike Decode, DecodeCopy will always invoke Unmarshaler and
 // text.Unmarshaler interfaces (if implemented by target).
-func DecodeCopy(val Value, target interface{}) error {
+func DecodeCopy(val Value, target any) error {
 	rt := reflect.ValueOf(target)
 	if rt.Kind() != reflect.Pointer {
 		panic("syntax/value: Decode called with non-pointer value")
@@ -330,7 +330,7 @@ func (d *decoder) decodeFromInterface(val Value, into reflect.Value) (ok bool, e
 		return true, nil
 
 	case into.Type().Implements(goAlloyDecoder):
-		err := into.Interface().(Unmarshaler).UnmarshalAlloy(func(v interface{}) error {
+		err := into.Interface().(Unmarshaler).UnmarshalAlloy(func(v any) error {
 			return d.decode(val, reflect.ValueOf(v))
 		})
 		if err != nil {
@@ -464,11 +464,11 @@ func (d *decoder) decodeAny(val Value, into reflect.Value) error {
 		}
 
 	case TypeArray:
-		var v []interface{}
+		var v []any
 		ptr = reflect.ValueOf(&v)
 
 	case TypeObject:
-		var v map[string]interface{}
+		var v map[string]any
 		ptr = reflect.ValueOf(&v)
 
 	case TypeBool:

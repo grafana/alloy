@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
@@ -18,7 +19,7 @@ func TestConfigConversion(t *testing.T) {
 	var (
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeout       = 30 * time.Second
-		defaultQueueConfig   = exporterhelper.NewDefaultQueueConfig()
+		defaultQueueConfig   = configoptional.Some(exporterhelper.NewDefaultQueueConfig())
 	)
 
 	tests := []struct {
@@ -37,6 +38,7 @@ func TestConfigConversion(t *testing.T) {
 					headers = {
 						"X-Scope-OrgID" = "123",
 					}
+					force_attempt_http2 = false
 				}
 				sending_queue {
 					enabled = true
@@ -63,6 +65,7 @@ func TestConfigConversion(t *testing.T) {
 					Headers: configopaque.MapList{
 						configopaque.Pair{Name: "X-Scope-OrgID", Value: "123"},
 					},
+					ForceAttemptHTTP2: false,
 				},
 				QueueConfig: defaultQueueConfig,
 				RetryConfig: configretry.BackOffConfig{
@@ -84,13 +87,14 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: faroexporter.Config{
 				ClientConfig: confighttp.ClientConfig{
-					Endpoint:        "https://faro.example.com/collect",
-					Timeout:         defaultTimeout,
-					Compression:     "gzip",
-					WriteBufferSize: 512 * 1024,
-					MaxIdleConns:    100,
-					IdleConnTimeout: 90 * time.Second,
-					Headers:         configopaque.MapList{},
+					Endpoint:          "https://faro.example.com/collect",
+					Timeout:           defaultTimeout,
+					Compression:       "gzip",
+					WriteBufferSize:   512 * 1024,
+					MaxIdleConns:      100,
+					IdleConnTimeout:   90 * time.Second,
+					Headers:           configopaque.MapList{},
+					ForceAttemptHTTP2: true,
 				},
 				QueueConfig: defaultQueueConfig,
 				RetryConfig: defaultRetrySettings,

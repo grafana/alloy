@@ -73,12 +73,12 @@ type MatchProperties struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *MatchProperties) Convert() (map[string]interface{}, error) {
+func (args *MatchProperties) Convert() (map[string]any, error) {
 	if args == nil {
 		return nil, nil
 	}
 
-	res := make(map[string]interface{})
+	res := make(map[string]any)
 
 	res["match_type"] = args.MatchType
 
@@ -137,8 +137,8 @@ func (args *MatchProperties) Convert() (map[string]interface{}, error) {
 }
 
 // Return an empty slice if the input slice is empty.
-func convertAttributeSlice(attrs []Attribute) []interface{} {
-	attrArr := make([]interface{}, 0, len(attrs))
+func convertAttributeSlice(attrs []Attribute) []any {
+	attrArr := make([]any, 0, len(attrs))
 	for _, attr := range attrs {
 		attrArr = append(attrArr, attr.convert())
 	}
@@ -146,8 +146,8 @@ func convertAttributeSlice(attrs []Attribute) []interface{} {
 }
 
 // Return an empty slice if the input slice is empty.
-func convertInstrumentationLibrariesSlice(libs []InstrumentationLibrary) []interface{} {
-	libsArr := make([]interface{}, 0, len(libs))
+func convertInstrumentationLibrariesSlice(libs []InstrumentationLibrary) []any {
+	libsArr := make([]any, 0, len(libs))
 	for _, lib := range libs {
 		libsArr = append(libsArr, lib.convert())
 	}
@@ -163,8 +163,8 @@ type RegexpConfig struct {
 	CacheMaxNumEntries int `alloy:"cache_max_num_entries,attr,optional"`
 }
 
-func (args RegexpConfig) convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args RegexpConfig) convert() map[string]any {
+	return map[string]any{
 		"cacheenabled":       args.CacheEnabled,
 		"cachemaxnumentries": args.CacheMaxNumEntries,
 	}
@@ -177,11 +177,11 @@ type Attribute struct {
 
 	// Values specifies the value to match against.
 	// If it is not set, any value will match.
-	Value interface{} `alloy:"value,attr,optional"`
+	Value any `alloy:"value,attr,optional"`
 }
 
-func (args Attribute) convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Attribute) convert() map[string]any {
+	return map[string]any{
 		"key":   args.Key,
 		"value": args.Value,
 	}
@@ -201,8 +201,8 @@ type InstrumentationLibrary struct {
 	Version *string `alloy:"version,attr,optional"`
 }
 
-func (args InstrumentationLibrary) convert() map[string]interface{} {
-	res := map[string]interface{}{
+func (args InstrumentationLibrary) convert() map[string]any {
+	res := map[string]any{
 		"name": args.Name,
 	}
 
@@ -223,13 +223,13 @@ type LogSeverityNumberMatchProperties struct {
 	MatchUndefined bool `alloy:"match_undefined,attr"`
 }
 
-func (args LogSeverityNumberMatchProperties) convert() (map[string]interface{}, error) {
+func (args LogSeverityNumberMatchProperties) convert() (map[string]any, error) {
 	numVal, exists := severityLevels[args.Min]
 	if !exists {
 		return nil, fmt.Errorf("no severity value for %q", args.Min)
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"min":             numVal,
 		"match_undefined": args.MatchUndefined,
 	}, nil

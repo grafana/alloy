@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/blang/semver/v4"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -67,25 +65,35 @@ type Arguments struct {
 	Targets           []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
-	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
 	ARN string `alloy:"arn,attr"`
 }
 
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
+}
+
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
 }
 
 type QueryTablesArguments struct {
@@ -100,9 +108,11 @@ type SchemaDetailsArguments struct {
 }
 
 var DefaultArguments = Arguments{
+	ExcludeDatabases: []string{},
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
+		ExcludeCurrentUser:    true,
 	},
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
@@ -113,16 +123,22 @@ var DefaultArguments = Arguments{
 		CacheSize:       256,
 		CacheTTL:        10 * time.Minute,
 	},
-	ExplainPlanArguments: ExplainPlanArguments{
+	ExplainPlansArguments: ExplainPlansArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 	},
+	HealthCheckArguments: HealthCheckArguments{
+		CollectInterval: 1 * time.Hour,
+	},
 }
 
-type ExplainPlanArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+type ExplainPlansArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+}
+
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -292,11 +308,28 @@ func (c *Component) Update(args component.Arguments) error {
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
 
+	var cp *database_observability.CloudProvider
+	if c.args.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+		if err != nil {
+			c.reportError("failed to collect cloud provider information from config", err)
+			return nil
+		}
+		cp = cloudProvider
+	} else {
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		if err != nil {
+			c.reportError("failed to collect cloud provider information from DSN", err)
+			return nil
+		}
+		cp = cloudProvider
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -309,7 +342,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedSystemID, engineVersion.String); err != nil {
+	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
 		c.reportError("failed to start collectors", err)
 		return nil
 	}
@@ -342,26 +375,13 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(systemID string, engineVersion string) error {
+func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
 		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
 		level.Error(c.opts.Logger).Log("msg", errorString)
 		startErrors = append(startErrors, errorString)
-	}
-
-	var cloudProviderInfo *database_observability.CloudProvider
-	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
-		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
-		}
-		cloudProviderInfo = &database_observability.CloudProvider{
-			AWS: &database_observability.AWSCloudProviderInfo{
-				ARN: arn,
-			},
-		}
 	}
 
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
@@ -371,14 +391,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
-			DSN:             string(c.args.DataSourceName),
-			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			CacheEnabled:     c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:        c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:         c.args.SchemaDetailsArguments.CacheTTL,
+			EntryHandler:     entryHandler,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -392,11 +413,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
-			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
-			EntryHandler:    entryHandler,
-			TableRegistry:   tableRegistry,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			EntryHandler:     entryHandler,
+			TableRegistry:    tableRegistry,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -411,9 +433,11 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:      c.args.ExcludeDatabases,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -441,18 +465,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
-		engineSemver, err := semver.ParseTolerant(engineVersion)
-		if err != nil {
-			logStartError(collector.ExplainPlanCollector, "parse version", err)
-		}
-		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:             c.dbConnection,
-			DSN:            string(c.args.DataSourceName),
-			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
-			Logger:         c.opts.Logger,
-			DBVersion:      engineSemver,
-			EntryHandler:   entryHandler,
+		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
+			DB:               c.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			Logger:           c.opts.Logger,
+			DBVersion:        engineVersion,
+			EntryHandler:     entryHandler,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
@@ -461,6 +482,22 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, epCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:              c.dbConnection,
+		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(context.Background()); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {

@@ -28,7 +28,7 @@ func (sa slogAdapter) Enabled(ctx context.Context, l slog.Level) bool {
 	return sa.h.Enabled(ctx, l)
 }
 
-func (sa slogAdapter) Log(kvps ...interface{}) error {
+func (sa slogAdapter) Log(kvps ...any) error {
 	// Find the log level first, starting with the default.
 	recordLevel := slog.LevelInfo
 	for i := 0; i < len(kvps)-1; i += 2 {

@@ -1,34 +1,19 @@
 package docker
 
 import (
-	"context"
-	"io"
-	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 )
 
-const targetRestartInterval = 20 * time.Millisecond
-
-func Test(t *testing.T) {
+func TestComponent(t *testing.T) {
 	// Use host that works on all platforms (including Windows).
 	var cfg = `
 		host       = "tcp://127.0.0.1:9375"
@@ -51,7 +36,7 @@ func Test(t *testing.T) {
 	require.NoError(t, ctrl.WaitRunning(time.Minute))
 }
 
-func TestDuplicateTargets(t *testing.T) {
+func TestComponentDuplicateTargets(t *testing.T) {
 	// Use host that works on all platforms (including Windows).
 	var cfg = `
 		host       = "tcp://127.0.0.1:9376"
@@ -84,8 +69,11 @@ func TestDuplicateTargets(t *testing.T) {
 	}, args)
 	require.NoError(t, err)
 
-	require.Len(t, cmp.manager.tasks, 1)
-	require.Equal(t, cmp.manager.tasks[0].target.LabelsStr(), "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}")
+	require.Equal(t, 1, cmp.scheduler.Len())
+	for s := range cmp.scheduler.Sources() {
+		ss := s.(*tailer)
+		require.Equal(t, "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}", ss.labelsStr)
+	}
 
 	var newCfg = `
 		host       = "tcp://127.0.0.1:9376"
@@ -98,126 +86,10 @@ func TestDuplicateTargets(t *testing.T) {
 	err = syntax.Unmarshal([]byte(newCfg), &args)
 	require.NoError(t, err)
 	cmp.Update(args)
-	require.Len(t, cmp.manager.tasks, 1)
 	// Although the order of the targets changed, the filtered target stays the same.
-	require.Equal(t, cmp.manager.tasks[0].target.LabelsStr(), "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}")
-}
-
-func TestRestart(t *testing.T) {
-	finishedAt := "2024-05-02T13:11:55.879889Z"
-	var runningState atomic.Bool
-	runningState.Store(true)
-	client := clientMock{
-		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running:    func() bool { return runningState.Load() },
-		finishedAt: func() string { return finishedAt },
+	require.Equal(t, 1, cmp.scheduler.Len())
+	for s := range cmp.scheduler.Sources() {
+		ss := s.(*tailer)
+		require.Equal(t, "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}", ss.labelsStr)
 	}
-	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
-
-	tailer, entryHandler := setupTailer(t, client)
-	go tailer.Run(t.Context())
-
-	// The container is already running, expect log lines.
-	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, expectedLogLine, logLines[0].Line)
-		}
-	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit.")
-
-	// Stops the container.
-	runningState.Store(false)
-	time.Sleep(targetRestartInterval + 10*time.Millisecond) // Sleep for a duration greater than targetRestartInterval to make sure it stops sending log lines.
-	entryHandler.Clear()
-	time.Sleep(targetRestartInterval + 10*time.Millisecond)
-	assert.Empty(t, entryHandler.Received()) // No log lines because the container was not running.
-
-	// Restart the container and expect log lines.
-	runningState.Store(true)
-	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, expectedLogLine, logLines[0].Line)
-		}
-	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
-}
-
-func TestTargetNeverStarted(t *testing.T) {
-	runningState := false
-	finishedAt := "2024-05-02T13:11:55.879889Z"
-	client := clientMock{
-		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running:    func() bool { return runningState },
-		finishedAt: func() string { return finishedAt },
-	}
-	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
-
-	tailer, entryHandler := setupTailer(t, client)
-	ctx, cancel := context.WithCancel(t.Context())
-	go tailer.Run(ctx)
-
-	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, expectedLogLine, logLines[0].Line)
-		}
-	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
-
-	require.NotPanics(t, func() { cancel() })
-}
-
-func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *fake.Client) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
-	entryHandler = fake.NewClient(func() {})
-
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
-	})
-	require.NoError(t, err)
-
-	tgt, err := dt.NewTarget(
-		dt.NewMetrics(prometheus.NewRegistry()),
-		logger,
-		entryHandler,
-		ps,
-		"flog",
-		model.LabelSet{"job": "docker"},
-		[]*relabel.Config{},
-		client,
-	)
-	require.NoError(t, err)
-	tailerTask := &tailerTask{
-		options: &options{
-			client:                client,
-			targetRestartInterval: targetRestartInterval,
-		},
-		target: tgt,
-	}
-	return newTailer(logger, tailerTask), entryHandler
-}
-
-type clientMock struct {
-	client.APIClient
-	logLine    string
-	running    func() bool
-	finishedAt func() string
-}
-
-func (mock clientMock) ContainerInspect(ctx context.Context, c string) (container.InspectResponse, error) {
-	return container.InspectResponse{
-		ContainerJSONBase: &container.ContainerJSONBase{
-			ID: c,
-			State: &container.State{
-				Running:    mock.running(),
-				FinishedAt: mock.finishedAt(),
-			},
-		},
-		Config: &container.Config{Tty: true},
-	}, nil
-}
-
-func (mock clientMock) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
-	return io.NopCloser(strings.NewReader(mock.logLine)), nil
 }

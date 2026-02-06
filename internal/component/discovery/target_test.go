@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +27,7 @@ func TestUsingTargetCapsule(t *testing.T) {
 		name                  string
 		inputTarget           map[string]string
 		expression            string
-		decodeInto            interface{}
+		decodeInto            any
 		expectedDecodedString string
 		expectedEvalError     string
 	}
@@ -113,7 +114,7 @@ func TestUsingTargetCapsule(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			target := NewTargetFromMap(tc.inputTarget)
-			scope := vm.NewScope(map[string]interface{}{"t": target})
+			scope := vm.NewScope(map[string]any{"t": target})
 			expr, err := parser.ParseExpression(tc.expression)
 			require.NoError(t, err)
 			eval := vm.New(expr)
@@ -133,7 +134,7 @@ func TestNestedIndexing(t *testing.T) {
 		NewTargetFromMap(map[string]string{"foo": "bar", "boom": "bap"}),
 		NewTargetFromMap(map[string]string{"hip": "hop", "dont": "stop"}),
 	}
-	scope := vm.NewScope(map[string]interface{}{"targets": targets})
+	scope := vm.NewScope(map[string]any{"targets": targets})
 
 	expr, err := parser.ParseExpression(`targets[1]["dont"]`)
 	require.NoError(t, err)
@@ -209,7 +210,7 @@ func TestDecodeMap(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			scope := vm.NewScope(map[string]interface{}{})
+			scope := vm.NewScope(map[string]any{})
 			expr, err := parser.ParseExpression(tc.input)
 			require.NoError(t, err)
 			eval := vm.New(expr)
@@ -276,7 +277,7 @@ func TestEncode_Decode_Targets(t *testing.T) {
 				require.NoError(t, err)
 				eval := vm.New(expr)
 				actual := Target{}
-				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actual))
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]any{}), &actual))
 				require.Equal(t, NewTargetFromMap(tc.input), actual)
 			})
 
@@ -285,7 +286,7 @@ func TestEncode_Decode_Targets(t *testing.T) {
 				require.NoError(t, err)
 				eval := vm.New(expr)
 				actualMap := map[string]string{}
-				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actualMap))
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]any{}), &actualMap))
 				require.Equal(t, tc.input, actualMap)
 			})
 
@@ -294,13 +295,13 @@ func TestEncode_Decode_Targets(t *testing.T) {
 				require.NoError(t, err)
 				eval := vm.New(expr)
 				actualMap := map[string]string{}
-				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actualMap))
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]any{}), &actualMap))
 				require.Equal(t, &tc.input, &actualMap)
 			})
 
 			t.Run("decode from target into map via scope", func(t *testing.T) {
 				// If not supported, this would lead to error: target::ConvertInto: conversion to '*map[string]string' is not supported
-				scope := vm.NewScope(map[string]interface{}{"export": NewTargetFromMap(tc.input)})
+				scope := vm.NewScope(map[string]any{"export": NewTargetFromMap(tc.input)})
 				expr, err := parser.ParseExpression("export")
 				require.NoError(t, err)
 				eval := vm.New(expr)
@@ -310,7 +311,7 @@ func TestEncode_Decode_Targets(t *testing.T) {
 			})
 
 			t.Run("decode from map into target via scope", func(t *testing.T) {
-				scope := vm.NewScope(map[string]interface{}{"map": tc.input})
+				scope := vm.NewScope(map[string]any{"map": tc.input})
 				expr, err := parser.ParseExpression("map")
 				require.NoError(t, err)
 				eval := vm.New(expr)
@@ -386,7 +387,7 @@ func TestEncode_Decode_TargetArrays(t *testing.T) {
 
 			// Try decoding now
 			toDecode := strings.TrimPrefix(encoded, "target = ")
-			scope := vm.NewScope(map[string]interface{}{})
+			scope := vm.NewScope(map[string]any{})
 			expr, err := parser.ParseExpression(toDecode)
 			require.NoError(t, err)
 			eval := vm.New(expr)
@@ -478,7 +479,7 @@ func TestDecode_TargetArrays(t *testing.T) {
 				expectedTargets = append(expectedTargets, NewTargetFromMap(m))
 			}
 
-			scope := vm.NewScope(map[string]interface{}{})
+			scope := vm.NewScope(map[string]any{})
 			expr, err := parser.ParseExpression(tc.input)
 			require.NoError(t, err)
 			eval := vm.New(expr)
@@ -793,6 +794,45 @@ func TestHashing(t *testing.T) {
 	}
 }
 
+func TestHashLabelsWithPredicateClearsStringSlicePool(t *testing.T) {
+	var (
+		target = NewTargetFromMap(map[string]string{
+			"job": "hash-test",
+			"env": "prod",
+		})
+		recordedLens    []int
+		scratch         []string
+		originalBorrow  = borrowLabelsSlice
+		originalRelease = releaseLabelsSlice
+	)
+
+	t.Cleanup(func() {
+		borrowLabelsSlice = originalBorrow
+		releaseLabelsSlice = originalRelease
+	})
+
+	borrowLabelsSlice = func() []string {
+		if scratch == nil {
+			scratch = make([]string, 0, 8)
+		}
+		return scratch
+	}
+	releaseLabelsSlice = func(labels []string) {
+		recordedLens = append(recordedLens, len(labels))
+		scratch = labels
+	}
+
+	target.HashLabelsWithPredicate(func(string) bool {
+		return true
+	})
+	target.HashLabelsWithPredicate(func(string) bool {
+		return false
+	})
+
+	require.GreaterOrEqual(t, len(recordedLens), 2)
+	require.Equal(t, 0, recordedLens[len(recordedLens)-1], "pool slice must be cleared before returning")
+}
+
 func TestHashLargeLabelSets(t *testing.T) {
 	sharedLabels := 50
 	ownLabels := 100
@@ -835,7 +875,7 @@ func TestHashLargeLabelSets(t *testing.T) {
 	require.Equal(t, uint64(expectedAllLabelsHash), target.HashLabelsWithPredicate(func(key string) bool {
 		return true
 	}))
-	require.Equal(t, uint64(expectedAllLabelsHash), target.PromLabels().Hash()) // check it matches Prometheus algo
+	require.Equal(t, uint64(expectedAllLabelsHash), labels.StableHash(target.PromLabels())) // check it matches Prometheus algo
 
 	var allNonMetaLabels []string
 	target.ForEachLabel(func(k string, v string) bool {

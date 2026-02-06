@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Docker
 menuTitle: Docker
 title: Run Grafana Alloy in a Docker container
-weight: 100
+weight: 350
 ---
 
 # Run {{% param "FULL_PRODUCT_NAME" %}} in a Docker container
@@ -13,11 +13,16 @@ weight: 100
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
 * [Linux containers][] for AMD64 and ARM64.
+* macOS for AMD64 (Intel) and ARM64 (Apple Silicon) using [Docker Desktop][].
 * [Windows containers][] for AMD64.
+
+{{< admonition type="note" >}}
+On macOS, Docker Desktop manages a Linux virtual machine transparently, so the Linux container commands work without modification.
+{{< /admonition >}}
 
 ## Before you begin
 
-* Install [Docker][] on your computer.
+* Install [Docker][] or [Docker Desktop][] on your computer.
 * Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```alloy
@@ -101,5 +106,6 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Linux containers]: #run-a-linux-docker-container
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
+[Docker Desktop]: https://www.docker.com/products/docker-desktop/
 [run]: ../../../reference/cli/run/
 [UI]: ../../../troubleshoot/debug/

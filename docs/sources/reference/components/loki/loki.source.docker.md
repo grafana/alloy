@@ -45,29 +45,29 @@ You can use the following arguments with `loki.source.docker`:
 
 You can use the following blocks with `loki.source.docker`:
 
-| Block                                            | Description                                                | Required |
-| ------------------------------------------------ | ---------------------------------------------------------- | -------- |
-| [`client`][client]                               | HTTP client settings when connecting to the endpoint.      | no       |
-| `client` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
-| `client` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
-| `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
-| `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
+| Block                                                        | Description                                                | Required |
+| ------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
+| [`http_client_config`][http_client_config]                   | HTTP client settings when connecting to the endpoint.      | no       |
+| `http_client_config` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| `http_client_config` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| `http_client_config` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `http_client_config` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| `http_client_config` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to an `basic_auth` block defined inside a `client` block.
+For example, `http_client_config` > `basic_auth` refers to an `basic_auth` block defined inside a `http_client_config` block.
 
 These blocks are only applicable when connecting to a Docker daemon over HTTP or HTTPS and has no effect when connecting via a `unix:///` socket
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
-[client]: #client
+[http_client_config]: #http_client_config
 [oauth2]: #oauth2
 [tls_config]: #tls_config
 
-### `client`
+### `http_client_config`
 
-The `client` block configures settings used to connect to HTTP(S) Docker daemons.
+The `http_client_config` block configures settings used to connect to HTTP(S) Docker daemons.
 
 {{< docs/shared lookup="reference/components/http-client-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

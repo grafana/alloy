@@ -125,10 +125,12 @@ type JournalTargetConfig struct {
 type SyslogFormat string
 
 const (
-	// A modern Syslog RFC
+	// SyslogFormatRFC5424 is a modern Syslog RFC
 	SyslogFormatRFC5424 = "rfc5424"
-	// A legacy Syslog RFC also known as BSD-syslog
+	// SyslogFormatRFC3164 is legacy Syslog RFC also known as BSD-syslog
 	SyslogFormatRFC3164 = "rfc3164"
+	// SyslogFormatRaw disables syslog message parsing.
+	SyslogFormatRaw = "raw"
 )
 
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
@@ -167,15 +169,30 @@ type SyslogTargetConfig struct {
 	MaxMessageLength int `yaml:"max_message_length"`
 
 	TLSConfig promconfig.TLSConfig `yaml:"tls_config,omitempty"`
+
+	RawFormatOptions       *SyslogRawFormatOptions       `yaml:"raw_format_options"`
+	RFC3164CiscoComponents *SyslogRFC3164CiscoComponents `yaml:"rfc3164_cisco_components"`
+}
+
+type SyslogRawFormatOptions struct {
+	UseNullTerminatorDelimiter bool `yaml:"use_null_terminator_delimiter"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
 	return config.SyslogFormat == SyslogFormatRFC3164
 }
 
+// SyslogRFC3164CiscoComponents enables Cisco IOS log line parsing and configures what fields to parse.
+type SyslogRFC3164CiscoComponents struct {
+	EnableAll       bool `yaml:"enable_all"`
+	MessageCounter  bool `yaml:"message_counter"`
+	SequenceNumber  bool `yaml:"sequence_number"`
+	Hostname        bool `yaml:"hostname"`
+	SecondFractions bool `yaml:"second_fractions"`
+}
+
 // WindowsEventsTargetConfig describes a scrape config that listen for windows event logs.
 type WindowsEventsTargetConfig struct {
-
 	// LCID (Locale ID) for event rendering
 	// - 1033 to force English language
 	// -  0 to use default Windows locale
@@ -421,7 +438,7 @@ func (c *Config) HasServiceDiscoveryConfig() bool {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultScrapeConfig
 
 	type plain Config

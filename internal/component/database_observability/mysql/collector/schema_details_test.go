@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestSchemaDetails(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -40,7 +40,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -172,7 +172,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -184,7 +184,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -319,7 +319,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -331,7 +331,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -486,7 +486,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -498,7 +498,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -633,7 +633,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -645,7 +645,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -800,7 +800,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		// Enable caching. This will exercise the code path
 		// that writes to cache (but we don't explicitly assert it in this test)
@@ -815,7 +815,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -948,7 +948,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		// first loop, table info will be written to cache
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -962,7 +962,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -1049,7 +1049,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		// second loop, table info will be read from cache
 		// and no further queries will be executed
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -1116,7 +1116,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1129,7 +1129,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
@@ -1252,7 +1252,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1264,7 +1264,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows(
 				[]string{"schema_name"},
 			).AddRow(
@@ -1301,7 +1301,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1313,7 +1313,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"schema_name",
 			}).AddRow(
@@ -1369,7 +1369,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1381,9 +1381,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(selectSchemaName).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"schema_name",
 			}).AddRow(
@@ -1488,4 +1488,32 @@ func TestSchemaDetails(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
+}
+
+func TestSchemaDetailsExcludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		ExcludeSchemas:  []string{"excluded_schema"},
+		EntryHandler:    lokiClient,
+		CacheEnabled:    false,
+		Logger:          log.NewLogfmtLogger(os.Stderr),
+	})
+	require.NoError(t, err)
+
+	// Verify the query uses the custom exclusion clause
+	mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, buildExcludedSchemasClause([]string{"excluded_schema"}))).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+
+	c.extractSchema(t.Context())
+	require.NoError(t, mock.ExpectationsWereMet())
 }

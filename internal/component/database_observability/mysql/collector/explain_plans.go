@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -42,32 +41,18 @@ const selectDigestsForExplainPlan = `
 	WHERE LAST_SEEN > ?
 	AND QUERY_SAMPLE_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND SCHEMA_NAME NOT IN ` + EXCLUDED_SCHEMAS
+	AND SCHEMA_NAME NOT IN %s`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
-func newExplainPlansOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanOutput, error) {
-	output := &database_observability.ExplainPlanOutput{
-		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:  "MySQL",
-			DatabaseVersion: dbVersion,
-			QueryIdentifier: digest,
-			GeneratedAt:     generatedAt,
-		},
-	}
-
+func newExplainPlansOutput(logger log.Logger, explainJson []byte) (*database_observability.ExplainPlanNode, error) {
 	qblock, _, _, err := jsonparser.Get(explainJson, "query_block")
 	if err != nil {
-		return output, fmt.Errorf("failed to get query block: %w", err)
+		return nil, fmt.Errorf("failed to get query block: %w", err)
 	}
 
 	planNode, err := parseTopLevelPlanNode(logger, qblock)
-	output.Plan = planNode
-	if err != nil {
-		return output, err
-	}
-
-	return output, nil
+	return &planNode, err
 }
 
 func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (database_observability.ExplainPlanNode, error) {
@@ -411,9 +396,9 @@ type ExplainPlansArguments struct {
 	DB              *sql.DB
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
+	InitialLookback time.Time
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
-	InitialLookback time.Time
 	DBVersion       string
 
 	Logger log.Logger
@@ -441,15 +426,51 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		dbConnection:   args.DB,
 		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
+		perScrapeRatio: args.PerScrapeRatio,
+		excludeSchemas: args.ExcludeSchemas,
+		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]*queryInfo),
-		excludeSchemas: args.ExcludeSchemas,
-		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
-		lastSeen:       args.InitialLookback,
 		logger:         log.With(args.Logger, "collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
 	}, nil
+}
+
+func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
+	output := &database_observability.ExplainPlanOutput{
+		Metadata: database_observability.ExplainPlanMetadataInfo{
+			DatabaseEngine:         "MySQL",
+			DatabaseVersion:        c.dbVersion,
+			QueryIdentifier:        digest,
+			GeneratedAt:            generatedAt,
+			ProcessingResult:       result,
+			ProcessingResultReason: reason,
+		},
+	}
+	if plan != nil {
+		output.Plan = *plan
+	}
+
+	explainPlanOutputJSON, err := json.Marshal(output)
+	if err != nil {
+		return fmt.Errorf("failed to marshal explain plan output: %w", err)
+	}
+
+	logMessage := fmt.Sprintf(
+		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		schemaName,
+		digest,
+		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+	)
+
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		OP_EXPLAIN_PLAN_OUTPUT,
+		logMessage,
+	)
+
+	return nil
 }
 
 func (c *ExplainPlans) Name() string {
@@ -457,7 +478,7 @@ func (c *ExplainPlans) Name() string {
 }
 
 func (c *ExplainPlans) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", "collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -498,7 +519,8 @@ func (c *ExplainPlans) Stop() {
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan, c.lastSeen)
+	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
 		return err
@@ -507,22 +529,30 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 
 	// Populate cache
 	for rs.Next() {
+		generatedAt := time.Now().Format(time.RFC3339)
 		var schemaName, digest, queryText string
 		var ls time.Time
 		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
 		}
-		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
-			return strings.EqualFold(schema, schemaName)
-		}) {
-
-			continue
-		}
 
 		qi := newQueryInfo(schemaName, digest, queryText)
 		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
 			c.queryCache[qi.uniqueKey] = qi
+		} else {
+			err := c.sendExplainPlansOutput(
+				schemaName,
+				digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query denylisted",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send denylisted query skip explain plan output", "err", err)
+			}
+			continue
 		}
 		if ls.After(c.lastSeen) {
 			c.lastSeen = ls
@@ -549,6 +579,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 	processedCount := 0
 	for _, qi := range c.queryCache {
+		generatedAt := time.Now().Format(time.RFC3339)
 		nonRecoverableFailureOccurred := false
 		if processedCount >= c.currentBatchSize {
 			break
@@ -559,25 +590,55 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			if *nonRecoverableFailureOccurred {
 				qi.failureCount++
 				c.queryDenylist[qi.uniqueKey] = qi
-				level.Debug(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++
 		}(&nonRecoverableFailureOccurred)
 
 		if strings.HasSuffix(qi.queryText, "...") {
-			level.Debug(logger).Log("msg", "skipping truncated query")
+			err := c.sendExplainPlansOutput(
+				qi.schemaName,
+				qi.digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query is truncated",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send truncated query skip explain plan output", "err", err)
+			}
 			continue
 		}
 
 		containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to check for reserved keywords", "err", err)
+			err := c.sendExplainPlansOutput(
+				qi.schemaName,
+				qi.digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultError,
+				fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+			}
 			continue
 		}
 
 		if containsReservedWord {
-			level.Debug(logger).Log("msg", "skipping query containing reserved word")
+			err := c.sendExplainPlansOutput(
+				qi.schemaName,
+				qi.digest,
+				generatedAt,
+				database_observability.ExplainProcessingResultSkipped,
+				"query contains reserved word",
+				nil,
+			)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+			}
 			continue
 		}
 
@@ -585,7 +646,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			for _, code := range unrecoverableSQLCodes {
 				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
 					nonRecoverableFailureOccurred = true
@@ -614,12 +675,23 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
+		msgBlock, msgDatType, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
+		if err != nil {
+			// An explain plan response typically will not have a message field if it is successful.
+			if msgDatType != jsonparser.NotExist {
+				level.Error(logger).Log("msg", "failed to parse explain plan json", "err", err)
+			}
+		} else {
+			if strings.Contains(string(msgBlock), "no matching row in const table") {
+				level.Debug(logger).Log("msg", "explain plan query resulted in no rows, skipping", "message", string(msgBlock))
+				continue
+			}
+		}
+
 		level.Debug(logger).Log("msg", "db native explain plan",
 			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
-		generatedAt := time.Now().Format(time.RFC3339)
-
-		explainPlanOutput, genErr := newExplainPlansOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, genErr := newExplainPlansOutput(logger, byteExplainPlanJSON)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
@@ -637,20 +709,16 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		logMessage := fmt.Sprintf(
-			`schema="%s" digest="%s" explain_plan_output="%s"`,
+		if err := c.sendExplainPlansOutput(
 			qi.schemaName,
 			qi.digest,
-			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-		)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_EXPLAIN_PLAN_OUTPUT,
-			logMessage,
-		)
-		// TODO: Add context to logging when errors occur so the original node can be found.
-		// I.E. query_block->nested_loop[1]->table etc..
+			generatedAt,
+			database_observability.ExplainProcessingResultSuccess,
+			"",
+			explainPlanOutput,
+		); err != nil {
+			level.Error(c.logger).Log("msg", "failed to send explain plan output", "err", err)
+		}
 	}
 
 	return nil

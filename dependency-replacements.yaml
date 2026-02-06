@@ -1,0 +1,130 @@
+# NOTE: replace directives below must always be *temporary*.
+#
+# Adding a replace directive to change a module to a fork of a module will
+# only be accepted when a PR or an issue upstream has been opened to accept the new
+# change.
+#
+# Contributors are expected to work with upstream to make their changes
+# acceptable, and remove the `replace` directive as soon as possible.
+#
+# If upstream is unresponsive, you should consider making a hard fork
+# (i.e., creating a new Go module with the same source) or picking a different
+# dependency.
+
+# Modules define the target files where replaces will be applied.
+# Each module specifies:
+#   - name: the name of the module
+#   - path: the path to the module's go.mod file
+#   - file_type: enum of what sort of generation pipeline will be used, currently the only available value is "mod"
+
+# Replace directives define the replacements that will be applied to the defined modules
+# Each replace directive specifies:
+#   - comment: a brief explanation as to why the replace is necessary. This must contain a link to an upstream issue or a PR that is required to complete in order to remove the replace directive
+#   - dependency: the dependency to be replaced
+#   - replacement: the replacement for the dependency
+
+modules:
+  - name: alloy
+    path: go.mod
+    file_type: mod
+
+  - name: extension
+    path: extension/alloyengine/go.mod
+    file_type: mod
+
+  - name: collector
+    path: collector/builder-config.yaml
+    file_type: ocb
+
+replaces:
+  - comment: >
+      TODO: remove this replace directive once the upstream issue is fixed:
+      https://github.com/prometheus/prometheus/issues/13842
+    dependency: go.opentelemetry.io/collector/featuregate
+    replacement: github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
+
+  - comment: Replace yaml.v2 with fork
+    dependency: gopkg.in/yaml.v2
+    replacement: github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
+
+  - comment: Replace directives from Loki — Azure SDK
+    dependency: github.com/Azure/azure-sdk-for-go
+    replacement: github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
+
+  - comment: Replace directives from Loki — Azure storage blob fork
+    dependency: github.com/Azure/azure-storage-blob-go
+    replacement: github.com/MasslessParticle/azure-storage-blob-go v0.14.1-0.20240322194317-344980fda573
+
+  - comment: Use fork of gocql that has gokit logs and Prometheus metrics
+    dependency: github.com/gocql/gocql
+    replacement: github.com/grafana/gocql v0.0.0-20200605141915-ba5dc39ece85
+
+  - comment: Insist on the optimised version of grafana/regexp
+    dependency: github.com/grafana/regexp
+    replacement: github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
+
+  - comment: Replace memberlist with Grafana fork which includes unmerged upstream fixes
+    dependency: github.com/hashicorp/memberlist
+    replacement: github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
+
+  - comment: Use forked syslog implementation by leodido for continued support
+    dependency: github.com/influxdata/go-syslog/v3
+    replacement: github.com/leodido/go-syslog/v4 v4.3.0
+
+  - comment: Replace thanos-io/objstore with Grafana fork
+    dependency: github.com/thanos-io/objstore
+    replacement: github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
+
+  - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+    dependency: github.com/google/cadvisor
+    replacement: github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+
+  - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
+    dependency: github.com/prometheus-community/postgres_exporter
+    replacement: github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+
+  - comment: TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
+    dependency: github.com/prometheus/mysqld_exporter
+    replacement: github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
+
+  - comment: >
+      TODO: replace node_exporter with custom fork for multi usage.
+      https://github.com/prometheus/node_exporter/pull/2812
+    dependency: github.com/prometheus/node_exporter
+    replacement: github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89
+
+  - comment: Use Grafana fork of smimesign
+    dependency: github.com/github/smimesign
+    replacement: github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
+
+  - comment: Replace OpenTelemetry OBI with Grafana fork
+    dependency: go.opentelemetry.io/obi
+    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
+
+  - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
+    dependency: go.opentelemetry.io/ebpf-profiler
+    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260123050037-c33a6e86a2f5
+
+  - comment: Update openshift/client-go to version compatible with structured-merge-diff v6
+    dependency: github.com/openshift/client-go
+    replacement: github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
+
+  - comment: >
+      Do not remove until bug in walqueue backwards compatibility is resolved:
+      https://github.com/deneonet/benc/issues/13
+    dependency: github.com/deneonet/benc
+    replacement: github.com/deneonet/benc v1.1.7
+
+  - comment: Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
+    dependency: github.com/opencontainers/runc
+    replacement: github.com/opencontainers/runc v1.2.8
+
+  - comment: Replace controller-runtime with pinned version
+    dependency: sigs.k8s.io/controller-runtime
+    replacement: sigs.k8s.io/controller-runtime v0.20.4
+
+  - comment: >
+      Fork to grafana repo to address issue with freebsd build tags.
+      This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
+    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
+    replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966

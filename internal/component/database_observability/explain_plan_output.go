@@ -35,6 +35,14 @@ const (
 	ExplainPlanJoinAlgorithmNestedLoop ExplainPlanJoinAlgorithm = "nested_loop"
 )
 
+type ExplainProcessingResult string
+
+const (
+	ExplainProcessingResultSuccess ExplainProcessingResult = "success"
+	ExplainProcessingResultError   ExplainProcessingResult = "error"
+	ExplainProcessingResultSkipped ExplainProcessingResult = "skipped"
+)
+
 type ExplainReservedWordMetadata struct {
 	ExemptionPrefixes *[]string
 }
@@ -121,6 +129,9 @@ type ExplainPlanMetadataInfo struct {
 	DatabaseVersion string `json:"databaseVersion"`
 	QueryIdentifier string `json:"queryIdentifier"`
 	GeneratedAt     string `json:"generatedAt"`
+
+	ProcessingResult       ExplainProcessingResult `json:"processingResult"`
+	ProcessingResultReason string                  `json:"processingResultReason"`
 }
 
 type ExplainPlanNode struct {

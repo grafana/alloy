@@ -88,7 +88,7 @@ func TestSeverityLevelMatchesOtel(t *testing.T) {
 
 			require.NoError(t, err)
 
-			input := make(map[string]interface{})
+			input := make(map[string]any)
 
 			matchConfig, err := matchProperties.Convert()
 			require.NoError(t, err)
@@ -2922,7 +2922,7 @@ var _ client.AuthData = (*fakeAuthData)(nil)
 
 type fakeAuthData struct{}
 
-func (fakeAuthData) GetAttribute(name string) interface{} {
+func (fakeAuthData) GetAttribute(name string) any {
 	return "fake_subject"
 }
 

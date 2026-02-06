@@ -20,7 +20,7 @@ func TestVM_ExprErrors(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		into   interface{}
+		into   any
 		scope  *vm.Scope
 		expect string
 	}{
@@ -46,10 +46,10 @@ func TestVM_ExprErrors(t *testing.T) {
 			name:  "deeply nested indirect",
 			input: `key = key_value`,
 			into:  &Target{},
-			scope: vm.NewScope(map[string]interface{}{
-				"key_value": map[string]interface{}{
-					"object": map[string]interface{}{
-						"field1": []interface{}{15, 30, "Hello, world!"},
+			scope: vm.NewScope(map[string]any{
+				"key_value": map[string]any{
+					"object": map[string]any{
+						"field1": []any{15, 30, "Hello, world!"},
 					},
 				},
 			}),

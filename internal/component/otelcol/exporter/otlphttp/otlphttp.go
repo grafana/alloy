@@ -82,7 +82,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 	return &otlphttpexporter.Config{
 		ClientConfig:    *convertedClientArgs,
-		QueueConfig:     *q,
+		QueueConfig:     q,
 		RetryConfig:     *args.Retry.Convert(),
 		TracesEndpoint:  args.TracesEndpoint,
 		MetricsEndpoint: args.MetricsEndpoint,
@@ -137,11 +137,12 @@ func (args *HTTPClientArguments) SetToDefault() {
 		MaxIdleConns:    maxIdleConns,
 		IdleConnTimeout: idleConnTimeout,
 
-		Timeout:          30 * time.Second,
-		Headers:          map[string]string{},
-		Compression:      otelcol.CompressionTypeGzip,
-		ReadBufferSize:   0,
-		WriteBufferSize:  512 * 1024,
-		HTTP2PingTimeout: 15 * time.Second,
+		Timeout:           30 * time.Second,
+		Headers:           map[string]string{},
+		Compression:       otelcol.CompressionTypeGzip,
+		ReadBufferSize:    0,
+		WriteBufferSize:   512 * 1024,
+		HTTP2PingTimeout:  15 * time.Second,
+		ForceAttemptHTTP2: true,
 	}
 }

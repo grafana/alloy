@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/sys/windows/svc/eventlog"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 func TestBookmarkUpdate(t *testing.T) {
@@ -44,7 +44,7 @@ func TestBookmarkUpdate(t *testing.T) {
 		ExcludeEventData:     false,
 		ExcludeEventMessage:  false,
 		ExcludeUserData:      false,
-		Labels:               utils.ToLabelSet(map[string]string{"job": "windows"}),
+		Labels:               util.MapToModelLabelSet(map[string]string{"job": "windows"}),
 	}
 	handle := &handler{handler: make(chan loki.Entry)}
 	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, scrapeConfig, 1000*time.Millisecond)

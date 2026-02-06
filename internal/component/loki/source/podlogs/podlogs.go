@@ -10,19 +10,20 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/oklog/run"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/oklog/run"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func init() {
@@ -334,7 +335,7 @@ func (c *Component) updateController(args Arguments) error {
 }
 
 // DebugInfo returns debug information for loki.source.podlogs.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var info DebugInfo
 
 	info.DiscoveredPodLogs = c.reconciler.DebugInfo()

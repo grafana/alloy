@@ -1,5 +1,4 @@
 //go:build windows
-// +build windows
 
 package windowsevent
 
@@ -12,9 +11,9 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 func init() {
@@ -179,6 +178,6 @@ func convertConfig(arg Arguments) *scrapeconfig.WindowsEventsTargetConfig {
 		ExcludeEventData:     arg.ExcludeEventData,
 		ExcludeEventMessage:  arg.ExcludeEventMessage,
 		ExcludeUserData:      arg.ExcludeUserdata,
-		Labels:               utils.ToLabelSet(arg.Labels),
+		Labels:               util.MapToModelLabelSet(arg.Labels),
 	}
 }

@@ -33,7 +33,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/loki/util"
@@ -96,17 +95,16 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	receiver := fake.NewClient(func() {})
-	defer receiver.Stop()
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
-	args := testArgsWith(t, func(a *Arguments) {
+	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8532
-		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
+		a.ForwardTo = []loki.LogsReceiver{handler.Receiver()}
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
-	_, shutdown := startTestComponent(t, opts, args, ctx)
-	defer shutdown()
+	_ = startTestComponent(t, opts, args, ctx)
 
 	lokiClient := newTestLokiClient(t, args, opts)
 	defer lokiClient.Stop()
@@ -123,12 +121,12 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 
 	require.Eventually(
 		t,
-		func() bool { return len(receiver.Received()) == 1 },
+		func() bool { return len(handler.Received()) == 1 },
 		5*time.Second,
 		10*time.Millisecond,
 		"did not receive the forwarded message within the timeout",
 	)
-	received := receiver.Received()[0]
+	received := handler.Received()[0]
 	assert.Equal(t, received.Line, "hello world!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -142,18 +140,17 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	receiver := fake.NewClient(func() {})
+	receiver := loki.NewCollectingHandler()
 	defer receiver.Stop()
 
-	args := testArgsWith(t, func(a *Arguments) {
+	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8583
-		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
+		a.ForwardTo = []loki.LogsReceiver{receiver.Receiver()}
 		a.UseIncomingTimestamp = true
 		a.Labels = map[string]string{"test_label": "before"}
 	})
 	opts := defaultOptions()
-	c, shutdown := startTestComponent(t, opts, args, ctx)
-	defer shutdown()
+	c := startTestComponent(t, opts, args, ctx)
 
 	lokiClient := newTestLokiClient(t, args, opts)
 	defer lokiClient.Stop()
@@ -218,12 +215,12 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 	defer cancel()
 
 	const receiversCount = 10
-	var receivers = make([]*fake.Client, receiversCount)
-	for i := 0; i < receiversCount; i++ {
-		receivers[i] = fake.NewClient(func() {})
+	var receivers = make([]*loki.CollectingHandler, receiversCount)
+	for i := range receiversCount {
+		receivers[i] = loki.NewCollectingHandler()
 	}
 
-	args := testArgsWith(t, func(a *Arguments) {
+	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8537
 		a.ForwardTo = mapToChannels(receivers)
 	})
@@ -235,8 +232,6 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 		err := comp.Run(ctx)
 		require.NoError(t, err)
 	}()
-
-	defer comp.stop()
 
 	lokiClient := newTestLokiClient(t, args, opts)
 	defer lokiClient.Stop()
@@ -271,98 +266,89 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 }
 
 func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
-	httpPort := getFreePort(t)
-	grpcPort := getFreePort(t, httpPort)
 	tests := []struct {
 		name            string
 		args            Arguments
 		newArgs         Arguments
+		changeHttpPort  bool
 		restartRequired bool
 	}{
 		{
 			name:            "identical args don't require server restart",
-			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(httpPort, grpcPort),
+			args:            testArgs(),
+			newArgs:         testArgs(),
 			restartRequired: false,
 		},
 		{
 			name: "change in address requires server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			args: testArgs(),
+			newArgs: testArgsWith(func(args *Arguments) {
 				args.Server.HTTP.ListenAddress = "localhost"
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
 			}),
 			restartRequired: true,
 		},
 		{
 			name:            "change in port requires server restart",
-			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(getFreePort(t, httpPort, grpcPort), grpcPort),
+			args:            testArgs(),
+			changeHttpPort:  true,
+			newArgs:         testArgs(),
 			restartRequired: true,
 		},
 		{
 			name: "change in forwardTo does not require server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			args: testArgs(),
+			newArgs: testArgsWith(func(args *Arguments) {
 				args.ForwardTo = []loki.LogsReceiver{}
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
 			}),
 			restartRequired: false,
 		},
 		{
 			name: "change in labels does not require server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			args: testArgs(),
+			newArgs: testArgsWith(func(args *Arguments) {
 				args.Labels = map[string]string{"some": "label"}
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
 			}),
 			restartRequired: false,
 		},
 		{
 			name: "change in relabel rules does not require server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			args: testArgs(),
+			newArgs: testArgsWith(func(args *Arguments) {
 				args.RelabelRules = relabel.Rules{}
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
 			}),
 			restartRequired: false,
 		},
 		{
 			name: "change in use incoming timestamp does not require server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			args: testArgs(),
+			newArgs: testArgsWith(func(args *Arguments) {
 				args.UseIncomingTimestamp = !args.UseIncomingTimestamp
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
 			}),
 			restartRequired: false,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			comp, err := New(
-				defaultOptions(),
-				tc.args,
-			)
-			require.NoError(t, err)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
 
-			// in order to cleanly update, we want to make sure the server is running first.
-			waitForServerToBeReady(t, comp)
+			comp := startTestComponent(t, defaultOptions(), tc.args, ctx)
 
 			serverBefore := comp.server
-			err = comp.Update(tc.newArgs)
-			require.NoError(t, err)
+
+			if tc.changeHttpPort {
+				httpPort, err := freeport.GetFreePort()
+				require.NoError(t, err)
+				tc.newArgs.Server.HTTP.ListenPort = httpPort
+			}
+
+			require.NoError(t, comp.Update(tc.newArgs))
 
 			restarted := serverBefore != comp.server
 			assert.Equal(t, restarted, tc.restartRequired)
 
 			// in order to cleanly shutdown, we want to make sure the server is running first.
 			waitForServerToBeReady(t, comp)
-			comp.stop()
 		})
 	}
 }
@@ -375,24 +361,22 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	testCert, testKey, err := generateTestCertAndKey()
 	require.NoError(t, err)
 
-	receiver := fake.NewClient(func() {})
-	defer receiver.Stop()
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
 
-	args := testArgsWith(t, func(a *Arguments) {
-		a.Server.HTTP.ListenPort = getFreePort(t)
+	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.TLSConfig = &fnet.TLSConfig{
 			Cert: testCert,
 			Key:  alloytypes.Secret(testKey),
 		}
-		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
+		a.ForwardTo = []loki.LogsReceiver{handler.Receiver()}
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
-	_, shutdown := startTestComponent(t, opts, args, ctx)
-	defer shutdown()
+	c := startTestComponent(t, opts, args, ctx)
 
 	// Create TLS-enabled Loki client
-	lokiClient := newTestLokiClientTLS(t, args, opts)
+	lokiClient := newTestLokiClientTLS(t, c.server.HTTPListenAddress(), opts)
 	defer lokiClient.Stop()
 
 	now := time.Now()
@@ -407,12 +391,14 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 
 	require.Eventually(
 		t,
-		func() bool { return len(receiver.Received()) == 1 },
+		func() bool {
+			return len(handler.Received()) == 1
+		},
 		10*time.Second,
 		10*time.Millisecond,
 		"did not receive the forwarded message within the timeout",
 	)
-	received := receiver.Received()[0]
+	received := handler.Received()[0]
 	assert.Equal(t, received.Line, "hello world over TLS!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -423,41 +409,43 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 }
 
 // newTestLokiClientTLS creates a Loki client configured for TLS connections
-func newTestLokiClientTLS(t *testing.T, args Arguments, opts component.Options) client.Client {
+func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component.Options) client.Consumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
-		"https://%s:%d/api/v1/push",
-		args.Server.HTTP.ListenAddress,
-		args.Server.HTTP.ListenPort,
+		"https://%s/api/v1/push",
+		httpListenAddress,
 	))
 	require.NoError(t, err)
 
-	lokiClient, err := client.New(
-		client.NewMetrics(nil),
-		client.Config{
-			URL:     url,
-			Timeout: 10 * time.Second,
-			Client: promCfg.HTTPClientConfig{
-				TLSConfig: promCfg.TLSConfig{
-					InsecureSkipVerify: true,
-				},
+	c, err := client.NewFanoutConsumer(opts.Logger, opts.Registerer, client.Config{
+		URL:     url,
+		Timeout: 10 * time.Second,
+		Client: promCfg.HTTPClientConfig{
+			TLSConfig: promCfg.TLSConfig{
+				InsecureSkipVerify: true,
 			},
 		},
-		0,
-		opts.Logger,
-	)
+	})
+
 	require.NoError(t, err)
-	return lokiClient
+	return c
 }
 
 func TestDefaultServerConfig(t *testing.T) {
-	args := testArgs(t)
+	args := testArgs()
 	args.Server = nil // user did not define server options
 
 	comp, err := New(
 		defaultOptions(),
 		args,
 	)
+
+	ctx := t.Context()
+	go func() {
+		err := comp.Run(ctx)
+		require.NoError(t, err)
+	}()
+
 	require.NoError(t, err)
 
 	require.Eventuallyf(t, func() bool {
@@ -468,8 +456,6 @@ func TestDefaultServerConfig(t *testing.T) {
 		))
 		return err == nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
-
-	comp.stop()
 }
 
 func startTestComponent(
@@ -477,7 +463,7 @@ func startTestComponent(
 	opts component.Options,
 	args Arguments,
 	ctx context.Context,
-) (component.Component, func()) {
+) *Component {
 
 	comp, err := New(opts, args)
 	require.NoError(t, err)
@@ -486,15 +472,12 @@ func startTestComponent(
 		require.NoError(t, err)
 	}()
 
-	return comp, func() {
-		// in order to cleanly shutdown, we want to make sure the server is running first.
-		waitForServerToBeReady(t, comp)
-		comp.stop()
-	}
+	waitForServerToBeReady(t, comp)
+	return comp
 }
 
 func TestShutdown(t *testing.T) {
-	args := testArgsWith(t, func(a *Arguments) {
+	args := testArgsWith(func(a *Arguments) {
 		a.Server.GracefulShutdownTimeout = 5 * time.Second
 		a.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
 	})
@@ -513,13 +496,13 @@ func TestShutdown(t *testing.T) {
 	waitForServerToBeReady(t, comp)
 
 	// First request should be forwarded on channel
-	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), args))
+	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPListenAddress()))
 	require.NoError(t, err)
 
 	codes := make(chan int)
 	for range 5 {
 		go func() {
-			res, err := http.DefaultClient.Do(newRequest(t, context.Background(), args))
+			res, err := http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPListenAddress()))
 			if err != nil || res == nil {
 				// This should not happen but if it does we return -1 here so test will fail.
 				codes <- -1
@@ -547,7 +530,7 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestCancelRequest(t *testing.T) {
-	args := testArgsWith(t, func(a *Arguments) {
+	args := testArgsWith(func(a *Arguments) {
 		a.Server.GracefulShutdownTimeout = 5 * time.Second
 		a.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
 	})
@@ -566,7 +549,7 @@ func TestCancelRequest(t *testing.T) {
 	waitForServerToBeReady(t, comp)
 
 	// First request should be forwarded on channel
-	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), args))
+	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPListenAddress()))
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -574,7 +557,7 @@ func TestCancelRequest(t *testing.T) {
 		wg.Go(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 			defer cancel()
-			res, err := http.DefaultClient.Do(newRequest(t, ctx, args))
+			res, err := http.DefaultClient.Do(newRequest(t, ctx, comp.server.HTTPListenAddress()))
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 			require.Nil(t, res)
 		})
@@ -583,66 +566,58 @@ func TestCancelRequest(t *testing.T) {
 	wg.Wait()
 }
 
-func newRequest(t *testing.T, ctx context.Context, args Arguments) *http.Request {
+func newRequest(t *testing.T, ctx context.Context, httpListendAddress string) *http.Request {
 	body := bytes.Buffer{}
 	err := util.SerializeProto(&body, &push.PushRequest{Streams: []push.Stream{{Labels: `{foo="foo"}`, Entries: []push.Entry{{Line: "line"}}}}}, util.RawSnappy)
 	require.NoError(t, err)
-	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("http://%s:%d/loki/api/v1/push", args.Server.HTTP.ListenAddress, args.Server.HTTP.ListenPort), &body)
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("http://%s/loki/api/v1/push", httpListendAddress), &body)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	return req
 }
 
 func waitForServerToBeReady(t *testing.T, comp *Component) {
+	// Determine if TLS is enabled to choose the right protocol
+	protocol := "http"
+	var tlsConfig *tls.Config
+
+	serverConfig := comp.server.ServerConfig()
+	if serverConfig.HTTP.TLSConfig != nil {
+		protocol = "https"
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
+
+	url := fmt.Sprintf(
+		"%s://%s/wrong/url",
+		protocol,
+		comp.server.HTTPListenAddress(),
+	)
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	if protocol == "https" {
+		client.Transport = &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+	}
+
 	require.Eventuallyf(t, func() bool {
-		// Determine if TLS is enabled to choose the right protocol
-		protocol := "http"
-		var tlsConfig *tls.Config
-
-		serverConfig := comp.server.ServerConfig()
-		if serverConfig.HTTP.TLSConfig != nil {
-			protocol = "https"
-			tlsConfig = &tls.Config{
-				InsecureSkipVerify: true,
-			}
-		}
-
-		url := fmt.Sprintf(
-			"%s://%v:%d/wrong/url",
-			protocol,
-			serverConfig.HTTP.ListenAddress,
-			serverConfig.HTTP.ListenPort,
-		)
-
-		var resp *http.Response
-		var err error
-
-		if protocol == "https" {
-			client := &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: tlsConfig,
-				},
-				Timeout: 1 * time.Second,
-			}
-			resp, err = client.Get(url)
-		} else {
-			client := &http.Client{Timeout: 1 * time.Second}
-			resp, err = client.Get(url)
-		}
+		resp, err := client.Get(url)
 
 		return err == nil && resp != nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
-func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
+func mapToChannels(clients []*loki.CollectingHandler) []loki.LogsReceiver {
 	channels := make([]loki.LogsReceiver, len(clients))
 	for i := range clients {
-		channels[i] = clients[i].LogsReceiver()
+		channels[i] = clients[i].Receiver()
 	}
 	return channels
 }
 
-func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.Client {
+func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.Consumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
 		"http://%s:%d/api/v1/push",
@@ -651,14 +626,16 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 	))
 	require.NoError(t, err)
 
-	lokiClient, err := client.New(
-		client.NewMetrics(nil),
+	lokiClient, err := client.NewFanoutConsumer(
+		opts.Logger,
+		opts.Registerer,
 		client.Config{
 			URL:     url,
 			Timeout: 5 * time.Second,
+			QueueConfig: client.QueueConfig{
+				BlockOnOverflow: true,
+			},
 		},
-		0,
-		opts.Logger,
 	)
 	require.NoError(t, err)
 	return lokiClient
@@ -672,16 +649,14 @@ func defaultOptions() component.Options {
 	}
 }
 
-func testArgsWith(t *testing.T, mutator func(arguments *Arguments)) Arguments {
-	a := testArgs(t)
-	mutator(&a)
-	return a
+func testArgs() Arguments {
+	return testArgsWithPorts(0, 0)
 }
 
-func testArgs(t *testing.T) Arguments {
-	httpPort := getFreePort(t)
-	grpPort := getFreePort(t, httpPort)
-	return testArgsWithPorts(httpPort, grpPort)
+func testArgsWith(mutator func(arguments *Arguments)) Arguments {
+	a := testArgsWithPorts(0, 0)
+	mutator(&a)
+	return a
 }
 
 func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
@@ -708,18 +683,4 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 		UseIncomingTimestamp: false,
 		MaxSendMessageSize:   100 * units.MiB,
 	}
-}
-
-func getFreePort(t *testing.T, exclude ...int) int {
-	const maxRetries = 10
-	for range maxRetries {
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-		if !slices.Contains(exclude, port) {
-			return port
-		}
-	}
-
-	t.Fatal("fail to get free port")
-	return 0
 }

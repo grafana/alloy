@@ -1,0 +1,39 @@
+name: Test Alloy mixin
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-rendered:
+    name: Render and test Alloy mixin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Render and test Alloy mixin
+        run: make test-mixin
+
+      - name: Verify rendered mixin is up-to-date in the repository
+        run: |
+          if [ -n "$(git status --porcelain -- operations/alloy-mixin/rendered)" ]; then
+            echo "Error: rendered outputs are not up to date. Make sure to run 'make generate-rendered-mixin' and commit the changes."
+            git status -- operations/alloy-mixin/rendered
+            git diff -- operations/alloy-mixin/rendered
+            exit 1
+          fi
