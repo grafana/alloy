@@ -42,7 +42,8 @@ var testFile = `
 
 func TestController_LoadSource_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl := New(testOptions(t))
+	ctrl, err := New(testOptions(t))
+	require.NoError(t, err)
 	defer cleanUpController(t.Context(), ctrl)
 
 	// Use testFile from graph_builder_test.go.
@@ -78,7 +79,8 @@ var modulePathTestFile = `
 
 func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl := New(testOptions(t))
+	ctrl, err := New(testOptions(t))
+	require.NoError(t, err)
 	defer cleanUpController(t.Context(), ctrl)
 
 	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
@@ -104,7 +106,8 @@ func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 
 func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl := New(testOptions(t))
+	ctrl, err := New(testOptions(t))
+	require.NoError(t, err)
 	defer cleanUpController(t.Context(), ctrl)
 
 	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
@@ -133,7 +136,7 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 // in the runtime while the loader is concurrently reloading the config.
 func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl := New(testOptions(t))
+	opts := testOptions(t)
 
 	var testFileFastTick = `
 	testcomponents.tick "ticker" {
@@ -154,7 +157,10 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 `
 	var logsBuffer bytes.Buffer
 	syncBuff := log.NewSyncWriter(&logsBuffer)
-	ctrl.log.SetTemporaryWriter(syncBuff)
+	opts.Logger.SetTemporaryWriter(syncBuff)
+
+	ctrl, err := New(opts)
+	require.NoError(t, err)
 
 	f, err := ParseSource(t.Name(), []byte(testFileFastTick))
 	require.NoError(t, err)
