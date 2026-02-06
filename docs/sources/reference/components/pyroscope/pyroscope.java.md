@@ -175,7 +175,7 @@ The `event` argument specifies what to profile. It supports various event types:
 * `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) system call, which generates a signal every time a process consumes CPU.
 * `cpu` - Uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available on every platform.
 * `wall` - Samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
-   For example, this can be helpful when profiling application start-up time or IO-intensive processes.
+   For example, this can be helpful when profiling application start-up time or I/O-intensive processes.
 * `alloc` - Allocation profiling.
 * `lock` - Java lock profiling.
 * `nativemem` - Native memory allocation profiling.
