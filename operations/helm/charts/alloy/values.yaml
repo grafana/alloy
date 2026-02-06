@@ -225,7 +225,7 @@ serviceAccount:
   annotations: {}
   # -- The name of the existing service account to use when
   # serviceAccount.create is false.
-  name: null
+  name: null # # Optional. Templated via Helm 'tpl'. Example: "svc-{{ .Release.Namespace }}"
   # Whether the Alloy pod should automatically mount the service account token.
   automountServiceAccountToken: true
 
