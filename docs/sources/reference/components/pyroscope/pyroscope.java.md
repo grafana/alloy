@@ -190,7 +190,7 @@ The `event` argument specifies what to profile. It supports various event types:
 
 **Native function profiling:**
 
-* `<symbol>` - Profile calls to a native function (e.g., `strcmp`, `malloc`).
+* `<symbol>` - Profile calls to a native function, for example, `strcmp`, `malloc`.
 * `mem:<func>` - Hardware breakpoint on a function or memory address.
 
 **Kernel events:**
