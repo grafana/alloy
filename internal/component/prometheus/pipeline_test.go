@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -337,7 +338,7 @@ func TestDbgSeriesMappingPerf(t *testing.T) {
 	}
 
 	const numberOfRWComponents = 2
-	const metricsCount = 1000
+	const metricsCount = 2000
 	cfg := refTrackingConfig{
 		useLabelStore: false,
 	}
@@ -380,12 +381,12 @@ func BenchmarkSeriesMapping(b *testing.B) {
 		// 		useLabelStore: false,
 		// 	},
 		// },
-		// {
-		// 	numberOfRWComponents: 2,
-		// 	refTrackingConfig: refTrackingConfig{
-		// 		useLabelStore: true,
-		// 	},
-		// },
+		{
+			numberOfRWComponents: 2,
+			refTrackingConfig: refTrackingConfig{
+				useLabelStore: true,
+			},
+		},
 		{
 			numberOfRWComponents: 2,
 			refTrackingConfig: refTrackingConfig{
@@ -396,14 +397,14 @@ func BenchmarkSeriesMapping(b *testing.B) {
 
 	// Simulates appending various numbers of new metrics sequentially
 	// numberOfMetrics := []int{10, 1000}
-	numberOfMetrics := []int{1000}
+	numberOfMetrics := []int{2000}
 	for _, n := range numberOfMetrics {
 		for _, config := range testConfigs {
 			testName := fmt.Sprintf("remotewritecomponents=%d/reftrackingconfig=%s/new-metrics=%d",
 				config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
 
 			b.Run(testName, func(b *testing.B) {
-				pipeline, ls, clearCache := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
+				pipeline, ls, _ := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
 				metrics := setupMetrics(n)
 				b.ReportAllocs()
 				b.ResetTimer()
@@ -418,7 +419,6 @@ func BenchmarkSeriesMapping(b *testing.B) {
 						a.Commit()
 					}
 					b.StopTimer()
-					clearCache()
 					b.StartTimer()
 				}
 			})
@@ -483,7 +483,7 @@ func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 	metrics := make([]labels.Labels, 0, numberOfMetrics)
 	for i := range numberOfMetrics {
 		key := fmt.Sprintf("metric-%d", i)
-		value := fmt.Sprintf("%d", i)
+		value := strconv.Itoa(i)
 		lbls := labels.FromStrings(key, value)
 		for _, extraLabel := range extraLabels {
 			lbls = labels.NewBuilder(lbls).Set(extraLabel, "value").Labels()
