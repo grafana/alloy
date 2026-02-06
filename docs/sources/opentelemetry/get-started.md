@@ -30,15 +30,14 @@ The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" 
 The CLI is the easiest way to experiment locally or on a single host.
 Refer to the [OTel CLI](../../reference/cli/otel/) documentation for more information.
 
-The following example configuration file accepts telemetry over [OTLP](https://opentelemetry.io/docs/specs/otel/protocol/) and sends it to the Grafana Cloud OTLP gateway.
-You can adapt the endpoint and credentials for your region and tenant.
+The following example configuration file accepts telemetry over [OTLP](https://opentelemetry.io/docs/specs/otel/protocol/) and sends it to the configured backend:
 
 ```yaml
 extensions:
-  basicauth/grafana_cloud:
+  basicauth/my_auth:
     client_auth:
-      username: <INSTANCE_ID>
-      password: <API_TOKEN>
+      username: <USERNAME>
+      password: <PASSWORD>
 
 receivers:
   otlp:
@@ -52,27 +51,27 @@ processors:
     send_batch_size: 512
 
 exporters:
-  otlphttp/grafana_cloud:
-    endpoint: <GRAFANA_URL>
+  otlphttp/my_backend:
+    endpoint: <URL>
     auth:
-      authenticator: basicauth/grafana_cloud
+      authenticator: basicauth/my_auth
 
 service:
-  extensions: [basicauth/grafana_cloud]
+  extensions: [basicauth/my_auth]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/grafana_cloud]
+      exporters: [otlphttp/my_backend]
 ```
 
 Replace the following:
 
-- _`<INSTANCE_ID>`_: Your Grafana Cloud instance ID.
-- _`<API_TOKEN>`_: Your Grafana Cloud API token.
-- _`<GRAFANA_URL>`_: Your Grafana Cloud OTLP endpoint URL.
+- _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to, if you are using Grafana Cloud this will be your Grafana Cloud OTLP endpoint URL.
 
-For more information about where to find these values, refer to [Send data using OpenTelemetry Protocol](https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/).
+For more information about where to find these values for Grafana Cloud, refer to [Send data using OpenTelemetry Protocol](https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/).
 
 To start the {{< param "OTEL_ENGINE" >}}, run the following command:
 
@@ -93,10 +92,10 @@ The following example shows the configuration:
 
 ```yaml
 extensions:
-  basicauth/grafana_cloud:
+  basicauth/my_auth:
     client_auth:
-      username: <INSTANCE_ID>
-      password: <API_TOKEN>
+      username: <USERNAME>
+      password: <PASSWORD>
   alloyengine:
     config:
       file: <ALLOY_CONFIG_PATH>
@@ -115,26 +114,26 @@ processors:
     send_batch_size: 512
 
 exporters:
-  otlphttp/grafana_cloud:
-    endpoint: <GRAFANA_URL>
+  otlphttp/my_backend:
+    endpoint: <URL>
     auth:
-      authenticator: basicauth/grafana_cloud
+      authenticator: basicauth/my_auth
 
 service:
-  extensions: [basicauth/grafana_cloud, alloyengine]
+  extensions: [basicauth/my_auth, alloyengine]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/grafana_cloud]
+      exporters: [otlphttp/my_backend]
 ```
 
 Replace the following:
 
 - _`<ALLOY_CONFIG_PATH>`_: The path to your {{< param "DEFAULT_ENGINE" >}} configuration file.
-- _`<INSTANCE_ID>`_: Your Grafana Cloud instance ID.
-- _`<API_TOKEN>`_: Your Grafana Cloud API token.
-- _`<GRAFANA_URL>`_: Your Grafana Cloud OTLP endpoint URL.
+- _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to, if you are using Grafana Cloud this will be your Grafana Cloud OTLP endpoint URL.
 
 This example adds the `alloyengine` block in the extension declarations and enables the extension in the `service` block.
 You can then run {{< param "PRODUCT_NAME" >}} with the exact same command as before:
