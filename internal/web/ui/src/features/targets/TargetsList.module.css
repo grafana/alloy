@@ -1,0 +1,80 @@
+.list {
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  box-sizing: border-box;
+  color: rgba(36, 41, 46, 0.75);
+}
+
+.health {
+  display: inline-block;
+  font-size: 12px;
+  padding: 4px 8px;
+  min-width: 50px;
+  color: #ffffff;
+  background-color: #595c60;
+  border: 1px solid #595c60;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: capitalize;
+  text-align: center;
+  line-height: 1.2em;
+}
+
+.health.up {
+  color: #ffffff;
+  background-color: #3b8160;
+  border-color: #3b8160;
+}
+
+.health.down {
+  color: #ffffff;
+  background-color: #d2476d;
+  border-color: #d2476d;
+}
+
+.health.unknown {
+  color: #000000;
+  background-color: #f5d65b;
+  border-color: #f5d65b;
+}
+
+.url {
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.error {
+  color: #d2476d;
+  font-size: 0.9em;
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.label {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  background-color: #e4e5e6;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.componentId {
+  font-weight: 500;
+}
+
+.duration {
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.emptyMessage {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
