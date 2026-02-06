@@ -330,6 +330,128 @@ func BenchmarkPipelines(b *testing.B) {
 	}
 }
 
+// go test -bench="BenchmarkSeriesMapping" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
+// benchstat -row ".name /remotewritecomponents /new-metrics" -col /reftrackingconfig benchmarks
+func BenchmarkSeriesMapping(b *testing.B) {
+	mkPipeline := func(t testing.TB, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
+		return newRemoteWritePipeline(t, log.NewNopLogger(), rwComponents, appenders.Noop{}, refTrackingConfig)
+	}
+
+	testConfigs := []struct {
+		numberOfRWComponents int
+		refTrackingConfig    refTrackingConfig
+		skipFor              map[string]struct{}
+	}{
+		// {
+		// 	numberOfRWComponents: 1,
+		// 	refTrackingConfig: refTrackingConfig{
+		// 		useLabelStore: true,
+		// 	},
+		// },
+		// {
+		// 	numberOfRWComponents: 1,
+		// 	refTrackingConfig: refTrackingConfig{
+		// 		useLabelStore: false,
+		// 	},
+		// },
+		{
+			numberOfRWComponents: 2,
+			refTrackingConfig: refTrackingConfig{
+				useLabelStore: true,
+			},
+		},
+		{
+			numberOfRWComponents: 2,
+			refTrackingConfig: refTrackingConfig{
+				useLabelStore: false,
+			},
+		},
+	}
+
+	// Simulates appending various numbers of new metrics sequentially
+	numberOfMetrics := []int{10, 1000}
+	for _, n := range numberOfMetrics {
+		for _, config := range testConfigs {
+			testName := fmt.Sprintf("remotewritecomponents=%d/reftrackingconfig=%s/new-metrics=%d",
+				config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
+
+			b.Run(testName, func(b *testing.B) {
+				pipeline, ls, clearCache := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
+				metrics := setupMetrics(n)
+				b.ReportAllocs()
+				b.ResetTimer()
+
+				for b.Loop() {
+					for range n {
+						a := pipeline.Appender(b.Context())
+						for i, metric := range metrics {
+							ls.GetOrAddGlobalRefID(metric)
+							a.Append(0, metric, time.Now().UnixMilli(), float64(i))
+						}
+						a.Commit()
+					}
+					b.StopTimer()
+					clearCache()
+					b.StartTimer()
+				}
+			})
+		}
+	}
+
+	// Simulate concurrently appending from multiple scrapers for known metrics
+	// concurrency := []int{10, 1000}
+	// for _, c := range concurrency {
+	// 	for _, config := range testConfigs {
+	// 		testName := fmt.Sprintf("remotewritecomponents=%d/reftrackingconfig=%s/concurrent-existing-metrics=%d",
+	// 			config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), c)
+	//
+	// 		b.Run(testName, func(b *testing.B) {
+	// 			pipeline, _, _ := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
+	// 			var metricsForAppenders [][]labels.Labels
+	// 			numMetrics := 1000
+	// 			for appenderIndex := range c {
+	// 				metrics := setupMetrics(numMetrics, fmt.Sprintf("concurrency-%d", appenderIndex))
+	//
+	// 				// Send them through once so further appends can use "known refs"
+	// 				a := pipeline.Appender(b.Context())
+	// 				for metricIndex, metric := range metrics {
+	// 					expectedRef := storage.SeriesRef(appenderIndex*numMetrics + metricIndex + 1)
+	// 					ref, err := a.Append(expectedRef, metric, time.Now().UnixMilli(), float64(metricIndex))
+	// 					require.NoError(b, err)
+	// 					require.Equal(b, expectedRef, ref)
+	// 				}
+	// 				require.NoError(b, a.Commit())
+	//
+	// 				metricsForAppenders = append(metricsForAppenders, metrics)
+	// 			}
+	// 			b.ReportAllocs()
+	// 			b.ResetTimer()
+	//
+	// 			for b.Loop() {
+	// 				var wg sync.WaitGroup
+	//
+	// 				for appenderIndex := range c {
+	// 					wg.Add(1)
+	// 					go func(appenderIndex int) {
+	// 						defer wg.Done()
+	//
+	// 						a := pipeline.Appender(b.Context())
+	// 						for metricIndex, metric := range metricsForAppenders[appenderIndex] {
+	// 							ref := storage.SeriesRef(appenderIndex*numMetrics + metricIndex + 1)
+	// 							_, err := a.Append(ref, metric, time.Now().UnixMilli(), float64(metricIndex))
+	// 							require.NoError(b, err)
+	// 						}
+	// 						require.NoError(b, a.Commit())
+	// 					}(appenderIndex)
+	// 				}
+	//
+	// 				wg.Wait()
+	// 			}
+	// 		})
+	// 	}
+	// }
+}
+
 func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 	metrics := make([]labels.Labels, 0, numberOfMetrics)
 	for i := range numberOfMetrics {
