@@ -125,7 +125,9 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 			}
 		}
 	}
-	level.Debug(r.logger).Log("msg", "extracted data debug in replace stage", "extracted_data", fmt.Sprintf("%v", extracted))
+	if Debug {
+		level.Debug(r.logger).Log("msg", "extracted data debug in replace stage", "extracted_data", extracted)
+	}
 }
 
 func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td map[string]string, templ *template.Template) (string, map[string]string, error) {
