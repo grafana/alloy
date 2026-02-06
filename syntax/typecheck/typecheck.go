@@ -9,6 +9,8 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
 	"github.com/grafana/alloy/syntax/internal/tagcache"
+	"github.com/grafana/alloy/syntax/internal/transform"
+	"github.com/grafana/alloy/syntax/internal/value"
 )
 
 type structState struct {
@@ -142,9 +144,7 @@ func checkStructBlock(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.D
 
 	switch field.Kind() {
 	case reflect.Slice:
-		// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot
-		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
-		return block(b, reflectutil.DeferencePointer(field.Index(0)))
+		return block(b, reflectutil.DeferencePointer(reflect.New(field.Type().Elem())))
 	case reflect.Array:
 		if field.Len() != s.blockCount[name] {
 			return diag.Diagnostics{{
@@ -159,8 +159,7 @@ func checkStructBlock(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.D
 				),
 			}}
 		}
-
-		return block(b, reflectutil.DeferencePointer(field.Index(0)))
+		return block(b, reflectutil.DeferencePointer(reflect.New(field.Type().Elem())))
 	default:
 		if s.blockCount[name] > 1 {
 			return diag.Diagnostics{{
@@ -186,13 +185,12 @@ func checkStructEnum(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.Di
 	}
 	// NOTE: we do not need to store any values so we can always set len and cap to 1 and reuse the same slot
 	field.Set(reflect.MakeSlice(field.Type(), 1, 1))
-
 	elem := reflectutil.DeferencePointer(field.Index(0))
 
 	return block(b, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(elem, tf.BlockField)))
 }
 
-func checkStructAttr(s *structState, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics {
+func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) diag.Diagnostics {
 	tf, ok := s.tags.TagLookup[a.Name.Name]
 	if !ok {
 		return diag.Diagnostics{{
@@ -220,5 +218,256 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, _ reflect.Value) diag
 	}
 
 	s.seenAttrs[a.Name.Name] = struct{}{}
+
+	var diags diag.Diagnostics
+
+	switch expr := a.Value.(type) {
+	case *ast.ArrayExpr:
+		diags.Merge(typecheckArrayExpr(expr, reflectutil.GetOrAlloc(rv, tf)))
+	case *ast.ObjectExpr:
+		diags.Merge(typecheckObjectExpr(expr, reflectutil.GetOrAlloc(rv, tf)))
+	case *ast.LiteralExpr:
+		if d := typecheckLiteralExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+			diags.Add(*d)
+		}
+	case *ast.UnaryExpr:
+		if d := typecheckUnaryExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+			diags.Add(*d)
+		}
+	case *ast.BinaryExpr:
+		if d := typecheckBinaryExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+			diags.Add(*d)
+		}
+	default:
+		// ignore rest for now.
+	}
+
+	if diags != nil {
+		return diags
+	}
+
 	return nil
+}
+
+func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics {
+	// If expected value can be of any type we don't have to check further.
+	if rv.Kind() == reflect.Interface {
+		return nil
+	}
+
+	// Check if the expected type is actually a slice or array before trying to make a slice
+	if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+		expectedType := value.AlloyType(rv.Type())
+		return diag.Diagnostics{{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("expected %s, got array", expectedType),
+		}}
+	}
+
+	expected := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
+
+	// If elements of array can be any type we don't have to check further.
+	if expected.Kind() == reflect.Interface {
+		return nil
+	}
+
+	var diags diag.Diagnostics
+	for _, e := range expr.Elements {
+		switch expr := e.(type) {
+		case *ast.LiteralExpr:
+			if d := typecheckLiteralExpr(expr, expected); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.ArrayExpr:
+			diags.Merge(typecheckArrayExpr(expr, expected))
+		case *ast.ObjectExpr:
+			diags.Merge(typecheckObjectExpr(expr, expected))
+		case *ast.UnaryExpr:
+			if d := typecheckUnaryExpr(expr, expected); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.BinaryExpr:
+			if d := typecheckBinaryExpr(expr, expected); d != nil {
+				diags.Add(*d)
+			}
+		default:
+			// ignore rest for now.
+		}
+	}
+
+	if diags != nil {
+		return diags
+	}
+
+	return nil
+}
+
+func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+	// If expected value can be of any type we don't have to check further.
+	if rv.Kind() == reflect.Interface {
+		return nil
+	}
+
+	// If we expect a capsule check if we can convert that one into a object.
+	if value.AlloyType(rv.Type()) == value.TypeCapsule {
+		capsule := value.FromRaw(rv)
+		_, ok := capsule.TryConvertToObject()
+		if !ok {
+			return diag.Diagnostics{{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(expr).Position(),
+				EndPos:   ast.EndPos(expr).Position(),
+				Message:  fmt.Sprintf("expected %s, got object", value.TypeCapsule),
+			}}
+		}
+		// FIXME(kalleep): we should type check further but it's not easy to extract the expected type.
+		return nil
+	}
+
+	// Check if the expected type is actually a map before trying to get its element type
+	if rv.Kind() != reflect.Map {
+		expectedType := value.AlloyType(rv.Type())
+		return diag.Diagnostics{{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  fmt.Sprintf("expected %s, got object", expectedType),
+		}}
+	}
+
+	// Extract value from map.
+	expectedValue := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
+	// If values of map can be any type we don't have to check further.
+	if expectedValue.Kind() == reflect.Interface {
+		return nil
+	}
+
+	var diags diag.Diagnostics
+	for _, f := range expr.Fields {
+		switch expr := f.Value.(type) {
+		case *ast.LiteralExpr:
+			if d := typecheckLiteralExpr(expr, expectedValue); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.ArrayExpr:
+			diags.Merge(typecheckArrayExpr(expr, expectedValue))
+		case *ast.ObjectExpr:
+			diags.Merge(typecheckObjectExpr(expr, expectedValue))
+		case *ast.UnaryExpr:
+			if d := typecheckUnaryExpr(expr, expectedValue); d != nil {
+				diags.Add(*d)
+			}
+		case *ast.BinaryExpr:
+			if d := typecheckBinaryExpr(expr, expectedValue); d != nil {
+				diags.Add(*d)
+			}
+		default:
+			// ignore rest for now.
+		}
+	}
+
+	if diags != nil {
+		return diags
+	}
+
+	return nil
+}
+
+func typecheckUnaryExpr(expr *ast.UnaryExpr, rv reflect.Value) *diag.Diagnostic {
+	switch v := expr.Value.(type) {
+	case *ast.LiteralExpr:
+		// First we check that this is a valid unary expression.
+		_, err := transform.UnaryOp(expr.Kind, valueFromLiteralExpr(v))
+		if err != nil {
+			return &diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(v).Position(),
+				EndPos:   ast.EndPos(v).Position(),
+				Message:  err.Error(),
+			}
+		}
+
+		// Then we check that it's expected type.
+		return typecheckLiteralExpr(v, rv)
+	default:
+		// ignore rest for now.
+		return nil
+	}
+}
+
+func typecheckBinaryExpr(expr *ast.BinaryExpr, rv reflect.Value) *diag.Diagnostic {
+	// We limit to only literal expressions for now.
+	lhs, lok := expr.Left.(*ast.LiteralExpr)
+	rhs, rok := expr.Right.(*ast.LiteralExpr)
+
+	// We only perform type checking if both are *ast.LiteralExpr
+	if lok && rok {
+		val, err := transform.BinaryOp(valueFromLiteralExpr(lhs), expr.Kind, valueFromLiteralExpr(rhs))
+		if err != nil {
+			return &diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(lhs).Position(),
+				EndPos:   ast.EndPos(rhs).Position(),
+				Message:  err.Error(),
+			}
+		}
+
+		if err := typecheckValue(val, rv); err != nil {
+			return &diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(expr).Position(),
+				EndPos:   ast.EndPos(expr).Position(),
+				Message:  err.Error(),
+			}
+		}
+	}
+
+	return nil
+}
+
+func typecheckLiteralExpr(expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnostic {
+	if err := typecheckValue(valueFromLiteralExpr(expr), rv); err != nil {
+		return &diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(expr).Position(),
+			EndPos:   ast.EndPos(expr).Position(),
+			Message:  err.Error(),
+		}
+	}
+	return nil
+}
+
+func typecheckValue(have value.Value, want reflect.Value) error {
+	// If value can be any type we don't have to check further.
+	if want.Kind() == reflect.Interface {
+		return nil
+	}
+
+	expected := value.AlloyType(want.Type())
+
+	if expected == value.TypeCapsule {
+		ok, _ := value.TryCapsuleConvert(have, want, expected)
+		// FIXME(kalleep): We should probably unwrap the capsule type.
+		if ok {
+			return nil
+		}
+
+		return value.TypeError{Value: have, Expected: expected}
+	}
+
+	if have.Type() != expected {
+		return value.TypeError{Value: have, Expected: expected}
+	}
+	return nil
+}
+
+func valueFromLiteralExpr(expr *ast.LiteralExpr) value.Value {
+	v, err := transform.ValueFromLiteral(expr.Value, expr.Kind)
+	// We don't expect to get error here because parser always produce valid tokens.
+	if err != nil {
+		panic(fmt.Sprintf("typecheck: unexpected error %s", err))
+	}
+	return v
 }

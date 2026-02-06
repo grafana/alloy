@@ -314,7 +314,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 		if err != nil {
 			return value.Null, err
 		}
-		return evalBinop(lhs, expr.Kind, rhs)
+		return transform.BinaryOp(lhs, expr.Kind, rhs)
 
 	case *ast.ArrayExpr:
 		vals := make([]value.Value, len(expr.Elements))
@@ -467,8 +467,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 		if err != nil {
 			return value.Null, err
 		}
-		return evalUnaryOp(expr.Kind, val)
-
+		return transform.UnaryOp(expr.Kind, val)
 	case *ast.CallExpr:
 		funcVal, err := vm.evaluateExpr(scope, assoc, expr.Value)
 		if err != nil {
