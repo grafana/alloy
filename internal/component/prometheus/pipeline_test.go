@@ -330,6 +330,32 @@ func BenchmarkPipelines(b *testing.B) {
 	}
 }
 
+// go test ./internal/component/prometheus -run '^TestDbgSeriesMappingPerf$' -cpuprofile cpu.pprof -memprofile mem.pprof
+func TestDbgSeriesMappingPerf(t *testing.T) {
+	mkPipeline := func(t testing.TB, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
+		return newRemoteWritePipeline(t, log.NewNopLogger(), rwComponents, appenders.Noop{}, refTrackingConfig)
+	}
+
+	const numberOfRWComponents = 2
+	const metricsCount = 1000
+	cfg := refTrackingConfig{
+		useLabelStore: false,
+	}
+
+	pipeline, ls, clearCache := mkPipeline(t, numberOfRWComponents, cfg)
+	metrics := setupMetrics(metricsCount)
+	defer clearCache()
+
+	for range metricsCount {
+		a := pipeline.Appender(t.Context())
+		for i, metric := range metrics {
+			ls.GetOrAddGlobalRefID(metric)
+			a.Append(0, metric, time.Now().UnixMilli(), float64(i))
+		}
+		a.Commit()
+	}
+}
+
 // go test -bench="BenchmarkSeriesMapping" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
 // benchstat -row ".name /remotewritecomponents /new-metrics" -col /reftrackingconfig benchmarks
 func BenchmarkSeriesMapping(b *testing.B) {
@@ -354,12 +380,12 @@ func BenchmarkSeriesMapping(b *testing.B) {
 		// 		useLabelStore: false,
 		// 	},
 		// },
-		{
-			numberOfRWComponents: 2,
-			refTrackingConfig: refTrackingConfig{
-				useLabelStore: true,
-			},
-		},
+		// {
+		// 	numberOfRWComponents: 2,
+		// 	refTrackingConfig: refTrackingConfig{
+		// 		useLabelStore: true,
+		// 	},
+		// },
 		{
 			numberOfRWComponents: 2,
 			refTrackingConfig: refTrackingConfig{
@@ -369,7 +395,8 @@ func BenchmarkSeriesMapping(b *testing.B) {
 	}
 
 	// Simulates appending various numbers of new metrics sequentially
-	numberOfMetrics := []int{10, 1000}
+	// numberOfMetrics := []int{10, 1000}
+	numberOfMetrics := []int{1000}
 	for _, n := range numberOfMetrics {
 		for _, config := range testConfigs {
 			testName := fmt.Sprintf("remotewritecomponents=%d/reftrackingconfig=%s/new-metrics=%d",
