@@ -1,0 +1,22 @@
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              access: alloy
+      ports:
+        - protocol: TCP
+          port: 12345
+  egress: null
+extraObjects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: extra-config
+      labels:
+        app.kubernetes.io/name: extra-config
+    data:
+      enabled: "true"

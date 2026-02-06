@@ -1,0 +1,23 @@
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  labels:
+    team: platform
+  path: /faro
+  pathType: Prefix
+  hosts:
+    - alloy.example.local
+  extraPaths:
+    - path: /healthz
+      pathType: Prefix
+      backend:
+        service:
+          name: alloy-health
+          port:
+            number: 80
+  tls:
+    - secretName: alloy-tls
+      hosts:
+        - alloy.example.local

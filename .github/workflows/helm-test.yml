@@ -46,6 +46,10 @@ jobs:
             exit 1
           fi
 
+      - name: Verify golden records
+        run: |
+          make test-helm-golden-records
+
   lint-test:
     runs-on: ubuntu-latest
     steps:

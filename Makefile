@@ -45,6 +45,8 @@
 ##   generate                  Generate everything.
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
+##   generate-helm-golden-records  Generate Helm chart golden records.
+##   test-helm-golden-records      Verify Helm chart golden records.
 ##   generate-ui               Generate the UI assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
@@ -247,7 +249,7 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+.PHONY: generate generate-helm-docs generate-helm-tests generate-helm-golden-records test-helm-golden-records generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
 generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
 
 generate-helm-docs:
@@ -262,6 +264,22 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	bash ./operations/helm/scripts/rebuild-tests.sh
+endif
+
+generate-helm-golden-records:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	# Convenience wrapper for running the Helm golden record generator.
+	$(MAKE) -C operations/helm generate-golden-records
+endif
+
+test-helm-golden-records:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	# Convenience wrapper for running the Helm golden record tests.
+	$(MAKE) -C operations/helm test-golden-records
 endif
 
 generate-module-dependencies:

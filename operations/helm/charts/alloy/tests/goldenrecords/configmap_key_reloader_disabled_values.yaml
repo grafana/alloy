@@ -1,0 +1,9 @@
+alloy:
+  configMap:
+    key: collector.yaml
+    content: |-
+      logging {
+        level = "debug"
+      }
+configReloader:
+  enabled: false

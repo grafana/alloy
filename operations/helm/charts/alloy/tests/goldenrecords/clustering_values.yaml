@@ -1,0 +1,6 @@
+alloy:
+  clustering:
+    enabled: true
+    name: test-cluster
+    portName: cluster
+  listenPort: 11111
