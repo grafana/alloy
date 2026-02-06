@@ -232,7 +232,6 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RUnlock()
 	}()
 
-	// Automatic reconnection ticker
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -251,8 +250,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 				if !hasCollectors {
 					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
-					if err := c.tryReconnect(ctx); err == nil {
-						level.Info(c.opts.Logger).Log("msg", "successfully reconnected to database and started collectors")
+					if err := c.tryReconnect(ctx); err != nil {
+						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
 					}
 				}
 			}

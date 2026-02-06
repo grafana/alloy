@@ -221,7 +221,6 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
-	wg           sync.WaitGroup // WaitGroup for goroutine management
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -269,21 +268,20 @@ func (c *Component) Run(ctx context.Context) error {
 			c.dbConnection.Close()
 		}
 		c.mut.RUnlock()
-		c.wg.Wait()
 	}()
 
-	// Start reconnection ticker goroutine
-	reconnectTicker := time.NewTicker(30 * time.Second)
-	defer reconnectTicker.Stop()
-
-	c.wg.Add(1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		defer c.wg.Done()
+		defer wg.Done()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-reconnectTicker.C:
+			case <-ticker.C:
 				c.mut.RLock()
 				hasCollectors := len(c.collectors) > 0
 				c.mut.RUnlock()
@@ -291,9 +289,7 @@ func (c *Component) Run(ctx context.Context) error {
 				if !hasCollectors {
 					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
 					if err := c.tryReconnect(ctx); err != nil {
-						level.Debug(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
-					} else {
-						level.Info(c.opts.Logger).Log("msg", "successfully reconnected to database")
+						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
 					}
 				}
 			}
@@ -303,6 +299,7 @@ func (c *Component) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			return nil
 		case entry := <-c.handler.Chan():
 			c.mut.RLock()
@@ -355,8 +352,6 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-// tryReconnect attempts to reconnect to the database and restart collectors
-// This is called by the reconnection ticker when no collectors are running
 func (c *Component) tryReconnect(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -367,7 +362,6 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	}
 
 	c.healthErr.Store("")
-	level.Info(c.opts.Logger).Log("msg", "database connection restored")
 	return nil
 }
 
