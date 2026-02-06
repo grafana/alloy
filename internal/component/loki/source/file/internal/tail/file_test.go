@@ -418,16 +418,57 @@ func TestFile(t *testing.T) {
 		utf16offsets = [3]int64{14, 26, 38}
 	)
 
+	var (
+		nopEncoder        = encoding.Nop.NewEncoder()
+		utf16beEncoder    = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
+		utf16beBOMEncoder = unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder()
+		utf16leEncoder    = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+		utf16leBOMEncoder = unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder()
+	)
+
 	t.Run("read gzip", func(t *testing.T) {
-		compressionTest(t, "plain", "gz", encoding.Nop.NewEncoder(), utf8offsets)
-		compressionTest(t, "utf-16be", "gz", unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
-		compressionTest(t, "utf-16le", "gz", unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
+		compressionTest(t, "plain", "gz", nopEncoder, utf8offsets)
+		compressionTest(t, "utf-16be", "gz", utf16beBOMEncoder, utf16offsets)
+		compressionTest(t, "utf-16le", "gz", utf16leBOMEncoder, utf16offsets)
 	})
 
 	t.Run("read zlib", func(t *testing.T) {
-		compressionTest(t, "plain", "z", encoding.Nop.NewEncoder(), utf8offsets)
-		compressionTest(t, "utf-16be", "z", unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
-		compressionTest(t, "utf-16le", "z", unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder(), utf16offsets)
+		compressionTest(t, "plain", "z", nopEncoder, utf8offsets)
+		compressionTest(t, "utf-16be", "z", utf16beBOMEncoder, utf16offsets)
+		compressionTest(t, "utf-16le", "z", utf16leBOMEncoder, utf16offsets)
+	})
+
+	t.Run("start from end", func(t *testing.T) {
+		startFromEndTest(t, "utf-8", nopEncoder, nopEncoder, false, 0, []Line{{Text: "line3", Offset: 18}})
+		startFromEndTest(t, "utf-16be", utf16beBOMEncoder, utf16beEncoder, false, 0, []Line{{Text: "line3", Offset: 38}})
+		startFromEndTest(t, "utf-16le", utf16leBOMEncoder, utf16leEncoder, false, 0, []Line{{Text: "line3", Offset: 38}})
+	})
+
+	t.Run("start from end with start offset", func(t *testing.T) {
+		startFromEndTest(t, "utf-8", nopEncoder, nopEncoder, false, 6, []Line{
+			{Text: "line2", Offset: 12},
+			{Text: "line3", Offset: 18},
+		})
+		startFromEndTest(t, "utf-8-cr", nopEncoder, nopEncoder, true, 7, []Line{
+			{Text: "line2", Offset: 14},
+			{Text: "line3", Offset: 21},
+		})
+		startFromEndTest(t, "utf-16be", utf16beBOMEncoder, utf16beEncoder, false, 14, []Line{
+			{Text: "line2", Offset: 26},
+			{Text: "line3", Offset: 38},
+		})
+		startFromEndTest(t, "utf-16be-cr", utf16beBOMEncoder, utf16beEncoder, true, 16, []Line{
+			{Text: "line2", Offset: 30},
+			{Text: "line3", Offset: 44},
+		})
+		startFromEndTest(t, "utf-16le", utf16leBOMEncoder, utf16leEncoder, false, 14, []Line{
+			{Text: "line2", Offset: 26},
+			{Text: "line3", Offset: 38},
+		})
+		startFromEndTest(t, "utf-16le", utf16leBOMEncoder, utf16leEncoder, true, 16, []Line{
+			{Text: "line2", Offset: 30},
+			{Text: "line3", Offset: 44},
+		})
 	})
 }
 
@@ -470,6 +511,51 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 		verifyResult(t, file, &Line{Text: "line2", Offset: offsets[1]}, nil)
 		verifyResult(t, file, &Line{Text: "line3", Offset: offsets[2]}, nil)
 		verifyResult(t, file, nil, io.EOF)
+	})
+}
+
+func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encoding.Encoder, useCR bool, offset int64, expected []Line) {
+	t.Run(name, func(t *testing.T) {
+		var (
+			content string
+			err     error
+		)
+
+		if useCR {
+			content, err = encoder.String("line1\r\nline2\r\n")
+		} else {
+			content, err = encoder.String("line1\nline2\n")
+		}
+		require.NoError(t, err)
+
+		var toAppend string
+
+		if useCR {
+			toAppend, err = appendEncoder.String("line3\r\n")
+		} else {
+			toAppend, err = appendEncoder.String("line3\n")
+		}
+		require.NoError(t, err)
+
+		name := createFile(t, name, content)
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:     name,
+			Offset:       offset,
+			StartFromEnd: true,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			appendToFile(t, name, toAppend)
+		}()
+
+		for _, line := range expected {
+			verifyResult(t, file, &line, nil)
+		}
 	})
 }
 

@@ -1,7 +1,5 @@
 package process
 
-// NOTE: This code is copied from Promtail (07cbef92268aecc0f20d1791a6df390c2df5c072) with changes kept to the minimum.
-
 import (
 	"context"
 	"fmt"
@@ -11,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -28,8 +28,55 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/loki/pkg/push"
 )
+
+func TestComponent(t *testing.T) {
+	t.Run("update with invalid stage config", func(t *testing.T) {
+		ctrl, err := componenttest.NewControllerFromID(log.NewNopLogger(), "loki.process")
+		require.NoError(t, err)
+
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.LogsReceiver{collector.Receiver()}}))
+		})
+		require.NoError(t, ctrl.WaitExports(time.Minute))
+
+		recv := ctrl.Exports().(Exports).Receiver
+		fanout := loki.NewFanout([]loki.LogsReceiver{recv})
+
+		wg.Go(func() {
+			for {
+				// We get error if context is canceled
+				if err := fanout.Send(ctx, loki.Entry{}); err != nil {
+					return
+				}
+			}
+		})
+
+		err = ctrl.Update(Arguments{
+			ForwardTo: []loki.LogsReceiver{collector.Receiver()},
+			Stages: []stages.StageConfig{
+				{
+					MatchConfig: &stages.MatchConfig{
+						// {} is not a valid selector.
+						Selector: "{}",
+					},
+				},
+			},
+		})
+		require.Error(t, err)
+
+		// Keep sending for a while after update have failed.
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+		wg.Wait()
+	})
+}
 
 const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
 
@@ -734,26 +781,41 @@ func TestMetricsStageRefresh(t *testing.T) {
 
 	numLogsToSend := 3
 
-	cfgWithMetric := `
+	cfg := `
+	stage.match {
+		selector = "{ test = \"\" }"
+
+		stage.metrics {
+			metric.counter {
+			  name = "inner_counter"
+			  action = "inc"
+			  match_all = true
+			}
+		}
+	}
+
 	stage.metrics {
         metric.counter {
-          name = "paulin_test"
+          name = "outer_counter"
           action = "inc"
           match_all = true
         }
 	}` + forwardArgs
 
-	cfgWithMetric_Metrics := `
-	# HELP loki_process_custom_paulin_test
-	# TYPE loki_process_custom_paulin_test counter
-	loki_process_custom_paulin_test{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	expectedMetrics := `
+	# HELP loki_process_custom_inner_counter
+	# TYPE loki_process_custom_inner_counter counter
+	loki_process_custom_inner_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_outer_counter
+	# TYPE loki_process_custom_outer_counter counter
+	loki_process_custom_outer_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
 	`
 
 	// The component will be reconfigured so that it has a metric.
 	t.Run("config with a metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfgWithMetric,
+		tester.updateAndTest(numLogsToSend, cfg,
 			"",
-			fmt.Sprintf(cfgWithMetric_Metrics, numLogsToSend))
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend))
 	})
 
 	// The component will be "updated" with the same config.
@@ -763,9 +825,9 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// which reloads the collector config every X seconds.
 	// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
 	t.Run("config with the same metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfgWithMetric,
-			fmt.Sprintf(cfgWithMetric_Metrics, numLogsToSend),
-			fmt.Sprintf(cfgWithMetric_Metrics, 2*numLogsToSend))
+		tester.updateAndTest(numLogsToSend, cfg,
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
+			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend))
 	})
 
 	// Use a config which has no metrics stage.
@@ -779,33 +841,49 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// as well as a metric with the same name as the one in the previous config.
 	// We try having a metric with the same name as before so that we can see if there
 	// is some sort of double registration error for that metric.
-	cfgWithTwoMetrics := `
+	updatedCfg := `
+	stage.match {
+		selector = "{ test = \"\" }"
+
+		stage.metrics {
+			metric.counter {
+			  name = "inner_counter"
+			  action = "inc"
+			  match_all = true
+			}
+		}
+	}
+
 	stage.metrics {
 		metric.counter {
-		  name = "paulin_test_3"
+		  name = "outer_counter"
 		  action = "inc"
 		  match_all = true
 		}
+
         metric.counter {
-          name = "paulin_test"
+          name = "outer_counter_2"
           action = "inc"
           match_all = true
         }
 	}` + forwardArgs
 
 	expectedMetrics3 := `
-	# HELP loki_process_custom_paulin_test_3
-	# TYPE loki_process_custom_paulin_test_3 counter
-	loki_process_custom_paulin_test_3{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
-	# HELP loki_process_custom_paulin_test
-	# TYPE loki_process_custom_paulin_test counter
-	loki_process_custom_paulin_test{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_inner_counter
+	# TYPE loki_process_custom_inner_counter counter
+	loki_process_custom_inner_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_outer_counter
+	# TYPE loki_process_custom_outer_counter counter
+	loki_process_custom_outer_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_outer_counter_2
+	# TYPE loki_process_custom_outer_counter_2 counter
+	loki_process_custom_outer_counter_2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
 	`
 
 	t.Run("config with a new and old metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfgWithTwoMetrics,
+		tester.updateAndTest(numLogsToSend, updatedCfg,
 			"",
-			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend))
+			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
 	})
 }
 
