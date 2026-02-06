@@ -127,42 +127,42 @@ The `profiling_config` block describes how async-profiler is invoked.
 
 The following arguments are supported:
 
-| Name            | Type           | Description                                                                                       | Default    | Required |
-| --------------- | -------------- | ------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `interval`      | `duration`     | How frequently to collect profiles from the targets.                                              | `"60s"`    | no       |
-| `all`           | `bool`         | Enable all profiling types simultaneously (cpu, wall, alloc, live, lock, native memory).          | `false`    | no       |
-| `cpu`           | `bool`         | Enable CPU profiling using the event specified in `event`.                                        | `true`     | no       |
-| `event`         | `string`       | Profiling event: `cpu`, `itimer`, `wall`, `alloc`, `lock`, `nativemem`, `cache-misses`            | `"itimer"` | no       |
-| `sample_rate`   | `int`          | CPU profiling sample rate in Hz (samples per second).                                             | `100`      | no       |
-| `alloc`         | `string`       | Allocation profiling interval (e.g., `512k`, `1m`). Empty string disables allocation profiling.   | `"512k"`   | no       |
-| `lock`          | `string`       | Lock profiling threshold (e.g., `10ms`, `100us`). Empty string disables lock profiling.           | `"10ms"`   | no       |
-| `per_thread`    | `bool`         | Profile threads separately. Each stack trace ends with a thread identifier frame.                 | `false`    | no       |
-| `log_level`     | `string`       | Async-profiler log level: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                   | `"INFO"`   | no       |
-| `quiet`         | `bool`         | Suppress "Profiling started/stopped" log messages.                                                | `false`    | no       |
-| `wall`          | `string`       | Wall-clock profiling interval (e.g., `100ms`). Profiles all threads regardless of status.         | `""`       | no       |
-| `live`          | `bool`         | Retain only live objects in allocation profiling (useful for finding memory leaks).               | `false`    | no       |
-| `native_mem`    | `string`       | Native memory allocation profiling interval (e.g., `1m`).                                         | `""`       | no       |
-| `no_free`       | `bool`         | Don't record free calls in native memory profiling.                                               | `false`    | no       |
-| `native_lock`   | `string`       | Native lock (pthread) profiling threshold (e.g., `10ms`).                                         | `""`       | no       |
-| `all_user`      | `bool`         | Include only user-mode events (helpful when kernel profiling is restricted).                      | `false`    | no       |
-| `filter`        | `string`       | Profile only specific thread IDs (e.g., `"120-127,132"`). Only applicable in wall-clock mode.     | `""`       | no       |
-| `sched`         | `bool`         | Group threads by Linux scheduling policy (BATCH/IDLE/OTHER).                                      | `false`    | no       |
-| `ttsp`          | `bool`         | Enable time-to-safepoint profiling.                                                               | `false`    | no       |
-| `begin`         | `string`       | Automatically start profiling when specified native function is executed.                         | `""`       | no       |
-| `end`           | `string`       | Automatically stop profiling when specified native function is executed.                          | `""`       | no       |
-| `nostop`        | `bool`         | Record profiling window between `begin` and `end` without stopping outside that window.           | `false`    | no       |
-| `proc`          | `string`       | Collect system process statistics at specified interval (e.g., `30s`).                            | `""`       | no       |
-| `target_cpu`    | `int`          | Sample only threads running on specified CPU (-1 for all CPUs).                                   | `-1`       | no       |
-| `record_cpu`    | `bool`         | Capture which CPU each sample was taken on.                                                       | `false`    | no       |
-| `include`       | `list(string)` | Include only stack traces matching these patterns (e.g., `["Primes.*", "java/*"]`).               | `[]`       | no       |
-| `exclude`       | `list(string)` | Exclude stack traces matching these patterns (e.g., `["*Unsafe.park*"]`).                         | `[]`       | no       |
-| `jstackdepth`   | `int`          | Maximum Java stack depth to capture.                                                              | `2048`     | no       |
-| `cstack`        | `string`       | C stack walking mode: `fp`, `dwarf`, `lbr`, `vm`, `vmx`, or `no`.                                 | `""`       | no       |
-| `features`      | `list(string)` | Stack walking features to enable (e.g., `["stats", "vtable"]`).                                   | `[]`       | no       |
-| `trace`         | `list(string)` | Java methods to trace with optional latency threshold (e.g., `["my.pkg.Method:50ms"]`).           | `[]`       | no       |
-| `jfrsync`       | `string`       | Start Java Flight Recording with specified configuration (e.g., `"default"`, `"profile"`).        | `""`       | no       |
-| `signal`        | `string`       | Alternative signal for profiling (e.g., `"SIGUSR1"` or `"SIGUSR1/SIGUSR2"` for CPU/WALL).         | `""`       | no       |
-| `clock`         | `string`       | Clock source for JFR timestamps: `tsc` or `monotonic`.                                            | `"tsc"`    | no       |
+| Name          | Type           | Description                                                                                             | Default    | Required |
+| ------------- | -------------- | ------------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| `all`         | `bool`         | Enable all profiling types simultaneously: `cpu`, `wall`, `alloc`, `live`, `lock`, and native memory.   | `false`    | no       |
+| `all_user`    | `bool`         | Include only user-mode events. This is helpful when kernel profiling is restricted.                     | `false`    | no       |
+| `alloc`       | `string`       | Allocation profiling interval, for example, `512k` or `1m`. Empty string disables allocation profiling. | `"512k"`   | no       |
+| `begin`       | `string`       | Automatically start profiling when specified native function is executed.                               | `""`       | no       |
+| `clock`       | `string`       | Clock source for Java Flight Recording timestamps: `tsc` or `monotonic`.                                | `""`       | no       |
+| `cpu`         | `bool`         | Enable CPU profiling using the event specified in `event`.                                              | `true`     | no       |
+| `cstack`      | `string`       | C stack walking mode: `fp`, `dwarf`, `lbr`, `vm`, `vmx`, or `no`.                                       | `""`       | no       |
+| `end`         | `string`       | Automatically stop profiling when specified native function is executed.                                | `""`       | no       |
+| `event`       | `string`       | Profiling event: `cpu`, `itimer`, `wall`, `alloc`, `lock`, `nativemem`, `cache-misses`                  | `"itimer"` | no       |
+| `exclude`     | `list(string)` | Exclude stack traces matching these patterns, for example, `["*Unsafe.park*"]`.                         | `[]`       | no       |
+| `features`    | `list(string)` | Stack walking features to enable, for example, `["stats", "vtable"]`.                                   | `[]`       | no       |
+| `filter`      | `string`       | Profile only specific thread IDs, for example, `"120-127,132"`. Only applicable in wall-clock mode.     | `""`       | no       |
+| `include`     | `list(string)` | Include only stack traces matching these patterns, for example, `["Primes.*", "java/*"]`.               | `[]`       | no       |
+| `interval`    | `duration`     | How frequently to collect profiles from the targets.                                                    | `"60s"`    | no       |
+| `jfrsync`     | `string`       | Start Java Flight Recording with specified configuration, for example, `"default"` or `"profile"`.      | `""`       | no       |
+| `jstackdepth` | `int`          | Maximum Java stack depth to capture.                                                                    | `2048`     | no       |
+| `live`        | `bool`         | Retain only live objects in allocation profiling. This is useful for finding memory leaks.              | `false`    | no       |
+| `lock`        | `string`       | Lock profiling threshold, for example, `10ms` or `100us`. Empty string disables lock profiling.         | `"10ms"`   | no       |
+| `log_level`   | `string`       | Async-profiler log level: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                         | `"INFO"`   | no       |
+| `native_lock` | `string`       | Native lock `pthread` profiling threshold, for example, `10ms`.                                         | `""`       | no       |
+| `native_mem`  | `string`       | Native memory allocation profiling interval, for example, `1m`.                                         | `""`       | no       |
+| `no_free`     | `bool`         | Don't record free calls in native memory profiling.                                                     | `false`    | no       |
+| `nostop`      | `bool`         | Record profiling window between `begin` and `end` without stopping outside that window.                 | `false`    | no       |
+| `per_thread`  | `bool`         | Profile threads separately. Each stack trace ends with a thread identifier frame.                       | `false`    | no       |
+| `proc`        | `string`       | Collect system process statistics at specified interval, for example, `30s`.                            | `""`       | no       |
+| `quiet`       | `bool`         | Suppress "Profiling started/stopped" log messages.                                                      | `false`    | no       |
+| `record_cpu`  | `bool`         | Capture which CPU each sample was taken on.                                                             | `false`    | no       |
+| `sample_rate` | `int`          | CPU profiling sample rate in Hz (samples per second).                                                   | `100`      | no       |
+| `sched`       | `bool`         | Group threads by Linux scheduling policy (BATCH/IDLE/OTHER).                                            | `false`    | no       |
+| `signal`      | `string`       | Alternative signal for profiling, for example, `"SIGUSR1"` or `"SIGUSR1/SIGUSR2"` for CPU and wall.     | `""`       | no       |
+| `target_cpu`  | `int`          | Sample only threads running on specified CPU. Set to `-1` for all CPUs.                                 | `-1`       | no       |
+| `trace`       | `list(string)` | Java methods to trace with optional latency threshold, for example, `["my.pkg.Method:50ms"]`.           | `[]`       | no       |
+| `ttsp`        | `bool`         | Enable time-to-safepoint profiling.                                                                     | `false`    | no       |
+| `wall`        | `string`       | Wall-clock profiling interval, for example, `100ms`. Profiles all threads regardless of status.         | `""`       | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md) for more information about async-profiler configuration.
 
