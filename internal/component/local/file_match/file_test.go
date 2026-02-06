@@ -236,6 +236,84 @@ func TestExclude(t *testing.T) {
 	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
 }
 
+// TestMultiplePatterns verifies that the {a,b,c} pattern syntax works for matching
+// multiple file extensions, multiple directories, and excluding multiple file types
+// in a single glob pattern. This mirrors the documentation example.
+// This is a feature of doublestar v4: https://github.com/grafana/alloy/issues/4423
+func TestMultiplePatterns(t *testing.T) {
+	dir := path.Join(os.TempDir(), "alloy_testing", "multi_pattern")
+	err := os.MkdirAll(dir, 0755)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.RemoveAll(dir)
+	})
+
+	// Create directory structure matching the documentation example:
+	// {nginx,apache,caddy}/*.{log,txt,json} excluding *.{gz,zip,bak,old}
+	for _, subdir := range []string{"nginx", "apache", "caddy", "other"} {
+		subdirPath := path.Join(dir, subdir)
+		err := os.MkdirAll(subdirPath, 0755)
+		require.NoError(t, err)
+
+		// Create files with various extensions in each directory
+		testutil.WriteFile(t, subdirPath, "access.log")
+		testutil.WriteFile(t, subdirPath, "error.txt")
+		testutil.WriteFile(t, subdirPath, "config.json")
+		testutil.WriteFile(t, subdirPath, "debug.yaml")      // Should not match (wrong extension)
+		testutil.WriteFile(t, subdirPath, "access.log.gz")   // Should be excluded
+		testutil.WriteFile(t, subdirPath, "error.txt.zip")   // Should be excluded
+		testutil.WriteFile(t, subdirPath, "config.json.bak") // Should be excluded
+		testutil.WriteFile(t, subdirPath, "old.log.old")     // Should be excluded
+	}
+
+	// Use pattern matching multiple directories and extensions with exclusions
+	// This mirrors: /var/log/{nginx,apache,caddy}/*.{log,txt,json} excluding *.{gz,zip,bak,old}
+	includePath := path.Join(dir, "{nginx,apache,caddy}", "*.{log,txt,json}")
+	excludePath := path.Join(dir, "{nginx,apache,caddy}", "*.{gz,zip,bak,old}")
+
+	c := testCreateComponent(t, dir, []string{includePath}, []string{excludePath})
+	c.args.SyncPeriod = 10 * time.Millisecond
+	err = c.Update(c.args)
+	require.NoError(t, err)
+
+	foundFiles := c.getWatchedFiles()
+
+	// Expected files: 3 directories × 3 extensions
+	expectedFiles := []string{
+		path.Join("nginx", "access.log"),
+		path.Join("nginx", "error.txt"),
+		path.Join("nginx", "config.json"),
+		path.Join("apache", "access.log"),
+		path.Join("apache", "error.txt"),
+		path.Join("apache", "config.json"),
+		path.Join("caddy", "access.log"),
+		path.Join("caddy", "error.txt"),
+		path.Join("caddy", "config.json"),
+	}
+
+	require.Len(t, foundFiles, len(expectedFiles),
+		"Expected %d files: %v", len(expectedFiles), expectedFiles)
+
+	// Verify all expected files are matched
+	for _, expected := range expectedFiles {
+		require.True(t, testutil.ContainsPath(foundFiles, expected),
+			"%s should be matched", expected)
+	}
+
+	// Verify files from "other" directory are NOT matched (wrong directory)
+	require.False(t, testutil.ContainsPath(foundFiles, path.Join("other", "access.log")),
+		"other/access.log should not be matched (wrong directory)")
+
+	// Verify excluded extensions are NOT matched
+	require.False(t, testutil.ContainsPath(foundFiles, "access.log.gz"), ".gz files should be excluded")
+	require.False(t, testutil.ContainsPath(foundFiles, "error.txt.zip"), ".zip files should be excluded")
+	require.False(t, testutil.ContainsPath(foundFiles, "config.json.bak"), ".bak files should be excluded")
+	require.False(t, testutil.ContainsPath(foundFiles, "old.log.old"), ".old files should be excluded")
+
+	// Verify wrong extensions are NOT matched
+	require.False(t, testutil.ContainsPath(foundFiles, "debug.yaml"), ".yaml files should not be matched")
+}
+
 func TestMultiLabels(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
