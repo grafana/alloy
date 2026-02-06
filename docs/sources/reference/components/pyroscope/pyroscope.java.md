@@ -186,7 +186,7 @@ The `event` argument specifies what to profile. It supports various event types:
 
 **Java method profiling:**
 
-* `ClassName.methodName` - Profile all invocations of a specific Java method (e.g., `java.util.Properties.getProperty`).
+* `ClassName.methodName` - Profile all invocations of a specific Java method, for example, `java.util.Properties.getProperty`.
 
 **Native function profiling:**
 
