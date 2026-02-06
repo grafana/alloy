@@ -18,8 +18,8 @@ type mappingStore interface {
 	GetMapping(uniqueRef storage.SeriesRef) []storage.SeriesRef
 	CreateMapping(refResults []storage.SeriesRef) storage.SeriesRef
 	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef)
-	TrackAppendedSeries(ts int64, refs []storage.SeriesRef)
-	GetSliceForAppendedSeries() []storage.SeriesRef
+	TrackAppendedSeries(ts int64, cell *Cell)
+	GetCellForAppendedSeries() *Cell
 }
 
 type seriesRefMapping struct {
@@ -27,7 +27,7 @@ type seriesRefMapping struct {
 	children []storage.Appender
 	store    mappingStore
 
-	appendedUniqueRefs []storage.SeriesRef
+	uniqueRefCell *Cell
 
 	// childRefs is reused for each append call to avoid allocations. This is safe because storage.Appender should never
 	// have concurrent calls to Append methods.
@@ -37,7 +37,7 @@ type seriesRefMapping struct {
 }
 
 func NewSeriesRefMapping(children []storage.Appender, store mappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
-	appendedUniqueRefs := store.GetSliceForAppendedSeries()
+	uniqueRefCell := store.GetCellForAppendedSeries()
 
 	return &seriesRefMapping{
 		children:         children,
@@ -45,8 +45,8 @@ func NewSeriesRefMapping(children []storage.Appender, store mappingStore, writeL
 		writeLatency:     writeLatency,
 		samplesForwarded: samplesForwarded,
 
-		appendedUniqueRefs: appendedUniqueRefs,
-		childRefs:          make([]storage.SeriesRef, 0, len(children)),
+		uniqueRefCell: uniqueRefCell,
+		childRefs:     make([]storage.SeriesRef, 0, len(children)),
 	}
 }
 
@@ -57,7 +57,7 @@ func (s *seriesRefMapping) SetOptions(opts *storage.AppendOptions) {
 }
 
 func (s *seriesRefMapping) Commit() error {
-	s.store.TrackAppendedSeries(time.Now().Unix(), s.appendedUniqueRefs)
+	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
 
 	var multiErr error
 	for _, c := range s.children {
@@ -72,7 +72,7 @@ func (s *seriesRefMapping) Commit() error {
 func (s *seriesRefMapping) Rollback() error {
 	// We still track rolled back series so we can properly
 	// clean up any series that was appended
-	s.store.TrackAppendedSeries(time.Now().Unix(), s.appendedUniqueRefs)
+	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
 
 	var multiErr error
 	for _, c := range s.children {
@@ -153,7 +153,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, af appenderFu
 
 	// Sanity check: if we have existing child refs, they must match the number of children
 	if existingChildRefs != nil && len(existingChildRefs) == len(s.children) {
-		s.appendedUniqueRefs = append(s.appendedUniqueRefs, ref)
+		s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, ref)
 
 		refUpdateRequired := false
 		for childIndex, childRef := range existingChildRefs {
@@ -220,7 +220,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, af appenderFu
 
 	// We got different refs back and need to create a new mapping
 	uniqueRef := s.store.CreateMapping(s.childRefs)
-	s.appendedUniqueRefs = append(s.appendedUniqueRefs, uniqueRef)
+	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
 	return uniqueRef, nil
 }
 
@@ -228,7 +228,7 @@ type SeriesRefMappingStore struct {
 	// refMappingMu protects uniqueRefToChildRefs and nextUniqueRef
 	refMappingMu sync.RWMutex
 	// uniqueRefToChildRefs maps the unique ref to the expected child ref in order
-	uniqueRefToChildRefs map[storage.SeriesRef][]storage.SeriesRef
+	uniqueRefToChildRefs map[storage.SeriesRef]*[]storage.SeriesRef
 	// nextUniqueRef is the next ref ID we will hand out
 	nextUniqueRef storage.SeriesRef
 
@@ -236,7 +236,7 @@ type SeriesRefMappingStore struct {
 	timestampTrackingMu sync.Mutex
 	// uniqueRefTimestamps maps unique refs to their last append timestamp
 	uniqueRefTimestamps map[storage.SeriesRef]int64
-	// appendedUniqueRefsSlicePool is used to pool slices of SeriesRefs used for tracking appendedUniqueRefs
+	// appendedUniqueRefsSlicePool is used to pool slices of SeriesRefs used for tracking uniqueRefCell
 	appendedUniqueRefsSlicePool sync.Pool
 
 	// Cleanup goroutine coordination (no lock required)
@@ -278,12 +278,12 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 	}
 
 	return &SeriesRefMappingStore{
-		uniqueRefToChildRefs: make(map[storage.SeriesRef][]storage.SeriesRef),
+		uniqueRefToChildRefs: make(map[storage.SeriesRef]*[]storage.SeriesRef),
 		nextUniqueRef:        1,
 		uniqueRefTimestamps:  make(map[storage.SeriesRef]int64),
 		appendedUniqueRefsSlicePool: sync.Pool{
 			New: func() any {
-				return make([]storage.SeriesRef, 0, 100)
+				return &Cell{Refs: make([]storage.SeriesRef, 100)}
 			},
 		},
 		stopCleanup:     make(chan struct{}),
@@ -293,6 +293,10 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		refsCleaned:     refsCleaned,
 		uniqueRefsTotal: uniqueRefsTotal,
 	}
+}
+
+type Cell struct {
+	Refs []storage.SeriesRef
 }
 
 // GetMapping returns existing child ref results for the given unique ref if one exists.
@@ -311,7 +315,7 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef) []storag
 	defer s.refMappingMu.RUnlock()
 
 	if childRefs, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
-		return childRefs
+		return *childRefs
 	}
 	return nil
 }
@@ -335,7 +339,7 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef) st
 	uniqueRef := s.nextUniqueRef
 	s.nextUniqueRef++
 
-	s.uniqueRefToChildRefs[uniqueRef] = childRefSlice
+	s.uniqueRefToChildRefs[uniqueRef] = &childRefSlice
 
 	s.activeMappings.Inc()
 	s.uniqueRefsTotal.Inc()
@@ -354,25 +358,25 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
 
-	s.uniqueRefToChildRefs[uniqueRef] = childRefSlice
+	s.uniqueRefToChildRefs[uniqueRef] = &childRefSlice
 }
 
-func (s *SeriesRefMappingStore) TrackAppendedSeries(ts int64, refs []storage.SeriesRef) {
+func (s *SeriesRefMappingStore) TrackAppendedSeries(ts int64, cell *Cell) {
 	s.timestampTrackingMu.Lock()
 	defer s.timestampTrackingMu.Unlock()
 
-	for _, r := range refs {
+	for _, r := range cell.Refs {
 		s.uniqueRefTimestamps[r] = ts
 	}
 
 	s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
 
-	refs = refs[:0]
-	s.appendedUniqueRefsSlicePool.Put(refs)
+	cell.Refs = cell.Refs[:0]
+	s.appendedUniqueRefsSlicePool.Put(cell)
 }
 
-func (s *SeriesRefMappingStore) GetSliceForAppendedSeries() []storage.SeriesRef {
-	return s.appendedUniqueRefsSlicePool.Get().([]storage.SeriesRef)
+func (s *SeriesRefMappingStore) GetCellForAppendedSeries() *Cell {
+	return s.appendedUniqueRefsSlicePool.Get().(*Cell)
 }
 
 func (s *SeriesRefMappingStore) cleanupStaleRefs() {
@@ -387,7 +391,7 @@ func (s *SeriesRefMappingStore) cleanupStaleRefs() {
 			cutoffTime := time.Now().Add(-15 * time.Minute).Unix()
 
 			// Hold both locks to prevent race condition where a ref could be
-			// appended after we delete it from appendedUniqueRefs but before
+			// appended after we delete it from uniqueRefCell but before
 			// we delete it from uniqueRefToChildRefs
 			s.timestampTrackingMu.Lock()
 			s.refMappingMu.Lock()
