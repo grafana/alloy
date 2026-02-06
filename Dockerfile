@@ -61,6 +61,11 @@ RUN apt-get update \
 COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /bin/alloy
 COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
 
+# Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY packaging/docker/otelcol.sh /bin/otelcol
+RUN chmod 755 /bin/otelcol
+
 # Create alloy user in container, but do not set it as default
 #
 # NOTE: non-root support in Docker containers is an experimental,
