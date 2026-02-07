@@ -31,10 +31,11 @@ const (
 const (
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
 	selectAllDatabases = `
-		SELECT datname 
-		FROM pg_database 
+		SELECT datname
+		FROM pg_database
 		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')`
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN %s`
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
@@ -67,7 +68,8 @@ const (
 		pg_attribute: stores column information
 		pg_attrdef: stores default values for columns
 		pg_constraint: stores primary key information
-		attr.attrelid = $1::regclass -- filter by the table name
+		JOIN pg_class to filter by table name
+		JOIN pg_namespace to filter by schema name
 		AND attr.attnum > 0  -- no system columns
 		AND NOT attr.attisdropped -- no dropped columns`
 	*/
@@ -84,10 +86,13 @@ const (
 		END as is_primary_key
 	FROM
 		pg_attribute attr
+		JOIN pg_catalog.pg_class pg_class ON attr.attrelid = pg_class.oid
+		JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
 		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum
 		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p'
 	WHERE
-		attr.attrelid = $1::regclass
+		pg_namespace.nspname = $1
+		AND pg_class.relname = $2
 		AND attr.attnum > 0
 		AND NOT attr.attisdropped`
 
@@ -206,9 +211,11 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
-type database string
-type schema string
-type table string
+type (
+	database string
+	schema   string
+	table    string
+)
 
 // TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
 type TableRegistry struct {
@@ -278,10 +285,11 @@ func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
 }
 
 type SchemaDetailsArguments struct {
-	DB              *sql.DB
-	DSN             string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
+	DB               *sql.DB
+	DSN              string
+	CollectInterval  time.Duration
+	ExcludeDatabases []string
+	EntryHandler     loki.EntryHandler
 
 	CacheEnabled bool
 	CacheSize    int
@@ -297,6 +305,7 @@ type SchemaDetails struct {
 	dbDSN               string
 	dbConnectionFactory databaseConnectionFactory
 	collectInterval     time.Duration
+	excludeDatabases    []string
 	entryHandler        loki.EntryHandler
 
 	// Cache of table definitions. Entries are removed after a configurable TTL.
@@ -323,6 +332,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbDSN:               args.DSN,
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
+		excludeDatabases:    args.ExcludeDatabases,
 		entryHandler:        args.EntryHandler,
 		tableRegistry:       NewTableRegistry(),
 		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
@@ -387,7 +397,8 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	rows, err := c.initialConnection.QueryContext(ctx, selectAllDatabases)
+	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(c.excludeDatabases))
+	rows, err := c.initialConnection.QueryContext(ctx, query)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
 		return nil, fmt.Errorf("failed to discover databases: %w", err)
@@ -475,7 +486,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		}
 
 		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
+			return fmt.Errorf("failed to iterate over tables result set for database %q schema %q: %w", dbName, schemaName, err)
 		}
 	}
 
@@ -500,7 +511,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		if !cacheHit {
 			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "err", err)
+				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
 				continue
 			}
 			if c.cache != nil {
@@ -577,8 +588,7 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 }
 
 func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName database, schemaName schema, tableName table, dbConnection *sql.DB) (*tableSpec, error) {
-	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
-	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
+	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err

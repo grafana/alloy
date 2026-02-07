@@ -88,11 +88,11 @@ func TestConvToMetricType(t *testing.T) {
 			wantMonotonic: true,
 		},
 		{
-				name:          "model.histogram",
-				mtype:         model.MetricTypeHistogram,
-				isExponential: true,
-				want:          pmetric.MetricTypeExponentialHistogram,
-				wantMonotonic: true,
+			name:          "model.histogram",
+			mtype:         model.MetricTypeHistogram,
+			isExponential: true,
+			want:          pmetric.MetricTypeExponentialHistogram,
+			wantMonotonic: true,
 		},
 		{
 			name:          "model.summary",

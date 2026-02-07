@@ -1509,7 +1509,7 @@ service:
 			require.NoError(t, err)
 
 			// convert actual config to otel config
-			otelMapStructure := map[string]interface{}{}
+			otelMapStructure := map[string]any{}
 			err = yaml.Unmarshal([]byte(tc.expectedConfig), otelMapStructure)
 			require.NoError(t, err)
 

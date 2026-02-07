@@ -579,7 +579,7 @@ func (f fakeHost) NewController(id string) service.Controller {
 		DataPath:        "",
 		MinStability:    featuregate.StabilityGenerallyAvailable,
 		Reg:             prometheus.NewRegistry(),
-		OnExportsChange: func(map[string]interface{}) {},
+		OnExportsChange: func(map[string]any) {},
 		Services:        []service.Service{livedebugging.New()},
 	})
 
@@ -869,4 +869,51 @@ func TestEffectiveConfigInGetConfig(t *testing.T) {
 	captureMutex.Unlock()
 	assert.NotNil(t, captured, "effective config should be sent after change")
 	assert.Equal(t, []byte("updated running config"), captured.ConfigMap.ConfigMap[""].Body)
+}
+
+func TestUnregisterCollectorOnShutdown(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+
+	cfg := `loki.process "default" { forward_to = [] }`
+	client := &mockCollectorClient{}
+
+	var registerCalled atomic.Bool
+	var unregisterCalled atomic.Bool
+	client.getConfigFunc = buildGetConfigHandler(cfg, "", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.unregisterCollectorFunc = buildUnregisterCollectorFunc(&unregisterCalled)
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url            = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Go(func() {
+		require.NoError(t, env.Run(ctx))
+	})
+	defer func() { cancel(); wg.Wait() }()
+
+	// Wait for registration to complete.
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Verify unregister hasn't been called yet.
+	assert.False(t, unregisterCalled.Load(), "unregister should not be called while service is running")
+
+	// Cancel the context to trigger shutdown.
+	cancel()
+	wg.Wait()
+
+	// Verify unregister was called during shutdown.
+	assert.True(t, unregisterCalled.Load(), "unregister should be called on shutdown")
+}
+
+func buildUnregisterCollectorFunc(called *atomic.Bool) func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+	return func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+		called.Store(true)
+		return &connect.Response[collectorv1.UnregisterCollectorResponse]{
+			Msg: &collectorv1.UnregisterCollectorResponse{},
+		}, nil
+	}
 }

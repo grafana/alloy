@@ -47,7 +47,7 @@ jobs:
     steps:
 
     - name: Get Vault secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760 # get-vault-secrets-v1.1.0
+      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
       with:
         common_secrets: |
           GITHUB_APP_ID=updater-app:app-id
@@ -55,7 +55,7 @@ jobs:
           GITHUB_APP_PRIVATE_KEY=updater-app:private-key
 
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
 
@@ -96,7 +96,7 @@ jobs:
           "update_jsonnet_attribute_configs": [
             {
               "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
-              "jsonnet_key": "dev_canary",
+              "jsonnet_key": "dev0",
               "jsonnet_value_file": ".image-tag"
             }
           ]

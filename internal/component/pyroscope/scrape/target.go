@@ -97,7 +97,7 @@ func NewTarget(lbls labels.Labels, params url.Values) *Target {
 	url := urlFromTarget(lbls, params)
 
 	h := fnv.New64a()
-	_, _ = h.Write([]byte(strconv.FormatUint(publicLabels.Hash(), 16)))
+	_, _ = h.Write([]byte(strconv.FormatUint(labels.StableHash(publicLabels), 16)))
 	_, _ = h.Write([]byte(url))
 
 	return &Target{

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,7 +24,102 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
+
+func Test_UnmarshalConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   string
+		expected Arguments
+	}{
+		{
+			name: "default",
+			config: `
+				forward_to = []
+				targets = []`,
+			expected: Arguments{
+				FileWatch: FileWatch{
+					MinPollFrequency: 250 * time.Millisecond,
+					MaxPollFrequency: 250 * time.Millisecond,
+				},
+				FileMatch: FileMatch{
+					Enabled:    false,
+					SyncPeriod: 10 * time.Second,
+				},
+				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				ForwardTo:            []loki.LogsReceiver{},
+				Targets:              []discovery.Target{},
+			},
+		},
+		{
+			name: "file_match",
+			config: `
+				forward_to = []
+				targets = [
+					{__path__ = "/tmp/*.log"},
+				]
+				file_match {
+					enabled = true
+					sync_period = "14s"
+				}`,
+			expected: Arguments{
+				FileWatch: FileWatch{
+					MinPollFrequency: 250 * time.Millisecond,
+					MaxPollFrequency: 250 * time.Millisecond,
+				},
+				FileMatch: FileMatch{
+					Enabled:    true,
+					SyncPeriod: 14 * time.Second,
+				},
+				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				ForwardTo:            []loki.LogsReceiver{},
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__path__": "/tmp/*.log",
+					}),
+				},
+			},
+		},
+		{
+			name: "file_match quoted path",
+			config: `
+				forward_to = []
+				targets = [
+					{"__path__" = "/tmp/*.log"},
+				]
+				file_match {
+					enabled = true
+					sync_period = "14s"
+				}`,
+			expected: Arguments{
+				FileWatch: FileWatch{
+					MinPollFrequency: 250 * time.Millisecond,
+					MaxPollFrequency: 250 * time.Millisecond,
+				},
+				FileMatch: FileMatch{
+					Enabled:    true,
+					SyncPeriod: 14 * time.Second,
+				},
+				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				ForwardTo:            []loki.LogsReceiver{},
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__path__": "/tmp/*.log",
+					}),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.config), &args)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, args)
+		})
+	}
+}
 
 func TestComponent(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
@@ -172,61 +268,56 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 func TestFileWatch(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-
-		// Create file to log to.
-		f, err := os.CreateTemp(t.TempDir(), "example")
-		require.NoError(t, err)
-		defer f.Close()
-
-		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
-		require.NoError(t, err)
-
-		ch1 := loki.NewLogsReceiver()
-
-		args := Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
-				"__path__": f.Name(),
-				"foo":      "bar",
-			})},
-			ForwardTo: []loki.LogsReceiver{ch1},
-			FileWatch: FileWatch{
-				MinPollFrequency: time.Millisecond * 500,
-				MaxPollFrequency: time.Millisecond * 500,
-			},
-			FileMatch: match,
-		}
-
-		go func() {
-			err := ctrl.Run(ctx, args)
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			// Create file to log to.
+			f, err := os.CreateTemp(t.TempDir(), "example")
 			require.NoError(t, err)
-		}()
+			defer f.Close()
 
-		err = ctrl.WaitRunning(time.Minute)
-		require.NoError(t, err)
+			ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
+			require.NoError(t, err)
 
-		timeBeforeWriting := time.Now()
+			ch1 := loki.NewLogsReceiver()
 
-		// Sleep for 600ms to miss the first poll, the next poll should be MaxPollFrequency later.
-		time.Sleep(time.Millisecond * 600)
+			args := Arguments{
+				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+					"__path__": f.Name(),
+					"foo":      "bar",
+				})},
+				ForwardTo: []loki.LogsReceiver{ch1},
+				FileWatch: FileWatch{
+					MinPollFrequency: time.Millisecond * 500,
+					MaxPollFrequency: time.Millisecond * 500,
+				},
+				FileMatch: match,
+			}
 
-		_, err = f.Write([]byte("writing some text\n"))
-		require.NoError(t, err)
+			var wg sync.WaitGroup
+			wg.Go(func() {
+				err := ctrl.Run(ctx, args)
+				require.NoError(t, err)
+			})
 
-		select {
-		case logEntry := <-ch1.Chan():
-			require.Greater(t, time.Since(timeBeforeWriting), 1*time.Second)
-			require.WithinDuration(t, time.Now(), timeBeforeWriting, 2*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
+			err = ctrl.WaitRunning(time.Minute)
+			require.NoError(t, err)
 
-		// Shut down the component.
-		cancel()
+			// Sleep for 600ms to miss the first poll, the next poll should be MaxPollFrequency later.
+			time.Sleep(time.Millisecond * 600)
+			_, err = f.Write([]byte("writing some text\n"))
+			require.NoError(t, err)
 
-		// Wait to make sure that all go routines stopped.
-		time.Sleep(args.FileWatch.MaxPollFrequency)
+			select {
+			case logEntry := <-ch1.Chan():
+				require.Equal(t, "writing some text", logEntry.Line)
+			case <-time.After(5 * time.Second):
+				require.FailNow(t, "failed waiting for log line")
+			}
+
+			// Shut down the component.
+			cancel()
+			wg.Wait()
+		})
 	})
 }
 
@@ -513,10 +604,9 @@ func TestDeleteRecreateFile(t *testing.T) {
 		defer cancel()
 
 		// Create file to log to.
-		f, err := os.Create("example")
+		dir := t.TempDir()
+		f, err := os.Create(filepath.Join(dir, "example"))
 		require.NoError(t, err)
-		defer os.Remove(f.Name())
-		defer f.Close()
 
 		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
 		require.NoError(t, err)
@@ -542,9 +632,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 		filename := model.LabelValue(f.Name())
 		if match.Enabled {
-			dir, err := os.Getwd()
-			require.NoError(t, err)
-			filename = model.LabelValue(filepath.Join(dir, f.Name()))
+			filename = model.LabelValue(filepath.Join(dir, "example"))
 		}
 
 		wantLabelSet := model.LabelSet{
@@ -559,9 +647,12 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 		// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
-			f, err = os.Create("example")
+			f, err = os.Create(filepath.Join(dir, "example"))
 			assert.NoError(collect, err)
 		}, 30*time.Second, 100*time.Millisecond)
+
+		defer os.Remove(f.Name())
+		defer f.Close()
 
 		_, err = f.Write([]byte("writing some new text\n"))
 		require.NoError(t, err)

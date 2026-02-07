@@ -20,12 +20,9 @@ import (
 	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/mimir/util"
 	"github.com/grafana/alloy/internal/mimir/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-)
-
-const (
-	eventTypeSyncMimir kubernetes.EventType = "sync-mimir"
 )
 
 var sourceTenantsRegex = regexp.MustCompile(`\s*,\s*`)
@@ -35,7 +32,7 @@ type eventProcessor struct {
 	stopChan chan struct{}
 	health   healthReporter
 
-	mimirClient        client.Interface
+	mimirClient        client.RulerInterface
 	namespaceLister    coreListers.NamespaceLister
 	ruleLister         promListers.PrometheusRuleLister
 	namespaceSelector  labels.Selector
@@ -106,7 +103,7 @@ func (e *eventProcessor) processEvent(ctx context.Context, event kubernetes.Even
 	switch event.Typ {
 	case kubernetes.EventTypeResourceChanged:
 		level.Info(e.logger).Log("msg", "processing event", "type", event.Typ, "key", event.ObjectKey)
-	case eventTypeSyncMimir:
+	case util.EventTypeSyncMimir:
 		level.Debug(e.logger).Log("msg", "syncing current state from ruler")
 		err := e.syncMimir(ctx)
 		if err != nil {
@@ -121,7 +118,7 @@ func (e *eventProcessor) processEvent(ctx context.Context, event kubernetes.Even
 
 func (e *eventProcessor) enqueueSyncMimir() {
 	e.queue.Add(kubernetes.Event{
-		Typ: eventTypeSyncMimir,
+		Typ: util.EventTypeSyncMimir,
 	})
 }
 

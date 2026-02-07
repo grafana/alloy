@@ -50,22 +50,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 1000,
 					TTL:      2 * time.Second,
 				},
-				CacheLoop:              1 * time.Minute,
-				StoreExpirationLoop:    2 * time.Second,
-				DatabaseNameAttributes: []string{"db.name"},
-				MetricsFlushInterval:   ptr(60 * time.Second),
-				//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-				// the "processor.servicegraph.virtualNode" feature gate.
-				// VirtualNodePeerAttributes: []string{
-				// 				"db.name",
-				// 				"net.sock.peer.addr",
-				// 				"net.peer.name",
-				// 				"rpc.service",
-				// 				"net.sock.peer.name",
-				// 				"net.peer.name",
-				// 				"http.url",
-				// 				"http.target",
-				// 			},
+				CacheLoop:                 1 * time.Minute,
+				StoreExpirationLoop:       2 * time.Second,
+				VirtualNodePeerAttributes: []string{"peer.service", "db.name", "db.system"},
+				VirtualNodeExtraLabel:     false,
+				DatabaseNameAttributes:    []string{"db.name"},
+				MetricsFlushInterval:      ptr(60 * time.Second),
 			},
 		},
 		{
@@ -79,6 +69,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					}
 					cache_loop = "55m"
 					store_expiration_loop = "77s"
+					virtual_node_peer_attributes = ["attr1", "attr2"]
+					virtual_node_extra_label = true
 					metrics_flush_interval = "5s"
 					exponential_histogram_max_size = 160
 					output {}
@@ -96,12 +88,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				CacheLoop:                   55 * time.Minute,
 				StoreExpirationLoop:         77 * time.Second,
+				VirtualNodePeerAttributes:   []string{"attr1", "attr2"},
+				VirtualNodeExtraLabel:       true,
 				DatabaseNameAttributes:      []string{"db.name"},
 				MetricsFlushInterval:        ptr(5 * time.Second),
 				ExponentialHistogramMaxSize: 160,
-				//TODO: Ad VirtualNodePeerAttributes when it's no longer controlled by
-				// the "processor.servicegraph.virtualNode" feature gate.
-				// VirtualNodePeerAttributes: []string{"attr1", "attr2"},
 			},
 		},
 		{

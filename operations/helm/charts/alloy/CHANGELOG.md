@@ -18,7 +18,7 @@ Unreleased
 
 - Correct `extraEnv` indentation in container template (@orkhan-huseyn)
 - Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
- 
+
 1.4.0 (2025-10-27)
 ----------
 

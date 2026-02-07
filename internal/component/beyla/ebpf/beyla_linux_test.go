@@ -12,15 +12,14 @@ import (
 	"time"
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
-	"github.com/grafana/beyla/v2/pkg/config"
 	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/obi/pkg/appolly/services"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
 	"go.opentelemetry.io/obi/pkg/filter"
-	"go.opentelemetry.io/obi/pkg/kubeflags"
-	"go.opentelemetry.io/obi/pkg/services"
+	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
 	"go.opentelemetry.io/obi/pkg/transform"
 
 	"github.com/go-kit/log"
@@ -28,6 +27,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
+	obiCfg "go.opentelemetry.io/obi/pkg/config"
 )
 
 func TestArguments_UnmarshalSyntax(t *testing.T) {
@@ -48,6 +48,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				cluster_name = "test"
 				disable_informers = ["node"]
 				meta_restrict_local_node = true
+				meta_cache_address = "localhost:9090"
 			}
 			select {
 				attr = "sql_client_duration"
@@ -159,6 +160,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Attributes.Kubernetes.ClusterName)
 	require.Equal(t, []string{"node"}, cfg.Attributes.Kubernetes.DisableInformers)
 	require.True(t, cfg.Attributes.Kubernetes.MetaRestrictLocalNode)
+	require.Equal(t, "localhost:9090", cfg.Attributes.Kubernetes.MetaCacheAddress)
 	require.Len(t, cfg.Attributes.Select, 1)
 	sel, ok := cfg.Attributes.Select["sql_client_duration"]
 	require.True(t, ok)
@@ -207,7 +209,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
-	require.Equal(t, cfg.EBPF.ContextPropagation, config.ContextPropagationIPOptionsOnly)
+	require.Equal(t, cfg.EBPF.ContextPropagation, obiCfg.ContextPropagationIPOptionsOnly)
 	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
 	require.True(t, cfg.EBPF.HighRequestVolume)
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
@@ -277,20 +279,20 @@ func TestArguments_ConvertDefaultConfig(t *testing.T) {
 	args := Arguments{}
 	cfg, err := args.Convert()
 	require.NoError(t, err)
-	require.Equal(t, cfg.ChannelBufferLen, beyla.DefaultConfig.ChannelBufferLen)
-	require.Equal(t, cfg.LogLevel, beyla.DefaultConfig.LogLevel)
-	require.Equal(t, cfg.EBPF, beyla.DefaultConfig.EBPF)
-	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig.NetworkFlows)
-	require.Equal(t, cfg.Grafana, beyla.DefaultConfig.Grafana)
-	require.Equal(t, cfg.Attributes, beyla.DefaultConfig.Attributes)
-	require.Equal(t, cfg.Routes, beyla.DefaultConfig.Routes)
-	require.Equal(t, cfg.Metrics, beyla.DefaultConfig.Metrics)
-	require.Equal(t, cfg.Traces, beyla.DefaultConfig.Traces)
-	require.Equal(t, cfg.Prometheus, beyla.DefaultConfig.Prometheus)
-	require.Equal(t, cfg.InternalMetrics, beyla.DefaultConfig.InternalMetrics)
-	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig.NetworkFlows)
-	require.Equal(t, cfg.Discovery, beyla.DefaultConfig.Discovery)
-	require.Equal(t, cfg.EnforceSysCaps, beyla.DefaultConfig.EnforceSysCaps)
+	require.Equal(t, cfg.ChannelBufferLen, beyla.DefaultConfig().ChannelBufferLen)
+	require.Equal(t, cfg.LogLevel, beyla.DefaultConfig().LogLevel)
+	require.Equal(t, cfg.EBPF, beyla.DefaultConfig().EBPF)
+	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig().NetworkFlows)
+	require.Equal(t, cfg.Grafana, beyla.DefaultConfig().Grafana)
+	require.Equal(t, cfg.Attributes, beyla.DefaultConfig().Attributes)
+	require.Equal(t, cfg.Routes, beyla.DefaultConfig().Routes)
+	require.Equal(t, cfg.Metrics, beyla.DefaultConfig().Metrics)
+	require.Equal(t, cfg.Traces, beyla.DefaultConfig().Traces)
+	require.Equal(t, cfg.Prometheus, beyla.DefaultConfig().Prometheus)
+	require.Equal(t, cfg.InternalMetrics, beyla.DefaultConfig().InternalMetrics)
+	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig().NetworkFlows)
+	require.Equal(t, cfg.Discovery, beyla.DefaultConfig().Discovery)
+	require.Equal(t, cfg.EnforceSysCaps, beyla.DefaultConfig().EnforceSysCaps)
 }
 
 func TestArguments_ValidationErrors(t *testing.T) {
@@ -492,11 +494,12 @@ func TestConvert_Routes(t *testing.T) {
 	}
 
 	expectedConfig := &transform.RoutesConfig{
-		Unmatch:        transform.UnmatchType(args.Unmatch),
-		Patterns:       args.Patterns,
-		IgnorePatterns: args.IgnorePatterns,
-		IgnoredEvents:  transform.IgnoreMode(args.IgnoredEvents),
-		WildcardChar:   "*",
+		Unmatch:                   transform.UnmatchType(args.Unmatch),
+		Patterns:                  args.Patterns,
+		IgnorePatterns:            args.IgnorePatterns,
+		IgnoredEvents:             transform.IgnoreMode(args.IgnoredEvents),
+		WildcardChar:              "*",
+		MaxPathSegmentCardinality: 10,
 	}
 
 	config := args.Convert()
@@ -701,6 +704,7 @@ func TestConvert_Attributes(t *testing.T) {
 		Kubernetes: KubernetesDecorator{
 			Enable:               "true",
 			InformersSyncTimeout: 15 * time.Second,
+			MetaCacheAddress:     "localhost:9090",
 		},
 		Select: Selections{
 			{
@@ -719,7 +723,8 @@ func TestConvert_Attributes(t *testing.T) {
 			Enable:                kubeflags.EnableFlag(args.Kubernetes.Enable),
 			InformersSyncTimeout:  15 * time.Second,
 			InformersResyncPeriod: 30 * time.Minute,
-			ResourceLabels:        beyla.DefaultConfig.Attributes.Kubernetes.ResourceLabels,
+			ResourceLabels:        beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:      "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,
@@ -821,14 +826,34 @@ func TestConvert_Prometheus(t *testing.T) {
 		Features:                        []string{"application", "network"},
 		Instrumentations:                []string{"redis", "sql"},
 		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             nil,
+		ExtraSpanResourceLabels:         []string{"service.version"},
 	}
 
-	expectedConfig := beyla.DefaultConfig.Prometheus
+	expectedConfig := beyla.DefaultConfig().Prometheus
 	expectedConfig.Features = args.Features
 	expectedConfig.Instrumentations = args.Instrumentations
 	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 
 	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
+
+	args = Metrics{
+		Features:                        []string{"application", "network"},
+		Instrumentations:                []string{"redis", "sql"},
+		AllowServiceGraphSelfReferences: true,
+		ExtraResourceLabels:             []string{"service.version"},
+	}
+
+	expectedConfig = beyla.DefaultConfig().Prometheus
+	expectedConfig.Features = args.Features
+	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.AllowServiceGraphSelfReferences = true
+	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
+
+	config = args.Convert()
 
 	require.Equal(t, expectedConfig, config)
 }
@@ -843,7 +868,7 @@ func TestConvert_Network(t *testing.T) {
 		CIDRs:            []string{"10.0.0.0/8"},
 	}
 
-	expectedConfig := beyla.DefaultConfig.NetworkFlows
+	expectedConfig := beyla.DefaultConfig().NetworkFlows
 	expectedConfig.Enable = true
 	expectedConfig.AgentIP = "0.0.0.0"
 	expectedConfig.Interfaces = args.Interfaces
@@ -869,12 +894,12 @@ func TestConvert_EBPF(t *testing.T) {
 		ProtocolDebug:       true,
 	}
 
-	expectedConfig := beyla.DefaultConfig.EBPF
+	expectedConfig := beyla.DefaultConfig().EBPF
 	expectedConfig.WakeupLen = 10
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
-	expectedConfig.ContextPropagation = config.ContextPropagationHeadersOnly
+	expectedConfig.ContextPropagation = obiCfg.ContextPropagationHeadersOnly
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
 
@@ -1218,7 +1243,7 @@ func TestDeprecatedFields(t *testing.T) {
 	var mu sync.Mutex
 
 	// Create a synchronized logger that protects both writing and reading
-	syncLogger := log.LoggerFunc(func(keyvals ...interface{}) error {
+	syncLogger := log.LoggerFunc(func(keyvals ...any) error {
 		mu.Lock()
 		defer mu.Unlock()
 		return log.NewLogfmtLogger(&buf).Log(keyvals...)

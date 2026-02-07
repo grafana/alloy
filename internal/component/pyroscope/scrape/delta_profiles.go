@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/scrape/internal/fastdelta"
+
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -70,7 +71,7 @@ type gzipBuffer struct {
 }
 
 var gzipBufferPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &gzipBuffer{
 			gzw: gzip.NewWriter(nil),
 			in:  bytes.NewReader(nil),

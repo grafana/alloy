@@ -238,13 +238,12 @@ func TestConfigConversion(t *testing.T) {
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeoutConfig = exporterhelper.NewDefaultTimeoutConfig()
 
-		defaultQueueSettings = exporterhelper.QueueBatchConfig{
-			Enabled:      true,
+		defaultQueueSettings = configoptional.Some(exporterhelper.QueueBatchConfig{
 			NumConsumers: 10,
 			QueueSize:    1000,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
 			Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
-		}
+		})
 
 		defaultProtocol = loadbalancingexporter.Protocol{
 			OTLP: otlpexporter.Config{
@@ -288,10 +287,6 @@ func TestConfigConversion(t *testing.T) {
 					}),
 					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
-				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
 			},
@@ -317,10 +312,6 @@ func TestConfigConversion(t *testing.T) {
 						Hostnames: []string{"endpoint-1"},
 					}),
 					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
-				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "service",
 				Protocol:   defaultProtocol,
@@ -360,10 +351,6 @@ func TestConfigConversion(t *testing.T) {
 						},
 					},
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
-				},
 				Resolver: loadbalancingexporter.ResolverSettings{
 					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
 						Hostnames: []string{"endpoint-1", "endpoint-2:55678"},
@@ -397,10 +384,6 @@ func TestConfigConversion(t *testing.T) {
 						Timeout:  1 * time.Second,
 					}),
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
-				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
 			},
@@ -432,10 +415,6 @@ func TestConfigConversion(t *testing.T) {
 						Timeout:  321 * time.Second,
 					}),
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
-				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
 			},
@@ -463,10 +442,6 @@ func TestConfigConversion(t *testing.T) {
 						Timeout:         1 * time.Second,
 						ReturnHostnames: false,
 					}),
-				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -499,10 +474,6 @@ func TestConfigConversion(t *testing.T) {
 						ReturnHostnames: true,
 					}),
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
-				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
 			},
@@ -534,10 +505,6 @@ func TestConfigConversion(t *testing.T) {
 						Timeout:       5 * time.Second,
 						Port:          nil,
 					}),
-				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -577,10 +544,6 @@ func TestConfigConversion(t *testing.T) {
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Sizer: exporterhelper.RequestSizerTypeRequests,
-					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
-				},
 			},
 		},
 		{
@@ -616,13 +579,6 @@ func TestConfigConversion(t *testing.T) {
 					Multiplier:          0,
 					MaxInterval:         0,
 					MaxElapsedTime:      0,
-				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      false,
-					NumConsumers: 0,
-					QueueSize:    0,
-					Sizer:        exporterhelper.RequestSizerTypeRequests,
-					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
@@ -677,13 +633,12 @@ func TestConfigConversion(t *testing.T) {
 					MaxInterval:         111 * time.Second,
 					MaxElapsedTime:      222 * time.Second,
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      true,
+				QueueSettings: configoptional.Some(exporterhelper.QueueBatchConfig{
 					NumConsumers: 11,
 					QueueSize:    1111,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
 					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
-				},
+				}),
 			},
 		},
 	}
@@ -695,6 +650,184 @@ func TestConfigConversion(t *testing.T) {
 			actual, err := args.Convert()
 			require.NoError(t, err)
 			require.Equal(t, &tc.expected, actual.(*loadbalancingexporter.Config))
+		})
+	}
+}
+
+func TestQueueBatchConfig(t *testing.T) {
+	tests := []struct {
+		testName string
+		alloyCfg string
+		expected otelcol.QueueArguments
+	}{
+		{
+			testName: "default",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			sending_queue {
+				batch {}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+				},
+			},
+		},
+		{
+			testName: "explicit_batch",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			sending_queue {
+				batch {
+					flush_timeout = "100ms"
+					min_size      = 4096
+					max_size      = 16384
+					sizer         = "bytes"
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 100 * time.Millisecond,
+					MinSize:      4096,
+					MaxSize:      16384,
+					Sizer:        "bytes",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			_, err := args.Convert()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expected.Enabled, args.Queue.Enabled)
+			require.Equal(t, tc.expected.NumConsumers, args.Queue.NumConsumers)
+			require.Equal(t, tc.expected.QueueSize, args.Queue.QueueSize)
+			require.Equal(t, tc.expected.Sizer, args.Queue.Sizer)
+			require.Equal(t, tc.expected.Batch, args.Queue.Batch)
+		})
+	}
+}
+
+func TestProtocolQueueBatchConfig(t *testing.T) {
+	tests := []struct {
+		testName string
+		alloyCfg string
+		expected otelcol.QueueArguments
+	}{
+		{
+			testName: "default",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+					queue {
+						batch {}
+					}
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+				},
+			},
+		},
+		{
+			testName: "explicit_batch",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+					queue {
+						batch {
+							flush_timeout = "100ms"
+							min_size      = 4096
+							max_size      = 16384
+							sizer         = "bytes"
+						}
+					}
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 100 * time.Millisecond,
+					MinSize:      4096,
+					MaxSize:      16384,
+					Sizer:        "bytes",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			_, err := args.Convert()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expected.Enabled, args.Protocol.OTLP.Queue.Enabled)
+			require.Equal(t, tc.expected.NumConsumers, args.Protocol.OTLP.Queue.NumConsumers)
+			require.Equal(t, tc.expected.QueueSize, args.Protocol.OTLP.Queue.QueueSize)
+			require.Equal(t, tc.expected.Sizer, args.Protocol.OTLP.Queue.Sizer)
+			require.Equal(t, tc.expected.Batch, args.Protocol.OTLP.Queue.Batch)
 		})
 	}
 }

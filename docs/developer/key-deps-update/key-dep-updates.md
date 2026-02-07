@@ -1,0 +1,294 @@
+# Key Dependency Updates
+
+A guide for LLM agents to update the key dependencies of the Alloy project.
+
+## What are key dependencies?
+
+Key dependencies are Go module dependencies of the Alloy project that are known to be complex to upgrade and often resulting in conflicts or breaking changes. At the same time we are committed to update these dependencies regularly in order to receive fixes and improvements from the upstream.
+
+## List of key dependencies
+
+- OpenTelemetry Collector and related dependencies (OTel)
+  - The core dependencies have `go.opentelemetry.io/collector/...` import paths.
+  - The contrib components have `github.com/open-telemetry/opentelemetry-collector-contrib/...` import paths.
+  - NOTE: these typically are all on the same version number for all the Go modules. Same version numbers mean they have been verified upstream to be compatible with each other.
+- Prometheus dependencies (Prom)
+  - The core and libraries dependencies:
+    - `github.com/prometheus/prometheus`
+    - `github.com/prometheus/common`
+    - `github.com/prometheus/client_golang`
+    - `github.com/prometheus/client_model`
+- Beyla dependencies (Beyla)
+  - `github.com/grafana/beyla/v2`
+  - `go.opentelemetry.io/obi`
+  - `go.opentelemetry.io/ebpf-profiler`
+- Loki dependencies (Loki)
+
+### Version numbers of `github.com/prometheus/prometheus` dependency
+
+If you find on GitHub a release of prometheus/prometheus, for example `v3.4.2`, you need to translate it into a Go module version: The Go module version starts with a `v0.` followed by the major version, and the minor version expressed as two digits (so would have a leading zero if needed). Then comes the `.` followed by the patch version.
+
+So in our example, the `v3.4.2` release would be translated into the `v0.304.2` Go module version. You may need to do the reverse of this conversion to resolve a GitHub tag from a Go module version.
+
+## Tools and snippets to use throughout the whole process
+
+Use the tools in the `tools/` directory to help you accomplish tasks whenever appropriate:
+
+- Each tool is contained in its own leaf directory within this folder.
+- Each tool contains a runnable `main.go` file that can be used to run the tool.
+- Each tool contains a `README.md` that describes how to use the tool.
+  - `Overview` section describes what the tool does
+  - `Usage` describes the positional arguments and flags that can be used for the tool.
+  - `Output` describes or provides an example of the output. Most output will be self-descriptive, natural language or tables, etc.
+
+### Best Usage Practices
+
+With these practices you should be able to directly get the information you need from the tools and run them without unnecessary intermediate steps:
+
+- List all tools by listing their README.md files: `find tools -name README.md`
+- See which tools are relevant to your task based on their name as the first filter. If the name is not clear, open the README.md to read the overview.
+- Read the `README.md` file for each tool directly to understand how to use it as per the Usage section.
+- Run the tool via `go run main.go ...` with appropriate arguments and flags to use the tool as described in readme.
+- Read the output of the tool:
+  - It may contain the information you need directly.
+  - But it may also contain further instructions on what to do next.
+- If the tool is not working as expected or misses files, report broken tool and stop.
+
+### Snippets
+
+When there is no specific tool, you can use these command snippets that are tried and tested to work well. Note that you may need to adapt them to your specific use case.
+
+#### GitHub API snippets
+
+- Find changes between two GitHub releases: `gh api repos/<owner>/<repo>/compare/<from>...<to> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
+- List changes in a fork branch compared to upstream base: `gh api repos/<owner>/<repo>/compare/<base_ref>...<fork_owner>:<fork_branch> --jq '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'`
+- Find PR details by number: `gh pr view <number> -R <owner>/<repo> --json title,body,url`
+- Extract PR number from a commit message: `gh api repos/<owner>/<repo>/commits/<sha> --jq '.commit.message | scan("#[0-9]+")'`
+- Find changelog from GitHub release notes: `gh release view <tag> -R <owner>/<repo> --json tagName,name,publishedAt,body`
+- Find issue details by number: `gh issue view <number> -R <owner>/<repo> --json number,title,state,body,url,createdAt,closedAt`
+- Search for issues mentioning an error or keyword: `gh issue list -R <owner>/<repo> -S "<search terms>" -L 10`
+- Find commit details by SHA: `gh api repos/<owner>/<repo>/commits/<sha> --jq '{sha: .sha, author: .commit.author, date: .commit.author.date, message: .commit.message}'`
+
+#### Go module dependency snippets
+
+- View the `go.mod` file for a specific Go module version: `go mod download <module>@<version> && cd $(go env GOMODCACHE)/<module>@<version> && cat go.mod`
+- Convert a commit SHA to a proper go.mod version: Add a temporary replace like `replace <module> => <module> <commit-sha>` to go.mod, then run `go mod tidy` which will automatically fix the SHA to the correct version number
+- Download and compare a specific file between two module versions: `go mod download <module>@<old-version> <module>@<new-version> && diff -u "$(go env GOMODCACHE)/<module>@<old-version>/<file-path>" "$(go env GOMODCACHE)/<module>@<new-version>/<file-path>"`
+- Download and compare entire module directories between versions: `go mod download <module>@<old-version> <module>@<new-version> && diff -ur "$(go env GOMODCACHE)/<module>@<old-version>" "$(go env GOMODCACHE)/<module>@<new-version>" | head -200`
+
+#### Fork investigation snippets
+
+To determine if a fork is still needed, use these commands in sequence:
+
+1. Get fork commit message (may reference upstream issues/PRs): `gh api repos/grafana/<repo-name>/commits/<branch-or-sha> --jq '.commit.message'`
+2. Get fork PR description if commit was part of a PR: `gh api repos/grafana/<repo-name>/commits/<branch-or-sha>/pulls --jq '.[0] | .number, .title, .body'`
+3. Check upstream issue/PR status (extract numbers from step 1-2): `gh issue view <number> -R <upstream-org>/<repo-name> --json state,title,closedAt` or `gh pr view <number> -R <upstream-org>/<repo-name> --json state,title,mergedAt`
+4. Get list of files changed in fork: `gh api repos/grafana/<repo-name>/commits/<branch-or-sha> --jq '.files[] | .filename'`
+5. Compare those files between old and new upstream versions: `diff -u "$(go env GOMODCACHE)/<upstream-module>@<old-version>/<file-path>" "$(go env GOMODCACHE)/<upstream-module>@<new-version>/<file-path>"`
+6. Search recent commits in paths the fork modified: `gh api 'repos/<upstream-org>/<repo-name>/commits?path=<relevant-path>&sha=main' --jq '.[0:15] | .[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.message|split("\n")[0])"'`
+7. Search PRs with keywords from fork purpose: `gh pr list -R <upstream-org>/<repo-name> -S "<keywords>" --state merged -L 10`
+
+## Key Dependency Relationships
+
+Here is a summary of the relationships between the key dependencies of Alloy.
+
+1. **Prometheus Client Libraries** (client_golang, client_model, common)
+   - These are foundational libraries with no dependencies on other key dependencies
+   - Used by: Prometheus, Beyla, Loki, and Alloy directly
+
+2. **OpenTelemetry Collector Core**
+   - Does not depend on Prometheus, Beyla, or Loki
+   - Used by: Prometheus, Beyla, Loki, contrib packages, and Alloy directly
+
+3. **OpenTelemetry Collector Contrib**
+   - Depends on: OpenTelemetry Collector Core
+   - Depends on: Prometheus (via `exporter/prometheusexporter`, `exporter/datadogexporter`, `pkg/translator/loki`)
+   - Depends on: Loki (via `pkg/translator/loki`)
+   - Does NOT depend on: Beyla
+   - Note: Only specific contrib modules depend on Prometheus/Loki, not all of them
+
+4. **Prometheus** (prometheus/prometheus)
+   - Depends on: OpenTelemetry Collector Core (component, pdata, processor packages)
+   - Depends on: OpenTelemetry Collector Contrib (processor/deltatocumulativeprocessor, internal/exp/metrics, pkg/pdatautil)
+   - Depends on: Prometheus client libraries (client_golang, client_model, common)
+   - Does NOT depend on: Beyla or Loki
+
+5. **Beyla** (grafana/beyla/v2)
+   - Depends on: Prometheus client libraries (client_golang, client_model, common)
+   - Depends on: OpenTelemetry Collector Core (component, pdata, exporter packages)
+   - Depends on: OBI (go.opentelemetry.io/obi)
+   - Does NOT depend on: Prometheus (full) or Loki
+
+6. **Loki** (grafana/loki/v3)
+   - Depends on: Prometheus (full prometheus package, not just client libs)
+   - Depends on: Prometheus client libraries (client_golang, client_model, common)
+   - Depends on: OpenTelemetry Collector Core (pdata, component packages)
+   - Depends on: OpenTelemetry Collector Contrib (internal/exp/metrics, pkg/pdatautil, processor/deltatocumulativeprocessor)
+   - Does NOT depend on: Beyla
+
+## Steps to update key dependencies
+
+Don't write anything in this document. Create a separate document called 'deps-update-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
+
+### Step 1: Familiarize yourself with the tools and snippets
+
+As mentioned above, throughout this process, you will be using several tools and command snippets to gather the information required for accurate decision making. Make sure you list all the tools you have available as instructed above so you can call them when appropriate.
+
+### Step 2: Establish the latest and current versions of all the key dependencies
+
+For all the key dependencies as listed in "List of key dependencies" section, use the tools and snippets to find the current and the latest versions.
+
+List these versions in a form of a table containing columns: the dependency name, the current version, the latest version and the ✅ emoji when it's already up-to-date or 🛑 when it needs to be updated. Write this table to the output. Don't write much more to keep it brief.
+
+Now, the key dependencies also depend on each other. You can see this in the 'Relationships' paragraph above. For each key dependency, take a look at its latest version and see what are the versions of the key dependencies that it uses. For example, we know that Beyla depends on Prometheus client libraries. We want to know what are the versions of these Prometheus client libraries that Beyla pulls in. Create a table for each key dependency that lists the other key dependencies that it pulls. Include columns: dependency name, current version, latest version, an emoji indicating whether the update is required.
+
+The key dependencies that are using the same minor versions as the ones we want to update to should be denoted with "READY TO GO ✅". Otherwise, recommend what needs to ideally be updated by the owners of the project to make the process smooth.
+
+### Step 3: List the current forks and what changes have been added to them
+
+For all the key dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools and snippets to help you. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
+
+Start with `dependency-replacements.yaml`. Every replace entry must have a comment with a link to an upstream issue or PR. Use that link to understand why the fork exists and whether it is still needed. If you add or change a replace, include or update that link.
+
+Make a short summary of the forks: what version they fork from (if it's possible to determine), the list of commits that are added to the fork, and one sentence summary of these changes.
+
+Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned in `dependency-replacements.yaml`, the commit message, a PR description on the fork, or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
+
+If the fork is using a branch or a tag with certain naming convention that can be continued, determine the expected name of the new branch or tag in the fork that can use the latest version of the upstream key dependency as the base.
+
+Determine what is the status of the fork:
+
+- If the fork is no longer needed, quote the issues or PRs that resolve it. Denote with ✅
+- If a new, updated tag or branch exists, write clearly that an updated fork of the new version exists and we can continue. Denote with ✅
+- In the case of `go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation` and `go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler` replaces, we want to pick the latest version from the grafana fork as it is the most up to date. Determine that version and denote with ✅
+- If it doesn't exist, write clearly that we need to update the fork before we can continue. State what upstream version should be used as the base. Denote with 🛑
+
+Only continue to the next step if all the key dependenies have a fork ready, don't need one, or you're told to continue. If there are forks that are not ready but not for the key dependencies, we can continue and keep them unchanged.
+
+### Step 4: Update Go modules to desired versions
+
+Replace directives are generated. Do not edit them directly in go.mod or builder-config.yaml. Update `dependency-replacements.yaml` and run `make generate-module-dependencies` to update the root go.mod, extension/alloyengine/go.mod, and collector/builder-config.yaml.
+
+Having determined the desired versions of the key dependencies, update the go.mod files to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
+
+You know the update is successful if `go mod tidy` can successfully resolve the dependencies.
+
+If you encounter conflicts, you need to resolve them. You can do this by:
+
+- Trying to use an earlier version of one of the dependencies that are involved in the conflict. You can inspect the code or changelog to determine which one is best to downgrade.
+  
+- If there is an existing replace directive for the problematic dependencies, try to remove it and see if `go mod tidy` can successfully pass - perhaps it is no longer needed. If that's the case, call it out in summary. It may be a fork that we no longer need.
+  
+- If you are unable to resolve the conflicts, call it out and recommend the next steps. Make sure you clearly and briefly classify the kind of issue:
+  - Is it that a key dependency upstream is lagging behind with updating some other dependency?
+  - Is it that some dependency has breaking changes?
+  - What would be the best approach to handle the issue? Can we avoid forking?
+  - What would be the simplest and fastest approach to handle the issue? Can we update to an older version of key dependencies instead while the conflicts are resolved?
+
+- DO NOT simply declare that 'this is an upstream issue'. In order to do that, explore the changelog and isolate specific commits and changes that happened upstream with specific examples of why this is an upstream issue.
+
+- Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
+
+If you were able to produce a working go.mod file and the `go mod tidy` command passes, don't yet worry about building the project or running the tests. These are the next steps to be taken later.
+
+Proceed to the next step only if `go mod tidy` is successful or you are asked to do so.
+
+### Step 5: Organize go.mod
+
+Make sure you organise the go.mod in the following way:
+
+- module name, go version, etc.
+- direct dependencies in one require() block
+- indirect dependencies in another require() block
+- keep the generated replace block as-is; place any local replaces outside of it
+- anything else
+
+After reorganising the go.mod, make sure you run `go mod tidy` again to make sure it is still successful and properly formatted.
+
+### Step 6: Fix compilation errors
+
+If you run `go build` or `go test` directly, you may not get the correct build tags. Make sure you use them. These can be found in the Makefile. You can also use `make alloy` to build the whole project.
+
+Alloy uses the OTel Collector Builder (OCB) for the collector distro. If you change OTel dependencies or `collector/builder-config.yaml`, run `make generate-otel-collector-distro` and commit the generated collector files before building or testing.
+
+Start fixing the compilation errors in the following order, which ensures we start with more fundamental issues and work our way down to the more complex ones:
+
+- `./internal/runtime/...` - to fix parts of the core Alloy runtime
+- `./internal/component/prometheus/...` - to fix the Prometheus components
+- `./internal/component/loki/...` - to fix the Loki components
+- `./internal/component/otelcol/...` - to fix the OpenTelemetry Collector components
+- `./internal/component/beyla/...` - to fix the Beyla components
+- `./internal/component/pyroscope/...` - to fix the Pyroscope eBPF components
+- `./internal/component/...` - to fix all components
+- `./internal/converter/...` - to fix the config converters
+- `make alloy` - to build the whole project and make sure it compiles
+
+As you encounter errors, you need to fix them. Use the tools and snippets to help you. Make sure you try the following approaches:
+
+- Isolate the dependencies and packages and errors that are involved, so you can focus on solving one issue at a time. Establish what was the previous version of the dependency and what is the new version.
+
+- Fetch the commit history between these versions and look for information in the commit messages and PR descriptions and associated issues to understand what has changed.
+
+- Look at the code changes between the versions to understand how the code has changed that led to compilation errors.
+
+- If the issue is with the Alloy code, we will often be able to update the code to fix the issue. Do that if possible.
+
+- If the issue is in another Alloy dependency, maybe we can:
+  - See if the upstream has a more recent commit on main/master branch (use `gh` command to find that out) that we can use.
+  - See if we can downgrade one or the other dependency that are in conflict.
+  - See if we can upgrade one or more dependencies.
+  - Try to come up with some other ways to solve it if possible.
+  - DO NOT GIVE UP! We really need to fix these issues in Alloy code rather than creating forks or blocking on upstream changes.
+
+- DO NOT simply declare that 'this is an upstream issue'. In order to truly establish that, explore the changelog and isolate specific commits and diff the changes that happened upstream to provide specific examples of why this is an upstream issue that cannot be solved by changing dependency versions or the Alloy code.
+
+- Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
+
+If you were able to fix the compilation errors, explain what you did and how confident you are that these are correct fixes. You can now proceed to the next step.
+
+If we still have compilation errors, stop here and explain briefly what issues are left to resolve. Provide snippets of `go build` commnads that we can run to reproduce the errors and continue the investigation. Provide the options we have and your recommendations. Be concise and clear.
+
+### Step 7: Fix test errors and failures
+
+This is a very important step, we're almost there, but we need to make sure all the tests pass. Do not give up or leave
+a TODO item without exploring multiple alternatives, some of which are called out in this document in the
+current and previous steps. If you do find an issue that is too hard for you to solve, stop and describe
+it clearly as required, provide steps to reproduce it, the options we have and your recommendations.
+
+NOTE: If you run `go build` or `go test` directly, you may not get the correct build tags. Make sure you use them. These can be found in the Makefile.
+
+Start fixing the test errors and failures in the following order, which ensures we start with more fundamental issues and work our way down to the more complex ones:
+
+- `./internal/runtime/...` - to fix parts of the core Alloy runtime
+- `./internal/component/prometheus/...` - to fix the Prometheus components
+- `./internal/component/loki/...` - to fix the Loki components
+- `./internal/component/otelcol/...` - to fix the OpenTelemetry Collector components
+- `./internal/component/beyla/...` - to fix the Beyla components
+- `./internal/component/pyroscope/...` - to fix the Pyroscope eBPF components
+- `./internal/component/...` - to fix all components
+- `./internal/converter/...` - to fix the config converters
+- `make test` - to run all the tests and make sure they all pass
+
+As you encounter errors, you need to fix them. Use the tools and snippets to help you. Make sure you try the following approaches:
+
+- Isolate the dependencies and packages and errors that are involved, so you can focus on solving one issue at a time. Establish what was the previous version of the dependency and what is the new version.
+
+- Fetch the commit history between these versions and look for information in the commit messages and PR descriptions and associated issues to understand what has changed.
+
+- Look at the code changes between the versions to understand how the code has changed that led to test errors and failures.
+
+- Test changes may possibly indicate a significant change in the behaviour and may need to be documented as a new feature, breaking change, bugfix or exposed to the users and documented. Help me identify such situations and give a recommendation. Be brief and to the point.
+
+- When trying to fix a failing test, do consider what are the dependencies that we are using, are there any suspicious replace directives and are the versions mismatching for some reason? Don't hesitate to go back to figuring out what are the right versions of dependencies that can be used to address the issue at hand.
+
+- Don't be too quick to conclude that there is an upstream bug. It's relatively rare and it is much more frequent that we are using mismatched versions of these dependencies or that we are doing something wrong in our code. Investigate all test failures thoroughly before concluding they're upstream bugs. Try to find workarounds or fixes in our codebase first, and don't assume upstream bugs without exhausting all options.  
+
+- If you think you found a real issue upstream, search the issues and PRs, maybe there is someone who has already found it and maybe there are fixes already in the main. Use the tools and snippets to help you. If the issue is fixed upstream, you can switch to use that commit SHA after merge (important! take the commit SHA that is on the main branch upstream, not development branch).
+
+- Under no circumstance should you vendor or create some kind of 'local fork' of a dependency. Instead try harder to find the solution.
+
+Consider this step successful if all the tests pass and there were no big changes to test expectations.
+
+If the tests pass, but we had to change the test expectations in a meaningful way that will impact end users, explain what is the breaking change.
+
+If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on. Provide description of what you think is failing and how does it relate to our dependency updates.

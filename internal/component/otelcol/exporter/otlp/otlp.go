@@ -76,7 +76,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
-		QueueConfig:  *q,
+		QueueConfig:  q,
 		RetryConfig:  *args.Retry.Convert(),
 		ClientConfig: *convertedClientArgs,
 	}, nil

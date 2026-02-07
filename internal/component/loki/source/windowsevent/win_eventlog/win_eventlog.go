@@ -19,8 +19,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+
 //go:build windows
-// +build windows
 
 // Package win_eventlog Input plugin to collect Windows Event Log messages
 //
@@ -327,7 +327,7 @@ func (w *WinEventLog) shouldProcessField(field string) (should bool, list string
 	return false, "excluded"
 }
 
-func (w *WinEventLog) shouldExcludeEmptyField(field string, fieldType string, fieldValue interface{}) (should bool) {
+func (w *WinEventLog) shouldExcludeEmptyField(field string, fieldType string, fieldValue any) (should bool) {
 	for _, pattern := range w.ExcludeEmpty {
 		if matched, _ := filepath.Match(pattern, field); matched {
 			switch fieldType {

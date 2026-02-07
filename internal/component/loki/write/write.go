@@ -2,6 +2,7 @@ package write
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -11,9 +12,9 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/prometheus/common/model"
 )
 
@@ -79,27 +80,24 @@ var (
 
 // Component implements the loki.write component.
 type Component struct {
-	opts    component.Options
-	metrics *client.Metrics
+	opts component.Options
 
 	mut      sync.RWMutex
 	args     Arguments
 	receiver loki.LogsReceiver
 
-	// remote write components
-	clientManger *client.Manager
-	walWriter    *wal.Writer
+	// remote write consumer
+	consumer client.Consumer
 
-	// sink is the place where log entries received by this component should be written to. If WAL
-	// is enabled, this will be the WAL Writer, otherwise, the client manager
+	// sink is the place where log entries received by this component should be written to.
+	// It will in turn write to client.Consumer.
 	sink loki.EntryHandler
 }
 
 // New creates a new loki.write component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:    o,
-		metrics: client.NewMetrics(o.Registerer),
+		opts: o,
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -118,20 +116,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		// First we need to stop the sink, this is either wrapped clientManger or walWriter.
-		// Stopping the sink will not stop the inner handler
+		// First we need to stop the sink. Stopping the sink will not stop the wrapped handler.
 		if c.sink != nil {
 			c.sink.Stop()
 		}
 
-		// when exiting Run, proceed to shut down first the writer component, and then
-		// the client manager, with the WAL and remote-write client inside
-		if c.walWriter != nil {
-			c.walWriter.Stop()
-		}
-		if c.clientManger != nil {
-			// drain, since the component is shutting down. That means Alloy is shutting down as well
-			c.clientManger.StopWithDrain(true)
+		if c.consumer != nil {
+			if d, ok := c.consumer.(client.DrainableConsumer); ok {
+				// stop and drain since component is shutting down.
+				d.StopAndDrain()
+			} else {
+				c.consumer.Stop()
+			}
 		}
 	}()
 
@@ -156,6 +152,10 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
+	if err := validateConfigStabilityLevel(c.opts, newArgs); err != nil {
+		return err
+	}
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	c.args = newArgs
@@ -164,16 +164,12 @@ func (c *Component) Update(args component.Arguments) error {
 		c.sink.Stop()
 	}
 
-	if c.walWriter != nil {
-		c.walWriter.Stop()
-	}
-
-	if c.clientManger != nil {
+	if c.consumer != nil {
 		// only drain on component shutdown
-		c.clientManger.Stop()
+		c.consumer.Stop()
 	}
 
-	cfgs := newArgs.convertClientConfigs()
+	cfgs := newArgs.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
@@ -186,6 +182,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	walCfg := wal.Config{
 		Enabled:       newArgs.WAL.Enabled,
+		Dir:           filepath.Join(c.opts.DataPath, "wal"),
 		MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
 		WatchConfig: wal.WatchConfig{
 			MinReadFrequency: newArgs.WAL.MinReadFrequency,
@@ -194,34 +191,18 @@ func (c *Component) Update(args component.Arguments) error {
 		},
 	}
 
-	// Update WAL dir with DataPath subdir
-	walCfg.Dir = filepath.Join(c.opts.DataPath, "wal")
-
 	var err error
-	var notifier client.WriterEventsNotifier = client.NilNotifier
-	// nil-out wal writer in case WAL was disabled
-	c.walWriter = nil
-	// only configure WAL Writer if enabled
 	if walCfg.Enabled {
-		c.walWriter, err = wal.NewWriter(walCfg, c.opts.Logger, c.opts.Registerer)
-		if err != nil {
-			return fmt.Errorf("error creating wal writer: %w", err)
-		}
-		notifier = c.walWriter
-	}
-
-	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, newArgs.MaxStreams, c.opts.Registerer, walCfg, notifier, cfgs...)
-	if err != nil {
-		return fmt.Errorf("failed to create client manager: %w", err)
-	}
-
-	externalLabels := utils.ToLabelSet(c.args.ExternalLabels)
-	// if WAL is enabled, the WAL writer should be the destination sink. Otherwise, the client manager
-	if walCfg.Enabled {
-		c.sink = newEntryHandler(c.walWriter, externalLabels)
+		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.sink = newEntryHandler(c.clientManger, externalLabels)
+		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
+
+	if err != nil {
+		return fmt.Errorf("failed to create cliens: %w", err)
+	}
+
+	c.sink = newEntryHandler(c.consumer, util.MapToModelLabelSet(c.args.ExternalLabels))
 
 	return nil
 }
@@ -234,4 +215,14 @@ func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) l
 		e.Labels = externalLabels.Merge(e.Labels)
 		return e
 	})
+}
+
+func validateConfigStabilityLevel(o component.Options, args Arguments) error {
+	canUseExperimentalConfig := o.MinStability.Permits(featuregate.StabilityExperimental)
+	for _, e := range args.Endpoints {
+		if e.QueueConfig != defaultQueueConfig && !canUseExperimentalConfig {
+			return errors.New("changing queue_config requires stability.level flag to be experimental")
+		}
+	}
+	return nil
 }
