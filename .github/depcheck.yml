@@ -25,7 +25,7 @@ github_repos:
   - github.com/prometheus/mysqld_exporter v0.13.0
   - github.com/prometheus-community/postgres_exporter v0.15.0
   - github.com/prometheus-community/windows_exporter v0.16.0
-  - github.com/percona/mongodb_exporter v0.20.7
+  - github.com/percona/mongodb_exporter v0.47.2
   - project: github.com/prometheus/prometheus
     version: v2.42.0
     # Ignore release candidates
