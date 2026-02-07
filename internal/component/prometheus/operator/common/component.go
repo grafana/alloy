@@ -106,11 +106,22 @@ func (c *Component) Run(ctx context.Context) error {
 			innerCtx, cancel = context.WithCancel(ctx)
 			wg.Add(1)
 			go func() {
-				if err := manager.Run(innerCtx); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
-					errChan <- err
+				defer wg.Done()
+				retryInterval := 0 * time.Second
+				for {
+					select {
+					case <-innerCtx.Done():
+						//TODO: Log that the manager is exiting?
+						return
+					case <-time.After(retryInterval):
+						if err := manager.Run(innerCtx); err != nil {
+							level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
+							errChan <- err
+							//TODO: What is a good default value for this?
+							retryInterval = 30 * time.Second
+						}
+					}
 				}
-				wg.Done()
 			}()
 			c.mut.Unlock()
 		}
