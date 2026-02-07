@@ -15,12 +15,12 @@ jobs:
     name: Test (Full)
     runs-on: ubuntu-latest-8-cores
     container:
-      image: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
+      image: grafana/alloy-build-image:v0.1.26@sha256:54ef2371fc6b049d932c58d4622c88b573b45c393b7622fe6cca492ac4525dbe
       volumes:
         - /var/run/docker.sock
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
     - name: Set ownership
