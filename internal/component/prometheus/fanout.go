@@ -2,9 +2,7 @@ package prometheus
 
 import (
 	"context"
-	"os"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -64,13 +62,6 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 	})
 	_ = register.Register(s)
 
-	// TODO Figure out a better way to toggle between new approach and old labelstore approach
-	labelStoreEnv, exists := os.LookupEnv("ALLOY_USE_LABEL_STORE")
-	useLabelStore := true
-	if exists && strings.EqualFold(labelStoreEnv, "false") {
-		useLabelStore = false
-	}
-
 	return &Fanout{
 		children:       children,
 		componentID:    componentID,
@@ -78,7 +69,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 		samplesCounter: s,
 		ls:             ls,
 
-		useLabelStore:         useLabelStore,
+		useLabelStore:         ls.Enabled(),
 		seriesRefMappingStore: appenders.NewSeriesRefMappingStore(register),
 	}
 }

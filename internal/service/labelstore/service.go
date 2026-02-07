@@ -37,11 +37,23 @@ type staleMarker struct {
 type Arguments struct{}
 
 var _ alloy_service.Service = (*Service)(nil)
+var _ alloy_service.Service = (*disabledStore)(nil)
 
-func New(l log.Logger, r prometheus.Registerer) *Service {
+func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStore {
 	if l == nil {
 		l = log.NewNopLogger()
 	}
+
+	e := true
+	if len(enabled) != 0 {
+		e = enabled[0]
+	}
+
+	if !e {
+		level.Info(l).Log("msg", "labelstore service is disabled")
+		return disabledStore{}
+	}
+
 	s := &Service{
 		log:                 l,
 		globalRefID:         0,
@@ -272,6 +284,10 @@ func (s *Service) Clear() {
 	s.staleGlobals = make(map[uint64]*staleMarker)
 }
 
+func (s *Service) Enabled() bool {
+	return true
+}
+
 func (rw *remoteWriteMapping) deleteStaleIDs(globalID uint64) {
 	localID, found := rw.globalToLocal[globalID]
 	if !found {
@@ -286,4 +302,60 @@ type remoteWriteMapping struct {
 	RemoteWriteID string
 	localToGlobal map[uint64]uint64
 	globalToLocal map[uint64]uint64
+}
+
+type disabledStore struct{}
+
+func (d disabledStore) Definition() alloy_service.Definition {
+	return alloy_service.Definition{
+		Name:       "disabled_labelstore",
+		ConfigType: nil,
+		DependsOn:  nil,
+		Stability:  featuregate.StabilityGenerallyAvailable,
+	}
+}
+
+func (d disabledStore) Run(ctx context.Context, host alloy_service.Host) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (d disabledStore) Update(newConfig any) error {
+	return nil
+}
+
+func (d disabledStore) Data() any {
+	return d
+}
+
+func (d disabledStore) AddLocalLink(componentID string, globalRefID uint64, localRefID uint64) {
+	return
+}
+
+func (d disabledStore) GetOrAddGlobalRefID(l labels.Labels) uint64 {
+	return 0
+}
+
+func (d disabledStore) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
+	return 0
+}
+
+func (d disabledStore) TrackStaleness(ids []StalenessTracker) {
+	return
+}
+
+func (d disabledStore) CheckAndRemoveStaleMarkers() {
+	return
+}
+
+func (d disabledStore) ReplaceLocalLink(componentID string, globalRefID uint64, cachedLocalRef uint64, newLocalRef uint64) {
+	return
+}
+
+func (d disabledStore) Clear() {
+	return
+}
+
+func (d disabledStore) Enabled() bool {
+	return false
 }

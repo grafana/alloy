@@ -193,6 +193,8 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, af appenderFu
 		childRef, err := af(child, ref)
 		if err != nil {
 			appendErr = multierror.Append(appendErr, err)
+
+			// TODO should I make the childRef zero here?
 		}
 
 		s.childRefs = append(s.childRefs, childRef)
@@ -232,12 +234,12 @@ type SeriesRefMappingStore struct {
 	// nextUniqueRef is the next ref ID we will hand out
 	nextUniqueRef storage.SeriesRef
 
-	// timestampTrackingMu protects uniqueRefTimestamps and appendedUniqueRefsSlicePool
+	// timestampTrackingMu protects uniqueRefTimestamps and cellPool
 	timestampTrackingMu sync.Mutex
 	// uniqueRefTimestamps maps unique refs to their last append timestamp
 	uniqueRefTimestamps map[storage.SeriesRef]int64
-	// appendedUniqueRefsSlicePool is used to pool slices of SeriesRefs used for tracking uniqueRefCell
-	appendedUniqueRefsSlicePool sync.Pool
+	// cellPool is used to pool slices of SeriesRefs used for tracking unique refs in TrackAppendedSeries.
+	cellPool sync.Pool
 
 	// Cleanup goroutine coordination (no lock required)
 	startRefCleanup sync.Once
@@ -281,7 +283,7 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		uniqueRefToChildRefs: make(map[storage.SeriesRef]*[]storage.SeriesRef),
 		nextUniqueRef:        1,
 		uniqueRefTimestamps:  make(map[storage.SeriesRef]int64),
-		appendedUniqueRefsSlicePool: sync.Pool{
+		cellPool: sync.Pool{
 			New: func() any {
 				return &Cell{Refs: make([]storage.SeriesRef, 100)}
 			},
@@ -372,11 +374,11 @@ func (s *SeriesRefMappingStore) TrackAppendedSeries(ts int64, cell *Cell) {
 	s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
 
 	cell.Refs = cell.Refs[:0]
-	s.appendedUniqueRefsSlicePool.Put(cell)
+	s.cellPool.Put(cell)
 }
 
 func (s *SeriesRefMappingStore) GetCellForAppendedSeries() *Cell {
-	return s.appendedUniqueRefsSlicePool.Get().(*Cell)
+	return s.cellPool.Get().(*Cell)
 }
 
 func (s *SeriesRefMappingStore) cleanupStaleRefs() {
@@ -449,9 +451,9 @@ func (s *SeriesRefMappingStore) Clear() {
 	clear(s.uniqueRefTimestamps)
 
 	// reset the pool
-	s.appendedUniqueRefsSlicePool = sync.Pool{
+	s.cellPool = sync.Pool{
 		New: func() any {
-			return make([]storage.SeriesRef, 0, 100)
+			return &Cell{Refs: make([]storage.SeriesRef, 0, 100)}
 		},
 	}
 

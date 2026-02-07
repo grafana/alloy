@@ -24,6 +24,9 @@ type LabelStore interface {
 
 	// Clear removes all mappings from the label store. Only used for testing.
 	Clear()
+
+	// Enabled allows checking if the label store is enabled before doing work to generate global ref ids and track staleness.
+	Enabled() bool
 }
 
 type StalenessTracker struct {
