@@ -2,8 +2,6 @@ package remotewrite
 
 import (
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -19,12 +17,6 @@ import (
 
 func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher livedebugging.DebugDataPublisher, ls labelstore.LabelStore, store storage.Storage) *prometheus.Interceptor {
 	liveDebuggingComponentID := livedebugging.ComponentID(componentID)
-
-	labelStoreEnv, exists := os.LookupEnv("ALLOY_USE_LABEL_STORE")
-	useLabelStore := true
-	if exists && strings.EqualFold(labelStoreEnv, "false") {
-		useLabelStore = false
-	}
 
 	handleLocalLink := func(globalRef uint64, l labels.Labels, cachedLocalRef uint64, newLocalRef uint64) {
 		// We had a local ref that was still valid nothing to do
@@ -66,7 +58,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 
 			var finalRef storage.SeriesRef
 			var err error
-			if useLabelStore {
+			if ls.Enabled() {
 				localRef := ls.GetLocalRefID(componentID, uint64(ref))
 				newLocalRef, nextErr := next.Append(storage.SeriesRef(localRef), l, t, v)
 				if nextErr == nil {
@@ -95,7 +87,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 
 			var finalRef storage.SeriesRef
 			var err error
-			if useLabelStore {
+			if ls.Enabled() {
 				localRef := ls.GetLocalRefID(componentID, uint64(ref))
 				newLocalRef, nextErr := next.AppendHistogram(storage.SeriesRef(localRef), l, t, h, fh)
 				if nextErr == nil {
@@ -132,7 +124,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 
 			var finalRef storage.SeriesRef
 			var err error
-			if useLabelStore {
+			if ls.Enabled() {
 				localRef := ls.GetLocalRefID(componentID, uint64(ref))
 				newLocalRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localRef), l, m)
 				if nextErr == nil {
@@ -161,7 +153,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 
 			var finalRef storage.SeriesRef
 			var err error
-			if useLabelStore {
+			if ls.Enabled() {
 				localRef := ls.GetLocalRefID(componentID, uint64(ref))
 				newLocalRef, nextErr := next.AppendExemplar(storage.SeriesRef(localRef), l, e)
 				if nextErr == nil {

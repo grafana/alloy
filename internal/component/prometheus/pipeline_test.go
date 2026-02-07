@@ -11,7 +11,10 @@ import (
 
 	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -182,8 +185,8 @@ func (ref refTrackingConfig) TestNameString() string {
 }
 
 // go test -bench="BenchmarkPipelines" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
-// benchstat -row ".name /pipeline /remotewritecomponents /metrics" -filter "/metrics:(10 OR 1000)" -col /reftrackingconfig benchmarks
-// benchstat -row ".name /pipeline /remotewritecomponents /concurrency" -filter "/concurrency:(10 OR 1000)" -col /reftrackingconfig benchmarks
+// benchstat -row ".name /pipeline /remotewritecomponents /new-metrics" -filter "/new-metrics:(10 OR 1000)" -col /reftrackingconfig benchmarks
+// benchstat -row ".name /pipeline /remotewritecomponents /concurrent-existing-metrics" -filter "/concurrent-existing-metrics:(10 OR 1000)" -col /reftrackingconfig benchmarks
 func BenchmarkPipelines(b *testing.B) {
 	pipelineTypes := []struct {
 		name            string
@@ -255,13 +258,12 @@ func BenchmarkPipelines(b *testing.B) {
 					b.ResetTimer()
 
 					for b.Loop() {
-						for range n {
-							a := pipeline.Appender(b.Context())
-							for i, metric := range metrics {
-								a.Append(0, metric, time.Now().UnixMilli(), float64(i))
-							}
-							a.Commit()
+						a := pipeline.Appender(b.Context())
+						for i, metric := range metrics {
+							a.Append(0, metric, time.Now().UnixMilli(), float64(i))
 						}
+						a.Commit()
+
 						b.StopTimer()
 						clearCache()
 						b.StartTimer()
@@ -356,165 +358,176 @@ func TestDbgSeriesMappingPerf(t *testing.T) {
 	}
 }
 
-// go test -bench="BenchmarkSeriesMapping" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
-// benchstat -row ".name /remotewritecomponents /new-metrics" -col /reftrackingconfig benchmarks
-func BenchmarkSeriesMapping(b *testing.B) {
-	mkPipeline := func(t testing.TB, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
-		return newRemoteWritePipeline(t, log.NewNopLogger(), rwComponents, appenders.Noop{}, refTrackingConfig)
-	}
-
-	testConfigs := []struct {
-		numberOfRWComponents int
-		refTrackingConfig    refTrackingConfig
-		skipFor              map[string]struct{}
-	}{
-		// {
-		// 	numberOfRWComponents: 1,
-		// 	refTrackingConfig: refTrackingConfig{
-		// 		useLabelStore: true,
-		// 	},
-		// },
-		// {
-		// 	numberOfRWComponents: 1,
-		// 	refTrackingConfig: refTrackingConfig{
-		// 		useLabelStore: false,
-		// 	},
-		// },
-		{
-			numberOfRWComponents: 2,
-			refTrackingConfig: refTrackingConfig{
-				useLabelStore: true,
-			},
-		},
-		{
-			numberOfRWComponents: 2,
-			refTrackingConfig: refTrackingConfig{
-				useLabelStore: false,
-			},
-		},
-	}
-
-	// Simulates appending various numbers of new metrics sequentially
-	// numberOfMetrics := []int{10, 1000}
-	numberOfMetrics := []int{2000}
-	for _, n := range numberOfMetrics {
-		for _, config := range testConfigs {
-			testName := fmt.Sprintf("remotewritecomponents=%d/reftrackingconfig=%s/new-metrics=%d",
-				config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
-
-			b.Run(testName, func(b *testing.B) {
-				pipeline, _, _ := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
-				metrics := setupMetrics(n)
-				b.ReportAllocs()
-				b.ResetTimer()
-
-				for b.Loop() {
-					for range n {
-						a := pipeline.Appender(b.Context())
-						for i, metric := range metrics {
-							a.Append(0, metric, time.Now().UnixMilli(), float64(i))
-						}
-						a.Commit()
-					}
-					b.StopTimer()
-					b.StartTimer()
-				}
-			})
-		}
-	}
-
-	// Simulate concurrently appending from multiple scrapers for known metrics
-	// concurrency := []int{10, 1000}
-	// for _, c := range concurrency {
-	// 	for _, config := range testConfigs {
-	// 		testName := fmt.Sprintf("remotewritecomponents=%d/reftrackingconfig=%s/concurrent-existing-metrics=%d",
-	// 			config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), c)
-	//
-	// 		b.Run(testName, func(b *testing.B) {
-	// 			pipeline, _, _ := mkPipeline(b, config.numberOfRWComponents, config.refTrackingConfig)
-	// 			var metricsForAppenders [][]labels.Labels
-	// 			numMetrics := 1000
-	// 			for appenderIndex := range c {
-	// 				metrics := setupMetrics(numMetrics, fmt.Sprintf("concurrency-%d", appenderIndex))
-	//
-	// 				// Send them through once so further appends can use "known refs"
-	// 				a := pipeline.Appender(b.Context())
-	// 				for metricIndex, metric := range metrics {
-	// 					expectedRef := storage.SeriesRef(appenderIndex*numMetrics + metricIndex + 1)
-	// 					ref, err := a.Append(expectedRef, metric, time.Now().UnixMilli(), float64(metricIndex))
-	// 					require.NoError(b, err)
-	// 					require.Equal(b, expectedRef, ref)
-	// 				}
-	// 				require.NoError(b, a.Commit())
-	//
-	// 				metricsForAppenders = append(metricsForAppenders, metrics)
-	// 			}
-	// 			b.ReportAllocs()
-	// 			b.ResetTimer()
-	//
-	// 			for b.Loop() {
-	// 				var wg sync.WaitGroup
-	//
-	// 				for appenderIndex := range c {
-	// 					wg.Add(1)
-	// 					go func(appenderIndex int) {
-	// 						defer wg.Done()
-	//
-	// 						a := pipeline.Appender(b.Context())
-	// 						for metricIndex, metric := range metricsForAppenders[appenderIndex] {
-	// 							ref := storage.SeriesRef(appenderIndex*numMetrics + metricIndex + 1)
-	// 							_, err := a.Append(ref, metric, time.Now().UnixMilli(), float64(metricIndex))
-	// 							require.NoError(b, err)
-	// 						}
-	// 						require.NoError(b, a.Commit())
-	// 					}(appenderIndex)
-	// 				}
-	//
-	// 				wg.Wait()
-	// 			}
-	// 		})
-	// 	}
-	// }
+type noopAppender struct {
+	refCounter atomic.Uint64
 }
 
-// go test -bench="BenchmarkStores" ./internal/component/prometheus -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
-// benchstat -row ".name /remotewritecomponents /new-metrics" -col /reftrackingconfig benchmarks
-func BenchmarkStores(b *testing.B) {
+func (n noopAppender) Append(storage.SeriesRef, labels.Labels, int64, float64) (storage.SeriesRef, error) {
+	return storage.SeriesRef(n.refCounter.Inc()), nil
+}
+
+func (n noopAppender) Commit() error {
+	return nil
+}
+
+func (n noopAppender) Rollback() error {
+	return nil
+}
+
+func (n noopAppender) SetOptions(*storage.AppendOptions) {
+	return
+}
+
+func (n noopAppender) AppendExemplar(storage.SeriesRef, labels.Labels, exemplar.Exemplar) (storage.SeriesRef, error) {
+	return storage.SeriesRef(n.refCounter.Inc()), nil
+}
+
+func (n noopAppender) AppendHistogram(storage.SeriesRef, labels.Labels, int64, *histogram.Histogram, *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return storage.SeriesRef(n.refCounter.Inc()), nil
+}
+
+func (n noopAppender) AppendHistogramCTZeroSample(storage.SeriesRef, labels.Labels, int64, int64, *histogram.Histogram, *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return storage.SeriesRef(n.refCounter.Inc()), nil
+}
+
+func (n noopAppender) UpdateMetadata(storage.SeriesRef, labels.Labels, metadata.Metadata) (storage.SeriesRef, error) {
+	return storage.SeriesRef(n.refCounter.Inc()), nil
+}
+
+func (n noopAppender) AppendCTZeroSample(storage.SeriesRef, labels.Labels, int64, int64) (storage.SeriesRef, error) {
+	return storage.SeriesRef(n.refCounter.Inc()), nil
+}
+
+type noopStore struct {
+	refCounter atomic.Uint64
+}
+
+func (n noopStore) Querier(int64, int64) (storage.Querier, error) {
+	return nil, nil
+}
+
+func (n noopStore) ChunkQuerier(int64, int64) (storage.ChunkQuerier, error) {
+	return nil, nil
+}
+
+func (n noopStore) Appender(context.Context) storage.Appender {
+	return noopAppender{refCounter: n.refCounter}
+}
+
+func (n noopStore) StartTime() (int64, error) {
+	return 0, nil
+}
+
+func (n noopStore) Close() error {
+	return nil
+}
+
+func BenchmarkAppenderFlows(b *testing.B) {
+	numberOfMetrics := []int{2000}
+	for _, n := range numberOfMetrics {
+		metrics := setupMetrics(n)
+		now := time.Now().UnixMilli()
+
+		testName := fmt.Sprintf("labelstore/new-metrics=%d", n)
+		ls := labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer)
+		rw1 := remotewrite.NewInterceptor("1", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
+		rw2 := remotewrite.NewInterceptor("2", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
+		children := []storage.Appendable{rw1, rw2}
+		fanout := prometheus.NewFanout(children, "fanout", promclient.DefaultRegisterer, ls)
+
+		b.Run(testName, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				app := fanout.Appender(b.Context())
+				for _, metric := range metrics {
+					app.Append(0, metric, now, 1.0)
+				}
+				app.Commit()
+
+				b.StopTimer()
+				fanout.Clear()
+				b.StartTimer()
+			}
+		})
+
+		testName = fmt.Sprintf("seriesref/new-metrics=%d", n)
+		ls = labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer, false)
+		rw1 = remotewrite.NewInterceptor("1", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
+		rw2 = remotewrite.NewInterceptor("2", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
+		children = []storage.Appendable{rw1, rw2}
+		fanout = prometheus.NewFanout(children, "fanout", promclient.DefaultRegisterer, ls)
+
+		b.Run(testName, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				app := fanout.Appender(b.Context())
+				for _, metric := range metrics {
+					app.Append(0, metric, now, 1.0)
+				}
+				app.Commit()
+
+				b.StopTimer()
+				fanout.Clear()
+				b.StartTimer()
+			}
+		})
+	}
+}
+
+func BenchmarkStoreFlows(b *testing.B) {
 	numberOfMetrics := []int{2000}
 	for _, n := range numberOfMetrics {
 		metrics := setupMetrics(n)
 
-		testName := fmt.Sprintf("labelstore=%d/new-metrics=%d", 1, n)
+		testName := fmt.Sprintf("labelstore/new-metrics=%d", n)
 		b.Run(testName, func(b *testing.B) {
 			ls := labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer)
 			b.ReportAllocs()
 			b.ResetTimer()
 
 			for b.Loop() {
+				stalenessTrackers := make([]labelstore.StalenessTracker, 0, len(metrics))
 				for i, metric := range metrics {
 					ls.GetOrAddGlobalRefID(metric)
+
+					stalenessTrackers = append(stalenessTrackers, labelstore.StalenessTracker{
+						GlobalRefID: uint64(i + 1),
+						Labels:      metric,
+						Value:       float64(i),
+					})
+
 					ls.GetLocalRefID("prometheus.remote_write.test.1", 0)
 					ls.AddLocalLink("prometheus.remote_write.test.1", uint64(i), uint64(i))
+
 					ls.GetLocalRefID("prometheus.remote_write.test.2", 0)
 					ls.AddLocalLink("prometheus.remote_write.test.2", uint64(i), uint64(i))
 				}
+
+				ls.TrackStaleness(stalenessTrackers)
+
 				b.StopTimer()
 				ls.Clear()
 				b.StartTimer()
 			}
 		})
 
-		testName = fmt.Sprintf("seriesrefmapping=%d/new-metrics=%d", 1, n)
+		testName = fmt.Sprintf("seriesrefmappingnew-metrics=%d", n)
 		b.Run(testName, func(b *testing.B) {
 			sm := appenders.NewSeriesRefMappingStore(promclient.DefaultRegisterer)
 			b.ReportAllocs()
 			b.ResetTimer()
 
 			for b.Loop() {
+				cell := sm.GetCellForAppendedSeries()
 				for i, _ := range metrics {
 					sm.GetMapping(storage.SeriesRef(i))
 					sm.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i)})
+					cell.Refs = append(cell.Refs, storage.SeriesRef(i))
 				}
+				sm.TrackAppendedSeries(time.Now().UnixMilli(), cell)
+
 				b.StopTimer()
 				sm.Clear()
 				b.StartTimer()
@@ -540,8 +553,7 @@ func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 type clearCacheFunc = func()
 
 func newRemoteWritePipeline(t testing.TB, logger log.Logger, numberOfRemoteWriteComponents int, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
-	t.Setenv("ALLOY_USE_LABEL_STORE", fmt.Sprintf("%v", config.useLabelStore))
-	ls := labelstore.New(logger, promclient.DefaultRegisterer)
+	ls := labelstore.New(logger, promclient.DefaultRegisterer, config.useLabelStore)
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 
@@ -557,8 +569,7 @@ func newRemoteWritePipeline(t testing.TB, logger log.Logger, numberOfRemoteWrite
 }
 
 func newRelabelPipeline(t testing.TB, logger log.Logger, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
-	t.Setenv("ALLOY_USE_LABEL_STORE", fmt.Sprintf("%v", config.useLabelStore))
-	ls := labelstore.New(logger, promclient.DefaultRegisterer)
+	ls := labelstore.New(logger, promclient.DefaultRegisterer, config.useLabelStore)
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 	rwAppendable := newRemoteWriteComponent(t, logger, ls, destAppendable)
@@ -569,7 +580,7 @@ func newRelabelPipeline(t testing.TB, logger log.Logger, destination storage.App
 	return scrapeInterceptor, ls, func() { pipelineAppendable.Clear() }
 }
 
-func newRemoteWriteComponent(t testing.TB, logger log.Logger, ls *labelstore.Service, destination storage.Appendable) storage.Appendable {
+func newRemoteWriteComponent(t testing.TB, logger log.Logger, ls labelstore.LabelStore, destination storage.Appendable) storage.Appendable {
 	walDir := t.TempDir()
 
 	walStorage, err := wal.NewStorage(logger, promclient.NewRegistry(), walDir)
@@ -611,7 +622,7 @@ func (t testStorage) Close() error {
 	return nil
 }
 
-func newRelabelComponent(t testing.TB, logger log.Logger, forwardTo []storage.Appendable, ls *labelstore.Service) storage.Appendable {
+func newRelabelComponent(t testing.TB, logger log.Logger, forwardTo []storage.Appendable, ls labelstore.LabelStore) storage.Appendable {
 	cfg := `forward_to = []
 			rule {
 				action       = "replace"
