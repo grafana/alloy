@@ -174,8 +174,8 @@ em.informative {
 td.nameColumn {
   font-family: 'Fira Code', monospace;
   font-size: 14px;
-  vertical-align: top;
-  padding: 6px;
+  vertical-align: middle;
+  padding: 8px;
   color: black;
 }
 
