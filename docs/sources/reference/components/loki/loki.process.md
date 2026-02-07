@@ -496,12 +496,15 @@ The following arguments are supported:
 
 | Name             | Type          | Description                                           | Default | Required |
 | ---------------- | ------------- | ----------------------------------------------------- | ------- | -------- |
-| `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | yes      |
+| `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | no       |
+| `regex`          | `string`      | Regular expression matched against JSON keys.         |         | no       |
 | `drop_malformed` | `bool`        | Drop lines whose input can't be parsed as valid JSON. | `false` | no       |
 | `source`         | `string`      | Source of the data to parse as JSON.                  | `""`    | no       |
 
 The `expressions` field is the set of key-value pairs of JMESPath expressions to run.
-The map key defines the name with which the data is extracted, while the map value is the expression used to populate the value.
+The map key defines the name used to extract the data, while the map value is the expression used to populate the value.
+
+The `regex` field is a regular expression. All keys in the JSON source matching the regular expression are extracted.
 
 When configuring a JSON stage, the `source` field defines the source of data to parse as JSON.
 By default, this is the log line itself, but it can also be a previously extracted value.
@@ -653,19 +656,19 @@ The `stage.logfmt` inner block configures a processing stage that reads incoming
 
 The following arguments are supported:
 
-| Name      | Type          | Description                                    | Default | Required |
-| --------- | ------------- | ---------------------------------------------- | ------- | -------- |
-| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract. |         | yes      |
-| `source`  | `string`      | Source of the data to parse as `logfmt`.       | `""`    | no       |
+| Name      | Type          | Description                                     | Default | Required |
+| --------- | ------------- | ----------------------------------------------- | ------- | -------- |
+| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract.  |         | no       |
+| `regex`   | `string`      | Regular expression matched against logfmt keys. |         | no       |
+| `source`  | `string`      | Source of the data to parse as `logfmt`.        | `""`    | no       |
+
+The `mapping` field is the set of key-value pairs.
+The map key defines the name used to extract the data, while the map value is the logfmt field used to populate the value.
+
+The `regex` field is a regular expression. All logfmt fields matching the regular expression are extracted.
 
 The `source` field defines the source of data to parse as `logfmt`.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
-
-This stage uses the [go-logfmt][] unmarshaler, so that numeric or boolean types are unmarshalled into their correct form.
-The stage doesn't perform any other type conversions.
-If the extracted value is a complex type, it's treated as a string.
-
-[go-logfmt]: https://github.com/go-logfmt/logfmt
 
 The following log line and stages demonstrates how this works.
 
