@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
-    "release-please": "^17.1.3"
+    "release-please": "^17.2.0"
   }
 }
