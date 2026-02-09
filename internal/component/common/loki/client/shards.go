@@ -335,6 +335,11 @@ func (s *shards) runShard(q *queue) {
 		}
 	}()
 
+	var (
+		protoBuffer  = make([]byte, 0, s.cfg.BatchSize)
+		snappyBuffer = make([]byte, 0, s.cfg.BatchSize)
+	)
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -345,11 +350,15 @@ func (s *shards) runShard(q *queue) {
 				// Channel is closed, when a graceful shutdown is successful.
 				return
 			}
-			s.sendBatch(b.TenantID, b.Batch)
+			s.sendBatch(b.TenantID, b.Batch, protoBuffer, snappyBuffer)
+			protoBuffer = protoBuffer[:0]
+			snappyBuffer = snappyBuffer[:0]
 		case <-maxWaitCheck.C:
 			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
-				s.sendBatch(b.TenantID, b.Batch)
+				s.sendBatch(b.TenantID, b.Batch, protoBuffer, snappyBuffer)
+				protoBuffer = protoBuffer[:0]
+				snappyBuffer = snappyBuffer[:0]
 			}
 		}
 	}
@@ -393,9 +402,9 @@ func (s *shards) initBatchMetrics(tenantID string) {
 }
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
-func (s *shards) sendBatch(tenantID string, batch *batch) {
+func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf []byte) {
 	defer batch.reportAsSentData(s.markerHandler)
-	buf, entriesCount, err := batch.encode()
+	buf, entriesCount, err := batch.encode(protoBuf, snappyBuf)
 
 	if err != nil {
 		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
