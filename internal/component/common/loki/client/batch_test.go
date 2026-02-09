@@ -106,6 +106,26 @@ func TestBatch_add(t *testing.T) {
 	}
 }
 
+// TestBatch_SizeMatchesActual verifies that the manually incremented size
+// actually matches protobuf encoded size.
+func TestBatch_SizeMatchesActual(t *testing.T) {
+	const numLines = 100
+	const numSeries = 10
+
+	b := newBatch(0, int(1*units.MiB))
+	for i := range numLines {
+		mod := i % numSeries
+		entry := loki.Entry{
+			Labels: model.LabelSet{"app": model.LabelValue(fmt.Sprintf("test-%d", mod))},
+			Entry:  push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("hola %d", i)},
+		}
+		err := b.add(entry, 0)
+		require.NoError(t, err)
+		assert.Equal(t, b.req.Size(), b.sizeBytes())
+	}
+	assert.Equal(t, b.req.Size(), b.sizeBytes())
+}
+
 func TestBatch_encode(t *testing.T) {
 	t.Parallel()
 
@@ -214,6 +234,27 @@ func TestBatchHashCollisions(t *testing.T) {
 	} else {
 		assert.Equal(t, ls2.String(), req.Streams[0].Labels)
 		assert.Equal(t, ls1.String(), req.Streams[1].Labels)
+	}
+}
+
+func BenchmarkBatch_Add(b *testing.B) {
+	const maxSize = 1 << 20
+	entries := make([]loki.Entry, 64)
+	for i := range 64 {
+		entries[i] = loki.Entry{
+			Labels: model.LabelSet{"stream": model.LabelValue(fmt.Sprintf("s%d", i))},
+			Entry:  push.Entry{Timestamp: time.Now(), Line: "log line"},
+		}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		batch := newBatch(0, maxSize)
+		for i := range 64 {
+			_ = batch.add(entries[i%64], 0)
+		}
 	}
 }
 
