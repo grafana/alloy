@@ -9,12 +9,6 @@ services:
       - -config.file=/etc/mimir-config/mimir.yaml
     ports:
       - "9009:9009"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9009/ready"]
-      interval: 2s
-      timeout: 5s
-      retries: 90
-      start_period: 30s
     networks:
       - integration-tests
 
