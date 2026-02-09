@@ -122,11 +122,11 @@ func (c *collectingAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labe
 	return ref, nil
 }
 
-func (c *collectingAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+func (c *collectingAppender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
 	panic("not implemented yet for this test appender")
 }
 
-func (c *collectingAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (c *collectingAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	panic("not implemented yet for this test appender")
 }
 

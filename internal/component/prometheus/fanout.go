@@ -246,7 +246,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	return ref, multiErr
 }
 
-func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+func (a *appender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
 	if a.start.IsZero() {
 		a.start = time.Now()
 	}
@@ -255,7 +255,7 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 	}
 	var multiErr error
 	for _, x := range a.children {
-		_, err := x.AppendCTZeroSample(ref, l, t, ct)
+		_, err := x.AppendSTZeroSample(ref, l, t, st)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -263,7 +263,7 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 	return ref, multiErr
 }
 
-func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (a *appender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	if a.start.IsZero() {
 		a.start = time.Now()
 	}
@@ -272,7 +272,7 @@ func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.L
 	}
 	var multiErr error
 	for _, x := range a.children {
-		_, err := x.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
+		_, err := x.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
