@@ -155,7 +155,7 @@ func (b *batch) encode(protoBuf, snappyBuf []byte) ([]byte, int, error) {
 	// exceed that size limit we need to make sure we have
 	// enough space in the buffer.
 	if size > len(protoBuf) {
-		protoBuf = make([]byte, 0, size)
+		protoBuf = make([]byte, size)
 	}
 
 	n, err := b.req.MarshalToSizedBuffer(protoBuf[:size])

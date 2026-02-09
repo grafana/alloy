@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/golang/snappy"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/config"
 	"go.uber.org/atomic"
@@ -336,8 +337,8 @@ func (s *shards) runShard(q *queue) {
 	}()
 
 	var (
-		protoBuffer  = make([]byte, 0, s.cfg.BatchSize)
-		snappyBuffer = make([]byte, 0, s.cfg.BatchSize)
+		protoBuffer  = make([]byte, s.cfg.BatchSize)
+		snappyBuffer = make([]byte, snappy.MaxEncodedLen(s.cfg.BatchSize))
 	)
 
 	for {
@@ -351,14 +352,10 @@ func (s *shards) runShard(q *queue) {
 				return
 			}
 			s.sendBatch(b.TenantID, b.Batch, protoBuffer, snappyBuffer)
-			protoBuffer = protoBuffer[:0]
-			snappyBuffer = snappyBuffer[:0]
 		case <-maxWaitCheck.C:
 			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
 				s.sendBatch(b.TenantID, b.Batch, protoBuffer, snappyBuffer)
-				protoBuffer = protoBuffer[:0]
-				snappyBuffer = snappyBuffer[:0]
 			}
 		}
 	}
