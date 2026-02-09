@@ -33,8 +33,6 @@ type SentDataMarkerHandler interface {
 type batch struct {
 	// req is the push request holding streams and entries to send to Loki.
 	req *push.PushRequest
-	// index maps label strings to stream indices in req.Streams for fast lookup.
-	index map[string]int
 	// createdAt is when the batch was created.
 	createdAt time.Time
 	// maxSize is the maximum batch size in bytes. At least one entry is always
@@ -51,7 +49,6 @@ type batch struct {
 func newBatch(maxStreams, maxSize int) *batch {
 	return &batch{
 		req:            &push.PushRequest{},
-		index:          make(map[string]int, maxStreams),
 		createdAt:      time.Now(),
 		maxSize:        maxSize,
 		maxStreams:     maxStreams,
@@ -66,7 +63,7 @@ func newBatch(maxStreams, maxSize int) *batch {
 func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	labels := labelsMapToString(entry.Labels)
 
-	index, ok := b.index[labels]
+	stream, ok := b.getStream(labels)
 	streamLen := len(b.req.Streams)
 
 	// Reject if we would exceed the maxStreams limit.
@@ -76,7 +73,6 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 
 	// Append the entry to an already existing stream.
 	if ok {
-		stream := &b.req.Streams[index]
 		stream.Entries = append(stream.Entries, entry.Entry)
 		if b.sizeBytes() > b.maxSize {
 			stream.Entries = stream.Entries[:len(stream.Entries)-1]
@@ -87,7 +83,7 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 		return nil
 	}
 
-	stream := &push.Stream{
+	stream = &push.Stream{
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
@@ -103,9 +99,20 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	}
 
 	b.entriesTotal += 1
-	b.index[labels] = len(b.req.Streams) - 1
 	b.countForSegment(segmentNum)
 	return nil
+}
+
+func (b *batch) getStream(labels string) (*push.Stream, bool) {
+	i := slices.IndexFunc(b.req.Streams, func(stream push.Stream) bool {
+		return stream.Labels == labels
+	})
+
+	if i == -1 {
+		return nil, false
+	}
+
+	return &b.req.Streams[i], true
 }
 
 // sizeBytes returns the current batch size in bytes.
