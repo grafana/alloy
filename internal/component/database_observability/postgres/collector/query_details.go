@@ -163,14 +163,15 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		for _, table := range tables {
 			validated := false
+			resolvedTable := table
 			if c.tableRegistry != nil {
-				validated = c.tableRegistry.IsValid(databaseName, table)
+				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, table, validated),
+				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
 			)
 		}
 	}

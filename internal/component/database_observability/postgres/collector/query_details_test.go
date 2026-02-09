@@ -92,7 +92,7 @@ func TestQueryDetails(t *testing.T) {
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
-				`level="info" queryid="abc123" datname="some_database" table="SOME_TABLE" validated="true"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
 				tables: map[database]map[schema]map[table]struct{}{
@@ -117,7 +117,7 @@ func TestQueryDetails(t *testing.T) {
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
-				`level="info" queryid="abc123" datname="some_database" table="PUBLIC.USERS" validated="true"`,
+				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
 				tables: map[database]map[schema]map[table]struct{}{
@@ -142,13 +142,13 @@ func TestQueryDetails(t *testing.T) {
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
-				`level="info" queryid="abc123" datname="some_database" table="MyTable" validated="true"`,
-			},
-			tableRegistry: &TableRegistry{
-				tables: map[database]map[schema]map[table]struct{}{
-					"some_database": {
-						"public": {
-							"mytable": struct{}{}, // lowercase in registry
+			`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
+		},
+		tableRegistry: &TableRegistry{
+			tables: map[database]map[schema]map[table]struct{}{
+				"some_database": {
+					"public": {
+						"mytable": struct{}{}, // lowercase in registry
 						},
 					},
 				},

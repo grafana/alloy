@@ -246,14 +246,15 @@ func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*t
 	}
 }
 
-// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry
-func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool {
+// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry.
+// It also returns the resolved table name, which may differ from the input (e.g. lowercased due to PostgreSQL's identifier folding).
+func (tr *TableRegistry) IsValid(database database, parsedTableName string) (string, bool) {
 	tr.mu.RLock()
 	defer tr.mu.RUnlock()
 
 	schemas, ok := tr.tables[database]
 	if !ok {
-		return false
+		return parsedTableName, false
 	}
 
 	schemaName, tableName := parseSchemaQualifiedIfAny(parsedTableName)
@@ -262,7 +263,7 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/alloy/issues/4815
 		for _, tables := range schemas {
 			if _, ok := tables[tableName]; ok {
-				return true
+				return string(tableName), true
 			}
 
 			// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
@@ -270,18 +271,19 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 			lowercaseName := table(strings.ToLower(string(tableName)))
 			if lowercaseName != tableName {
 				if _, ok := tables[lowercaseName]; ok {
-					return true
+					return string(lowercaseName), true
 				}
 			}
 		}
 	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
 		if tables, ok := schemas[schemaName]; ok {
-			_, exists := tables[tableName]
-			return exists
+			if _, exists := tables[tableName]; exists {
+				return string(schemaName) + "." + string(tableName), true
+			}
 		}
 	}
 
-	return false
+	return parsedTableName, false
 }
 
 // parseSchemaQualifiedIfAny returns separated schema and table if the parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name

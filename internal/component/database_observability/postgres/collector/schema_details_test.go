@@ -1535,8 +1535,13 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "orders"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "users"))
-		assert.True(t, tr.IsValid("mydb", "orders"))
+		resolvedTable, valid := tr.IsValid("mydb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "orders")
+		assert.True(t, valid)
+		assert.Equal(t, "orders", resolvedTable)
 	})
 
 	t.Run("returns false when table does not exist in registry", func(t *testing.T) {
@@ -1545,7 +1550,9 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "users"},
 		})
 
-		assert.False(t, tr.IsValid("mydb", "nonexistent"))
+		resolvedTable, valid := tr.IsValid("mydb", "nonexistent")
+		assert.False(t, valid)
+		assert.Equal(t, "nonexistent", resolvedTable)
 	})
 
 	t.Run("returns false given nonexistent database", func(t *testing.T) {
@@ -1554,13 +1561,17 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "users"},
 		})
 
-		assert.False(t, tr.IsValid("otherdb", "users"))
+		resolvedTable, valid := tr.IsValid("otherdb", "users")
+		assert.False(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("returns false for empty registry", func(t *testing.T) {
 		tr := NewTableRegistry()
 
-		assert.False(t, tr.IsValid("mydb", "users"))
+		resolvedTable, valid := tr.IsValid("mydb", "users")
+		assert.False(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("returns true when table exists in multiple schemas", func(t *testing.T) {
@@ -1570,7 +1581,9 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "private", tableName: "users"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "users"))
+		resolvedTable, valid := tr.IsValid("mydb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("returns true when schema-qualified table exists", func(t *testing.T) {
@@ -1579,7 +1592,9 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "private", tableName: "users"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "private.users"))
+		resolvedTable, valid := tr.IsValid("mydb", "private.users")
+		assert.True(t, valid)
+		assert.Equal(t, "private.users", resolvedTable)
 	})
 
 	t.Run("unquoted table name matches lowercase registry entry", func(t *testing.T) {
@@ -1589,9 +1604,17 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 		})
 
 		// Unquoted identifier is folded to lowercase by postgres
-		assert.True(t, tr.IsValid("mydb", "USERS"))
-		assert.True(t, tr.IsValid("mydb", "Users"))
-		assert.True(t, tr.IsValid("mydb", "users"))
+		resolvedTable, valid := tr.IsValid("mydb", "USERS")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "Users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("unquoted table name matches mixed case registry entry", func(t *testing.T) {
@@ -1600,8 +1623,13 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "MyTable"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "MyTable"))
-		assert.False(t, tr.IsValid("mydb", "mytable"))
+		resolvedTable, valid := tr.IsValid("mydb", "MyTable")
+		assert.True(t, valid)
+		assert.Equal(t, "MyTable", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "mytable")
+		assert.False(t, valid)
+		assert.Equal(t, "mytable", resolvedTable)
 	})
 
 	t.Run("schema-qualified unquoted table name matches lowercase registry entry", func(t *testing.T) {
@@ -1610,9 +1638,17 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "users"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "PUBLIC.USERS"))
-		assert.True(t, tr.IsValid("mydb", "Public.Users"))
-		assert.True(t, tr.IsValid("mydb", "public.users"))
+		resolvedTable, valid := tr.IsValid("mydb", "PUBLIC.USERS")
+		assert.True(t, valid)
+		assert.Equal(t, "public.users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "Public.Users")
+		assert.True(t, valid)
+		assert.Equal(t, "public.users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "public.users")
+		assert.True(t, valid)
+		assert.Equal(t, "public.users", resolvedTable)
 	})
 
 	t.Run("schema-qualified quoted table match exact case", func(t *testing.T) {
@@ -1621,8 +1657,13 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "MyTable"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", `public."MyTable"`))
-		assert.False(t, tr.IsValid("mydb", "public.mytable"))
+		resolvedTable, valid := tr.IsValid("mydb", `public."MyTable"`)
+		assert.True(t, valid)
+		assert.Equal(t, "public.MyTable", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "public.mytable")
+		assert.False(t, valid)
+		assert.Equal(t, "public.mytable", resolvedTable)
 	})
 
 	t.Run("schema-qualified with quoted schema match exact case", func(t *testing.T) {
@@ -1631,8 +1672,13 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "MySchema", tableName: "users"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", `"MySchema".users`))
-		assert.False(t, tr.IsValid("mydb", "myschema.users"))
+		resolvedTable, valid := tr.IsValid("mydb", `"MySchema".users`)
+		assert.True(t, valid)
+		assert.Equal(t, "MySchema.users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "myschema.users")
+		assert.False(t, valid)
+		assert.Equal(t, "myschema.users", resolvedTable)
 	})
 
 	t.Run("both schema and table quoted match exact case", func(t *testing.T) {
@@ -1641,8 +1687,13 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "MySchema", tableName: "MyTable"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", `"MySchema"."MyTable"`))
-		assert.False(t, tr.IsValid("mydb", "myschema.mytable"))
+		resolvedTable, valid := tr.IsValid("mydb", `"MySchema"."MyTable"`)
+		assert.True(t, valid)
+		assert.Equal(t, "MySchema.MyTable", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "myschema.mytable")
+		assert.False(t, valid)
+		assert.Equal(t, "myschema.mytable", resolvedTable)
 	})
 }
 
