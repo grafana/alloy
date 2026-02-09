@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	"github.com/golang/snappy"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -179,8 +180,8 @@ func TestBatch_encode(t *testing.T) {
 			}
 
 			var (
-				protoBuf  = make([]byte, 0, maxSize)
-				snappyBuf = make([]byte, 0, maxSize)
+				protoBuf  = make([]byte, maxSize)
+				snappyBuf = make([]byte, snappy.MaxEncodedLen(maxSize))
 			)
 
 			_, entriesCount, err := b.encode(protoBuf, snappyBuf)
@@ -255,6 +256,33 @@ func BenchmarkBatch_Add(b *testing.B) {
 		for i := range 64 {
 			_ = batch.add(entries[i%64], 0)
 		}
+	}
+}
+
+var encodedBuf []byte
+
+func BenchmarkBatch_Encode(b *testing.B) {
+	const maxSize = 1 << 20
+	batch := newBatch(0, maxSize)
+	for i := range 64 {
+		entry := loki.Entry{
+			Labels: model.LabelSet{"stream": model.LabelValue(fmt.Sprintf("s%d", i))},
+			Entry:  push.Entry{Timestamp: time.Now(), Line: "log line"},
+		}
+		err := batch.add(entry, 0)
+		require.NoError(b, err)
+	}
+
+	var (
+		protoBuf  = make([]byte, maxSize)
+		snappyBuf = make([]byte, snappy.MaxEncodedLen(maxSize))
+	)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		encodedBuf, _, _ = batch.encode(protoBuf, snappyBuf)
 	}
 }
 
