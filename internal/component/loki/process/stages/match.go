@@ -97,7 +97,7 @@ func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, reg
 		dropReason: dropReason,
 		dropCount:  getDropCountMetric(registerer),
 		matchers:   selector.Matchers(),
-		stage:      pl,
+		pipeline:   pl,
 		action:     config.Action,
 		filter:     filter,
 	}, nil
@@ -126,7 +126,7 @@ type matcherStage struct {
 	dropCount  *prometheus.CounterVec
 	matchers   []*labels.Matcher
 	filter     logql.Filter
-	stage      Stage
+	pipeline   *Pipeline
 	action     string
 }
 
@@ -143,7 +143,7 @@ func (m *matcherStage) Run(in chan Entry) chan Entry {
 func (m *matcherStage) runKeep(in chan Entry) chan Entry {
 	next := make(chan Entry)
 	out := make(chan Entry)
-	outNext := m.stage.Run(next)
+	outNext := m.pipeline.Run(next)
 	go func() {
 		defer close(out)
 		for e := range outNext {
@@ -192,12 +192,12 @@ func (m *matcherStage) processLogQL(e Entry) (Entry, bool) {
 	return e, false
 }
 
-// Name implements Stage
 func (m *matcherStage) Name() string {
 	return StageTypeMatch
 }
 
-// Cleanup implements Stage.
-func (*matcherStage) Cleanup() {
-	// no-op
+func (m *matcherStage) Cleanup() {
+	if m.pipeline != nil {
+		m.pipeline.Cleanup()
+	}
 }

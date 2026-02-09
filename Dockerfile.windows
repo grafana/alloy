@@ -75,7 +75,7 @@ SHELL ["cmd", "/S", "/C"]
 
 # Creating new layers can be really slow on Windows so we clean up any caches
 # we can before moving on to the next step.
-RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"builtinassets ${GO_TAGS}\" make alloy && rm -rf internal/web/ui/node_modules""
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"embedalloyui ${GO_TAGS}\" make alloy && rm -rf internal/web/ui/node_modules""
 
 # In this case, we're separating the clean command from make alloy to avoid an issue where access to some mod cache
 # files is denied immediately after make alloy, for example:
@@ -87,6 +87,10 @@ FROM ${BASE_IMAGE_WINDOWS}
 
 COPY --from=builder ["/src/alloy/build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
+
+# Provide otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY ["packaging/docker/otelcol.cmd", "C:/Program Files/GrafanaLabs/Alloy/otelcol.cmd"]
 
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker
