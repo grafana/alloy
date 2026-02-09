@@ -118,8 +118,11 @@ func (b *batch) age() time.Duration {
 	return time.Since(b.createdAt)
 }
 
-// encode the batch as snappy-compressed push request, and returns
-// the encoded bytes and the number of encoded entries
+// encode marshals the batch to a snappy-compressed push request using the
+// given buffers, and returns the encoded bytes, the number of entries, and any error.
+// If the batch does not fit in protoBuf or the compressed output does not fit in
+// snappyBuf, new buffers are allocated and the caller's buffers are not reused.
+// protoBuf and snappyBuf must not overlap.
 func (b *batch) encode(protoBuf, snappyBuf []byte) ([]byte, int, error) {
 	size := b.sizeBytes()
 	// Note: Because we are always allowing at least one
