@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"math/bits"
 	"slices"
 	"strconv"
 	"strings"
@@ -42,16 +43,20 @@ type batch struct {
 	maxStreams int
 	// entriesTotal is the total number of log entries across all streams in the batch.
 	entriesTotal int
+	// size is the total serialized size of the push request in bytes.
+	size int
 	// segmentCounter tracks the amount of entries for each segment present in this batch.
 	segmentCounter map[int]int
 }
 
 func newBatch(maxStreams, maxSize int) *batch {
+	req := &push.PushRequest{}
 	return &batch{
-		req:            &push.PushRequest{},
+		req:            req,
 		createdAt:      time.Now(),
 		maxSize:        maxSize,
 		maxStreams:     maxStreams,
+		size:           req.Size(),
 		segmentCounter: map[int]int{},
 	}
 }
@@ -73,12 +78,17 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 
 	// Append the entry to an already existing stream.
 	if ok {
+		oldSize := sizeForStream(stream)
 		stream.Entries = append(stream.Entries, entry.Entry)
-		if b.sizeBytes() > b.maxSize {
+		newSize := sizeForStream(stream)
+		// Request size grows by stream delta plus change in the stream's length varint.
+		delta := newSize - oldSize
+		if b.canAdd(delta) {
 			stream.Entries = stream.Entries[:len(stream.Entries)-1]
 			return errBatchSizeReached
 		}
 		b.entriesTotal += 1
+		b.size += delta
 		b.countForSegment(segmentNum)
 		return nil
 	}
@@ -91,15 +101,18 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	// Add the entry to a new stream.
 	b.req.Streams = append(b.req.Streams, *stream)
 
+	size := sizeForStream(stream)
 	// NOTE: We will always allow to add at least one entry to a batch
 	// even if that entry makes the size bigger than maxSize.
-	if streamLen != 0 && b.sizeBytes() > b.maxSize {
+	if streamLen != 0 && b.canAdd(size) {
 		b.req.Streams = b.req.Streams[:len(b.req.Streams)-1]
 		return errBatchSizeReached
 	}
 
 	b.entriesTotal += 1
 	b.countForSegment(segmentNum)
+	b.size += size
+
 	return nil
 }
 
@@ -117,7 +130,11 @@ func (b *batch) getStream(labels string) (*push.Stream, bool) {
 
 // sizeBytes returns the current batch size in bytes.
 func (b *batch) sizeBytes() int {
-	return b.req.Size()
+	return b.size
+}
+
+func (b *batch) canAdd(size int) bool {
+	return b.sizeBytes()+size > b.maxSize
 }
 
 // age of the batch since its creation
@@ -132,6 +149,7 @@ func (b *batch) age() time.Duration {
 // protoBuf and snappyBuf must not overlap.
 func (b *batch) encode(protoBuf, snappyBuf []byte) ([]byte, int, error) {
 	size := b.sizeBytes()
+
 	// Note: Because we are always allowing at least one
 	// entry to be added to a batch eventhough that would
 	// exceed that size limit we need to make sure we have
@@ -198,4 +216,16 @@ func labelsMapToString(ls model.LabelSet) string {
 	b.WriteByte('}')
 
 	return b.String()
+}
+
+// sizeForStream returns the size of the stream in bytes.
+func sizeForStream(stream *push.Stream) int {
+	streamSize := stream.Size()
+	// 1 for the tag, varintSize for the length, and streamSize for the payload
+	return 1 + varintSize(uint64(streamSize)) + streamSize
+}
+
+// varintSize returns the number of bytes needed to encode x as a protobuf varint.
+func varintSize(x uint64) (n int) {
+	return (bits.Len64(x|1) + 6) / 7
 }
