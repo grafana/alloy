@@ -133,7 +133,6 @@ func (f *Fanout) Clear() {
 	defer f.mut.Unlock()
 
 	f.seriesRefMappingStore.Clear()
-	f.ls.Clear()
 }
 
 type appender struct {
