@@ -89,6 +89,10 @@ FROM ${BASE_IMAGE_WINDOWS}
 COPY --from=builder ["/src/alloy/build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
 
+# Provide otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY ["packaging/docker/otelcol.cmd", "C:/Program Files/GrafanaLabs/Alloy/otelcol.cmd"]
+
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "C:/Program Files/GrafanaLabs/Alloy/config.alloy", "--storage.path=C:/ProgramData/GrafanaLabs/Alloy/data"]
