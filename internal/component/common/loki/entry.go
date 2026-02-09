@@ -19,7 +19,7 @@ func (e *Entry) Clone() Entry {
 	}
 }
 
-// Retuns the size of the entry in bytes.
+// Returns the size of the entry in bytes.
 func (e *Entry) Size() int {
 	return e.Entry.Size()
 }
