@@ -31,10 +31,12 @@ type SentDataMarkerHandler interface {
 // and entries in a single batch request. In case of multi-tenant Promtail, log
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
-	req       *push.PushRequest
-	index     map[string]int
+	// req is the push request holding streams and entries to send to Loki.
+	req *push.PushRequest
+	// index maps label strings to stream indices in req.Streams for fast lookup.
+	index map[string]int
+	// createdAt is when the batch was created.
 	createdAt time.Time
-
 	// maxSize is the maximum batch size in bytes. At least one entry is always
 	// allowed even if it exceeds this limit.
 	maxSize int
@@ -103,7 +105,6 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	b.entriesTotal += 1
 	b.index[labels] = len(b.req.Streams) - 1
 	b.countForSegment(segmentNum)
-
 	return nil
 }
 
@@ -119,12 +120,22 @@ func (b *batch) age() time.Duration {
 
 // encode the batch as snappy-compressed push request, and returns
 // the encoded bytes and the number of encoded entries
-func (b *batch) encode() ([]byte, int, error) {
-	buf, err := b.req.Marshal()
+func (b *batch) encode(protoBuf, snappyBuf []byte) ([]byte, int, error) {
+	size := b.sizeBytes()
+	// Note: Because we are always allowing at least one
+	// entry to be added to a batch eventhough that would
+	// exceed that size limit we need to make sure we have
+	// enough space in the buffer.
+	if size > len(protoBuf) {
+		protoBuf = make([]byte, 0, size)
+	}
+
+	n, err := b.req.MarshalToSizedBuffer(protoBuf[:size])
 	if err != nil {
 		return nil, 0, err
 	}
-	buf = snappy.Encode(nil, buf)
+
+	buf := snappy.Encode(snappyBuf, protoBuf[:n])
 	return buf, b.entriesTotal, nil
 }
 

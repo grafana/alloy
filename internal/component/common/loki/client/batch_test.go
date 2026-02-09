@@ -150,20 +150,43 @@ func TestBatch_encode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			b := newBatch(0, int(1*units.MiB))
+			maxSize := int(1 * units.MiB)
+
+			b := newBatch(0, maxSize)
 			for _, e := range tt.entries {
 				err := b.add(e, 0)
 				require.NoError(t, err)
 			}
 
-			_, entriesCount, err := b.encode()
+			var (
+				protoBuf  = make([]byte, 0, maxSize)
+				snappyBuf = make([]byte, 0, maxSize)
+			)
+
+			_, entriesCount, err := b.encode(protoBuf, snappyBuf)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedEntriesCount, entriesCount)
 		})
 	}
 }
 
-func TestHashCollisions(t *testing.T) {
+func TestBatchSmallBuffers(t *testing.T) {
+	b := newBatch(0, int(1*units.MiB))
+	b.add(loki.Entry{}, 0)
+
+	var (
+		protoBuf  []byte
+		snappyBuf []byte
+	)
+
+	// Pass buffers that are too small to hold data.
+	b.encode(protoBuf, snappyBuf)
+	_, entriesCount, err := b.encode(protoBuf, snappyBuf)
+	require.NoError(t, err)
+	assert.Equal(t, 1, entriesCount)
+}
+
+func TestBatchHashCollisions(t *testing.T) {
 	b := newBatch(0, int(1*units.MiB))
 
 	ls1 := model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}
