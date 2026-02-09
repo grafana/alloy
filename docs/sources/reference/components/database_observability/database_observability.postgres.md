@@ -146,25 +146,12 @@ The `azure` block supplies the identifying information for the database being mo
 
 ## Logs Collector
 
-The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for errors, fatal messages, and panics.
-The collector **requires a successful database connection** to obtain the system ID before it can start processing logs.
+The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.
 
-### Key Features
-
-- **Dependent on database connection**: Starts only after successful database connection to obtain `system_id` for log labeling
-- **Entry point receiver**: Provides a `logs_receiver` that must be fed by log sources (e.g., `otelcol.receiver.awscloudwatch`, `loki.source.file`)
-- **Natural backpressure**: Uses unbuffered channels - log sources will block if the collector isn't running (e.g., during database outage)
-- **RDS log format support**: Parses structured PostgreSQL logs using AWS RDS format (`%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`)
-- **SQLSTATE extraction**: Automatically extracts and classifies errors by SQLSTATE codes
-- **Prometheus metrics**: Exports detailed error metrics with labels for severity, SQLSTATE, database, user, instance, and server_id
-- **Format validation**: Validates log format and provides warnings for misconfigured log output
-- **Edge case handling**: Correctly processes logs with empty user/database fields (e.g., background worker terminations)
 
 ### Exported Receiver
 
 The component exports a `logs_receiver` entry point that must be fed by log source components.
-The receiver is exported immediately when the component starts, but the underlying collector only begins processing logs after a successful database connection.
-This design provides natural backpressure - log sources will block when the database is unavailable, preventing memory growth:
 
 - `otelcol.receiver.awscloudwatch` + `otelcol.exporter.loki` - reads CloudWatch Logs (RDS) and forwards to the receiver
 - `loki.source.file` - reads PostgreSQL log files and forwards to the receiver
@@ -181,7 +168,7 @@ The logs collector exports the following Prometheus metrics:
 
 ### Required PostgreSQL Configuration
 
-For the logs collector to work correctly, PostgreSQL must be configured with the RDS log format:
+For the logs collector to work correctly, PostgreSQL must be configured with the following RDS log format:
 
 ```sql
 -- Set log format (requires superuser or rds_superuser)
