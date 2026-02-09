@@ -558,12 +558,15 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
+		// Verify that connectAndStartCollectors returns an error
 		err = c.connectAndStartCollectors(context.Background())
 		assert.Error(t, err, "should return error when connection fails")
 		assert.Contains(t, err.Error(), "failed to", "error should indicate connection failure")
 	})
 
 	t.Run("closes existing connection before reconnecting", func(t *testing.T) {
+		// This test verifies that connectAndStartCollectors properly closes
+		// an existing connection before attempting a new one
 		opts := cmp.Options{
 			ID:            "test-component",
 			Logger:        kitlog.NewNopLogger(),
@@ -588,8 +591,10 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
+		// The component should handle nil dbConnection gracefully
 		assert.Nil(t, c.dbConnection, "dbConnection should be nil initially after failed connection")
 
+		// Calling connectAndStartCollectors again should not panic
 		err = c.connectAndStartCollectors(context.Background())
 		assert.Error(t, err, "should return error for unreachable database")
 	})
