@@ -499,71 +499,37 @@ func Test_parseCloudProvider(t *testing.T) {
 	})
 }
 
-func Test_ErrorLogsCollector_StartsIndependentlyOfDatabase(t *testing.T) {
-	t.Run("error_logs receiver is exported immediately on component creation", func(t *testing.T) {
-		var exports Exports
-		opts := cmp.Options{
-			ID:         "test-component",
-			Logger:     kitlog.NewNopLogger(),
-			Registerer: nil,
-			OnStateChange: func(e cmp.Exports) {
-				exports = e.(Exports)
-			},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
-			},
-		}
+func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
+	var exports Exports
+	opts := cmp.Options{
+		ID:         "test",
+		Logger:     kitlog.NewNopLogger(),
+		Registerer: nil,
+		OnStateChange: func(e cmp.Exports) {
+			exports = e.(Exports)
+		},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{
+				HTTPListenAddr:   "localhost:12345",
+				MemoryListenAddr: "",
+				BaseHTTPPath:     "/",
+				DialFunc:         nil,
+			}, nil
+		},
+	}
 
-		args := Arguments{
-			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
-			ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
-			Targets:        []discovery.Target{},
-		}
+	args := Arguments{
+		DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+		ForwardTo:      []loki.LogsReceiver{},
+		Targets:        []discovery.Target{},
+	}
 
-		c, err := New(opts, args)
-		require.NoError(t, err)
-		require.NotNil(t, c)
+	c, err := New(opts, args)
+	require.NoError(t, err)
 
-		require.NotNil(t, exports.ErrorLogsReceiver, "ErrorLogsReceiver should be exported immediately")
-		require.NotNil(t, c.errorLogsReceiver, "component should have errorLogsReceiver initialized")
-		require.NotNil(t, c.errorLogsReceiver.Chan(), "receiver channel should be initialized")
-
-		assert.Equal(t, c.errorLogsReceiver, exports.ErrorLogsReceiver,
-			"exported receiver should be the same as component's internal receiver")
-	})
-
-	t.Run("collector field exists for runtime initialization", func(t *testing.T) {
-		opts := cmp.Options{
-			ID:            "test-component",
-			Logger:        kitlog.NewNopLogger(),
-			Registerer:    nil,
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
-			},
-		}
-
-		args := Arguments{
-			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
-			ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
-			Targets:        []discovery.Target{},
-		}
-
-		c, err := New(opts, args)
-		require.NoError(t, err)
-
-		assert.Nil(t, c.errorLogsCollector, "errorLogsCollector should be nil before Run() is called")
-	})
+	require.NotNil(t, exports.LogsReceiver, "LogsReceiver should be exported immediately")
+	require.NotNil(t, c.logsReceiver, "component should have logsReceiver initialized")
+	assert.Equal(t, c.logsReceiver, exports.LogsReceiver)
 }
 
 func Test_connectAndStartCollectors(t *testing.T) {
@@ -684,13 +650,14 @@ func TestPostgres_Reconnection(t *testing.T) {
 		mock1.ExpectPing().WillReturnError(assert.AnError)
 
 		c := &Component{
-			opts:      opts,
-			args:      args,
-			receivers: args.ForwardTo,
-			handler:   loki.NewLogsReceiver(),
-			registry:  prometheus.NewRegistry(),
-			healthErr: atomic.NewString(""),
-			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			opts:         opts,
+			args:         args,
+			receivers:    args.ForwardTo,
+			handler:      loki.NewLogsReceiver(),
+			registry:     prometheus.NewRegistry(),
+			healthErr:    atomic.NewString(""),
+			openSQL:      func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			logsReceiver: loki.NewLogsReceiver(),
 		}
 		c.instanceKey = "test-instance"
 		c.baseTarget = discovery.NewTargetFromMap(map[string]string{

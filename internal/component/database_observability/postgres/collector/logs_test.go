@@ -14,11 +14,11 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-func TestErrorLogsCollector_ParseRDSFormat(t *testing.T) {
+func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
@@ -33,12 +33,12 @@ func TestErrorLogsCollector_ParseRDSFormat(t *testing.T) {
 	defer collector.Stop()
 
 	tests := []struct {
-		name          string
-		log           string
-		wantUser      string
-		wantDB        string
-		wantSev       string
-		wantSQLState  string
+		name         string
+		log          string
+		wantUser     string
+		wantDB       string
+		wantSev      string
+		wantSQLState string
 	}{
 		{
 			name:         "ERROR severity",
@@ -119,11 +119,11 @@ func TestErrorLogsCollector_ParseRDSFormat(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_SkipsNonErrors(t *testing.T) {
+func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
@@ -166,11 +166,11 @@ func TestErrorLogsCollector_SkipsNonErrors(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_MetricSumming(t *testing.T) {
+func TestLogsCollector_MetricSumming(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 100), func() {})
 	registry := prometheus.NewRegistry()
 
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
@@ -265,11 +265,11 @@ func TestErrorLogsCollector_MetricSumming(t *testing.T) {
 	require.Equal(t, float64(1), counts[metricKey{user: "user2", db: "db2", sev: "FATAL"}], "user2@db2:FATAL should have count of 1")
 }
 
-func TestErrorLogsCollector_InvalidFormat(t *testing.T) {
+func TestLogsCollector_InvalidFormat(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
@@ -305,10 +305,72 @@ func TestErrorLogsCollector_InvalidFormat(t *testing.T) {
 	require.True(t, found, "parse error metric should exist")
 }
 
-func TestErrorLogsCollector_StartStop(t *testing.T) {
+func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		InstanceKey:  "test-instance",
+		SystemID:     "test-system-id",
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	// Send log with empty user and database (background worker termination)
+	collector.Receiver().Chan() <- loki.Entry{
+		Entry: push.Entry{
+			Line:      `2026-02-04 07:39:49.124 UTC::@:[26350]:1:57P01:2026-02-04 07:39:48 UTC:828/162213:0:6982f7c4.66ee:FATAL:  terminating background worker "parallel worker" due to administrator command`,
+			Timestamp: time.Now(),
+		},
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify metric was created with empty user and database labels
+	mfs, _ := registry.Gather()
+	var errorMetrics *dto.MetricFamily
+	for _, mf := range mfs {
+		if mf.GetName() == "postgres_errors_total" {
+			errorMetrics = mf
+			break
+		}
+	}
+
+	require.NotNil(t, errorMetrics)
+	require.Equal(t, 1, len(errorMetrics.GetMetric()), "should have 1 metric entry")
+
+	metric := errorMetrics.GetMetric()[0]
+	labels := make(map[string]string)
+	for _, lp := range metric.GetLabel() {
+		labels[lp.GetName()] = lp.GetValue()
+	}
+
+	require.Equal(t, "", labels["database"], "database should be empty")
+	require.Equal(t, "", labels["user"], "user should be empty")
+	require.Equal(t, "FATAL", labels["severity"])
+	require.Equal(t, "57P01", labels["sqlstate"])
+	require.Equal(t, "57", labels["sqlstate_class"])
+	require.Equal(t, 1.0, metric.GetCounter().GetValue())
+
+	// Verify no parse errors
+	for _, mf := range mfs {
+		if mf.GetName() == "postgres_error_log_parse_failures_total" {
+			require.Equal(t, 0.0, mf.GetMetric()[0].GetCounter().GetValue(), "should have no parse errors")
+		}
+	}
+}
+
+func TestLogsCollector_StartStop(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
@@ -369,11 +431,11 @@ func TestIsContinuationLine(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_SQLStateExtraction(t *testing.T) {
+func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
@@ -481,17 +543,16 @@ func TestErrorLogsCollector_SQLStateExtraction(t *testing.T) {
 	}
 }
 
-func TestErrorLogsCollector_UpdateSystemID(t *testing.T) {
+func TestLogsCollector_SystemID(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
-	// Create collector with initial SystemID
-	collector, err := NewErrorLogs(ErrorLogsArguments{
+	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		InstanceKey:  "test-instance",
-		SystemID:     "initial-system-id",
+		SystemID:     "test-system-id",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -500,20 +561,19 @@ func TestErrorLogsCollector_UpdateSystemID(t *testing.T) {
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// Process a log entry with initial SystemID (using GMT timezone)
 	logLine := `2025-12-12 15:29:16.068 GMT:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`
-	
+
 	entry := loki.Entry{
 		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      logLine,
 		},
 	}
-	
+
 	collector.Receiver().Chan() <- entry
 	time.Sleep(100 * time.Millisecond)
 
-	// Verify metric has initial SystemID
+	// Verify metric has SystemID label
 	mfs, _ := registry.Gather()
 	found := false
 	for _, mf := range mfs {
@@ -524,61 +584,12 @@ func TestErrorLogsCollector_UpdateSystemID(t *testing.T) {
 					labels[label.GetName()] = label.GetValue()
 				}
 				if labels["sqlstate"] == "40001" {
-					require.Equal(t, "initial-system-id", labels["server_id"], "should have initial system ID")
+					require.Equal(t, "test-system-id", labels["server_id"], "should have correct system ID")
 					found = true
 					break
 				}
 			}
 		}
 	}
-	require.True(t, found, "metric with initial system ID not found")
-
-	// Update SystemID
-	collector.UpdateSystemID("new-system-id")
-
-	// Process another log entry
-	collector.Receiver().Chan() <- entry
-	time.Sleep(100 * time.Millisecond)
-
-	// Verify metric now has new SystemID
-	mfs, _ = registry.Gather()
-	foundNew := false
-	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
-			for _, metric := range mf.GetMetric() {
-				labels := make(map[string]string)
-				for _, label := range metric.GetLabel() {
-					labels[label.GetName()] = label.GetValue()
-				}
-				if labels["sqlstate"] == "40001" && labels["server_id"] == "new-system-id" {
-					foundNew = true
-					break
-				}
-			}
-		}
-	}
-	require.True(t, foundNew, "metric with new system ID not found")
-
-	// Test concurrent updates (thread safety)
-	t.Run("concurrent_updates", func(t *testing.T) {
-		done := make(chan bool, 10)
-		
-		// Launch 10 goroutines updating SystemID
-		for i := 0; i < 10; i++ {
-			go func(id int) {
-				for j := 0; j < 100; j++ {
-					collector.UpdateSystemID("concurrent-id-" + string(rune('0'+id)))
-				}
-				done <- true
-			}(i)
-		}
-
-		// Wait for all goroutines to complete
-		for i := 0; i < 10; i++ {
-			<-done
-		}
-
-		// If we get here without panic/deadlock, thread safety is working
-		t.Log("Concurrent updates completed successfully")
-	})
+	require.True(t, found, "metric with system ID not found")
 }
