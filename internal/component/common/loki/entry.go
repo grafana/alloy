@@ -19,8 +19,7 @@ func (e *Entry) Clone() Entry {
 	}
 }
 
+// Retuns the size of the entry in bytes.
 func (e *Entry) Size() int {
-	// FIXME(kalleep): this is not correct but it is how size has been calculated so far.
-	// Size of an entry is more than just the line.
-	return len(e.Line)
+	return e.Entry.Size()
 }

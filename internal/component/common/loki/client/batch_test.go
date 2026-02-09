@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ func TestBatch_MaxStreams(t *testing.T) {
 		{Labels: model.LabelSet{"app": "app-4"}, Entry: push.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
 	}
 
-	b := newBatch(maxStream)
+	b := newBatch(maxStream, int(1*units.MiB))
 
 	errCount := 0
 	for _, entry := range inputEntries {
@@ -36,51 +37,71 @@ func TestBatch_MaxStreams(t *testing.T) {
 	assert.Equal(t, errCount, 2)
 }
 
+func TestBatch_MaxSize(t *testing.T) {
+	entry := loki.Entry{Labels: model.LabelSet{"app": "app-1"}, Entry: push.Entry{Timestamp: time.Unix(4, 0).UTC(), Line: "line4"}}
+	b := newBatch(0, 1)
+	require.NoError(t, b.add(entry, 0))
+	require.ErrorIs(t, b.add(entry, 0), errBatchSizeReached)
+}
+
 func TestBatch_add(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		inputEntries      []loki.Entry
+	type testCase struct {
+		name              string
+		entries           []loki.Entry
 		expectedSizeBytes int
-	}{
-		"empty batch": {
-			inputEntries:      []loki.Entry{},
+	}
+
+	batchSize := func(streams ...push.Stream) int {
+		r := push.PushRequest{Streams: streams}
+		return r.Size()
+	}
+
+	tests := []testCase{
+		{
+			name:              "empty batch",
+			entries:           []loki.Entry{},
 			expectedSizeBytes: 0,
 		},
-		"single stream with single log entry": {
-			inputEntries: []loki.Entry{
+		{
+			name: "single stream with single log entry",
+			entries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 			},
-			expectedSizeBytes: len(logEntries[0].Entry.Line),
+			expectedSizeBytes: batchSize(push.Stream{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}),
 		},
-		"single stream with multiple log entries": {
-			inputEntries: []loki.Entry{
+		{
+			name: "single stream with multiple log entries",
+			entries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[7].Entry},
 			},
-			expectedSizeBytes: entrySize(logEntries[0].Entry) + entrySize(logEntries[0].Entry) + entrySize(logEntries[7].Entry),
+			expectedSizeBytes: batchSize(push.Stream{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry, logEntries[7].Entry}}),
 		},
-		"multiple streams with multiple log entries": {
-			inputEntries: []loki.Entry{
+		{
+			name: "multiple streams with multiple log entries",
+			entries: []loki.Entry{
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
 			},
-			expectedSizeBytes: len(logEntries[0].Entry.Line) + len(logEntries[1].Entry.Line) + len(logEntries[2].Entry.Line),
+			expectedSizeBytes: batchSize(
+				push.Stream{Labels: `{type="a"}`, Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}},
+				push.Stream{Labels: `{type="b"}`, Entries: []push.Entry{logEntries[0].Entry}}),
 		},
 	}
 
-	for testName, testData := range tests {
-		t.Run(testName, func(t *testing.T) {
-			b := newBatch(0)
-
-			for _, entry := range testData.inputEntries {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := newBatch(0, int(1*units.MiB))
+			for _, entry := range tt.entries {
 				err := b.add(entry, 0)
 				assert.NoError(t, err)
 			}
 
-			assert.Equal(t, testData.expectedSizeBytes, b.sizeBytes())
+			assert.Equal(t, tt.expectedSizeBytes, b.sizeBytes())
 		})
 	}
 }
@@ -88,50 +109,62 @@ func TestBatch_add(t *testing.T) {
 func TestBatch_encode(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		inputBatch           *batch
+	type testCase struct {
+		name                 string
+		entries              []loki.Entry
 		expectedEntriesCount int
-	}{
-		"empty batch": {
-			inputBatch:           newBatch(0),
+	}
+
+	tests := []testCase{
+		{
+			name:                 "empty batch",
+			entries:              []loki.Entry{},
 			expectedEntriesCount: 0,
 		},
-		"single stream with single log entry": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-			),
+		{
+			name: "single stream with single log entry",
+			entries: []loki.Entry{
+				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
+			},
 			expectedEntriesCount: 1,
 		},
-		"single stream with multiple log entries": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
-			),
+		{
+			name: "single stream with multiple log entries",
+			entries: []loki.Entry{
+				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
+				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
+			},
 			expectedEntriesCount: 2,
 		},
-		"multiple streams with multiple log entries": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
-				loki.Entry{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
-				loki.Entry{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
-			),
+		{
+			name: "multiple streams with multiple log entries",
+			entries: []loki.Entry{
+				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
+				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
+				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
+			},
 			expectedEntriesCount: 3,
 		},
 	}
 
-	for testName, testData := range tests {
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			b := newBatch(0, int(1*units.MiB))
+			for _, e := range tt.entries {
+				err := b.add(e, 0)
+				require.NoError(t, err)
+			}
 
-			_, entriesCount, err := testData.inputBatch.encode()
+			_, entriesCount, err := b.encode()
 			require.NoError(t, err)
-			assert.Equal(t, testData.expectedEntriesCount, entriesCount)
+			assert.Equal(t, tt.expectedEntriesCount, entriesCount)
 		})
 	}
 }
 
 func TestHashCollisions(t *testing.T) {
-	b := newBatch(0)
+	b := newBatch(0, int(1*units.MiB))
 
 	ls1 := model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}
 	ls2 := model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}
@@ -141,14 +174,14 @@ func TestHashCollisions(t *testing.T) {
 
 	const entriesPerLabel = 10
 
-	for i := 0; i < entriesPerLabel; i++ {
+	for i := range entriesPerLabel {
 		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 
 		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 	}
 
 	// make sure that colliding labels are stored properly as independent streams
-	req, entries := b.createPushRequest()
+	req, entries := b.req, b.entriesTotal
 	assert.Len(t, req.Streams, 2)
 	assert.Equal(t, 2*entriesPerLabel, entries)
 
@@ -172,9 +205,8 @@ func BenchmarkLabelsMapToString(b *testing.B) {
 	labelSet["label2"] = "value3"
 	labelSet["__tenant_id__"] = "another_value"
 
-	b.ResetTimer()
 	var r string
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		// store in r prevent the compiler eliminating the function call.
 		r = labelsMapToString(labelSet)
 	}
@@ -214,10 +246,10 @@ func TestLabelsMapToString(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			actual := labelsMapToString(tc.input)
-			assert.Equal(t, tc.expected, actual)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := labelsMapToString(tt.input)
+			assert.Equal(t, tt.expected, actual)
 		})
 	}
 }
