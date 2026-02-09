@@ -44,8 +44,8 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
@@ -74,8 +74,8 @@ type ResourceAttributesConfig struct {
 	K8sClusterName                   rac.ResourceAttributeConfig `alloy:"k8s.cluster.name,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.account.id":                      r.CloudAccountID.Convert(),
 		"cloud.availability_zone":               r.CloudAvailabilityZone.Convert(),
 		"cloud.platform":                        r.CloudPlatform.Convert(),

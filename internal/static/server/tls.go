@@ -48,7 +48,7 @@ type WindowsServerFilter struct {
 type TLSCipher uint16
 
 // UnmarshalYAML unmarshals the name of a cipher suite to its ID.
-func (c *TLSCipher) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *TLSCipher) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	err := unmarshal(&s)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *TLSCipher) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML marshals the name of the cipher suite.
-func (c TLSCipher) MarshalYAML() (interface{}, error) {
+func (c TLSCipher) MarshalYAML() (any, error) {
 	return tls.CipherSuiteName((uint16)(c)), nil
 }
 
@@ -79,7 +79,7 @@ var curves = map[string]TLSCurve{
 }
 
 // UnmarshalYAML unmarshals the name of a TLS elliptic curve into its ID.
-func (c *TLSCurve) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *TLSCurve) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	err := unmarshal(&s)
 	if err != nil {
@@ -93,7 +93,7 @@ func (c *TLSCurve) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML marshals the ID of a TLS elliptic curve into its name.
-func (c *TLSCurve) MarshalYAML() (interface{}, error) {
+func (c *TLSCurve) MarshalYAML() (any, error) {
 	for s, curveid := range curves {
 		if *c == curveid {
 			return s, nil
@@ -113,7 +113,7 @@ var tlsVersions = map[string]TLSVersion{
 }
 
 // UnmarshalYAML unmarshals the name of a TLS version into its ID.
-func (tv *TLSVersion) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (tv *TLSVersion) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	err := unmarshal(&s)
 	if err != nil {
@@ -127,7 +127,7 @@ func (tv *TLSVersion) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML marshals the ID of a TLS version into its name.
-func (tv *TLSVersion) MarshalYAML() (interface{}, error) {
+func (tv *TLSVersion) MarshalYAML() (any, error) {
 	for s, v := range tlsVersions {
 		if *tv == v {
 			return s, nil

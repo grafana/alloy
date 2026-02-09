@@ -48,8 +48,8 @@ func Test_ReportLoop(t *testing.T) {
 		<-time.After(6 * time.Second)
 		cancel()
 	}()
-	metricsFunc := func() map[string]interface{} {
-		return map[string]interface{}{}
+	metricsFunc := func() map[string]any {
+		return map[string]any{}
 	}
 	require.Equal(t, context.Canceled, r.Start(ctx, metricsFunc))
 

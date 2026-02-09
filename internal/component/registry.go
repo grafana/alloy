@@ -104,7 +104,7 @@ type Options struct {
 	//
 	// The result of GetServiceData may be cached as the value will not change at
 	// runtime.
-	GetServiceData func(name string) (interface{}, error)
+	GetServiceData func(name string) (any, error)
 
 	// MinStability tracks the minimum stability level of behavior that components should
 	// use. This allows components to optionally enable less-stable functionality.

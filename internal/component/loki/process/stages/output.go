@@ -40,7 +40,7 @@ type outputStage struct {
 }
 
 // Process implements Stage
-func (o *outputStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (o *outputStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	if v, ok := extracted[o.config.Source]; ok {
 		s, err := getString(v)
 		if err != nil {

@@ -35,7 +35,7 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)

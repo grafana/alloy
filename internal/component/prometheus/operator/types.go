@@ -19,7 +19,6 @@ import (
 )
 
 type Arguments struct {
-
 	// Client settings to connect to Kubernetes.
 	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 
@@ -55,6 +54,12 @@ type ScrapeOptions struct {
 
 	// ScrapeNativeHistograms enables scraping of Prometheus native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+
+	// HonorMetadata controls whether metric metadata should be passed to downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
+
+	// EnableTypeAndUnitLabels controls whether the metric's type and unit should be added as labels.
+	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {

@@ -19,7 +19,7 @@ var goAlloyDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
 // MarshalBody marshals the provided Go value to a JSON representation of
 // Alloy. MarshalBody panics if not given a struct with alloy tags or a
 // map[string]any.
-func MarshalBody(val interface{}) ([]byte, error) {
+func MarshalBody(val any) ([]byte, error) {
 	rv := reflect.ValueOf(val)
 	return json.Marshal(encodeStructAsBody(rv))
 }
@@ -243,7 +243,7 @@ func encodeEnumElementToStatements(prefix []string, enumElement reflect.Value) [
 
 // MarshalValue marshals the provided Go value to a JSON representation of
 // Alloy.
-func MarshalValue(val interface{}) ([]byte, error) {
+func MarshalValue(val any) ([]byte, error) {
 	alloyValue := value.Encode(val)
 	return json.Marshal(buildJSONValue(alloyValue))
 }
@@ -270,7 +270,7 @@ func buildJSONValue(v value.Value) jsonValue {
 		return jsonValue{Type: "bool", Value: v.Bool()}
 
 	case value.TypeArray:
-		elements := []interface{}{}
+		elements := []any{}
 
 		for i := 0; i < v.Len(); i++ {
 			element := v.Index(i)

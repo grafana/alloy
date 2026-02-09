@@ -95,7 +95,7 @@ func (args *Arguments) Validate() error {
 	//
 	// TODO(rfratto): decouple upstream validation into a separate method so this
 	// can be called directly.
-	err := (&prom_discovery.SDConfig{}).UnmarshalYAML(func(i interface{}) error {
+	err := (&prom_discovery.SDConfig{}).UnmarshalYAML(func(i any) error {
 		// Here, i is an internal type (*scaleway.plain) that we can't reference or
 		// use.
 		//

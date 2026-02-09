@@ -140,7 +140,7 @@ func TestDiscoveryUpdates(t *testing.T) {
 					publishedExports = append(publishedExports, e)
 				},
 				Logger: log.NewLogfmtLogger(os.Stdout),
-				GetServiceData: func(name string) (interface{}, error) {
+				GetServiceData: func(name string) (any, error) {
 					switch name {
 					case livedebugging.ServiceName:
 						return livedebugging.NewLiveDebugging(), nil

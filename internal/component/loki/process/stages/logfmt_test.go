@@ -35,12 +35,12 @@ func TestLogfmt(t *testing.T) {
 	tests := map[string]struct {
 		config          string
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 	}{
 		"successfully run a pipeline with 1 logfmt stage without source": {
 			testLogfmtAlloySingleStageWithoutSource,
 			testLogfmtLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"out":      "this is a log line",
 				"app":      "loki",
 				"duration": "125",
@@ -49,7 +49,7 @@ func TestLogfmt(t *testing.T) {
 		"successfully run a pipeline with 2 logfmt stages with source": {
 			testLogfmtAlloyMultiStageWithSource,
 			testLogfmtLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"extra": "user=foo",
 				"user":  "foo",
 			},
@@ -132,9 +132,9 @@ func TestLogfmtParser_Parse(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
 	tests := map[string]struct {
 		config          LogfmtConfig
-		extracted       map[string]interface{}
+		extracted       map[string]any
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 	}{
 		"successfully decode logfmt on entry": {
 			LogfmtConfig{
@@ -146,9 +146,9 @@ func TestLogfmtParser_Parse(t *testing.T) {
 					"message": "",
 				},
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			testLogfmtLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"time":    "2012-11-01T22:08:41+00:00",
 				"app":     "loki",
 				"level":   "WARN",
@@ -167,11 +167,11 @@ func TestLogfmtParser_Parse(t *testing.T) {
 				},
 				Source: "log",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"log": testLogfmtLogFixture,
 			},
 			"{}",
-			map[string]interface{}{
+			map[string]any{
 				"time":    "2012-11-01T22:08:41+00:00",
 				"app":     "loki",
 				"level":   "WARN",
@@ -187,9 +187,9 @@ func TestLogfmtParser_Parse(t *testing.T) {
 				},
 				Source: "log",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			testLogfmtLogFixture,
-			map[string]interface{}{},
+			map[string]any{},
 		},
 		"invalid logfmt on entry": {
 			LogfmtConfig{
@@ -197,9 +197,9 @@ func TestLogfmtParser_Parse(t *testing.T) {
 					"expr1": "",
 				},
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			"{\"invalid\":\"logfmt\"}",
-			map[string]interface{}{},
+			map[string]any{},
 		},
 		"invalid logfmt on extracted[source]": {
 			LogfmtConfig{
@@ -208,11 +208,11 @@ func TestLogfmtParser_Parse(t *testing.T) {
 				},
 				Source: "log",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"log": "not logfmt",
 			},
 			testLogfmtLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"log": "not logfmt",
 			},
 		},
@@ -223,11 +223,11 @@ func TestLogfmtParser_Parse(t *testing.T) {
 				},
 				Source: "log",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"log": nil,
 			},
 			testLogfmtLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"log": nil,
 			},
 		},

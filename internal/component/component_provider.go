@@ -126,9 +126,9 @@ type Info struct {
 	ComponentName string // Name of the component.
 	Health        Health // Current component health.
 
-	Arguments            Arguments   // Current arguments value of the component.
-	Exports              Exports     // Current exports value of the component.
-	DebugInfo            interface{} // Current debug info of the component.
+	Arguments            Arguments // Current arguments value of the component.
+	Exports              Exports   // Current exports value of the component.
+	DebugInfo            any       // Current debug info of the component.
 	LiveDebuggingEnabled bool
 }
 

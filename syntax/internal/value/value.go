@@ -15,7 +15,7 @@ import (
 
 // Go types used throughout the package.
 var (
-	goAny             = reflect.TypeOf((*interface{})(nil)).Elem()
+	goAny             = reflect.TypeOf((*any)(nil)).Elem()
 	goString          = reflect.TypeOf(string(""))
 	goByteSlice       = reflect.TypeOf([]byte(nil))
 	goError           = reflect.TypeOf((*error)(nil)).Elem()
@@ -83,7 +83,7 @@ func Array(vv ...Value) Value {
 
 // Func makes a new function Value from f. Func panics if f does not map to an
 // Alloy function.
-func Func(f interface{}) Value {
+func Func(f any) Value {
 	rv := reflect.ValueOf(f)
 	if AlloyType(rv.Type()) != TypeFunction {
 		panic("syntax/value: Func called with non-function type")
@@ -93,7 +93,7 @@ func Func(f interface{}) Value {
 
 // Encapsulate creates a new Capsule value from v. Encapsulate panics if v does
 // not map to an Alloy capsule.
-func Encapsulate(v interface{}) Value {
+func Encapsulate(v any) Value {
 	rv := reflect.ValueOf(v)
 	if AlloyType(rv.Type()) != TypeCapsule {
 		panic("syntax/value: Capsule called with non-capsule type")
@@ -103,7 +103,7 @@ func Encapsulate(v interface{}) Value {
 
 // Encode creates a new Value from v. If v is a pointer, v must be considered
 // immutable and not change while the Value is used.
-func Encode(v interface{}) Value {
+func Encode(v any) Value {
 	if v == nil {
 		return Null
 	}
@@ -248,7 +248,7 @@ func (v Value) Index(i int) Value {
 }
 
 // Interface returns the underlying Go value for the Value.
-func (v Value) Interface() interface{} {
+func (v Value) Interface() any {
 	if v.ty == TypeNull {
 		return nil
 	}

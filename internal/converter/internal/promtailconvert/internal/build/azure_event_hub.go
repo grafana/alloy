@@ -25,7 +25,7 @@ func (s *ScrapeConfigBuilder) AppendAzureEventHubs() {
 		Labels:                 convertPromLabels(aCfg.Labels),
 		ForwardTo:              s.getOrNewProcessStageReceivers(),
 	}
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch value := val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}

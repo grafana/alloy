@@ -30,6 +30,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				AddMetricSuffixes:             true,
 				ForwardTo:                     []storage.Appendable{},
 				ResourceToTelemetryConversion: false,
+				HonorMetadata:                 false,
 			},
 		},
 		{
@@ -41,6 +42,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					gc_frequency = "1s"
 					add_metric_suffixes = false
 					resource_to_telemetry_conversion = true
+					honor_metadata = true
 					forward_to = []
 				`,
 			expected: prometheus.Arguments{
@@ -51,6 +53,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				AddMetricSuffixes:             false,
 				ForwardTo:                     []storage.Appendable{},
 				ResourceToTelemetryConversion: true,
+				HonorMetadata:                 true,
 			},
 		},
 		{
