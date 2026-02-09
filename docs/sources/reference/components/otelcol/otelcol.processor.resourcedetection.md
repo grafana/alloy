@@ -169,12 +169,6 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 
 The `akamai` block queries the Akamai connected cloud instance metadata service to retrieve various resource attributes from the Akamai cloud environment.
 
-The `akamai` block supports the following attributes:
-
-| Attribute                 | Type   | Description                               | Default | Required |
-|---------------------------|--------|-------------------------------------------|---------|----------|
-| `fail_on_missing_metadata` | `bool` | Whether to fail if metadata is missing.  | `false` | no       |
-
 The `akamai` block supports the following blocks:
 
 | Block                                                   | Description                                  | Required |
@@ -367,21 +361,7 @@ The `resource_attributes` block supports the following blocks:
 
 The `dynatrace` block loads resource information from the `dt_host_metadata.properties` file which is located in the `/var/lib/dynatrace/enrichment` (on Unix systems) or `%ProgramData%\dynatrace\enrichment` (on Windows) directories.
 
-The `dynatrace` block supports the following blocks:
-
-| Block                                                    | Description                                  | Required |
-|----------------------------------------------------------|----------------------------------------------|----------|
-| [`resource_attributes`](#dynatrace--resource_attributes) | Configures which resource attributes to add. | no       |
-
-#### `dynatrace` > `resource_attributes`
-
-The `resource_attributes` block supports the following blocks:
-
-| Block                                | Description                                                                               | Required |
-|--------------------------------------|-------------------------------------------------------------------------------------------|----------|
-| [`host.name`][res-attr-cfg]          | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`dt.entity.host`][res-attr-cfg]     | Toggles the `dt.entity.host` resource attribute. Sets `enabled` to `true` by default.     | no       |
-| [`dt.smartscape.host`][res-attr-cfg] | Toggles the `dt.smartscape.host` resource attribute. Sets `enabled` to `true` by default. | no       |
+The `dynatrace` detector reads the following resource attributes from the metadata file: `host.name`, `dt.entity.host`, and `dt.smartscape.host`. These attributes are not configurable.
 
 ### `ec2`
 
@@ -475,6 +455,12 @@ The `resource_attributes` block supports the following blocks:
 
 The `eks` block adds resource attributes for Amazon EKS.
 
+The `eks` block supports the following attributes:
+
+| Attribute           | Type     | Description                                                               | Default           | Required |
+|---------------------|----------|---------------------------------------------------------------------------|-------------------|----------|
+| `node_from_env_var` | `string` | The name of an environment variable from which to retrieve the node name. | `"K8S_NODE_NAME"` | no       |
+
 The `eks` block supports the following blocks:
 
 | Block                                              | Description                                  | Required |
@@ -535,6 +521,12 @@ Use the `gcp` detector regardless of the GCP platform {{< param "PRODUCT_NAME" >
 
 [Google Cloud Client Libraries for Go]: https://github.com/googleapis/google-cloud-go
 [GCP metadata server]: https://cloud.google.com/compute/docs/storing-retrieving-metadata
+
+The `gcp` block supports the following attributes:
+
+| Attribute | Type           | Description                                                                                   | Default | Required |
+|-----------|----------------|-----------------------------------------------------------------------------------------------|---------|----------|
+| `labels`  | `list(string)` | A list of regular expressions to match GCE instance label keys to add as resource attributes. | `[]`    | no       |
 
 The `gcp` block supports the following blocks:
 

@@ -7,6 +7,7 @@ import (
 
 const Name = "dynatrace"
 
+// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/dynatrace/config.schema.yaml
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
@@ -29,6 +30,9 @@ func (args *Config) SetToDefault() {
 
 func (args Config) Convert() map[string]any {
 	return map[string]any{
+		// TODO(asnyder): As of writing, the upstream dynatrace config
+		// does not support this "resource_attributes" option. Should
+		// we remove it?
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
