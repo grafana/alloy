@@ -11,9 +11,10 @@ import (
 // PathEndsWith checks if any target's __path__ ends with the given suffix.
 // On Windows, this is case-insensitive.
 func PathEndsWith(sources []discovery.Target, suffix string) bool {
+	suffix = strings.ToLower(suffix)
 	for _, s := range sources {
 		p, _ := s.Get("__path__")
-		if strings.HasSuffix(strings.ToLower(p), strings.ToLower(suffix)) {
+		if strings.HasSuffix(strings.ToLower(p), suffix) {
 			return true
 		}
 	}
