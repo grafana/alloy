@@ -406,6 +406,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
+	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		collector.QueryDetailsCollector:  true,
 		collector.QuerySamplesCollector:  true,
@@ -427,7 +428,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-// startCollectors starts all enabled collectors
+// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
 func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
