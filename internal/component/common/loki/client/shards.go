@@ -69,8 +69,9 @@ type queue struct {
 }
 
 // append adds a log entry to the queue for the given tenant.
-// It returns true if the entry was successfully queued, false if the queue
-// is full and backpressure should be applied.
+// It returns true if the caller should not apply backpressure,
+// entry was queued or it was dropped due to max streams reached.
+// It returns false if the queue is full and backpressure should be applied.
 func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -78,31 +79,32 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	batch, ok := q.batches[tenantID]
 	if !ok {
 		// Create a new batch for this tenant.
-		batch := newBatch(q.cfg.MaxStreams)
+		batch := newBatch(q.cfg.MaxStreams, q.cfg.BatchSize)
 		_ = batch.add(entry, segmentNum)
 		q.batches[tenantID] = batch
 		return true
 	}
 
-	// If adding this entry would exceed the batch size limit, enqueue the
-	// current batch and start a new one.
-	if batch.sizeBytesAfter(entry.Entry) > q.cfg.BatchSize {
-		select {
-		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
-			// Successfully enqueued the batch.
-		default:
-			// Channel is full, signal backpressure.
-			return false
+	if err := batch.add(entry, segmentNum); err != nil {
+		// If adding this entry would exceed the batch size limit, enqueue the
+		// current batch and start a new one.
+		if errors.Is(err, errBatchSizeReached) {
+			select {
+			case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
+				// Successfully enqueued the batch.
+			default:
+				// Channel is full, signal backpressure.
+				return false
+			}
+
+			batch := newBatch(q.cfg.MaxStreams, q.cfg.BatchSize)
+			_ = batch.add(entry, segmentNum)
+			q.batches[tenantID] = batch
+			return true
 		}
 
-		batch := newBatch(q.cfg.MaxStreams)
-		_ = batch.add(entry, segmentNum)
-		q.batches[tenantID] = batch
-		return true
-	}
-
-	// Add entry to existing batch. If we cannot add entry to batch we will drop it.
-	if err := batch.add(entry, segmentNum); err != nil {
+		// If we could not add entry to batch that means that the configured maxStreams was reached and
+		// we should drop the entry.
 		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := reasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {

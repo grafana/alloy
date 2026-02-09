@@ -14,19 +14,26 @@ import (
 	"github.com/grafana/loki/pkg/push"
 )
 
-// each entry counts as 4 bytes.
-var entry = loki.Entry{
-	Labels: model.LabelSet{"foo": "bar"},
-	Entry:  push.Entry{Timestamp: time.Now(), Line: "test"},
-}
+var (
+	entry = loki.Entry{
+		Labels: model.LabelSet{"foo": "bar"},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: "test"},
+	}
+
+	oneEntrySize = func() int {
+		req := push.PushRequest{Streams: []push.Stream{{Labels: "{foo=\"bar\"}", Entries: []push.Entry{entry.Entry}}}}
+		return req.Size()
+	}()
+
+	twoEntriesSize = func() int {
+		req := push.PushRequest{Streams: []push.Stream{{Labels: "{foo=\"bar\"}", Entries: []push.Entry{entry.Entry, entry.Entry}}}}
+		return req.Size()
+	}()
+)
 
 func TestQueue_append(t *testing.T) {
-	// a queue with 8 bytes batches and only one batch can queued.
 	q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
-		BatchSize: 8,
-		QueueConfig: QueueConfig{
-			Capacity: 8,
-		},
+		BatchSize: twoEntriesSize,
 	})
 
 	// add 2 entries to the queue
@@ -34,14 +41,14 @@ func TestQueue_append(t *testing.T) {
 		queued := q.append("tenant-1", entry, 0)
 		assert.True(t, queued)
 	}
-	assert.Equal(t, q.batches["tenant-1"].sizeBytes(), 8)
+	assert.Equal(t, twoEntriesSize, q.batches["tenant-1"].sizeBytes())
 
 	// add two more entries, the current batch should be queued and a new batch should be created.
 	for range 2 {
 		queued := q.append("tenant-1", entry, 0)
 		assert.True(t, queued)
 	}
-	assert.Equal(t, q.batches["tenant-1"].sizeBytes(), 8)
+	assert.Equal(t, twoEntriesSize, q.batches["tenant-1"].sizeBytes())
 
 	// adding one more should fail because both queue and batch is full
 	queued := q.append("tenant-1", entry, 0)
@@ -53,17 +60,14 @@ func TestQueue_append(t *testing.T) {
 	// add batch again.
 	queued = q.append("tenant-1", entry, 0)
 	assert.True(t, queued)
-	assert.Equal(t, q.batches["tenant-1"].sizeBytes(), 4)
+	assert.Equal(t, oneEntrySize, q.batches["tenant-1"].sizeBytes())
 }
 
 func TestQueue_drain(t *testing.T) {
 	t.Run("should drain queue and current batch", func(t *testing.T) {
-		// a queue with 8 bytes batches and only one batch can queued at any given time.
+		// a queue with batches that will fit two entries and only one batch can queued at any given time.
 		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
-			BatchSize: 8,
-			QueueConfig: QueueConfig{
-				Capacity: 8,
-			},
+			BatchSize: twoEntriesSize,
 		})
 
 		// fill up queue and current batch
@@ -71,7 +75,7 @@ func TestQueue_drain(t *testing.T) {
 			queued := q.append("tenant-1", entry, 0)
 			assert.True(t, queued)
 		}
-		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), 8)
+		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), twoEntriesSize)
 
 		batches := q.drain()
 		// We should drain queued batch and batch stored in memory
@@ -79,13 +83,10 @@ func TestQueue_drain(t *testing.T) {
 	})
 
 	t.Run("should only drain queue", func(t *testing.T) {
-		// a queue with 8 bytes batches and only one batch can queued at any given time.
+		// a queue with batches that will fit two entries and only one batch can queued at any given time.
 		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
-			BatchSize: 8,
+			BatchSize: twoEntriesSize,
 			BatchWait: 10 * time.Second,
-			QueueConfig: QueueConfig{
-				Capacity: 8,
-			},
 		})
 
 		// fill up queue and current batch
@@ -93,7 +94,7 @@ func TestQueue_drain(t *testing.T) {
 			queued := q.append("tenant-1", entry, 0)
 			assert.True(t, queued)
 		}
-		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), 8)
+		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), twoEntriesSize)
 
 		batches := q.drain()
 		// We should drain queued batch and batch stored in memory
@@ -103,12 +104,9 @@ func TestQueue_drain(t *testing.T) {
 
 func TestQueue_flushAndShutdown(t *testing.T) {
 	t.Run("should flush all batches to queue", func(t *testing.T) {
-		// a queue with 8 bytes batches and only one batch can queued at any given time.
+		// a queue with batches that will fit two entries and only one batch can queued at any given time.
 		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
-			BatchSize: 8,
-			QueueConfig: QueueConfig{
-				Capacity: 8,
-			},
+			BatchSize: twoEntriesSize,
 		})
 
 		// fill current batch but don't queue it.
@@ -116,7 +114,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 			queued := q.append("tenant-1", entry, 0)
 			assert.True(t, queued)
 		}
-		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), 8)
+		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), twoEntriesSize)
 
 		var wg sync.WaitGroup
 
@@ -141,12 +139,9 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 	})
 
 	t.Run("should stop early if done channel is closed", func(t *testing.T) {
-		// a queue with 8 bytes batches and only one batch can queued at any given time.
+		// a queue with batches that will fit two entries and only one batch can queued at any given time.
 		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
-			BatchSize: 8,
-			QueueConfig: QueueConfig{
-				Capacity: 8,
-			},
+			BatchSize: twoEntriesSize,
 		})
 
 		// fill current batch but don't queue it.
