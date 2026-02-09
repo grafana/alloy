@@ -36,7 +36,6 @@ jobs:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
-    - run: make generate-ui
     - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
 
   build_linux_boringcrypto:
@@ -63,7 +62,6 @@ jobs:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
-    - run: make generate-ui
     - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
   build_mac_intel:
@@ -80,7 +78,6 @@ jobs:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
-    - run: make generate-ui
     - run: GO_TAGS="embedalloyui" GOOS=darwin GOARCH=amd64 GOARM= make alloy
 
   build_mac_arm:
@@ -97,7 +94,6 @@ jobs:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
-    - run: make generate-ui
     - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="embedalloyui" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
   build_windows:
@@ -114,7 +110,6 @@ jobs:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
-    - run: make generate-ui
     - run: echo "GO_TAGS=embedalloyui" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -140,5 +135,4 @@ jobs:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
-    - run: make generate-ui
     - run: GO_TAGS="embedalloyui" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
