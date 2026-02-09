@@ -17,16 +17,13 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-const (
-	ErrorLogsCollector = "error_logs"
-	OP_ERROR_LOGS      = "error_logs"
-)
+const LogsCollector = "logs"
 
 // RDS log format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 var rdsLogFormatRegex = regexp.MustCompile(
 	`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? [A-Z]{3,4}:` +
-		`[^:]+:` +
-		`[^@]+@[^:]+:` +
+		`[^:]*:` +
+		`[^@]*@[^:]*:` +
 		`\[\d*\]:` +
 		`\d+:` +
 		`[A-Z0-9]{5}:`,
@@ -46,7 +43,7 @@ type ParsedError struct {
 	DatabaseName  string
 }
 
-type ErrorLogsArguments struct {
+type LogsArguments struct {
 	Receiver     loki.LogsReceiver
 	EntryHandler loki.EntryHandler
 	Logger       log.Logger
@@ -55,12 +52,11 @@ type ErrorLogsArguments struct {
 	Registry     *prometheus.Registry
 }
 
-type ErrorLogs struct {
+type Logs struct {
 	logger       log.Logger
 	entryHandler loki.EntryHandler
 	instanceKey  string
 	systemID     string
-	systemIDMutex sync.RWMutex
 	registry     *prometheus.Registry
 
 	receiver loki.LogsReceiver
@@ -79,11 +75,11 @@ type ErrorLogs struct {
 	invalidLogsThisMinute int
 }
 
-func NewErrorLogs(args ErrorLogsArguments) (*ErrorLogs, error) {
+func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	e := &ErrorLogs{
-		logger:       log.With(args.Logger, "collector", ErrorLogsCollector),
+	l := &Logs{
+		logger:       log.With(args.Logger, "collector", LogsCollector),
 		entryHandler: args.EntryHandler,
 		instanceKey:  args.InstanceKey,
 		systemID:     args.SystemID,
@@ -94,13 +90,13 @@ func NewErrorLogs(args ErrorLogsArguments) (*ErrorLogs, error) {
 		stopped:      atomic.NewBool(false),
 	}
 
-	e.initMetrics()
+	l.initMetrics()
 
-	return e, nil
+	return l, nil
 }
 
-func (c *ErrorLogs) initMetrics() {
-	c.errorsBySQLState = prometheus.NewCounterVec(
+func (l *Logs) initMetrics() {
+	l.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "postgres_errors_total",
 			Help: "PostgreSQL errors by severity with database, user, SQLSTATE, and instance tracking",
@@ -108,63 +104,63 @@ func (c *ErrorLogs) initMetrics() {
 		[]string{"severity", "sqlstate", "sqlstate_class", "database", "user", "instance", "server_id"},
 	)
 
-	c.parseErrors = prometheus.NewCounter(
+	l.parseErrors = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "postgres_error_log_parse_failures_total",
 			Help: "Failed to parse log lines",
 		},
 	)
 
-	if c.registry != nil {
-		c.registry.MustRegister(
-			c.errorsBySQLState,
-			c.parseErrors,
+	if l.registry != nil {
+		l.registry.MustRegister(
+			l.errorsBySQLState,
+			l.parseErrors,
 		)
 	} else {
-		level.Warn(c.logger).Log("msg", "no Prometheus registry provided, metrics will not be exposed")
+		level.Warn(l.logger).Log("msg", "no Prometheus registry provided, metrics will not be exposed")
 	}
 }
 
-func (c *ErrorLogs) Name() string {
-	return ErrorLogsCollector
+func (l *Logs) Name() string {
+	return LogsCollector
 }
 
 // Receiver returns the logs receiver that loki.source.* can forward to
-func (c *ErrorLogs) Receiver() loki.LogsReceiver {
-	return c.receiver
+func (l *Logs) Receiver() loki.LogsReceiver {
+	return l.receiver
 }
 
-func (c *ErrorLogs) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+func (l *Logs) Start(ctx context.Context) error {
+	level.Debug(l.logger).Log("msg", "collector started")
 
-	c.wg.Add(1)
-	go c.run()
+	l.wg.Add(1)
+	go l.run()
 	return nil
 }
 
-func (c *ErrorLogs) Stop() {
-	c.cancel()
-	c.stopped.Store(true)
-	c.wg.Wait()
+func (l *Logs) Stop() {
+	l.cancel()
+	l.stopped.Store(true)
+	l.wg.Wait()
 }
 
-func (c *ErrorLogs) Stopped() bool {
-	return c.stopped.Load()
+func (l *Logs) Stopped() bool {
+	return l.stopped.Load()
 }
 
-func (c *ErrorLogs) run() {
-	defer c.wg.Done()
+func (l *Logs) run() {
+	defer l.wg.Done()
 
-	level.Debug(c.logger).Log("msg", "collector running, waiting for log entries")
+	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
 
 	for {
 		select {
-		case <-c.ctx.Done():
-			level.Debug(c.logger).Log("msg", "collector stopping")
+		case <-l.ctx.Done():
+			level.Debug(l.logger).Log("msg", "collector stopping")
 			return
-		case entry := <-c.receiver.Chan():
-			if err := c.processLogLine(entry); err != nil {
-				level.Warn(c.logger).Log(
+		case entry := <-l.receiver.Chan():
+			if err := l.processLogLine(entry); err != nil {
+				level.Warn(l.logger).Log(
 					"msg", "failed to process log line",
 					"error", err,
 					"line_preview", truncateString(entry.Entry.Line, 100),
@@ -174,12 +170,12 @@ func (c *ErrorLogs) run() {
 	}
 }
 
-func (c *ErrorLogs) processLogLine(entry loki.Entry) error {
-	return c.parseTextLog(entry)
+func (l *Logs) processLogLine(entry loki.Entry) error {
+	return l.parseTextLog(entry)
 }
 
 // parseTextLog extracts fields from stderr text format logs for metrics
-func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
+func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
 	// CloudWatch/OTLP logs come wrapped in JSON - extract the body field
@@ -204,12 +200,12 @@ func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
 
 	// Validate log format matches expected RDS pattern
 	if !rdsLogFormatRegex.MatchString(line) {
-		c.trackInvalidFormat()
-		c.parseErrors.Inc()
+		l.trackInvalidFormat()
+		l.parseErrors.Inc()
 		return fmt.Errorf("log line does not match expected RDS format")
 	}
 
-	c.trackValidFormat()
+	l.trackValidFormat()
 
 	// Parse RDS format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 	atIdx := strings.Index(line, "@")
@@ -225,7 +221,7 @@ func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
 	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
 	pidEndIdx := strings.Index(afterAt, "]")
 	afterPid := afterAt[pidEndIdx+1:]
-	
+
 	parts := strings.SplitN(afterPid, ":", 4)
 	sqlstateCode := strings.TrimSpace(parts[2])
 	sqlstateClass := ""
@@ -260,7 +256,7 @@ func (c *ErrorLogs) parseTextLog(entry loki.Entry) error {
 		DatabaseName:  database,
 	}
 
-	c.updateMetrics(parsed)
+	l.updateMetrics(parsed)
 	return nil
 }
 
@@ -296,27 +292,16 @@ func extractSeverity(message string) string {
 	return ""
 }
 
-func (c *ErrorLogs) updateMetrics(parsed *ParsedError) {
-	c.systemIDMutex.RLock()
-	systemID := c.systemID
-	c.systemIDMutex.RUnlock()
-	
-	c.errorsBySQLState.WithLabelValues(
+func (l *Logs) updateMetrics(parsed *ParsedError) {
+	l.errorsBySQLState.WithLabelValues(
 		parsed.ErrorSeverity,
 		parsed.SQLStateCode,
 		parsed.SQLStateClass,
 		parsed.DatabaseName,
 		parsed.User,
-		c.instanceKey,
-		systemID,
+		l.instanceKey,
+		l.systemID,
 	).Inc()
-}
-
-// UpdateSystemID updates the system ID used in metrics labels
-func (c *ErrorLogs) UpdateSystemID(systemID string) {
-	c.systemIDMutex.Lock()
-	defer c.systemIDMutex.Unlock()
-	c.systemID = systemID
 }
 
 func truncateString(s string, maxLen int) string {
@@ -327,33 +312,33 @@ func truncateString(s string, maxLen int) string {
 }
 
 // trackValidFormat tracks that we've seen a valid log format this minute
-func (c *ErrorLogs) trackValidFormat() {
-	c.formatCheckMutex.Lock()
-	defer c.formatCheckMutex.Unlock()
-	c.validLogsThisMinute++
+func (l *Logs) trackValidFormat() {
+	l.formatCheckMutex.Lock()
+	defer l.formatCheckMutex.Unlock()
+	l.validLogsThisMinute++
 }
 
 // trackInvalidFormat tracks invalid format and emits warning once per minute if ALL logs were invalid
-func (c *ErrorLogs) trackInvalidFormat() {
-	c.formatCheckMutex.Lock()
-	defer c.formatCheckMutex.Unlock()
+func (l *Logs) trackInvalidFormat() {
+	l.formatCheckMutex.Lock()
+	defer l.formatCheckMutex.Unlock()
 
-	c.invalidLogsThisMinute++
+	l.invalidLogsThisMinute++
 
 	// Emit warning once per minute if ALL logs were invalid
 	now := time.Now()
-	if now.Sub(c.lastFormatWarning) >= time.Minute {
-		if c.validLogsThisMinute == 0 && c.invalidLogsThisMinute > 0 {
-			level.Warn(c.logger).Log(
+	if now.Sub(l.lastFormatWarning) >= time.Minute {
+		if l.validLogsThisMinute == 0 && l.invalidLogsThisMinute > 0 {
+			level.Warn(l.logger).Log(
 				"msg", "all PostgreSQL error logs in the last minute had invalid format",
-				"invalid_count", c.invalidLogsThisMinute,
+				"invalid_count", l.invalidLogsThisMinute,
 				"expected_format", "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a",
 				"hint", "ensure log_line_prefix is set correctly on PostgreSQL server",
 			)
 		}
 
-		c.lastFormatWarning = now
-		c.validLogsThisMinute = 0
-		c.invalidLogsThisMinute = 0
+		l.lastFormatWarning = now
+		l.validLogsThisMinute = 0
+		l.invalidLogsThisMinute = 0
 	}
 }

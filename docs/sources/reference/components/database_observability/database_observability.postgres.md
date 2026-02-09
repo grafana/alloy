@@ -39,10 +39,10 @@ You can use the following arguments with `database_observability.postgres`:
 
 The following fields are exported and can be referenced by other components:
 
-| Name                  | Type            | Description                                                                      |
-|-----------------------|-----------------|----------------------------------------------------------------------------------|
-| `targets`             | `list(map(string))` | Targets that can be used to collect metrics from the component.               |
-| `error_logs_receiver` | `LogsReceiver`  | Receiver for PostgreSQL error logs that processes and exports metrics.           |
+| Name             | Type                | Description                                                                      |
+|------------------|---------------------|----------------------------------------------------------------------------------|
+| `targets`        | `list(map(string))` | Targets that can be used to collect metrics from the component.                  |
+| `logs_receiver`  | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics.           |
 
 The following collectors are configurable:
 
@@ -52,7 +52,7 @@ The following collectors are configurable:
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
 | `explain_plans`  | Collect query explain plans.                                          | yes                |
-| `error_logs`     | Process PostgreSQL error logs and export metrics (always enabled).    | yes                |
+| `logs`           | Process PostgreSQL logs and export error metrics.                     | yes                |
 
 ## Blocks
 
@@ -144,32 +144,35 @@ The `azure` block supplies the identifying information for the database being mo
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
 
-## Error Logs Collector
+## Logs Collector
 
-The `error_logs` collector processes PostgreSQL error logs received through the `error_logs_receiver` entry point and exports Prometheus metrics.
-Unlike other collectors, it **runs independently of the database connection** and starts immediately when the component is created.
+The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for errors, fatal messages, and panics.
+The collector **requires a successful database connection** to obtain the system ID before it can start processing logs.
 
 ### Key Features
 
-- **Always-on processing**: Processes logs even when the database is unavailable
-- **Entry point receiver**: Provides an `error_logs_receiver` that must be fed by log sources (e.g., `loki.source.file`, `loki.source.cloudwatch`)
-- **RDS log format support**: Parses structured PostgreSQL logs using AWS RDS format
+- **Dependent on database connection**: Starts only after successful database connection to obtain `system_id` for log labeling
+- **Entry point receiver**: Provides a `logs_receiver` that must be fed by log sources (e.g., `otelcol.receiver.awscloudwatch`, `loki.source.file`)
+- **Natural backpressure**: Uses unbuffered channels - log sources will block if the collector isn't running (e.g., during database outage)
+- **RDS log format support**: Parses structured PostgreSQL logs using AWS RDS format (`%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`)
 - **SQLSTATE extraction**: Automatically extracts and classifies errors by SQLSTATE codes
-- **Prometheus metrics**: Exports detailed error metrics with labels for severity, SQLSTATE, database, user, and instance
+- **Prometheus metrics**: Exports detailed error metrics with labels for severity, SQLSTATE, database, user, instance, and server_id
 - **Format validation**: Validates log format and provides warnings for misconfigured log output
+- **Edge case handling**: Correctly processes logs with empty user/database fields (e.g., background worker terminations)
 
 ### Exported Receiver
 
-The component exports an `error_logs_receiver` entry point that must be fed by log source components.
-The receiver does not collect logs itself - it processes logs forwarded to it:
+The component exports a `logs_receiver` entry point that must be fed by log source components.
+The receiver is exported immediately when the component starts, but the underlying collector only begins processing logs after a successful database connection.
+This design provides natural backpressure - log sources will block when the database is unavailable, preventing memory growth:
 
+- `otelcol.receiver.awscloudwatch` + `otelcol.exporter.loki` - reads CloudWatch Logs (RDS) and forwards to the receiver
 - `loki.source.file` - reads PostgreSQL log files and forwards to the receiver
-- `loki.source.cloudwatch` - reads CloudWatch Logs (RDS) and forwards to the receiver
-- `otelcol.receiver.otlp` + `otelcol.exporter.loki` - receives OTLP logs and forwards to the receiver exporting to loki format
+- `otelcol.receiver.otlp` + `otelcol.exporter.loki` - receives OTLP logs and forwards to the receiver
 
 ### Metrics
 
-The error_logs collector exports the following Prometheus metrics:
+The logs collector exports the following Prometheus metrics:
 
 | Metric Name                                  | Type    | Description                                          | Labels                                                             |
 |----------------------------------------------|---------|------------------------------------------------------|--------------------------------------------------------------------|
@@ -178,7 +181,7 @@ The error_logs collector exports the following Prometheus metrics:
 
 ### Required PostgreSQL Configuration
 
-For the error_logs collector to work correctly, PostgreSQL must be configured with the RDS log format:
+For the logs collector to work correctly, PostgreSQL must be configured with the RDS log format:
 
 ```sql
 -- Set log format (requires superuser or rds_superuser)
@@ -227,14 +230,14 @@ prometheus.exporter.postgres "orders_db" {
   enabled_collectors = ["stat_statements"]
 }
 
-// Read PostgreSQL log files and forward to error_logs collector
+// Read PostgreSQL log files and forward to logs collector
 loki.source.file "postgres_logs" {
   targets = [{
     __path__ = "/var/log/postgresql/postgresql-*.log",
-    job      = "postgres-errors",
+    job      = "postgres-logs",
   }]
   
-  forward_to = [database_observability.postgres.orders_db.error_logs_receiver]
+  forward_to = [database_observability.postgres.orders_db.logs_receiver]
 }
 
 loki.relabel "orders_db" {
