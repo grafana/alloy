@@ -19,6 +19,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -216,6 +217,61 @@ func TestTailerNeverStarted(t *testing.T) {
 	require.NotPanics(t, func() { cancel() })
 }
 
+var _ io.ReadCloser = (*stringReader)(nil)
+
+func newStringReader(s string) *stringReader {
+	return &stringReader{Reader: strings.NewReader(s)}
+}
+
+type stringReader struct {
+	*strings.Reader
+}
+
+func (s *stringReader) Close() error {
+	return nil
+}
+
+func TestTailerConsumeLines(t *testing.T) {
+	t.Run("skip empty line", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
+		tailer := &tailer{
+			logger:            log.NewNopLogger(),
+			recv:              collector.Receiver(),
+			positions:         positions.NewNop(),
+			containerID:       "test",
+			metrics:           newMetrics(prometheus.DefaultRegisterer),
+			running:           true,
+			wg:                sync.WaitGroup{},
+			last:              atomic.NewInt64(0),
+			since:             atomic.NewInt64(0),
+			componentStopping: func() bool { return false },
+		}
+
+		bb := &bytes.Buffer{}
+		writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
+		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n2023-12-09T12:00:00.000000000Z line\n"))
+		require.NoError(t, err)
+
+		tailer.wg.Add(3)
+		go func() {
+			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(collector.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entry := collector.Received()[0]
+
+		expectedLine := "line"
+		expectedTimestamp, err := time.Parse(time.RFC3339Nano, "2023-12-09T12:00:00.000000000Z")
+		require.NoError(t, err)
+
+		require.Equal(t, expectedLine, entry.Line)
+		require.Equal(t, expectedTimestamp, entry.Timestamp)
+	})
+}
+
 func TestChunkWriter(t *testing.T) {
 	logger := log.NewNopLogger()
 	var buf bytes.Buffer
@@ -252,6 +308,25 @@ func TestChunkWriter(t *testing.T) {
 	expected = append(expected, chunk3...)
 
 	assert.Equal(t, expected, buf.Bytes())
+}
+
+func TestExtractTsFromBytes(t *testing.T) {
+	t.Run("invalid timestamp", func(t *testing.T) {
+		_, _, err := extractTsFromBytes([]byte("123 test\n"))
+		require.Error(t, err)
+	})
+
+	t.Run("valid timestamp empty line", func(t *testing.T) {
+		ts, _, err := extractTsFromBytes([]byte("2024-05-02T13:11:55.879889Z \n"))
+		require.NoError(t, err)
+		expectedTs, err := time.Parse(time.RFC3339Nano, "2024-05-02T13:11:55.879889Z")
+		require.NoError(t, err)
+		require.Equal(t, expectedTs, ts)
+	})
+	t.Run("valid timestamp no space", func(t *testing.T) {
+		_, _, err := extractTsFromBytes([]byte("2024-05-02T13:11:55.879889Z\n"))
+		require.Error(t, err)
+	})
 }
 
 func newDockerServer(t *testing.T) *httptest.Server {
