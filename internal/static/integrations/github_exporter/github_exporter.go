@@ -109,6 +109,8 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 
 	// Configure GitHub App authentication if required fields are present
 	if hasGitHubAppAuth {
+		level.Debug(logger).Log("msg", "github authentication method", "method", "GitHub App")
+
 		conf.SetGitHubApp(true)
 		conf.SetGitHubAppKeyPath(c.GitHubAppKeyPath)
 		conf.SetGitHubAppId(c.GitHubAppID)
@@ -120,8 +122,11 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 			return nil, err
 		}
 	} else if c.APIToken != "" {
+		level.Debug(logger).Log("msg", "github authentication method", "method", "API Token")
+
 		conf.SetAPIToken(string(c.APIToken))
 	} else if c.APITokenFile != "" {
+		level.Debug(logger).Log("msg", "github authentication method", "method", "API Token File")
 		err = conf.SetAPITokenFromFile(c.APITokenFile)
 		if err != nil {
 			level.Error(logger).Log("msg", "unable to load GitHub API token from file", "err", err)
