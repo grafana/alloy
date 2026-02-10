@@ -177,6 +177,8 @@ ALTER SYSTEM SET log_line_prefix = '%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a';
 SELECT pg_reload_conf();
 ```
 
+Use the following SELECT statement to show and verify the current string format applied to the beginning of each log line.
+
 ```sql
 SHOW log_line_prefix;
 ```
