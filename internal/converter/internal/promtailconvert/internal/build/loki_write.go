@@ -53,6 +53,7 @@ func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiw
 				RemoteTimeout:     config.Timeout,
 				TenantID:          config.TenantID,
 				RetryOnHTTP429:    !config.DropRateLimitedBatches,
+				QueueConfig:       lokiwrite.GetDefaultEndpointOptions().QueueConfig,
 			},
 		},
 		ExternalLabels: convertFlagLabels(config.ExternalLabels),

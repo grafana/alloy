@@ -55,7 +55,7 @@ jobs:
           GITHUB_APP_PRIVATE_KEY=updater-app:private-key
 
     - name: Checkout code
-      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
 
@@ -94,11 +94,6 @@ jobs:
           "pull_request_team_reviewers": [],
           "repo_name": "deployment_tools",
           "update_jsonnet_attribute_configs": [
-            {
-              "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
-              "jsonnet_key": "dev_canary",
-              "jsonnet_value_file": ".image-tag"
-            },
             {
               "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
               "jsonnet_key": "dev0",

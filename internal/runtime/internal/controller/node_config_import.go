@@ -103,7 +103,7 @@ func getImportManagedOptions(globals ComponentGlobals, cn *ImportConfigNode) com
 		}, cn.registry),
 		Tracer:   tracing.WrapTracer(globals.TraceProvider, cn.globalID),
 		DataPath: filepath.Join(globals.DataPath, cn.globalID),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return globals.GetServiceData(name)
 		},
 	}
@@ -307,7 +307,7 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 // evaluateChildren evaluates the import nodes managed by this import node.
 func (cn *ImportConfigNode) evaluateChildren() error {
 	for _, child := range cn.importConfigNodesChildren {
-		err := child.Evaluate(vm.NewScope(map[string]interface{}{
+		err := child.Evaluate(vm.NewScope(map[string]any{
 			importsource.ModulePath: cn.source.ModulePath(),
 		}))
 		if err != nil {
@@ -436,7 +436,7 @@ func (cn *ImportConfigNode) ImportedDeclares() map[string]ast.Body {
 
 // Scope returns the scope associated with the import source.
 func (cn *ImportConfigNode) Scope() *vm.Scope {
-	return vm.NewScope(map[string]interface{}{
+	return vm.NewScope(map[string]any{
 		importsource.ModulePath: cn.source.ModulePath(),
 	})
 }

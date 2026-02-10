@@ -46,6 +46,7 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoffRetries: 10,
 		HTTPClientConfig:  types.CloneDefaultHTTPClientConfig(),
 		RetryOnHTTP429:    true,
+		QueueConfig:       defaultQueueConfig,
 	}
 
 	return defaultEndpointOptions
@@ -70,22 +71,27 @@ func (r *EndpointOptions) Validate() error {
 	return nil
 }
 
-// QueueConfig controls how the queue logs remote write client is configured. Note that this client is only used when the
-// loki.write component has WAL support enabled.
+// QueueConfig controls how shards and queue are configured for endpoint.
 type QueueConfig struct {
-	Capacity     units.Base2Bytes `alloy:"capacity,attr,optional"`
-	DrainTimeout time.Duration    `alloy:"drain_timeout,attr,optional"`
+	Capacity        units.Base2Bytes `alloy:"capacity,attr,optional"`
+	MinShards       int              `alloy:"min_shards,attr,optional"`
+	DrainTimeout    time.Duration    `alloy:"drain_timeout,attr,optional"`
+	BlockOnOverflow bool             `alloy:"block_on_overflow,attr,optional"`
+}
+
+var defaultQueueConfig = QueueConfig{
+	Capacity:        10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
+	MinShards:       1,
+	DrainTimeout:    15 * time.Second,
+	BlockOnOverflow: true,
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (q *QueueConfig) SetToDefault() {
-	*q = QueueConfig{
-		Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
-		DrainTimeout: 15 * time.Second,
-	}
+	*q = defaultQueueConfig
 }
 
-func (args Arguments) convertClientConfigs() []client.Config {
+func (args Arguments) convertEndpointConfigs() []client.Config {
 	var res []client.Config
 	for _, cfg := range args.Endpoints {
 		url, _ := url.Parse(cfg.URL)
@@ -105,9 +111,11 @@ func (args Arguments) convertClientConfigs() []client.Config {
 			TenantID:               cfg.TenantID,
 			MaxStreams:             args.MaxStreams,
 			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
-			Queue: client.QueueConfig{
-				Capacity:     int(cfg.QueueConfig.Capacity),
-				DrainTimeout: cfg.QueueConfig.DrainTimeout,
+			QueueConfig: client.QueueConfig{
+				Capacity:        int(cfg.QueueConfig.Capacity),
+				MinShards:       cfg.QueueConfig.MinShards,
+				DrainTimeout:    cfg.QueueConfig.DrainTimeout,
+				BlockOnOverflow: cfg.QueueConfig.BlockOnOverflow,
 			},
 		}
 		res = append(res, cc)

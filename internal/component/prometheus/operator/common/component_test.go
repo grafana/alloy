@@ -16,6 +16,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
@@ -49,7 +50,7 @@ func (c *crdManagerHungRun) Run(ctx context.Context) error {
 
 func (c *crdManagerHungRun) ClusteringUpdated() {}
 
-func (c *crdManagerHungRun) DebugInfo() interface{} {
+func (c *crdManagerHungRun) DebugInfo() any {
 	return nil
 }
 
@@ -61,7 +62,7 @@ func TestRunExit(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{
@@ -125,4 +126,62 @@ func TestRunExit(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return runExited.Load() && !factory.running.Load()
 	}, 3*time.Second, 10*time.Millisecond)
+}
+
+func TestExperimentalFeatures(t *testing.T) {
+	cases := []struct {
+		featureName  string
+		minStability featuregate.Stability
+		setConfig    func(args *operator.Arguments)
+	}{
+		{
+			featureName:  "enable_type_and_unit_labels",
+			minStability: featuregate.StabilityExperimental,
+			setConfig: func(args *operator.Arguments) {
+				args.Scrape.EnableTypeAndUnitLabels = true
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.featureName, func(t *testing.T) {
+			opts := component.Options{
+				Logger:       util.TestAlloyLogger(t),
+				Registerer:   prometheus.NewRegistry(),
+				MinStability: featuregate.StabilityGenerallyAvailable,
+				GetServiceData: func(name string) (any, error) {
+					switch name {
+					case http_service.ServiceName:
+						return http_service.Data{
+							HTTPListenAddr:   "localhost:12345",
+							MemoryListenAddr: "alloy.internal:1245",
+							BaseHTTPPath:     "/",
+							DialFunc:         (&net.Dialer{}).DialContext,
+						}, nil
+
+					case cluster.ServiceName:
+						return cluster.Mock(), nil
+					case labelstore.ServiceName:
+						return labelstore.New(nil, prometheus.DefaultRegisterer), nil
+					default:
+						return nil, fmt.Errorf("service %q does not exist", name)
+					}
+				},
+			}
+
+			nilReceivers := []storage.Appendable{nil, nil}
+
+			var args operator.Arguments
+			args.SetToDefault()
+			args.ForwardTo = nilReceivers
+			tc.setConfig(&args)
+
+			_, err := New(opts, args, "")
+			require.ErrorContains(t, err, tc.featureName, "component should return a feature gate error when stability level is StabilityGenerallyAvailable")
+
+			opts.MinStability = tc.minStability
+			_, err = New(opts, args, "")
+			require.NoErrorf(t, err, "component shouldn't return an error when stability level is %q", tc.minStability)
+		})
+	}
 }

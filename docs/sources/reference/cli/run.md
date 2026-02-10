@@ -11,7 +11,7 @@ weight: 300
 
 # `run`
 
-The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an interrupt is received.
+The `run` command runs the {{< param "PRODUCT_NAME" >}} Default Engine in the foreground until an interrupt is received. 
 
 ## Usage
 

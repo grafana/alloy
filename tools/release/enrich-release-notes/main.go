@@ -9,10 +9,50 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/grafana/alloy/tools/release/internal/git"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
+
+// commitPattern matches a commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
+// It captures the short SHA from the link text, regardless of surrounding context.
+var commitPattern = regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)`)
+
+// commitAuthorsQuery is the GraphQL query to fetch all authors for a commit.
+const commitAuthorsQuery = `query($owner: String!, $repo: String!, $oid: GitObjectID!) {
+	repository(owner: $owner, name: $repo) {
+		object(oid: $oid) {
+			... on Commit {
+				authors(first: 10) {
+					nodes {
+						user {
+							login
+						}
+					}
+				}
+			}
+		}
+	}
+}`
+
+// commitAuthorsResponse is the GraphQL response for the commit authors query.
+type commitAuthorsResponse struct {
+	Data struct {
+		Repository struct {
+			Object struct {
+				Authors struct {
+					Nodes []struct {
+						User *struct {
+							Login string `json:"login"`
+						} `json:"user"`
+					} `json:"nodes"`
+				} `json:"authors"`
+			} `json:"object"`
+		} `json:"repository"`
+	} `json:"data"`
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
+}
 
 func main() {
 	var (
@@ -73,20 +113,33 @@ func main() {
 	fmt.Println("✅ Release notes updated successfully")
 }
 
+// extractCommitSHA extracts a commit SHA from a changelog line.
+// Returns the SHA if found, or an empty string if no commit link is present.
+func extractCommitSHA(line string) string {
+	matches := commitPattern.FindStringSubmatch(line)
+	if matches == nil {
+		return ""
+	}
+	return matches[1]
+}
+
 // addContributorInfo adds contributor usernames to changelog entries.
 // It extracts commit SHAs from each line and looks up the author + co-authors.
 func addContributorInfo(ctx context.Context, client *gh.Client, body string) string {
 	lines := strings.Split(body, "\n")
-	// Match commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
-	// This captures the short SHA from the link text
-	commitPattern := regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)\s*$`)
 
 	for i, line := range lines {
-		matches := commitPattern.FindStringSubmatch(line)
-		if matches == nil {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		sha := matches[1]
+
+		fmt.Printf("   Processing line %d: %s\n", i, line)
+
+		sha := extractCommitSHA(line)
+		if sha == "" {
+			fmt.Printf("   No commit SHA found in line %d\n", i)
+			continue
+		}
 
 		contributors, err := getCommitContributors(ctx, client, sha)
 		if err != nil {
@@ -106,29 +159,41 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 }
 
 // getCommitContributors returns human contributors for a commit (author + co-authors, excluding bots).
+// Uses GitHub's GraphQL API to fetch all authors associated with the commit (including co-authors) and their usernames.
 func getCommitContributors(ctx context.Context, client *gh.Client, sha string) ([]string, error) {
+	// Use GetCommit to expand short SHA to full SHA (more efficient than GetRefSHA
+	// which tries branch/tag resolution first)
 	commit, err := client.GetCommit(ctx, sha)
 	if err != nil {
+		return nil, fmt.Errorf("getting commit: %w", err)
+	}
+	fullSHA := commit.GetSHA()
+
+	variables := map[string]any{
+		"owner": client.Owner(),
+		"repo":  client.Repo(),
+		"oid":   fullSHA,
+	}
+
+	var result commitAuthorsResponse
+	if err := client.GraphQL(ctx, commitAuthorsQuery, variables, &result); err != nil {
 		return nil, err
 	}
 
-	seen := make(map[string]bool)
-	var contributors []string
-
-	// Add commit author (GitHub user association)
-	if author := commit.GetAuthor(); author != nil {
-		if username := author.GetLogin(); username != "" && !gh.IsBot(username) {
-			seen[username] = true
-			contributors = append(contributors, username)
-		}
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("graphql error: %s", result.Errors[0].Message)
 	}
 
-	// Add co-authors from commit message
-	for _, coauthor := range git.ParseCoAuthors(commit.GetCommit().GetMessage()) {
-		username := gh.ParseUsernameFromEmail(coauthor.Email)
-		if username != "" && !gh.IsBot(username) && !seen[username] {
-			seen[username] = true
-			contributors = append(contributors, username)
+	// Extract unique usernames, filtering out bots
+	seen := make(map[string]bool)
+	var contributors []string
+	for _, node := range result.Data.Repository.Object.Authors.Nodes {
+		if node.User != nil && node.User.Login != "" {
+			login := node.User.Login
+			if !seen[login] && !gh.IsBot(login) {
+				seen[login] = true
+				contributors = append(contributors, login)
+			}
 		}
 	}
 

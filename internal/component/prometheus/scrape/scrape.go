@@ -137,6 +137,8 @@ type Arguments struct {
 	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
 	// Whether the metric metadata should be passed to the downstream components.
 	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
+	// Whether the metric's type and unit should be added as labels.
+	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -307,6 +309,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
+	if args.EnableTypeAndUnitLabels && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		// NOTE: This is not Update()-able.
@@ -317,9 +323,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// NOTE: This is not Update()-able.
 		AppendMetadata: args.HonorMetadata,
 		// otelcol.receiver.prometheus gets metadata from context
-		PassMetadataInContext: args.HonorMetadata,
-		// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
-		// TODO: Expose EnableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
+		PassMetadataInContext:   args.HonorMetadata,
+		EnableTypeAndUnitLabels: args.EnableTypeAndUnitLabels,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -620,7 +625,7 @@ func BuildTargetStatuses(targets map[string][]*scrape.Target) []TargetStatus {
 }
 
 // DebugInfo implements component.DebugComponent
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	return ScraperStatus{
 		TargetStatus: BuildTargetStatuses(c.scraper.TargetsActive()),
 	}

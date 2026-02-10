@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
+	"github.com/grafana/alloy/internal/featuregate"
 	loki_util "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
@@ -316,6 +318,64 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
 		}
 	}
+}
+
+func TestComponentExperimentalConfig(t *testing.T) {
+	t.Run("should be able to create component with default queue_config", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.NoError(t, err)
+	})
+
+	t.Run("should not be able to create component with experimental config without correct flag", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+				queue_config {
+					min_shards = 2
+				}	
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+
+		require.Error(t, err)
+	})
+
+	t.Run("should be able to create component with experimental config correct flag", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+				queue_config {
+					min_shards = 2
+				}	
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			MinStability:  featuregate.StabilityExperimental,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+
+		require.NoError(t, err)
+	})
 }
 
 type testCase struct {

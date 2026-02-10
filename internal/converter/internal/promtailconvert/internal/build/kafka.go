@@ -26,7 +26,7 @@ func (s *ScrapeConfigBuilder) AppendKafka() {
 		ForwardTo:            s.getOrNewProcessStageReceivers(),
 		RelabelRules:         relabel.Rules{},
 	}
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch value := val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}

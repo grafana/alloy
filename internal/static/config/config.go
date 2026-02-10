@@ -89,7 +89,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	// Apply defaults to the config from our struct and any defaults inherited
 	// from flags before unmarshaling.
 	*c = DefaultConfig()
@@ -143,7 +143,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML implements yaml.Marshaler.
-func (c Config) MarshalYAML() (interface{}, error) {
+func (c Config) MarshalYAML() (any, error) {
 	var buf bytes.Buffer
 
 	enc := yaml.NewEncoder(&buf)

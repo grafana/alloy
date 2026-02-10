@@ -1,13 +1,11 @@
 package tail
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -28,28 +26,39 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Offset != 0 {
-		// Seek to provided offset
-		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-			return nil, err
-		}
+	encoding, err := getEncoding(cfg.Encoding)
+	if err != nil {
+		return nil, err
 	}
 
 	if cfg.WatcherConfig == (WatcherConfig{}) {
 		cfg.WatcherConfig = defaultWatcherConfig
 	}
 
-	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
+	sig, err := newSignatureFromFile(f)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
 
+	reader, err := newReader(logger, f, cfg.Offset, encoding, cfg.Compression, cfg.StartFromEnd)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:    cfg,
-		logger: logger,
-		file:   f,
-		reader: newReader(f, cfg),
-		ctx:    ctx,
-		cancel: cancel,
+		cfg:       cfg,
+		logger:    logger,
+		file:      f,
+		reader:    reader,
+		ctx:       ctx,
+		cancel:    cancel,
+		signature: sig,
+		waitAtEOF: cfg.Compression == "",
 	}, nil
 }
 
@@ -60,12 +69,10 @@ type File struct {
 	cfg    *Config
 	logger log.Logger
 
-	// protects file, reader, and lastOffset.
-	mu     sync.Mutex
-	file   *os.File
-	reader *bufio.Reader
-
-	lastOffset int64
+	mu        sync.Mutex
+	file      *os.File
+	reader    *reader
+	signature *signature
 
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
@@ -73,6 +80,10 @@ type File struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	// waitAtEOF controls whether we should wait for file events
+	// when we get EOF
+	waitAtEOF bool
 }
 
 // Next reads and returns the next line from the file.
@@ -98,23 +109,45 @@ read:
 		return &line, nil
 	}
 
-	text, err := f.readLine()
+	text, err := f.reader.next()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
-			if err := f.wait(text != ""); err != nil {
+		if errors.Is(err, io.EOF) && f.waitAtEOF {
+			if err := f.wait(); err != nil {
 				return nil, err
 			}
 			goto read
 		}
-		return nil, err
+
+		// If we should wait at EOF we go an unexpected error
+		// here and can just return.
+		if f.waitAtEOF {
+			return nil, err
+		}
+
+		if !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+
+		// If we should return at EOF we want to flush all remaining
+		// data from reader.
+		text, err = f.reader.flush()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	offset, err := f.offset()
-	if err != nil {
-		return nil, err
-	}
+	offset := f.reader.position()
 
-	f.lastOffset = offset
+	// Recompute signature if we've crossed a threshold and haven't reached it yet.
+	// This progressively builds a more complete signature as the file grows.
+	if f.signature.shouldRecompute(offset) {
+		sig, err := newSignatureFromFile(f.file)
+		if err != nil {
+			return nil, err
+		}
+
+		f.signature = sig
+	}
 
 	return &Line{
 		Text:   text,
@@ -148,7 +181,7 @@ func (f *File) Stop() error {
 
 // wait blocks until a file event is detected (modification, truncation, or deletion).
 // Returns an error if the context is canceled or an unrecoverable error occurs.
-func (f *File) wait(partial bool) error {
+func (f *File) wait() error {
 	offset, err := f.offset()
 	if err != nil {
 		return err
@@ -158,11 +191,6 @@ func (f *File) wait(partial bool) error {
 	switch event {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
-		if partial {
-			// We need to reset to last successful offset because we consumed a partial line.
-			f.file.Seek(f.lastOffset, io.SeekStart)
-			f.reader.Reset(f.file)
-		}
 		return nil
 	case eventTruncated:
 		level.Debug(f.logger).Log("msg", "file truncated")
@@ -170,10 +198,14 @@ func (f *File) wait(partial bool) error {
 		return f.reopen(true)
 	case eventDeleted:
 		level.Debug(f.logger).Log("msg", "file deleted")
-		// if a file is deleted we want to make sure we drain what's remaining in the open file.
+		// If a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
-
-		f.lastOffset = 0
+		// If we have any buffered lines after drain we can return here to make sure they are consumed and
+		// we are not blocking on reopening the new file.
+		if len(f.bufferedLines) > 0 {
+			level.Debug(f.logger).Log("msg", "finish reading deleted file before reopen")
+			return nil
+		}
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
 		return f.reopen(false)
@@ -182,14 +214,13 @@ func (f *File) wait(partial bool) error {
 	}
 }
 
-// readLine reads a single line from the file, including the newline character.
-// The newline and any trailing carriage return (for Windows line endings) are stripped.
-func (f *File) readLine() (string, error) {
-	line, err := f.reader.ReadString('\n')
+// offset returns the current byte offset in the file where the next read will occur.
+func (f *File) offset() (int64, error) {
+	offset, err := f.file.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return line, err
+		return 0, err
 	}
-	return strings.TrimRight(line, "\r\n"), err
+	return offset, nil
 }
 
 // drain reads all remaining complete lines from the current file handle and stores
@@ -197,50 +228,35 @@ func (f *File) readLine() (string, error) {
 // to ensure we don't lose any data from the old file before switching to the new one.
 // drain is best effort and will stop if it encounters any errors.
 func (f *File) drain() {
-	if _, err := f.file.Seek(f.lastOffset, io.SeekStart); err != nil {
-		return
-	}
-	f.reader.Reset(f.file)
-
 	for {
-		text, err := f.readLine()
+		text, err := f.reader.next()
 		if err != nil {
 			if text != "" {
-				offset, err := f.offset()
-				if err != nil {
-					return
-				}
 				f.bufferedLines = append(f.bufferedLines, Line{
 					Text:   text,
-					Offset: offset,
+					Offset: f.reader.position(),
 					Time:   time.Now(),
 				})
 			}
+
+			// flush any remaining data in buffer
+			text, _ = f.reader.flush()
+			if text != "" {
+				f.bufferedLines = append(f.bufferedLines, Line{
+					Text:   text,
+					Offset: f.reader.position(),
+					Time:   time.Now(),
+				})
+			}
+
 			return
 		}
-
-		offset, err := f.offset()
-		if err != nil {
-			return
-		}
-
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,
-			Offset: offset,
+			Offset: f.reader.position(),
 			Time:   time.Now(),
 		})
 	}
-}
-
-// offset returns the current byte offset in the file where the next read will occur.
-// It accounts for buffered data in the reader.
-func (f *File) offset() (int64, error) {
-	offset, err := f.file.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-
-	return offset - int64(f.reader.Buffered()), nil
 }
 
 // reopen closes the current file handle and opens a new one for the same file path.
@@ -297,17 +313,33 @@ func (f *File) reopen(truncated bool) error {
 			continue
 		}
 
+		// Compute a new signature and compare it with the previous one to detect atomic writes.
+		// When a file is replaced atomically, the file handle changes but the
+		// initial content may be the same. If signatures match, it's the same file content,
+		// so we continue from the previous offset. If they differ, it's a different
+		// file, so we start from the beginning.
+		sig, err := newSignatureFromFile(file)
+		if err != nil {
+			file.Close()
+			return err
+		}
+
+		var offset int64
+		if !f.signature.equal(sig) {
+			offset = 0
+		} else {
+			offset = min(f.reader.position(), nf.Size())
+		}
+
 		f.file = file
-		f.reader.Reset(f.file)
+		f.signature = sig
+		if err := f.reader.reset(f.file, offset); err != nil {
+			file.Close()
+			return err
+		}
+
 		break
 	}
 
 	return backoff.Err()
-}
-
-func newReader(f *os.File, cfg *Config) *bufio.Reader {
-	if cfg.Decoder != nil {
-		return bufio.NewReader(cfg.Decoder.Reader(f))
-	}
-	return bufio.NewReader(f)
 }

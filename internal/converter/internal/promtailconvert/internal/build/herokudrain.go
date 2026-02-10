@@ -18,7 +18,7 @@ func (s *ScrapeConfigBuilder) AppendHerokuDrainConfig() {
 		ForwardTo:            s.getOrNewProcessStageReceivers(),
 		RelabelRules:         relabel.Rules{},
 	}
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}

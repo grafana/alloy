@@ -47,7 +47,7 @@ type luhnFilterStage struct {
 }
 
 // Process implements Stage.
-func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	input := entry
 	if r.config.Source != nil {
 		value, ok := extracted[*r.config.Source]

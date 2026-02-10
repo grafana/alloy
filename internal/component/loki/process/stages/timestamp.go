@@ -137,7 +137,7 @@ func (ts *timestampStage) Name() string {
 }
 
 // Process implements Stage.
-func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	if ts.config == nil {
 		return
 	}
@@ -158,7 +158,7 @@ func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]in
 	}
 }
 
-func (ts *timestampStage) parseTimestampFromSource(extracted map[string]interface{}) (*time.Time, error) {
+func (ts *timestampStage) parseTimestampFromSource(extracted map[string]any) (*time.Time, error) {
 	// Ensure the extracted data contains the timestamp source.
 	v, ok := extracted[ts.config.Source]
 	if !ok {

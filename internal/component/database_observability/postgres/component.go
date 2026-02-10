@@ -65,20 +65,29 @@ type Arguments struct {
 	Targets           []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
-	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
 	ARN string `alloy:"arn,attr"`
+}
+
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
 type QuerySampleArguments struct {
@@ -99,6 +108,7 @@ type SchemaDetailsArguments struct {
 }
 
 var DefaultArguments = Arguments{
+	ExcludeDatabases: []string{},
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
@@ -113,16 +123,22 @@ var DefaultArguments = Arguments{
 		CacheSize:       256,
 		CacheTTL:        10 * time.Minute,
 	},
-	ExplainPlanArguments: ExplainPlanArguments{
+	ExplainPlansArguments: ExplainPlansArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 	},
+	HealthCheckArguments: HealthCheckArguments{
+		CollectInterval: 1 * time.Hour,
+	},
 }
 
-type ExplainPlanArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+type ExplainPlansArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+}
+
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -216,9 +232,36 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RUnlock()
 	}()
 
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.mut.RLock()
+				hasCollectors := len(c.collectors) > 0
+				c.mut.RUnlock()
+
+				if !hasCollectors {
+					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+					if err := c.tryReconnect(ctx); err != nil {
+						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
+					}
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			return nil
 		case entry := <-c.handler.Chan():
 			c.mut.RLock()
@@ -251,43 +294,48 @@ func (c *Component) reportError(errorMsg string, err error) {
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
-func (c *Component) Update(args component.Arguments) error {
+func (c *Component) tryReconnect(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
+	if err := c.connectAndStartCollectors(ctx); err != nil {
+		c.reportError("reconnection failed", err)
+		return err
 	}
 
-	c.args = args.(Arguments)
+	c.healthErr.Store("")
+	return nil
+}
+
+func (c *Component) connectAndStartCollectors(ctx context.Context) error {
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+		c.dbConnection = nil
+	}
 
 	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
-		c.reportError("failed to open database connection", err)
-		return nil
+		return fmt.Errorf("failed to open database connection: %w", err)
 	}
 
 	if dbConnection == nil {
-		c.reportError("nil DB connection", nil)
-		return nil
+		return fmt.Errorf("nil DB connection")
 	}
+
 	if err = dbConnection.Ping(); err != nil {
-		c.reportError("failed to ping database", err)
-		return nil
+		dbConnection.Close()
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	c.dbConnection = dbConnection
 
-	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	err = rs.Err()
-	if err != nil {
-		c.reportError("failed to query engine version", err)
-		return nil
+	rs := dbConnection.QueryRowContext(ctx, selectServerInfo)
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to query engine version: %w", err)
 	}
 
 	var systemID, systemIP, systemPort, engineVersion sql.NullString
 	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
-		c.reportError("failed to scan engine version", err)
-		return nil
+		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
@@ -296,27 +344,26 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.args.CloudProvider != nil {
 		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from config", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
 		}
 		cp = cloudProvider
 	} else {
 		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from DSN", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
 	}
 
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
+	allTargets := append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(allTargets))
+	for _, t := range allTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
 		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
+
 	c.opts.OnStateChange(Exports{
 		Targets: targets,
 	})
@@ -327,7 +374,20 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
-		c.reportError("failed to start collectors", err)
+		return fmt.Errorf("failed to start collectors: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.args = args.(Arguments)
+
+	if err := c.connectAndStartCollectors(context.Background()); err != nil {
+		c.reportError("failed to connect and start collectors", err)
 		return nil
 	}
 
@@ -375,14 +435,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
-			DSN:             string(c.args.DataSourceName),
-			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			CacheEnabled:     c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:        c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:         c.args.SchemaDetailsArguments.CacheTTL,
+			EntryHandler:     entryHandler,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -396,11 +457,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
-			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
-			EntryHandler:    entryHandler,
-			TableRegistry:   tableRegistry,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			EntryHandler:     entryHandler,
+			TableRegistry:    tableRegistry,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -415,6 +477,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:      c.args.ExcludeDatabases,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
@@ -446,14 +509,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
-		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:             c.dbConnection,
-			DSN:            string(c.args.DataSourceName),
-			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
-			Logger:         c.opts.Logger,
-			DBVersion:      engineVersion,
-			EntryHandler:   entryHandler,
+		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
+			DB:               c.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			Logger:           c.opts.Logger,
+			DBVersion:        engineVersion,
+			EntryHandler:     entryHandler,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
@@ -462,6 +526,22 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, epCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:              c.dbConnection,
+		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(context.Background()); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {

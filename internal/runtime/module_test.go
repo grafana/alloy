@@ -54,7 +54,7 @@ func TestModule(t *testing.T) {
 	tt := []struct {
 		name                  string
 		argumentModuleContent string
-		args                  map[string]interface{}
+		args                  map[string]any
 		exportModuleContent   string
 		expectedExports       []string
 		expectedErrorContains string
@@ -89,7 +89,7 @@ func TestModule(t *testing.T) {
 			name:                  "Argument not defined in module source",
 			argumentModuleContent: `argument "different_argument" {}`,
 			exportModuleContent:   exportStringConfig,
-			args:                  map[string]interface{}{"different_argument": "test", "username": "bad"},
+			args:                  map[string]any{"different_argument": "test", "username": "bad"},
 			expectedErrorContains: "Provided argument \"username\" is not defined in the module",
 		},
 
@@ -293,13 +293,13 @@ type TestArguments struct {
 }
 
 type TestExports struct {
-	Exports map[string]interface{} `alloy:"exports,attr"`
+	Exports map[string]any `alloy:"exports,attr"`
 }
 
 type testModule struct {
 	content string
-	args    map[string]interface{}
-	exports map[string]interface{}
+	args    map[string]any
+	exports map[string]any
 	opts    component.Options
 }
 

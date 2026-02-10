@@ -215,6 +215,6 @@ type onChangeEventHandler struct {
 
 var _ toolscache.ResourceEventHandler = onChangeEventHandler{}
 
-func (h onChangeEventHandler) OnAdd(_ interface{}, _ bool) { h.ChangeFunc() }
-func (h onChangeEventHandler) OnUpdate(_, _ interface{})   { h.ChangeFunc() }
-func (h onChangeEventHandler) OnDelete(_ interface{})      { h.ChangeFunc() }
+func (h onChangeEventHandler) OnAdd(_ any, _ bool) { h.ChangeFunc() }
+func (h onChangeEventHandler) OnUpdate(_, _ any)   { h.ChangeFunc() }
+func (h onChangeEventHandler) OnDelete(_ any)      { h.ChangeFunc() }
