@@ -16,7 +16,7 @@ import (
 
 type mappingStore interface {
 	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef
-	CreateMapping(refResults []storage.SeriesRef) storage.SeriesRef
+	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef
 	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef)
 	TrackAppendedSeries(ts int64, cell *Cell)
 	GetCellForAppendedSeries() *Cell
@@ -139,7 +139,7 @@ func (s *seriesRefMapping) AppendCTZeroSample(ref storage.SeriesRef, l labels.La
 
 type appenderFunc func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error)
 
-func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, l labels.Labels, af appenderFunc) (storage.SeriesRef, error) {
+func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.Labels, af appenderFunc) (storage.SeriesRef, error) {
 	defer s.resetFields()
 
 	if s.start.IsZero() {
@@ -147,7 +147,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, l labels.Labe
 	}
 
 	// Check if the incoming ref has ref mappings
-	existingChildRefs := s.store.GetMapping(ref, l)
+	existingChildRefs := s.store.GetMapping(ref, lbls)
 
 	var appendErr error
 
@@ -221,7 +221,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, l labels.Labe
 	}
 
 	// We got different refs back and need to create a new mapping
-	uniqueRef := s.store.CreateMapping(s.childRefs)
+	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
 	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
 	return uniqueRef, nil
 }
@@ -323,8 +323,8 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 
 	if uniqueRef == 0 {
 		// Some consumers don't memo the global ref. Try to lookup a ref by label hash.
-		lh := lbls.Hash()
-		gotRef, ok := s.labelHashToUniqueRef[lh]
+		labelHash := lbls.Hash()
+		gotRef, ok := s.labelHashToUniqueRef[labelHash]
 		if !ok {
 			return nil
 		}
@@ -339,7 +339,7 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 }
 
 // CreateMapping creates a new unique ref mapping for the given child ref results.
-func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef) storage.SeriesRef {
+func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
 	// Start cleanup goroutine on first mapping
 	s.startRefCleanup.Do(func() {
 		s.cleanupStarted.Store(true)
@@ -350,6 +350,9 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef) st
 	childRefSlice := make([]storage.SeriesRef, len(refResults))
 	copy(childRefSlice, refResults)
 
+	// Hash labels to for the fallback lookup table
+	labelHash := lbls.Hash()
+
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
 
@@ -358,6 +361,7 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef) st
 	s.nextUniqueRef++
 
 	s.uniqueRefToChildRefs[uniqueRef] = &childRefSlice
+	s.labelHashToUniqueRef[labelHash] = uniqueRef
 
 	s.activeMappings.Inc()
 	s.uniqueRefsTotal.Inc()
