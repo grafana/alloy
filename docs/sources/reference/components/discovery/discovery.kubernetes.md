@@ -156,6 +156,11 @@ The `endpoints` role discovers targets from listed endpoints of a service.
 The component discovers one target per port for each endpoint address.
 If a Pod backs the endpoint, the component discovers all container ports of the Pod as targets even if they aren't bound to an endpoint port.
 
+{{< admonition type="warning" >}}
+The Endpoints API is deprecated in Kubernetes v1.33+.
+Use the EndpointSlice API instead, and switch to the `endpointslice` role below.
+{{< /admonition >}}
+
 Discovered endpoints include the following labels:
 
 - `__meta_kubernetes_endpoints_label_<labelname>`: Each label from the endpoints object.
