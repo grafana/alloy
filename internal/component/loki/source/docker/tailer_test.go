@@ -232,8 +232,7 @@ func (s *stringReader) Close() error {
 }
 
 func TestTailerConsumeLines(t *testing.T) {
-
-	var proccess = func(t *testing.T, collector *loki.CollectingHandler, data []byte) {
+	var process = func(t *testing.T, collector *loki.CollectingHandler, data []byte) {
 		tailer := &tailer{
 			logger:            log.NewNopLogger(),
 			recv:              collector.Receiver(),
@@ -248,7 +247,6 @@ func TestTailerConsumeLines(t *testing.T) {
 		}
 
 		bb := &bytes.Buffer{}
-
 		writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
 		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n"))
 		require.NoError(t, err)
@@ -261,7 +259,7 @@ func TestTailerConsumeLines(t *testing.T) {
 
 	t.Run("timestamp followed by newline", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
-		proccess(t, collector, []byte("2023-12-09T12:00:00.000000000Z \n"))
+		process(t, collector, []byte("2023-12-09T12:00:00.000000000Z \n"))
 
 		require.Eventually(t, func() bool {
 			return len(collector.Received()) == 1
@@ -280,7 +278,7 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("timestamp followed by space", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 
-		proccess(t, collector, []byte("2023-12-09T12:00:00.000000000Z "))
+		process(t, collector, []byte("2023-12-09T12:00:00.000000000Z "))
 
 		require.Eventually(t, func() bool {
 			return len(collector.Received()) == 1
