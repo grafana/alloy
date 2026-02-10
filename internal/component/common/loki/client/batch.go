@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/snappy"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
@@ -133,32 +132,9 @@ func (b *batch) age() time.Duration {
 	return time.Since(b.createdAt)
 }
 
-// protoSize returns the serialized size in bytes of the push request.
-// The result of this must be used when calling encode.
-func (b *batch) protoSize() int {
-	return b.req.Size()
-}
-
-// encode marshals the batch to a snappy-compressed push request using the
-// given buffers, and returns the encoded bytes, the number of entries, and any error.
-// If the batch does not fit in protoBuf or the compressed output does not fit in
-// snappyBuf, new buffers are allocated and the caller's buffers are
-// not reused. protoBuf and snappyBuf must not overlap.
-func (b *batch) encode(size int, protoBuf, snappyBuf []byte) ([]byte, int, error) {
-	// Note: Just a safeguard in case the passed-in buffer is too small so that
-	// MarshalToSizedBuffer doesn't panic.
-	if size > len(protoBuf) {
-		protoBuf = make([]byte, size)
-	}
-
-	n, err := b.req.MarshalToSizedBuffer(protoBuf[:size])
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// NOTE: if buffer is too small to hold compressed data snappy.Encode will
-	// allocate a new one and the passed in buffer is not reused.
-	return snappy.Encode(snappyBuf, protoBuf[:n]), b.entriesTotal, nil
+// request returns the PushRequest built by the batch and the number of entries added to it.
+func (b *batch) request() (*push.PushRequest, int) {
+	return b.req, b.entriesTotal
 }
 
 // countForSegment tracks that one data item has been read from a certain WAL segment.

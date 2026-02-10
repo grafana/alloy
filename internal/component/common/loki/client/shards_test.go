@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/pkg/push"
 )
 
 var (

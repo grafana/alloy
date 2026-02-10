@@ -337,8 +337,8 @@ func (s *shards) runShard(q *queue) {
 	}()
 
 	var (
-		protoBuffer  []byte
-		snappyBuffer []byte
+		protoBuffer  = make([]byte, s.cfg.BatchSize)
+		snappyBuffer = make([]byte, snappy.MaxEncodedLen(s.cfg.BatchSize))
 	)
 
 	for {
@@ -403,14 +403,16 @@ func (s *shards) initBatchMetrics(tenantID string) {
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
 	defer batch.reportAsSentData(s.markerHandler)
 
-	size := batch.protoSize()
+	r, entriesCount := batch.request()
+
+	size := r.Size()
 	// We adjust the reusable buffers size after the biggest batch we've seen.
 	if size > len(*protoBuf) {
 		*protoBuf = make([]byte, size)
 		*snappyBuf = make([]byte, snappy.MaxEncodedLen(size))
 	}
 
-	buf, entriesCount, err := batch.encode(size, *protoBuf, *snappyBuf)
+	buf, err := encode(r, size, *protoBuf, *snappyBuf)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
 		return
