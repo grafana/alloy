@@ -82,18 +82,18 @@ Another test with some formatting and descriptions
 <!-- prettier-ignore-start -->
 {{< docs/api-tree >}}
 otelcol.connector.count
-├── [output](#output) Configures where to send received telemetry data. \[required\]
-├── [datapoints](#datapoints) Configures custom metrics for counting data points. \[optional\]
-│   └── [attributes](#attributes) Groups data point counts by attribute values. \[optional\]
-├── [debug_metrics](#debug_metrics) Configures the metrics that this component generates to monitor its state. \[optional\]
-├── [logs](#logs) Configures custom metrics for counting log records. \[optional\]
-│   └── [attributes](#attributes) Groups data point counts by attribute values. \[optional\]
-├── [metrics](#metrics) Groups metric counts by attribute values. \[optional\]
-│   └── [attributes](#attributes) Groups data point counts by attribute values. \[optional\]
-├── [spanevents](#spanevents) Configures custom metrics for counting span events. \[optional\]
-│   └── [attributes](#attributes) Groups data point counts by attribute values. \[optional\]
-└── [spans](#spans) Configures custom metrics for counting spans. \[optional\]
-    └── [attributes](#attributes) Groups data point counts by attribute values. \[optional\]
+├── [output](#output) (Configures where to send received telemetry data) \[required\]
+├── [datapoints](#datapoints) (Configures custom metrics for counting data points) \[optional\]
+│   └── [attributes](#attributes) (Groups data point counts by attribute values) \[optional\]
+├── [debug_metrics](#debug_metrics) (Configures the metrics that this component generates to monitor its state) \[optional\]
+├── [logs](#logs) (Configures custom metrics for counting log records) \[optional\]
+│   └── [attributes](#attributes) (Groups data point counts by attribute values) \[optional\]
+├── [metrics](#metrics) (Groups metric counts by attribute values) \[optional\]
+│   └── [attributes](#attributes) (Groups data point counts by attribute values) \[optional\]
+├── [spanevents](#spanevents) (Configures custom metrics for counting span events) \[optional\]
+│   └── [attributes](#attributes) (Groups data point counts by attribute values) \[optional\]
+└── [spans](#spans) (Configures custom metrics for counting spans) \[optional\]
+    └── [attributes](#attributes) (Groups data point counts by attribute values) \[optional\]
 {{< /docs/api-tree >}}
 <!-- prettier-ignore-end -->
 
