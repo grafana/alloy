@@ -103,3 +103,8 @@ Changes proposed in Proposal 1 will be backwards compatible. Proposal 2 would ei
 1. Cannot replay data on restart: Conversations have been started to get agreed upon requirements which will guide the first implementation but nothing to link to formally yet.
 
 At the same time we would formally deprecate the `prometheus.write.queue` component in the next release.
+
+## Consensus
+
+We have decided to move forward with Proposal 1 and invest in the upstream Prometheus implementation to allow `prometheus.remote_write` to be the WAL we need.
+We will move forward with deprecating `prometheus.write.queue` in the next release to be removed entirely in the future.
