@@ -1,8 +1,8 @@
 package tail
 
 import (
-	"bufio"
 	"bytes"
+	"io"
 
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
@@ -30,15 +30,18 @@ const (
 
 // detectBOM tries to detect a BOM from reader. It is important that the reader
 // and underlying file are positioned at the beginning of the file
-// when calling this function, as it peeks at the first bytes to detect the BOM.
-func detectBOM(br *bufio.Reader, offset int64) (int64, BOM) {
-	// Peek up to 4 bytes (longest BOM)
-	buf, err := br.Peek(4)
+// when calling this function, as it reads the first 4 bytes to detect the BOM.
+func detectBOM(r io.Reader, offset int64) (int64, BOM) {
+	buf := make([]byte, 4)
+
+	n, err := r.Read(buf)
 	if err != nil {
 		return offset, bomUNKNOWN
 	}
 
 	var bom BOM
+	buf = buf[:n]
+
 	switch {
 	case bytes.HasPrefix(buf, bomUTF8Bytes):
 		bom = bomUTF8

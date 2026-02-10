@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: quay.io/grafana/alloy:v1.12.2
+          image: quay.io/grafana/alloy:v1.13.0
           imagePullPolicy: IfNotPresent
           args:
             - run
