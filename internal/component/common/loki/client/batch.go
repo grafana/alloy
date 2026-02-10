@@ -76,12 +76,11 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 
 	// Append the entry to an already existing stream.
 	if ok {
-		stream.Entries = append(stream.Entries, entry.Entry)
-		// Request size grows by stream delta plus change in the stream's length varint.
-		if b.canAdd(entry.Size()) {
-			stream.Entries = stream.Entries[:len(stream.Entries)-1]
+		if !b.canAdd(entry.Size()) {
 			return errBatchSizeReached
 		}
+
+		stream.Entries = append(stream.Entries, entry.Entry)
 		b.entriesTotal += 1
 		b.size += entry.Size()
 		b.countForSegment(segmentNum)
@@ -93,15 +92,13 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 		Entries: []push.Entry{entry.Entry},
 	}
 
-	// Add the entry to a new stream.
-	b.req.Streams = append(b.req.Streams, *stream)
-
 	// NOTE: We will always allow to add at least one entry to a batch
 	// even if that entry makes the size bigger than maxSize.
-	if streamLen != 0 && b.canAdd(entry.Size()) {
-		b.req.Streams = b.req.Streams[:len(b.req.Streams)-1]
+	if streamLen != 0 && !b.canAdd(entry.Size()) {
 		return errBatchSizeReached
 	}
+	// Add the entry to a new stream.
+	b.req.Streams = append(b.req.Streams, *stream)
 
 	b.entriesTotal += 1
 	b.countForSegment(segmentNum)
@@ -124,7 +121,7 @@ func (b *batch) getStream(labels string) (*push.Stream, bool) {
 
 // canAdd reports whether adding size bytes would exceed the batch's maxSize.
 func (b *batch) canAdd(size int) bool {
-	return b.size+size > b.maxSize
+	return b.size+size <= b.maxSize
 }
 
 // age of the batch since its creation
