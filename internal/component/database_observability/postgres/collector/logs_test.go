@@ -593,3 +593,168 @@ func TestLogsCollector_SystemID(t *testing.T) {
 	}
 	require.True(t, found, "metric with system ID not found")
 }
+
+func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
+	tmpDir := t.TempDir()
+	watermarkPath := tmpDir + "/watermark.txt"
+
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:      loki.NewLogsReceiver(),
+		EntryHandler:  entryHandler,
+		Logger:        log.NewNopLogger(),
+		InstanceKey:   "test-instance",
+		SystemID:      "test-system",
+		Registry:      registry,
+		WatermarkPath: watermarkPath,
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	// Send historical log (1 hour before start)
+	historicalEntry := loki.Entry{
+		Entry: push.Entry{
+			Timestamp: startTime.Add(-1 * time.Hour),
+			Line:      `2025-12-12 10:00:00.000 GMT:[local]:user@database:[1234]:1:28000:2025-12-12 10:00:00 GMT:1/1:0:000000.0::psqlERROR:  test historical error`,
+		},
+	}
+
+	// Send recent log (after start)
+	recentEntry := loki.Entry{
+		Entry: push.Entry{
+			Timestamp: startTime.Add(1 * time.Second),
+			Line:      `2025-12-12 22:00:00.000 GMT:[local]:user@database:[1234]:1:28000:2025-12-12 22:00:00 GMT:1/1:0:000000.0::psqlERROR:  test recent error`,
+		},
+	}
+
+	// Process both
+	collector.Receiver().Chan() <- historicalEntry
+	collector.Receiver().Chan() <- recentEntry
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify only recent log incremented counter
+	mfs, err := registry.Gather()
+	require.NoError(t, err)
+
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "postgres_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+
+	require.Equal(t, float64(1), totalCount, "only recent log should be counted")
+}
+
+func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
+	tmpDir := t.TempDir()
+	watermarkPath := tmpDir + "/watermark.txt"
+
+	// Create first collector and process a log
+	entryHandler1 := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry1 := prometheus.NewRegistry()
+
+	collector1, err := NewLogs(LogsArguments{
+		Receiver:      loki.NewLogsReceiver(),
+		EntryHandler:  entryHandler1,
+		Logger:        log.NewNopLogger(),
+		InstanceKey:   "test-instance",
+		SystemID:      "test-system",
+		Registry:      registry1,
+		WatermarkPath: watermarkPath,
+	})
+	require.NoError(t, err)
+
+	timestamp := time.Now()
+
+	err = collector1.Start(context.Background())
+	require.NoError(t, err)
+
+	// Send a log entry
+	entry := loki.Entry{
+		Entry: push.Entry{
+			Timestamp: timestamp,
+			Line:      `2025-12-12 22:00:00.000 GMT:[local]:user@database:[1234]:1:28000:2025-12-12 22:00:00 GMT:1/1:0:000000.0::psqlERROR:  test error`,
+		},
+	}
+
+	collector1.Receiver().Chan() <- entry
+	time.Sleep(200 * time.Millisecond)
+
+	// Stop to ensure watermark is saved
+	collector1.Stop()
+	time.Sleep(100 * time.Millisecond) // Wait for final sync
+
+	// Create second collector (simulating restart)
+	entryHandler2 := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry2 := prometheus.NewRegistry()
+
+	collector2, err := NewLogs(LogsArguments{
+		Receiver:      loki.NewLogsReceiver(),
+		EntryHandler:  entryHandler2,
+		Logger:        log.NewNopLogger(),
+		InstanceKey:   "test-instance",
+		SystemID:      "test-system",
+		Registry:      registry2,
+		WatermarkPath: watermarkPath,
+	})
+	require.NoError(t, err)
+
+	// Verify watermark was loaded
+	loadedWatermark := collector2.lastProcessedTimestamp.Load()
+	require.True(t, loadedWatermark.Equal(timestamp) || loadedWatermark.After(timestamp), "watermark should be loaded")
+
+	err = collector2.Start(context.Background())
+	require.NoError(t, err)
+	defer collector2.Stop()
+
+	// Send same log again (simulating historical re-processing)
+	collector2.Receiver().Chan() <- entry
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify counter did NOT increment (log was skipped)
+	mfs, err := registry2.Gather()
+	require.NoError(t, err)
+
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "postgres_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+
+	require.Equal(t, float64(0), totalCount, "historical log should be skipped")
+}
+
+func TestLogsCollector_Watermark_FallsBackToStartTime(t *testing.T) {
+	// No watermark path specified
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:      loki.NewLogsReceiver(),
+		EntryHandler:  entryHandler,
+		Logger:        log.NewNopLogger(),
+		InstanceKey:   "test-instance",
+		SystemID:      "test-system",
+		Registry:      registry,
+		WatermarkPath: "", // No path
+	})
+	require.NoError(t, err)
+
+	// Verify watermark equals start time
+	watermark := collector.lastProcessedTimestamp.Load()
+	require.True(t, watermark.Equal(collector.startTime), "watermark should equal start time")
+}
+

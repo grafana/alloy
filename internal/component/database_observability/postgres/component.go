@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -66,6 +67,7 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
+	WatermarkPath     string              `alloy:"watermark_path,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
@@ -556,12 +558,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:     c.logsReceiver,
-		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
-		Logger:       c.opts.Logger,
-		InstanceKey:  c.instanceKey,
-		SystemID:     systemID,
-		Registry:     c.registry,
+		Receiver:      c.logsReceiver,
+		EntryHandler:  loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:        c.opts.Logger,
+		InstanceKey:   c.instanceKey,
+		SystemID:      systemID,
+		Registry:      c.registry,
+		WatermarkPath: c.getWatermarkPath(),
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
@@ -615,6 +618,17 @@ func (c *Component) CurrentHealth() component.Health {
 		Message:    "All collectors are healthy",
 		UpdateTime: time.Now(),
 	}
+}
+
+// getWatermarkPath returns the watermark file path
+func (c *Component) getWatermarkPath() string {
+	// If user specified a path, use it
+	if c.args.WatermarkPath != "" {
+		return c.args.WatermarkPath
+	}
+
+	// Default to <data_path>/dbo11y_pg_logs_watermark.txt
+	return filepath.Join(c.opts.DataPath, "dbo11y_pg_logs_watermark.txt")
 }
 
 // instanceKey returns network(hostname:port)/dbname of the Postgres server.
