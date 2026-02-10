@@ -30,8 +30,7 @@ type SentDataMarkerHandler interface {
 // and entries in a single batch request. In case of multi-tenant Promtail, log
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
-	// req is the push request holding streams and entries to send to Loki.
-	req *push.PushRequest
+	streams map[string]*push.Stream
 	// createdAt is when the batch was created.
 	createdAt time.Time
 	// maxSize is the maximum batch size in bytes. At least one entry is always
@@ -41,16 +40,13 @@ type batch struct {
 	maxStreams int
 	// size holds the total number of bytes across log lines in this batch.
 	size int
-	// entriesTotal is the total number of log entries across all streams in the batch.
-	entriesTotal int
 	// segmentCounter tracks the amount of entries for each segment present in this batch.
 	segmentCounter map[int]int
 }
 
 func newBatch(maxStreams, maxSize int) *batch {
-	req := &push.PushRequest{}
 	return &batch{
-		req:            req,
+		streams:        make(map[string]*push.Stream),
 		createdAt:      time.Now(),
 		maxSize:        maxSize,
 		maxStreams:     maxStreams,
@@ -65,57 +61,39 @@ func newBatch(maxStreams, maxSize int) *batch {
 func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	labels := labelsMapToString(entry.Labels)
 
-	stream, ok := b.getStream(labels)
-	streamLen := len(b.req.Streams)
-
-	// Reject if we would exceed the maxStreams limit.
-	if !ok && b.maxStreams > 0 && streamLen >= b.maxStreams {
-		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streamLen, b.maxStreams, labels)
-	}
-
-	// Append the entry to an already existing stream.
+	stream, ok := b.streams[labels]
 	if ok {
-		if !b.canAdd(entry.Size()) {
+		size := entry.Size()
+		if !b.canAdd(size) {
 			return errBatchSizeReached
 		}
 
 		stream.Entries = append(stream.Entries, entry.Entry)
-		b.entriesTotal += 1
-		b.size += entry.Size()
+		b.size += size
 		b.countForSegment(segmentNum)
 		return nil
 	}
 
-	stream = &push.Stream{
+	streams := len(b.streams)
+	// Reject if we would exceed the maxStreams limit.
+	if b.maxStreams > 0 && streams >= b.maxStreams {
+		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
+	}
+
+	size := entry.Size()
+	// NOTE: We will always allow to add at least one entry to a batch
+	// even if that entry makes the size bigger than maxSize.
+	if streams != 0 && !b.canAdd(size) {
+		return errBatchSizeReached
+	}
+
+	b.streams[labels] = &push.Stream{
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
-
-	// NOTE: We will always allow to add at least one entry to a batch
-	// even if that entry makes the size bigger than maxSize.
-	if streamLen != 0 && !b.canAdd(entry.Size()) {
-		return errBatchSizeReached
-	}
-	// Add the entry to a new stream.
-	b.req.Streams = append(b.req.Streams, *stream)
-
-	b.entriesTotal += 1
+	b.size += size
 	b.countForSegment(segmentNum)
-	b.size += entry.Size()
-
 	return nil
-}
-
-func (b *batch) getStream(labels string) (*push.Stream, bool) {
-	i := slices.IndexFunc(b.req.Streams, func(stream push.Stream) bool {
-		return stream.Labels == labels
-	})
-
-	if i == -1 {
-		return nil, false
-	}
-
-	return &b.req.Streams[i], true
 }
 
 // canAdd reports whether adding size bytes would exceed the batch's maxSize.
@@ -128,9 +106,16 @@ func (b *batch) age() time.Duration {
 	return time.Since(b.createdAt)
 }
 
-// request returns the PushRequest built by the batch and the number of entries added to it.
+// request returns a PushRequest and number of entries it contains.
 func (b *batch) request() (*push.PushRequest, int) {
-	return b.req, b.entriesTotal
+	req := &push.PushRequest{Streams: make([]push.Stream, 0, len(b.streams))}
+
+	var entries int
+	for _, stream := range b.streams {
+		req.Streams = append(req.Streams, *stream)
+		entries += len(stream.Entries)
+	}
+	return req, entries
 }
 
 // countForSegment tracks that one data item has been read from a certain WAL segment.

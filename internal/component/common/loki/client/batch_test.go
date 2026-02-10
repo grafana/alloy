@@ -125,7 +125,7 @@ func TestBatchHashCollisions(t *testing.T) {
 	}
 
 	// make sure that colliding labels are stored properly as independent streams
-	req, entries := b.req, b.entriesTotal
+	req, entries := b.request()
 	assert.Len(t, req.Streams, 2)
 	assert.Equal(t, 2*entriesPerLabel, entries)
 
