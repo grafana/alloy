@@ -54,7 +54,6 @@ func newBatch(maxStreams, maxSize int) *batch {
 		createdAt:      time.Now(),
 		maxSize:        maxSize,
 		maxStreams:     maxStreams,
-		size:           req.Size(),
 		segmentCounter: map[int]int{},
 	}
 }
