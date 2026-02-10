@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
-type mappingStore interface {
+type MappingStore interface {
 	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef
 	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef
 	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef)
@@ -25,7 +25,7 @@ type mappingStore interface {
 type seriesRefMapping struct {
 	start    time.Time
 	children []storage.Appender
-	store    mappingStore
+	store    MappingStore
 
 	uniqueRefCell *Cell
 
@@ -36,7 +36,7 @@ type seriesRefMapping struct {
 	samplesForwarded prometheus.Counter
 }
 
-func NewSeriesRefMapping(children []storage.Appender, store mappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
+func NewSeriesRefMapping(children []storage.Appender, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
 	uniqueRefCell := store.GetCellForAppendedSeries()
 
 	return &seriesRefMapping{
