@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/golang/snappy"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,85 +107,6 @@ func TestBatch_add(t *testing.T) {
 	}
 }
 
-func TestBatch_encode(t *testing.T) {
-	t.Parallel()
-
-	type testCase struct {
-		name                 string
-		entries              []loki.Entry
-		expectedEntriesCount int
-	}
-
-	tests := []testCase{
-		{
-			name:                 "empty batch",
-			entries:              []loki.Entry{},
-			expectedEntriesCount: 0,
-		},
-		{
-			name: "single stream with single log entry",
-			entries: []loki.Entry{
-				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-			},
-			expectedEntriesCount: 1,
-		},
-		{
-			name: "single stream with multiple log entries",
-			entries: []loki.Entry{
-				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
-			},
-			expectedEntriesCount: 2,
-		},
-		{
-			name: "multiple streams with multiple log entries",
-			entries: []loki.Entry{
-				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
-				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
-				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
-			},
-			expectedEntriesCount: 3,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			maxSize := int(1 * units.MiB)
-
-			b := newBatch(0, maxSize)
-			for _, e := range tt.entries {
-				err := b.add(e, 0)
-				require.NoError(t, err)
-			}
-
-			var (
-				protoBuf  = make([]byte, maxSize)
-				snappyBuf = make([]byte, snappy.MaxEncodedLen(maxSize))
-			)
-
-			_, entriesCount, err := b.encode(b.protoSize(), protoBuf, snappyBuf)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedEntriesCount, entriesCount)
-		})
-	}
-}
-
-func TestBatchSmallBuffers(t *testing.T) {
-	b := newBatch(0, int(1*units.MiB))
-	b.add(loki.Entry{}, 0)
-
-	var (
-		protoBuf  []byte
-		snappyBuf []byte
-	)
-
-	// Pass buffers that are too small to hold data.
-	_, entriesCount, err := b.encode(b.protoSize(), protoBuf, snappyBuf)
-	require.NoError(t, err)
-	assert.Equal(t, 1, entriesCount)
-}
-
 func TestBatchHashCollisions(t *testing.T) {
 	b := newBatch(0, int(1*units.MiB))
 
@@ -236,33 +156,6 @@ func BenchmarkBatch_Add(b *testing.B) {
 		for i := range 64 {
 			_ = batch.add(entries[i%64], 0)
 		}
-	}
-}
-
-var encodedBuf []byte
-
-func BenchmarkBatch_Encode(b *testing.B) {
-	const maxSize = 1 << 20
-	batch := newBatch(0, maxSize)
-	for i := range 64 {
-		entry := loki.Entry{
-			Labels: model.LabelSet{"stream": model.LabelValue(fmt.Sprintf("s%d", i))},
-			Entry:  push.Entry{Timestamp: time.Now(), Line: "log line"},
-		}
-		err := batch.add(entry, 0)
-		require.NoError(b, err)
-	}
-
-	var (
-		protoBuf  = make([]byte, maxSize)
-		snappyBuf = make([]byte, snappy.MaxEncodedLen(maxSize))
-	)
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		encodedBuf, _, _ = batch.encode(batch.protoSize(), protoBuf, snappyBuf)
 	}
 }
 
