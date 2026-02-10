@@ -292,15 +292,15 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) (str
 func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
 	parts := strings.SplitN(parsedTableName, ".", 2)
 	if len(parts) == 2 {
-		return schema(normalizePostgresIdentifier(parts[0])), table(normalizePostgresIdentifier(parts[1]))
+		return schema(formatPostgresIdentifier(parts[0])), table(formatPostgresIdentifier(parts[1]))
 	}
 	return "", table(parsedTableName)
 }
 
-// normalizePostgresIdentifier handles PostgreSQL identifier case folding.
+// formatPostgresIdentifier handles PostgreSQL identifier case folding.
 // Quoted identifiers (e.g., "MyTable") preserve their exact case after stripping quotes.
 // Unquoted identifiers are folded to lowercase to match PostgreSQL's behavior.
-func normalizePostgresIdentifier(identifier string) string {
+func formatPostgresIdentifier(identifier string) string {
 	if len(identifier) >= 2 && identifier[0] == '"' && identifier[len(identifier)-1] == '"' {
 		return identifier[1 : len(identifier)-1]
 	}

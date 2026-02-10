@@ -142,13 +142,13 @@ func TestQueryDetails(t *testing.T) {
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
-			`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
-		},
-		tableRegistry: &TableRegistry{
-			tables: map[database]map[schema]map[table]struct{}{
-				"some_database": {
-					"public": {
-						"mytable": struct{}{}, // lowercase in registry
+				`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"mytable": struct{}{}, // lowercase in registry
 						},
 					},
 				},

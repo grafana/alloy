@@ -1697,7 +1697,7 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 	})
 }
 
-func Test_normalizePostgresIdentifier(t *testing.T) {
+func Test_formatPostgresIdentifier(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -1742,7 +1742,7 @@ func Test_normalizePostgresIdentifier(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := normalizePostgresIdentifier(tc.input)
+			result := formatPostgresIdentifier(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
 	}
