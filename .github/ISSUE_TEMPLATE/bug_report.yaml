@@ -189,6 +189,7 @@ body:
       - pyroscope.ebpf
       - pyroscope.enrich
       - pyroscope.java
+      - pyroscope.profile.relabel
       - pyroscope.receive_http
       - pyroscope.relabel
       - pyroscope.scrape
