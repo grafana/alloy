@@ -158,7 +158,7 @@ If a Pod backs the endpoint, the component discovers all container ports of the 
 
 {{< admonition type="warning" >}}
 The Endpoints API is deprecated in Kubernetes v1.33+.
-It is recommended to use EndpointSlices instead and switch to the `endpointslice` role below.
+Use the EndpointSlice API instead, and switch to the `endpointslice` role below.
 {{< /admonition >}}
 
 Discovered endpoints include the following labels:
