@@ -21,5 +21,12 @@ func (e *Entry) Clone() Entry {
 
 // Returns the size of the entry in bytes.
 func (e *Entry) Size() int {
-	return e.Entry.Size()
+	// FIXME(kalleep): This is entrierly correct but computing
+	// the actual size an entry would take when serialized to proto
+	// is quite expensive.
+	size := len(e.Line)
+	for _, label := range e.StructuredMetadata {
+		size += label.Size()
+	}
+	return size
 }

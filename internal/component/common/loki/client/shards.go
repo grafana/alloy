@@ -337,8 +337,8 @@ func (s *shards) runShard(q *queue) {
 	}()
 
 	var (
-		protoBuffer  = make([]byte, s.cfg.BatchSize)
-		snappyBuffer = make([]byte, snappy.MaxEncodedLen(s.cfg.BatchSize))
+		protoBuffer  []byte
+		snappyBuffer []byte
 	)
 
 	for {
@@ -351,11 +351,12 @@ func (s *shards) runShard(q *queue) {
 				// Channel is closed, when a graceful shutdown is successful.
 				return
 			}
-			s.sendBatch(b.TenantID, b.Batch, protoBuffer, snappyBuffer)
+
+			s.sendBatch(b.TenantID, b.Batch, &protoBuffer, &snappyBuffer)
 		case <-maxWaitCheck.C:
 			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
-				s.sendBatch(b.TenantID, b.Batch, protoBuffer, snappyBuffer)
+				s.sendBatch(b.TenantID, b.Batch, &protoBuffer, &snappyBuffer)
 			}
 		}
 	}
@@ -399,10 +400,17 @@ func (s *shards) initBatchMetrics(tenantID string) {
 }
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
-func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf []byte) {
+func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
 	defer batch.reportAsSentData(s.markerHandler)
-	buf, entriesCount, err := batch.encode(protoBuf, snappyBuf)
 
+	size := batch.protoSize()
+	// We adjust the reusable buffers size after the biggest batch we've seen.
+	if size > len(*protoBuf) {
+		*protoBuf = make([]byte, size)
+		*snappyBuf = make([]byte, snappy.MaxEncodedLen(size))
+	}
+
+	buf, entriesCount, err := batch.encode(size, *protoBuf, *snappyBuf)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
 		return

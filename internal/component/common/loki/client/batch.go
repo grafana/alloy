@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	"fmt"
-	"math/bits"
 	"slices"
 	"strconv"
 	"strings"
@@ -41,10 +40,10 @@ type batch struct {
 	maxSize int
 	// maxStreams is the maximum number of streams in the batch. Zero means no limit.
 	maxStreams int
+	// size holds the total number of bytes across log lines in this batch.
+	size int
 	// entriesTotal is the total number of log entries across all streams in the batch.
 	entriesTotal int
-	// size is the total serialized size of the push request in bytes.
-	size int
 	// segmentCounter tracks the amount of entries for each segment present in this batch.
 	segmentCounter map[int]int
 }
@@ -78,17 +77,14 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 
 	// Append the entry to an already existing stream.
 	if ok {
-		oldSize := sizeForStream(stream)
 		stream.Entries = append(stream.Entries, entry.Entry)
-		newSize := sizeForStream(stream)
 		// Request size grows by stream delta plus change in the stream's length varint.
-		delta := newSize - oldSize
-		if b.canAdd(delta) {
+		if b.canAdd(entry.Size()) {
 			stream.Entries = stream.Entries[:len(stream.Entries)-1]
 			return errBatchSizeReached
 		}
 		b.entriesTotal += 1
-		b.size += delta
+		b.size += entry.Size()
 		b.countForSegment(segmentNum)
 		return nil
 	}
@@ -101,17 +97,16 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	// Add the entry to a new stream.
 	b.req.Streams = append(b.req.Streams, *stream)
 
-	size := sizeForStream(stream)
 	// NOTE: We will always allow to add at least one entry to a batch
 	// even if that entry makes the size bigger than maxSize.
-	if streamLen != 0 && b.canAdd(size) {
+	if streamLen != 0 && b.canAdd(entry.Size()) {
 		b.req.Streams = b.req.Streams[:len(b.req.Streams)-1]
 		return errBatchSizeReached
 	}
 
 	b.entriesTotal += 1
 	b.countForSegment(segmentNum)
-	b.size += size
+	b.size += entry.Size()
 
 	return nil
 }
@@ -128,13 +123,9 @@ func (b *batch) getStream(labels string) (*push.Stream, bool) {
 	return &b.req.Streams[i], true
 }
 
-// sizeBytes returns the current batch size in bytes.
-func (b *batch) sizeBytes() int {
-	return b.size
-}
-
+// canAdd reports whether adding size bytes would exceed the batch's maxSize.
 func (b *batch) canAdd(size int) bool {
-	return b.sizeBytes()+size > b.maxSize
+	return b.size+size > b.maxSize
 }
 
 // age of the batch since its creation
@@ -142,18 +133,20 @@ func (b *batch) age() time.Duration {
 	return time.Since(b.createdAt)
 }
 
+// protoSize returns the serialized size in bytes of the push request.
+// The result of this must be used when calling encode.
+func (b *batch) protoSize() int {
+	return b.req.Size()
+}
+
 // encode marshals the batch to a snappy-compressed push request using the
 // given buffers, and returns the encoded bytes, the number of entries, and any error.
 // If the batch does not fit in protoBuf or the compressed output does not fit in
-// snappyBuf, new buffers are allocated and the caller's buffers are not reused.
-// protoBuf and snappyBuf must not overlap.
-func (b *batch) encode(protoBuf, snappyBuf []byte) ([]byte, int, error) {
-	size := b.sizeBytes()
-
-	// Note: Because we are always allowing at least one
-	// entry to be added to a batch eventhough that would
-	// exceed that size limit we need to make sure we have
-	// enough space in the buffer.
+// snappyBuf, new buffers are allocated and the caller's buffers are
+// not reused. protoBuf and snappyBuf must not overlap.
+func (b *batch) encode(size int, protoBuf, snappyBuf []byte) ([]byte, int, error) {
+	// Note: Just a safeguard in case the passed-in buffer is too small so that
+	// MarshalToSizedBuffer doesn't panic.
 	if size > len(protoBuf) {
 		protoBuf = make([]byte, size)
 	}
@@ -163,8 +156,9 @@ func (b *batch) encode(protoBuf, snappyBuf []byte) ([]byte, int, error) {
 		return nil, 0, err
 	}
 
-	buf := snappy.Encode(snappyBuf, protoBuf[:n])
-	return buf, b.entriesTotal, nil
+	// NOTE: if buffer is too small to hold compressed data snappy.Encode will
+	// allocate a new one and the passed in buffer is not reused.
+	return snappy.Encode(snappyBuf, protoBuf[:n]), b.entriesTotal, nil
 }
 
 // countForSegment tracks that one data item has been read from a certain WAL segment.
@@ -216,16 +210,4 @@ func labelsMapToString(ls model.LabelSet) string {
 	b.WriteByte('}')
 
 	return b.String()
-}
-
-// sizeForStream returns the size of the stream in bytes.
-func sizeForStream(stream *push.Stream) int {
-	streamSize := stream.Size()
-	// 1 for the tag, varintSize for the length, and streamSize for the payload
-	return 1 + varintSize(uint64(streamSize)) + streamSize
-}
-
-// varintSize returns the number of bytes needed to encode x as a protobuf varint.
-func varintSize(x uint64) (n int) {
-	return (bits.Len64(x|1) + 6) / 7
 }

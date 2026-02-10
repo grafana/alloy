@@ -19,16 +19,8 @@ var (
 		Labels: model.LabelSet{"foo": "bar"},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "test"},
 	}
-
-	oneEntrySize = func() int {
-		req := push.PushRequest{Streams: []push.Stream{{Labels: "{foo=\"bar\"}", Entries: []push.Entry{entry.Entry}}}}
-		return req.Size()
-	}()
-
-	twoEntriesSize = func() int {
-		req := push.PushRequest{Streams: []push.Stream{{Labels: "{foo=\"bar\"}", Entries: []push.Entry{entry.Entry, entry.Entry}}}}
-		return req.Size()
-	}()
+	oneEntrySize   = entry.Size()
+	twoEntriesSize = entry.Size() * 2
 )
 
 func TestQueue_append(t *testing.T) {
@@ -41,14 +33,14 @@ func TestQueue_append(t *testing.T) {
 		queued := q.append("tenant-1", entry, 0)
 		assert.True(t, queued)
 	}
-	assert.Equal(t, twoEntriesSize, q.batches["tenant-1"].sizeBytes())
+	assert.Equal(t, twoEntriesSize, q.batches["tenant-1"].size)
 
 	// add two more entries, the current batch should be queued and a new batch should be created.
 	for range 2 {
 		queued := q.append("tenant-1", entry, 0)
 		assert.True(t, queued)
 	}
-	assert.Equal(t, twoEntriesSize, q.batches["tenant-1"].sizeBytes())
+	assert.Equal(t, twoEntriesSize, q.batches["tenant-1"].size)
 
 	// adding one more should fail because both queue and batch is full
 	queued := q.append("tenant-1", entry, 0)
@@ -60,7 +52,7 @@ func TestQueue_append(t *testing.T) {
 	// add batch again.
 	queued = q.append("tenant-1", entry, 0)
 	assert.True(t, queued)
-	assert.Equal(t, oneEntrySize, q.batches["tenant-1"].sizeBytes())
+	assert.Equal(t, oneEntrySize, q.batches["tenant-1"].size)
 }
 
 func TestQueue_drain(t *testing.T) {
@@ -75,7 +67,7 @@ func TestQueue_drain(t *testing.T) {
 			queued := q.append("tenant-1", entry, 0)
 			assert.True(t, queued)
 		}
-		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), twoEntriesSize)
+		assert.Equal(t, q.batches["tenant-1"].size, twoEntriesSize)
 
 		batches := q.drain()
 		// We should drain queued batch and batch stored in memory
@@ -94,7 +86,7 @@ func TestQueue_drain(t *testing.T) {
 			queued := q.append("tenant-1", entry, 0)
 			assert.True(t, queued)
 		}
-		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), twoEntriesSize)
+		assert.Equal(t, q.batches["tenant-1"].size, twoEntriesSize)
 
 		batches := q.drain()
 		// We should drain queued batch and batch stored in memory
@@ -114,7 +106,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 			queued := q.append("tenant-1", entry, 0)
 			assert.True(t, queued)
 		}
-		assert.Equal(t, q.batches["tenant-1"].sizeBytes(), twoEntriesSize)
+		assert.Equal(t, q.batches["tenant-1"].size, twoEntriesSize)
 
 		var wg sync.WaitGroup
 

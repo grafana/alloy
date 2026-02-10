@@ -37,10 +37,7 @@ func TestEndpoint(t *testing.T) {
 		{
 			name: "batch log entries together until the batch size is reached",
 			endpointConfig: Config{
-				BatchSize: func() int {
-					r := push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}}
-					return r.Size()
-				}(),
+				BatchSize: logEntries[0].Size() + logEntries[1].Size(),
 				BatchWait: 100 * time.Millisecond,
 			},
 			serverResponseStatus: 200,
