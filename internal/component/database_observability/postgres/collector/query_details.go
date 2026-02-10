@@ -74,7 +74,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
+		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
 		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:          &atomic.Bool{},
 	}, nil
@@ -163,14 +163,15 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		for _, table := range tables {
 			validated := false
+			resolvedTable := table
 			if c.tableRegistry != nil {
-				validated = c.tableRegistry.IsValid(databaseName, table)
+				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, table, validated),
+				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
 			)
 		}
 	}

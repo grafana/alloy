@@ -246,14 +246,15 @@ func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*t
 	}
 }
 
-// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry
-func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool {
+// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry.
+// It also returns the resolved table name, which may differ from the input (e.g. lowercased due to PostgreSQL's identifier folding).
+func (tr *TableRegistry) IsValid(database database, parsedTableName string) (string, bool) {
 	tr.mu.RLock()
 	defer tr.mu.RUnlock()
 
 	schemas, ok := tr.tables[database]
 	if !ok {
-		return false
+		return parsedTableName, false
 	}
 
 	schemaName, tableName := parseSchemaQualifiedIfAny(parsedTableName)
@@ -262,26 +263,48 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/alloy/issues/4815
 		for _, tables := range schemas {
 			if _, ok := tables[tableName]; ok {
-				return true
+				return string(tableName), true
+			}
+
+			// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
+			// so we try exact match first, then fall back to lowercase for PostgreSQL's identifier folding.
+			lowercaseName := table(strings.ToLower(string(tableName)))
+			if lowercaseName != tableName {
+				if _, ok := tables[lowercaseName]; ok {
+					return string(lowercaseName), true
+				}
 			}
 		}
 	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
 		if tables, ok := schemas[schemaName]; ok {
-			_, ok := tables[tableName]
-			return ok
+			if _, exists := tables[tableName]; exists {
+				return string(schemaName) + "." + string(tableName), true
+			}
 		}
 	}
 
-	return false
+	return parsedTableName, false
 }
 
 // parseSchemaQualifiedIfAny returns separated schema and table if the parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+// For schema-qualified names, it normalizes identifiers according to PostgreSQL rules (quoted = preserve case, unquoted = lowercase).
+// For non-qualified names, it returns the name as-is since the go-sqllexer library doesn't preserve quote information for these cases.
 func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
 	parts := strings.SplitN(parsedTableName, ".", 2)
 	if len(parts) == 2 {
-		return schema(parts[0]), table(parts[1])
+		return schema(formatPostgresIdentifier(parts[0])), table(formatPostgresIdentifier(parts[1]))
 	}
 	return "", table(parsedTableName)
+}
+
+// formatPostgresIdentifier handles PostgreSQL identifier case folding.
+// Quoted identifiers (e.g., "MyTable") preserve their exact case after stripping quotes.
+// Unquoted identifiers are folded to lowercase to match PostgreSQL's behavior.
+func formatPostgresIdentifier(identifier string) string {
+	if len(identifier) >= 2 && identifier[0] == '"' && identifier[len(identifier)-1] == '"' {
+		return identifier[1 : len(identifier)-1]
+	}
+	return strings.ToLower(identifier)
 }
 
 type SchemaDetailsArguments struct {
