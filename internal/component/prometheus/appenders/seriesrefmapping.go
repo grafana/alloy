@@ -17,7 +17,7 @@ import (
 type MappingStore interface {
 	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef
 	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef
-	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef)
+	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels)
 	TrackAppendedSeries(ts int64, cell *Cell)
 	GetCellForAppendedSeries() *Cell
 }
@@ -174,7 +174,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		}
 
 		if refUpdateRequired {
-			s.store.UpdateMapping(ref, existingChildRefs)
+			s.store.UpdateMapping(ref, existingChildRefs, lbls)
 		}
 
 		return ref, nil
@@ -226,11 +226,16 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	return uniqueRef, nil
 }
 
+type uniqRefChildren struct {
+	childRefs *[]storage.SeriesRef
+	labelHash uint64
+}
+
 type SeriesRefMappingStore struct {
 	// refMappingMu protects uniqueRefToChildRefs, labelHashToUniqueRef and nextUniqueRef
 	refMappingMu sync.RWMutex
 	// uniqueRefToChildRefs maps the unique ref to the expected child ref in order
-	uniqueRefToChildRefs map[storage.SeriesRef]*[]storage.SeriesRef
+	uniqueRefToChildRefs map[storage.SeriesRef]uniqRefChildren
 	// labelHashToUniqueRef maps the label hash to unique ref.
 	labelHashToUniqueRef map[uint64]storage.SeriesRef
 
@@ -283,7 +288,7 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 	}
 
 	return &SeriesRefMappingStore{
-		uniqueRefToChildRefs: make(map[storage.SeriesRef]*[]storage.SeriesRef),
+		uniqueRefToChildRefs: make(map[storage.SeriesRef]uniqRefChildren),
 		nextUniqueRef:        1,
 		uniqueRefTimestamps:  make(map[storage.SeriesRef]int64),
 		cellPool: sync.Pool{
@@ -332,8 +337,8 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 		uniqueRef = gotRef
 	}
 
-	if childRefs, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
-		return *childRefs
+	if mapping, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
+		return *mapping.childRefs
 	}
 	return nil
 }
@@ -360,8 +365,11 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lb
 	uniqueRef := s.nextUniqueRef
 	s.nextUniqueRef++
 
-	s.uniqueRefToChildRefs[uniqueRef] = &childRefSlice
 	s.labelHashToUniqueRef[labelHash] = uniqueRef
+	s.uniqueRefToChildRefs[uniqueRef] = uniqRefChildren{
+		childRefs: &childRefSlice,
+		labelHash: labelHash,
+	}
 
 	s.activeMappings.Inc()
 	s.uniqueRefsTotal.Inc()
@@ -369,7 +377,7 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lb
 	return uniqueRef
 }
 
-func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef) {
+func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels) {
 	if uniqueRef == 0 {
 		return
 	}
@@ -380,7 +388,19 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
 
-	s.uniqueRefToChildRefs[uniqueRef] = &childRefSlice
+	// Ensure that label hash index is up to date to handle possible hash collisions.
+	// TODO: is this necessary?
+	newHash := lbls.Hash()
+	prev, ok := s.uniqueRefToChildRefs[uniqueRef]
+	if ok && prev.labelHash != newHash {
+		delete(s.labelHashToUniqueRef, prev.labelHash)
+		s.labelHashToUniqueRef[newHash] = uniqueRef
+	}
+
+	s.uniqueRefToChildRefs[uniqueRef] = uniqRefChildren{
+		childRefs: &childRefSlice,
+		labelHash: lbls.Hash(),
+	}
 }
 
 func (s *SeriesRefMappingStore) TrackAppendedSeries(ts int64, cell *Cell) {
@@ -418,19 +438,25 @@ func (s *SeriesRefMappingStore) cleanupStaleRefs() {
 			s.timestampTrackingMu.Lock()
 			s.refMappingMu.Lock()
 
-			staleRefs := make([]storage.SeriesRef, 0)
+			staleRefCount := 0
 			for ref, ts := range s.uniqueRefTimestamps {
 				if ts < cutoffTime {
-					staleRefs = append(staleRefs, ref)
+					staleRefCount++
+
+					v, ok := s.uniqueRefToChildRefs[ref]
+					if ok {
+						delete(s.labelHashToUniqueRef, v.labelHash)
+					}
+
 					delete(s.uniqueRefTimestamps, ref)
 					delete(s.uniqueRefToChildRefs, ref)
 				}
 			}
 
 			// Update metrics
-			if len(staleRefs) > 0 {
-				s.refsCleaned.Add(float64(len(staleRefs)))
-				s.activeMappings.Sub(float64(len(staleRefs)))
+			if staleRefCount > 0 {
+				s.refsCleaned.Add(float64(staleRefCount))
+				s.activeMappings.Sub(float64(staleRefCount))
 				s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
 			}
 
