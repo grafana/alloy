@@ -59,19 +59,19 @@ For example, `spans` > `attributes` refers to an `attributes` block defined insi
 
 <!-- prettier-ignore-start -->
 {{< docs/api-tree >}}
-`otelcol.connector.count`
-├── [`output`][output]  \[required\]
-├── [`datapoints`][datapoints] \[optional\]
-│   └── [`attributes`][attributes] \[optional\]
-├── [`debug_metrics`][debug_metrics] \[optional\]
-├── [`logs`][logs] \[optional\]
-│   └── [`attributes`][attributes] \[optional\]
-├── [`metrics`][metrics] \[optional\]
-│   └── [`attributes`][attributes] \[optional\]
-├── [`spanevents`][spanevents] \[optional\]
-│   └── [`attributes`][attributes] \[optional\]
-└── [`spans`][spans] \[optional\]
-    └── [`attributes`][attributes] \[optional\]
+otelcol.connector.count
+├── [output](#output)  \[required\]
+├── [datapoints](#datapoints) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+├── [debug_metrics](#debug_metrics) \[optional\]
+├── [logs](#logs) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+├── [metrics](#metrics) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+├── [spanevents](#spanevents) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+└── [spans](#spans) \[optional\]
+    └── [attributes](#attributes) \[optional\]
 {{< /docs/api-tree >}}
 <!-- prettier-ignore-end -->
 
