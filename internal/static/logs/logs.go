@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/loki/promtail/server"
 	"github.com/grafana/alloy/internal/loki/promtail/tracing"
 	"github.com/grafana/alloy/internal/loki/promtail/wal"
-
 )
 
 // DefaultConfig returns a default config for a Logs instance.
