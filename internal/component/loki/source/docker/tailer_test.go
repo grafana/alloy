@@ -232,7 +232,8 @@ func (s *stringReader) Close() error {
 }
 
 func TestTailerConsumeLines(t *testing.T) {
-	var process = func(t *testing.T, collector *loki.CollectingHandler, data []byte) {
+	t.Run("skip empty line", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
 			logger:            log.NewNopLogger(),
 			recv:              collector.Receiver(),
@@ -248,18 +249,13 @@ func TestTailerConsumeLines(t *testing.T) {
 
 		bb := &bytes.Buffer{}
 		writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
-		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n"))
+		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n2023-12-09T12:00:00.000000000Z line\n"))
 		require.NoError(t, err)
 
 		tailer.wg.Add(3)
 		go func() {
 			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
 		}()
-	}
-
-	t.Run("timestamp followed by newline", func(t *testing.T) {
-		collector := loki.NewCollectingHandler()
-		process(t, collector, []byte("2023-12-09T12:00:00.000000000Z \n"))
 
 		require.Eventually(t, func() bool {
 			return len(collector.Received()) == 1
@@ -267,26 +263,7 @@ func TestTailerConsumeLines(t *testing.T) {
 
 		entry := collector.Received()[0]
 
-		expectedLine := ""
-		expectedTimestamp, err := time.Parse(time.RFC3339Nano, "2023-12-09T12:00:00.000000000Z")
-		require.NoError(t, err)
-
-		require.Equal(t, expectedLine, entry.Line)
-		require.Equal(t, expectedTimestamp, entry.Timestamp)
-	})
-
-	t.Run("timestamp followed by space", func(t *testing.T) {
-		collector := loki.NewCollectingHandler()
-
-		process(t, collector, []byte("2023-12-09T12:00:00.000000000Z "))
-
-		require.Eventually(t, func() bool {
-			return len(collector.Received()) == 1
-		}, 2*time.Second, 50*time.Millisecond)
-
-		entry := collector.Received()[0]
-
-		expectedLine := ""
+		expectedLine := "line"
 		expectedTimestamp, err := time.Parse(time.RFC3339Nano, "2023-12-09T12:00:00.000000000Z")
 		require.NoError(t, err)
 
@@ -331,6 +308,25 @@ func TestChunkWriter(t *testing.T) {
 	expected = append(expected, chunk3...)
 
 	assert.Equal(t, expected, buf.Bytes())
+}
+
+func TestExtractTsFromBytes(t *testing.T) {
+	t.Run("invalid timestamp", func(t *testing.T) {
+		_, _, err := extractTsFromBytes([]byte("123 test\n"))
+		require.Error(t, err)
+	})
+
+	t.Run("valid timestamp empty line", func(t *testing.T) {
+		ts, _, err := extractTsFromBytes([]byte("2024-05-02T13:11:55.879889Z \n"))
+		require.NoError(t, err)
+		expectedTs, err := time.Parse(time.RFC3339Nano, "2024-05-02T13:11:55.879889Z")
+		require.NoError(t, err)
+		require.Equal(t, expectedTs, ts)
+	})
+	t.Run("valid timestamp no space", func(t *testing.T) {
+		_, _, err := extractTsFromBytes([]byte("2024-05-02T13:11:55.879889Z\n"))
+		require.Error(t, err)
+	})
 }
 
 func newDockerServer(t *testing.T) *httptest.Server {

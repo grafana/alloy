@@ -275,6 +275,11 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			continue
 		}
 
+		if len(content) == 0 {
+			level.Debug(t.logger).Log("msg", "empty log, skipping line")
+			continue
+		}
+
 		t.recv.Chan() <- loki.Entry{
 			Labels: logStreamLset,
 			Entry: push.Entry{
