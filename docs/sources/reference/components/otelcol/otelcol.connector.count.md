@@ -57,6 +57,24 @@ You can use the following blocks with `otelcol.connector.count`:
 The `>` symbol indicates deeper levels of nesting.
 For example, `spans` > `attributes` refers to an `attributes` block defined inside a `spans` block.
 
+<!-- prettier-ignore-start -->
+{{</* docs/api-tree */>}}
+`otelcol.connector.count`
+├── [`output`][output]  \[required\]
+├── [`datapoints`][datapoints] \[optional\]
+│   └── [`attributes`][attributes] \[optional\]
+├── [`debug_metrics`][debug_metrics] \[optional\]
+├── [`logs`][logs] \[optional\]
+│   └── [`attributes`][attributes] \[optional\]
+├── [`metrics`][metrics] \[optional\]
+│   └── [`attributes`][attributes] \[optional\]
+├── [`spanevents`][spanevents] \[optional\]
+│   └── [`attributes`][attributes] \[optional\]
+└── [`spans`][spans] \[optional\]
+    └── [`attributes`][attributes] \[optional\]
+{{</* /docs/api-tree */>}}
+<!-- prettier-ignore-end -->
+
 [spans]: #spans
 [spanevents]: #spanevents
 [metrics]: #metrics
