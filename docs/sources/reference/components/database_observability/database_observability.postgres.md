@@ -148,7 +148,6 @@ The `azure` block supplies the identifying information for the database being mo
 
 The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.
 
-
 ### Exported Receiver
 
 The component exports a `logs_receiver` entry point that must be fed by log source components.
@@ -161,10 +160,10 @@ The component exports a `logs_receiver` entry point that must be fed by log sour
 
 The logs collector exports the following Prometheus metrics:
 
-| Metric Name                                  | Type    | Description                                          | Labels                                                             |
-|----------------------------------------------|---------|------------------------------------------------------|--------------------------------------------------------------------|
-| `postgres_errors_total`                      | counter | Total PostgreSQL errors by severity and SQLSTATE     | `severity`, `sqlstate`, `sqlstate_class`, `database`, `user`, `instance`, `server_id` |
-| `postgres_error_log_parse_failures_total`    | counter | Number of log lines that failed to parse             | -                                                                  |
+| Metric Name                               | Type    | Description                                       | Labels                                                                                |
+| ----------------------------------------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `postgres_errors_total`                   | counter | Total PostgreSQL errors by severity and SQLSTATE. | `severity`, `sqlstate`, `sqlstate_class`, `database`, `user`, `instance`, `server_id` |
+| `postgres_error_log_parse_failures_total` | counter | Number of log lines that failed to parse.         | -                                                                                     |
 
 ### Required PostgreSQL Configuration
 
