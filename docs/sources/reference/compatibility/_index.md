@@ -431,6 +431,7 @@ The following components, grouped by namespace, _export_ Pyroscope `ProfilesRece
 
 {{< collapse title="pyroscope" >}}
 - [pyroscope.enrich](../components/pyroscope/pyroscope.enrich)
+- [pyroscope.profile.relabel](../components/pyroscope/pyroscope.profile.relabel)
 - [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.write](../components/pyroscope/pyroscope.write)
 {{< /collapse >}}
@@ -448,6 +449,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.enrich](../components/pyroscope/pyroscope.enrich)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
+- [pyroscope.profile.relabel](../components/pyroscope/pyroscope.profile.relabel)
 - [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
 - [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
