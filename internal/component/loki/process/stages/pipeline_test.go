@@ -310,7 +310,7 @@ func TestPipeline_Wrap(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			c := loki.NewCollectingHandler()
-			handler := p.Wrap(c)
+			handler := p.Start(c.Chan())
 
 			handler.Chan() <- loki.Entry{
 				Labels: tt.labels,
@@ -368,7 +368,7 @@ stage.match {
 	p, err := newPipelineFromConfig(cfg, "test")
 	require.NoError(t, err)
 
-	e1 := p.Wrap(handler)
+	e1 := p.Start(handler.Chan())
 	e2 := loki.AddLabelsMiddleware(model.LabelSet{"bar": "foo"}).Wrap(e1)
 	entryhandler := loki.AddLabelsMiddleware(model.LabelSet{"foo": "bar"}).Wrap(e2)
 

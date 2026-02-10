@@ -12,3 +12,11 @@ func getEncoding(enc string) (encoding.Encoding, error) {
 
 	return ianaindex.IANA.Encoding(enc)
 }
+
+func encodedNewline(e *encoding.Encoder) ([]byte, error) {
+	return e.Bytes([]byte{'\n'})
+}
+
+func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
+	return e.Bytes([]byte{'\r'})
+}
