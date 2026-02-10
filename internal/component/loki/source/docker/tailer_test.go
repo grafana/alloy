@@ -232,35 +232,69 @@ func (s *stringReader) Close() error {
 }
 
 func TestTailerConsumeLines(t *testing.T) {
-	collector := loki.NewCollectingHandler()
 
-	tailer := &tailer{
-		logger:            log.NewNopLogger(),
-		recv:              collector.Receiver(),
-		positions:         positions.NewNop(),
-		containerID:       "test",
-		metrics:           newMetrics(prometheus.DefaultRegisterer),
-		running:           true,
-		wg:                sync.WaitGroup{},
-		last:              atomic.NewInt64(0),
-		since:             atomic.NewInt64(0),
-		componentStopping: func() bool { return false },
+	var proccess = func(t *testing.T, collector *loki.CollectingHandler, data []byte) {
+		tailer := &tailer{
+			logger:            log.NewNopLogger(),
+			recv:              collector.Receiver(),
+			positions:         positions.NewNop(),
+			containerID:       "test",
+			metrics:           newMetrics(prometheus.DefaultRegisterer),
+			running:           true,
+			wg:                sync.WaitGroup{},
+			last:              atomic.NewInt64(0),
+			since:             atomic.NewInt64(0),
+			componentStopping: func() bool { return false },
+		}
+
+		bb := &bytes.Buffer{}
+
+		writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
+		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n"))
+		require.NoError(t, err)
+
+		tailer.wg.Add(3)
+		go func() {
+			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+		}()
 	}
 
-	bb := &bytes.Buffer{}
+	t.Run("timestamp followed by newline", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
+		proccess(t, collector, []byte("2023-12-09T12:00:00.000000000Z \n"))
 
-	writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
-	_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n"))
-	require.NoError(t, err)
+		require.Eventually(t, func() bool {
+			return len(collector.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
 
-	tailer.wg.Add(3)
-	go func() {
-		tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
-	}()
+		entry := collector.Received()[0]
 
-	require.Eventually(t, func() bool {
-		return len(collector.Received()) == 1
-	}, 2*time.Second, 50*time.Millisecond)
+		expectedLine := ""
+		expectedTimestamp, err := time.Parse(time.RFC3339Nano, "2023-12-09T12:00:00.000000000Z")
+		require.NoError(t, err)
+
+		require.Equal(t, expectedLine, entry.Line)
+		require.Equal(t, expectedTimestamp, entry.Timestamp)
+	})
+
+	t.Run("timestamp followed by space", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
+
+		proccess(t, collector, []byte("2023-12-09T12:00:00.000000000Z "))
+
+		require.Eventually(t, func() bool {
+			return len(collector.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entry := collector.Received()[0]
+
+		expectedLine := ""
+		expectedTimestamp, err := time.Parse(time.RFC3339Nano, "2023-12-09T12:00:00.000000000Z")
+		require.NoError(t, err)
+
+		require.Equal(t, expectedLine, entry.Line)
+		require.Equal(t, expectedTimestamp, entry.Timestamp)
+	})
 }
 
 func TestChunkWriter(t *testing.T) {
