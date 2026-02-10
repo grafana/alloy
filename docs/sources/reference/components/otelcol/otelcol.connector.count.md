@@ -81,7 +81,7 @@ Another test with some formatting and descriptions
 
 <!-- prettier-ignore-start -->
 {{< docs/api-tree >}}
-`otelcol.connector.count`
+otelcol.connector.count
 ├── [output](#output) Configures where to send received telemetry data. \[required\]
 ├── [datapoints](#datapoints) Configures custom metrics for counting data points. \[optional\]
 │   └── [attributes](#attributes) Groups data point counts by attribute values. \[optional\]
