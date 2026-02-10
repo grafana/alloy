@@ -54,9 +54,12 @@ func TestBatch_add(t *testing.T) {
 		expectedSizeBytes int
 	}
 
-	batchSize := func(streams ...push.Stream) int {
-		r := push.PushRequest{Streams: streams}
-		return r.Size()
+	batchSize := func(entries ...loki.Entry) int {
+		var size int
+		for _, e := range entries {
+			size += e.Size()
+		}
+		return size
 	}
 
 	tests := []testCase{
@@ -70,7 +73,7 @@ func TestBatch_add(t *testing.T) {
 			entries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 			},
-			expectedSizeBytes: batchSize(push.Stream{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}),
+			expectedSizeBytes: batchSize(logEntries[0]),
 		},
 		{
 			name: "single stream with multiple log entries",
@@ -79,7 +82,7 @@ func TestBatch_add(t *testing.T) {
 				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[7].Entry},
 			},
-			expectedSizeBytes: batchSize(push.Stream{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry, logEntries[7].Entry}}),
+			expectedSizeBytes: batchSize(logEntries[0], logEntries[1], logEntries[7]),
 		},
 		{
 			name: "multiple streams with multiple log entries",
@@ -88,9 +91,7 @@ func TestBatch_add(t *testing.T) {
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
 			},
-			expectedSizeBytes: batchSize(
-				push.Stream{Labels: `{type="a"}`, Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}},
-				push.Stream{Labels: `{type="b"}`, Entries: []push.Entry{logEntries[0].Entry}}),
+			expectedSizeBytes: batchSize(logEntries[0], logEntries[1], logEntries[0]),
 		},
 	}
 
@@ -102,29 +103,9 @@ func TestBatch_add(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			assert.Equal(t, tt.expectedSizeBytes, b.sizeBytes())
+			assert.Equal(t, tt.expectedSizeBytes, b.size)
 		})
 	}
-}
-
-// TestBatch_SizeMatchesActual verifies that the manually incremented size
-// actually matches protobuf encoded size.
-func TestBatch_SizeMatchesActual(t *testing.T) {
-	const numLines = 100
-	const numSeries = 10
-
-	b := newBatch(0, int(1*units.MiB))
-	for i := range numLines {
-		mod := i % numSeries
-		entry := loki.Entry{
-			Labels: model.LabelSet{"app": model.LabelValue(fmt.Sprintf("test-%d", mod))},
-			Entry:  push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("hola %d", i)},
-		}
-		err := b.add(entry, 0)
-		require.NoError(t, err)
-		assert.Equal(t, b.req.Size(), b.sizeBytes())
-	}
-	assert.Equal(t, b.req.Size(), b.sizeBytes())
 }
 
 func TestBatch_encode(t *testing.T) {
@@ -184,7 +165,7 @@ func TestBatch_encode(t *testing.T) {
 				snappyBuf = make([]byte, snappy.MaxEncodedLen(maxSize))
 			)
 
-			_, entriesCount, err := b.encode(protoBuf, snappyBuf)
+			_, entriesCount, err := b.encode(b.protoSize(), protoBuf, snappyBuf)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedEntriesCount, entriesCount)
 		})
@@ -201,8 +182,7 @@ func TestBatchSmallBuffers(t *testing.T) {
 	)
 
 	// Pass buffers that are too small to hold data.
-	b.encode(protoBuf, snappyBuf)
-	_, entriesCount, err := b.encode(protoBuf, snappyBuf)
+	_, entriesCount, err := b.encode(b.protoSize(), protoBuf, snappyBuf)
 	require.NoError(t, err)
 	assert.Equal(t, 1, entriesCount)
 }
@@ -282,7 +262,7 @@ func BenchmarkBatch_Encode(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		encodedBuf, _, _ = batch.encode(protoBuf, snappyBuf)
+		encodedBuf, _, _ = batch.encode(batch.protoSize(), protoBuf, snappyBuf)
 	}
 }
 
