@@ -19,6 +19,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -214,6 +215,52 @@ func TestTailerNeverStarted(t *testing.T) {
 	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
 
 	require.NotPanics(t, func() { cancel() })
+}
+
+var _ io.ReadCloser = (*stringReader)(nil)
+
+func newStringReader(s string) *stringReader {
+	return &stringReader{Reader: strings.NewReader(s)}
+}
+
+type stringReader struct {
+	*strings.Reader
+}
+
+func (s *stringReader) Close() error {
+	return nil
+}
+
+func TestTailerConsumeLines(t *testing.T) {
+	collector := loki.NewCollectingHandler()
+
+	tailer := &tailer{
+		logger:            log.NewNopLogger(),
+		recv:              collector.Receiver(),
+		positions:         positions.NewNop(),
+		containerID:       "test",
+		metrics:           newMetrics(prometheus.DefaultRegisterer),
+		running:           true,
+		wg:                sync.WaitGroup{},
+		last:              atomic.NewInt64(0),
+		since:             atomic.NewInt64(0),
+		componentStopping: func() bool { return false },
+	}
+
+	bb := &bytes.Buffer{}
+
+	writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
+	_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n"))
+	require.NoError(t, err)
+
+	tailer.wg.Add(3)
+	go func() {
+		tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+	}()
+
+	require.Eventually(t, func() bool {
+		return len(collector.Received()) == 1
+	}, 2*time.Second, 50*time.Millisecond)
 }
 
 func TestChunkWriter(t *testing.T) {
