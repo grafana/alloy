@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -44,12 +46,13 @@ type ParsedError struct {
 }
 
 type LogsArguments struct {
-	Receiver     loki.LogsReceiver
-	EntryHandler loki.EntryHandler
-	Logger       log.Logger
-	InstanceKey  string
-	SystemID     string
-	Registry     *prometheus.Registry
+	Receiver      loki.LogsReceiver
+	EntryHandler  loki.EntryHandler
+	Logger        log.Logger
+	InstanceKey   string
+	SystemID      string
+	Registry      *prometheus.Registry
+	WatermarkPath string
 }
 
 type Logs struct {
@@ -73,24 +76,42 @@ type Logs struct {
 	lastFormatWarning     time.Time
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
+
+	// Watermark tracking
+	watermarkPath          string
+	lastProcessedTimestamp *atomic.Time
+	startTime              time.Time
+	watermarkMu            sync.Mutex
+	watermarkQuit          chan struct{}
+	watermarkDone          chan struct{}
 }
 
 func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:       log.With(args.Logger, "collector", LogsCollector),
-		entryHandler: args.EntryHandler,
-		instanceKey:  args.InstanceKey,
-		systemID:     args.SystemID,
-		registry:     args.Registry,
-		receiver:     args.Receiver,
-		ctx:          ctx,
-		cancel:       cancel,
-		stopped:      atomic.NewBool(false),
+		logger:                 log.With(args.Logger, "collector", LogsCollector),
+		entryHandler:           args.EntryHandler,
+		instanceKey:            args.InstanceKey,
+		systemID:               args.SystemID,
+		registry:               args.Registry,
+		receiver:               args.Receiver,
+		ctx:                    ctx,
+		cancel:                 cancel,
+		stopped:                atomic.NewBool(false),
+		watermarkPath:          args.WatermarkPath,
+		lastProcessedTimestamp: atomic.NewTime(time.Time{}),
+		startTime:              time.Now(),
+		watermarkQuit:          make(chan struct{}),
+		watermarkDone:          make(chan struct{}),
 	}
 
 	l.initMetrics()
+
+	if err := l.loadWatermark(); err != nil {
+		level.Warn(l.logger).Log("msg", "failed to load watermark, starting from now", "err", err)
+		l.lastProcessedTimestamp.Store(l.startTime)
+	}
 
 	return l, nil
 }
@@ -133,19 +154,104 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 func (l *Logs) Start(ctx context.Context) error {
 	level.Debug(l.logger).Log("msg", "collector started")
 
-	l.wg.Add(1)
+	l.wg.Add(2)
 	go l.run()
+	go l.syncWatermark()
+
 	return nil
 }
 
 func (l *Logs) Stop() {
 	l.cancel()
 	l.stopped.Store(true)
+	close(l.watermarkQuit)
 	l.wg.Wait()
 }
 
 func (l *Logs) Stopped() bool {
 	return l.stopped.Load()
+}
+
+func (l *Logs) loadWatermark() error {
+	if l.watermarkPath == "" {
+		level.Info(l.logger).Log("msg", "no watermark path specified, starting from now")
+		l.lastProcessedTimestamp.Store(l.startTime)
+		return nil
+	}
+
+	data, err := os.ReadFile(l.watermarkPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			level.Info(l.logger).Log("msg", "watermark file does not exist, starting from now", "path", l.watermarkPath)
+			l.lastProcessedTimestamp.Store(l.startTime)
+			return nil
+		}
+		return fmt.Errorf("failed to read watermark file: %w", err)
+	}
+
+	timestamp, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(string(data)))
+	if err != nil {
+		return fmt.Errorf("failed to parse watermark timestamp: %w", err)
+	}
+
+	l.lastProcessedTimestamp.Store(timestamp)
+	level.Info(l.logger).Log("msg", "loaded watermark from disk", "timestamp", timestamp, "path", l.watermarkPath)
+
+	return nil
+}
+
+func (l *Logs) saveWatermark() error {
+	if l.watermarkPath == "" {
+		return nil
+	}
+
+	timestamp := l.lastProcessedTimestamp.Load()
+	if timestamp.IsZero() {
+		return nil
+	}
+
+	data := []byte(timestamp.Format(time.RFC3339Nano))
+
+	dir := filepath.Dir(l.watermarkPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create watermark directory: %w", err)
+	}
+
+	tmpPath := l.watermarkPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write watermark temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, l.watermarkPath); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to rename watermark file: %w", err)
+	}
+
+	level.Debug(l.logger).Log("msg", "saved watermark to disk", "timestamp", timestamp, "path", l.watermarkPath)
+
+	return nil
+}
+
+func (l *Logs) syncWatermark() {
+	defer l.wg.Done()
+	defer close(l.watermarkDone)
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-l.watermarkQuit:
+			if err := l.saveWatermark(); err != nil {
+				level.Error(l.logger).Log("msg", "failed to save watermark on shutdown", "err", err)
+			}
+			return
+		case <-ticker.C:
+			if err := l.saveWatermark(); err != nil {
+				level.Error(l.logger).Log("msg", "failed to sync watermark", "err", err)
+			}
+		}
+	}
 }
 
 func (l *Logs) run() {
@@ -174,11 +280,15 @@ func (l *Logs) processLogLine(entry loki.Entry) error {
 	return l.parseTextLog(entry)
 }
 
-// parseTextLog extracts fields from stderr text format logs for metrics
 func (l *Logs) parseTextLog(entry loki.Entry) error {
+	watermark := l.lastProcessedTimestamp.Load()
+
+	if !entry.Entry.Timestamp.After(watermark) {
+		return nil
+	}
+
 	line := entry.Entry.Line
 
-	// CloudWatch/OTLP logs come wrapped in JSON - extract the body field
 	if strings.HasPrefix(line, "{") {
 		var jsonLog struct {
 			Body string `json:"body"`
@@ -188,17 +298,14 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		}
 	}
 
-	// Skip multi-line continuation lines (DETAIL, HINT, CONTEXT, etc.)
 	if isContinuationLine(line) {
 		return nil
 	}
 
-	// Only process ERROR, FATAL, PANIC lines
 	if !strings.Contains(line, "ERROR:") && !strings.Contains(line, "FATAL:") && !strings.Contains(line, "PANIC:") {
 		return nil
 	}
 
-	// Validate log format matches expected RDS pattern
 	if !rdsLogFormatRegex.MatchString(line) {
 		l.trackInvalidFormat()
 		l.parseErrors.Inc()
@@ -207,7 +314,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	l.trackValidFormat()
 
-	// Parse RDS format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 	atIdx := strings.Index(line, "@")
 	afterAt := line[atIdx+1:]
 	pidMarkerIdx := strings.Index(afterAt, ":[")
@@ -218,7 +324,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
 	user := strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
 
-	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
 	pidEndIdx := strings.Index(afterAt, "]")
 	afterPid := afterAt[pidEndIdx+1:]
 
@@ -229,7 +334,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	// Find severity keyword (ERROR:, FATAL:, PANIC:)
 	messageStart := -1
 	severity := ""
 	for sev := range supportedSeverities {
@@ -257,6 +361,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	l.updateMetrics(parsed)
+
+	if entry.Entry.Timestamp.After(watermark) {
+		l.lastProcessedTimestamp.Store(entry.Entry.Timestamp)
+	}
+
 	return nil
 }
 

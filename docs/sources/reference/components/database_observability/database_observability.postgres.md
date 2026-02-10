@@ -34,6 +34,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
+| `watermark_path`     | `string`             | Path to watermark file for tracking processed logs.         | `<data_path>/dbo11y_pg_logs_watermark.txt` | no       |
 
 ## Exports
 
@@ -195,6 +196,34 @@ Example log line:
 ```
 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):app_user@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement due to user request
 ```
+
+### Watermark and Historical Log Processing
+
+The `logs` collector uses a watermark file to track the last processed log timestamp. This prevents re-counting historical logs on component restart and maintains proper Prometheus counter semantics.
+
+**Default behavior:**
+- Watermark file: `<data_path>/dbo11y_pg_logs_watermark.txt`
+- On first run: Starts processing logs from the current time (skips historical logs)
+- On restart: Resumes from the last processed timestamp
+- Sync frequency: Every 10 seconds (atomic writes for crash safety)
+
+**Benefits:**
+- `postgres_errors_total` maintains monotonically increasing values
+- No duplicate counting on Alloy restarts
+- Proper `rate()` and `increase()` calculations in Prometheus
+- Resumes from last position after downtime (no data loss)
+
+**Example with custom watermark path:**
+```alloy
+database_observability.postgres "orders_db" {
+  data_source_name = "postgres://user:pass@localhost:5432/dbname"
+  watermark_path   = "/var/lib/alloy/postgres_orders_watermark.txt"
+  forward_to       = [loki.relabel.orders_db.receiver]
+  targets          = prometheus.exporter.postgres.orders_db.targets
+}
+```
+
+**Important:** When using log sources with `start_from` set to historical timestamps (e.g., `otelcol.receiver.awscloudwatch` with `start_from = "2026-01-01T00:00:00Z"`), the watermark ensures that historical logs are only counted once, even if Alloy restarts multiple times.
 
 ## Example
 
