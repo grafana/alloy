@@ -42,10 +42,10 @@ Every path is explicit.
 
 In most configurations, telemetry follows a pattern like this:
 
-```mermaid
+{{< mermaid >}}
 flowchart LR
     Receiver --> Processor --> Exporter
-```
+{{< /mermaid >}}
 
 This is a simplified representation of a single path through the component graph.
 {{< param "PRODUCT_NAME" >}} executes the entire graph, which can branch, merge, and contain multiple independent telemetry flows.
