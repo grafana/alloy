@@ -55,7 +55,7 @@ Processing components are the only place where telemetry can be:
 
 If no processing components appear between a receiver and an exporter, telemetry passes through unchanged.
 
-If multiple processing components appear, telemetry flows through them in the order defined by the graph.
+If multiple processors appear in a path, telemetry flows through them according to the graph connections defined in the configuration.
 
 ## Locate the exporters
 

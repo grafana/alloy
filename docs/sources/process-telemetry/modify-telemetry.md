@@ -20,7 +20,7 @@ If you don't connect processors in a path, telemetry passes through {{< param "P
 
 A typical path looks like this:
 
-Receiver → Processing → Exporter
+Receiver → Processor → Exporter
 
 Processors sit in the middle of that path.
 They receive telemetry from upstream components and forward the resulting telemetry downstream.
