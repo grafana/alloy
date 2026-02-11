@@ -11,8 +11,8 @@ weight: 200
 Telemetry moves through {{< param "PRODUCT_NAME" >}} in defined paths.
 Each path begins with ingestion, may include processing stages, and ends with export.
 
-These paths are constructed from connected components in the configuration.
-There is no default pipeline.
+You construct these paths by connecting components in the configuration.
+There's no default pipeline.
 The configuration defines every stage.
 
 A common shape looks like this:
@@ -20,7 +20,7 @@ A common shape looks like this:
 Receiver → Processing → Exporter
 
 That pattern is conceptual.
-The actual structure depends entirely on how components are connected.
+The actual structure depends entirely on how you connect the components.
 
 ## Ingestion
 
@@ -44,7 +44,7 @@ Processing components operate on telemetry after ingestion and before export.
 
 They sit between receivers and exporters in the graph.
 If you include processing components in a path, telemetry flows through them.
-If you do not, telemetry moves directly to the exporter unchanged.
+If you don't, telemetry moves directly to the exporter unchanged.
 
 Processing can:
 
@@ -52,7 +52,7 @@ Processing can:
 - Filter telemetry.
 - Route telemetry to different downstream components.
 
-Nothing is processed unless a processing component is connected in the path.
+Processing only happens when you connect a processing component in the path.
 
 ## Export
 
@@ -75,7 +75,7 @@ A pipeline can include:
 
 ## Parallel and branching pipelines
 
-A pipeline is not limited to a straight line.
+A pipeline isn't limited to a straight line.
 
 Because the configuration defines a graph, telemetry paths can:
 
@@ -91,15 +91,18 @@ For example:
 
 Each signal type typically has its own pipeline, defined independently in the configuration.
 
-## Observing pipeline structure
+## Observe pipeline structure
 
 To understand how telemetry flows in a configuration:
 
 1. Identify the receivers.
 1. Trace their downstream connections.
 1. Note each processing component in the path.
-1. Identify where the path terminates.
+1. Identify where the path ends.
 
 That path is the pipeline.
 
-Next, examine where telemetry is modified within those pipelines and how processing stages affect data before export.
+## Next steps
+
+- [Where telemetry is modified](../modify-telemetry/) - Understand where modification occurs in processing stages.
+- [Read configurations as data flow](../read-configurations/) - Interpret configurations using the graph model.
