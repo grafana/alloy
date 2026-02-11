@@ -242,19 +242,15 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 
 // extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
 func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
-	const timestampLayout = "2006-01-02T15:04:05.999999999Z07:00"
-
 	spaceIdx := bytes.IndexByte(line, ' ')
-	if spaceIdx == -1 || spaceIdx >= len(line)-1 {
+	if spaceIdx == -1 || spaceIdx >= len(line) {
 		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
 	}
 
-	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp
-	// This is safe because:
-	// 1. spaceIdx > 0 and spaceIdx < len(line)-1 is guaranteed by the check above
-	// 2. time.Parse doesn't retain the string after returning
-	// 3. The underlying bytes aren't modified during parsing
-	ts, err := time.Parse(timestampLayout, unsafe.String(&line[0], spaceIdx))
+	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp.
+	// This is safe because time.Parse doesn't retain the string after returning and
+	// the underlying bytes aren't modified during parsing.
+	ts, err := time.Parse(time.RFC3339Nano, unsafe.String(&line[0], spaceIdx))
 	if err != nil {
 		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
 	}
@@ -264,8 +260,9 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 	defer t.wg.Done()
 
-	scanner := bufio.NewScanner(r)
 	const maxCapacity = dockerMaxChunkSize * 64
+
+	scanner := bufio.NewScanner(r)
 	buf := make([]byte, 0, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 	for scanner.Scan() {
@@ -275,6 +272,11 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 		if err != nil {
 			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
 			t.metrics.dockerErrors.Inc()
+			continue
+		}
+
+		if len(content) == 0 {
+			level.Debug(t.logger).Log("msg", "empty log, skipping line")
 			continue
 		}
 
