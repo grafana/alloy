@@ -44,8 +44,8 @@ In most configurations, telemetry follows a pattern like this:
 
 Receiver → Processor → Exporter
 
-- Receivers are responsible for protocol handling and normalization so telemetry can be represented inside {{< param "PRODUCT_NAME" >}}.
-  They do not perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that receiver.
+- Receivers handle protocol handling and normalization so {{< param "PRODUCT_NAME" >}} can represent telemetry internally.
+  They don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that receiver.
 - Processors operate on that telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
 - Exporters send telemetry to external backends or systems.
 
