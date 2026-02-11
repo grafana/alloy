@@ -38,7 +38,7 @@ At each step, ask:
 
 Because connections are explicit, the path is visible in the configuration.
 Each reference defines the next hop in the graph.
-Execution order is determined by graph connectivity, not by the textual order of components in the configuration file.
+Graph connectivity determines execution order, not the textual order of components in the configuration file.
 
 If telemetry appears to be missing in a backend, the break usually exists somewhere along this path.
 

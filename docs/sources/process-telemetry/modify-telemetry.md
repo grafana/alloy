@@ -51,7 +51,7 @@ If telemetry changes, the configuration defines where and how that change occurs
 This explicit model makes behavior predictable.
 You can identify exactly which component modifies data by tracing the graph.
 
-If a processor is not connected in the path between a receiver and an exporter, it has no effect on that telemetry.
+If a processor isn't connected in the path between a receiver and an exporter, it has no effect on that telemetry.
 
 ## Signal-aware processing
 
