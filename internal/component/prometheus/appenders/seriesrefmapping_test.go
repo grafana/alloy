@@ -1,11 +1,13 @@
 package appenders
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -13,10 +15,10 @@ import (
 func TestGetMappingReturnsNilForUnknownRef(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
-	require.Nil(t, store.GetMapping(0))
-	require.Nil(t, store.GetMapping(1))
-	require.Nil(t, store.GetMapping(999))
-	require.Nil(t, store.GetMapping(storage.SeriesRef(12345)))
+	require.Nil(t, store.GetMapping(0, labels.EmptyLabels()))
+	require.Nil(t, store.GetMapping(1, labels.EmptyLabels()))
+	require.Nil(t, store.GetMapping(999, labels.EmptyLabels()))
+	require.Nil(t, store.GetMapping(storage.SeriesRef(12345), labels.EmptyLabels()))
 }
 
 func TestCreatedMappingCanBeRetrieved(t *testing.T) {
@@ -24,34 +26,51 @@ func TestCreatedMappingCanBeRetrieved(t *testing.T) {
 	t.Cleanup(store.Clear)
 
 	childRefs := []storage.SeriesRef{1, 2, 3}
-	uniqueRef := store.CreateMapping(childRefs)
+	lbls := labels.NewBuilder(labels.EmptyLabels()).Set("foo", "bar").Labels()
 
-	retrieved := store.GetMapping(uniqueRef)
-	require.NotNil(t, retrieved)
-	require.Equal(t, childRefs, retrieved)
+	uniqueRef := store.CreateMapping(childRefs, lbls)
+
+	// Case 1: get by unique ref
+	got := store.GetMapping(uniqueRef, lbls)
+	require.NotNil(t, got)
+	require.Equal(t, childRefs, got)
+
+	// Case 1: rely on label hash fallback
+	got = store.GetMapping(0, lbls)
+	require.NotNil(t, got)
+	require.Equal(t, childRefs, got)
 }
 
 func TestEachCreatedMappingGetsUniqueRef(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(store.Clear)
 
+	type mappingAndLabels struct {
+		refs   []storage.SeriesRef
+		labels labels.Labels
+	}
+
 	refs := make(map[storage.SeriesRef]bool)
-	mappings := make(map[storage.SeriesRef][]storage.SeriesRef)
+	mappings := make(map[storage.SeriesRef]mappingAndLabels)
 
 	for i := range 100 {
+		lbls := labels.NewBuilder(labels.EmptyLabels()).Set("k", strconv.Itoa(i)).Labels()
 		childRefs := []storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i + 1)}
-		uniqueRef := store.CreateMapping(childRefs)
+		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		// Verify this ref is unique
 		require.False(t, refs[uniqueRef], "ref %d was already used", uniqueRef)
 		refs[uniqueRef] = true
-		mappings[uniqueRef] = childRefs
+		mappings[uniqueRef] = mappingAndLabels{
+			refs:   childRefs,
+			labels: lbls,
+		}
 	}
 
 	// Verify all mappings can be retrieved independently
-	for uniqueRef, expectedChildRefs := range mappings {
-		retrieved := store.GetMapping(uniqueRef)
-		require.Equal(t, expectedChildRefs, retrieved)
+	for uniqueRef, mp := range mappings {
+		retrieved := store.GetMapping(uniqueRef, mp.labels)
+		require.Equal(t, mp.refs, retrieved)
 	}
 }
 
