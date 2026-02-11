@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -39,7 +38,7 @@ const selectQueriesForExplainPlanTemplate = `
 	FROM pg_stat_statements s
 		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL
-`
+		AND d.datname NOT IN %s`
 
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
@@ -350,9 +349,10 @@ func (c *ExplainPlans) Stop() {
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
+	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
 	if version17Plus {
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause)
 	} else {
 		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err := statReset.Err(); err != nil {
@@ -361,7 +361,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err := statReset.Scan(&resetTS); err != nil {
 			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
@@ -377,24 +377,6 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		var ls time.Time
 		if err := rs.Scan(&datname, &queryId, &query, &calls, &ls); err != nil {
 			return fmt.Errorf("failed to scan query for explain plan: %w", err)
-		}
-
-		if slices.ContainsFunc(c.excludeDatabases, func(schema string) bool {
-			return strings.EqualFold(schema, datname)
-		}) {
-
-			err := c.sendExplainPlansOutput(
-				datname,
-				queryId,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query belongs to excluded schema",
-				nil,
-			)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send excluded schema skip explain plan output", "err", err)
-			}
-			continue
 		}
 
 		statsReset := resetTS
@@ -586,6 +568,11 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	}
 	defer conn.Close()
 
+	setSearchPathStatement := fmt.Sprintf("SET SESSION search_path TO \"%s\", public", qi.datname)
+	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
+		return nil, fmt.Errorf("failed to set search path: %w", err)
+	}
+
 	preparedStatementName := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
 	preparedStatementText := fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)
 	logger := log.With(c.logger, "query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName, "preparedStatementText", preparedStatementText)
@@ -598,11 +585,6 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 			level.Error(logger).Log("msg", "failed to deallocate explain plan", "err", err)
 		}
 	}()
-
-	setSearchPathStatement := fmt.Sprintf("SET search_path TO %s, public", qi.datname)
-	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
-		return nil, fmt.Errorf("failed to set search path: %w", err)
-	}
 
 	if _, err := conn.ExecContext(ctx, "SET plan_cache_mode = force_generic_plan"); err != nil {
 		return nil, fmt.Errorf("failed to set plan cache mode: %w", err)

@@ -74,7 +74,7 @@ func newPatternStage(logger log.Logger, config PatternConfig) (Stage, error) {
 }
 
 // parsePatternConfig processes an incoming configuration into a PatternConfig
-func parsePatternConfig(config interface{}) (*PatternConfig, error) {
+func parsePatternConfig(config any) (*PatternConfig, error) {
 	cfg := &PatternConfig{}
 	err := mapstructure.Decode(config, cfg)
 	if err != nil {
@@ -84,7 +84,7 @@ func parsePatternConfig(config interface{}) (*PatternConfig, error) {
 }
 
 // Process implements Stage
-func (r *patternStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	// If a source key is provided, the pattern stage should process it
 	// from the extracted map, otherwise should fall back to the entry
 	input := entry

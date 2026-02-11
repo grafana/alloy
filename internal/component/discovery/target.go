@@ -181,7 +181,7 @@ func (t Target) Len() int {
 func (t Target) AlloyCapsule() {}
 
 // ConvertInto is called by Alloy syntax to try converting Target to another type.
-func (t Target) ConvertInto(dst interface{}) error {
+func (t Target) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
 		result := make(map[string]syntax.Value, t.Len())
@@ -207,7 +207,7 @@ func (t Target) ConvertInto(dst interface{}) error {
 }
 
 // ConvertFrom is called by Alloy syntax to try converting from another type to Target.
-func (t *Target) ConvertFrom(src interface{}) error {
+func (t *Target) ConvertFrom(src any) error {
 	switch src := src.(type) {
 	case map[string]syntax.Value:
 		labelSet := make(commonlabels.LabelSet, len(src))

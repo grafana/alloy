@@ -86,7 +86,7 @@ func (c *MultilineConfig) Validate() error {
 	return nil
 }
 
-type Operator map[string]interface{}
+type Operator map[string]any
 
 func (o Operator) Convert() (*operator.Config, error) {
 	cfg := &operator.Config{}

@@ -14,6 +14,7 @@ const (
 	reasonRateLimited   = "rate_limited"
 	reasonStreamLimited = "stream_limited"
 	reasonLineTooLong   = "line_too_long"
+	reasonQueueIsFull   = "queue_is_full"
 )
 
 var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonLineTooLong}

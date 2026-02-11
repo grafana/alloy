@@ -2,7 +2,6 @@ package stages
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -73,7 +72,7 @@ func newLogfmtStage(logger log.Logger, config LogfmtConfig) (Stage, error) {
 }
 
 // Process implements Stage
-func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	// If a source key is provided, the logfmt stage should process it
 	// from the extracted map, otherwise should fall back to the entry
 	input := entry
@@ -114,10 +113,12 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]interf
 		return
 	}
 
-	if extractedEntriesCount != len(j.inverseMapping) {
-		level.Debug(j.logger).Log("msg", fmt.Sprintf("found only %d out of %d configured mappings in logfmt stage", extractedEntriesCount, len(j.inverseMapping)))
+	if Debug {
+		if extractedEntriesCount != len(j.inverseMapping) {
+			level.Debug(j.logger).Log("msg", "found only some configured mappings in logfmt stage", "found", extractedEntriesCount, "configured", len(j.inverseMapping))
+		}
+		level.Debug(j.logger).Log("msg", "extracted data debug in logfmt stage", "extracted data", extracted)
 	}
-	level.Debug(j.logger).Log("msg", "extracted data debug in logfmt stage", "extracted data", fmt.Sprintf("%v", extracted))
 }
 
 // Name implements Stage

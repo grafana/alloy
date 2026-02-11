@@ -1,7 +1,9 @@
 package stages
 
 import (
+	"encoding"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -42,7 +44,30 @@ type RuleConfig struct {
 	effectiveLimit units.Base2Bytes
 }
 
+var (
+	_ encoding.TextMarshaler   = TruncateSourceType("")
+	_ encoding.TextUnmarshaler = (*TruncateSourceType)(nil)
+)
+
 type TruncateSourceType string
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (t *TruncateSourceType) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case string(TruncateSourceLine), string(TruncateSourceLabel), string(TruncateSourceStructuredMetadata), string(TruncateSourceExtractedMap):
+		*t = TruncateSourceType(str)
+	default:
+		return fmt.Errorf("unknown source_type: %s", str)
+	}
+
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (t TruncateSourceType) MarshalText() (text []byte, err error) {
+	return []byte(t), nil
+}
 
 const (
 	TruncateSourceLine               TruncateSourceType = "line"
@@ -191,7 +216,7 @@ func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, nam
 	}
 }
 
-func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[string]interface{}, name string, val interface{}, truncated map[string]struct{}) {
+func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[string]any, name string, val any, truncated map[string]struct{}) {
 	if strVal, ok := val.(string); ok && len(strVal) > int(rule.effectiveLimit) {
 		extracted[name] = strVal[:rule.effectiveLimit] + rule.Suffix
 		markTruncated(m.truncatedCount, truncated, truncateExtractedField)

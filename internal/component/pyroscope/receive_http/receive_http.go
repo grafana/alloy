@@ -147,8 +147,6 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 		// mount connect go pushv1
 		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
 		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
-
-		c.mountDebugInfo(router)
 	})
 }
 

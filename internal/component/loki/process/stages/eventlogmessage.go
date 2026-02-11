@@ -63,7 +63,7 @@ func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
 
 // Process a event log message from extracted with the specified key, adding additional
 // entries into the extracted map
-func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, key string) error {
+func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string) error {
 	value, ok := extracted[key]
 	if !ok {
 		if Debug {

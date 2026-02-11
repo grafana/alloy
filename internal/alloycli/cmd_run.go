@@ -487,8 +487,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 }
 
 // getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
-	return func() map[string]interface{} {
+func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
+	return func() map[string]any {
 		components := component.GetAllComponents(f, component.InfoOptions{})
 		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
 			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
@@ -500,7 +500,7 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 			}
 			componentNames[c.ComponentName] = struct{}{}
 		}
-		return map[string]interface{}{"enabled-components": maps.Keys(componentNames)}
+		return map[string]any{"enabled-components": maps.Keys(componentNames)}
 	}
 }
 

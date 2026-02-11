@@ -22,17 +22,17 @@ var (
 
 // Report is the payload to be sent to stats.grafana.org
 type Report struct {
-	UsageStatsID string                 `json:"usageStatsId"`
-	CreatedAt    time.Time              `json:"createdAt"`
-	Interval     time.Time              `json:"interval"`
-	Version      string                 `json:"version"`
-	Metrics      map[string]interface{} `json:"metrics"`
-	Os           string                 `json:"os"`
-	Arch         string                 `json:"arch"`
-	DeployMode   string                 `json:"deployMode"`
+	UsageStatsID string         `json:"usageStatsId"`
+	CreatedAt    time.Time      `json:"createdAt"`
+	Interval     time.Time      `json:"interval"`
+	Version      string         `json:"version"`
+	Metrics      map[string]any `json:"metrics"`
+	Os           string         `json:"os"`
+	Arch         string         `json:"arch"`
+	DeployMode   string         `json:"deployMode"`
 }
 
-func sendReport(ctx context.Context, seed *alloyseed.Seed, interval time.Time, metrics map[string]interface{}) error {
+func sendReport(ctx context.Context, seed *alloyseed.Seed, interval time.Time, metrics map[string]any) error {
 	report := Report{
 		UsageStatsID: seed.UID,
 		CreatedAt:    seed.CreatedAt,

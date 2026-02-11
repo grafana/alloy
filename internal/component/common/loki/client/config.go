@@ -52,4 +52,9 @@ type QueueConfig struct {
 
 	// DrainTimeout controls the maximum time that draining the queue can take.
 	DrainTimeout time.Duration
+
+	// BlockOnOverflow controls behavior when the send queue is full. When true, enqueue blocks
+	// until space is available or client is stopped, applying backpressure.
+	// When false, enqueue returns immediately and the entry is dropped.
+	BlockOnOverflow bool
 }

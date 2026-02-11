@@ -689,7 +689,7 @@ func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
 
 // Variables returns the Variables the Loader exposes for other components to
 // reference.
-func (l *Loader) Variables() map[string]interface{} {
+func (l *Loader) Variables() map[string]any {
 	return l.cache.GetContext().Variables
 }
 

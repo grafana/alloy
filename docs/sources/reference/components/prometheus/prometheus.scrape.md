@@ -56,12 +56,13 @@ You can use the following arguments with `prometheus.scrape`:
 | `enable_compression`                 | `bool`                  | Whether compression is enabled for the scrape.                                                                           | `true`                                                                                           | no       |
 | `enable_http2`                       | `bool`                  | Whether HTTP2 is supported for requests.                                                                                 | `true`                                                                                           | no       |
 | `enable_protobuf_negotiation`        | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                                              | `false`                                                                                          | no       |
+| `enable_type_and_unit_labels`        | `bool`                  | (Experimental) Whether the metric type and unit should be added as labels to scraped metrics.                            | `false`                                                                                          | no       |
 | `extra_metrics`                      | `bool`                  | Whether extra metrics should be generated for scrape targets. Currently, cannot be updated at runtime.                   | `false`                                                                                          | no       |
 | `follow_redirects`                   | `bool`                  | Whether redirects returned by the server should be followed.                                                             | `true`                                                                                           | no       |
 | `http_headers`                       | `map(list(secret))`     | Custom HTTP headers to be sent along with each request. The map key is the header name.                                  |                                                                                                  | no       |
 | `honor_labels`                       | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                                          | `false`                                                                                          | no       |
 | `honor_timestamps`                   | `bool`                  | Indicator whether the scraped timestamps should be respected.                                                            | `true`                                                                                           | no       |
-| `honor_metadata`                     | `bool`                  | (Experimental) Indicator whether metric metadata should be sent to downstream components.                                | `false`                                                                                          | no       |
+| `honor_metadata`                     | `bool`                  | (Experimental) Indicates whether to send metric metadata to downstream components.                                       | `false`                                                                                          | no       |
 | `job_name`                           | `string`                | The value to use for the job label if not already set.                                                                   | component name                                                                                   | no       |
 | `label_limit`                        | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                                             |                                                                                                  | no       |
 | `label_name_length_limit`            | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                                       |                                                                                                  | no       |
@@ -89,16 +90,19 @@ You can use the following arguments with `prometheus.scrape`:
 | `track_timestamps_staleness`         | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                                      | `false`                                                                                          | no       |
 
 > **EXPERIMENTAL**: The `honor_metadata` argument is an [experimental][] feature.
-> Enabling it may increase resource consumption, particularly if a lot of metrics with different names are ingested.
-> Not all downstream components may be compatible with Prometheus metadata yet.
-> Currently, the compatible components are:
+> If you enable this argument, resource consumption may increase, particularly if you ingest many metrics with different names.
+> Some downstream components aren't compatible with Prometheus metadata.
+> The following components are compatible:
 >
 > * `otelcol.receiver.prometheus`
 > * `prometheus.remote_write` only when configured for Remote Write v2.
 > * `prometheus.write_queue`
-> 
-> Metadata support for Remote Write v1 in `prometheus.remote_write` will be added soon.
-> 
+>
+> **EXPERIMENTAL**: The `enable_type_and_unit_labels` argument is an [experimental][] feature.
+> When enabled and available from the scrape, the metric type and unit are added as labels to each scraped sample.
+> This provides additional schema information about metrics directly in the label set.
+> This feature doesn't require downstream components to support Remote Write v2.
+>
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 > To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 

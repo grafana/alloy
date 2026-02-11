@@ -79,7 +79,7 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 
 	if args.Match.Include != nil {
 		matchConfig, err := args.Match.Include.Convert()

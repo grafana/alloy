@@ -82,7 +82,7 @@ type ComponentGlobals struct {
 	Registerer           prometheus.Registerer                            // Registerer for serving Alloy and component metrics
 	ControllerID         string                                           // ID of controller.
 	NewModuleController  func(opts ModuleControllerOpts) ModuleController // Func to generate a module controller.
-	GetServiceData       func(name string) (interface{}, error)           // Get data for a service.
+	GetServiceData       func(name string) (any, error)                   // Get data for a service.
 	EnableCommunityComps bool                                             // Enables the use of community components.
 }
 
@@ -196,7 +196,7 @@ func getManagedOptions(globals ComponentGlobals, cn *BuiltinComponentNode) compo
 		OnStateChange:    cn.setExports,
 		ModuleController: cn.moduleController,
 
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return globals.GetServiceData(name)
 		},
 
@@ -423,7 +423,7 @@ func (cn *BuiltinComponentNode) CurrentHealth() component.Health {
 }
 
 // DebugInfo returns debugging information from the managed component (if any).
-func (cn *BuiltinComponentNode) DebugInfo() interface{} {
+func (cn *BuiltinComponentNode) DebugInfo() any {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
 

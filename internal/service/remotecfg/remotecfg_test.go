@@ -579,7 +579,7 @@ func (f fakeHost) NewController(id string) service.Controller {
 		DataPath:        "",
 		MinStability:    featuregate.StabilityGenerallyAvailable,
 		Reg:             prometheus.NewRegistry(),
-		OnExportsChange: func(map[string]interface{}) {},
+		OnExportsChange: func(map[string]any) {},
 		Services:        []service.Service{livedebugging.New()},
 	})
 

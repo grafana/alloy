@@ -35,12 +35,12 @@ type MetricConfig struct {
 	Enabled bool `alloy:"enabled,attr"`
 }
 
-func (r *MetricConfig) Convert() map[string]interface{} {
+func (r *MetricConfig) Convert() map[string]any {
 	if r == nil {
 		return nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"enabled": r.Enabled,
 	}
 }
@@ -195,12 +195,12 @@ func (args *MetricsConfig) SetToDefault() {
 	}
 }
 
-func (args *MetricsConfig) Convert() map[string]interface{} {
+func (args *MetricsConfig) Convert() map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"vcenter.cluster.cpu.effective":            args.VcenterClusterCPUEffective.Convert(),
 		"vcenter.cluster.cpu.limit":                args.VcenterClusterCPULimit.Convert(),
 		"vcenter.cluster.host.count":               args.VcenterClusterHostCount.Convert(),
@@ -278,12 +278,12 @@ type ResourceAttributeConfig struct {
 	Enabled bool `alloy:"enabled,attr"`
 }
 
-func (r *ResourceAttributeConfig) Convert() map[string]interface{} {
+func (r *ResourceAttributeConfig) Convert() map[string]any {
 	if r == nil {
 		return nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"enabled": r.Enabled,
 	}
 }
@@ -320,12 +320,12 @@ func (args *ResourceAttributesConfig) SetToDefault() {
 	}
 }
 
-func (args *ResourceAttributesConfig) Convert() map[string]interface{} {
+func (args *ResourceAttributesConfig) Convert() map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	res := map[string]interface{}{
+	res := map[string]any{
 		"vcenter.datacenter.name":              args.VcenterDatacenterName.Convert(),
 		"vcenter.cluster.name":                 args.VcenterClusterName.Convert(),
 		"vcenter.datastore.name":               args.VcenterDatastoreName.Convert(),
@@ -354,12 +354,12 @@ func (mbc *MetricsBuilderConfig) SetToDefault() {
 	mbc.ResourceAttributes.SetToDefault()
 }
 
-func (args *MetricsBuilderConfig) Convert() map[string]interface{} {
+func (args *MetricsBuilderConfig) Convert() map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	res := map[string]interface{}{
+	res := map[string]any{
 		"metrics":             args.Metrics.Convert(),
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}

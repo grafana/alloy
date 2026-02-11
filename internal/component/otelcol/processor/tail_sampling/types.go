@@ -24,7 +24,7 @@ type PolicyConfig struct {
 func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
 	var otelConfig tsp.PolicyCfg
 
-	mustDecodeMapStructure(map[string]interface{}{
+	mustDecodeMapStructure(map[string]any{
 		"name":              policyConfig.SharedPolicyConfig.Name,
 		"type":              policyConfig.SharedPolicyConfig.Type,
 		"latency":           policyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
@@ -339,7 +339,7 @@ type CompositeSubPolicyConfig struct {
 func (compositeSubPolicyConfig CompositeSubPolicyConfig) Convert() tsp.CompositeSubPolicyCfg {
 	var otelConfig tsp.CompositeSubPolicyCfg
 
-	mustDecodeMapStructure(map[string]interface{}{
+	mustDecodeMapStructure(map[string]any{
 		"name":              compositeSubPolicyConfig.SharedPolicyConfig.Name,
 		"type":              compositeSubPolicyConfig.SharedPolicyConfig.Type,
 		"latency":           compositeSubPolicyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
@@ -394,7 +394,7 @@ type AndSubPolicyConfig struct {
 func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {
 	var otelConfig tsp.AndSubPolicyCfg
 
-	mustDecodeMapStructure(map[string]interface{}{
+	mustDecodeMapStructure(map[string]any{
 		"name":              andSubPolicyConfig.SharedPolicyConfig.Name,
 		"type":              andSubPolicyConfig.SharedPolicyConfig.Type,
 		"latency":           andSubPolicyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
@@ -414,7 +414,7 @@ func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {
 
 // mustDecodeMapStructure decodes a map into a structure. It panics if it fails.
 // This is necessary for otel types that have private fields such as sharedPolicyCfg.
-func mustDecodeMapStructure(source map[string]interface{}, otelConfig interface{}) {
+func mustDecodeMapStructure(source map[string]any, otelConfig any) {
 	err := mapstructure.Decode(source, otelConfig)
 
 	//TODO: Rework this to return an error instead of panicking

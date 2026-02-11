@@ -80,6 +80,81 @@ func TestQueryDetails(t *testing.T) {
 			},
 		},
 		{
+			name: "select query with uppercase table name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM SOME_TABLE WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"some_table": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with uppercase schema-qualified name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM PUBLIC.USERS WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"users": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with mixed case table name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM MyTable WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"mytable": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "select query containing with",
 			eventStatementsRows: [][]driver.Value{{
 				"abc123",
@@ -432,7 +507,7 @@ func TestQueryDetails(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"queryid",
@@ -493,7 +568,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid", // not enough columns
@@ -501,7 +576,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -556,7 +631,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -615,9 +690,9 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -813,5 +888,60 @@ func TestQueryDetails_RemoveComments(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
+	}
+}
+
+func TestQueryDetails_ExcludeDatabases(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:               db,
+		CollectInterval:  time.Second,
+		ExcludeDatabases: []string{"excluded_database"},
+		EntryHandler:     lokiClient,
+		Logger:           log.NewLogfmtLogger(os.Stderr),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause([]string{"excluded_database"}))).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"queryid",
+				"query",
+				"datname",
+			}).AddRow(
+				"def456",
+				"SELECT * FROM orders",
+				"another_database",
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	// Only the another_database should have logs emitted
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) >= 2 // query_association + query_parsed_table_name
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// Verify only another_database logs were emitted
+	for _, entry := range lokiClient.Received() {
+		require.Contains(t, entry.Line, "another_database", "included database should appear in logs")
 	}
 }

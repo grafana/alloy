@@ -16,8 +16,8 @@ type KafkaAuthenticationArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaAuthenticationArguments) Convert() map[string]interface{} {
-	auth := make(map[string]interface{})
+func (args KafkaAuthenticationArguments) Convert() map[string]any {
+	auth := make(map[string]any)
 
 	if args.Plaintext != nil {
 		conv := args.Plaintext.Convert()
@@ -46,8 +46,8 @@ type KafkaPlaintextArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaPlaintextArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaPlaintextArguments) Convert() map[string]any {
+	return map[string]any{
 		"username": args.Username,
 		"password": string(args.Password),
 	}
@@ -63,8 +63,8 @@ type KafkaSASLArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaSASLArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaSASLArguments) Convert() map[string]any {
+	return map[string]any{
 		"username":  args.Username,
 		"password":  string(args.Password),
 		"mechanism": args.Mechanism,
@@ -80,8 +80,8 @@ type KafkaAWSMSKArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaAWSMSKArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaAWSMSKArguments) Convert() map[string]any {
+	return map[string]any{
 		"region": args.Region,
 	}
 }
@@ -100,8 +100,8 @@ type KafkaKerberosArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaKerberosArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaKerberosArguments) Convert() map[string]any {
+	return map[string]any{
 		"service_name":             args.ServiceName,
 		"realm":                    args.Realm,
 		"use_keytab":               args.UseKeyTab,

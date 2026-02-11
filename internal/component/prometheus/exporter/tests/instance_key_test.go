@@ -425,7 +425,7 @@ func TestInstanceKey(t *testing.T) {
 			var capturedExports exporter.Exports
 			opts := component.Options{
 				ID: tt.componentName + ".test_comp_id",
-				GetServiceData: func(name string) (interface{}, error) {
+				GetServiceData: func(name string) (any, error) {
 					switch name {
 					case httpservice.ServiceName:
 						return httpservice.Data{

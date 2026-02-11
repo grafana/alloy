@@ -1,4 +1,6 @@
-package irsymcache // import "go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+//go:build unix
+
+package irsymcache
 
 import (
 	"debug/elf"

@@ -33,8 +33,8 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
@@ -52,8 +52,8 @@ type ResourceAttributesConfig struct {
 	FaasVersion       rac.ResourceAttributeConfig `alloy:"faas.version,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"aws.log.group.names":  r.AwsLogGroupNames.Convert(),
 		"aws.log.stream.names": r.AwsLogStreamNames.Convert(),
 		"cloud.platform":       r.CloudPlatform.Convert(),
