@@ -72,6 +72,7 @@ If a configuration connects a receiver directly to an exporter, telemetry passes
 - Automatically redact or rewrite data.
 
 You must define every transformation, filter, or routing decision in the configuration.
+This includes decisions such as dropping telemetry, rewriting labels, sampling traces, or routing data to different backends.
 
 This explicit model is intentional.
 It gives you precise control over how {{< param "PRODUCT_NAME" >}} handles telemetry and avoids hidden behavior.

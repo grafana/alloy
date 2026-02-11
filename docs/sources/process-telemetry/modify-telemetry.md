@@ -9,6 +9,7 @@ weight: 300
 # Where {{% param "FULL_PRODUCT_NAME" %}} modifies telemetry
 
 Processors are the only place where telemetry changes.
+Processors can filter, rewrite, enrich, sample, or route telemetry depending on how you configure them.
 
 Receivers ingest data.
 Exporters send data out.
@@ -85,6 +86,8 @@ To determine where telemetry changes in a configuration:
 1. Inspect those components to understand their behavior.
 
 Those components define how telemetry changes before it leaves {{< param "PRODUCT_NAME" >}}.
+
+Understanding where modification occurs makes it easier to design pipelines that filter data, reduce noise, or control what gets sent to downstream systems.
 
 ## Next steps
 
