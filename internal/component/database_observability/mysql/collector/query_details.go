@@ -39,6 +39,7 @@ type QueryDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	StatementsLimit int
+	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	Logger log.Logger
@@ -48,6 +49,7 @@ type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	statementsLimit int
+	excludeSchemas  []string
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
@@ -63,6 +65,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		statementsLimit: args.StatementsLimit,
+		excludeSchemas:  args.ExcludeSchemas,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
@@ -120,7 +123,7 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueryTablesSamples, EXCLUDED_SCHEMAS, c.statementsLimit)
+	query := fmt.Sprintf(selectQueryTablesSamples, buildExcludedSchemasClause(c.excludeSchemas), c.statementsLimit)
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch summary table samples: %w", err)
@@ -128,7 +131,8 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		var digest, digestText, schema, sampleText string
+		var digest, digestText, schema string
+		var sampleText sql.NullString
 		if err := rs.Scan(&digest, &digestText, &schema, &sampleText); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schema, "err", err)
 			continue
@@ -136,8 +140,8 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 		var tables []string
 		var parserErr, lexerErr error
-		if tables, parserErr = c.tryParseTableNames(sampleText, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText, digestText); lexerErr != nil {
+		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
+			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
 				level.Warn(c.logger).Log("msg", "failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
 				continue
 			}

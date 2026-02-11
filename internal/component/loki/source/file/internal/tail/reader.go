@@ -3,18 +3,32 @@ package tail
 import (
 	"bufio"
 	"bytes"
+	"compress/bzip2"
+	"compress/gzip"
+	"compress/zlib"
+	"errors"
+	"io"
 	"os"
 	"unsafe"
 
+	"github.com/go-kit/log"
 	"golang.org/x/text/encoding"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const defaultBufSize = 4096
 
-func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
-	var bomBytes []byte
-	offset, bomBytes = skipBOM(f, offset)
-	enc = resolveEncodingFromBOM(bomBytes, enc)
+// newReader creates a new reader that is used to read from file.
+// It is important that the provided file is positioned at the start of the file.
+func newReader(logger log.Logger, f *os.File, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
+	rr, err := newReaderAt(f, compression, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	offsetAfterBOM, bom := detectBOM(rr, offset)
+	enc = resolveEncodingFromBOM(bom, enc)
 
 	var (
 		decoder = enc.NewDecoder()
@@ -31,42 +45,52 @@ func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error)
 		return nil, err
 	}
 
-	reader := &reader{
+	if offset == 0 && startFromEnd {
+		offset, err = lastNewline(f, nl)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
+		}
+	}
+
+	if offsetAfterBOM > offset {
+		offset = offsetAfterBOM
+	}
+
+	rr, err = newReaderAt(f, compression, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reader{
 		pos:     offset,
-		br:      bufio.NewReader(f),
+		br:      bufio.NewReader(rr),
 		decoder: decoder,
-		enc:     enc, // Store the encoding (after BOM detection) for use in reset
 		nl:      nl,
 		lastNl:  nl[len(nl)-1],
 		cr:      cr,
 		pending: make([]byte, 0, defaultBufSize),
-	}
-
-	return reader, nil
+	}, nil
 }
 
 type reader struct {
 	pos     int64
 	br      *bufio.Reader
-	decoder *encoding.Decoder
-	enc     encoding.Encoding
-
-	nl      []byte
-	lastNl  byte
-	cr      []byte
 	pending []byte
+
+	compression string
+	decoder     *encoding.Decoder
+
+	nl     []byte
+	lastNl byte
+	cr     []byte
 }
 
+// next reads and returns the next complete line from the file.
+// It will return EOF if there is no more data to read.
 func (r *reader) next() (string, error) {
-	// First we check if we already have a full line buffered.
-	if line, ok := r.consumeLine(); ok {
-		return r.decode(line)
-	}
-
 	for {
-
 		// Read more data up until the last byte of nl.
-		chunk, err := r.br.ReadBytes(r.lastNl)
+		chunk, err := r.br.ReadSlice(r.lastNl)
 		if len(chunk) > 0 {
 			r.pending = append(r.pending, chunk...)
 
@@ -75,14 +99,27 @@ func (r *reader) next() (string, error) {
 			}
 		}
 
-		// If we did not get an error and did not find a full line we
-		// need to read more data.
-		if err == nil {
-			continue
-		}
+		// ReadSlice does not allocate; it returns a slice into bufio's buffer and advances
+		// the read position. If we did not find a full line or got ErrBufferFull, loop and call again.
+		if err != nil && !errors.Is(err, bufio.ErrBufferFull) {
+			return "", err
 
-		return "", err
+		}
 	}
+}
+
+// flush returns any remaining buffered data as a line, even if it doesn't end with a newline.
+// This should be used when reaching EOF to handle the final partial line in the file.
+// Returns io.EOF if there is no pending data.
+func (r *reader) flush() (string, error) {
+	if len(r.pending) == 0 {
+		return "", io.EOF
+	}
+
+	line := r.pending[:]
+	r.pos += int64(len(line))
+	r.pending = r.pending[:0]
+	return r.decode(bytes.TrimSuffix(line, r.nl))
 }
 
 func (r *reader) decode(line []byte) (string, error) {
@@ -108,9 +145,9 @@ func (r *reader) consumeLine() ([]byte, bool) {
 
 	// Extract everything up until newline.
 	line := r.pending[:i]
-	// Keep everything except the line we extraxted and newline.
-	rem := r.pending[i+len(r.nl):]
-	r.pending = append(make([]byte, 0, defaultBufSize), rem...)
+
+	// Reset pending. We never buffer beyond newline so it is safe to reset.
+	r.pending = r.pending[:0]
 
 	// Advance the position on bytes we have consumed as a full line.
 	r.pos += int64(len(line) + len(r.nl))
@@ -124,24 +161,65 @@ func (r *reader) position() int64 {
 }
 
 // reset prepares the reader for a new file handle, assuming the same encoding.
-// It skips the BOM, resets the buffered reader and decoder, and clears pending data.
-func (r *reader) reset(f *os.File, offset int64) {
-	// Skip BOM if needed, we asume that the rotated file have the same encoding.
-	offset, _ = skipBOM(f, offset)
+// It is important that the provided file is positioned at the start of the file.
+func (r *reader) reset(f *os.File, offset int64) error {
+	rr, err := newReaderAt(f, r.compression, 0)
+	if err != nil {
+		return err
+	}
+
+	offset, _ = detectBOM(rr, offset)
+	rr, err = newReaderAt(f, r.compression, offset)
+	if err != nil {
+		return err
+	}
+
+	r.br.Reset(rr)
 	r.pos = offset
-	r.br.Reset(f)
-	r.decoder.Reset()
 	r.pending = make([]byte, 0, defaultBufSize)
+	return nil
 }
 
-func encodedNewline(e *encoding.Encoder) ([]byte, error) {
-	out := make([]byte, 10)
-	nDst, _, err := e.Transform(out, []byte{'\n'}, true)
-	return out[:nDst], err
-}
+func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error) {
+	// NOTE: If compression is used we always need to read from the beginning.
+	if compression != "" {
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+	}
 
-func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
-	out := make([]byte, 10)
-	nDst, _, err := e.Transform(out, []byte{'\r'}, true)
-	return out[:nDst], err
+	var (
+		reader io.Reader
+		err    error
+	)
+
+	switch compression {
+	case "gz":
+		reader, err = gzip.NewReader(f)
+	case "z":
+		reader, err = zlib.NewReader(f)
+	case "bz2":
+		reader = bzip2.NewReader(f)
+	default:
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return nil, err
+		}
+
+		reader = f
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE: If compression is used there is no easy way to seek to correct offset in the file
+	// because the offset we store is for uncompressed data. Instead we can discard until the correct
+	// offset.
+	if compression != "" && offset != 0 {
+		if _, err := io.CopyN(io.Discard, reader, offset); err != nil {
+			return nil, err
+		}
+	}
+
+	return reader, nil
 }

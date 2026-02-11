@@ -1,7 +1,12 @@
 package tail
 
 import (
+	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"context"
+	"errors"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -9,22 +14,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
 )
 
 func TestFile(t *testing.T) {
-	verify := func(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
-		t.Helper()
-		line, err := f.Next()
-		require.ErrorIs(t, err, expectedErr)
-		if expectedLine == nil {
-			require.Nil(t, line)
-		} else {
-			require.Equal(t, expectedLine.Text, line.Text)
-			require.Equal(t, expectedLine.Offset, line.Offset)
-		}
-	}
-
 	t.Run("file must exist", func(t *testing.T) {
 		_, err := NewFile(log.NewNopLogger(), &Config{
 			Filename: "/no/such/file",
@@ -52,10 +46,10 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 		defer file.Stop()
 
-		verify(t, file, &Line{Text: "test", Offset: 5}, nil)
-		verify(t, file, &Line{Text: testString, Offset: 4104}, nil)
-		verify(t, file, &Line{Text: "hello", Offset: 4110}, nil)
-		verify(t, file, &Line{Text: "world", Offset: 4116}, nil)
+		verifyResult(t, file, &Line{Text: "test", Offset: 5}, nil)
+		verifyResult(t, file, &Line{Text: testString, Offset: 4104}, nil)
+		verifyResult(t, file, &Line{Text: "hello", Offset: 4110}, nil)
+		verifyResult(t, file, &Line{Text: "world", Offset: 4116}, nil)
 	})
 
 	t.Run("read", func(t *testing.T) {
@@ -76,9 +70,9 @@ func TestFile(t *testing.T) {
 			require.NoError(t, err)
 			defer file.Stop()
 
-			verify(t, file, &Line{Text: "hello", Offset: first}, nil)
-			verify(t, file, &Line{Text: "world", Offset: middle}, nil)
-			verify(t, file, &Line{Text: "test", Offset: end}, nil)
+			verifyResult(t, file, &Line{Text: "hello", Offset: first}, nil)
+			verifyResult(t, file, &Line{Text: "world", Offset: middle}, nil)
+			verifyResult(t, file, &Line{Text: "test", Offset: end}, nil)
 		})
 
 		t.Run("skip first", func(t *testing.T) {
@@ -89,8 +83,8 @@ func TestFile(t *testing.T) {
 			require.NoError(t, err)
 			defer file.Stop()
 
-			verify(t, file, &Line{Text: "world", Offset: middle}, nil)
-			verify(t, file, &Line{Text: "test", Offset: end}, nil)
+			verifyResult(t, file, &Line{Text: "world", Offset: middle}, nil)
+			verifyResult(t, file, &Line{Text: "test", Offset: end}, nil)
 		})
 
 		t.Run("last", func(t *testing.T) {
@@ -101,7 +95,7 @@ func TestFile(t *testing.T) {
 			require.NoError(t, err)
 			defer file.Stop()
 
-			verify(t, file, &Line{Text: "test", Offset: end}, nil)
+			verifyResult(t, file, &Line{Text: "test", Offset: end}, nil)
 		})
 	})
 
@@ -116,12 +110,12 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 		defer file.Stop()
 
-		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "hello", Offset: 6}, nil)
 		go func() {
 			time.Sleep(50 * time.Millisecond)
 			appendToFile(t, name, "rld\n")
 		}()
-		verify(t, file, &Line{Text: "world", Offset: 12}, nil)
+		verifyResult(t, file, &Line{Text: "world", Offset: 12}, nil)
 	})
 
 	t.Run("truncate", func(t *testing.T) {
@@ -138,9 +132,9 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 		defer file.Stop()
 
-		verify(t, file, &Line{Text: "a really long string goes here", Offset: 31}, nil)
-		verify(t, file, &Line{Text: "hello", Offset: 37}, nil)
-		verify(t, file, &Line{Text: "world", Offset: 43}, nil)
+		verifyResult(t, file, &Line{Text: "a really long string goes here", Offset: 31}, nil)
+		verifyResult(t, file, &Line{Text: "hello", Offset: 37}, nil)
+		verifyResult(t, file, &Line{Text: "world", Offset: 43}, nil)
 
 		go func() {
 			// truncate now
@@ -148,9 +142,9 @@ func TestFile(t *testing.T) {
 			truncateFile(t, name, "h311o\nw0r1d\nendofworld\n")
 		}()
 
-		verify(t, file, &Line{Text: "h311o", Offset: 6}, nil)
-		verify(t, file, &Line{Text: "w0r1d", Offset: 12}, nil)
-		verify(t, file, &Line{Text: "endofworld", Offset: 23}, nil)
+		verifyResult(t, file, &Line{Text: "h311o", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "w0r1d", Offset: 12}, nil)
+		verifyResult(t, file, &Line{Text: "endofworld", Offset: 23}, nil)
 
 	})
 
@@ -164,7 +158,7 @@ func TestFile(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "hello", Offset: 6}, nil)
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
@@ -188,7 +182,7 @@ func TestFile(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		verify(t, file, &Line{Text: "hello", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "hello", Offset: 6}, nil)
 		removeFile(t, name)
 
 		go func() {
@@ -210,11 +204,11 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 		file.Stop()
 
-		verify(t, file, nil, context.Canceled)
+		verifyResult(t, file, nil, context.Canceled)
 	})
 
 	t.Run("file rotation drains remaining lines from old file", func(t *testing.T) {
-		name := createFile(t, "rotation", "line1\nline2\nline3\nline4\n")
+		name := createFile(t, "rotation", "line1\nline2\nline3\nline4\npartial")
 		defer removeFile(t, name)
 
 		file, err := NewFile(log.NewNopLogger(), &Config{
@@ -228,8 +222,8 @@ func TestFile(t *testing.T) {
 		defer file.Stop()
 
 		// Read first two lines
-		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
-		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+		verifyResult(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "line2", Offset: 12}, nil)
 
 		// Rotate the file
 		rotateFile(t, name, "newline1\nnewline2\n")
@@ -237,10 +231,11 @@ func TestFile(t *testing.T) {
 		// After rotation is detected, drain() should read all remaining
 		// lines from the old file (line3, line4, partial) before reading from the new file.
 		// Verify we get the remaining old lines first, then new lines
-		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
-		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
-		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
-		verify(t, file, &Line{Text: "newline2", Offset: 18}, nil)
+		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
+		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, &Line{Text: "partial", Offset: 31}, nil)
+		verifyResult(t, file, &Line{Text: "newline1", Offset: 9}, nil)
+		verifyResult(t, file, &Line{Text: "newline2", Offset: 18}, nil)
 	})
 
 	t.Run("deleted while reading", func(t *testing.T) {
@@ -261,115 +256,10 @@ func TestFile(t *testing.T) {
 			removeFile(t, name)
 		}()
 
-		verify(t, file, &Line{Text: "1", Offset: 2}, nil)
-		verify(t, file, &Line{Text: "2", Offset: 4}, nil)
-		verify(t, file, &Line{Text: "3", Offset: 6}, nil)
-		verify(t, file, &Line{Text: "4", Offset: 8}, nil)
-	})
-
-	t.Run("UTF-16LE", func(t *testing.T) {
-		file, err := NewFile(log.NewNopLogger(), &Config{
-			Filename: "testdata/mssql.log",
-			Encoding: unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM),
-		})
-		require.NoError(t, err)
-		defer file.Stop()
-
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 180}, nil)
-		verify(t, file, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 228}, nil)
-		verify(t, file, &Line{Text: "	Copyright (C) 2019 Microsoft Corporation", Offset: 314}, nil)
-		verify(t, file, &Line{Text: "	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)", Offset: 518}, nil)
-		verify(t, file, &Line{Text: "", Offset: 522}, nil)
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 636}, nil)
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 762}, nil)
-		verify(t, file, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
-	})
-
-	t.Run("should detect UTF-16LE encoding from BOM", func(t *testing.T) {
-		enc := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder()
-		encoded, err := enc.String("Hello, 世界\r\n")
-		require.NoError(t, err)
-		name := createFile(t, "utf-16LE", encoded)
-		defer removeFile(t, name)
-
-		file, err := NewFile(log.NewNopLogger(), &Config{
-			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
-		})
-		require.NoError(t, err)
-
-		verify(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
-		file.Stop()
-
-		enc = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
-		encoded, err = enc.String("newline\r\n")
-		require.NoError(t, err)
-		appendToFile(t, name, encoded)
-
-		// Reopen file from last offset to make sure it handles that.
-		file, err = NewFile(log.NewNopLogger(), &Config{
-			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
-			Offset:   24,
-		})
-		require.NoError(t, err)
-		defer file.Stop()
-
-		verify(t, file, &Line{Text: "newline", Offset: 42}, nil)
-	})
-
-	t.Run("should detect UTF-16BE encoding from BOM", func(t *testing.T) {
-		enc := unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder()
-		encoded, err := enc.String("Hello, 世界\r\n")
-		require.NoError(t, err)
-		name := createFile(t, "utf-16LE", encoded)
-		defer removeFile(t, name)
-
-		file, err := NewFile(log.NewNopLogger(), &Config{
-			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
-		})
-		require.NoError(t, err)
-
-		verify(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
-		file.Stop()
-
-		enc = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
-		encoded, err = enc.String("newline\r\n")
-		require.NoError(t, err)
-		appendToFile(t, name, encoded)
-
-		// Reopen file from last offset.
-		file, err = NewFile(log.NewNopLogger(), &Config{
-			Filename: name,
-			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
-			Encoding: unicode.UTF8,
-			Offset:   24,
-		})
-		require.NoError(t, err)
-		defer file.Stop()
-
-		verify(t, file, &Line{Text: "newline", Offset: 42}, nil)
-	})
-
-	t.Run("should detect UTF-8 encoding from BOM", func(t *testing.T) {
-		bytes := []byte("Hello, 世界\r\n")
-
-		name := createFile(t, "utf-8", string(append(bomUTF8, bytes...)))
-		defer removeFile(t, name)
-
-		file, err := NewFile(log.NewNopLogger(), &Config{
-			Filename: name,
-			// We are setting UTF-16BE here but still expect to decode the file using UTF-8
-			Encoding: unicode.UTF16(unicode.BigEndian, unicode.UseBOM),
-		})
-		require.NoError(t, err)
-		defer file.Stop()
-
-		verify(t, file, &Line{Text: "Hello, 世界", Offset: 18}, nil)
+		verifyResult(t, file, &Line{Text: "1", Offset: 2}, nil)
+		verifyResult(t, file, &Line{Text: "2", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "3", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "4", Offset: 8}, nil)
 	})
 
 	t.Run("should handle atomic writes", func(t *testing.T) {
@@ -387,12 +277,12 @@ func TestFile(t *testing.T) {
 		defer file.Stop()
 
 		// Read first two lines
-		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
-		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+		verifyResult(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "line2", Offset: 12}, nil)
 		atomicWrite(t, name, "line1\nline2\nline3\nline4\nnewline1\n")
-		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
-		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
-		verify(t, file, &Line{Text: "newline1", Offset: 33}, nil)
+		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
+		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, &Line{Text: "newline1", Offset: 33}, nil)
 	})
 
 	t.Run("should handle atomic writes with new content", func(t *testing.T) {
@@ -410,19 +300,268 @@ func TestFile(t *testing.T) {
 		defer file.Stop()
 
 		// Read first two lines
-		verify(t, file, &Line{Text: "line1", Offset: 6}, nil)
-		verify(t, file, &Line{Text: "line2", Offset: 12}, nil)
+		verifyResult(t, file, &Line{Text: "line1", Offset: 6}, nil)
+		verifyResult(t, file, &Line{Text: "line2", Offset: 12}, nil)
 		atomicWrite(t, name, "newline1\n")
 		// Because we buffer lines when file is deleted we still get line3 and line4.
-		verify(t, file, &Line{Text: "line3", Offset: 18}, nil)
-		verify(t, file, &Line{Text: "line4", Offset: 24}, nil)
-		verify(t, file, &Line{Text: "newline1", Offset: 9}, nil)
+		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
+		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, &Line{Text: "newline1", Offset: 9}, nil)
+	})
+
+	t.Run("UTF-16LE", func(t *testing.T) {
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: "testdata/mssql.log",
+			Encoding: "UTF-16LE",
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 180}, nil)
+		verifyResult(t, file, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 228}, nil)
+		verifyResult(t, file, &Line{Text: "	Copyright (C) 2019 Microsoft Corporation", Offset: 314}, nil)
+		verifyResult(t, file, &Line{Text: "	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)", Offset: 518}, nil)
+		verifyResult(t, file, &Line{Text: "", Offset: 522}, nil)
+		verifyResult(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00", Offset: 636}, nil)
+		verifyResult(t, file, &Line{Text: "2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.", Offset: 762}, nil)
+		verifyResult(t, file, &Line{Text: "2025-03-11 11:11:02.72 Server      All rights reserved.", Offset: 876}, nil)
+	})
+
+	t.Run("should detect UTF-16LE encoding from BOM", func(t *testing.T) {
+		enc := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder()
+		encoded, err := enc.String("Hello, 世界\r\n")
+		require.NoError(t, err)
+		name := createFile(t, "utf-16LE", encoded)
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
+		})
+		require.NoError(t, err)
+
+		verifyResult(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
+		file.Stop()
+
+		enc = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+		encoded, err = enc.String("newline\r\n")
+		require.NoError(t, err)
+		appendToFile(t, name, encoded)
+
+		// Reopen file from last offset to make sure it handles that.
+		file, err = NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
+			Offset:   24,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "newline", Offset: 42}, nil)
+	})
+
+	t.Run("should detect UTF-16BE encoding from BOM", func(t *testing.T) {
+		enc := unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder()
+		encoded, err := enc.String("Hello, 世界\r\n")
+		require.NoError(t, err)
+		name := createFile(t, "utf-16LE", encoded)
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
+		})
+		require.NoError(t, err)
+
+		verifyResult(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
+		file.Stop()
+
+		enc = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
+		encoded, err = enc.String("newline\r\n")
+		require.NoError(t, err)
+		appendToFile(t, name, encoded)
+
+		// Reopen file from last offset.
+		file, err = NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
+			Encoding: "UTF-8",
+			Offset:   24,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "newline", Offset: 42}, nil)
+	})
+
+	t.Run("should detect UTF-8 encoding from BOM", func(t *testing.T) {
+		bytes := []byte("Hello, 世界\r\n")
+
+		name := createFile(t, "utf-8", string(append(bomUTF8Bytes, bytes...)))
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: name,
+			Encoding: "UTF-16",
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "Hello, 世界", Offset: 18}, nil)
+	})
+
+	var (
+		utf8offsets  = [3]int64{6, 12, 18}
+		utf16offsets = [3]int64{14, 26, 38}
+	)
+
+	var (
+		nopEncoder        = encoding.Nop.NewEncoder()
+		utf16beEncoder    = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
+		utf16beBOMEncoder = unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder()
+		utf16leEncoder    = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+		utf16leBOMEncoder = unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder()
+	)
+
+	t.Run("read gzip", func(t *testing.T) {
+		compressionTest(t, "plain", "gz", nopEncoder, utf8offsets)
+		compressionTest(t, "utf-16be", "gz", utf16beBOMEncoder, utf16offsets)
+		compressionTest(t, "utf-16le", "gz", utf16leBOMEncoder, utf16offsets)
+	})
+
+	t.Run("read zlib", func(t *testing.T) {
+		compressionTest(t, "plain", "z", nopEncoder, utf8offsets)
+		compressionTest(t, "utf-16be", "z", utf16beBOMEncoder, utf16offsets)
+		compressionTest(t, "utf-16le", "z", utf16leBOMEncoder, utf16offsets)
+	})
+
+	t.Run("start from end", func(t *testing.T) {
+		startFromEndTest(t, "utf-8", nopEncoder, nopEncoder, false, 0, []Line{{Text: "line3", Offset: 18}})
+		startFromEndTest(t, "utf-16be", utf16beBOMEncoder, utf16beEncoder, false, 0, []Line{{Text: "line3", Offset: 38}})
+		startFromEndTest(t, "utf-16le", utf16leBOMEncoder, utf16leEncoder, false, 0, []Line{{Text: "line3", Offset: 38}})
+	})
+
+	t.Run("start from end with start offset", func(t *testing.T) {
+		startFromEndTest(t, "utf-8", nopEncoder, nopEncoder, false, 6, []Line{
+			{Text: "line2", Offset: 12},
+			{Text: "line3", Offset: 18},
+		})
+		startFromEndTest(t, "utf-8-cr", nopEncoder, nopEncoder, true, 7, []Line{
+			{Text: "line2", Offset: 14},
+			{Text: "line3", Offset: 21},
+		})
+		startFromEndTest(t, "utf-16be", utf16beBOMEncoder, utf16beEncoder, false, 14, []Line{
+			{Text: "line2", Offset: 26},
+			{Text: "line3", Offset: 38},
+		})
+		startFromEndTest(t, "utf-16be-cr", utf16beBOMEncoder, utf16beEncoder, true, 16, []Line{
+			{Text: "line2", Offset: 30},
+			{Text: "line3", Offset: 44},
+		})
+		startFromEndTest(t, "utf-16le", utf16leBOMEncoder, utf16leEncoder, false, 14, []Line{
+			{Text: "line2", Offset: 26},
+			{Text: "line3", Offset: 38},
+		})
+		startFromEndTest(t, "utf-16le", utf16leBOMEncoder, utf16leEncoder, true, 16, []Line{
+			{Text: "line2", Offset: 30},
+			{Text: "line3", Offset: 44},
+		})
 	})
 }
 
-func createFile(t *testing.T, name, content string) string {
-	path := t.TempDir() + "/" + name
-	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
+func compressionTest(t *testing.T, name, compression string, enc *encoding.Encoder, offsets [3]int64) {
+	t.Run(name, func(t *testing.T) {
+		content, err := enc.String("line1\nline2\nline3\n")
+		require.NoError(t, err)
+
+		fileName := createCompressedFile(t, name, compression, strings.NewReader(content))
+		defer removeFile(t, fileName)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename: fileName,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+			Compression: compression,
+		})
+		require.NoError(t, err)
+
+		verifyResult(t, file, &Line{Text: "line1", Offset: offsets[0]}, nil)
+		verifyResult(t, file, &Line{Text: "line2", Offset: offsets[1]}, nil)
+		verifyResult(t, file, &Line{Text: "line3", Offset: offsets[2]}, nil)
+		verifyResult(t, file, nil, io.EOF)
+		require.NoError(t, file.Stop())
+
+		file, err = NewFile(log.NewNopLogger(), &Config{
+			Filename: fileName,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+			Compression: compression,
+			Offset:      offsets[0],
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "line2", Offset: offsets[1]}, nil)
+		verifyResult(t, file, &Line{Text: "line3", Offset: offsets[2]}, nil)
+		verifyResult(t, file, nil, io.EOF)
+	})
+}
+
+func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encoding.Encoder, useCR bool, offset int64, expected []Line) {
+	t.Run(name, func(t *testing.T) {
+		var (
+			content string
+			err     error
+		)
+
+		if useCR {
+			content, err = encoder.String("line1\r\nline2\r\n")
+		} else {
+			content, err = encoder.String("line1\nline2\n")
+		}
+		require.NoError(t, err)
+
+		var toAppend string
+
+		if useCR {
+			toAppend, err = appendEncoder.String("line3\r\n")
+		} else {
+			toAppend, err = appendEncoder.String("line3\n")
+		}
+		require.NoError(t, err)
+
+		name := createFile(t, name, content)
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:     name,
+			Offset:       offset,
+			StartFromEnd: true,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			appendToFile(t, name, toAppend)
+		}()
+
+		for _, line := range expected {
+			verifyResult(t, file, &line, nil)
+		}
+	})
+}
+
+func createFile(tb testing.TB, name, content string) string {
+	path := tb.TempDir() + "/" + name
+	require.NoError(tb, os.WriteFile(path, []byte(content), 0600))
 	return path
 }
 
@@ -442,12 +581,90 @@ func truncateFile(t *testing.T, name, content string) {
 	require.NoError(t, err)
 }
 
-func removeFile(t *testing.T, name string) {
-	require.NoError(t, os.Remove(name))
+func removeFile(tb testing.TB, name string) {
+	require.NoError(tb, os.Remove(name))
 }
 
 func rotateFile(t *testing.T, name, newContent string) {
 	removeFile(t, name)
 	// Create new file with same name
 	require.NoError(t, os.WriteFile(name, []byte(newContent), 0600))
+}
+
+func createCompressedFile(t *testing.T, name, compression string, reader io.Reader) string {
+	path := t.TempDir() + "/" + name
+	f, err := os.Create(path)
+	require.NoError(t, err)
+
+	var (
+		writer io.WriteCloser
+	)
+
+	switch compression {
+	case "gz":
+		writer = gzip.NewWriter(f)
+	case "z":
+		writer = zlib.NewWriter(f)
+	case "bz2":
+		// go std lib to not provide writer for bzip2.
+		t.Fatalf("bz2 unimplemented")
+	default:
+		writer = f
+	}
+
+	_, err = io.Copy(writer, reader)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	// NOTE: if we did not provide a compression file is used as
+	// writer and we already closed it on the line above.
+	if err := f.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+		require.NoError(t, err)
+	}
+	return path
+}
+
+func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
+	t.Helper()
+	line, err := f.Next()
+
+	require.ErrorIs(t, err, expectedErr)
+	if expectedLine == nil {
+		require.Nil(t, line)
+	} else {
+		require.Equal(t, expectedLine.Text, line.Text)
+		require.Equal(t, expectedLine.Offset, line.Offset)
+	}
+}
+
+var benchLine *Line
+
+func BenchmarkFile(b *testing.B) {
+	// we create a file with 1000 lines and each line is 500 bytes.
+	line := bytes.Repeat([]byte{'a'}, 500)
+	lines := strings.Repeat(string(line)+"\n", 1000)
+	name := createFile(b, "benchfile", lines)
+	defer removeFile(b, name)
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:      name,
+			WatcherConfig: WatcherConfig{},
+		})
+		require.NoError(b, err)
+		// Disable waiting at EOF so Next returns io.EOF after the file is fully consumed.
+		file.waitAtEOF = false
+
+		for {
+			var err error
+			benchLine, err = file.Next()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			require.NoError(b, err)
+		}
+
+		file.Stop()
+	}
 }

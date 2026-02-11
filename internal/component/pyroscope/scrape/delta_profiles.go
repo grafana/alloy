@@ -71,7 +71,7 @@ type gzipBuffer struct {
 }
 
 var gzipBufferPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &gzipBuffer{
 			gzw: gzip.NewWriter(nil),
 			in:  bytes.NewReader(nil),

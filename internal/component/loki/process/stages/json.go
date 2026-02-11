@@ -93,7 +93,7 @@ func (j *jsonStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-func (j *jsonStage) processEntry(extracted map[string]interface{}, entry *string) error {
+func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error {
 	// If a source key is provided, the json stage should process it
 	// from the extracted map, otherwise should fall back to the entry
 	input := entry
@@ -124,7 +124,7 @@ func (j *jsonStage) processEntry(extracted map[string]interface{}, entry *string
 		return nil
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 
 	if err := json.Unmarshal([]byte(*input), &data); err != nil {
 		if Debug {

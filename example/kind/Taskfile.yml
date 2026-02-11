@@ -35,6 +35,20 @@ tasks:
       - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
       - helm repo update
 
+  deploy:alloy-helm:
+    desc: Deploy local Grafana Alloy helm chart
+    deps: [cluster:create]
+    vars:
+      ALLOY_VALUES_FILE: '{{.ALLOY_VALUES_FILE | default "config/alloy-helm/basic.yaml"}}'
+      ALLOY_CHART_PATH: '{{.TASK_DIR}}/../../operations/helm/charts/alloy'
+    preconditions:
+      - test -f {{.ALLOY_VALUES_FILE}}
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy {{.ALLOY_CHART_PATH}}
+        -n monitoring --create-namespace
+        -f {{.ALLOY_VALUES_FILE}}
+        --wait
+
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart
     deps: [cluster:create, update-helm-repos]

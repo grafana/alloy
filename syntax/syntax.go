@@ -105,7 +105,7 @@ import (
 // struct value as an Alloy value. The attribute name will be taken from the
 // name specified by the alloy struct tag. See MarshalValue for the rules used
 // to convert a Go value into an Alloy value.
-func Marshal(v interface{}) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf).Encode(v); err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func Marshal(v interface{}) ([]byte, error) {
 //	// When decoding, "my_name" is treated as an optional attribute and can be
 //	// omitted from the source text.
 //	Field bool `alloy:"my_name,attr,optional"`
-func MarshalValue(v interface{}) ([]byte, error) {
+func MarshalValue(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf).EncodeValue(v); err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func NewEncoder(w io.Writer) *Encoder {
 //
 // See the documentation for Marshal for details about the conversion of Go
 // values into Alloy configuration.
-func (enc *Encoder) Encode(v interface{}) error {
+func (enc *Encoder) Encode(v any) error {
 	f := builder.NewFile()
 	f.Body().AppendFrom(v)
 
@@ -196,7 +196,7 @@ func (enc *Encoder) Encode(v interface{}) error {
 //
 // See the documentation for MarshalValue for details about the conversion of
 // Go values into Alloy values.
-func (enc *Encoder) EncodeValue(v interface{}) error {
+func (enc *Encoder) EncodeValue(v any) error {
 	expr := builder.NewExpr()
 	expr.SetValue(v)
 
@@ -234,7 +234,7 @@ func (enc *Encoder) EncodeValue(v interface{}) error {
 //
 // Unmarshal follows the rules specified by UnmarshalValue when unmarshaling
 // the value of an attribute.
-func Unmarshal(in []byte, v interface{}) error {
+func Unmarshal(in []byte, v any) error {
 	dec := NewDecoder(bytes.NewReader(in))
 	return dec.Decode(v)
 }
@@ -286,7 +286,7 @@ func Unmarshal(in []byte, v interface{}) error {
 // reuses the existing map, keeping existing entries. Unmarshal then stores
 // key-value pairs from the Alloy object into the map. The map's key type must
 // be string.
-func UnmarshalValue(in []byte, v interface{}) error {
+func UnmarshalValue(in []byte, v any) error {
 	dec := NewDecoder(bytes.NewReader(in))
 	return dec.DecodeValue(v)
 }
@@ -308,7 +308,7 @@ func NewDecoder(r io.Reader) *Decoder {
 //
 // See the documentation for Unmarshal for details about the conversion of
 // Alloy configuration into Go values.
-func (dec *Decoder) Decode(v interface{}) error {
+func (dec *Decoder) Decode(v any) error {
 	bb, err := io.ReadAll(dec.r)
 	if err != nil {
 		return err
@@ -329,7 +329,7 @@ func (dec *Decoder) Decode(v interface{}) error {
 //
 // See the documentation for UnmarshalValue for details about the conversion of
 // Alloy values into Go values.
-func (dec *Decoder) DecodeValue(v interface{}) error {
+func (dec *Decoder) DecodeValue(v any) error {
 	bb, err := io.ReadAll(dec.r)
 	if err != nil {
 		return err
