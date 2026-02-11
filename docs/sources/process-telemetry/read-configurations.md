@@ -2,16 +2,8 @@
 canonical: https://grafana.com/docs/alloy/latest/process-telemetry/read-configurations/
 description: Learn how to interpret Grafana Alloy configurations using the graph model to trace data flow
 menuTitle: Read configurations
-title: Read a Grafana Alloy configuration as a data flow
+title: Read Grafana Alloy configurations as a data flow
 weight: 400
----
-
----
-canonical: https://grafana.com/docs/alloy/latest/process-telemetry/read-configurations/
-description: Learn how to read a Grafana Alloy configuration as a data flow graph
-menuTitle: Read configurations
-title: Read Grafana Alloy configurations as data flow
-weight: 40
 ---
 
 # Read {{% param "FULL_PRODUCT_NAME" %}} configurations as data flow
@@ -31,7 +23,7 @@ When reviewing a configuration:
 1. Determine what signal type it handles.
 1. Locate its declared outputs.
 
-A receiver without downstream connections does not forward telemetry anywhere.
+A receiver without downstream connections doesn't forward telemetry anywhere.
 Its data stops at the boundary of the graph.
 
 ## Follow the connections
@@ -71,10 +63,10 @@ Exporters define where telemetry leaves {{< param "PRODUCT_NAME" >}}.
 For each path:
 
 1. Identify the final downstream component.
-1. Confirm it is an exporter.
+1. Confirm it's an exporter.
 1. Determine which external system it targets.
 
-If a path does not terminate at an exporter, telemetry does not leave {{< param "PRODUCT_NAME" >}}.
+If a path doesn't end at an exporter, telemetry doesn't leave {{< param "PRODUCT_NAME" >}}.
 
 ## Recognize branching and isolation
 
@@ -92,11 +84,11 @@ Likewise, separate receivers may:
 
 Understanding these patterns makes it easier to reason about cost, performance, and signal separation.
 
-## Troubleshooting with the graph model
+## Troubleshoot with the graph model
 
 When telemetry behaves unexpectedly:
 
-- Verify the receiver is connected.
+- Verify that the receiver connects to downstream components.
 - Trace the full downstream path.
 - Confirm processing components are in the expected position.
 - Ensure the path ends at the correct exporter.
@@ -104,3 +96,8 @@ When telemetry behaves unexpectedly:
 Because {{< param "PRODUCT_NAME" >}} executes exactly what the configuration defines, unexpected behavior usually reflects an unexpected connection—or a missing one.
 
 With the component graph and pipeline model in mind, configurations become predictable and easier to debug.
+
+## Next steps
+
+- [Get started](../../get-started/) - Learn the fundamentals of {{< param "PRODUCT_NAME" >}} configuration syntax and components.
+- [Troubleshoot](../../troubleshoot/) - Find solutions to common issues and debugging techniques.
