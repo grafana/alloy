@@ -2,27 +2,19 @@
 canonical: https://grafana.com/docs/alloy/latest/process-telemetry/modify-telemetry/
 description: Learn where and how telemetry is modified in Grafana Alloy processing stages
 menuTitle: Modify telemetry
-title: Where telemetry is modified
-weight: 300
----
-
----
-canonical: https://grafana.com/docs/alloy/latest/process-telemetry/modify-telemetry/
-description: Understand where and how Grafana Alloy modifies telemetry within processing stages
-menuTitle: Modify telemetry
 title: Where Grafana Alloy modifies telemetry
-weight: 30
+weight: 300
 ---
 
 # Where {{% param "FULL_PRODUCT_NAME" %}} modifies telemetry
 
-Telemetry is only modified inside processing components.
+Processing components are the only place where telemetry changes.
 
 Receivers ingest data.
 Exporters send data out.
 Any change to telemetry happens between those two stages.
 
-If no processing components are connected in a path, telemetry passes through {{< param "PRODUCT_NAME" >}} without intermediate modification.
+If you don't connect processing components in a path, telemetry passes through {{< param "PRODUCT_NAME" >}} without modification.
 
 ## Modification happens in processing stages
 
@@ -41,36 +33,36 @@ Those components are responsible for any:
 - Routing logic
 - Sampling behavior
 
-If a processing component is not part of a path, it has no effect on that telemetry.
+If a processing component isn't part of a path, it has no effect on that telemetry.
 
 ## Modification is explicit
 
-{{< param "PRODUCT_NAME" >}} does not apply automatic transformations.
+{{< param "PRODUCT_NAME" >}} doesn't apply automatic transformations.
 
-It does not:
+It doesn't:
 
 - Redact log content by default.
 - Reduce metric cardinality automatically.
 - Drop telemetry unless configured.
 - Sample traces without an explicit sampling component.
 
-If telemetry is altered, the configuration defines where and how that alteration occurs.
+If telemetry changes, the configuration defines where and how that change occurs.
 
 This explicit model makes behavior predictable.
 You can identify exactly which component modifies data by tracing the graph.
 
 ## Signal-aware processing
 
-Logs, metrics, and traces move through separate pipelines.
-Processing components are designed to operate on specific signal types.
+Metrics, logs, and traces move through separate pipelines.
+Processing components operate on specific signal types.
 
 For example:
 
-- A log-processing component only affects log data.
 - A metric-processing component only affects metric data.
+- A log-processing component only affects log data.
 - A trace-processing component only affects trace data.
 
-A component cannot modify telemetry it does not receive.
+A component can't modify telemetry it doesn't receive.
 Signal type and graph connections both determine what gets processed.
 
 ## No modification at ingestion or export by default
@@ -78,13 +70,13 @@ Signal type and graph connections both determine what gets processed.
 Receivers focus on accepting telemetry and making it available inside the graph.
 Exporters focus on delivering telemetry to external systems.
 
-Unless explicitly documented otherwise for a specific component, receivers and exporters do not implicitly modify telemetry passing through them.
+Unless explicitly documented otherwise for a specific component, receivers, and exporters don't implicitly modify telemetry passing through them.
 
 All transformation logic belongs in configured processing stages.
 
-## Tracing modification paths
+## Trace modification paths
 
-To determine where telemetry is modified in a configuration:
+To determine where telemetry changes in a configuration:
 
 1. Start at a receiver.
 1. Follow downstream connections.
@@ -93,4 +85,6 @@ To determine where telemetry is modified in a configuration:
 
 Those components define how telemetry changes before it leaves {{< param "PRODUCT_NAME" >}}.
 
-Next, learn how to read configurations as data flow diagrams to make these paths easier to identify.
+## Next steps
+
+- [Read configurations as data flow](../read-configurations/) - Interpret configurations using the graph model to identify modification paths.
