@@ -731,7 +731,7 @@ require (
 	github.com/prometheus/alertmanager v0.28.1 // indirect
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
-	github.com/prometheus/client_golang/exp v0.0.0-20250914183048-a974e0d45e0a // indirect
+	github.com/prometheus/client_golang/exp v0.0.0-20251212205219-7ba246a648ca // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.4 // indirect
 	github.com/prometheus/consul_exporter v0.8.0 // indirect
@@ -741,7 +741,7 @@ require (
 	github.com/prometheus/node_exporter v1.9.1 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
-	github.com/prometheus/prometheus v0.308.0 // indirect
+	github.com/prometheus/prometheus v0.308.1 // indirect
 	github.com/prometheus/sigv4 v0.3.0 // indirect
 	github.com/prometheus/snmp_exporter v0.29.0 // indirect
 	github.com/prometheus/statsd_exporter v0.28.0 // indirect
