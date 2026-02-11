@@ -15,6 +15,10 @@ title: prometheus.write.queue
 `prometheus.write.queue` collects metrics sent from other components into a Write-Ahead Log (WAL) and forwards them over the network to a series of user-supplied endpoints.
 Metrics are sent over the network using the [Prometheus Remote Write protocol][remote_write-spec].
 
+{{< admonition type="note" >}}
+This component is deprecated and will be removed in a future version of {{< param "PRODUCT_NAME" >}}. Please use `prometheus.remote_write` instead.
+{{< /admonition >}}
+
 You can specify multiple `prometheus.write.queue` components by giving them different labels.
 
 [remote_write-spec]: https://prometheus.io/docs/specs/remote_write_spec/
