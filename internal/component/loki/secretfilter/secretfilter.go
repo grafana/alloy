@@ -206,11 +206,8 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 		c.metrics.processingDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	// Create a fragment and scan it
-	fragment := detect.Fragment{
-		Raw: entry.Line,
-	}
-	findings := c.detector.Detect(fragment)
+	// Scan the log line for secrets
+	findings := c.detector.DetectString(entry.Line)
 
 	// If no secrets found, return the original entry
 	if len(findings) == 0 {
