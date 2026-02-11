@@ -22,9 +22,9 @@ A component is a configured instance of a specific capability.
 
 Depending on its type, a component might:
 
-- Receive telemetry from an external source (receiver).
-- Process telemetry already inside {{< param "PRODUCT_NAME" >}} (processor).
-- Send telemetry to an external system (exporter).
+- Receive telemetry from an external source.
+- Process telemetry already inside {{< param "PRODUCT_NAME" >}}.
+- Send telemetry to an external system.
 
 Each component exposes defined inputs and outputs.
 These interfaces determine how it can connect to other components.
@@ -39,7 +39,7 @@ Telemetry flows only along declared connections.
 If two components aren't connected, they don't share data.
 There's no implicit global pipeline or automatic chaining of components.
 
-Connections create directed edges:
+Connections have direction:
 
 - Upstream components send telemetry.
 - Downstream components receive it.
@@ -88,10 +88,10 @@ Connections can form:
 
 When reviewing a configuration, ask:
 
-1. Which components exist?
-2. Which components connect to each other?
-3. Which components have no downstream consumers?
-4. Where does each path end?
+- Which components exist?
+- Which components connect to each other?
+- Which components have no downstream consumers?
+- Where does each path end?
 
 Answering these questions reveals how telemetry moves through the system.
 

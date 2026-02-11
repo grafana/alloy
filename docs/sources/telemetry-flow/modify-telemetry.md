@@ -80,7 +80,7 @@ Unless explicitly documented for a specific component, neither receivers nor exp
 
 All transformation logic belongs in configured processing stages.
 
-## Trace modification paths
+## Find where modification occurs
 
 To determine where telemetry changes in a configuration:
 
