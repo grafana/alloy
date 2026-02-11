@@ -227,9 +227,11 @@ func (p *profilingLoop) start() error {
 		"-o", "jfr",
 	)
 
-	// If CPU profiling is enabled, force the event to the default value
+	// If CPU profiling is enabled and no event is specified, default to itimer
 	if cfg.CPU {
-		cfg.Event = "itimer"
+		if cfg.Event == "" {
+			cfg.Event = "itimer"
+		}
 	}
 	argv = append(argv, "-e", cfg.Event)
 	if cfg.PerThread {
