@@ -44,8 +44,14 @@ In most configurations, telemetry follows a pattern like this:
 
 Receiver → Processor → Exporter
 
+This is a simplified representation of a single path through the component graph.
+{{< param "PRODUCT_NAME" >}} executes the entire graph, which can branch, merge, and contain multiple independent telemetry flows.
+
+Within any given path:
+
 - Receivers handle protocol decoding and normalization so {{< param "PRODUCT_NAME" >}} can represent telemetry internally.
   They don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that receiver.
+  Their role is limited to ingestion, decoding, and normalization.
 - Processors operate on that telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
 - Exporters send telemetry to external backends or systems.
 
