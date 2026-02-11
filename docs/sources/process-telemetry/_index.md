@@ -14,9 +14,11 @@ That graph determines exactly how telemetry moves through the system.
 Telemetry doesn't "flow through {{< param "PRODUCT_NAME" >}}" in a generic or automatic way.
 It moves along explicit connections between components.
 If two components aren't connected, no data passes between them.
-If a processing stage isn't configured, no processing occurs.
+If a processor isn't configured in the path, no processing occurs.
 
 Understanding this execution model makes it much easier to reason about behavior, performance, and outcomes.
+
+For detailed behavior of individual components, refer to the [component reference](../reference/components/).
 
 ## Component graph execution
 
@@ -40,10 +42,11 @@ Every path is explicit.
 
 In most configurations, telemetry follows a pattern like this:
 
-Receiver → Processing → Exporter
+Receiver → Processor → Exporter
 
-- Receivers accept telemetry from external sources.
-- Processing components operate on that telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
+- Receivers are responsible for protocol handling and normalization so telemetry can be represented inside {{< param "PRODUCT_NAME" >}}.
+  They do not perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that receiver.
+- Processors operate on that telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
 - Exporters send telemetry to external backends or systems.
 
 These roles are logical, not magical.
