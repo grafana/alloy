@@ -43,7 +43,7 @@ If a receiver has no downstream connection, its telemetry goes nowhere.
 Processors operate on telemetry after ingestion and before export.
 
 They sit between receivers and exporters in the graph.
-If you include processing components in a path, telemetry flows through them.
+If you include processors in a path, telemetry flows through them.
 If you don't, telemetry moves directly to the exporter unchanged.
 
 Processing can:
