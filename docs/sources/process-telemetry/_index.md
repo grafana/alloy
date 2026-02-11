@@ -43,8 +43,8 @@ Every path is explicit.
 In most configurations, telemetry follows a pattern like this:
 
 {{< mermaid >}}
-flowchart LR
-    Receiver --> Processor --> Exporter
+graph LR
+  Receiver --> Processor --> Exporter
 {{< /mermaid >}}
 
 This is a simplified representation of a single path through the component graph.
