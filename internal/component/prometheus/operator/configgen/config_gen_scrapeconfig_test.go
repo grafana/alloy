@@ -8,7 +8,6 @@ import (
 	"time"
 
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -406,7 +405,7 @@ func TestGenerateEc2ScrapeConfigConfig(t *testing.T) {
 			ec2Config: promopv1alpha1.EC2SDConfig{
 				Region:          ptr.To("eu-west-1"),
 				Port:            ptr.To(int32(9090)),
-				RefreshInterval: ptr.To(v1.Duration("30s")),
+				RefreshInterval: ptr.To(promopv1.Duration("30s")),
 			},
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
@@ -617,7 +616,7 @@ func TestGenerateEc2ScrapeConfigConfig(t *testing.T) {
 			},
 			ec2Config: promopv1alpha1.EC2SDConfig{
 				Region: ptr.To("eu-central-1"),
-				ProxyConfig: v1.ProxyConfig{
+				ProxyConfig: promopv1.ProxyConfig{
 					ProxyURL:             ptr.To("http://proxy.example.com:8080"),
 					NoProxy:              ptr.To("localhost,127.0.0.1"),
 					ProxyFromEnvironment: ptr.To(true),
@@ -679,7 +678,7 @@ func TestGenerateEc2ScrapeConfigConfig(t *testing.T) {
 			},
 			ec2Config: promopv1alpha1.EC2SDConfig{
 				Region:          ptr.To("us-east-1"),
-				RefreshInterval: ptr.To(v1.Duration("invalid")),
+				RefreshInterval: ptr.To(promopv1.Duration("invalid")),
 			},
 			expectError: true,
 		},
@@ -693,7 +692,7 @@ func TestGenerateEc2ScrapeConfigConfig(t *testing.T) {
 			},
 			ec2Config: promopv1alpha1.EC2SDConfig{
 				Region: ptr.To("us-east-1"),
-				ProxyConfig: v1.ProxyConfig{
+				ProxyConfig: promopv1.ProxyConfig{
 					ProxyURL: ptr.To("://invalid-url"),
 				},
 			},
@@ -779,6 +778,6 @@ func (m *mockSecretStore) GetConfigMapValue(_ string, _ corev1.ConfigMapKeySelec
 	panic("not implemented yet")
 }
 
-func (m *mockSecretStore) SecretOrConfigMapValue(_ string, _ v1.SecretOrConfigMap) (string, error) {
+func (m *mockSecretStore) SecretOrConfigMapValue(_ string, _ promopv1.SecretOrConfigMap) (string, error) {
 	panic("not implemented yet")
 }
