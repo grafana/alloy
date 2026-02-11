@@ -43,7 +43,7 @@ Every path is explicit.
 In most configurations, telemetry follows a pattern like this:
 
 {{< mermaid >}}
-graph LR
+flowchart LR
   Receiver --> Processor --> Exporter
 {{< /mermaid >}}
 
