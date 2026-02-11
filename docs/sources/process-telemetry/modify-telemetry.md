@@ -6,40 +6,91 @@ title: Where telemetry is modified
 weight: 300
 ---
 
-# Where telemetry is modified
+---
+canonical: https://grafana.com/docs/alloy/latest/process-telemetry/modify-telemetry/
+description: Understand where and how Grafana Alloy modifies telemetry within processing stages
+menuTitle: Modify telemetry
+title: Where Grafana Alloy modifies telemetry
+weight: 30
+---
 
-Purpose
+# Where {{% param "FULL_PRODUCT_NAME" %}} modifies telemetry
 
-This is the anchor page for future expansion (but still within #5430 scope).
+Telemetry is only modified inside processing components.
 
-It should:
+Receivers ingest data.
+Exporters send data out.
+Any change to telemetry happens between those two stages.
 
-Clarify that all transformation happens in processing components.
+If no processing components are connected in a path, telemetry passes through {{< param "PRODUCT_NAME" >}} without intermediate modification.
 
-Emphasize that modification is explicit.
+## Modification happens in processing stages
 
-Avoid listing all capability categories (that belongs to #5494).
+A typical path looks like this:
 
-Content Outline
+Receiver → Processing → Exporter
 
-1. Modification occurs in processing stages
+Processing components sit in the middle of that path.
+They receive telemetry from upstream components and forward the resulting telemetry downstream.
 
-Receivers ingest.
+Those components are responsible for any:
 
-Processing components modify.
+- Field updates
+- Label changes
+- Filtering decisions
+- Routing logic
+- Sampling behavior
 
-Exporters deliver.
+If a processing component is not part of a path, it has no effect on that telemetry.
 
-2. Modification is explicit and configurable
+## Modification is explicit
 
-Alloy does not automatically redact, filter, or rewrite data.
+{{< param "PRODUCT_NAME" >}} does not apply automatic transformations.
 
-If telemetry is changed, it is because the configuration specifies it.
+It does not:
 
-3. Signal-specific behavior
+- Redact log content by default.
+- Reduce metric cardinality automatically.
+- Drop telemetry unless configured.
+- Sample traces without an explicit sampling component.
 
-Logs, metrics, and traces have distinct processing chains.
+If telemetry is altered, the configuration defines where and how that alteration occurs.
 
-Processing components are signal-aware.
+This explicit model makes behavior predictable.
+You can identify exactly which component modifies data by tracing the graph.
 
-This page creates a conceptual hook for later capability grouping without implementing it now.
+## Signal-aware processing
+
+Logs, metrics, and traces move through separate pipelines.
+Processing components are designed to operate on specific signal types.
+
+For example:
+
+- A log-processing component only affects log data.
+- A metric-processing component only affects metric data.
+- A trace-processing component only affects trace data.
+
+A component cannot modify telemetry it does not receive.
+Signal type and graph connections both determine what gets processed.
+
+## No modification at ingestion or export by default
+
+Receivers focus on accepting telemetry and making it available inside the graph.
+Exporters focus on delivering telemetry to external systems.
+
+Unless explicitly documented otherwise for a specific component, receivers and exporters do not implicitly modify telemetry passing through them.
+
+All transformation logic belongs in configured processing stages.
+
+## Tracing modification paths
+
+To determine where telemetry is modified in a configuration:
+
+1. Start at a receiver.
+1. Follow downstream connections.
+1. Identify any processing components in the path.
+1. Inspect those components to understand their behavior.
+
+Those components define how telemetry changes before it leaves {{< param "PRODUCT_NAME" >}}.
+
+Next, learn how to read configurations as data flow diagrams to make these paths easier to identify.
