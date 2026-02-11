@@ -6,7 +6,7 @@ title: The Grafana Alloy component graph
 weight: 100
 ---
 
-# The Grafana Alloy component graph
+# The {{% param "FULL_PRODUCT_NAME" %}} component graph
 
 An {{< param "PRODUCT_NAME" >}} configuration defines a graph of components.
 
@@ -37,7 +37,7 @@ Each instance operates independently unless you explicitly connect them.
 Telemetry flows only along declared connections.
 
 If two components aren't connected, they don't share data.
-There is no implicit global pipeline or automatic chaining of components.
+There's no implicit global pipeline or automatic chaining of components.
 
 Connections create directed edges:
 
@@ -55,10 +55,10 @@ You can determine exactly where data goes by following connections.
 It doesn't automatically insert processing stages.
 It doesn't route telemetry unless you configure it to do so.
 
-If a component isn't connected to anything downstream, its output isn't consumed.
+If a component isn't connected to anything downstream, nothing consumes its output.
 If a receiver isn't connected to a processor or exporter, its telemetry doesn't go anywhere.
 
-Every data path must be defined.
+You must define every data path.
 
 ## Multiple graphs in one configuration
 
@@ -75,15 +75,19 @@ The configuration determines whether data paths intersect or remain isolated.
 
 There's no requirement that all telemetry types follow the same structure.
 
-## Reasoning about the graph
+## Reason about the graph
 
 When reviewing a configuration, focus on:
 
 1. Which components exist?
-1. Which components are connected?
+1. How do components connect to each other?
 1. Which components have no downstream consumers?
-1. Where does each path terminate?
+1. Where does each path end?
 
 Following those edges reveals how {{< param "PRODUCT_NAME" >}} executes the configuration.
 
-Next, explore how these graph structures form complete telemetry pipelines from ingestion to export.
+## Next steps
+
+- [Telemetry pipelines](../pipelines/) - Learn how telemetry flows from ingestion through processing to export.
+- [Where telemetry is modified](../modify-telemetry/) - Understand where modification occurs in processing stages.
+- [Read configurations as data flow](../read-configurations/) - Interpret configurations using the graph model.
