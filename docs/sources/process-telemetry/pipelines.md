@@ -52,7 +52,7 @@ Processing can:
 - Filter telemetry.
 - Route telemetry to different downstream components.
 
-Processing only happens when you connect a processing component in the path.
+Processing only happens when you connect a processor in the path.
 
 ## Export
 

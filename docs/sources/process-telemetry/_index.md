@@ -33,7 +33,7 @@ When {{< param "PRODUCT_NAME" >}} starts, it:
 
 The result is a directed graph.
 Telemetry flows from upstream components to downstream components.
-The configuration entirely defines the direction and shape of that flow.
+The configuration defines the direction and shape of that flow.
 
 No global pipeline automatically handles all data.
 Every path is explicit.
