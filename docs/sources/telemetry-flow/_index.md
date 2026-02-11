@@ -101,10 +101,10 @@ There's no requirement that all signals pass through the same path.
 
 When reading or writing a configuration, focus on how telemetry moves:
 
-1. Where does telemetry enter?
-2. Which components receive it?
-3. Which components does it pass through next?
-4. Where does it leave {{< param "PRODUCT_NAME" >}}?
+- Where does telemetry enter?
+- Which components receive it?
+- Which components does it pass through next?
+- Where does it leave {{< param "PRODUCT_NAME" >}}?
 
 Following those connections reveals exactly what {{< param "PRODUCT_NAME" >}} does at runtime.
 
