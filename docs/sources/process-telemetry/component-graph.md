@@ -22,9 +22,9 @@ A component is a configured instance of a specific capability.
 
 Depending on its type, a component might:
 
-- Receive telemetry from an external source.
-- Process telemetry already inside {{< param "PRODUCT_NAME" >}}.
-- Export telemetry to an external system.
+- Receive telemetry from an external source (receivers).
+- Process telemetry already inside {{< param "PRODUCT_NAME" >}} (processors).
+- Export telemetry to an external system (exporters).
 
 Each component exposes defined inputs and outputs.
 These interfaces determine how it can connect to other components.
@@ -59,6 +59,9 @@ If a component isn't connected to anything downstream, nothing consumes its outp
 If a receiver isn't connected to a processor or exporter, its telemetry doesn't go anywhere.
 
 You must define every data path.
+{{< param "PRODUCT_NAME" >}} executes exactly the graph defined in the configuration.
+There is no implicit ordering or background pipeline outside of that graph.
+
 
 ## Multiple graphs in one configuration
 

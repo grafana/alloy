@@ -17,7 +17,7 @@ The configuration defines every stage.
 
 A common shape looks like this:
 
-Receiver → Processing → Exporter
+Receiver → Processor → Exporter
 
 That pattern is conceptual.
 The actual structure depends entirely on how you connect the components.
@@ -38,9 +38,9 @@ From that point forward, telemetry moves between components inside the configure
 
 If a receiver has no downstream connection, its telemetry goes nowhere.
 
-## Processing
+## Processors
 
-Processing components operate on telemetry after ingestion and before export.
+Processors operate on telemetry after ingestion and before export.
 
 They sit between receivers and exporters in the graph.
 If you include processing components in a path, telemetry flows through them.
