@@ -291,6 +291,7 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		uniqueRefToChildRefs: make(map[storage.SeriesRef]uniqRefChildren),
 		nextUniqueRef:        1,
 		uniqueRefTimestamps:  make(map[storage.SeriesRef]int64),
+		labelHashToUniqueRef: make(map[uint64]storage.SeriesRef),
 		cellPool: sync.Pool{
 			New: func() any {
 				return &Cell{Refs: make([]storage.SeriesRef, 100)}
@@ -319,10 +320,6 @@ type Cell struct {
 // same mapping with different values, which is safe because stale mappings are self-correcting -
 // using a stale ref will cause the child appender to return a new ref on the next append.
 func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
-	if uniqueRef == 0 {
-		return nil
-	}
-
 	s.refMappingMu.RLock()
 	defer s.refMappingMu.RUnlock()
 

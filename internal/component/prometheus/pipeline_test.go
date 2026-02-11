@@ -522,8 +522,9 @@ func BenchmarkStoreFlows(b *testing.B) {
 			for b.Loop() {
 				cell := sm.GetCellForAppendedSeries()
 				for i, _ := range metrics {
-					sm.GetMapping(storage.SeriesRef(i))
-					sm.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i)})
+					lbls := metrics[i]
+					sm.GetMapping(storage.SeriesRef(i), lbls)
+					sm.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i)}, lbls)
 					cell.Refs = append(cell.Refs, storage.SeriesRef(i))
 				}
 				sm.TrackAppendedSeries(time.Now().UnixMilli(), cell)

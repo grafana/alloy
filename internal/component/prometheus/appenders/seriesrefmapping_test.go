@@ -103,24 +103,24 @@ func TestUpdateMappingWithZeroRefDoesNothing(t *testing.T) {
 func TestTrackAppendedSeriesDoesNotPanic(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
-	slice := store.GetCellForAppendedSeries()
-	slice = append(slice, 1, 2, 3)
+	cell := store.GetCellForAppendedSeries()
+	cell.Refs = append(cell.Refs, 1, 2, 3)
 
 	require.NotPanics(t, func() {
-		store.TrackAppendedSeries(time.Now().Unix(), slice)
+		store.TrackAppendedSeries(time.Now().Unix(), cell)
 	})
 }
 
 func TestSliceIsEmptyAfterReturn(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
-	slice1 := store.GetCellForAppendedSeries()
-	slice1 = append(slice1, 1, 2, 3)
-	store.TrackAppendedSeries(time.Now().Unix(), slice1)
+	cell1 := store.GetCellForAppendedSeries()
+	cell1.Refs = append(cell1.Refs, 1, 2, 3)
+	store.TrackAppendedSeries(time.Now().Unix(), cell1)
 
-	slice2 := store.GetCellForAppendedSeries()
-	require.NotNil(t, slice2)
-	require.Equal(t, 0, len(slice2), "slice returned should always have length 0")
+	cell2 := store.GetCellForAppendedSeries()
+	require.NotNil(t, cell2)
+	require.Equal(t, 0, len(cell2.Refs), "slice returned should always have length 0")
 }
 
 func TestRefsAreEventuallyCleanedUp(t *testing.T) {
@@ -134,9 +134,9 @@ func TestRefsAreEventuallyCleanedUp(t *testing.T) {
 		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
-		slice := store.GetCellForAppendedSeries()
-		slice = append(slice, uniqueRef)
-		store.TrackAppendedSeries(oldTimestamp, slice)
+		cell := store.GetCellForAppendedSeries()
+		cell.Refs = append(cell.Refs, uniqueRef)
+		store.TrackAppendedSeries(oldTimestamp, cell)
 
 		// Verify mapping exists initially
 		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
@@ -160,9 +160,9 @@ func TestRecentlyTrackedRefsAreNotCleanedUp(t *testing.T) {
 		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		recentTimestamp := time.Now().Unix()
-		slice := store.GetCellForAppendedSeries()
-		slice = append(slice, uniqueRef)
-		store.TrackAppendedSeries(recentTimestamp, slice)
+		cell := store.GetCellForAppendedSeries()
+		cell.Refs = append(cell.Refs, uniqueRef)
+		store.TrackAppendedSeries(recentTimestamp, cell)
 
 		// Wait for a cleanup cycle
 		time.Sleep(16 * time.Minute)
@@ -183,18 +183,18 @@ func TestTrackingRefAgainUpdatesTimestamp(t *testing.T) {
 		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
-		slice1 := store.GetCellForAppendedSeries()
-		slice1 = append(slice1, uniqueRef)
-		store.TrackAppendedSeries(oldTimestamp, slice1)
+		cell1 := store.GetCellForAppendedSeries()
+		cell1.Refs = append(cell1.Refs, uniqueRef)
+		store.TrackAppendedSeries(oldTimestamp, cell1)
 
 		// Wait a bit
 		time.Sleep(1 * time.Minute)
 
 		// Track the same ref again with current timestamp
 		currentTimestamp := time.Now().Unix()
-		slice2 := store.GetCellForAppendedSeries()
-		slice2 = append(slice2, uniqueRef)
-		store.TrackAppendedSeries(currentTimestamp, slice2)
+		cell2 := store.GetCellForAppendedSeries()
+		cell2.Refs = append(cell2.Refs, uniqueRef)
+		store.TrackAppendedSeries(currentTimestamp, cell2)
 
 		// Wait for cleanup cycle
 		time.Sleep(16 * time.Minute)
@@ -216,9 +216,9 @@ func TestClearRemovesAllMappings(t *testing.T) {
 		uniqueRefs = append(uniqueRefs, uniqueRef)
 
 		// Track them
-		slice := store.GetCellForAppendedSeries()
-		slice = append(slice, uniqueRef)
-		store.TrackAppendedSeries(time.Now().Unix(), slice)
+		cell := store.GetCellForAppendedSeries()
+		cell.Refs = append(cell.Refs, uniqueRef)
+		store.TrackAppendedSeries(time.Now().Unix(), cell)
 	}
 
 	// Verify they exist
@@ -370,9 +370,9 @@ func TestConcurrentTrackingIsCorrect(t *testing.T) {
 
 			// Each tracker tracks a subset of refs
 			for j := id; j < len(uniqueRefs); j += numTrackers {
-				slice := store.GetCellForAppendedSeries()
-				slice = append(slice, uniqueRefs[j])
-				store.TrackAppendedSeries(time.Now().Unix(), slice)
+				cell := store.GetCellForAppendedSeries()
+				cell.Refs = append(cell.Refs, uniqueRefs[j])
+				store.TrackAppendedSeries(time.Now().Unix(), cell)
 			}
 		}(i)
 	}
