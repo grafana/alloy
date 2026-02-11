@@ -77,7 +77,7 @@ replaces:
 
   - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
     dependency: github.com/google/cadvisor
-    replacement: github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+    replacement: github.com/grafana/cadvisor grafana-v0.54.1-noglobals
 
   - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
