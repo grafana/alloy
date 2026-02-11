@@ -26,19 +26,55 @@ Depending on its type, a component might:
 - Process telemetry already inside {{< param "PRODUCT_NAME" >}} (processor).
 - Send telemetry to an external system (exporter).
 
-Multiple instances of the same component type can exist in one configuration.
-Each operates independently unless connected.
+Each component exposes defined inputs and outputs.
+These interfaces determine how it can connect to other components.
 
-## Connections define behavior
+Multiple instances of the same component type can exist in a single configuration.
+Each instance operates independently unless you explicitly connect them.
 
-Telemetry flows only where components are connected.
+## Connections define data flow
+
+Telemetry flows only along declared connections.
 
 If two components aren't connected, they don't share data.
-If a receiver has no downstream connection, its telemetry goes nowhere.
-If a processor isn't in a path, it has no effect.
+There's no implicit global pipeline or automatic chaining of components.
 
+Connections create directed edges:
+
+- Upstream components send telemetry.
+- Downstream components receive it.
+
+The direction and shape of the flow come entirely from the configuration.
+
+This explicit model makes telemetry flow predictable.
+You can determine exactly where data goes by following connections.
+
+## No hidden behavior
+
+{{< param "PRODUCT_NAME" >}} doesn't infer connections.
+It doesn't automatically insert processing stages.
+It doesn't route telemetry unless you configure it to do so.
+
+If a component isn't connected to anything downstream, nothing consumes its output.
+If a receiver isn't connected to a processor or exporter, its telemetry doesn't go anywhere.
+
+You must define every data path.
 {{< param "PRODUCT_NAME" >}} executes exactly the connections defined in the configuration.
-There is no hidden pipeline or automatic chaining of components.
+
+## Multiple independent flows
+
+A single configuration can contain multiple independent flows.
+
+For example:
+
+- One set of components collects and exports metrics.
+- Another set handles logs.
+- A third handles traces.
+
+These flows can share components, or they can remain completely separate.
+The configuration determines whether data paths intersect or remain isolated.
+
+There's no requirement that all telemetry types follow the same structure.
 
 ## Branches and merges
 
@@ -47,8 +83,6 @@ Connections can form:
 - Straight paths
 - Branching paths that send telemetry to multiple downstream components
 - Merged paths where multiple upstream components feed into a shared exporter
-
-A configuration may contain several independent paths for different signal types.
 
 ## Reason about connections
 

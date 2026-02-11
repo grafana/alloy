@@ -21,11 +21,31 @@ Understanding how telemetry flows through connected components makes it easier t
 
 For detailed behavior of individual components, refer to the [component reference](../reference/components/).
 
+## How {{< param "PRODUCT_NAME" >}} starts
+
+An {{< param "PRODUCT_NAME" >}} configuration declares components.
+Each component has a specific role, such as receiving telemetry, processing it, or exporting it.
+
+When {{< param "PRODUCT_NAME" >}} starts, it:
+
+1. Instantiates the configured components.
+1. Connects them according to their declared relationships.
+1. Begins passing telemetry along those connections.
+
+Telemetry flows from upstream components to downstream components.
+The configuration defines the direction and shape of that flow.
+
+No global pipeline automatically handles all data.
+Every path is explicit.
+
 ## Telemetry follows defined paths
 
 In most configurations, telemetry follows a pattern like this:
 
-Receiver → Processor → Exporter
+{{< mermaid >}}
+flowchart LR
+  Receiver --> Processor --> Exporter
+{{< /mermaid >}}
 
 This is a simplified representation of a single path.
 In practice, configurations often branch, merge, and contain multiple independent telemetry paths.
@@ -33,8 +53,14 @@ In practice, configurations often branch, merge, and contain multiple independen
 Within any given path:
 
 - **Receivers** handle protocol decoding and normalization so {{< param "PRODUCT_NAME" >}} can represent telemetry internally.
+  They don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that receiver.
+  They only handle ingestion, decoding, and normalization.
 - **Processors** operate on telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
 - **Exporters** send telemetry to external systems.
+
+These roles are logical.
+A receiver doesn't modify data unless you configure it to do so.
+An exporter doesn't filter data unless something upstream has filtered it.
 
 If you connect a receiver directly to an exporter, telemetry passes through without intermediate modification.
 
@@ -51,8 +77,10 @@ It doesn't:
 - Automatically redact or rewrite data.
 
 You must define every transformation, filtering decision, routing rule, or sampling policy in the configuration.
+This includes decisions such as dropping telemetry, rewriting labels, sampling traces, or routing data to different backends.
 
-This explicit model gives you precise control and predictable behavior.
+This explicit model is intentional.
+It gives you precise control over how {{< param "PRODUCT_NAME" >}} handles telemetry and avoids hidden behavior.
 
 ## Multiple independent paths
 
@@ -66,6 +94,8 @@ For example:
 
 These paths can share components, or they can remain completely separate.
 Their behavior depends entirely on how you connect them.
+
+There's no requirement that all signals pass through the same path.
 
 ## Think in terms of data flow
 
