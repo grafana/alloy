@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"golang.org/x/text/encoding"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -27,23 +26,24 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		return nil, err
 	}
 
-	if cfg.Encoding == nil {
-		cfg.Encoding = encoding.Nop
+	encoding, err := getEncoding(cfg.Encoding)
+	if err != nil {
+		return nil, err
 	}
 
 	if cfg.WatcherConfig == (WatcherConfig{}) {
 		cfg.WatcherConfig = defaultWatcherConfig
 	}
 
-	if cfg.Offset != 0 {
-		// Seek to provided offset
-		if _, err := f.Seek(cfg.Offset, io.SeekStart); err != nil {
-			return nil, err
-		}
+	sig, err := newSignatureFromFile(f)
+	if err != nil {
+		f.Close()
+		return nil, err
 	}
 
-	scanner, err := newReader(f, cfg.Offset, cfg.Encoding)
+	reader, err := newReader(logger, f, cfg.Offset, encoding, cfg.Compression, cfg.StartFromEnd)
 	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
@@ -51,12 +51,14 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &File{
-		cfg:    cfg,
-		logger: logger,
-		file:   f,
-		reader: scanner,
-		ctx:    ctx,
-		cancel: cancel,
+		cfg:       cfg,
+		logger:    logger,
+		file:      f,
+		reader:    reader,
+		ctx:       ctx,
+		cancel:    cancel,
+		signature: sig,
+		waitAtEOF: cfg.Compression == "",
 	}, nil
 }
 
@@ -67,10 +69,10 @@ type File struct {
 	cfg    *Config
 	logger log.Logger
 
-	// protects file, reader, and lastOffset.
-	mu     sync.Mutex
-	file   *os.File
-	reader *reader
+	mu        sync.Mutex
+	file      *os.File
+	reader    *reader
+	signature *signature
 
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
@@ -78,6 +80,10 @@ type File struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	// waitAtEOF controls whether we should wait for file events
+	// when we get EOF
+	waitAtEOF bool
 }
 
 // Next reads and returns the next line from the file.
@@ -105,18 +111,47 @@ read:
 
 	text, err := f.reader.next()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) && f.waitAtEOF {
 			if err := f.wait(); err != nil {
 				return nil, err
 			}
 			goto read
 		}
-		return nil, err
+
+		// If we should wait at EOF we go an unexpected error
+		// here and can just return.
+		if f.waitAtEOF {
+			return nil, err
+		}
+
+		if !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+
+		// If we should return at EOF we want to flush all remaining
+		// data from reader.
+		text, err = f.reader.flush()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	offset := f.reader.position()
+
+	// Recompute signature if we've crossed a threshold and haven't reached it yet.
+	// This progressively builds a more complete signature as the file grows.
+	if f.signature.shouldRecompute(offset) {
+		sig, err := newSignatureFromFile(f.file)
+		if err != nil {
+			return nil, err
+		}
+
+		f.signature = sig
 	}
 
 	return &Line{
 		Text:   text,
-		Offset: f.reader.position(),
+		Offset: offset,
 		Time:   time.Now(),
 	}, nil
 }
@@ -203,9 +238,19 @@ func (f *File) drain() {
 					Time:   time.Now(),
 				})
 			}
+
+			// flush any remaining data in buffer
+			text, _ = f.reader.flush()
+			if text != "" {
+				f.bufferedLines = append(f.bufferedLines, Line{
+					Text:   text,
+					Offset: f.reader.position(),
+					Time:   time.Now(),
+				})
+			}
+
 			return
 		}
-
 		f.bufferedLines = append(f.bufferedLines, Line{
 			Text:   text,
 			Offset: f.reader.position(),
@@ -268,8 +313,31 @@ func (f *File) reopen(truncated bool) error {
 			continue
 		}
 
+		// Compute a new signature and compare it with the previous one to detect atomic writes.
+		// When a file is replaced atomically, the file handle changes but the
+		// initial content may be the same. If signatures match, it's the same file content,
+		// so we continue from the previous offset. If they differ, it's a different
+		// file, so we start from the beginning.
+		sig, err := newSignatureFromFile(file)
+		if err != nil {
+			file.Close()
+			return err
+		}
+
+		var offset int64
+		if !f.signature.equal(sig) {
+			offset = 0
+		} else {
+			offset = min(f.reader.position(), nf.Size())
+		}
+
 		f.file = file
-		f.reader.reset(f.file)
+		f.signature = sig
+		if err := f.reader.reset(f.file, offset); err != nil {
+			file.Close()
+			return err
+		}
+
 		break
 	}
 

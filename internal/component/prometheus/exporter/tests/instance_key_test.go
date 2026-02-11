@@ -399,7 +399,7 @@ func TestInstanceKey(t *testing.T) {
 			testName:      "windows",
 			componentName: "prometheus.exporter.windows",
 			args: windows.Arguments{
-				EnabledCollectors: []string{"cpu", "logical_disk", "net", "os", "service", "system"},
+				EnabledCollectors: []string{},
 				LogicalDisk: windows.LogicalDiskConfig{
 					EnabledList: []string{"metrics"},
 				},
@@ -425,7 +425,7 @@ func TestInstanceKey(t *testing.T) {
 			var capturedExports exporter.Exports
 			opts := component.Options{
 				ID: tt.componentName + ".test_comp_id",
-				GetServiceData: func(name string) (interface{}, error) {
+				GetServiceData: func(name string) (any, error) {
 					switch name {
 					case httpservice.ServiceName:
 						return httpservice.Data{

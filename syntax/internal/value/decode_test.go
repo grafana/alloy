@@ -16,7 +16,7 @@ import (
 func TestDecode_Numbers(t *testing.T) {
 	// There's a lot of values that can represent numbers, so we construct a
 	// matrix dynamically of all the combinations here.
-	vals := []interface{}{
+	vals := []any{
 		int(15), int8(15), int16(15), int32(15), int64(15),
 		uint(15), uint8(15), uint16(15), uint32(15), uint64(15),
 		float32(15), float64(15),
@@ -56,7 +56,7 @@ func TestDecode(t *testing.T) {
 	}
 
 	tt := []struct {
-		input, expect interface{}
+		input, expect any
 	}{
 		{nil, (*int)(nil)},
 
@@ -293,7 +293,7 @@ type customUnmarshaler struct {
 	ValidateCalled  bool `alloy:"validate_called,attr,optional"`
 }
 
-func (cu *customUnmarshaler) UnmarshalAlloy(f func(interface{}) error) error {
+func (cu *customUnmarshaler) UnmarshalAlloy(f func(any) error) error {
 	cu.UnmarshalCalled = true
 	return f((*customUnmarshalerTarget)(cu))
 }
@@ -397,7 +397,7 @@ var _ value.ConvertibleIntoCapsule = (boolish)(0)
 
 func (b boolish) AlloyCapsule() {}
 
-func (b *boolish) ConvertFrom(src interface{}) error {
+func (b *boolish) ConvertFrom(src any) error {
 	switch v := src.(type) {
 	case bool:
 		if v {
@@ -411,7 +411,7 @@ func (b *boolish) ConvertFrom(src interface{}) error {
 	return value.ErrNoConversion
 }
 
-func (b boolish) ConvertInto(dst interface{}) error {
+func (b boolish) ConvertInto(dst any) error {
 	switch d := dst.(type) {
 	case *bool:
 		if b == 0 {
@@ -535,9 +535,9 @@ func TestDecode_Slice(t *testing.T) {
 	}
 
 	var (
-		in = map[string]interface{}{
-			"block": map[string]interface{}{
-				"a": []map[string]interface{}{
+		in = map[string]any{
+			"block": map[string]any{
+				"a": []map[string]any{
 					{"attr": 1},
 					{"attr": 2},
 					{"attr": 3},
@@ -579,15 +579,15 @@ func TestDecode_SquashedSlice(t *testing.T) {
 	}
 
 	var (
-		in = map[string]interface{}{
+		in = map[string]any{
 			"outer_field_1": "value1",
 			"outer_field_2": "value2",
 
-			"block": []map[string]interface{}{
-				{"a": map[string]interface{}{"attr": 1}},
-				{"b": map[string]interface{}{"attr": 2}},
-				{"c": map[string]interface{}{"attr": 3}},
-				{"a": map[string]interface{}{"attr": 4}},
+			"block": []map[string]any{
+				{"a": map[string]any{"attr": 1}},
+				{"b": map[string]any{"attr": 2}},
+				{"c": map[string]any{"attr": 3}},
+				{"a": map[string]any{"attr": 4}},
 			},
 		}
 		expect = OuterStruct{
@@ -627,15 +627,15 @@ func TestDecode_SquashedSlice_Pointer(t *testing.T) {
 	}
 
 	var (
-		in = map[string]interface{}{
+		in = map[string]any{
 			"outer_field_1": "value1",
 			"outer_field_2": "value2",
 
-			"block": []map[string]interface{}{
-				{"a": map[string]interface{}{"attr": 1}},
-				{"b": map[string]interface{}{"attr": 2}},
-				{"c": map[string]interface{}{"attr": 3}},
-				{"a": map[string]interface{}{"attr": 4}},
+			"block": []map[string]any{
+				{"a": map[string]any{"attr": 1}},
+				{"b": map[string]any{"attr": 2}},
+				{"c": map[string]any{"attr": 3}},
+				{"a": map[string]any{"attr": 4}},
 			},
 		}
 		expect = OuterStruct{

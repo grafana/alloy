@@ -7,8 +7,8 @@ type FieldExtractConfig struct {
 	From     string `alloy:"from,attr,optional"`
 }
 
-func (args FieldExtractConfig) convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args FieldExtractConfig) convert() map[string]any {
+	return map[string]any{
 		"tag_name":  args.TagName,
 		"key":       args.Key,
 		"key_regex": args.KeyRegex,
@@ -24,19 +24,19 @@ type ExtractConfig struct {
 	DeploymentNameFromReplicaSet bool                 `alloy:"deployment_name_from_replicaset,attr,optional"`
 }
 
-func (args ExtractConfig) convert() map[string]interface{} {
-	annotations := make([]interface{}, 0, len(args.Annotations))
+func (args ExtractConfig) convert() map[string]any {
+	annotations := make([]any, 0, len(args.Annotations))
 
 	for _, annotation := range args.Annotations {
 		annotations = append(annotations, annotation.convert())
 	}
 
-	labels := make([]interface{}, 0, len(args.Labels))
+	labels := make([]any, 0, len(args.Labels))
 	for _, label := range args.Labels {
 		labels = append(labels, label.convert())
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"metadata":                        args.Metadata,
 		"annotations":                     annotations,
 		"labels":                          labels,
@@ -51,8 +51,8 @@ type FieldFilterConfig struct {
 	Op    string `alloy:"op,attr,optional"`
 }
 
-func (args FieldFilterConfig) convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args FieldFilterConfig) convert() map[string]any {
+	return map[string]any{
 		"key":   args.Key,
 		"value": args.Value,
 		"op":    args.Op,
@@ -66,8 +66,8 @@ type FilterConfig struct {
 	Labels    []FieldFilterConfig `alloy:"label,block,optional"`
 }
 
-func (args FilterConfig) convert() map[string]interface{} {
-	result := make(map[string]interface{})
+func (args FilterConfig) convert() map[string]any {
+	result := make(map[string]any)
 
 	if args.Node != "" {
 		result["node"] = args.Node
@@ -77,7 +77,7 @@ func (args FilterConfig) convert() map[string]interface{} {
 		result["namespace"] = args.Namespace
 	}
 
-	fields := make([]interface{}, 0, len(args.Fields))
+	fields := make([]any, 0, len(args.Fields))
 	for _, field := range args.Fields {
 		fields = append(fields, field.convert())
 	}
@@ -86,7 +86,7 @@ func (args FilterConfig) convert() map[string]interface{} {
 		result["fields"] = fields
 	}
 
-	labels := make([]interface{}, 0, len(args.Labels))
+	labels := make([]any, 0, len(args.Labels))
 	for _, label := range args.Labels {
 		labels = append(labels, label.convert())
 	}
@@ -102,8 +102,8 @@ type PodAssociation struct {
 	Sources []PodAssociationSource `alloy:"source,block"`
 }
 
-func (args PodAssociation) convert() []map[string]interface{} {
-	result := make([]map[string]interface{}, 0, len(args.Sources))
+func (args PodAssociation) convert() []map[string]any {
+	result := make([]map[string]any, 0, len(args.Sources))
 
 	for _, source := range args.Sources {
 		result = append(result, source.convert())
@@ -117,8 +117,8 @@ type PodAssociationSource struct {
 	Name string `alloy:"name,attr,optional"`
 }
 
-func (args PodAssociationSource) convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args PodAssociationSource) convert() map[string]any {
+	return map[string]any{
 		"from": args.From,
 		"name": args.Name,
 	}
@@ -126,11 +126,11 @@ func (args PodAssociationSource) convert() map[string]interface{} {
 
 type PodAssociationSlice []PodAssociation
 
-func (args PodAssociationSlice) convert() []map[string]interface{} {
-	result := make([]map[string]interface{}, 0, len(args))
+func (args PodAssociationSlice) convert() []map[string]any {
+	result := make([]map[string]any, 0, len(args))
 
 	for _, podAssociation := range args {
-		result = append(result, map[string]interface{}{
+		result = append(result, map[string]any{
 			"sources": podAssociation.convert(),
 		})
 	}
@@ -146,16 +146,16 @@ type ExcludePodConfig struct {
 	Name string `alloy:"name,attr"`
 }
 
-func (args ExcludePodConfig) convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args ExcludePodConfig) convert() map[string]any {
+	return map[string]any{
 		"name": args.Name,
 	}
 }
 
-func (args ExcludeConfig) convert() map[string]interface{} {
-	result := make(map[string]interface{})
+func (args ExcludeConfig) convert() map[string]any {
+	result := make(map[string]any)
 
-	pods := make([]interface{}, 0, len(args.Pods))
+	pods := make([]any, 0, len(args.Pods))
 	for _, pod := range args.Pods {
 		pods = append(pods, pod.convert())
 	}

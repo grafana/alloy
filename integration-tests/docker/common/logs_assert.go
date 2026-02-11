@@ -1,9 +1,11 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,10 +14,10 @@ import (
 const lokiURL = "http://localhost:3100/loki/api/v1/"
 
 // LogQuery returns a formatted Loki query with the given test_name label
-func LogQuery(testName string) string {
+func LogQuery(testName string, limit int) string {
 	// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-logs-within-a-range-of-time
 	queryFilter := fmt.Sprintf("{test_name=\"%s\"}", testName)
-	query := fmt.Sprintf("%squery_range?query=%s", lokiURL, url.QueryEscape(queryFilter))
+	query := fmt.Sprintf("%squery_range?query=%s&limit=%d", lokiURL, url.QueryEscape(queryFilter), limit)
 
 	// Loki queries require a nanosecond unix timestamp for the start time.
 	if startingAt := AlloyStartTimeUnixNano(); startingAt > 0 {
@@ -35,18 +37,59 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var logResponse LogResponse
+	var (
+		totalExpected int
+		logResponse   LogResponse
+	)
 
-	require.Eventually(t, func() bool {
-		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t)), &logResponse)
-		require.NoError(t, err)
-		return len(logResponse.Data.Result) == len(expected)
+	for _, e := range expected {
+		totalExpected += e.EntryCount
+	}
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t), totalExpected), &logResponse)
+		require.NoError(c, err)
+		require.Len(c, logResponse.Data.Result, len(expected))
+
+		var totalRecv int
+		for _, r := range logResponse.Data.Result {
+			totalRecv += len(r.Values)
+		}
+
+		require.Equal(c, totalExpected, totalRecv)
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
 	for _, e := range expected {
 		values, ok := findStream(e.Labels, logResponse.Data.Result)
 		require.True(t, ok, "no stream with labels %s", e.Labels)
 		assert.Len(t, values, e.EntryCount)
+	}
+}
+
+// WaitForInitalLogs will try to wait until any logs can be retrieved from loki for testName.
+// It will return an error if no logs are found after test timeout.
+func WaitForInitalLogs(testName string) error {
+	var (
+		after = time.After(DefaultTimeout)
+		tick  = time.NewTicker(DefaultRetryInterval)
+	)
+
+	for {
+		select {
+		case <-tick.C:
+			var resp LogResponse
+			_, err := FetchDataFromURL(LogQuery(testName, 1), &resp)
+			if err != nil {
+				continue
+			}
+
+			// We start seeing initial logs
+			if len(resp.Data.Result) > 0 {
+				return nil
+			}
+		case <-after:
+			return errors.New("faild to get first log")
+		}
 	}
 }
 

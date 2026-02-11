@@ -51,12 +51,12 @@ func TestPipeline_JSON(t *testing.T) {
 	tests := map[string]struct {
 		config          string
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 	}{
 		"successfully run a pipeline with 1 json stage without source": {
 			testJSONAlloySingleStageWithoutSource,
 			testJSONLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"out":      "this is a log line",
 				"app":      "loki",
 				"nested":   "{\"child\":\"value\"}",
@@ -67,7 +67,7 @@ func TestPipeline_JSON(t *testing.T) {
 		"successfully run a pipeline with 2 json stages with source": {
 			testJSONAlloyMultiStageWithSource,
 			testJSONLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"extra": "{\"user\":\"marco\"}",
 				"user":  "marco",
 			},
@@ -218,9 +218,9 @@ func TestJSONParser_Parse(t *testing.T) {
 	var logString = "log"
 	tests := map[string]struct {
 		config          StageConfig
-		extracted       map[string]interface{}
+		extracted       map[string]any
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 	}{
 		"successfully decode json on entry": {
 			StageConfig{JSONConfig: &JSONConfig{
@@ -237,9 +237,9 @@ func TestJSONParser_Parse(t *testing.T) {
 					"complex":   "complex.log.array[1].test3",
 				},
 			}},
-			map[string]interface{}{},
+			map[string]any{},
 			logFixture,
-			map[string]interface{}{
+			map[string]any{
 				"time":      "2012-11-01T22:08:41+00:00",
 				"app":       "loki",
 				"component": "[\"parser\",\"type\"]",
@@ -268,11 +268,11 @@ func TestJSONParser_Parse(t *testing.T) {
 				},
 				Source: &logString,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				"log": logFixture,
 			},
 			"{}",
-			map[string]interface{}{
+			map[string]any{
 				"time":      "2012-11-01T22:08:41+00:00",
 				"app":       "loki",
 				"component": "[\"parser\",\"type\"]",
@@ -293,9 +293,9 @@ func TestJSONParser_Parse(t *testing.T) {
 				},
 				Source: &logString,
 			}},
-			map[string]interface{}{},
+			map[string]any{},
 			logFixture,
-			map[string]interface{}{},
+			map[string]any{},
 		},
 		"invalid json on entry": {
 			StageConfig{JSONConfig: &JSONConfig{
@@ -303,9 +303,9 @@ func TestJSONParser_Parse(t *testing.T) {
 					"expr1": "",
 				},
 			}},
-			map[string]interface{}{},
+			map[string]any{},
 			"ts=now log=notjson",
-			map[string]interface{}{},
+			map[string]any{},
 		},
 		"invalid json on extracted[source]": {
 			StageConfig{JSONConfig: &JSONConfig{
@@ -314,11 +314,11 @@ func TestJSONParser_Parse(t *testing.T) {
 				},
 				Source: &logString,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				"log": "not a json",
 			},
 			logFixture,
-			map[string]interface{}{
+			map[string]any{
 				"log": "not a json",
 			},
 		},
@@ -329,11 +329,11 @@ func TestJSONParser_Parse(t *testing.T) {
 				},
 				Source: &logString,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				"log": nil,
 			},
 			logFixture,
-			map[string]interface{}{
+			map[string]any{
 				"log": nil,
 			},
 		},
@@ -361,12 +361,12 @@ func TestValidateJSONDrop(t *testing.T) {
 	s, err := newJSONStage(logger, *matchConfig)
 	assert.NoError(t, err, "withMatcher() error = %v", err)
 	assert.NotNil(t, s, "newJSONStage failed to create the pipeline stage and was nil")
-	out := processEntries(s, newEntry(map[string]interface{}{
+	out := processEntries(s, newEntry(map[string]any{
 		"test_label": "unimportant value",
 	}, toLabelSet(labels), `{"page": 1, "fruits": ["apple", "peach"]}`, time.Now()))
 	assert.Equal(t, 1, len(out), "stage should have kept one valid json line but got %v", out)
 
-	out = processEntries(s, newEntry(map[string]interface{}{
+	out = processEntries(s, newEntry(map[string]any{
 		"test_label": "unimportant value",
 	}, toLabelSet(labels), `{"page": 1, fruits": ["apple", "peach"]}`, time.Now()))
 	assert.Equal(t, 0, len(out), "stage should have kept zero valid json line but got %v", out)

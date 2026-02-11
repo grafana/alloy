@@ -76,19 +76,19 @@ func TestReplace(t *testing.T) {
 	tests := map[string]struct {
 		config        string
 		entry         string
-		extracted     map[string]interface{}
+		extracted     map[string]any
 		expectedEntry string
 	}{
 		"successfully run a pipeline with 1 regex stage without source": {
 			testReplaceAlloySingleStageWithoutSource,
 			testReplaceLogLine,
-			map[string]interface{}{},
+			map[string]any{},
 			`11.11.11.11 - dummy [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with multi stage with": {
 			testReplaceAlloyMultiStageWithSource,
 			testReplaceLogJSONLine,
-			map[string]interface{}{
+			map[string]any{
 				"level": "info",
 				"msg":   `11.11.11.11 - "POST /loki/api/v1/push/ HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
 			},
@@ -97,7 +97,7 @@ func TestReplace(t *testing.T) {
 		"successfully run a pipeline with 1 regex stage with named captured group and with template and without source": {
 			testReplaceAlloyWithNamedCapturedGroupWithTemplate,
 			testReplaceLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "FRANK",
@@ -114,7 +114,7 @@ func TestReplace(t *testing.T) {
 		"successfully run a pipeline with 1 regex stage with nested captured groups and with template and without source": {
 			testReplaceAlloyWithNestedCapturedGroups,
 			testReplaceLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip_user":     "11.11.11.11 - FRANK",
 				"action_path": "GET /1986.JS",
 				"ip":          "11.11.11.11",
@@ -133,19 +133,19 @@ func TestReplace(t *testing.T) {
 		"successfully run a pipeline with 1 regex stage with template and without source": {
 			testReplaceAlloyWithTemplate,
 			testReplaceLogLine,
-			map[string]interface{}{},
+			map[string]any{},
 			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with empty replace value": {
 			testReplaceAlloyWithEmptyReplace,
 			testReplaceLogLine,
-			map[string]interface{}{},
+			map[string]any{},
 			`11.11.11.11 - [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with adjacent capture groups": {
 			testReplaceAdjacentCaptureGroups,
 			testReplaceLogLineAdjacentCaptureGroups,
-			map[string]interface{}{},
+			map[string]any{},
 			``,
 		},
 	}

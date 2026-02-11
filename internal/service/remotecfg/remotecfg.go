@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -155,6 +156,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
 		case <-ctx.Done():
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			if err := s.unregisterCollector(cleanupCtx); err != nil {
+				s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector during service shutdown", "err", err)
+			}
 			return nil
 		}
 	}
@@ -313,6 +319,22 @@ func (s *Service) registerCollector() error {
 
 	if err != nil {
 		s.opts.Logger.Log("level", "error", "msg", "failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
+		return err
+	}
+	return nil
+}
+
+func (s *Service) unregisterCollector(ctx context.Context) error {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+
+	_, err := s.apiClient.UnregisterCollector(ctx, &connect.Request[collectorv1.UnregisterCollectorRequest]{
+		Msg: &collectorv1.UnregisterCollectorRequest{
+			Id: s.args.ID,
+		},
+	})
+	if err != nil {
+		s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector with remote server", "id", s.args.ID, "err", err)
 		return err
 	}
 	return nil

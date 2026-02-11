@@ -85,13 +85,13 @@ func TestPipeline_Pattern(t *testing.T) {
 	tests := map[string]struct {
 		config          string
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 		expectedLables  model.LabelSet
 	}{
 		"successfully run a pipeline with 1 pattern stage without source": {
 			testPatternAlloySingleStageWithoutSource,
 			testPatternLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -109,7 +109,7 @@ func TestPipeline_Pattern(t *testing.T) {
 		"successfully run a pipeline with 2 pattern stages with source": {
 			testPatternAlloyMultiStageWithSource,
 			testPatternLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
 				"user":             "frank",
@@ -128,7 +128,7 @@ func TestPipeline_Pattern(t *testing.T) {
 		"successfully run a pipeline with 2 pattern stages with source and labels from groups": {
 			testPatternAlloyMultiStageWithSourceAndLabelFromGroups,
 			testPatternLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
 				"user":             "frank",
@@ -159,7 +159,7 @@ func TestPipeline_Pattern(t *testing.T) {
 		"successfully run a pipeline with pattern stage labels overriding existing labels with labels_from_groups": {
 			testPatternAlloyMultiStageWithExistingLabelsAndLabelFromGroups,
 			testPatternLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -224,7 +224,7 @@ func TestPipelineWithMissingKey_Pattern(t *testing.T) {
 func TestPatternConfig_validate(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
-		config interface{}
+		config any
 		err    error
 	}{
 		"empty config": {
@@ -232,30 +232,30 @@ func TestPatternConfig_validate(t *testing.T) {
 			ErrPatternRequired,
 		},
 		"missing pattern_expression": {
-			map[string]interface{}{},
+			map[string]any{},
 			ErrPatternRequired,
 		},
 		"invalid pattern_expression": {
-			map[string]interface{}{
+			map[string]any{
 				"pattern": "<_> <_>",
 			},
 			errors.New("failed to parse pattern: at least one capture is required"),
 		},
 		"empty source": {
-			map[string]interface{}{
+			map[string]any{
 				"pattern": "(?P<ts>[0-9]+).*",
 				"source":  "",
 			},
 			ErrEmptyPatternStageSource,
 		},
 		"valid without source": {
-			map[string]interface{}{
+			map[string]any{
 				"pattern": "(?P<ts>[0-9]+).*",
 			},
 			nil,
 		},
 		"valid with source": {
-			map[string]interface{}{
+			map[string]any{
 				"pattern": "(?P<ts>[0-9]+).*",
 				"source":  "log",
 			},
@@ -288,20 +288,20 @@ func TestPatternParser_Parse(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
 		config          PatternConfig
-		extracted       map[string]interface{}
+		extracted       map[string]any
 		labels          model.LabelSet
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
 		expectedLabels  model.LabelSet
 	}{
 		"successfully match expression on entry": {
 			PatternConfig{
 				Pattern: "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\"",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			patternLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -321,10 +321,10 @@ func TestPatternParser_Parse(t *testing.T) {
 				Pattern:          "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\"",
 				LabelsFromGroups: true,
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			patternLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -356,12 +356,12 @@ func TestPatternParser_Parse(t *testing.T) {
 				Pattern: "HTTP/<protocol_version>",
 				Source:  &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "HTTP/1.1",
 			},
 			model.LabelSet{},
 			patternLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
 			},
@@ -373,14 +373,14 @@ func TestPatternParser_Parse(t *testing.T) {
 				Source:           &protocolStr,
 				LabelsFromGroups: true,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "HTTP/1.1",
 			},
 			model.LabelSet{
 				"protocol": "HTTP/1.1",
 			},
 			patternLogFixture,
-			map[string]interface{}{
+			map[string]any{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
 			},
@@ -393,10 +393,10 @@ func TestPatternParser_Parse(t *testing.T) {
 			PatternConfig{
 				Pattern: "<time> <stream> <flags> <message>",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			"2019-01-01T01:00:00.000000001Z stderr P i'm a log message!",
-			map[string]interface{}{
+			map[string]any{
 				"time":    "2019-01-01T01:00:00.000000001Z",
 				"stream":  "stderr",
 				"flags":   "P",
@@ -409,12 +409,12 @@ func TestPatternParser_Parse(t *testing.T) {
 				Pattern: "HTTP/<protocol_version>",
 				Source:  &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "unknown",
 			},
 			model.LabelSet{},
 			"unknown/unknown",
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "unknown",
 			},
 			model.LabelSet{},
@@ -424,10 +424,10 @@ func TestPatternParser_Parse(t *testing.T) {
 				Pattern: "HTTP/<protocol_version>",
 				Source:  &protocolStr,
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			"blahblahblah",
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 		},
 		"invalid data type in extracted[source]": {
@@ -435,12 +435,12 @@ func TestPatternParser_Parse(t *testing.T) {
 				Pattern: "HTTP/<protocol_version>",
 				Source:  &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": true,
 			},
 			model.LabelSet{},
 			"unknown/unknown",
-			map[string]interface{}{
+			map[string]any{
 				"protocol": true,
 			},
 			model.LabelSet{},
@@ -483,7 +483,7 @@ func BenchmarkPatternStage(b *testing.B) {
 			}
 			labels := model.LabelSet{}
 			ts := time.Now()
-			extr := map[string]interface{}{}
+			extr := map[string]any{}
 
 			in := make(chan Entry)
 			out := stage.Run(in)

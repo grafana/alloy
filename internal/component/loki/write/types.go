@@ -46,6 +46,7 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoffRetries: 10,
 		HTTPClientConfig:  types.CloneDefaultHTTPClientConfig(),
 		RetryOnHTTP429:    true,
+		QueueConfig:       defaultQueueConfig,
 	}
 
 	return defaultEndpointOptions
@@ -72,15 +73,17 @@ func (r *EndpointOptions) Validate() error {
 
 // QueueConfig controls how shards and queue are configured for endpoint.
 type QueueConfig struct {
-	Capacity     units.Base2Bytes `alloy:"capacity,attr,optional"`
-	MinShards    int              `alloy:"min_shards,attr,optional"`
-	DrainTimeout time.Duration    `alloy:"drain_timeout,attr,optional"`
+	Capacity        units.Base2Bytes `alloy:"capacity,attr,optional"`
+	MinShards       int              `alloy:"min_shards,attr,optional"`
+	DrainTimeout    time.Duration    `alloy:"drain_timeout,attr,optional"`
+	BlockOnOverflow bool             `alloy:"block_on_overflow,attr,optional"`
 }
 
 var defaultQueueConfig = QueueConfig{
-	Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
-	MinShards:    1,
-	DrainTimeout: 15 * time.Second,
+	Capacity:        10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
+	MinShards:       1,
+	DrainTimeout:    15 * time.Second,
+	BlockOnOverflow: true,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -109,9 +112,10 @@ func (args Arguments) convertEndpointConfigs() []client.Config {
 			MaxStreams:             args.MaxStreams,
 			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
 			QueueConfig: client.QueueConfig{
-				Capacity:     int(cfg.QueueConfig.Capacity),
-				MinShards:    cfg.QueueConfig.MinShards,
-				DrainTimeout: cfg.QueueConfig.DrainTimeout,
+				Capacity:        int(cfg.QueueConfig.Capacity),
+				MinShards:       cfg.QueueConfig.MinShards,
+				DrainTimeout:    cfg.QueueConfig.DrainTimeout,
+				BlockOnOverflow: cfg.QueueConfig.BlockOnOverflow,
 			},
 		}
 		res = append(res, cc)
