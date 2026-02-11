@@ -77,25 +77,27 @@ func TestEachCreatedMappingGetsUniqueRef(t *testing.T) {
 func TestUpdateMappingChangesReturnedValue(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(store.Clear)
+	lbls := labels.EmptyLabels()
 
 	originalRefs := []storage.SeriesRef{1, 2, 3}
-	uniqueRef := store.CreateMapping(originalRefs)
+	uniqueRef := store.CreateMapping(originalRefs, lbls)
 
 	updatedRefs := []storage.SeriesRef{4, 5, 6}
-	store.UpdateMapping(uniqueRef, updatedRefs)
+	store.UpdateMapping(uniqueRef, updatedRefs, lbls)
 
-	retrieved := store.GetMapping(uniqueRef)
+	retrieved := store.GetMapping(uniqueRef, lbls)
 	require.Equal(t, updatedRefs, retrieved)
 	require.NotEqual(t, originalRefs, retrieved)
 }
 
 func TestUpdateMappingWithZeroRefDoesNothing(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
+	lbls := labels.EmptyLabels()
 
-	store.UpdateMapping(0, []storage.SeriesRef{1, 2, 3})
+	store.UpdateMapping(0, []storage.SeriesRef{1, 2, 3}, lbls)
 
 	// Should still return nil
-	require.Nil(t, store.GetMapping(0))
+	require.Nil(t, store.GetMapping(0, lbls))
 }
 
 func TestTrackAppendedSeriesDoesNotPanic(t *testing.T) {
@@ -125,10 +127,11 @@ func TestRefsAreEventuallyCleanedUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
 		t.Cleanup(store.Clear)
+		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with old timestamp
 		childRefs := []storage.SeriesRef{1, 2, 3}
-		uniqueRef := store.CreateMapping(childRefs)
+		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
 		slice := store.GetCellForAppendedSeries()
@@ -136,13 +139,13 @@ func TestRefsAreEventuallyCleanedUp(t *testing.T) {
 		store.TrackAppendedSeries(oldTimestamp, slice)
 
 		// Verify mapping exists initially
-		require.NotNil(t, store.GetMapping(uniqueRef))
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
 
 		// Wait for cleanup to run (15 minute ticker + some buffer)
 		time.Sleep(16 * time.Minute)
 
 		// Mapping should be cleaned up
-		require.Nil(t, store.GetMapping(uniqueRef))
+		require.Nil(t, store.GetMapping(uniqueRef, lbls))
 	})
 }
 
@@ -150,10 +153,11 @@ func TestRecentlyTrackedRefsAreNotCleanedUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
 		t.Cleanup(store.Clear)
+		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with recent timestamp
 		childRefs := []storage.SeriesRef{1, 2, 3}
-		uniqueRef := store.CreateMapping(childRefs)
+		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		recentTimestamp := time.Now().Unix()
 		slice := store.GetCellForAppendedSeries()
@@ -164,7 +168,7 @@ func TestRecentlyTrackedRefsAreNotCleanedUp(t *testing.T) {
 		time.Sleep(16 * time.Minute)
 
 		// Mapping should still exist
-		require.NotNil(t, store.GetMapping(uniqueRef))
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
 	})
 }
 
@@ -172,10 +176,11 @@ func TestTrackingRefAgainUpdatesTimestamp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
 		t.Cleanup(store.Clear)
+		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with old timestamp
 		childRefs := []storage.SeriesRef{1, 2, 3}
-		uniqueRef := store.CreateMapping(childRefs)
+		uniqueRef := store.CreateMapping(childRefs, lbls)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
 		slice1 := store.GetCellForAppendedSeries()
@@ -195,18 +200,19 @@ func TestTrackingRefAgainUpdatesTimestamp(t *testing.T) {
 		time.Sleep(16 * time.Minute)
 
 		// Mapping should NOT be cleaned up because timestamp was refreshed
-		require.NotNil(t, store.GetMapping(uniqueRef))
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
 	})
 }
 
 func TestClearRemovesAllMappings(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
+	lbls := labels.EmptyLabels()
 
 	// Create several mappings
 	var uniqueRefs []storage.SeriesRef
 	for i := range 10 {
 		childRefs := []storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i + 1)}
-		uniqueRef := store.CreateMapping(childRefs)
+		uniqueRef := store.CreateMapping(childRefs, lbls)
 		uniqueRefs = append(uniqueRefs, uniqueRef)
 
 		// Track them
@@ -217,7 +223,7 @@ func TestClearRemovesAllMappings(t *testing.T) {
 
 	// Verify they exist
 	for _, ref := range uniqueRefs {
-		require.NotNil(t, store.GetMapping(ref))
+		require.NotNil(t, store.GetMapping(ref, lbls))
 	}
 
 	// Clear
@@ -225,16 +231,17 @@ func TestClearRemovesAllMappings(t *testing.T) {
 
 	// Verify all are gone
 	for _, ref := range uniqueRefs {
-		require.Nil(t, store.GetMapping(ref))
+		require.Nil(t, store.GetMapping(ref, lbls))
 	}
 }
 
 func TestClearIsIdempotent(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
+	lbls := labels.EmptyLabels()
 
 	// Create some mappings
 	childRefs := []storage.SeriesRef{1, 2, 3}
-	store.CreateMapping(childRefs)
+	store.CreateMapping(childRefs, lbls)
 
 	// Clear multiple times
 	require.NotPanics(t, func() {
@@ -247,28 +254,29 @@ func TestClearIsIdempotent(t *testing.T) {
 func TestStoreCanBeReusedAfterClear(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(store.Clear)
+	lbls := labels.EmptyLabels()
 
 	// Create multiple mappings before clear
 	childRefs1 := []storage.SeriesRef{1, 2, 3}
-	uniqueRef1 := store.CreateMapping(childRefs1)
+	uniqueRef1 := store.CreateMapping(childRefs1, lbls)
 	childRefs2 := []storage.SeriesRef{7, 8, 9}
-	uniqueRef2 := store.CreateMapping(childRefs2)
+	uniqueRef2 := store.CreateMapping(childRefs2, lbls)
 
 	// Clear
 	store.Clear()
 
 	// Create new mappings after clear
 	childRefs3 := []storage.SeriesRef{4, 5, 6}
-	uniqueRef3 := store.CreateMapping(childRefs3)
+	uniqueRef3 := store.CreateMapping(childRefs3, lbls)
 
 	// New mapping should work
-	retrieved := store.GetMapping(uniqueRef3)
+	retrieved := store.GetMapping(uniqueRef3, lbls)
 	require.NotNil(t, retrieved)
 	require.Equal(t, childRefs3, retrieved)
 
 	// Old mappings should not exist
-	require.Nil(t, store.GetMapping(uniqueRef1))
-	require.Nil(t, store.GetMapping(uniqueRef2))
+	require.Nil(t, store.GetMapping(uniqueRef1, lbls))
+	require.Nil(t, store.GetMapping(uniqueRef2, lbls))
 }
 
 // Concurrent API Usage Tests
@@ -276,10 +284,11 @@ func TestStoreCanBeReusedAfterClear(t *testing.T) {
 func TestConcurrentReadsAreConsistent(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(store.Clear)
+	lbls := labels.EmptyLabels()
 
 	// Create a mapping
 	childRefs := []storage.SeriesRef{1, 2, 3}
-	uniqueRef := store.CreateMapping(childRefs)
+	uniqueRef := store.CreateMapping(childRefs, lbls)
 
 	// Spawn many goroutines reading the same mapping
 	var wg sync.WaitGroup
@@ -288,7 +297,7 @@ func TestConcurrentReadsAreConsistent(t *testing.T) {
 	for range numReaders {
 		wg.Go(func() {
 			for range 100 {
-				retrieved := store.GetMapping(uniqueRef)
+				retrieved := store.GetMapping(uniqueRef, lbls)
 				require.NotNil(t, retrieved)
 				require.Equal(t, childRefs, retrieved)
 			}
@@ -301,6 +310,7 @@ func TestConcurrentReadsAreConsistent(t *testing.T) {
 func TestConcurrentCreatesGetUniqueRefs(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(store.Clear)
+	lbls := labels.EmptyLabels()
 
 	var wg sync.WaitGroup
 	numCreators := 50
@@ -315,7 +325,7 @@ func TestConcurrentCreatesGetUniqueRefs(t *testing.T) {
 
 			for j := range refsPerCreator {
 				childRefs := []storage.SeriesRef{storage.SeriesRef(id*1000 + j)}
-				uniqueRef := store.CreateMapping(childRefs)
+				uniqueRef := store.CreateMapping(childRefs, lbls)
 				refsChan <- uniqueRef
 			}
 		}(i)
@@ -339,12 +349,13 @@ func TestConcurrentCreatesGetUniqueRefs(t *testing.T) {
 func TestConcurrentTrackingIsCorrect(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(store.Clear)
+	lbls := labels.EmptyLabels()
 
 	// Create some mappings
 	var uniqueRefs []storage.SeriesRef
 	for i := range 50 {
 		childRefs := []storage.SeriesRef{storage.SeriesRef(i)}
-		uniqueRef := store.CreateMapping(childRefs)
+		uniqueRef := store.CreateMapping(childRefs, lbls)
 		uniqueRefs = append(uniqueRefs, uniqueRef)
 	}
 
@@ -370,6 +381,6 @@ func TestConcurrentTrackingIsCorrect(t *testing.T) {
 
 	// All refs should still be retrievable (tracking shouldn't break anything)
 	for _, ref := range uniqueRefs {
-		require.NotNil(t, store.GetMapping(ref))
+		require.NotNil(t, store.GetMapping(ref, lbls))
 	}
 }
