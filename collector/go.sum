@@ -2238,6 +2238,8 @@ github.com/ryanuber/go-glob v1.0.0 h1:iQh3xXAumdQ+4Ufa5b25cRpC5TYKlno6hsv6Cb3pkB
 github.com/ryanuber/go-glob v1.0.0/go.mod h1:807d1WSdnB0XRJzKNil9Om6lcp/3a0v4qIHxIXzX/Yc=
 github.com/safchain/ethtool v0.5.10 h1:Im294gZtuf4pSGJRAOGKaASNi3wMeFaGaWuSaomedpc=
 github.com/safchain/ethtool v0.5.10/go.mod h1:w9jh2Lx7YBR4UwzLkzCmWl85UY0W2uZdd7/DckVE5+c=
+github.com/sagikazarmark/locafero v0.7.0 h1:5MqpDsTGNDhY8sGp0Aowyf0qKsPrhewaLSsFaodPcyo=
+github.com/sagikazarmark/locafero v0.7.0/go.mod h1:2za3Cg5rMaTMoG/2Ulr9AwtFaIppKXTRYnozin4aB5k=
 github.com/sagikazarmark/slog-shim v0.1.0 h1:diDBnUNK9N/354PgrxMywXnAwEr1QZcOr6gto+ugjYE=
 github.com/sagikazarmark/slog-shim v0.1.0/go.mod h1:SrcSrq8aKtyuqEI1uvTDTK1arOWRIczQRv+GVI1AkeQ=
 github.com/samber/lo v1.51.0 h1:kysRYLbHy/MB7kQZf5DSN50JHmMsNEdeY24VzJFu7wI=
@@ -2300,6 +2302,8 @@ github.com/sony/gobreaker/v2 v2.3.0 h1:7VYxZ69QXRQ2Q4eEawHn6eU4FiuwovzJwsUMA03Lu
 github.com/sony/gobreaker/v2 v2.3.0/go.mod h1:pTyFJgcZ3h2tdQVLZZruK2C0eoFL1fb/G83wK1ZQl+s=
 github.com/sorairolake/lzip-go v0.3.5 h1:ms5Xri9o1JBIWvOFAorYtUNik6HI3HgBTkISiqu0Cwg=
 github.com/sorairolake/lzip-go v0.3.5/go.mod h1:N0KYq5iWrMXI0ZEXKXaS9hCyOjZUQdBDEIbXfoUwbdk=
+github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
+github.com/sourcegraph/conc v0.3.0/go.mod h1:Sdozi7LEKbFPqYX2/J+iBAM6HpqSLTASQIKqDmF7Mt0=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spaolacci/murmur3 v1.1.0 h1:7c1g84S4BPRrfL5Xrdp6fOJ206sU9y293DDHaoy0bLI=
 github.com/spaolacci/murmur3 v1.1.0/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
@@ -2365,6 +2369,8 @@ github.com/testcontainers/testcontainers-go/modules/minio v0.34.0 h1:OpUqT7VV/d+
 github.com/testcontainers/testcontainers-go/modules/minio v0.34.0/go.mod h1:0iaOtVNCzu04KcXHgmdNE7aelKaMUwC9x1M0oe6h1sw=
 github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0 h1:o3bgcECyBFfMwqexCH/6vIJ8XzbCffCP/Euesu33rgY=
 github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0/go.mod h1:ljLR42dN7k40CX0dp30R8BRIB3OOdvr7rBANEpfmMs4=
+github.com/tetratelabs/wazero v1.9.0 h1:IcZ56OuxrtaEz8UYNRHBrUa9bYeX9oVY93KspZZBf/I=
+github.com/tetratelabs/wazero v1.9.0/go.mod h1:TSbcXCfFP0L2FGkRPxHphadXPjo1T6W+CseNNY7EkjM=
 github.com/tg123/go-htpasswd v1.2.4 h1:HgH8KKCjdmo7jjXWN9k1nefPBd7Be3tFCTjc2jPraPU=
 github.com/tg123/go-htpasswd v1.2.4/go.mod h1:EKThQok9xHkun6NBMynNv6Jmu24A33XdZzzl4Q7H1+0=
 github.com/therootcompany/xz v1.0.1 h1:CmOtsn1CbtmyYiusbfmhmkpAAETj0wBIH6kCYaX+xzw=
@@ -2450,6 +2456,10 @@ github.com/vmware/govmomi v0.52.0 h1:JyxQ1IQdllrY7PJbv2am9mRsv3p9xWlIQ66bv+XnyLw
 github.com/vmware/govmomi v0.52.0/go.mod h1:Yuc9xjznU3BH0rr6g7MNS1QGvxnJlE1vOvTJ7Lx7dqI=
 github.com/vultr/govultr/v2 v2.17.2 h1:gej/rwr91Puc/tgh+j33p/BLR16UrIPnSr+AIwYWZQs=
 github.com/vultr/govultr/v2 v2.17.2/go.mod h1:ZFOKGWmgjytfyjeyAdhQlSWwTjh2ig+X49cAp50dzXI=
+github.com/wasilibs/go-re2 v1.9.0 h1:kjAd8qbNvV4Ve2Uf+zrpTCrDHtqH4dlsRXktywo73JQ=
+github.com/wasilibs/go-re2 v1.9.0/go.mod h1:0sRtscWgpUdNA137bmr1IUgrRX0Su4dcn9AEe61y+yI=
+github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 h1:OvLBa8SqJnZ6P+mjlzc2K7PM22rRUPE1x32G9DTPrC4=
+github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52/go.mod h1:jMeV4Vpbi8osrE/pKUxRZkVaA0EX7NZN0A9/oRzgpgY=
 github.com/webdevops/azure-metrics-exporter v0.0.0-20230717202958-8701afc2b013 h1:4yXSAbV4ImUZYzZf1M+b75/i2nPapEq4J3gs197gKqk=
 github.com/webdevops/azure-metrics-exporter v0.0.0-20230717202958-8701afc2b013/go.mod h1:0TRsV1G8hE9GnGY7kHhHg2G5ZGAJLJxMBwHvwRgnuGM=
 github.com/webdevops/go-common v0.0.0-20250617214056-2620f947754f h1:o5NtotTJyzipR9/Q0VA4+SzLIDlZPuwncYUgCgZ+E+I=

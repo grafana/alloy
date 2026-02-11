@@ -821,6 +821,7 @@ require (
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/safchain/ethtool v0.5.10 // indirect
+	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da // indirect
@@ -842,6 +843,7 @@ require (
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/sony/gobreaker/v2 v2.3.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.5 // indirect
+	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -854,6 +856,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.480 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cvm v1.0.480 // indirect
+	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/tg123/go-htpasswd v1.2.4 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
@@ -885,6 +888,8 @@ require (
 	github.com/vishvananda/netns v0.0.5 // indirect
 	github.com/vmware/govmomi v0.52.0 // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
+	github.com/wasilibs/go-re2 v1.9.0 // indirect
+	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/webdevops/azure-metrics-exporter v0.0.0-20230717202958-8701afc2b013 // indirect
 	github.com/webdevops/go-common v0.0.0-20250617214056-2620f947754f // indirect
 	github.com/wk8/go-ordered-map v0.2.0 // indirect
