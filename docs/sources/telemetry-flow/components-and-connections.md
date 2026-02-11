@@ -44,7 +44,7 @@ Connections have direction:
 - Upstream components send telemetry.
 - Downstream components receive it.
 
-The direction and shape of the flow come entirely from the configuration.
+The direction and structure of the flow come entirely from the configuration.
 
 This explicit model makes telemetry flow predictable.
 You can determine exactly where data goes by following connections.

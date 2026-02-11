@@ -15,7 +15,7 @@ You construct these paths by connecting components in the configuration.
 There's no default pipeline.
 The configuration defines every stage.
 
-A common shape looks like this:
+A common pipeline looks like this:
 
 {{< mermaid >}}
 flowchart LR
