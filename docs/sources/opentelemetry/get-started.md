@@ -146,9 +146,82 @@ This starts both the {{< param "DEFAULT_ENGINE" >}} and {{< param "OTEL_ENGINE" 
 The output of both engines is visible in the logs.
 You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`.
 
-## Run with {{% param "PRODUCT_NAME" %}} Helm chart
+## Run with The OpenTelemetry Collector Helm chart
 
-TODO
+As of now, the best way to run the {{< param "OTEL_ENGINE" >}} is using the upstream OpenTelemetry Collector Helm chart. 
+This delivers an identical upstream collector experience and ensures you get improvements, bug fixes and security updates as they land.
+
+The following example helm values.yaml incorporates the same configuration seen above into a kubernetes deployment
+
+```yaml
+image:
+  repository: grafana/alloy
+  tag: latest
+  pullPolicy: IfNotPresent
+
+command: 
+  name: "bin/otelcol"
+
+mode: deployment
+
+ports:
+  metrics:
+    enabled: true
+
+config:
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133 # This is necessary for the k8s liveliness check
+    basicauth/my_auth:
+      client_auth:
+        username: <USERNAME>
+        password: <PASSWORD>
+
+  receivers:
+    otlp:
+      protocols:
+        grpc: {}
+        http: {}
+
+  processors:
+    batch:
+      timeout: 1s
+      send_batch_size: 512
+
+  exporters:
+    otlphttp/my_backend:
+      endpoint: <URL>
+      auth:
+        authenticator: basicauth/my_auth
+
+  service:
+    telemetry:
+      metrics:
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0 
+                  port: 8888
+    extensions: [basicauth/my_auth, health_check]
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlphttp/my_backend]
+```
+
+As before, replace the following:
+
+- _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to, if you are using Grafana Cloud this will be your Grafana Cloud OTLP endpoint URL.
+
+Please refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case
+
+**Note:**
+In the above configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the pod, so it can be reached both from other pods in the cluster and via kubectl port-forward.
+
 
 ## Run with service installation
 
