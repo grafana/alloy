@@ -49,12 +49,12 @@ var (
 // Component implements the loki.process component.
 type Component struct {
 	opts       component.Options
-	receiver   loki.LogsReceiver
 	processOut loki.LogsReceiver
+	processIn  loki.LogsReceiver
+	receiver   loki.LogsReceiver
 	fanout     *loki.Fanout
 
 	mut          sync.RWMutex
-	processIn    chan<- loki.Entry
 	entryHandler loki.EntryHandler
 	stages       []stages.StageConfig
 
@@ -71,6 +71,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               o,
 		processOut:         loki.NewLogsReceiver(),
+		processIn:          loki.NewLogsReceiver(),
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		fanout:             loki.NewFanout(args.ForwardTo),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
@@ -138,7 +139,7 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update c.fanout first in case anything else fails.
+	// Update fanout first in case anything else fails.
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// Then update the pipeline itself.
@@ -159,9 +160,8 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		c.entryHandler = pipeline.Start(c.processOut.Chan())
-		c.processIn = c.entryHandler.Chan()
 		c.stages = newArgs.Stages
+		c.entryHandler = pipeline.Start(c.processIn.Chan(), c.processOut.Chan())
 	}
 
 	return nil
@@ -187,14 +187,11 @@ func (c *Component) handleIn(ctx context.Context) {
 				},
 			))
 
-			c.mut.RLock()
 			select {
 			case <-ctx.Done():
-				c.mut.RUnlock()
 				return
-			case c.processIn <- entry.Clone():
+			case c.processIn.Chan() <- entry.Clone():
 			}
-			c.mut.RUnlock()
 		}
 	}
 }
