@@ -41,7 +41,12 @@ var (
 	_ alloy_service.Service = (*disabledStore)(nil)
 )
 
-func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStore {
+type LabelStoreService interface {
+	alloy_service.Service
+	LabelStore
+}
+
+func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStoreService {
 	if l == nil {
 		l = log.NewNopLogger()
 	}

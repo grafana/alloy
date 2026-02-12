@@ -1,8 +1,14 @@
 package labelstore
 
-import "github.com/prometheus/prometheus/model/labels"
+import (
+	"github.com/prometheus/prometheus/model/labels"
+
+	alloy_service "github.com/grafana/alloy/internal/service"
+)
 
 type LabelStore interface {
+	alloy_service.Service
+
 	// AddLocalLink adds a mapping from local to global id for the given component.
 	AddLocalLink(componentID string, globalRefID uint64, localRefID uint64)
 
