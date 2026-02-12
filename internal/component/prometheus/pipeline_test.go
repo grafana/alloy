@@ -332,32 +332,6 @@ func BenchmarkPipelines(b *testing.B) {
 	}
 }
 
-// go test ./internal/component/prometheus -run '^TestDbgSeriesMappingPerf$' -cpuprofile cpu.pprof -memprofile mem.pprof
-func TestDbgSeriesMappingPerf(t *testing.T) {
-	mkPipeline := func(t testing.TB, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
-		return newRemoteWritePipeline(t, log.NewNopLogger(), rwComponents, appenders.Noop{}, refTrackingConfig)
-	}
-
-	const numberOfRWComponents = 2
-	const metricsCount = 2000
-	cfg := refTrackingConfig{
-		useLabelStore: false,
-	}
-
-	pipeline, ls, clearCache := mkPipeline(t, numberOfRWComponents, cfg)
-	metrics := setupMetrics(metricsCount)
-	defer clearCache()
-
-	for range metricsCount {
-		a := pipeline.Appender(t.Context())
-		for i, metric := range metrics {
-			ls.GetOrAddGlobalRefID(metric)
-			a.Append(0, metric, time.Now().UnixMilli(), float64(i))
-		}
-		a.Commit()
-	}
-}
-
 type noopAppender struct {
 	refCounter atomic.Uint64
 }
@@ -521,7 +495,7 @@ func BenchmarkStoreFlows(b *testing.B) {
 
 			for b.Loop() {
 				cell := sm.GetCellForAppendedSeries()
-				for i, _ := range metrics {
+				for i := range metrics {
 					lbls := metrics[i]
 					sm.GetMapping(storage.SeriesRef(i), lbls)
 					sm.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i)}, lbls)
