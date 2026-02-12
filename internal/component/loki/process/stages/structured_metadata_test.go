@@ -238,7 +238,7 @@ func Test_StructuredMetadataStage(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(test.pipelineStagesYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(test.pipelineStagesYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			result := processEntries(pl, newEntry(nil, nil, test.logLine, time.Now()))[0]
