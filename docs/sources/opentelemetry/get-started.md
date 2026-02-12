@@ -150,20 +150,21 @@ You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`
 
 ## Run with The OpenTelemetry Collector Helm chart
 
-Use the upstream OpenTelemetry Collector Helm chart run the {{< param "OTEL_ENGINE" >}} . 
+Use the upstream [OpenTelemetry Collector Helm chart](https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector) run the {{< param "OTEL_ENGINE" >}} . 
 This delivers an identical upstream collector experience and ensures you get improvements, bug fixes, and security updates as they are released.
 
-The following example helm `values.yaml` incorporates the same configuration seen above into a Kubernetes deployment.
+The following example Helm `values.yaml` incorporates the same configuration seen above into a Kubernetes deployment.
 
 {{< admonition type="note" >}}
 In this configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the Pod. It can be reached from other Pods in the cluster and with `kubectl port-forward`.
+
+Additionally, we are setting the command.name key to `bin/otelcol`. This binary that runs the `alloy otel` subcommand. This is required as the Helm chart does not currently expose the use of custom subcommands.
 {{< /admonition >}}
 
 ```yaml
 image:
   repository: grafana/alloy
   tag: latest
-  pullPolicy: IfNotPresent
 
 command: 
   name: "bin/otelcol"
