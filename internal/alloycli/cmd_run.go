@@ -171,7 +171,7 @@ depending on the nature of the reload error.
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
-	cmd.Flags().BoolVar(&r.enableSeriesRefMapping, "feature.series-ref-mapping.enabled", r.enableSeriesRefMapping, "Enable experimental Prometheus fanout performance improvements for pipelines with multiple destinations.")
+	cmd.Flags().BoolVar(&r.enableSeriesRefMapping, "feature.series-ref-mapping.enabled", r.enableSeriesRefMapping, "Enable experimental SeriesRefMapping implementation instead of LabelStore")
 
 	addDeprecatedFlags(cmd)
 	return cmd
