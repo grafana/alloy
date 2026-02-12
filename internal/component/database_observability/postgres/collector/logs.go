@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,12 +19,13 @@ import (
 )
 
 const (
-	LogsCollector            = "logs"
-	watermarkFilename        = "dbo11y_pg_logs_watermark.txt"
+	LogsCollector     = "logs"
+	watermarkFilename = "dbo11y_pg_logs_watermark.txt"
+	expectedLogFormat = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 )
 
-// RDS log format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
-var rdsLogFormatRegex = regexp.MustCompile(
+// Postgres log format regex
+var logFormatRegex = regexp.MustCompile(
 	`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? [A-Z]{3,4}:` +
 		`[^:]*:` +
 		`[^@]*@[^:]*:` +
@@ -52,8 +52,6 @@ type LogsArguments struct {
 	Receiver     loki.LogsReceiver
 	EntryHandler loki.EntryHandler
 	Logger       log.Logger
-	InstanceKey  string
-	SystemID     string
 	Registry     *prometheus.Registry
 	DataPath     string
 }
@@ -61,8 +59,6 @@ type LogsArguments struct {
 type Logs struct {
 	logger       log.Logger
 	entryHandler loki.EntryHandler
-	instanceKey  string
-	systemID     string
 	registry     *prometheus.Registry
 
 	receiver loki.LogsReceiver
@@ -95,8 +91,6 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	l := &Logs{
 		logger:                 log.With(args.Logger, "collector", LogsCollector),
 		entryHandler:           args.EntryHandler,
-		instanceKey:            args.InstanceKey,
-		systemID:               args.SystemID,
 		registry:               args.Registry,
 		receiver:               args.Receiver,
 		ctx:                    ctx,
@@ -122,27 +116,23 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 func (l *Logs) initMetrics() {
 	l.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "postgres_errors_total",
-			Help: "PostgreSQL errors by severity with database, user, SQLSTATE, and instance tracking",
+			Name: "database_observability_postgres_errors_total",
+			Help: "PostgreSQL errors by severity with database, user, and SQLSTATE",
 		},
-		[]string{"severity", "sqlstate", "sqlstate_class", "database", "user", "instance", "server_id"},
+		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "postgres_error_log_parse_failures_total",
+			Name: "database_observability_postgres_error_log_parse_failures_total",
 			Help: "Failed to parse log lines",
 		},
 	)
 
-	if l.registry != nil {
-		l.registry.MustRegister(
-			l.errorsBySQLState,
-			l.parseErrors,
-		)
-	} else {
-		level.Warn(l.logger).Log("msg", "no Prometheus registry provided, metrics will not be exposed")
-	}
+	l.registry.MustRegister(
+		l.errorsBySQLState,
+		l.parseErrors,
+	)
 }
 
 func (l *Logs) Name() string {
@@ -169,6 +159,10 @@ func (l *Logs) Stop() {
 	l.stopped.Store(true)
 	close(l.watermarkQuit)
 	l.wg.Wait()
+
+	// Unregister metrics
+	l.registry.Unregister(l.errorsBySQLState)
+	l.registry.Unregister(l.parseErrors)
 }
 
 func (l *Logs) Stopped() bool {
@@ -277,7 +271,7 @@ func (l *Logs) run() {
 			level.Debug(l.logger).Log("msg", "collector stopping")
 			return
 		case entry := <-l.receiver.Chan():
-			if err := l.processLogLine(entry); err != nil {
+			if err := l.parseTextLog(entry); err != nil {
 				level.Warn(l.logger).Log(
 					"msg", "failed to process log line",
 					"error", err,
@@ -286,10 +280,6 @@ func (l *Logs) run() {
 			}
 		}
 	}
-}
-
-func (l *Logs) processLogLine(entry loki.Entry) error {
-	return l.parseTextLog(entry)
 }
 
 func (l *Logs) parseTextLog(entry loki.Entry) error {
@@ -301,15 +291,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	line := entry.Entry.Line
 
-	if strings.HasPrefix(line, "{") {
-		var jsonLog struct {
-			Body string `json:"body"`
-		}
-		if err := json.Unmarshal([]byte(line), &jsonLog); err == nil && jsonLog.Body != "" {
-			line = jsonLog.Body
-		}
-	}
-
 	if isContinuationLine(line) {
 		return nil
 	}
@@ -318,10 +299,10 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	if !rdsLogFormatRegex.MatchString(line) {
+	if !logFormatRegex.MatchString(line) {
 		l.trackInvalidFormat()
 		l.parseErrors.Inc()
-		return fmt.Errorf("log line does not match expected RDS format")
+		return fmt.Errorf("log line does not match expected format")
 	}
 
 	l.trackValidFormat()
@@ -423,8 +404,6 @@ func (l *Logs) updateMetrics(parsed *ParsedError) {
 		parsed.SQLStateClass,
 		parsed.DatabaseName,
 		parsed.User,
-		l.instanceKey,
-		l.systemID,
 	).Inc()
 }
 
@@ -456,7 +435,7 @@ func (l *Logs) trackInvalidFormat() {
 			level.Warn(l.logger).Log(
 				"msg", "all PostgreSQL error logs in the last minute had invalid format",
 				"invalid_count", l.invalidLogsThisMinute,
-				"expected_format", "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a",
+				"expected_format", expectedLogFormat,
 				"hint", "ensure log_line_prefix is set correctly on PostgreSQL server",
 			)
 		}
