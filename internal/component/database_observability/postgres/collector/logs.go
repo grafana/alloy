@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	LogsCollector            = "logs"
-	watermarkFilename        = "dbo11y_pg_logs_watermark.txt"
-	expectedLogFormat        = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	LogsCollector     = "logs"
+	watermarkFilename = "dbo11y_pg_logs_watermark.txt"
+	expectedLogFormat = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 )
 
 // Postgres log format regex
