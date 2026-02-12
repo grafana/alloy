@@ -79,7 +79,7 @@ The following fields are exported and can be referenced by other components:
 
 * Rules apply only to pprof sample string labels.
 * Numeric sample labels are preserved as-is.
-* If relabeling drops all labels for a sample, that sample is dropped.
+* If relabeling drops all string labels for a sample and the sample has no numeric labels, that sample is dropped.
 * If all samples are dropped from a profile, the profile is dropped.
 * Only pprof payloads are transformed.
 * Payloads that cannot be parsed as pprof are forwarded unchanged.

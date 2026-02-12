@@ -133,6 +133,7 @@ func (c *Component) Update(args component.Arguments) error {
 		if evicted > 0 {
 			level.Debug(c.opts.Logger).Log("msg", "resizing cache led to evicting items", "evicted_count", evicted)
 		}
+		c.metrics.cacheSize.Set(float64(c.cache.Len()))
 		c.maxCacheSize = newArgs.MaxCacheSize
 	}
 
@@ -253,6 +254,10 @@ func (c *Component) transformRawProfile(raw []byte) transformResult {
 		}
 
 		sample.Label = toSampleLabelMap(newLabels)
+		if len(sample.Label) == 0 && !hasNumericLabels(sample) {
+			result.samplesDropped++
+			continue
+		}
 		filteredSamples = append(filteredSamples, sample)
 		result.samplesWritten++
 	}
@@ -291,13 +296,12 @@ func (c *Component) relabelSampleLabels(lbls labels.Labels) (labels.Labels, bool
 	}
 
 	newLabels := builder.Labels()
-	if newLabels.IsEmpty() {
-		c.addToCache(hash, labelSet, labels.EmptyLabels(), false)
-		return labels.EmptyLabels(), false
-	}
-
 	c.addToCache(hash, labelSet, newLabels, true)
 	return newLabels, true
+}
+
+func hasNumericLabels(sample *profile.Sample) bool {
+	return len(sample.NumLabel) > 0 || len(sample.NumUnit) > 0
 }
 
 func (c *Component) getCacheEntry(hash model.Fingerprint, labelSet model.LabelSet) (labels.Labels, bool, bool) {

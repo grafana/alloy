@@ -139,6 +139,37 @@ func TestAppendIngestRelabelsProfile(t *testing.T) {
 	require.False(t, hasRegion)
 }
 
+func TestAppendKeepsSamplesWithNumericLabelsWhenStringLabelsAreDropped(t *testing.T) {
+	app := newCaptureAppender()
+	c := newComponent(t, app, []*alloy_relabel.Config{
+		{
+			Action: "labeldrop",
+			Regex:  alloy_relabel.Regexp{Regexp: regexp.MustCompile("^env$")},
+		},
+	})
+
+	in := buildProfileWithSamples(t,
+		&profile.Sample{
+			Value:    []int64{1},
+			Label:    map[string][]string{"env": {"prod"}},
+			NumLabel: map[string][]int64{"bytes": {42}},
+			NumUnit:  map[string][]string{"bytes": {"bytes"}},
+		},
+	)
+
+	err := c.Append(t.Context(), labels.FromStrings("service_name", "svc"), []*pyroscope.RawSample{{ID: "1", RawProfile: in}})
+	require.NoError(t, err)
+
+	rawSamples := app.RawSamples()
+	require.Len(t, rawSamples, 1)
+
+	out := parseProfile(t, rawSamples[0].RawProfile)
+	require.Len(t, out.Sample, 1)
+	require.Nil(t, out.Sample[0].Label)
+	require.Equal(t, map[string][]int64{"bytes": {42}}, out.Sample[0].NumLabel)
+	require.Equal(t, map[string][]string{"bytes": {"bytes"}}, out.Sample[0].NumUnit)
+}
+
 func TestCacheMetrics(t *testing.T) {
 	app := newCaptureAppender()
 	c := newComponent(t, app, []*alloy_relabel.Config{
@@ -161,6 +192,41 @@ func TestCacheMetrics(t *testing.T) {
 
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.cacheMisses))
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.cacheHits))
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.cacheSize))
+}
+
+func TestCacheSizeMetricUpdatedAfterResize(t *testing.T) {
+	app := newCaptureAppender()
+	rules := []*alloy_relabel.Config{
+		{
+			SourceLabels: []string{"env"},
+			TargetLabel:  "environment",
+			Action:       "replace",
+			Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("(.+)")},
+			Replacement:  "$1",
+		},
+	}
+
+	c := newComponent(t, app, rules)
+
+	in := buildProfile(t,
+		map[string][]string{"env": {"prod"}},
+		map[string][]string{"env": {"stage"}},
+	)
+
+	err := c.Append(t.Context(), labels.FromStrings("service_name", "svc"), []*pyroscope.RawSample{{ID: "1", RawProfile: in}})
+	require.NoError(t, err)
+	require.Equal(t, 2, c.cache.Len())
+	require.Equal(t, float64(2), testutil.ToFloat64(c.metrics.cacheSize))
+
+	err = c.Update(Arguments{
+		ForwardTo:      []pyroscope.Appendable{app},
+		RelabelConfigs: rules,
+		MaxCacheSize:   1,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, c.cache.Len())
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.cacheSize))
 }
 
@@ -191,6 +257,12 @@ func buildProfile(t testing.TB, sampleLabels ...map[string][]string) []byte {
 		}
 		samples = append(samples, &profile.Sample{Value: []int64{1}, Label: copied})
 	}
+
+	return buildProfileWithSamples(t, samples...)
+}
+
+func buildProfileWithSamples(t testing.TB, samples ...*profile.Sample) []byte {
+	t.Helper()
 
 	p := &profile.Profile{
 		SampleType:    []*profile.ValueType{{Type: "samples", Unit: "count"}},
