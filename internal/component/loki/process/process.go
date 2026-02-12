@@ -54,7 +54,7 @@ type Component struct {
 	receiver   loki.LogsReceiver
 	fanout     *loki.Fanout
 
-	mut          sync.RWMutex
+	mut          sync.Mutex
 	entryHandler loki.EntryHandler
 	stages       []stages.StageConfig
 
