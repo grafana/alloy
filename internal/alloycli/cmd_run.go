@@ -34,6 +34,7 @@ import (
 	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/readyctx"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -457,6 +458,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 		// Exit if the initial load fails.
 		return err
+	}
+
+	// Signal to the caller (e.g. alloyengine extension) that the default engine is running
+	if fn, ok := readyctx.OnReadyFromContext(ctx); ok && fn != nil {
+		fn()
 	}
 
 	// By now, have either joined or started a new cluster.
