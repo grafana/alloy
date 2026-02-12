@@ -301,7 +301,7 @@ require (
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.39.0
-	golang.org/x/text v0.32.0
+	golang.org/x/text v0.33.0
 	golang.org/x/time v0.14.0
 	golang.org/x/tools v0.40.0
 	google.golang.org/api v0.257.0
@@ -1015,8 +1015,16 @@ require (
 )
 
 require (
+	github.com/agnivade/levenshtein v1.2.1 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/sosodev/duration v1.3.1 // indirect
+	github.com/urfave/cli/v3 v3.6.1 // indirect
+)
+
+require (
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go/storage v1.57.0 // indirect
+	github.com/99designs/gqlgen v0.17.86
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/orchestrator/util v0.74.0-rc.3 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
@@ -1036,7 +1044,7 @@ require (
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.31
 )
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go

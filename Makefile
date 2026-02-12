@@ -200,7 +200,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+alloy: generate-graphql-stubs generate-ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -248,8 +248,15 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql-stubs
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql-stubs
+
+generate-graphql-stubs:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./internal/service/graphql && go generate ./...
+endif
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)

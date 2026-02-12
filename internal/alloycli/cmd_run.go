@@ -224,6 +224,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("building logger: %w", err)
 	}
 
+	level.Info(l).Log("msg", `{*_*} Alloy is starting`)
+
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
 		return fmt.Errorf("building tracer: %w", err)
@@ -467,6 +469,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to set clusterer state to Participant after initial load")
 	}
+
+	level.Info(l).Log("msg", `{^_^} Alloy is running`)
 
 	reloadSignal := make(chan os.Signal, 1)
 	signal.Notify(reloadSignal, syscall.SIGHUP)
