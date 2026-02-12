@@ -9,6 +9,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/flowcmd"
@@ -21,9 +22,10 @@ type state int
 
 var (
 	stateNotStarted   state = 0
-	stateRunning      state = 1
-	stateShuttingDown state = 2
-	stateTerminated   state = 3
+	stateRunning      state = 2
+	stateShuttingDown state = 3
+	stateTerminated   state = 4
+	stateRunError     state = 5
 )
 
 func (s state) String() string {
@@ -36,6 +38,8 @@ func (s state) String() string {
 		return "shutting_down"
 	case stateTerminated:
 		return "terminated"
+	case stateRunError:
+		return "run_error"
 	}
 	return fmt.Sprintf("unknown_state_%d", s)
 }
@@ -62,6 +66,15 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 	}
 }
 
+func (e *alloyEngineExtension) isUp() int64 {
+	e.stateMutex.Lock()
+	defer e.stateMutex.Unlock()
+	if e.state == stateRunning {
+		return 1
+	}
+	return 0
+}
+
 // Start is called when the extension is started.
 func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
 	e.stateMutex.Lock()
@@ -85,6 +98,29 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
+	if e.settings.MeterProvider != nil {
+		meter := e.settings.MeterProvider.Meter("github.com/grafana/alloy/extension/alloyengine")
+		upGauge, err := meter.Int64ObservableGauge(
+			"alloyengine_up",
+			metric.WithDescription("1 if the Alloy engine state is running, 0 otherwise"),
+			metric.WithUnit("1"),
+		)
+		if err != nil {
+			e.settings.Logger.Warn("failed to create alloyengine_up gauge", zap.Error(err))
+		} else {
+			_, err := meter.RegisterCallback(
+				func(ctx context.Context, o metric.Observer) error {
+					o.ObserveInt64(upGauge, e.isUp())
+					return nil
+				},
+				upGauge,
+			)
+			if err != nil {
+				e.settings.Logger.Warn("failed to register alloyengine_up callback", zap.Error(err))
+			}
+		}
+	}
+
 	go func() {
 		defer close(e.runExited)
 
@@ -102,8 +138,6 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		}
 	}()
 
-	e.state = stateRunning
-	e.settings.Logger.Info("alloyengine extension started successfully")
 	return nil
 }
 
@@ -113,6 +147,10 @@ func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ct
 	i := 1
 
 	for {
+		// TODO: how can we avoid this? we want to identify when running is true without having to wait for a response here
+		// this way we're gonna have flapping states between running and run_error even if run always returns an error
+		e.state = stateRunning
+		e.settings.Logger.Info("alloyengine extension started successfully")
 		err := runCommand.ExecuteContext(ctx)
 
 		if err == nil {
@@ -120,6 +158,9 @@ func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ct
 		}
 
 		lastError = err
+		e.stateMutex.Lock()
+		e.state = stateRunError
+		e.stateMutex.Unlock()
 
 		// exponential backoff until 15s
 		delay := 15 * time.Second
