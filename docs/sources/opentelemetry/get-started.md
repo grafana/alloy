@@ -156,7 +156,7 @@ This delivers an identical upstream collector experience and ensures you get imp
 The following example Helm `values.yaml` incorporates the same configuration seen above into a Kubernetes deployment.
 
 {{< admonition type="note" >}}
-In this configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the Pod. It can be reached from other Pods in the cluster and with `kubectl port-forward`.
+In this configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the Pod. It can be reached from other Pods in the cluster, not just with the `kubectl port-forward`.
 
 Additionally, we are setting the command.name key to `bin/otelcol`. This binary that runs the `alloy otel` subcommand. This is required as the Helm chart does not currently expose the use of custom subcommands.
 {{< /admonition >}}
