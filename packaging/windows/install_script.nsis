@@ -44,6 +44,7 @@ Var StabilityFlag
 Var User
 Var Password
 Var AuthFlag
+Var ForceRegistry
 
 # Pages during the installer.
 Page license
@@ -66,6 +67,7 @@ Section "install"
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
   ${GetOptions} $PassedInParameters "/USERNAME=" $User
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
+  ${GetOptions} $PassedInParameters "/FORCEREGISTRY=" $ForceRegistry
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
@@ -176,16 +178,26 @@ FunctionEnd
 
 
 # InitializeRegistry initializes the keys in the registry that the service
-# runner uses. If the registry values already exist, they are not overwritten.
+# runner uses. If the registry values already exist, they are not overwritten,
+# unless /FORCEREGISTRY=yes was passed.
 Function InitializeRegistry
   !define REGKEY "HKLM\Software\GrafanaLabs\Alloy"
 
-  # Define the default key, which points to the service.
+  # Define the default key, which points to the service. Write when missing or when /FORCEREGISTRY=yes.
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /ve'
   Pop $0
+
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /ve /d  "$INSTDIR\alloy-windows-amd64.exe"'
-    Pop $0 # Ignore return result
+    StrCpy $1 1
+  ${ElseIf} $ForceRegistry == "yes"
+    StrCpy $1 1
+  ${Else}
+    StrCpy $1 0
+  ${EndIf}
+
+  ${If} $1 == 1
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /ve /d "$INSTDIR\alloy-windows-amd64.exe" /f'
+    Pop $0
   ${EndIf}
 
   ${If} $Config != ""
@@ -218,22 +230,36 @@ Function InitializeRegistry
     StrCpy $DisableProfilingFlag ""
   ${EndIf}
 
-  # Define the arguments key, which holds arguments to pass to the
-  # service.
+  # Define the arguments key, which holds arguments to pass to the service. Write when missing or when /FORCEREGISTRY=yes.
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Arguments'
   Pop $0
+
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag$StabilityFlag"'
-    Pop $0 # Ignore return result
+    StrCpy $1 1
+  ${ElseIf} $ForceRegistry == "yes"
+    StrCpy $1 1
+  ${Else}
+    StrCpy $1 0
   ${EndIf}
 
+  ${If} $1 == 1
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag$StabilityFlag" /f'
+    Pop $0
+  ${EndIf}
+
+  # Define the environment key, which holds environment for service. Write when missing or when /FORCEREGISTRY=yes.
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Environment'
   Pop $0
   ${If} $0 == 1
-    # Define the environment key, which holds environment variables to pass to the
-    # service.
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Environment /t REG_MULTI_SZ /d "$Environment"'
-    Pop $0 # Ignore return result
+    StrCpy $1 1
+  ${ElseIf} $ForceRegistry == "yes"
+    StrCpy $1 1
+  ${Else}
+    StrCpy $1 0
+  ${EndIf}
+
+  ${If} $1 == 1
+      nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Environment /t REG_MULTI_SZ /d "$Environment" /f'
   ${EndIf}
 
   Return
