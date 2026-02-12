@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/flowcmd"
+	"github.com/grafana/alloy/internal/readyctx"
 	"github.com/spf13/cobra"
 )
 
@@ -21,21 +22,27 @@ type state int
 
 var (
 	stateNotStarted   state = 0
-	stateRunning      state = 1
-	stateShuttingDown state = 2
-	stateTerminated   state = 3
+	stateStarting     state = 1
+	stateRunning      state = 2
+	stateShuttingDown state = 3
+	stateTerminated   state = 4
+	stateRunError     state = 5
 )
 
 func (s state) String() string {
 	switch s {
 	case stateNotStarted:
 		return "not_started"
+	case stateStarting:
+		return "starting"
 	case stateRunning:
 		return "running"
 	case stateShuttingDown:
 		return "shutting_down"
 	case stateTerminated:
 		return "terminated"
+	case stateRunError:
+		return "run_error"
 	}
 	return fmt.Sprintf("unknown_state_%d", s)
 }
@@ -62,6 +69,15 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 	}
 }
 
+func (e *alloyEngineExtension) isUp() int64 {
+	e.stateMutex.Lock()
+	defer e.stateMutex.Unlock()
+	if e.state == stateRunning {
+		return 1
+	}
+	return 0
+}
+
 // Start is called when the extension is started.
 func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
 	e.stateMutex.Lock()
@@ -78,12 +94,22 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 	e.runCancel = runCancel
 	e.runExited = make(chan struct{})
 
+	runCtx = readyctx.WithOnReady(runCtx, func() {
+		e.stateMutex.Lock()
+		defer e.stateMutex.Unlock()
+		e.state = stateRunning
+		e.settings.Logger.Info("alloyengine extension started successfully")
+	})
+
 	runCommand := e.runCommandFactory()
 	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
 	err := runCommand.ParseFlags(e.config.flagsAsSlice())
 	if err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
+
+	e.state = stateStarting
+	e.settings.Logger.Debug("Alloy Engine Extension starting...")
 
 	go func() {
 		defer close(e.runExited)
@@ -101,9 +127,6 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 			e.settings.Logger.Warn("run command exited with an error during shutdown", zap.Error(err))
 		}
 	}()
-
-	e.state = stateRunning
-	e.settings.Logger.Info("alloyengine extension started successfully")
 	return nil
 }
 
@@ -120,6 +143,9 @@ func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ct
 		}
 
 		lastError = err
+		e.stateMutex.Lock()
+		e.state = stateRunError
+		e.stateMutex.Unlock()
 
 		// exponential backoff until 15s
 		delay := 15 * time.Second
@@ -176,7 +202,7 @@ func (e *alloyEngineExtension) Ready() error {
 	defer e.stateMutex.Unlock()
 
 	switch e.state {
-	case stateRunning:
+	case stateStarting, stateRunning, stateRunError:
 		return nil
 	default:
 		return fmt.Errorf("alloyengine extension not ready in current state: %s", e.state.String())
