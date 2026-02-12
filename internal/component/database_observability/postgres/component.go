@@ -67,7 +67,6 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
-	WatermarkPath     string              `alloy:"watermark_path,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
@@ -622,12 +621,6 @@ func (c *Component) CurrentHealth() component.Health {
 
 // getWatermarkPath returns the watermark file path
 func (c *Component) getWatermarkPath() string {
-	// If user specified a path, use it
-	if c.args.WatermarkPath != "" {
-		return c.args.WatermarkPath
-	}
-
-	// Default to <data_path>/dbo11y_pg_logs_watermark.txt
 	return filepath.Join(c.opts.DataPath, "dbo11y_pg_logs_watermark.txt")
 }
 
