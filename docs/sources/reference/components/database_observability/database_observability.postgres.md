@@ -169,27 +169,9 @@ The logs collector exports the following Prometheus metrics:
 
 ### Required PostgreSQL Configuration
 
-**Self hosted Postgres server**
+#### Supported Log Format
 
-For the logs collector to work correctly, PostgreSQL must be configured with the following RDS log format:
-
-```sql
--- Set log format (requires superuser or rds_superuser)
-ALTER SYSTEM SET log_line_prefix = '%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a';
-
--- Reload configuration
-SELECT pg_reload_conf();
-```
-
-Use the following SELECT statement to show and verify the current string format applied to the beginning of each log line.
-
-```sql
-SHOW log_line_prefix;
-```
-
-### Supported Log Format
-
-The collector expects PostgreSQL logs in the RDS format with these fields:
+The collector expects PostgreSQL logs with these prefixed fields:
 
 ```
 <timestamp>:<remote_host:port>:<user>@<database>:[<pid>]:<line>:<SQLSTATE>:<session_start>:<vtxid>:<txid>:<session_id>:<query><app><severity>: <message>
@@ -200,6 +182,22 @@ Example log line:
 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):app_user@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement due to user request
 ```
 
+This is done by setting the log_line_prefix param to '%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a'.
+
+#### How to configure the log_line_prefix
+
+**Self hosted Postgres server**
+
+For the logs collector to work correctly, PostgreSQL must be configured with the following RDS log format:
+
+```sql
+-- Set log format (requires superuser)
+ALTER SYSTEM SET log_line_prefix = '%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a';
+
+-- Reload configuration
+SELECT pg_reload_conf();
+```
+
 **AWS RDS**
 
 On AWS RDS, you cannot use `ALTER SYSTEM` commands. Instead, configure `log_line_prefix` via RDS Parameter Groups:
@@ -208,9 +206,16 @@ On AWS RDS, you cannot use `ALTER SYSTEM` commands. Instead, configure `log_line
 2. Create or modify your parameter group
 3. Set `log_line_prefix` to: `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`
 4. Apply the parameter group to your RDS instance
-5. Reboot the instance if required by the parameter change
 
 **Note:** Ensure CloudWatch Logs export is enabled for the `postgresql` log in your RDS instance settings.
+
+#### Check the configuration
+
+Use the following SELECT statement to show and verify the current string format applied to the beginning of each log line.
+
+```sql
+SHOW log_line_prefix;
+```
 
 ### Watermark and Historical Log Processing
 
@@ -306,14 +311,6 @@ loki.write "logs_service" {
   }
 }
 ```
-
-Replace the following:
-
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
 **Persistent storage:** Alloy's data path (`--storage.path`) must be persisted across restarts to maintain loki.source.file positions file.
 
@@ -446,6 +443,14 @@ loki.write "logs_service" {
 ```
 
 **Persistent storage:** Both `otelcol.storage.file` directory and Alloy's data path (`--storage.path`) must be persisted across restarts to maintain CloudWatch state and watermarks.
+
+Replace the following:
+
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
