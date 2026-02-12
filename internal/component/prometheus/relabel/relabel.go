@@ -227,6 +227,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer c.exited.Store(true)
+	defer c.fanout.Clear()
 
 	<-ctx.Done()
 	return nil
