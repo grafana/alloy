@@ -16,7 +16,9 @@ title: prometheus.write.queue
 Metrics are sent over the network using the [Prometheus Remote Write protocol][remote_write-spec].
 
 {{< admonition type="note" >}}
-This component is deprecated and will be removed in a future version of {{< param "PRODUCT_NAME" >}}. Please use `prometheus.remote_write` instead.
+Starting with {{< param "PRODUCT_NAME" >}} v1.14, `prometheus.write.queue` is deprecated.
+It will be removed in a future release.
+Use `prometheus.remote_write` instead.
 {{< /admonition >}}
 
 You can specify multiple `prometheus.write.queue` components by giving them different labels.
