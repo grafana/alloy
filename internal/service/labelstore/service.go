@@ -36,8 +36,10 @@ type staleMarker struct {
 
 type Arguments struct{}
 
-var _ alloy_service.Service = (*Service)(nil)
-var _ alloy_service.Service = (*disabledStore)(nil)
+var (
+	_ alloy_service.Service = (*Service)(nil)
+	_ alloy_service.Service = (*disabledStore)(nil)
+)
 
 func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStore {
 	if l == nil {
