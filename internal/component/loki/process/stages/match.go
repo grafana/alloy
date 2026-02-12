@@ -192,10 +192,6 @@ func (m *matcherStage) processLogQL(e Entry) (Entry, bool) {
 	return e, false
 }
 
-func (m *matcherStage) Name() string {
-	return StageTypeMatch
-}
-
 func (m *matcherStage) Cleanup() {
 	if m.pipeline != nil {
 		m.pipeline.Cleanup()

@@ -120,8 +120,3 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t
 		level.Debug(j.logger).Log("msg", "extracted data debug in logfmt stage", "extracted data", extracted)
 	}
 }
-
-// Name implements Stage
-func (j *logfmtStage) Name() string {
-	return StageTypeLogfmt
-}

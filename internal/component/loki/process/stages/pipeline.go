@@ -56,6 +56,7 @@ type Pipeline struct {
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
+// FIXME: remove jobname
 func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
@@ -68,7 +69,6 @@ func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, regis
 	return &Pipeline{
 		logger:    log.With(logger, "component", "pipeline"),
 		stages:    st,
-		jobName:   jobName,
 		dropCount: getDropCountMetric(registerer),
 	}, nil
 }
@@ -123,11 +123,6 @@ func (p *Pipeline) Run(in chan Entry) chan Entry {
 		in = m.Run(in)
 	}
 	return in
-}
-
-// Name implements Stage
-func (p *Pipeline) Name() string {
-	return StageTypePipeline
 }
 
 // Cleanup implements Stage.

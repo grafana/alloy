@@ -11,47 +11,10 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// TODO(@tpaschalis) Let's use this as the list of stages we need to port over.
-const (
-	StageTypeCRI        = "cri"
-	StageTypeDecolorize = "decolorize"
-	StageTypeDocker     = "docker"
-	StageTypeDrop       = "drop"
-	//TODO(thampiotr): Add support for eventlogmessage stage
-	StageTypeEventLogMessage        = "eventlogmessage"
-	StageTypeGeoIP                  = "geoip"
-	StageTypeJSON                   = "json"
-	StageTypeLabel                  = "labels"
-	StageTypeLabelAllow             = "labelallow"
-	StageTypeLabelDrop              = "labeldrop"
-	StageTypeLimit                  = "limit"
-	StageTypeLogfmt                 = "logfmt"
-	StageTypeLuhn                   = "luhn"
-	StageTypeMatch                  = "match"
-	StageTypeMetric                 = "metrics"
-	StageTypeMultiline              = "multiline"
-	StageTypeOutput                 = "output"
-	StageTypePack                   = "pack"
-	StageTypePattern                = "pattern"
-	StageTypePipeline               = "pipeline"
-	StageTypeRegex                  = "regex"
-	StageTypeReplace                = "replace"
-	StageTypeSampling               = "sampling"
-	StageTypeStaticLabels           = "static_labels"
-	StageTypeStructuredMetadata     = "structured_metadata"
-	StageTypeStructuredMetadataDrop = "structured_metadata_drop"
-	StageTypeTemplate               = "template"
-	StageTypeTenant                 = "tenant"
-	StageTypeTimestamp              = "timestamp"
-	StageTypeTruncate               = "truncate"
-	StageTypeWindowsEvent           = "windowsevent"
-)
-
 // Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
 // timestamp and log entry
 type Processor interface {
 	Process(labels model.LabelSet, extracted map[string]any, time *time.Time, entry *string)
-	Name() string
 }
 
 type Entry struct {
@@ -61,7 +24,6 @@ type Entry struct {
 
 // Stage can receive entries via an inbound channel and forward mutated entries to an outbound channel.
 type Stage interface {
-	Name() string
 	Run(chan Entry) chan Entry
 	Cleanup()
 }
