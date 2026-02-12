@@ -35,6 +35,8 @@ You can use the following arguments with `database_observability.postgres`:
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
 
+[Data Source Name format]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
+
 ## Exports
 
 The following fields are exported and can be referenced by other components:
@@ -201,18 +203,9 @@ Example log line:
 The `logs` collector uses a watermark file to track the last processed log timestamp. This prevents re-counting historical logs on component restart and maintains proper Prometheus counter semantics.
 
 **Default behavior:**
-- Watermark file: `<data_path>/dbo11y_pg_logs_watermark.txt`
+- Watermark file localtion: `<data_path>/dbo11y_pg_logs_watermark.txt`
 - On first run: Starts processing logs from the current time (skips historical logs)
 - On restart: Resumes from the last processed timestamp
-- Sync frequency: Every 10 seconds (atomic writes for crash safety)
-
-**Benefits:**
-- `postgres_errors_total` maintains monotonically increasing values
-- No duplicate counting on Alloy restarts
-- Proper `rate()` and `increase()` calculations in Prometheus
-- Resumes from last position after downtime (no data loss)
-
-**Important:** When using log sources with `start_from` set to historical timestamps (e.g., `otelcol.receiver.awscloudwatch` with `start_from = "2026-01-01T00:00:00Z"`), the watermark ensures that historical logs are only counted once, even if Alloy restarts multiple times.
 
 ## Examples
 
