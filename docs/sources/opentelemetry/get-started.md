@@ -223,7 +223,7 @@ Replace the following:
 - _`<PASSWORD>`_: Your password. If you are using Grafana Cloud this is your Grafana Cloud API token.
 - _`<URL>`_: The URL to export data to. If you are using Grafana Cloud this is your Grafana Cloud OTLP endpoint URL.
 
-Please refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case
+Refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case.
 
 **Note:**
 In the above configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the pod, so it can be reached both from other pods in the cluster and via kubectl port-forward.
