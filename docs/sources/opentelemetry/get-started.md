@@ -225,10 +225,6 @@ Replace the following:
 
 Refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case.
 
-**Note:**
-In the above configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the pod, so it can be reached both from other pods in the cluster and via kubectl port-forward.
-
-
 ## Run with service installation
 
 Service installation support for systemd, launchd, and similar systems isn't included in the initial experimental release.
