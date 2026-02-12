@@ -15,9 +15,9 @@ title: pyroscope.relabel
 The `pyroscope.relabel` component rewrites the external label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 
 If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments. 
-The profile is dropped if no labels remain after the relabeling rules are applied.
+The profile is dropped if no external labels remain after the relabeling rules are applied.
 
-`pyroscope.relabel` only rewrites profile labels exposed by Alloy components, such as labels inferred by `pyroscope.scrape` or labels provided through the `/ingest?name=...` query parameter.
+`pyroscope.relabel` only rewrites labels that are not embedded in the profile itself, such as labels inferred by `pyroscope.scrape` or labels provided through the `/ingest?name=...` query parameter.
 It does not parse or modify labels embedded inside profile payloads like pprof sample labels.
 
 The most common use of `pyroscope.relabel` is to filter profiles or standardize external labels passed to one or more downstream receivers.

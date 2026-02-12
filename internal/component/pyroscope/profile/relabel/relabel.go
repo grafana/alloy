@@ -35,7 +35,6 @@ func init() {
 	})
 }
 
-// Arguments configures the pyroscope.profile.relabel component.
 type Arguments struct {
 	// Where the relabeled profiles should be forwarded to.
 	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
