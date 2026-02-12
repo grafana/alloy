@@ -70,9 +70,6 @@ The following flags are supported:
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}
-The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
-
-{{< admonition type="note" >}}
 The `--feature.series-ref-mapping.enabled` flag is an [experimental][] feature.
 Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 To enable and use an experimental feature, you must set the `stability.level` [flag](#permitted-stability-levels) to `experimental`.
@@ -80,14 +77,16 @@ To enable and use an experimental feature, you must set the `stability.level` [f
 [experimental]: https://grafana.com/docs/release-life-cycle/
 {{< /admonition >}}
 
-
-### Deprecated flags
-
-* `--feature.prometheus.metric-validation-scheme`: This flag is deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component in your {{< param "PRODUCT_NAME" >}} configuration file.
+{{< admonition type="note" >}}
+The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}
+
+### Deprecated flags
+
+* `--feature.prometheus.metric-validation-scheme`: This flag is deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component in your {{< param "PRODUCT_NAME" >}} configuration file.
 
 ## Update the configuration file
 
