@@ -217,7 +217,7 @@ config:
         exporters: [otlphttp/my_backend]
 ```
 
-As before, replace the following:
+Replace the following:
 
 - _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
 - _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
