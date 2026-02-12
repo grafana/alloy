@@ -20,6 +20,7 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
 	cpuTimeField              = `, statements.CPU_TIME`
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
@@ -399,6 +400,35 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				waitLogMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+
+			waitLogMessageV2 := fmt.Sprintf(
+				`thread_id="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_object_type="%s" wait_object_name="%s" wait_time="%fms"`,
+				row.ThreadID.String,
+				row.StatementEventID.String,
+				row.WaitEventID.String,
+				row.WaitEndEventID.String,
+				row.WaitObjectType.String,
+				row.WaitObjectName.String,
+				waitTime,
+			)
+
+			if c.disableQueryRedaction && row.SQLText.Valid {
+				waitLogMessageV2 += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			}
+
+			structuredMetadata := map[string]string{
+				"schema":          row.Schema.String,
+				"digest":          row.Digest.String,
+				"wait_event_name": row.WaitEventName.String,
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+				logging.LevelInfo,
+				OP_WAIT_EVENT_V2,
+				waitLogMessageV2,
+				structuredMetadata,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
 		}
