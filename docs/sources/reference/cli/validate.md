@@ -25,9 +25,9 @@ Replace the following:
 * _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 If the configuration file is valid, the `validate` command returns a zero exit code.
-If the configuration file is invalid, the command  returns a non-zero exit code and prints diagnostics generated during validation to stderr.
+If the configuration file is invalid, the command returns a non-zero exit code and prints diagnostics generated during validation to `stderr`.
 
-If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
+If you provide a directory path for the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 
 The following flags are supported:
 
@@ -45,10 +45,10 @@ When you validate the {{< param "PRODUCT_NAME" >}} configuration, you must set t
 
 Validation is limited in scope. It currently checks for:
 
-* Syntax errors.
-* Missing components.
-* Component name conflicts.
-* Required properties are set.
-* Unknown properties.
-* Foreach blocks.
-* Declare blocks.
+* Syntax errors in the {{< param "PRODUCT_NAME" >}} configuration syntax
+* Missing components
+* Component name conflicts
+* Required properties are set
+* Unknown properties
+* `foreach` blocks
+* `declare` blocks

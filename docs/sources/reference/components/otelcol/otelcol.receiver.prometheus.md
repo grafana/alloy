@@ -22,6 +22,26 @@ You can specify multiple `otelcol.receiver.prometheus` components by giving them
 `otelcol.receiver.prometheus` is a custom component built on a fork of the upstream OpenTelemetry receiver.
 {{< /admonition >}}
 
+
+{{< admonition type="note" >}}
+In {{< param "PRODUCT_NAME" >}} v1.14.0, `otelcol.receiver.prometheus` no longer sets OTLP metric [start times][otlp-start-time] for Prometheus metrics. The receiver forwards metrics without adding start times when the Prometheus input does not have a [created time][om-suffixes].
+
+Start time is a way to tell when a cumulative metric such as an OTLP "sum" or a Prometheus "counter" was last reset.
+If your database uses start times for OTLP metrics, you can use `otelcol.processor.metric_start_time` to set it.
+Grafana Mimir's OTLP endpoint and Grafana Cloud's OTLP Gateway both support OTLP metric start time.
+
+To add the start time in the same way that `otelcol.receiver.prometheus` did it prior to {{< param "PRODUCT_NAME" >}} v1.14.0, 
+configure `otelcol.processor.metric_start_time` with `strategy` set to `true_reset_point`.
+
+In practice it is only necessary to use `true_reset_point` if your Mimir/Grafana Cloud instance is explicitly configured with a 
+`-distributor.otel-created-timestamp-zero-ingestion-enabled=true` flag, 
+since `true_reset_point` will send a sample with the same start and end time and Mimir by default won't create a zero sample for it.
+For most Mimir and Grafana Cloud use cases there would be no change in behaviour even if no `otelcol.processor.metric_start_time` is added.
+
+[om-suffixes]: https://github.com/prometheus/OpenMetrics/blob/v1.0.0/specification/OpenMetrics.md#suffixes
+[otlp-start-time]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.9.0/opentelemetry/proto/metrics/v1/metrics.proto#L181-L187
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -35,11 +55,6 @@ otelcol.receiver.prometheus "<LABEL>" {
 ## Arguments
 
 The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
-
-{{< admonition type="note" >}}
-`otelcol.receiver.prometheus` will translate Prometheus native histograms into 
-OTLP exponential histograms if Alloy is ran with the `--stability.level=experimental` configuration flag.
-{{< /admonition >}}
 
 ## Blocks
 

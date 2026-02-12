@@ -94,11 +94,12 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		}),
 		"crio": crio.NewPlugin(),
 		"docker": docker.NewPluginWithOptions(&docker.Options{
-			DockerEndpoint: c.Docker,
-			DockerTLS:      c.DockerTLS,
-			DockerCert:     c.DockerTLSCert,
-			DockerKey:      c.DockerTLSKey,
-			DockerCA:       c.DockerTLSCA,
+			DockerEndpoint:     c.Docker,
+			DockerTLS:          c.DockerTLS,
+			DockerCert:         c.DockerTLSCert,
+			DockerKey:          c.DockerTLSKey,
+			DockerCA:           c.DockerTLSCA,
+			ContainerDEndpoint: c.Containerd,
 		}),
 		"systemd": systemd.NewPlugin(),
 	}
