@@ -48,9 +48,14 @@
 ##   generate-ui               Generate the UI assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
-##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
 ##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
+
+## Targets for generating source code:
 ##
+##   generate-module-dependencies Generate replace directives from dependency-replacements.yaml, will also run "go mod tidy" for modules.
+##   generate-otel-collector-distro Generate the OTel Engine distro from builder-config.yaml.
+
+
 ## Other targets:
 ##
 ##   build-container-cache  Create a cache for the build container to speed up
@@ -291,11 +296,7 @@ generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	@if [ -f ./collector/go.mod ]; then \
-		cd ./collector && go mod tidy; \
-	fi
-	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
-	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
+	cd ./tools/generate-otel-engine-collector && BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
 generate-ui:
