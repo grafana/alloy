@@ -151,7 +151,7 @@ You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`
 ## Run with The OpenTelemetry Collector Helm chart
 
 Use the upstream OpenTelemetry Collector Helm chart run the {{< param "OTEL_ENGINE" >}} . 
-This delivers an identical upstream collector experience and ensures you get improvements, bug fixes and security updates as they land.
+This delivers an identical upstream collector experience and ensures you get improvements, bug fixes, and security updates as they are released.
 
 The following example helm values.yaml incorporates the same configuration seen above into a kubernetes deployment
 
