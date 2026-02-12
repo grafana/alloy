@@ -51,7 +51,6 @@ type StageConfig struct {
 type Pipeline struct {
 	logger    log.Logger
 	stages    []Stage
-	jobName   *string
 	dropCount *prometheus.CounterVec
 }
 
