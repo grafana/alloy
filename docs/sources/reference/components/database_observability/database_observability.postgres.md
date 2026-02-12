@@ -188,7 +188,7 @@ This is done by setting the log_line_prefix param to '%m:%r:%u@%d:[%p]:%l:%e:%s:
 
 **Self hosted Postgres server**
 
-For the logs collector to work correctly, PostgreSQL must be configured with the following RDS log format:
+For the logs collector to work correctly, PostgreSQL must be configured with the following log_line_prefix:
 
 ```sql
 -- Set log format (requires superuser)
@@ -236,13 +236,7 @@ database_observability.postgres "orders_db" {
   forward_to       = [loki.relabel.orders_db.receiver]
   targets          = prometheus.exporter.postgres.orders_db.targets
 
-  enable_collectors = ["query_samples", "explain_plans"]
-
-  cloud_provider {
-    aws {
-      arn = "your-rds-db-arn"
-    }
-  }
+  enable_collectors = ["query_samples", "explain_plans"]  
 }
 
 prometheus.exporter.postgres "orders_db" {
