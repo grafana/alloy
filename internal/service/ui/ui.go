@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
+	graphql_service "github.com/grafana/alloy/internal/service/graphql"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
@@ -83,6 +84,7 @@ func (s *Service) ServiceHandler(host service.Host) (base string, handler http.H
 
 	fa := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.Logger)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
+	graphql_service.RegisterRoutes(s.opts.UIPrefix, r, host, s.opts.Logger)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 
 	return s.opts.UIPrefix, r

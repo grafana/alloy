@@ -313,6 +313,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	return nil
 }
 
+// IsReady returns true if Alloy is deemed ready based on the provided ReadyFunc
+func (s *Service) IsReady() bool {
+	return s.opts.ReadyFunc()
+}
+
 func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		s.supportBundleMut.Lock()
