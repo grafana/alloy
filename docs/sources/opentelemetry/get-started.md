@@ -219,9 +219,9 @@ config:
 
 Replace the following:
 
-- _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
-- _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
-- _`<URL>`_: The URL to export data to, if you are using Grafana Cloud this will be your Grafana Cloud OTLP endpoint URL.
+- _`<USERNAME>`_: Your username. If you are using Grafana Cloud this is your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password. If you are using Grafana Cloud this is your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to. If you are using Grafana Cloud this is your Grafana Cloud OTLP endpoint URL.
 
 Please refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case
 
