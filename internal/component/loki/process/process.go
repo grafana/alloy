@@ -131,7 +131,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// first load. This will allow a component with no stages to function
 	// properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}

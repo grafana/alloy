@@ -202,8 +202,3 @@ func checksum(number int) int {
 	}
 	return luhn % 10
 }
-
-// Name implements Stage.
-func (r *luhnFilterStage) Name() string {
-	return StageTypeLuhn
-}

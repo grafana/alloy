@@ -62,22 +62,16 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 }
 
 // newMatcherStage creates a new matcherStage from config
-func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	selector, err := validateMatcherConfig(&config)
 	if err != nil {
 		return nil, err
 	}
 
-	var nPtr *string
-	if config.PipelineName != "" && jobName != nil {
-		name := *jobName + "_" + config.PipelineName
-		nPtr = &name
-	}
-
 	var pl *Pipeline
 	if config.Action == MatchActionKeep {
 		var err error
-		pl, err = NewPipeline(logger, config.Stages, nPtr, registerer, minStability)
+		pl, err = NewPipeline(logger, config.Stages, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("%v: %w", err, fmt.Errorf("match stage failed to create pipeline from config: %v", config))
 		}
@@ -190,10 +184,6 @@ func (m *matcherStage) processLogQL(e Entry) (Entry, bool) {
 		return e, true
 	}
 	return e, false
-}
-
-func (m *matcherStage) Name() string {
-	return StageTypeMatch
 }
 
 func (m *matcherStage) Cleanup() {

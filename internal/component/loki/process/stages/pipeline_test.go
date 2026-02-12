@@ -51,8 +51,8 @@ func loadConfig(yml string) []StageConfig {
 	return config.Stages
 }
 
-func newPipelineFromConfig(cfg, name string) (*Pipeline, error) {
-	return NewPipeline(log.NewNopLogger(), loadConfig(cfg), &name, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+func newPipelineFromConfig(cfg string) (*Pipeline, error) {
+	return NewPipeline(log.NewNopLogger(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 }
 
 // TODO(@tpaschalis) Comment these out until we port over the remaining
@@ -99,7 +99,7 @@ stage.output {
 }`
 
 func TestNewPipeline(t *testing.T) {
-	p, err := NewPipeline(log.NewNopLogger(), loadConfig(testMultiStageAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, err := NewPipeline(log.NewNopLogger(), loadConfig(testMultiStageAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		panic(err)
 	}
@@ -211,7 +211,7 @@ func TestPipeline_Process(t *testing.T) {
 			err := syntax.Unmarshal([]byte(tt.config), &config)
 			require.NoError(t, err)
 
-			p, err := NewPipeline(log.NewNopLogger(), loadConfig(tt.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewPipeline(log.NewNopLogger(), loadConfig(tt.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			out := processEntries(p, newEntry(nil, tt.initialLabels, tt.entry, tt.t))[0]
@@ -253,7 +253,7 @@ func BenchmarkPipeline(b *testing.B) {
 	}
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			pl, err := NewPipeline(bm.logger, bm.stgs, nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(bm.logger, bm.stgs, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				panic(err)
 			}
@@ -278,7 +278,7 @@ func BenchmarkPipeline(b *testing.B) {
 
 func TestPipeline_Wrap(t *testing.T) {
 	now := time.Now()
-	p, err := NewPipeline(log.NewNopLogger(), loadConfig(testMultiStageAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, err := NewPipeline(log.NewNopLogger(), loadConfig(testMultiStageAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		panic(err)
 	}
@@ -365,7 +365,7 @@ stage.match {
 			}
 }
 `
-	p, err := newPipelineFromConfig(cfg, "test")
+	p, err := newPipelineFromConfig(cfg)
 	require.NoError(t, err)
 
 	e1 := p.Start(handler.Chan())

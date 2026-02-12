@@ -93,8 +93,3 @@ func processLabelsConfigs(logger log.Logger, extracted map[string]any, labelsCon
 		}
 	}
 }
-
-// Name implements Stage
-func (l *labelStage) Name() string {
-	return StageTypeLabel
-}

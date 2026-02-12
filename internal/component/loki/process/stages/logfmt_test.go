@@ -62,7 +62,7 @@ func TestLogfmt(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err)
 			out := processEntries(pl, newEntry(nil, nil, testData.entry, time.Now()))[0]
 			assert.Equal(t, testData.expectedExtract, out.Extracted)
@@ -236,7 +236,7 @@ func TestLogfmtParser_Parse(t *testing.T) {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
-			p, err := New(logger, nil, StageConfig{LogfmtConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
+			p, err := New(logger, StageConfig{LogfmtConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err)
 			out := processEntries(p, newEntry(tt.extracted, nil, tt.entry, time.Now()))[0]
 

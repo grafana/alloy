@@ -48,8 +48,3 @@ func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
 		return e
 	})
 }
-
-// Name implements Stage.
-func (r *structuredMetadataDropStage) Name() string {
-	return StageTypeStructuredMetadataDrop
-}
