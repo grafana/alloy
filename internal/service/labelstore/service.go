@@ -61,6 +61,10 @@ func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStoreServi
 		return disabledStore{}
 	}
 
+	return newLabelStore(l, r)
+}
+
+func newLabelStore(l log.Logger, r prometheus.Registerer) *Service {
 	s := &Service{
 		log:                 l,
 		globalRefID:         0,

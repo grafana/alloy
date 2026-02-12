@@ -15,7 +15,7 @@ import (
 )
 
 func TestAddingMarker(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	shouldBeSameGlobalID := mapping.GetOrAddGlobalRefID(l)
@@ -24,7 +24,7 @@ func TestAddingMarker(t *testing.T) {
 }
 
 func TestAddingDifferentMarkers(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 	l2 := labels.FromStrings("__name__", "roar")
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -34,7 +34,7 @@ func TestAddingDifferentMarkers(t *testing.T) {
 }
 
 func TestAddingLocalMapping(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -49,7 +49,7 @@ func TestAddingLocalMapping(t *testing.T) {
 }
 
 func TestAddingLocalMappings(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -71,7 +71,7 @@ func TestAddingLocalMappings(t *testing.T) {
 }
 
 func TestReplaceLocalMappings(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -99,7 +99,7 @@ func TestReplaceLocalMappings(t *testing.T) {
 }
 
 func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
@@ -112,7 +112,7 @@ func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
 }
 
 func TestStaleness(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 	l2 := labels.FromStrings("__name__", "test2")
 
@@ -137,7 +137,7 @@ func TestStaleness(t *testing.T) {
 }
 
 func TestRemovingStaleness(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.FromStrings("__name__", "test")
 
 	global1 := mapping.GetOrAddGlobalRefID(l)
@@ -163,7 +163,7 @@ func TestRemovingStaleness(t *testing.T) {
 }
 
 func TestHashCollisions(t *testing.T) {
-	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	// These two series have the same XXHash; thanks to https://github.com/pstibrany/labels_hash_collisions
 	ls1 := labels.FromStrings("__name__", "metric", "lbl", "HFnEaGl")
 	ls2 := labels.FromStrings("__name__", "metric", "lbl", "RqcXatm")
@@ -186,7 +186,7 @@ func TestHashCollisions(t *testing.T) {
 
 func BenchmarkStaleness(b *testing.B) {
 	b.StopTimer()
-	ls := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	ls := newLabelStore(log.NewNopLogger(), prometheus.DefaultRegisterer)
 
 	tracking := make([]StalenessTracker, 100_000)
 	for i := 0; i < 100_000; i++ {
