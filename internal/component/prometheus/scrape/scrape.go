@@ -331,7 +331,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "prometheus_scrape_targets_gauge",
-		Help: "Number of targets this component is configured to scrape"})
+		Help: "Number of targets this component is configured to scrape",
+	})
 	err = o.Registerer.Register(targetsGauge)
 	if err != nil {
 		return nil, err
@@ -339,7 +340,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	movedTargetsCounter := client_prometheus.NewCounter(client_prometheus.CounterOpts{
 		Name: "prometheus_scrape_targets_moved_total",
-		Help: "Number of targets that have moved from this cluster node to another one"})
+		Help: "Number of targets that have moved from this cluster node to another one",
+	})
 	err = o.Registerer.Register(movedTargetsCounter)
 	if err != nil {
 		return nil, err
@@ -385,6 +387,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
 	defer c.unregisterer.UnregisterAll()
+	defer c.appendable.Clear()
 
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 
@@ -435,7 +438,6 @@ func (c *Component) distributeTargets(
 	jobName string,
 	args Arguments,
 ) (map[string][]*targetgroup.Group, []*scrape.Target) {
-
 	var (
 		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
 		oldDistributedTargets *discovery.DistributedTargets
