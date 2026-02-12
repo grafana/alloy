@@ -47,7 +47,7 @@ func toStage(p Processor) Stage {
 }
 
 // New creates a new stage for the given type and configuration.
-func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	var (
 		s   Stage
 		err error
@@ -114,7 +114,7 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 			return nil, err
 		}
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(logger, jobName, *cfg.MatchConfig, registerer, minStability)
+		s, err = newMatcherStage(logger, *cfg.MatchConfig, registerer, minStability)
 		if err != nil {
 			return nil, err
 		}

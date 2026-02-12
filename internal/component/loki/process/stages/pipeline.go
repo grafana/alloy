@@ -56,11 +56,10 @@ type Pipeline struct {
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-// FIXME: remove jobname
-func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
+func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, jobName, stage, registerer, minStability)
+		newStage, err := New(logger, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
