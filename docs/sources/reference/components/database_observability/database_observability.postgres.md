@@ -35,7 +35,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
 
-[Data Source Name format]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
+[Data Source Name]: format must adhere to the [pq library standards](https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig).
 
 ## Exports
 
@@ -162,10 +162,10 @@ The component exports a `logs_receiver` entry point that must be fed by log sour
 
 The logs collector exports the following Prometheus metrics:
 
-| Metric Name                               | Type    | Description                                       | Labels                                                                                |
-| ----------------------------------------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `postgres_errors_total`                   | counter | Total PostgreSQL errors by severity and SQLSTATE. | `severity`, `sqlstate`, `sqlstate_class`, `database`, `user`, `instance`, `server_id` |
-| `postgres_error_log_parse_failures_total` | counter | Number of log lines that failed to parse.         | -                                                                                     |
+| Metric Name                               | Type                 | Description                                                 | Labels                                                                                |
+| ----------------------------------------- | -------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `database_observability_postgres_errors_total`                   | counter | Total PostgreSQL errors by severity and SQLSTATE. | `severity`, `sqlstate`, `sqlstate_class`, `datname`, `user`, `instance`, `server_id`  |
+| `database_observability_postgres_error_log_parse_failures_total` | counter | Number of log lines that failed to parse.         | -                                                                                     |
 
 ### Required PostgreSQL Configuration
 
@@ -182,7 +182,7 @@ Example log line:
 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):app_user@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement due to user request
 ```
 
-This is done by setting the log_line_prefix param to '%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a'.
+This is done by setting the log_line_prefix param to `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`.
 
 #### How to configure the log_line_prefix
 
@@ -207,7 +207,7 @@ On AWS RDS, you cannot use `ALTER SYSTEM` commands. Instead, configure `log_line
 3. Set `log_line_prefix` to: `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`
 4. Apply the parameter group to your RDS instance
 
-**Note:** Ensure CloudWatch Logs export is enabled for the `postgresql` log in your RDS instance settings.
+**Note:** Ensure [CloudWatch Logs export is enabled](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.Procedural.UploadtoCloudWatch.html) for `Error log` and `General log` in your RDS instance settings.
 
 #### Check the configuration
 
@@ -222,7 +222,7 @@ SHOW log_line_prefix;
 The `logs` collector uses a watermark file to track the last processed log timestamp. This prevents re-counting historical logs on component restart and maintains proper Prometheus counter semantics.
 
 **Default behavior:**
-- Watermark file localtion: `<data_path>/dbo11y_pg_logs_watermark.txt`
+- Watermark file location: `<data_path>/dbo11y_pg_logs_watermark.txt`
 - On first run: Starts processing logs from the current time (skips historical logs)
 - On restart: Resumes from the last processed timestamp
 
