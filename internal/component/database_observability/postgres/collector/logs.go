@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	LogsCollector     = "logs"
-	watermarkFilename = "dbo11y_pg_logs_watermark.txt"
-	expectedLogFormat = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	LogsCollector            = "logs"
+	watermarkFilename        = "dbo11y_pg_logs_watermark.txt"
+	expectedLogFormat        = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 )
 
 // Postgres log format regex
@@ -80,7 +80,6 @@ type Logs struct {
 	dataPath               string
 	lastProcessedTimestamp *atomic.Time
 	startTime              time.Time
-	watermarkMu            sync.Mutex
 	watermarkQuit          chan struct{}
 	watermarkDone          chan struct{}
 }
@@ -160,7 +159,6 @@ func (l *Logs) Stop() {
 	close(l.watermarkQuit)
 	l.wg.Wait()
 
-	// Unregister metrics
 	l.registry.Unregister(l.errorsBySQLState)
 	l.registry.Unregister(l.parseErrors)
 }
