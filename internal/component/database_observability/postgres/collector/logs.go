@@ -19,7 +19,10 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-const LogsCollector = "logs"
+const (
+	LogsCollector            = "logs"
+	watermarkFilename        = "dbo11y_pg_logs_watermark.txt"
+)
 
 // RDS log format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 var rdsLogFormatRegex = regexp.MustCompile(
@@ -46,13 +49,13 @@ type ParsedError struct {
 }
 
 type LogsArguments struct {
-	Receiver      loki.LogsReceiver
-	EntryHandler  loki.EntryHandler
-	Logger        log.Logger
-	InstanceKey   string
-	SystemID      string
-	Registry      *prometheus.Registry
-	WatermarkPath string
+	Receiver     loki.LogsReceiver
+	EntryHandler loki.EntryHandler
+	Logger       log.Logger
+	InstanceKey  string
+	SystemID     string
+	Registry     *prometheus.Registry
+	DataPath     string
 }
 
 type Logs struct {
@@ -78,7 +81,7 @@ type Logs struct {
 	invalidLogsThisMinute int
 
 	// Watermark tracking
-	watermarkPath          string
+	dataPath               string
 	lastProcessedTimestamp *atomic.Time
 	startTime              time.Time
 	watermarkMu            sync.Mutex
@@ -99,7 +102,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		ctx:                    ctx,
 		cancel:                 cancel,
 		stopped:                atomic.NewBool(false),
-		watermarkPath:          args.WatermarkPath,
+		dataPath:               args.DataPath,
 		lastProcessedTimestamp: atomic.NewTime(time.Time{}),
 		startTime:              time.Now(),
 		watermarkQuit:          make(chan struct{}),
@@ -172,17 +175,25 @@ func (l *Logs) Stopped() bool {
 	return l.stopped.Load()
 }
 
+func (l *Logs) watermarkPath() string {
+	if l.dataPath == "" {
+		return ""
+	}
+	return filepath.Join(l.dataPath, watermarkFilename)
+}
+
 func (l *Logs) loadWatermark() error {
-	if l.watermarkPath == "" {
+	watermarkPath := l.watermarkPath()
+	if watermarkPath == "" {
 		level.Info(l.logger).Log("msg", "no watermark path specified, starting from now")
 		l.lastProcessedTimestamp.Store(l.startTime)
 		return nil
 	}
 
-	data, err := os.ReadFile(l.watermarkPath)
+	data, err := os.ReadFile(watermarkPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			level.Info(l.logger).Log("msg", "watermark file does not exist, starting from now", "path", l.watermarkPath)
+			level.Info(l.logger).Log("msg", "watermark file does not exist, starting from now", "path", watermarkPath)
 			l.lastProcessedTimestamp.Store(l.startTime)
 			return nil
 		}
@@ -195,13 +206,14 @@ func (l *Logs) loadWatermark() error {
 	}
 
 	l.lastProcessedTimestamp.Store(timestamp)
-	level.Info(l.logger).Log("msg", "loaded watermark from disk", "timestamp", timestamp, "path", l.watermarkPath)
+	level.Info(l.logger).Log("msg", "loaded watermark from disk", "timestamp", timestamp, "path", watermarkPath)
 
 	return nil
 }
 
 func (l *Logs) saveWatermark() error {
-	if l.watermarkPath == "" {
+	watermarkPath := l.watermarkPath()
+	if watermarkPath == "" {
 		return nil
 	}
 
@@ -212,22 +224,22 @@ func (l *Logs) saveWatermark() error {
 
 	data := []byte(timestamp.Format(time.RFC3339Nano))
 
-	dir := filepath.Dir(l.watermarkPath)
+	dir := filepath.Dir(watermarkPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create watermark directory: %w", err)
 	}
 
-	tmpPath := l.watermarkPath + ".tmp"
+	tmpPath := watermarkPath + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write watermark temp file: %w", err)
 	}
 
-	if err := os.Rename(tmpPath, l.watermarkPath); err != nil {
+	if err := os.Rename(tmpPath, watermarkPath); err != nil {
 		os.Remove(tmpPath)
 		return fmt.Errorf("failed to rename watermark file: %w", err)
 	}
 
-	level.Debug(l.logger).Log("msg", "saved watermark to disk", "timestamp", timestamp, "path", l.watermarkPath)
+	level.Debug(l.logger).Log("msg", "saved watermark to disk", "timestamp", timestamp, "path", watermarkPath)
 
 	return nil
 }
@@ -314,6 +326,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	l.trackValidFormat()
 
+	// Parse RDS format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 	atIdx := strings.Index(line, "@")
 	afterAt := line[atIdx+1:]
 	pidMarkerIdx := strings.Index(afterAt, ":[")
@@ -324,6 +337,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
 	user := strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
 
+	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
 	pidEndIdx := strings.Index(afterAt, "]")
 	afterPid := afterAt[pidEndIdx+1:]
 
@@ -334,6 +348,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
+	// Find severity keyword (ERROR:, FATAL:, PANIC:)
 	messageStart := -1
 	severity := ""
 	for sev := range supportedSeverities {

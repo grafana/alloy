@@ -596,19 +596,18 @@ func TestLogsCollector_SystemID(t *testing.T) {
 
 func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 	tmpDir := t.TempDir()
-	watermarkPath := tmpDir + "/watermark.txt"
 
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:      loki.NewLogsReceiver(),
-		EntryHandler:  entryHandler,
-		Logger:        log.NewNopLogger(),
-		InstanceKey:   "test-instance",
-		SystemID:      "test-system",
-		Registry:      registry,
-		WatermarkPath: watermarkPath,
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		InstanceKey:  "test-instance",
+		SystemID:     "test-system",
+		Registry:     registry,
+		DataPath:     tmpDir,
 	})
 	require.NoError(t, err)
 
@@ -657,20 +656,19 @@ func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 
 func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
 	tmpDir := t.TempDir()
-	watermarkPath := tmpDir + "/watermark.txt"
 
 	// Create first collector and process a log
 	entryHandler1 := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry1 := prometheus.NewRegistry()
 
 	collector1, err := NewLogs(LogsArguments{
-		Receiver:      loki.NewLogsReceiver(),
-		EntryHandler:  entryHandler1,
-		Logger:        log.NewNopLogger(),
-		InstanceKey:   "test-instance",
-		SystemID:      "test-system",
-		Registry:      registry1,
-		WatermarkPath: watermarkPath,
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler1,
+		Logger:       log.NewNopLogger(),
+		InstanceKey:  "test-instance",
+		SystemID:     "test-system",
+		Registry:     registry1,
+		DataPath:     tmpDir,
 	})
 	require.NoError(t, err)
 
@@ -699,13 +697,13 @@ func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
 	registry2 := prometheus.NewRegistry()
 
 	collector2, err := NewLogs(LogsArguments{
-		Receiver:      loki.NewLogsReceiver(),
-		EntryHandler:  entryHandler2,
-		Logger:        log.NewNopLogger(),
-		InstanceKey:   "test-instance",
-		SystemID:      "test-system",
-		Registry:      registry2,
-		WatermarkPath: watermarkPath,
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler2,
+		Logger:       log.NewNopLogger(),
+		InstanceKey:  "test-instance",
+		SystemID:     "test-system",
+		Registry:     registry2,
+		DataPath:     tmpDir,
 	})
 	require.NoError(t, err)
 
@@ -738,18 +736,18 @@ func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
 }
 
 func TestLogsCollector_Watermark_FallsBackToStartTime(t *testing.T) {
-	// No watermark path specified
+	// No data path specified
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:      loki.NewLogsReceiver(),
-		EntryHandler:  entryHandler,
-		Logger:        log.NewNopLogger(),
-		InstanceKey:   "test-instance",
-		SystemID:      "test-system",
-		Registry:      registry,
-		WatermarkPath: "", // No path
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		InstanceKey:  "test-instance",
+		SystemID:     "test-system",
+		Registry:     registry,
+		DataPath:     "", // No path
 	})
 	require.NoError(t, err)
 

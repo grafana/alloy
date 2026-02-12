@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -557,13 +556,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:      c.logsReceiver,
-		EntryHandler:  loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
-		Logger:        c.opts.Logger,
-		InstanceKey:   c.instanceKey,
-		SystemID:      systemID,
-		Registry:      c.registry,
-		WatermarkPath: c.getWatermarkPath(),
+		Receiver:     c.logsReceiver,
+		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:       c.opts.Logger,
+		InstanceKey:  c.instanceKey,
+		SystemID:     systemID,
+		Registry:     c.registry,
+		DataPath:     c.opts.DataPath,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
@@ -617,11 +616,6 @@ func (c *Component) CurrentHealth() component.Health {
 		Message:    "All collectors are healthy",
 		UpdateTime: time.Now(),
 	}
-}
-
-// getWatermarkPath returns the watermark file path
-func (c *Component) getWatermarkPath() string {
-	return filepath.Join(c.opts.DataPath, "dbo11y_pg_logs_watermark.txt")
 }
 
 // instanceKey returns network(hostname:port)/dbname of the Postgres server.
