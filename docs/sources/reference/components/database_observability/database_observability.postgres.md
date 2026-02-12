@@ -34,7 +34,6 @@ You can use the following arguments with `database_observability.postgres`:
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
-| `watermark_path`     | `string`             | Path to watermark file for tracking processed logs.         | `<data_path>/dbo11y_pg_logs_watermark.txt` | no       |
 
 ## Exports
 
@@ -213,19 +212,11 @@ The `logs` collector uses a watermark file to track the last processed log times
 - Proper `rate()` and `increase()` calculations in Prometheus
 - Resumes from last position after downtime (no data loss)
 
-**Example with custom watermark path:**
-```alloy
-database_observability.postgres "orders_db" {
-  data_source_name = "postgres://user:pass@localhost:5432/dbname"
-  watermark_path   = "/var/lib/alloy/postgres_orders_watermark.txt"
-  forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.postgres.orders_db.targets
-}
-```
-
 **Important:** When using log sources with `start_from` set to historical timestamps (e.g., `otelcol.receiver.awscloudwatch` with `start_from = "2026-01-01T00:00:00Z"`), the watermark ensures that historical logs are only counted once, even if Alloy restarts multiple times.
 
-## Example
+## Examples
+
+### With loki.source.file
 
 ```alloy
 database_observability.postgres "orders_db" {
@@ -317,7 +308,134 @@ Replace the following:
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
-[Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters
+### With otelcol.receiver.awscloudwatch
+
+```alloy
+// Storage for CloudWatch state persistence
+otelcol.storage.file "cloudwatch" {
+  directory = "/var/lib/alloy/storage"
+}
+
+// Fetch logs from CloudWatch
+otelcol.receiver.awscloudwatch "rds_logs" {
+  region  = "us-east-1"
+  storage = otelcol.storage.file.cloudwatch.handler
+  
+  logs {
+    poll_interval = "1m"
+    // Omit start_from for tail-only (recommended)
+    // start_from = "2026-02-01T00:00:00Z"  // For historical backfill
+    
+    groups {
+      named {
+        group_name = "/aws/rds/instance/production-db/postgresql"
+      }
+    }
+  }
+  
+  output {
+    logs = [otelcol.exporter.loki.rds_logs.input]
+  }
+}
+
+// Convert OTLP to Loki format
+otelcol.exporter.loki "rds_logs" {
+  forward_to = [database_observability.postgres.rds_db.logs_receiver]
+}
+
+// Database observability component
+database_observability.postgres "rds_db" {
+  data_source_name = "postgres://user:pass@rds-endpoint.region.rds.amazonaws.com:5432/postgres"
+  targets          = prometheus.exporter.postgres.rds_db.targets
+  forward_to       = [loki.relabel.rds_db.receiver]
+  
+  cloud_provider {
+    aws {
+      arn = "arn:aws:rds:us-east-1:123456789012:db:production-db"
+    }
+  }
+}
+
+prometheus.exporter.postgres "rds_db" {
+  data_source_name   = "postgres://user:pass@rds-endpoint.region.rds.amazonaws.com:5432/postgres"
+  enabled_collectors = ["stat_statements"]
+}
+
+loki.relabel "rds_db" {
+  forward_to = [loki.write.logs_service.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "rds_db"
+  }
+}
+
+discovery.relabel "rds_db" {
+  targets = database_observability.postgres.rds_db.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "rds_db"
+  }
+}
+
+prometheus.scrape "rds_db" {
+  targets    = discovery.relabel.rds_db.targets
+  job_name   = "integrations/db-o11y"
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
+
+prometheus.remote_write "metrics_service" {
+  endpoint {
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
+    basic_auth {
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
+    }
+  }
+}
+
+loki.write "logs_service" {
+  endpoint {
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
+    basic_auth {
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
+    }
+  }
+}
+```
+
+**AWS Credentials:** The `otelcol.receiver.awscloudwatch` component requires AWS credentials. Configure via:
+- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
+- Docker: Mount `~/.aws` credentials or pass environment variables
+- Kubernetes: Use [IAM Roles for Service Accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or Kubernetes secrets
+
+**Required IAM permissions:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "logs:FilterLogEvents",
+      "logs:GetLogEvents",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams"
+    ],
+    "Resource": "arn:aws:logs:*:*:log-group:/aws/rds/instance/*"
+  }]
+}
+```
+
+**Persistent storage:** Both `otelcol.storage.file` directory and Alloy's data path (`--storage.path`) must be persisted across restarts to maintain CloudWatch state and watermarks.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
