@@ -22,8 +22,6 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -96,18 +94,16 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 			mfs, _ := registry.Gather()
 			found := false
 			for _, mf := range mfs {
-				if mf.GetName() == "postgres_errors_total" {
+				if mf.GetName() == "database_observability_postgres_errors_total" {
 					for _, metric := range mf.GetMetric() {
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
 							labels[label.GetName()] = label.GetValue()
 						}
-						if labels["user"] == tt.wantUser && labels["database"] == tt.wantDB {
+						if labels["user"] == tt.wantUser && labels["datname"] == tt.wantDB {
 							require.Equal(t, tt.wantSev, labels["severity"])
 							require.Equal(t, tt.wantSQLState, labels["sqlstate"])
 							require.Equal(t, tt.wantSQLState[:2], labels["sqlstate_class"])
-							require.Equal(t, "test-instance", labels["instance"])
-							require.Equal(t, "test-system", labels["server_id"])
 							found = true
 							break
 						}
@@ -127,8 +123,6 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -160,7 +154,7 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	// Should have 0 metrics since all were skipped
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
+		if mf.GetName() == "database_observability_postgres_errors_total" {
 			require.Equal(t, 0, len(mf.GetMetric()), "should not create metrics for non-error logs")
 		}
 	}
@@ -174,8 +168,6 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -232,7 +224,7 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var errorMetrics *dto.MetricFamily
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
+		if mf.GetName() == "database_observability_postgres_errors_total" {
 			errorMetrics = mf
 			break
 		}
@@ -255,7 +247,7 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 		}
 		key := metricKey{
 			user: labels["user"],
-			db:   labels["database"],
+			db:   labels["datname"],
 			sev:  labels["severity"],
 		}
 		counts[key] = metric.GetCounter().GetValue()
@@ -273,8 +265,6 @@ func TestLogsCollector_InvalidFormat(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -297,7 +287,7 @@ func TestLogsCollector_InvalidFormat(t *testing.T) {
 	mfs, _ := registry.Gather()
 	found := false
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_error_log_parse_failures_total" {
+		if mf.GetName() == "database_observability_postgres_error_log_parse_failures_total" {
 			found = true
 			require.Greater(t, mf.GetMetric()[0].GetCounter().GetValue(), 0.0)
 		}
@@ -313,8 +303,6 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system-id",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -337,7 +325,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var errorMetrics *dto.MetricFamily
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
+		if mf.GetName() == "database_observability_postgres_errors_total" {
 			errorMetrics = mf
 			break
 		}
@@ -352,7 +340,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 		labels[lp.GetName()] = lp.GetValue()
 	}
 
-	require.Equal(t, "", labels["database"], "database should be empty")
+	require.Equal(t, "", labels["datname"], "database should be empty")
 	require.Equal(t, "", labels["user"], "user should be empty")
 	require.Equal(t, "FATAL", labels["severity"])
 	require.Equal(t, "57P01", labels["sqlstate"])
@@ -361,7 +349,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 
 	// Verify no parse errors
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_error_log_parse_failures_total" {
+		if mf.GetName() == "database_observability_postgres_error_log_parse_failures_total" {
 			require.Equal(t, 0.0, mf.GetMetric()[0].GetCounter().GetValue(), "should have no parse errors")
 		}
 	}
@@ -374,8 +362,6 @@ func TestLogsCollector_StartStop(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test",
-		SystemID:     "test",
 		Registry:     prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
@@ -439,8 +425,6 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -521,7 +505,7 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 			mfs, _ := registry.Gather()
 			found := false
 			for _, mf := range mfs {
-				if mf.GetName() == "postgres_errors_total" {
+				if mf.GetName() == "database_observability_postgres_errors_total" {
 					for _, metric := range mf.GetMetric() {
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
@@ -530,8 +514,6 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 						if labels["sqlstate"] == tt.wantSQLState {
 							require.Equal(t, tt.wantSQLStateClass, labels["sqlstate_class"], "sqlstate_class should match")
 							require.Equal(t, tt.wantSeverity, labels["severity"], "severity should match")
-							require.Equal(t, "test-instance", labels["instance"])
-							require.Equal(t, "test-system", labels["server_id"])
 							found = true
 							break
 						}
@@ -541,57 +523,6 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 			require.True(t, found, "metric with sqlstate=%s not found for %s", tt.wantSQLState, tt.name)
 		})
 	}
-}
-
-func TestLogsCollector_SystemID(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-	registry := prometheus.NewRegistry()
-
-	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system-id",
-		Registry:     registry,
-	})
-	require.NoError(t, err)
-
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	logLine := `2025-12-12 15:29:16.068 GMT:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`
-
-	entry := loki.Entry{
-		Entry: push.Entry{
-			Timestamp: time.Now(),
-			Line:      logLine,
-		},
-	}
-
-	collector.Receiver().Chan() <- entry
-	time.Sleep(100 * time.Millisecond)
-
-	// Verify metric has SystemID label
-	mfs, _ := registry.Gather()
-	found := false
-	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
-			for _, metric := range mf.GetMetric() {
-				labels := make(map[string]string)
-				for _, label := range metric.GetLabel() {
-					labels[label.GetName()] = label.GetValue()
-				}
-				if labels["sqlstate"] == "40001" {
-					require.Equal(t, "test-system-id", labels["server_id"], "should have correct system ID")
-					found = true
-					break
-				}
-			}
-		}
-	}
-	require.True(t, found, "metric with system ID not found")
 }
 
 func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
@@ -604,8 +535,6 @@ func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry,
 		DataPath:     tmpDir,
 	})
@@ -644,7 +573,7 @@ func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
+		if mf.GetName() == "database_observability_postgres_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}
@@ -665,8 +594,6 @@ func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler1,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry1,
 		DataPath:     tmpDir,
 	})
@@ -700,8 +627,6 @@ func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler2,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry2,
 		DataPath:     tmpDir,
 	})
@@ -725,7 +650,7 @@ func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
 
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "postgres_errors_total" {
+		if mf.GetName() == "database_observability_postgres_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}
@@ -744,8 +669,6 @@ func TestLogsCollector_Watermark_FallsBackToStartTime(t *testing.T) {
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
-		InstanceKey:  "test-instance",
-		SystemID:     "test-system",
 		Registry:     registry,
 		DataPath:     "", // No path
 	})
@@ -755,4 +678,3 @@ func TestLogsCollector_Watermark_FallsBackToStartTime(t *testing.T) {
 	watermark := collector.lastProcessedTimestamp.Load()
 	require.True(t, watermark.Equal(collector.startTime), "watermark should equal start time")
 }
-

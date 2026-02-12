@@ -559,8 +559,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Receiver:     c.logsReceiver,
 		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
 		Logger:       c.opts.Logger,
-		InstanceKey:  c.instanceKey,
-		SystemID:     systemID,
 		Registry:     c.registry,
 		DataPath:     c.opts.DataPath,
 	})
