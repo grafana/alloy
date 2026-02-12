@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	LogsCollector     = "logs"
-	watermarkFilename = "dbo11y_pg_logs_watermark.txt"
-	expectedLogFormat = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	LogsCollector         = "logs"
+	watermarkFilename     = "dbo11y_pg_logs_watermark.txt"
+	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 )
 
 // Postgres log format regex
@@ -305,7 +305,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	l.trackValidFormat()
 
-	// Parse RDS format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
+	// Parse log line prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 	atIdx := strings.Index(line, "@")
 	afterAt := line[atIdx+1:]
 	pidMarkerIdx := strings.Index(afterAt, ":[")
@@ -433,7 +433,7 @@ func (l *Logs) trackInvalidFormat() {
 			level.Warn(l.logger).Log(
 				"msg", "all PostgreSQL error logs in the last minute had invalid format",
 				"invalid_count", l.invalidLogsThisMinute,
-				"expected_format", expectedLogFormat,
+				"expected_format", expectedLogLinePrefix,
 				"hint", "ensure log_line_prefix is set correctly on PostgreSQL server",
 			)
 		}
