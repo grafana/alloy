@@ -24,6 +24,8 @@ Before you start, validate your OpenTelemetry YAML configuration with the `valid
 ./build/alloy otel validate --config=<CONFIG_FILE>
 ```
 
+Whilst this is an experimental feature, it is not hidden behind an `experimental` feature flag like regular components are.
+
 ## Run with the CLI
 
 The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" >}} `otel` command.
