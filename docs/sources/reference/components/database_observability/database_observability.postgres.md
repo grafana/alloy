@@ -169,6 +169,8 @@ The logs collector exports the following Prometheus metrics:
 
 ### Required PostgreSQL Configuration
 
+**Self hosted Postgres server**
+
 For the logs collector to work correctly, PostgreSQL must be configured with the following RDS log format:
 
 ```sql
@@ -197,6 +199,18 @@ Example log line:
 ```
 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):app_user@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement due to user request
 ```
+
+**AWS RDS**
+
+On AWS RDS, you cannot use `ALTER SYSTEM` commands. Instead, configure `log_line_prefix` via RDS Parameter Groups:
+
+1. Open the AWS RDS Console → Parameter Groups
+2. Create or modify your parameter group
+3. Set `log_line_prefix` to: `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`
+4. Apply the parameter group to your RDS instance
+5. Reboot the instance if required by the parameter change
+
+**Note:** Ensure CloudWatch Logs export is enabled for the `postgresql` log in your RDS instance settings.
 
 ### Watermark and Historical Log Processing
 
@@ -301,7 +315,11 @@ Replace the following:
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
+**Persistent storage:** Alloy's data path (`--storage.path`) must be persisted across restarts to maintain loki.source.file positions file.
+
 ### With otelcol.receiver.awscloudwatch
+
+This needs to be used with `--stability.level=experimental`
 
 ```alloy
 // Storage for CloudWatch state persistence
@@ -315,13 +333,12 @@ otelcol.receiver.awscloudwatch "rds_logs" {
   storage = otelcol.storage.file.cloudwatch.handler
   
   logs {
-    poll_interval = "1m"
-    // Omit start_from for tail-only (recommended)
-    // start_from = "2026-02-01T00:00:00Z"  // For historical backfill
+    poll_interval = "1m"    
+    start_from = "2026-02-01T00:00:00Z" // Set this date to the closest possible to when you want to account logs from
     
     groups {
       named {
-        group_name = "/aws/rds/instance/production-db/postgresql"
+        group_name = "/aws/rds/instance/production-db/postgresql" // Insert your Postgres RDS Cloudwatch log group here
       }
     }
   }
@@ -423,7 +440,7 @@ loki.write "logs_service" {
       "logs:DescribeLogGroups",
       "logs:DescribeLogStreams"
     ],
-    "Resource": "arn:aws:logs:*:*:log-group:/aws/rds/instance/*"
+    "Resource": "arn:aws:logs:*:*:log-group:/aws/rds/instance/*" // Place your log-group arn(s) here
   }]
 }
 ```
