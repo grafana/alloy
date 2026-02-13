@@ -113,7 +113,7 @@ func updateGoModFiles(root, version string) error {
 }
 
 func updateDockerFiles(root, version string) error {
-	paths, err := getPaths(root, "Dockerfile", "Dockerfile", "Dockerfile.windows", "tools/build-image")
+	paths, err := getPaths(root, "Dockerfile", "Dockerfile.windows", "tools/build-image")
 	if err != nil {
 		return err
 	}
