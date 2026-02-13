@@ -217,14 +217,13 @@ Use the following SELECT statement to show and verify the current string format 
 SHOW log_line_prefix;
 ```
 
-### Watermark and Historical Log Processing
+### Historical Log Processing
 
-The `logs` collector uses a watermark file to track the last processed log timestamp. This prevents re-counting historical logs on component restart and maintains proper Prometheus counter semantics.
+The `logs` collector only processes logs with timestamps after the collector's start time. This prevents re-counting historical logs when the source component replays old entries.
 
-**Default behavior:**
-- Watermark file location: `<data_path>/dbo11y_pg_logs_watermark.txt`
-- On first run: Starts processing logs from the current time (skips historical logs)
-- On restart: Resumes from the last processed timestamp
+**Behavior:**
+- On startup: Skips logs with timestamps before the collector started
+- Use source component features (like `storage` in `otelcol.receiver.awscloudwatch` or `positions` in `loki.source.file`) to prevent duplicate log ingestion across restarts
 
 ## Examples
 
@@ -436,7 +435,7 @@ loki.write "logs_service" {
 }
 ```
 
-**Persistent storage:** Both `otelcol.storage.file` directory and Alloy's data path (`--storage.path`) must be persisted across restarts to maintain CloudWatch state and watermarks.
+**Persistent storage:** The `otelcol.storage.file` directory must be persisted across restarts to maintain CloudWatch log stream positions.
 
 Replace the following:
 
