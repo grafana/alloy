@@ -1,0 +1,270 @@
+id: grafana/alloy/internal/component/common/net
+"$defs":
+  http:
+    description: >-
+      Configures the HTTP server that receives requests.
+    type: object
+    properties:
+      conn_limit:
+        description: >-
+          Maximum number of simultaneous HTTP connections. Defaults to no limit.
+        type: integer
+        default: 0
+
+      listen_address:
+        description: >-
+          Network address on which the server listens for new connections. Defaults to accepting all incoming connections.
+        type: string
+        alloy:
+          # TODO: We shouldn't have to set this explicitly.
+          default_override: '""'
+
+      listen_port:
+        description: >-
+          Port number on which the server listens for new connections.
+        type: integer
+        default: 8080
+
+      server_idle_timeout:
+        description: >-
+          Idle timeout for HTTP server.
+        type: string
+        default: "120s"
+        alloy:
+          type_override: "duration"
+
+      server_read_timeout:
+        description: >-
+          Read timeout for HTTP server.
+        type: string
+        default: "30s"
+        alloy:
+          type_override: "duration"
+
+      server_write_timeout:
+        description: >-
+          Write timeout for HTTP server.
+        type: string
+        default: "30s"
+        alloy:
+          type_override: "duration"
+
+      tls:
+        description: >-
+          Configures TLS for the HTTP server.
+        type: object
+        properties:
+          cert_pem:
+            description: >-
+              Client certificate in PEM format.
+            type: string
+
+          key_pem:
+            description: >-
+              Client key in PEM format.
+            type: string
+            alloy:
+              type_override: "secret"
+
+          cert_file:
+            description: >-
+              Path to client certificate file.
+            type: string
+
+          key_file:
+            description: >-
+              Path to client key file.
+            type: string
+
+          client_auth_type:
+            description: >-
+              Client authentication type.
+            type: string
+
+          client_ca_file:
+            description: >-
+              Path to client CA file.
+            type: string
+
+          client_ca:
+            description: >-
+              Client CA in PEM format.
+            type: string
+
+          cipher_suites:
+            description: >-
+              Cipher suites to use.
+            type: string
+
+          min_version:
+            description: >-
+              Minimum TLS version.
+            type: string
+
+  grpc:
+    description: >-
+      Configures the gRPC server that receives requests.
+    type: object
+    properties:
+      conn_limit:
+        description: >-
+          Maximum number of simultaneous gRPC connections. Defaults to no limit.
+        type: integer
+        default: 0
+
+      listen_address:
+        description: >-
+          Network address on which the server listens for new connections. Defaults to accepting all incoming connections.
+        type: string
+        alloy:
+          default_override: '""'
+
+      listen_port:
+        description: >-
+          Port number on which the server listens for new connections. Defaults to a random free port.
+        type: integer
+        default: 0
+
+      max_connection_age:
+        description: >-
+          The duration for the maximum time a connection may exist before it's closed.
+        type: string
+        default: "infinity"
+        alloy:
+          type_override: "duration"
+
+      max_connection_age_grace:
+        description: >-
+          An additive period after max_connection_age after which the connection is forcibly closed.
+        type: string
+        default: "infinity"
+        alloy:
+          type_override: "duration"
+
+      max_connection_idle:
+        description: >-
+          The duration after which an idle connection is closed.
+        type: string
+        default: "infinity"
+        alloy:
+          type_override: "duration"
+
+      server_max_recv_msg_size:
+        description: >-
+          Maximum receive message size.
+        type: integer
+
+      server_max_send_msg_size:
+        description: >-
+          Maximum send message size.
+        type: integer
+
+      server_max_concurrent_streams:
+        description: >-
+          Limit on the number of concurrent streams for gRPC calls (0 = unlimited).
+        type: integer
+        default: 100
+
+      tls:
+        description: >-
+          Configures TLS for the gRPC server.
+        type: object
+        properties:
+          cert_pem:
+            description: >-
+              Client certificate in PEM format.
+            type: string
+
+          key_pem:
+            description: >-
+              Client key in PEM format.
+            type: string
+            alloy:
+              type_override: "secret"
+
+          cert_file:
+            description: >-
+              Path to client certificate file.
+            type: string
+
+          key_file:
+            description: >-
+              Path to client key file.
+            type: string
+
+          client_auth_type:
+            description: >-
+              Client authentication type.
+            type: string
+
+          client_ca_file:
+            description: >-
+              Path to client CA file.
+            type: string
+
+          client_ca:
+            description: >-
+              Client CA in PEM format.
+            type: string
+
+          cipher_suites:
+            description: >-
+              Cipher suites to use.
+            type: string
+
+          min_version:
+            description: >-
+              Minimum TLS version.
+            type: string
+
+  tls:
+    description: >-
+      Configures TLS for the server.
+    type: object
+    properties:
+      cert_pem:
+        description: >-
+          Client certificate in PEM format.
+        type: string
+
+      key_pem:
+        description: >-
+          Client key in PEM format.
+        type: string
+        alloy:
+          type_override: "secret"
+
+      cert_file:
+        description: >-
+          Path to client certificate file.
+        type: string
+
+      key_file:
+        description: >-
+          Path to client key file.
+        type: string
+
+      client_auth_type:
+        description: >-
+          Client authentication type.
+        type: string
+
+      client_ca_file:
+        description: >-
+          Path to client CA file.
+        type: string
+
+      client_ca:
+        description: >-
+          Client CA in PEM format.
+        type: string
+
+      cipher_suites:
+        description: >-
+          Cipher suites to use.
+        type: string
+
+      min_version:
+        description: >-
+          Minimum TLS version.
+        type: string
