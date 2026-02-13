@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.13.1](https://github.com/grafana/alloy/compare/v1.13.0...v1.13.1) (2026-02-13)
+
+
+### Bug Fixes 🐛
+
+* **database_observability.mysql:** Make query sample text nullable in MySQL query details collector [backport] ([#5519](https://github.com/grafana/alloy/issues/5519)) ([fc49bfe](https://github.com/grafana/alloy/commit/fc49bfe172aaed8a9ef5ee8bce7e639e59f432fb))
+* **database_observability.mysql:** Skip wait events with `NULL` timer_wait [backport] ([#5521](https://github.com/grafana/alloy/issues/5521)) ([2f43c91](https://github.com/grafana/alloy/commit/2f43c9123ef8ad75af72bd7c85dc3d08b4034ed1))
+* **database_observability.postgres:** Improvements to SET search_path for postgres explain plans [backport] ([#5520](https://github.com/grafana/alloy/issues/5520)) ([ecbb577](https://github.com/grafana/alloy/commit/ecbb577fce3ca5061294aae74406e98f5f2a464a))
+* **loki.process:** Registration of stage.metric when used inside stage.match [backport] ([#5495](https://github.com/grafana/alloy/issues/5495)) ([2bbc37e](https://github.com/grafana/alloy/commit/2bbc37e1c810d4c6c5655ec4204ff7e30a703d05))
+* **loki.source.docker:** Parse timestamp correctly when log line only contains newline [backport] ([#5496](https://github.com/grafana/alloy/issues/5496)) ([55a82f0](https://github.com/grafana/alloy/commit/55a82f0f634f57bbd5634e486afe276d8c176e51))
+* **loki.source.file:** Close file if we cannot find encoding [backport] ([#5531](https://github.com/grafana/alloy/issues/5531)) ([ccda4a5](https://github.com/grafana/alloy/commit/ccda4a50c38e230b2ed9caff718a8487da2b3f73))
+* **prometheus.receive_http:** Bump prometheus patch for bugfix [backport] ([#5516](https://github.com/grafana/alloy/issues/5516)) ([b3531fb](https://github.com/grafana/alloy/commit/b3531fb8730256eac7f34c877fa6cf73c5a8a60b))
+* **scheduling:** Shutdown runnables with a timeout before starting new ones [backport] ([#5443](https://github.com/grafana/alloy/issues/5443)) ([d446610](https://github.com/grafana/alloy/commit/d44661062d11711e9dae216fa98aaad61f027c30))
+
 ## [1.13.0](https://github.com/grafana/alloy/compare/v1.12.1...v1.13.0) (2026-02-05)
 
 
