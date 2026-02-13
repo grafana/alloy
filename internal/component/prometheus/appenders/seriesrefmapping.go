@@ -2,7 +2,6 @@ package appenders
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -12,6 +11,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
+	"go.uber.org/atomic"
 )
 
 type MappingStore interface {
@@ -82,14 +82,6 @@ func (s *seriesRefMapping) Rollback() error {
 		}
 	}
 	return multiErr
-}
-
-func (s *seriesRefMapping) recordLatency() {
-	if s.start.IsZero() {
-		return
-	}
-	duration := time.Since(s.start)
-	s.writeLatency.Observe(duration.Seconds())
 }
 
 func (s *seriesRefMapping) resetFields() {
@@ -281,10 +273,10 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 	})
 
 	if reg != nil {
-		reg.Register(activeMappings)
-		reg.Register(trackedRefs)
-		reg.Register(refsCleaned)
-		reg.Register(uniqueRefsTotal)
+		_ = reg.Register(activeMappings)
+		_ = reg.Register(trackedRefs)
+		_ = reg.Register(refsCleaned)
+		_ = reg.Register(uniqueRefsTotal)
 	}
 
 	return &SeriesRefMappingStore{
