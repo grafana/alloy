@@ -13,14 +13,6 @@ arguments:
       alloy:
         type_override: "list(LogsReceiver)"
 
-    max_send_message_size:
-      description: >-
-        Maximum size of a request to the push API.
-      type: string
-      alloy:
-        type_override: "size"
-        default_override: '"100MiB"'
-
     labels:
       description: >-
         The labels to associate with each received logs record.
@@ -51,3 +43,10 @@ arguments:
       type: boolean
       alloy:
         default_override: false
+
+    max_send_message_size:
+      description: >-
+        Maximum size of a request to the push API.	
+      type: string
+      alloy:
+        default_override: "\"100MiB\""

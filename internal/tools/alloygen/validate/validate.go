@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"slices"
 
@@ -13,10 +14,26 @@ import (
 
 const metadataFileName = "metadata.yml"
 
+// TODO: A smarter way to ignore paths? Or simply to know what to validate?
+var ignoreList []string
+
+func init() {
+	ignoreList = []string{
+		"./internal/tools/alloygen/testdata/test1",
+	}
+}
+
 func Run(args []string) error {
 	if len(args) < 1 {
 		return errors.New("Missing required path")
 	}
+
+	if slices.Contains(ignoreList, args[0]) {
+		log.Printf("Ignoring path: %s", args[0])
+		return nil
+	}
+
+	log.Printf("Processing path: %s", args[0])
 
 	api, err := internal.Parse(args[0])
 	if err != nil {
