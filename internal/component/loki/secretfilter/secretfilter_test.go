@@ -251,22 +251,22 @@ func runTest(t *testing.T, config string, inputLog string, shouldRedact bool) {
 	wg.Wait()
 }
 
-func TestConfigPath_InvalidPath(t *testing.T) {
+func TestGitleaksConfig_InvalidPath(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 	}
 	args := Arguments{
-		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ConfigPath: filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
+		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+		GitleaksConfig: filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
 	}
 	_, err := New(opts, args)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "read gitleaks config")
 }
 
-func TestConfigPath_ValidFile(t *testing.T) {
+func TestGitleaksConfig_ValidFile(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "gitleaks.toml")
 	require.NoError(t, os.WriteFile(configPath, []byte(minimalGitleaksConfig), 0600))
@@ -279,8 +279,8 @@ func TestConfigPath_ValidFile(t *testing.T) {
 		Registerer:     registry,
 	}
 	args := Arguments{
-		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ConfigPath: configPath,
+		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+		GitleaksConfig: configPath,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)

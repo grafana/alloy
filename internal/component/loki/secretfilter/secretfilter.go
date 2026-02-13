@@ -42,7 +42,7 @@ type Arguments struct {
 	OriginLabel   string              `alloy:"origin_label,attr,optional"`   // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
 	RedactWith    string              `alloy:"redact_with,attr,optional"`    // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
 	RedactPercent uint                `alloy:"redact_percent,attr,optional"` // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
-	ConfigPath    string              `alloy:"config_path,attr,optional"`    // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
+	GitleaksConfig string              `alloy:"gitleaks_config,attr,optional"` // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -174,12 +174,12 @@ func loadGitleaksConfig(path string) (config.Config, error) {
 }
 
 // newDetectorFromArgs creates a gitleaks detector from component arguments.
-// If ConfigPath is empty, the default gitleaks config is used.
+// If GitleaksConfig is empty, the default gitleaks config is used.
 func newDetectorFromArgs(args Arguments) (*detect.Detector, error) {
-	if args.ConfigPath == "" {
+	if args.GitleaksConfig == "" {
 		return detect.NewDetectorDefaultConfig()
 	}
-	cfg, err := loadGitleaksConfig(args.ConfigPath)
+	cfg, err := loadGitleaksConfig(args.GitleaksConfig)
 	if err != nil {
 		return nil, err
 	}

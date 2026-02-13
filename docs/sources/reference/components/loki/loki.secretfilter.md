@@ -43,15 +43,15 @@ You can use the following arguments with `loki.secretfilter`:
 | Name             | Type                 | Description                                                                                                                                 | Default                            | Required |
 | ---------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | -------- |
 | `forward_to`     | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                                                   |                                    | yes      |
-| `config_path`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                                                 | `""`                               | no       |
+| `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                                                | `""`                               | no       |
 | `origin_label`   | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.                                     | `""`                               | no       |
 | `redact_with`    | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. When set, percentage-based redaction is not used.            | `"<REDACTED-SECRET:$SECRET_NAME>"`      | no       |
 | `redact_percent` | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100). Shows leading (100-N)% + `"..."`; 100 = full `"REDACTED"`. 0 or unset defaults to 80. | `80`                               | no       |
 
-The `config_path` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config]. The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config). If `config_path` is empty, the component uses the default Gitleaks configuration [embedded in the component][embedded-config].
+The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config]. The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config). If `gitleaks_config` is empty, the component uses the default Gitleaks configuration [embedded in the component][embedded-config].
 
 {{< admonition type="note" >}}
-The default configuration may change between {{< param "PRODUCT_NAME" >}} versions. For consistent behavior, use an external configuration file via `config_path`.
+The default configuration may change between {{< param "PRODUCT_NAME" >}} versions. For consistent behavior, use an external configuration file via `gitleaks_config`.
 {{< /admonition >}}
 
 **Redaction behavior:**
@@ -92,7 +92,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example shows how to use `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`. You can instead omit `redact_with` to use percentage-based redaction (default 80% redacted), set `redact_percent` (e.g. `100` for full redaction), or set `config_path` to point to a custom Gitleaks TOML file.
+This example shows how to use `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`. You can instead omit `redact_with` to use percentage-based redaction (default 80% redacted), set `redact_percent` (e.g. `100` for full redaction), or set `gitleaks_config` to point to a custom Gitleaks TOML file.
 
 ```alloy
 local.file_match "local_logs" {
@@ -107,7 +107,7 @@ loki.source.file "local_logs" {
 loki.secretfilter "secret_filter" {
     forward_to  = [loki.write.local_loki.receiver]
     redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME:$SECRET_HASH>"
-    // optional: config_path = "/etc/alloy/gitleaks.toml"
+    // optional: gitleaks_config = "/etc/alloy/gitleaks.toml"
     // optional: redact_percent = 100  // use when redact_with is not set
 }
 
