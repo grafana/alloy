@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/grafana/alloy/compare/v1.13.1...v1.14.0) (2026-02-13)
+
+
+### Features 🌟
+
+* Deprecate prometheus.write.queue ([#5509](https://github.com/grafana/alloy/issues/5509)) ([ee0f227](https://github.com/grafana/alloy/commit/ee0f227bc5b1363de9699e65de7d6ae3fe8e33a9))
+
 ## [1.13.1](https://github.com/grafana/alloy/compare/v1.13.0...v1.13.1) (2026-02-13)
 
 
