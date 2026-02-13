@@ -732,9 +732,9 @@ require (
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_golang/exp v0.0.0-20251212205219-7ba246a648ca // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.4 // indirect
+	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/consul_exporter v0.8.0 // indirect
-	github.com/prometheus/exporter-toolkit v0.15.0 // indirect
+	github.com/prometheus/exporter-toolkit v0.15.1 // indirect
 	github.com/prometheus/memcached_exporter v0.13.0 // indirect
 	github.com/prometheus/mysqld_exporter v0.17.2 // indirect
 	github.com/prometheus/node_exporter v1.9.1 // indirect
@@ -1033,8 +1033,8 @@ replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-2025
 // TODO - remove forks when changes are merged upstream — non-singleton cadvisor
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
 
-// TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+// TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
+replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf
 
 // TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
