@@ -3,6 +3,8 @@ package secretfilter
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -117,7 +119,26 @@ var testConfigs = map[string]string{
 		forward_to = []
 		origin_label = "job"
 	`,
+	"with_redact_percent_100": `
+		forward_to = []
+		redact_percent = 100
+	`,
+	"with_redact_percent_80": `
+		forward_to = []
+		redact_percent = 80
+	`,
+	"with_redact_with": `
+		forward_to = []
+		redact_with = "***REDACTED***"
+	`,
 }
+
+// minimalGitleaksConfig is a valid gitleaks TOML that extends the default config
+// so all default rules (including grafana-api-key, gcp-api-key, etc.) are used.
+const minimalGitleaksConfig = `title = "test"
+[extend]
+useDefault = true
+`
 
 // Test cases for the secret filter
 var tt = []struct {
@@ -228,6 +249,154 @@ func runTest(t *testing.T, config string, inputLog string, shouldRedact bool) {
 	// Stop the component
 	cancel()
 	wg.Wait()
+}
+
+func TestConfigPath_InvalidPath(t *testing.T) {
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	args := Arguments{
+		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ConfigPath:  filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
+	}
+	_, err := New(opts, args)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "read gitleaks config")
+}
+
+func TestConfigPath_ValidFile(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "gitleaks.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(minimalGitleaksConfig), 0600))
+
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+	}
+	args := Arguments{
+		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ConfigPath: configPath,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: testLogs["grafana_api_key"].log},
+	}
+	processed := c.processEntry(entry)
+	require.NotEqual(t, entry.Entry.Line, processed.Entry.Line, "expected secret to be redacted when using custom config file")
+	require.NotContains(t, processed.Entry.Line, fakeSecrets["grafana-api-key"].value)
+}
+
+func TestRedactPercent_FullRedaction(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+	}
+	args := Arguments{
+		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
+		RedactPercent: 100,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: testLogs["grafana_api_key"].log},
+	}
+	processed := c.processEntry(entry)
+	require.Contains(t, processed.Entry.Line, "REDACTED", "expected full redaction to produce REDACTED placeholder")
+	require.NotContains(t, processed.Entry.Line, fakeSecrets["grafana-api-key"].value)
+}
+
+func TestRedactPercent_Partial(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+	}
+	args := Arguments{
+		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
+		RedactPercent: 80,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	secret := fakeSecrets["grafana-api-key"].value
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: "log with secret " + secret + " end"},
+	}
+	processed := c.processEntry(entry)
+	require.Contains(t, processed.Entry.Line, "...", "expected partial redaction to append ...")
+	require.NotContains(t, processed.Entry.Line, secret, "original secret should not appear in full")
+	// First 20% of secret should be present (gitleaks Redact(80) keeps leading 20% + "...")
+	leadingLen := len(secret) * 20 / 100
+	if leadingLen > 0 {
+		require.Contains(t, processed.Entry.Line, secret[:leadingLen], "expected leading portion of secret to remain")
+	}
+}
+
+func TestRedactWith_CustomPlaceholder(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+	}
+	args := Arguments{
+		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
+		RedactWith: "***REDACTED***",
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: testLogs["gcp_api_key"].log},
+	}
+	processed := c.processEntry(entry)
+	require.Contains(t, processed.Entry.Line, "***REDACTED***")
+	require.NotContains(t, processed.Entry.Line, fakeSecrets["gcp-api-key"].value)
+}
+
+// TestDefaultRedactPercent_usesEighty verifies that with no redact_with and no redact_percent,
+// the component defaults to 80% redaction (gitleaks-style: leading 20% + "...").
+func TestDefaultRedactPercent_usesEighty(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+	}
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		// RedactWith and RedactPercent left at zero values => effective 80%
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	secret := fakeSecrets["grafana-api-key"].value
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: "log " + secret + " end"},
+	}
+	processed := c.processEntry(entry)
+	require.Contains(t, processed.Entry.Line, "...", "default 80%% redaction should append ...")
+	require.NotContains(t, processed.Entry.Line, secret, "original secret should not appear in full")
 }
 
 func BenchmarkAllTypesNoSecret(b *testing.B) {
