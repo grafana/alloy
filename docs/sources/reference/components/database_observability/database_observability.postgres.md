@@ -35,26 +35,26 @@ You can use the following arguments with `database_observability.postgres`:
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
 
-[Data Source Name]: format must adhere to the [pq library standards](https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig).
+[data_source_name]: format must adhere to the [pq library standards](https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig).
 
 ## Exports
 
 The following fields are exported and can be referenced by other components:
 
-| Name             | Type                | Description                                                                      |
-|------------------|---------------------|----------------------------------------------------------------------------------|
-| `targets`        | `list(map(string))` | Targets that can be used to collect metrics from the component.                  |
-| `logs_receiver`  | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics.           |
+| Name            | Type                | Description                                                            |
+| --------------- | ------------------- | ---------------------------------------------------------------------- |
+| `logs_receiver` | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics. |
+| `targets`       | `list(map(string))` | Targets that can be used to collect metrics from the component.        |
 
 The following collectors are configurable:
 
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
+| `explain_plans`  | Collect query explain plans.                                          | yes                |
+| `logs`           | Process PostgreSQL logs and export error metrics.                     | yes                |
 | `query_details`  | Collect queries information.                                          | yes                |
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
-| `explain_plans`  | Collect query explain plans.                                          | yes                |
-| `logs`           | Process PostgreSQL logs and export error metrics.                     | yes                |
 
 ## Blocks
 
@@ -173,18 +173,18 @@ The logs collector exports the following Prometheus metrics:
 
 The collector expects PostgreSQL logs with these prefixed fields:
 
-```
+```text
 <timestamp>:<remote_host:port>:<user>@<database>:[<pid>]:<line>:<SQLSTATE>:<session_start>:<vtxid>:<txid>:<session_id>:<query><app><severity>: <message>
 ```
 
 Example log line:
-```
+```text
 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):app_user@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement due to user request
 ```
 
 This is done by setting the log_line_prefix param to `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`.
 
-#### How to configure the log_line_prefix
+#### Configure the log_line_prefix
 
 **Self hosted Postgres server**
 
@@ -203,11 +203,13 @@ SELECT pg_reload_conf();
 On AWS RDS, you cannot use `ALTER SYSTEM` commands. Instead, configure `log_line_prefix` via RDS Parameter Groups:
 
 1. Open the AWS RDS Console → Parameter Groups
-2. Create or modify your parameter group
-3. Set `log_line_prefix` to: `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`
-4. Apply the parameter group to your RDS instance
+1. Create or modify your parameter group
+1. Set `log_line_prefix` to: `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`
+1. Apply the parameter group to your RDS instance
 
-**Note:** Ensure [CloudWatch Logs export is enabled](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.Procedural.UploadtoCloudWatch.html) for `Error log` and `General log` in your RDS instance settings.
+{{< admonition type="note" >}}
+Ensure [CloudWatch Logs export is enabled](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.Procedural.UploadtoCloudWatch.html) for `Error log` and `General log` in your RDS instance settings.
+{{< /admonition >}}
 
 #### Check the configuration
 
@@ -223,7 +225,7 @@ The `logs` collector only processes logs with timestamps after the collector's s
 
 **Behavior:**
 - On startup: Skips logs with timestamps before the collector started
-- Use source component features (like `storage` in `otelcol.receiver.awscloudwatch` or `positions` in `loki.source.file`) to prevent duplicate log ingestion across restarts
+- Relies on the source component features to prevent duplicate log ingestion across restarts
 
 ## Examples
 
@@ -305,11 +307,13 @@ loki.write "logs_service" {
 }
 ```
 
-**Persistent storage:** Alloy's data path (`--storage.path`) must be persisted across restarts to maintain loki.source.file positions file.
+{{< admonition type="note" >}}
+**Persistent storage:** The {{< param "PRODUCT_NAME" >}} data path (`--storage.path`) must be persisted across restarts to maintain `loki.source.file` positions file.
+{{< /admonition >}}
 
-### With otelcol.receiver.awscloudwatch
+### With `otelcol.receiver.awscloudwatch`
 
-This needs to be used with `--stability.level=experimental`
+This requires `--stability.level=experimental`
 
 ```alloy
 // Storage for CloudWatch state persistence
@@ -413,7 +417,7 @@ loki.write "logs_service" {
 }
 ```
 
-**AWS Credentials:** The `otelcol.receiver.awscloudwatch` component requires AWS credentials. Configure via:
+**AWS Credentials:** The `otelcol.receiver.awscloudwatch` component requires AWS credentials. Configure with:
 - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 - Docker: Mount `~/.aws` credentials or pass environment variables
 - Kubernetes: Use [IAM Roles for Service Accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or Kubernetes secrets
