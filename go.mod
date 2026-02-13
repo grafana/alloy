@@ -1019,6 +1019,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/orchestrator/util v0.74.0-rc.3 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.54.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0 // indirect
 	github.com/containerd/containerd v1.7.18 // indirect
@@ -1032,6 +1033,7 @@ require (
 	github.com/minio/crc64nvme v1.0.2 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/minio-go/v7 v7.0.95 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.142.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
