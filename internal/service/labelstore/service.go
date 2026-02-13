@@ -319,7 +319,7 @@ type disabledStore struct{}
 
 func (d disabledStore) Definition() alloy_service.Definition {
 	return alloy_service.Definition{
-		Name:       "disabled_labelstore",
+		Name:       ServiceName,
 		ConfigType: nil,
 		DependsOn:  nil,
 		Stability:  featuregate.StabilityGenerallyAvailable,
