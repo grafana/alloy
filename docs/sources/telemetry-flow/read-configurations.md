@@ -13,26 +13,26 @@ Reading it effectively means tracing how telemetry moves through those connectio
 
 Instead of scanning top to bottom, follow the data.
 
-## Start at the receivers
+## Start at the ingestion components
 
-Receivers define where telemetry enters {{< param "PRODUCT_NAME" >}}.
+Ingestion components define where telemetry enters {{< param "PRODUCT_NAME" >}}.
 
 When reviewing a configuration:
 
-1. Identify each receiver component.
+1. Identify each ingestion component.
 1. Determine what signal type it handles.
 1. Locate its declared outputs.
 
-A receiver without downstream connections doesn't forward telemetry anywhere.
+An ingestion component without downstream connections doesn't forward telemetry anywhere.
 Its data stops at the boundary of the configuration.
 
 ## Follow the connections
 
-From each receiver, trace its outputs to the next connected components.
+From each ingestion component, trace its outputs to the next connected components.
 
 At each step, ask:
 
-- Is this a processing component?
+- Is this a transformation component?
 - Is this branching to multiple downstream components?
 - Does this path merge with another path?
 
@@ -42,46 +42,46 @@ Connection order determines execution order, not the textual order of components
 
 If telemetry appears to be missing in a backend, the break usually exists somewhere along this path.
 
-## Identify processing stages
+## Identify transformation stages
 
-As you trace a path, note every processing component.
+As you trace a path, note every transformation component.
 
-Processing components are the only place where telemetry can be:
+Transformation components are the only place where telemetry can be:
 
 - Modified
 - Filtered
 - Dropped
 - Routed
 
-If no processing components appear between a receiver and an exporter, telemetry passes through unchanged.
+If no transformation components appear between an ingestion and output component, telemetry passes through unchanged.
 
-If multiple processors appear in a path, telemetry flows through them according to the connections defined in the configuration.
+If multiple transformation components appear in a path, telemetry flows through them according to the connections defined in the configuration.
 
-## Locate the exporters
+## Locate the output components
 
-Exporters define where telemetry leaves {{< param "PRODUCT_NAME" >}}.
+Output components forward telemetry to their configured destinations.
 
 For each path:
 
 1. Identify the final downstream component.
-1. Confirm it's an exporter.
-1. Determine which external system it targets.
+1. Confirm it's an output component.
+1. Determine where it sends telemetry, such as an external system or another component.
 
-If a path doesn't end at an exporter, telemetry doesn't leave {{< param "PRODUCT_NAME" >}}.
+If a path doesn't end at an output component, telemetry stops at the last connected component.
 
 ## Recognize branching and isolation
 
-A single receiver may feed:
+A single ingestion component may feed:
 
-- One exporter.
-- Multiple exporters.
-- Multiple processing chains.
+- One output component.
+- Multiple output components.
+- Multiple transformation chains.
 
-Likewise, separate receivers may:
+Likewise, separate ingestion components may:
 
 - Remain isolated.
-- Share processing components.
-- Converge on a shared exporter.
+- Share transformation components.
+- Converge on a shared output component.
 
 Understanding these patterns makes it easier to reason about cost, performance, and signal separation.
 
@@ -89,10 +89,10 @@ Understanding these patterns makes it easier to reason about cost, performance, 
 
 When telemetry behaves unexpectedly:
 
-- Verify that the receiver connects to downstream components.
+- Verify that the ingestion component connects to downstream components.
 - Trace the full downstream path.
-- Confirm processing components are in the expected position.
-- Ensure the path ends at the correct exporter.
+- Confirm transformation components are in the expected position.
+- Ensure the path ends at the correct output component.
 
 Because {{< param "PRODUCT_NAME" >}} executes exactly what the configuration defines, unexpected behavior usually reflects an unexpected connection—or a missing one.
 

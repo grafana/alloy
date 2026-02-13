@@ -15,7 +15,7 @@ Those connections determine exactly how telemetry moves through the system.
 Telemetry doesn't move automatically.
 It follows only the paths you define.
 If two components aren't connected, no data passes between them.
-If a processor isn't included in a path, no processing occurs.
+If a transformation component isn't included in a path, no transformation occurs.
 
 Understanding how telemetry flows through connected components makes it easier to reason about behavior, performance, and outcomes.
 
@@ -44,7 +44,7 @@ In most configurations, telemetry follows a pattern like this:
 
 {{< mermaid >}}
 flowchart LR
-  Receiver --> Processor --> Exporter
+  Ingestion --> Transformation --> Output
 {{< /mermaid >}}
 
 This is a simplified representation of a single path.
@@ -52,17 +52,30 @@ In practice, configurations often branch, merge, and contain multiple independen
 
 Within any given path:
 
-- **Receivers** handle protocol decoding and normalization so {{< param "PRODUCT_NAME" >}} can represent telemetry internally.
-  They don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that receiver.
+- **Ingestion components** handle protocol decoding and normalization so {{< param "PRODUCT_NAME" >}} can represent telemetry internally.
+  They don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that component.
   They only handle ingestion, decoding, and normalization.
-- **Processors** operate on telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
-- **Exporters** send telemetry to external systems.
+- **Transformation components** operate on telemetry while it's inside {{< param "PRODUCT_NAME" >}}.
+- **Output components** forward telemetry to configured destinations, whether external systems or other components.
 
 These roles are logical.
-A receiver doesn't modify data unless you configure it to do so.
-An exporter doesn't filter data unless something upstream has filtered it.
+An ingestion component doesn't modify data unless you configure it to do so.
+An output component doesn't filter data unless something upstream has filtered it.
 
-If you connect a receiver directly to an exporter, telemetry passes through without intermediate modification.
+If you connect an ingestion component directly to an output component, telemetry passes through without intermediate modification.
+
+### Component names vary by pipeline type
+
+Different component families use different naming conventions, but the underlying flow pattern remains the same:
+
+| Pipeline type | Ingestion            | Transformation        | Output                    |
+| ------------- | -------------------- | --------------------- | ------------------------- |
+| OpenTelemetry | `otelcol.receiver.*` | `otelcol.processor.*` | `otelcol.exporter.*`      |
+| Prometheus    | `prometheus.scrape`  | `prometheus.relabel`  | `prometheus.remote_write` |
+| Loki          | `loki.source.*`      | `loki.process`        | `loki.write`              |
+| Pyroscope     | `pyroscope.scrape`   | `pyroscope.ebpf`      | `pyroscope.write`         |
+
+Regardless of naming, the conceptual flow is the same: telemetry enters through ingestion components, optionally passes through transformation components, and leaves through output components.
 
 ## Explicit configuration
 
