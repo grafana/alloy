@@ -8,25 +8,25 @@ weight: 300
 
 # Where {{% param "FULL_PRODUCT_NAME" %}} modifies telemetry
 
-Processors are the only place where telemetry changes.
-Processors can filter, rewrite, enrich, sample, or route telemetry depending on how you configure them.
+Transformation components are the only place where telemetry changes.
+Transformation components can filter, rewrite, enrich, sample, or route telemetry depending on how you configure them.
 
-Receivers ingest data.
-Exporters send data out.
+Ingestion components ingest data.
+Output components forward data to their configured destinations.
 Any change to telemetry happens between those two stages.
 
-If you don't connect processors in a path, telemetry passes through {{< param "PRODUCT_NAME" >}} without modification.
+If you don't connect transformation components in a path, telemetry passes through {{< param "PRODUCT_NAME" >}} without modification.
 
-## Modification happens inside processors
+## Modification happens inside transformation components
 
 A typical path looks like this:
 
 {{< mermaid >}}
 flowchart LR
-  Receiver --> Processor --> Exporter
+  Ingestion --> Transformation --> Output
 {{< /mermaid >}}
 
-Processors sit in the middle of that path.
+Transformation components sit in the middle of that path.
 They receive telemetry from upstream components and forward the resulting telemetry downstream.
 
 Those components are responsible for any:
@@ -37,7 +37,7 @@ Those components are responsible for any:
 - Routing logic
 - Sampling behavior
 
-If a processing component isn't part of a path, it has no effect on that telemetry.
+If a transformation component isn't part of a path, it has no effect on that telemetry.
 
 ## Modification is explicit
 
@@ -55,7 +55,7 @@ If telemetry changes, the configuration defines where and how that change occurs
 This explicit model makes behavior predictable.
 You can identify exactly which component modifies data by tracing the connections.
 
-If a processor isn't connected in the path between a receiver and an exporter, it has no effect on that telemetry.
+If a transformation component isn't connected in the path between an ingestion and an output component, it has no effect on that telemetry.
 
 ## Signal-aware processing
 
@@ -71,12 +71,12 @@ For example:
 A component can't modify telemetry it doesn't receive.
 Signal type and connections both determine what gets processed.
 
-## No modification at ingestion or export
+## No modification at ingestion or output
 
-Receivers handle ingestion and normalization.
-Exporters handle delivery to external systems.
+Ingestion components handle ingestion and normalization.
+Output components handle delivery to configured destinations.
 
-Unless explicitly documented for a specific component, neither receivers nor exporters perform semantic transformations on telemetry passing through them.
+Unless explicitly documented for a specific component, neither ingestion nor output components perform semantic transformations on telemetry passing through them.
 
 All transformation logic belongs in configured processing stages.
 
@@ -84,9 +84,9 @@ All transformation logic belongs in configured processing stages.
 
 To determine where telemetry changes in a configuration:
 
-1. Start at a receiver.
+1. Start at an ingestion component.
 1. Follow downstream connections.
-1. Identify any processors in the path.
+1. Identify any transformation components in the path.
 1. Inspect those components to understand their behavior.
 
 Those components define how telemetry changes before it leaves {{< param "PRODUCT_NAME" >}}.

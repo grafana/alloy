@@ -19,7 +19,7 @@ A common pipeline looks like this:
 
 {{< mermaid >}}
 flowchart LR
-  Receiver --> Processor --> Exporter
+  Ingestion --> Transformation --> Output
 {{< /mermaid >}}
 
 That pattern is conceptual.
@@ -27,54 +27,55 @@ The actual structure depends entirely on how you connect the components.
 
 ## Ingestion
 
-Telemetry enters {{< param "PRODUCT_NAME" >}} through receiver components.
+Telemetry enters {{< param "PRODUCT_NAME" >}} through ingestion components.
 
-Receivers accept telemetry from external systems such as:
+Ingestion components accept telemetry from external systems such as:
 
 - Applications emitting telemetry.
 - Infrastructure exposing metrics.
 - Log sources.
 - Other telemetry collectors.
 
-Receivers convert incoming data into the internal formats used within {{< param "PRODUCT_NAME" >}}.
+Ingestion components convert incoming data into the internal formats used within {{< param "PRODUCT_NAME" >}}.
 From that point forward, telemetry moves between components inside the configured paths.
 
-If a receiver has no downstream connection, its telemetry goes nowhere.
+If an ingestion component has no downstream connection, its telemetry goes nowhere.
 
-## Processing
+## Transformation
 
-Processors operate on telemetry after ingestion and before export.
+Transformation components operate on telemetry after ingestion and before export.
 
-They sit between receivers and exporters in the path.
-If you include processors in a path, telemetry flows through them.
-If you don't, telemetry moves directly to the exporter unchanged.
+They sit between ingestion and output components in the path.
+If you include transformation components in a path, telemetry flows through them.
+If you don't, telemetry moves directly to the output component unchanged.
 
-Processors can:
+Transformation components can:
 
 - Modify telemetry.
 - Filter telemetry.
 - Route telemetry to different downstream components.
 
-Processing only happens when you connect a processor in the path.
+Transformation only happens when you connect a transformation component in the path.
 
-## Export
+## Output
 
-Exporters send telemetry from {{< param "PRODUCT_NAME" >}} to external systems.
+Output components forward telemetry to their configured destinations, whether that's an external system or another component within {{< param "PRODUCT_NAME" >}}.
 
-An exporter might send data to:
+An output component might send data to:
 
 - A metrics backend.
 - A log backend.
 - A tracing backend.
-- Another telemetry endpoint.
+- Another telemetry collector.
+- Another component within {{< param "PRODUCT_NAME" >}}.
 
-If telemetry reaches an exporter, it leaves {{< param "PRODUCT_NAME" >}} through that component.
+Output components are often the final stage in a pipeline, but they can also connect to other components, allowing you to chain pipelines together.
 
 A pipeline can include:
 
-- One exporter.
-- Multiple exporters.
-- No exporters, in which case telemetry never leaves.
+- One output component.
+- Multiple output components.
+- No output components, in which case telemetry never leaves.
 
 ## Parallel and branching pipelines
 
@@ -83,7 +84,7 @@ A pipeline isn't limited to a straight line.
 Because the configuration defines connected paths, telemetry can:
 
 - Branch to multiple downstream components.
-- Merge into shared exporters.
+- Merge into shared output components.
 - Remain isolated from other signal types.
 
 For example:
@@ -98,9 +99,9 @@ Each signal type typically has its own pipeline, defined independently in the co
 
 To understand how telemetry flows in a configuration:
 
-1. Identify the receivers.
+1. Identify the ingestion components.
 1. Trace their downstream connections.
-1. Note each processing component in the path.
+1. Note each transformation component in the path.
 1. Identify where the path ends.
 
 That path is the pipeline.

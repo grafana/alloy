@@ -56,7 +56,7 @@ It doesn't automatically insert processing stages.
 It doesn't route telemetry unless you configure it to do so.
 
 If a component isn't connected to anything downstream, nothing consumes its output.
-If a receiver isn't connected to a processor or exporter, its telemetry doesn't go anywhere.
+If an ingestion component isn't connected to a transformation or output component, its telemetry doesn't go anywhere.
 
 You must define every data path.
 {{< param "PRODUCT_NAME" >}} executes exactly the connections defined in the configuration.
@@ -82,7 +82,7 @@ Connections can form:
 
 - Straight paths
 - Branching paths that send telemetry to multiple downstream components
-- Merged paths where multiple upstream components feed into a shared exporter
+- Merged paths where multiple upstream components feed into a shared output component
 
 ## Reason about connections
 
