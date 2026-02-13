@@ -62,7 +62,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 	})
 	_ = register.Register(s)
 
-	useLabelStore := false
+	useLabelStore := true
 	if ls != nil {
 		useLabelStore = ls.Enabled()
 	}
