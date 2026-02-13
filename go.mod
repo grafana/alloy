@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.25.6
+go 1.25.7
 
 // This local replace is required for local development and testing of the syntax submodule.
 // It is intentionally kept outside the generated block to avoid being overwritten by dependency management tools.
