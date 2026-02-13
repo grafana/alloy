@@ -28,6 +28,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 
 	encoding, err := getEncoding(cfg.Encoding)
 	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
