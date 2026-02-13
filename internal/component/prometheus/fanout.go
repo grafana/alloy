@@ -62,6 +62,11 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 	})
 	_ = register.Register(s)
 
+	useLabelStore := false
+	if ls != nil {
+		useLabelStore = ls.Enabled()
+	}
+
 	return &Fanout{
 		children:       children,
 		componentID:    componentID,
@@ -69,7 +74,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 		samplesCounter: s,
 		ls:             ls,
 
-		useLabelStore:         ls.Enabled(),
+		useLabelStore:         useLabelStore,
 		seriesRefMappingStore: appenders.NewSeriesRefMappingStore(register),
 	}
 }
