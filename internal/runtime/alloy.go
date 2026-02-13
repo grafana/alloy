@@ -51,6 +51,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -121,7 +122,7 @@ type Options struct {
 
 // Runtime is the Alloy system.
 type Runtime struct {
-	log    *logging.Logger
+	log    log.Logger
 	tracer *tracing.Tracer
 	opts   controllerOptions
 
@@ -138,7 +139,7 @@ type Runtime struct {
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
-func New(o Options) *Runtime {
+func New(o Options) (*Runtime, error) {
 	return newController(controllerOptions{
 		Options:              o,
 		ModuleRegistry:       newModuleRegistry(),
@@ -165,9 +166,9 @@ type controllerOptions struct {
 // newController creates a new, unstarted Alloy controller with a specific
 // moduleRegistry. Modules created by the controller will be passed to the
 // given modReg.
-func newController(o controllerOptions) *Runtime {
+func newController(o controllerOptions) (*Runtime, error) {
 	var (
-		log        = o.Logger
+		logger     = log.With(o.Logger, "controller_id", o.ControllerID)
 		tracer     = o.Tracer
 		workerPool = o.WorkerPool
 	)
@@ -182,17 +183,17 @@ func newController(o controllerOptions) *Runtime {
 	}
 
 	if workerPool == nil {
-		level.Info(log).Log("msg", "no worker pool provided, creating a default pool", "controller", o.ControllerID)
+		level.Info(logger).Log("msg", "no worker pool provided, creating a default pool")
 		workerPool = worker.NewDefaultWorkerPool()
 	}
 
 	f := &Runtime{
-		log:    log,
+		log:    logger,
 		tracer: tracer,
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(log, o.TaskShutdownDeadline),
+		sched:       controller.NewScheduler(logger, o.TaskShutdownDeadline),
 
 		modules: o.ModuleRegistry,
 
@@ -201,9 +202,10 @@ func newController(o controllerOptions) *Runtime {
 
 	serviceMap := controller.NewServiceMap(o.Services)
 
-	f.loader = controller.NewLoader(controller.LoaderOptions{
+	loader, err := controller.NewLoader(controller.LoaderOptions{
 		ComponentGlobals: controller.ComponentGlobals{
-			Logger:               log,
+			// This needs to remain logging.Logger to support dynamic log changes.
+			Logger:               o.Logger,
 			TraceProvider:        tracer,
 			DataPath:             o.DataPath,
 			MinStability:         o.MinStability,
@@ -226,7 +228,7 @@ func newController(o controllerOptions) *Runtime {
 				return newModuleController(&moduleControllerOptions{
 					ComponentRegistry:    o.ComponentRegistry,
 					ModuleRegistry:       o.ModuleRegistry,
-					Logger:               log,
+					Logger:               o.Logger,
 					Tracer:               tracer,
 					Reg:                  reg,
 					DataPath:             o.DataPath,
@@ -251,8 +253,13 @@ func newController(o controllerOptions) *Runtime {
 		ComponentRegistry: o.ComponentRegistry,
 		WorkerPool:        workerPool,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to build loader: %w", err)
+	}
 
-	return f
+	f.loader = loader
+
+	return f, nil
 }
 
 // Run starts the Alloy controller, blocking until the provided context is
@@ -261,6 +268,8 @@ func (f *Runtime) Run(ctx context.Context) {
 	defer func() { _ = f.sched.Close() }()
 	defer f.loader.Cleanup(!f.opts.IsModule)
 	defer level.Debug(f.log).Log("msg", "Alloy controller exiting")
+
+	level.Debug(f.log).Log("msg", "Running alloy controller")
 
 	for {
 		select {
