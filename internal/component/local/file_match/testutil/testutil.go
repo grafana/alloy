@@ -6,7 +6,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -18,7 +17,6 @@ func WriteFile(t *testing.T, dir string, name string) {
 	t.Helper()
 	err := os.WriteFile(path.Join(dir, name), []byte("test content"), 0664)
 	require.NoError(t, err)
-	time.Sleep(20 * time.Millisecond)
 }
 
 // ContainsPath checks if any target's __path__ contains the given substring.
