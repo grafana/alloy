@@ -27,11 +27,11 @@ func main() {
 	}
 
 	switch command {
-	case "build-image":
+	case "pr-1":
 		if err := updateBuildImage(root, version); err != nil {
 			log.Fatalf("failed to update build image version: %s", err)
 		}
-	case "alloy":
+	case "pr-2":
 		if err := updateGoModFiles(root, version); err != nil {
 			log.Fatalf("failed to update go.mod files: %s", err)
 		}
