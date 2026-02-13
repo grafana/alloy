@@ -320,7 +320,7 @@ type disabledStore struct{}
 func (d disabledStore) Definition() alloy_service.Definition {
 	return alloy_service.Definition{
 		Name:       ServiceName,
-		ConfigType: nil,
+		ConfigType: Arguments{},
 		DependsOn:  nil,
 		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
