@@ -38,10 +38,10 @@ func init() {
 
 // Arguments holds values which are used to configure the secretfilter component.
 type Arguments struct {
-	ForwardTo     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	OriginLabel   string              `alloy:"origin_label,attr,optional"`   // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
-	RedactWith    string              `alloy:"redact_with,attr,optional"`    // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
-	RedactPercent uint                `alloy:"redact_percent,attr,optional"` // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
+	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
+	OriginLabel    string              `alloy:"origin_label,attr,optional"`    // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
+	RedactWith     string              `alloy:"redact_with,attr,optional"`     // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
+	RedactPercent  uint                `alloy:"redact_percent,attr,optional"`  // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
 	GitleaksConfig string              `alloy:"gitleaks_config,attr,optional"` // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
 }
 
