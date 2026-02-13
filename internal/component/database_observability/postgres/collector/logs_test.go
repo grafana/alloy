@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,42 +15,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
-
-// Helper to generate test log lines with current timestamp to avoid historical filtering
-func testLogLine(line string) string {
-	now := time.Now()
-	// PostgreSQL log_line_prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
-	// %m is the first timestamp (appears at start of line)
-	// %s is the session start time (appears later in the line after several colons)
-	// We need to replace BOTH timestamps with current time
-	
-	// Replace the first timestamp (first 23 chars: "2025-12-12 15:29:16.068")
-	if len(line) > 23 {
-		nowStr := now.Format("2006-01-02 15:04:05.000")
-		result := nowStr + line[23:]
-		
-		// Find and replace the second timestamp (%s field)
-		// It appears after the SQLSTATE (5 chars) and a colon
-		// Pattern: ...:[SQLSTATE]:YYYY-MM-DD HH:MM:SS[.mmm] TZ:...
-		// Look for the pattern after position 50 to skip the first timestamp
-		if len(result) > 50 {
-			// Find ":YYYY-MM-DD " pattern for the second timestamp
-			for i := 50; i < len(result)-23; i++ {
-				if result[i] == ':' && i+23 < len(result) {
-					// Check if this looks like a timestamp (YYYY-MM-DD HH:MM:SS)
-					if result[i+1:i+5] == "2025" || result[i+1:i+5] == "2026" {
-						// Replace just the date/time part, keep the timezone
-						result = result[:i+1] + nowStr + result[i+1+23:]
-						break
-					}
-				}
-			}
-		}
-		return result
-	}
-	return line
-}
-
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
@@ -63,9 +28,15 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	startTime := collector.startTime
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	defer collector.Stop()
+
+	// Build log lines with timestamps after collector start (like SkipsHistoricalLogs)
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
 	tests := []struct {
 		name         string
@@ -77,7 +48,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	}{
 		{
 			name:         "ERROR severity",
-			log:          testLogLine(`2025-12-12 15:29:16.068 GMT:[local]:app-user@books_store:[9112]:4:57014:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  canceling statement`),
+			log:          ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement",
 			wantUser:     "app-user",
 			wantDB:       "books_store",
 			wantSev:      "ERROR",
@@ -85,7 +56,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "FATAL severity",
-			log:          testLogLine(`2025-12-12 15:29:31.529 GMT:[local]:conn_user@testdb:[9449]:4:53300:2025-12-12 15:29:31 GMT:91/57:0:693c34db.24e9::psqlFATAL:  too many connections`),
+			log:          ts1 + ":[local]:conn_user@testdb:[9449]:4:53300:" + ts2 + ":91/57:0:693c34db.24e9::psqlFATAL:  too many connections",
 			wantUser:     "conn_user",
 			wantDB:       "testdb",
 			wantSev:      "FATAL",
@@ -93,7 +64,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "PANIC severity",
-			log:          testLogLine(`2025-12-12 15:30:00.000 GMT:10.0.1.10(5432):admin@postgres:[9500]:1:XX000:2025-12-12 15:30:00 GMT:1/1:0:693c34db.9999::psqlPANIC:  system failure`),
+			log:          ts1 + ":10.0.1.10(5432):admin@postgres:[9500]:1:XX000:" + ts2 + ":1/1:0:693c34db.9999::psqlPANIC:  system failure",
 			wantUser:     "admin",
 			wantDB:       "postgres",
 			wantSev:      "PANIC",
@@ -101,7 +72,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "UTC timezone",
-			log:          testLogLine(`2025-12-12 15:29:16.068 UTC:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`),
+			log:          ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:40001:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  could not serialize access",
 			wantUser:     "app-user",
 			wantDB:       "books_store",
 			wantSev:      "ERROR",
@@ -109,7 +80,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "EST timezone",
-			log:          testLogLine(`2025-12-12 15:29:16.068 EST:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 EST:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`),
+			log:          strings.ReplaceAll(ts1, " UTC", " EST") + ":10.0.1.5(12345):app-user@books_store:[9112]:4:40001:" + strings.ReplaceAll(ts2, " UTC", " EST") + ":25/112:0:693c34cb.2398::psqlERROR:  could not serialize access",
 			wantUser:     "app-user",
 			wantDB:       "books_store",
 			wantSev:      "ERROR",
@@ -137,7 +108,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 						for _, label := range metric.GetLabel() {
 							labels[label.GetName()] = label.GetValue()
 						}
-						if labels["user"] == tt.wantUser && labels["datname"] == tt.wantDB {
+						if labels["user"] == tt.wantUser && labels["datname"] == tt.wantDB && labels["severity"] == tt.wantSev && labels["sqlstate"] == tt.wantSQLState {
 							require.Equal(t, tt.wantSev, labels["severity"])
 							require.Equal(t, tt.wantSQLState, labels["sqlstate"])
 							require.Equal(t, tt.wantSQLState[:2], labels["sqlstate_class"])
@@ -164,14 +135,20 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	startTime := collector.startTime
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// Send INFO and LOG messages (should be skipped)
+	// Build INFO and LOG lines with timestamps AFTER collector start, so they would pass the
+	// historical filter if they reached it. They are skipped for severity (not ERROR/FATAL/PANIC).
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
 	skipLogs := []string{
-		testLogLine(`2025-12-12 15:29:42.201 GMT:::1:app-user@books_store:[9589]:2:00000:2025-12-12 15:29:42 GMT:159/363:0:693c34e6.2575::psqlINFO:  some info`),
-		testLogLine(`2025-12-12 15:29:42.201 GMT:::1:app-user@books_store:[9589]:2::2025-12-12 15:29:42 GMT:159/363:0:693c34e6.2575::psqlLOG:  connection received`),
+		ts1 + ":::1:app-user@books_store:[9589]:2:00000:" + ts2 + ":159/363:0:693c34e6.2575::psqlINFO:  some info",
+		ts1 + ":::1:app-user@books_store:[9589]:2:00000:" + ts2 + ":159/363:0:693c34e6.2575::psqlLOG:  connection received",
 		"DETAIL:  Some detail line",
 		"HINT:  Some hint line",
 		"\tIndented continuation line",
@@ -209,9 +186,14 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	startTime := collector.startTime
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	defer collector.Stop()
+
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
 	// Send multiple errors with same labels (should sum)
 	logs := []struct {
@@ -221,25 +203,25 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 		sev  string
 	}{
 		{
-			log:  testLogLine(`2025-01-12 10:30:45 UTC:10.0.1.5:54321:user1@db1:[9112]:4:57014:2025-01-12 10:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  error 1`),
+			log:  ts1 + ":10.0.1.5:54321:user1@db1:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  error 1",
 			user: "user1",
 			db:   "db1",
 			sev:  "ERROR",
 		},
 		{
-			log:  testLogLine(`2025-01-12 10:31:00 UTC:10.0.1.5:54321:user1@db1:[9113]:5:57014:2025-01-12 10:29:15 UTC:25/113:0:693c34cb.2399::psqlERROR:  error 2`),
+			log:  ts1 + ":10.0.1.5:54321:user1@db1:[9113]:5:57014:" + ts2 + ":25/113:0:693c34cb.2399::psqlERROR:  error 2",
 			user: "user1",
 			db:   "db1",
 			sev:  "ERROR",
 		},
 		{
-			log:  testLogLine(`2025-01-12 10:32:00 UTC:10.0.1.5:54321:user1@db1:[9114]:6:57014:2025-01-12 10:29:15 UTC:25/114:0:693c34cb.2400::psqlERROR:  error 3`),
+			log:  ts1 + ":10.0.1.5:54321:user1@db1:[9114]:6:57014:" + ts2 + ":25/114:0:693c34cb.2400::psqlERROR:  error 3",
 			user: "user1",
 			db:   "db1",
 			sev:  "ERROR",
 		},
 		{
-			log:  testLogLine(`2025-01-12 10:33:00 UTC:10.0.1.5:54322:user2@db2:[9115]:7:28P01:2025-01-12 10:33:00 UTC:159/363:0:693c34e6.2575::psqlFATAL:  auth failed`),
+			log:  ts1 + ":10.0.1.5:54322:user2@db2:[9115]:7:28P01:" + ts2 + ":159/363:0:693c34e6.2575::psqlFATAL:  auth failed",
 			user: "user2",
 			db:   "db2",
 			sev:  "FATAL",
@@ -344,19 +326,25 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	startTime := collector.startTime
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// Send log with empty user and database (background worker termination)
+	// Build log with timestamps after collector start (empty user/database = background worker)
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	logLine := fmt.Sprintf("%s::@:[26350]:1:57P01:%s:828/162213:0:6982f7c4.66ee:FATAL:  terminating background worker \"parallel worker\" due to administrator command", ts1, ts2)
+
 	collector.Receiver().Chan() <- loki.Entry{
 		Entry: push.Entry{
-			Line:      testLogLine(`2026-02-04 07:39:49.124 UTC::@:[26350]:1:57P01:2026-02-04 07:39:48 UTC:828/162213:0:6982f7c4.66ee:FATAL:  terminating background worker "parallel worker" due to administrator command`),
+			Line:      logLine,
 			Timestamp: time.Now(),
 		},
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	// Verify metric was created with empty user and database labels
 	mfs, _ := registry.Gather()
@@ -466,9 +454,14 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	startTime := collector.startTime
 	err = collector.Start(context.Background())
 	require.NoError(t, err)
 	defer collector.Stop()
+
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
 	tests := []struct {
 		name              string
@@ -479,49 +472,49 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 	}{
 		{
 			name:              "Serialization failure (40001)",
-			log:               `2026-01-25 20:00:00.702 UTC:10.24.193.106(33090):mybooks-app@books_store:[25599]:1:40001:2026-01-25 19:58:36 UTC:172/48089:85097235:697675ec.63ff:[unknown]:ERROR:  could not serialize access due to concurrent update`,
+			log:               ts1 + ":10.24.193.106(33090):mybooks-app@books_store:[25599]:1:40001:" + ts2 + ":172/48089:85097235:697675ec.63ff:[unknown]:ERROR:  could not serialize access due to concurrent update",
 			wantSQLState:      "40001",
 			wantSQLStateClass: "40",
 			wantSeverity:      "ERROR",
 		},
 		{
 			name:              "Deadlock detected (40P01)",
-			log:               `2026-01-25 20:01:30 UTC:10.32.115.73(34710):mybooks-app-2@books_store_2:[2170]:1:40P01:2026-01-25 20:00:00 UTC:100/200:85097240:69767600.1000:[unknown]:ERROR:  deadlock detected`,
+			log:               ts1 + ":10.32.115.73(34710):mybooks-app-2@books_store_2:[2170]:1:40P01:" + ts2 + ":100/200:85097240:69767600.1000:[unknown]:ERROR:  deadlock detected",
 			wantSQLState:      "40P01",
 			wantSQLStateClass: "40",
 			wantSeverity:      "ERROR",
 		},
 		{
 			name:              "Unique violation (23505)",
-			log:               `2026-01-25 20:02:00 UTC:10.24.193.106(44148):app-user@testdb:[25296]:2:23505:2026-01-25 20:00:00 UTC:121/51119:85097236:6976755e.62d0:[unknown]:ERROR:  duplicate key value violates unique constraint`,
+			log:               ts1 + ":10.24.193.106(44148):app-user@testdb:[25296]:2:23505:" + ts2 + ":121/51119:85097236:6976755e.62d0:[unknown]:ERROR:  duplicate key value violates unique constraint",
 			wantSQLState:      "23505",
 			wantSQLStateClass: "23",
 			wantSeverity:      "ERROR",
 		},
 		{
 			name:              "Query canceled (57014)",
-			log:               testLogLine(`2025-12-12 15:29:16.068 GMT:[local]:app-user@books_store:[9112]:4:57014:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  canceling statement`),
+			log:               ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement",
 			wantSQLState:      "57014",
 			wantSQLStateClass: "57",
 			wantSeverity:      "ERROR",
 		},
 		{
 			name:              "Too many connections (53300)",
-			log:               testLogLine(`2025-12-12 15:29:31.529 GMT:[local]:conn_user@testdb:[9449]:4:53300:2025-12-12 15:29:31 GMT:91/57:0:693c34db.24e9::psqlFATAL:  too many connections`),
+			log:               ts1 + ":[local]:conn_user@testdb:[9449]:4:53300:" + ts2 + ":91/57:0:693c34db.24e9::psqlFATAL:  too many connections",
 			wantSQLState:      "53300",
 			wantSQLStateClass: "53",
 			wantSeverity:      "FATAL",
 		},
 		{
 			name:              "Auth failed (28P01)",
-			log:               testLogLine(`2025-12-12 10:33:00 UTC:10.0.1.5:54322:user2@db2:[9115]:7:28P01:2025-12-12 10:33:00 UTC:159/363:0:693c34e6.2575::psqlFATAL:  password authentication failed`),
+			log:               ts1 + ":10.0.1.5:54322:user2@db2:[9115]:7:28P01:" + ts2 + ":159/363:0:693c34e6.2575::psqlFATAL:  password authentication failed",
 			wantSQLState:      "28P01",
 			wantSQLStateClass: "28",
 			wantSeverity:      "FATAL",
 		},
 		{
 			name:              "Internal error (XX000)",
-			log:               testLogLine(`2025-12-12 15:30:00.000 GMT:10.0.1.10(5432):admin@postgres:[9500]:1:XX000:2025-12-12 15:30:00 GMT:1/1:0:693c34db.9999::psqlPANIC:  unexpected internal error`),
+			log:               ts1 + ":10.0.1.10(5432):admin@postgres:[9500]:1:XX000:" + ts2 + ":1/1:0:693c34db.9999::psqlPANIC:  unexpected internal error",
 			wantSQLState:      "XX000",
 			wantSQLStateClass: "XX",
 			wantSeverity:      "PANIC",
@@ -582,14 +575,14 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 
 	// Create timestamps relative to start time
 	historicalTime := startTime.Add(-1 * time.Hour)
-	recentTime := startTime.Add(1 * time.Second)
+	recentTime := startTime.Add(10 * time.Second)
 
 	// Send historical log (1 hour before start) with timestamp in log line
-	historicalLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test historical error", 
-		historicalTime.Format("2006-01-02 15:04:05.000 MST"), 
+	historicalLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test historical error",
+		historicalTime.Format("2006-01-02 15:04:05.000 MST"),
 		historicalTime.Format("2006-01-02 15:04:05 MST"))
 	t.Logf("Historical line: %s", historicalLine)
-	
+
 	historicalEntry := loki.Entry{
 		Entry: push.Entry{
 			Timestamp: time.Now(),
@@ -598,11 +591,11 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 	}
 
 	// Send recent log (after start) with timestamp in log line
-	recentLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test recent error", 
-		recentTime.Format("2006-01-02 15:04:05.000 MST"), 
+	recentLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test recent error",
+		recentTime.Format("2006-01-02 15:04:05.000 MST"),
 		recentTime.Format("2006-01-02 15:04:05 MST"))
 	t.Logf("Recent line: %s", recentLine)
-	
+
 	recentEntry := loki.Entry{
 		Entry: push.Entry{
 			Timestamp: time.Now(),
@@ -630,4 +623,51 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 
 	t.Logf("Total count: %f", totalCount)
 	require.Equal(t, float64(1), totalCount, "only recent log should be counted")
+}
+
+func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
+	// Explicitly validates that logs with timestamps before collector start produce 0 metrics
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	// Send ONLY historical logs (valid ERROR format, but timestamp before collector start)
+	historicalTime := startTime.Add(-1 * time.Hour)
+	historicalLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test historical error",
+		historicalTime.Format("2006-01-02 15:04:05.000 MST"),
+		historicalTime.Format("2006-01-02 15:04:05 MST"))
+
+	collector.Receiver().Chan() <- loki.Entry{
+		Entry: push.Entry{
+			Line:      historicalLine,
+			Timestamp: time.Now(),
+		},
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify 0 metrics - historical logs must be skipped
+	mfs, err := registry.Gather()
+	require.NoError(t, err)
+
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_postgres_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+	require.Equal(t, float64(0), totalCount, "historical logs must not produce metrics")
 }
