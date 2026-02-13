@@ -58,6 +58,8 @@
 ##   clean                  Clean caches and built binaries
 ##   help                   Displays this message
 ##   info                   Print Makefile-specific environment variables
+##   update-build-image     Update Go version in build images (use VERSION=1.25.8)
+##   update-go-mod          Update Go version in go.mod and Dockerfiles (use VERSION=1.25.8)
 ##
 ## Environment variables:
 ##
@@ -363,6 +365,16 @@ endif
 #
 # build-container-cache and clean-build-container-cache are defined in
 # Makefile.build-container.
+
+.PHONY: update-build-image
+update-build-image:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version build-image $(VERSION)
+
+.PHONY: update-go-mod
+update-go-mod:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version go-mod $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
