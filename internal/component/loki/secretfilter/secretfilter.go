@@ -2,6 +2,7 @@ package secretfilter
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"strings"
 	"sync"
@@ -33,6 +34,8 @@ func init() {
 // Arguments holds values which are used to configure the secretfilter component.
 type Arguments struct {
 	ForwardTo   []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RedactWith  string              `alloy:"redact_with,attr,optional"`  // Redact the secret with this string. Use $SECRET_NAME and $SECRET_HASH to include the secret name and hash
+	PartialMask uint                `alloy:"partial_mask,attr,optional"` // Show the first N characters of the secret (default: 0)
 	OriginLabel string              `alloy:"origin_label,attr,optional"` // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
 }
 
@@ -217,15 +220,8 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 	// Redact all found secrets
 	redactedLine := entry.Line
 	for _, finding := range findings {
-		// Store the original secret before redaction
-		originalSecret := finding.Secret
-
-		// Redact 80% of the secret
-		//
-		// todo(kleimkuhler): Add configuration for redaction percentage
-		finding.Redact(20)
-
-		redactedLine = strings.ReplaceAll(redactedLine, originalSecret, finding.Secret)
+		// Redact the secret using our custom redaction logic
+		redactedLine = c.redactLine(redactedLine, finding.Secret, finding.RuleID)
 
 		// Record metrics for the redacted secret
 		c.metrics.secretsRedactedTotal.Inc()
@@ -241,6 +237,41 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 
 	entry.Line = redactedLine
 	return entry
+}
+
+func (c *Component) redactLine(line string, secret string, ruleName string) string {
+	var redactWith = "<REDACTED-SECRET:" + ruleName + ">"
+	if c.args.RedactWith != "" {
+		redactWith = c.args.RedactWith
+		redactWith = strings.ReplaceAll(redactWith, "$SECRET_NAME", ruleName)
+		redactWith = strings.ReplaceAll(redactWith, "$SECRET_HASH", hashSecret(secret))
+	}
+
+	// If partialMask is set, show the first N characters of the secret
+	partialMask := int(c.args.PartialMask)
+	if partialMask < 0 {
+		partialMask = 0
+	}
+	runesSecret := []rune(secret)
+	// Only do it if the secret is long enough
+	if partialMask > 0 && len(runesSecret) >= 6 {
+		// Show at most half of the secret
+		if partialMask > len(runesSecret)/2 {
+			partialMask = len(runesSecret) / 2
+		}
+		prefix := string(runesSecret[:partialMask])
+		redactWith = prefix + redactWith
+	}
+
+	line = strings.ReplaceAll(line, secret, redactWith)
+
+	return line
+}
+
+func hashSecret(secret string) string {
+	hasher := sha1.New()
+	hasher.Write([]byte(secret))
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 // Update implements component.Component.

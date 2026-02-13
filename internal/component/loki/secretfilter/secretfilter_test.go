@@ -620,6 +620,71 @@ func TestMetricsMultipleEntries(t *testing.T) {
 			"loki_secretfilter_secrets_redacted_by_origin"))
 }
 
+func TestPartialMasking(t *testing.T) {
+	// Start testing with common cases
+	component := &Component{}
+	component.args = Arguments{PartialMask: 4}
+
+	// Too short to be partially masked
+	redacted := component.redactLine("This is a very short secret ab in a log line", "ab", "test-rule")
+	require.Equal(t, "This is a very short secret <REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Too short to be partially masked
+	redacted = component.redactLine("This is a short secret abc12 in a log line", "abc12", "test-rule")
+	require.Equal(t, "This is a short secret <REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Will be partially masked (limited by secret length)
+	redacted = component.redactLine("This is a longer secret abc123 in a log line", "abc123", "test-rule")
+	require.Equal(t, "This is a longer secret abc<REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Will be partially masked
+	redacted = component.redactLine("This is a long enough secret abcd1234 in a log line", "abcd1234", "test-rule")
+	require.Equal(t, "This is a long enough secret abcd<REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Will be partially masked
+	redacted = component.redactLine("This is the longest secret abcdef12345678 in a log line", "abcdef12345678", "test-rule")
+	require.Equal(t, "This is the longest secret abcd<REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Test with a non-ASCII character
+	redacted = component.redactLine("This is a line with a complex secret aBc\U0001f512De\U0001f5124 in a log line", "aBc\U0001f512De\U0001f5124", "test-rule")
+	require.Equal(t, "This is a line with a complex secret aBc\U0001f512<REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Test with different secret lengths and partial masking values
+	for partialMasking := range 20 {
+		for secretLength := range 50 {
+			if secretLength < 2 {
+				continue
+			}
+			expectedPrefixLength := 0
+			if secretLength >= 6 {
+				expectedPrefixLength = min(secretLength/2, partialMasking)
+			}
+			checkPartialMasking(t, partialMasking, secretLength, expectedPrefixLength)
+		}
+	}
+}
+
+func checkPartialMasking(t *testing.T, partialMasking int, secretLength int, expectedPrefixLength int) {
+	component := &Component{}
+	component.args = Arguments{PartialMask: uint(partialMasking)}
+
+	// Test with a simple ASCII character
+	secret := strings.Repeat("A", secretLength)
+	inputLog := fmt.Sprintf("This is a test with a secret %s in a log line", secret)
+	redacted := component.redactLine(inputLog, secret, "test-rule")
+	prefix := strings.Repeat("A", expectedPrefixLength)
+	expectedLog := fmt.Sprintf("This is a test with a secret %s<REDACTED-SECRET:test-rule> in a log line", prefix)
+	require.Equal(t, expectedLog, redacted)
+
+	// Test with a non-ASCII character
+	secret = strings.Repeat("\U0001f512", secretLength)
+	inputLog = fmt.Sprintf("This is a test with a secret %s in a log line", secret)
+	redacted = component.redactLine(inputLog, secret, "test-rule")
+	prefix = strings.Repeat("\U0001f512", expectedPrefixLength)
+	expectedLog = fmt.Sprintf("This is a test with a secret %s<REDACTED-SECRET:test-rule> in a log line", prefix)
+	require.Equal(t, expectedLog, redacted)
+}
+
 // TestArgumentsUpdate validates that the secretfilter component works correctly
 // when its arguments are updated multiple times during runtime
 func TestArgumentsUpdate(t *testing.T) {
