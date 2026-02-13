@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,44 +9,53 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 || os.Args[1] != "build-image" {
-		fmt.Fprintf(os.Stderr, "usage: build-image -version <version>\n")
+	if len(os.Args) < 3 {
+		printUsage()
 		os.Exit(1)
 	}
 
-	var version string
-	fs := flag.NewFlagSet("go-version", flag.ExitOnError)
-	fs.StringVar(&version, "version", "", "Go version for build images (e.g. 1.25.7)")
-	fs.Parse(os.Args[2:])
+	command, version := os.Args[1], os.Args[2]
 
-	if version == "" {
-		fmt.Fprintf(os.Stderr, "usage: build-image -version <version>\n")
-		os.Exit(1)
-	}
-
-	root, err := os.Getwd()
+	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to get working directory: %s", err)
 	}
 
-	if err := updateBuildImage(root, version); err != nil {
-		log.Fatalf("failed to update build image version: %s", err)
+	switch command {
+	case "build-image":
+		if err := updateBuildImage(wd, version); err != nil {
+			log.Fatalf("failed to update build image version: %s", err)
+		}
+	case "go-mod":
+		if err := updateGoMod(wd, version); err != nil {
+			log.Fatalf("failed to update go.mod version: %s", err)
+		}
+	default:
+		printUsage()
+		os.Exit(1)
 	}
 }
 
-func updateBuildImage(root string, version string) error {
-	err := updateBuildImageVersion(filepath.Join(root, ".github/workflows/create_build_image.yml"), version, replaceWorkflowBuildImageVersion)
+func printUsage() {
+	fmt.Fprintf(os.Stderr, "usage: <build-image|go-mod> <version>\n")
+}
+
+func updateBuildImage(wd string, version string) error {
+	err := updateBuildImageVersion(filepath.Join(wd, ".github/workflows/create_build_image.yml"), version, replaceWorkflowBuildImageVersion)
 	if err != nil {
 		return err
 	}
-	err = updateBuildImageVersion(filepath.Join(root, ".github/workflows/check-linux-build-image.yml"), version, replaceWorkflowBuildImageVersion)
+
+	err = updateBuildImageVersion(filepath.Join(wd, ".github/workflows/check-linux-build-image.yml"), version, replaceWorkflowBuildImageVersion)
 	if err != nil {
 		log.Fatalf("failed to update build image version: %s", err)
 	}
-	err = updateBuildImageVersion(filepath.Join(root, "tools/build-image/windows/Dockerfile"), version, replaceWindowsBuildImageVersion)
+
+	err = updateBuildImageVersion(filepath.Join(wd, "tools/build-image/windows/Dockerfile"), version, replaceWindowsBuildImageVersion)
 	if err != nil {
 		log.Fatalf("failed to update build image version: %s", err)
 	}
+
 	return nil
 }
 
@@ -73,4 +81,43 @@ func replaceWorkflowBuildImageVersion(content []byte, version string) []byte {
 func replaceWindowsBuildImageVersion(content []byte, version string) []byte {
 	re := regexp.MustCompile(`library/golang:1\.\d+\.\d+-windowsservercore-ltsc2022`)
 	return re.ReplaceAllLiteral(content, []byte("library/golang:"+version+"-windowsservercore-ltsc2022"))
+}
+
+func updateGoMod(wb string, version string) error {
+	var paths []string
+
+	if err := filepath.Walk(wb, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			if info.Name() == "vendor" {
+				return filepath.SkipDir
+			}
+		}
+
+		if info.Name() == "go.mod" {
+			paths = append(paths, path)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	re := regexp.MustCompile(`(?m)^go 1\.\d+(\.\d+)?\s*$`)
+
+	for _, path := range paths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", path, err)
+		}
+
+		newContent := re.ReplaceAllLiteral(content, []byte("go "+version+"\n"))
+		if err := os.WriteFile(path, newContent, 0644); err != nil {
+			return fmt.Errorf("write %s: %w", path, err)
+		}
+	}
+
+	return nil
 }
