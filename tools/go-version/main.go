@@ -74,7 +74,8 @@ func updateBuildImage(root string, version string) error {
 	}
 
 	for _, path := range paths {
-		content, err := os.ReadFile(filepath.Join(root, path))
+		path = filepath.Join(root, path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
