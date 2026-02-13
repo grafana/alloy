@@ -45,7 +45,6 @@ There are a number of environment variables that aren't recommended for use, as 
 Refer to the [`postgres_exporter` repository](https://github.com/prometheus-community/postgres_exporter#environment-variables) for a full list of environment variables.
 {{< /admonition >}}
 
-
 The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) to run with a collection timeout of 10 seconds.
 
 By default, the same set of metrics is enabled as in the upstream [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter/).
