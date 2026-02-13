@@ -22,6 +22,7 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 )
 
 const (
@@ -484,6 +485,21 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			waitEventLabels,
 			we.LastTimestamp.UnixNano(),
 		)
+
+		waitEventLabelsV2 := c.buildWaitEventLabelsV2(state, we)
+		structuredMetadata := map[string]string{
+			"datname":         state.LastRow.DatabaseName.String,
+			"queryid":         fmt.Sprintf("%d", state.LastRow.QueryID.Int64),
+			"wait_event_type": we.WaitEventType,
+			"wait_event_name": fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent),
+		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+			logging.LevelInfo,
+			OP_WAIT_EVENT_V2,
+			waitEventLabelsV2,
+			structuredMetadata,
+			we.LastTimestamp.UnixNano(),
+		)
 	}
 
 	delete(c.samples, key)
@@ -557,6 +573,28 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		waitEventFullName,
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
+	)
+}
+
+func (c *QuerySamples) buildWaitEventLabelsV2(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	return fmt.Sprintf(
+		`pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v"`,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		we.LastState,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		we.LastWaitTime,
+		we.WaitEvent,
+		waitEventFullName,
+		we.BlockedByPIDs,
 	)
 }
 
