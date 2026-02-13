@@ -258,8 +258,8 @@ func TestConfigPath_InvalidPath(t *testing.T) {
 		GetServiceData: getServiceData,
 	}
 	args := Arguments{
-		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ConfigPath:  filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
+		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ConfigPath: filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
 	}
 	_, err := New(opts, args)
 	require.Error(t, err)
