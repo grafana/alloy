@@ -340,7 +340,6 @@ func (d disabledStore) Data() any {
 }
 
 func (d disabledStore) AddLocalLink(componentID string, globalRefID uint64, localRefID uint64) {
-	return
 }
 
 func (d disabledStore) GetOrAddGlobalRefID(l labels.Labels) uint64 {
@@ -352,19 +351,15 @@ func (d disabledStore) GetLocalRefID(componentID string, globalRefID uint64) uin
 }
 
 func (d disabledStore) TrackStaleness(ids []StalenessTracker) {
-	return
 }
 
 func (d disabledStore) CheckAndRemoveStaleMarkers() {
-	return
 }
 
 func (d disabledStore) ReplaceLocalLink(componentID string, globalRefID uint64, cachedLocalRef uint64, newLocalRef uint64) {
-	return
 }
 
 func (d disabledStore) Clear() {
-	return
 }
 
 func (d disabledStore) Enabled() bool {
