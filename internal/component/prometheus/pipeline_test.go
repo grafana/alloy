@@ -349,7 +349,6 @@ func (n noopAppender) Rollback() error {
 }
 
 func (n noopAppender) SetOptions(*storage.AppendOptions) {
-	return
 }
 
 func (n noopAppender) AppendExemplar(storage.SeriesRef, labels.Labels, exemplar.Exemplar) (storage.SeriesRef, error) {
@@ -385,7 +384,7 @@ func (n noopStore) ChunkQuerier(int64, int64) (storage.ChunkQuerier, error) {
 }
 
 func (n noopStore) Appender(context.Context) storage.Appender {
-	return noopAppender{refCounter: n.refCounter}
+	return noopAppender(n)
 }
 
 func (n noopStore) StartTime() (int64, error) {
