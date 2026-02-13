@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -27,11 +28,11 @@ func TestFile(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(20 * time.Millisecond)
-	ct.Done()
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 1)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestDirectoryFile(t *testing.T) {
@@ -49,11 +50,11 @@ func TestDirectoryFile(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(20 * time.Millisecond)
-	ct.Done()
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 1)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestFileIgnoreOlder(t *testing.T) {
@@ -73,16 +74,19 @@ func TestFileIgnoreOlder(t *testing.T) {
 	c.Update(c.args)
 	go c.Run(ct)
 
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 1)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	time.Sleep(150 * time.Millisecond)
 
 	testutil.WriteFile(t, dir, "t2.txt")
-	ct.Done()
-	foundFiles = c.getWatchedFiles()
-	require.Len(t, foundFiles, 1)
-	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestAddingFile(t *testing.T) {
@@ -100,13 +104,18 @@ func TestAddingFile(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(20 * time.Millisecond)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	testutil.WriteFile(t, dir, "t2.txt")
-	ct.Done()
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 2)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestAddingFileInSubDir(t *testing.T) {
@@ -122,20 +131,29 @@ func TestAddingFileInSubDir(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(20 * time.Millisecond)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	testutil.WriteFile(t, dir, "t2.txt")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
-	time.Sleep(20 * time.Millisecond)
 	err := os.WriteFile(path.Join(subdir, "t3.txt"), []byte("asdf"), 0664)
 	require.NoError(t, err)
-	time.Sleep(20 * time.Millisecond)
-	ct.Done()
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 3)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 3)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t3.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestAddingFileInAnExcludedSubDir(t *testing.T) {
@@ -153,26 +171,35 @@ func TestAddingFileInAnExcludedSubDir(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(20 * time.Millisecond)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	testutil.WriteFile(t, dir, "t2.txt")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
 	subdir2 := path.Join(dir, "subdir2")
 	os.Mkdir(subdir2, 0755)
-	time.Sleep(20 * time.Millisecond)
 	// This file will not be included, since it is in the excluded subdir
 	err := os.WriteFile(path.Join(subdir, "exclude_me.txt"), []byte("asdf"), 0664)
 	require.NoError(t, err)
 	// This file will be included, since it is in another subdir
 	err = os.WriteFile(path.Join(subdir2, "another.txt"), []byte("asdf"), 0664)
 	require.NoError(t, err)
-	time.Sleep(20 * time.Millisecond)
-	ct.Done()
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 3)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "another.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 3)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "another.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestAddingRemovingFileInSubDir(t *testing.T) {
@@ -189,27 +216,38 @@ func TestAddingRemovingFileInSubDir(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(20 * time.Millisecond)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	testutil.WriteFile(t, dir, "t2.txt")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
-	time.Sleep(100 * time.Millisecond)
 	err := os.WriteFile(path.Join(subdir, "t3.txt"), []byte("asdf"), 0664)
 	require.NoError(t, err)
-	time.Sleep(100 * time.Millisecond)
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 3)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 3)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t3.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 
 	err = os.RemoveAll(subdir)
 	require.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
-	foundFiles = c.getWatchedFiles()
-	require.Len(t, foundFiles, 2)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t2.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 func TestExclude(t *testing.T) {
@@ -225,15 +263,20 @@ func TestExclude(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(100 * time.Millisecond)
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 1)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
 	testutil.WriteFile(t, subdir, "t3.txt")
-	time.Sleep(100 * time.Millisecond)
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 2)
-	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
-	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath(f, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath(f, "t3.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
 
 // TestMultiplePatterns verifies that the {a,b,c} pattern syntax works for matching
@@ -333,9 +376,10 @@ func TestMultiLabels(t *testing.T) {
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
-	time.Sleep(100 * time.Millisecond)
-	foundFiles := c.getWatchedFiles()
-	require.Len(t, foundFiles, 2)
-	require.True(t, testutil.ContainsPath([]discovery.Target{foundFiles[0]}, "t1.txt"))
-	require.True(t, testutil.ContainsPath([]discovery.Target{foundFiles[1]}, "t1.txt"))
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f := c.getWatchedFiles()
+		assert.Len(collect, f, 2)
+		assert.True(collect, testutil.ContainsPath([]discovery.Target{f[0]}, "t1.txt"))
+		assert.True(collect, testutil.ContainsPath([]discovery.Target{f[1]}, "t1.txt"))
+	}, 10*time.Second, 300*time.Millisecond)
 }
