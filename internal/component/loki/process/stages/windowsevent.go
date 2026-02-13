@@ -197,10 +197,6 @@ func (w *WindowsEventStage) logParseErr(err error) {
 	}
 }
 
-func (w *WindowsEventStage) Name() string {
-	return StageTypeWindowsEvent
-}
-
 // Cleanup implements Stage.
 func (*WindowsEventStage) Cleanup() {
 	// no-op

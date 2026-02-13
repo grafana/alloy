@@ -125,11 +125,6 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
 	return false
 }
 
-// Name implements Stage
-func (m *limitStage) Name() string {
-	return StageTypeLimit
-}
-
 // Cleanup implements Stage.
 func (*limitStage) Cleanup() {
 	// no-op

@@ -1,34 +1,27 @@
-//go:build !windows
-
-// This should run on windows but windows does not like the tight timing of file creation and deletion.
 package file_match
 
 import (
 	"context"
 	"os"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/discovery"
-
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/local/file_match/testutil"
 )
 
 func TestFile(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t1")
 	err := os.MkdirAll(dir, 0755)
 	require.NoError(t, err)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
@@ -38,7 +31,7 @@ func TestFile(t *testing.T) {
 	ct.Done()
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 1)
-	require.True(t, contains(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
 }
 
 func TestDirectoryFile(t *testing.T) {
@@ -46,11 +39,11 @@ func TestDirectoryFile(t *testing.T) {
 	subdir := path.Join(dir, "subdir")
 	err := os.MkdirAll(subdir, 0755)
 	require.NoError(t, err)
-	writeFile(t, subdir, "t1.txt")
+	testutil.WriteFile(t, subdir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "**/")}, nil)
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "**/")}, nil)
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
@@ -60,18 +53,18 @@ func TestDirectoryFile(t *testing.T) {
 	ct.Done()
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 1)
-	require.True(t, contains(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
 }
 
 func TestFileIgnoreOlder(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t1")
 	err := os.MkdirAll(dir, 0755)
 	require.NoError(t, err)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
@@ -82,25 +75,25 @@ func TestFileIgnoreOlder(t *testing.T) {
 
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 1)
-	require.True(t, contains(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
 	time.Sleep(150 * time.Millisecond)
 
-	writeFile(t, dir, "t2.txt")
+	testutil.WriteFile(t, dir, "t2.txt")
 	ct.Done()
 	foundFiles = c.getWatchedFiles()
 	require.Len(t, foundFiles, 1)
-	require.True(t, contains(foundFiles, "t2.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
 }
 
 func TestAddingFile(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t2")
 	err := os.MkdirAll(dir, 0755)
 	require.NoError(t, err)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
 
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
@@ -108,29 +101,29 @@ func TestAddingFile(t *testing.T) {
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
 	time.Sleep(20 * time.Millisecond)
-	writeFile(t, dir, "t2.txt")
+	testutil.WriteFile(t, dir, "t2.txt")
 	ct.Done()
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 2)
-	require.True(t, contains(foundFiles, "t1.txt"))
-	require.True(t, contains(foundFiles, "t2.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
 }
 
 func TestAddingFileInSubDir(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, nil)
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, nil)
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
 	time.Sleep(20 * time.Millisecond)
-	writeFile(t, dir, "t2.txt")
+	testutil.WriteFile(t, dir, "t2.txt")
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
 	time.Sleep(20 * time.Millisecond)
@@ -140,28 +133,28 @@ func TestAddingFileInSubDir(t *testing.T) {
 	ct.Done()
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 3)
-	require.True(t, contains(foundFiles, "t1.txt"))
-	require.True(t, contains(foundFiles, "t2.txt"))
-	require.True(t, contains(foundFiles, "t3.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
 }
 
 func TestAddingFileInAnExcludedSubDir(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
 	included := []string{path.Join(dir, "**", "*.txt")}
 	excluded := []string{path.Join(dir, "subdir", "*.txt")}
-	c := createComponent(t, dir, included, excluded)
+	c := testCreateComponent(t, dir, included, excluded)
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
 	time.Sleep(20 * time.Millisecond)
-	writeFile(t, dir, "t2.txt")
+	testutil.WriteFile(t, dir, "t2.txt")
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
 	subdir2 := path.Join(dir, "subdir2")
@@ -177,19 +170,19 @@ func TestAddingFileInAnExcludedSubDir(t *testing.T) {
 	ct.Done()
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 3)
-	require.True(t, contains(foundFiles, "t1.txt"))
-	require.True(t, contains(foundFiles, "t2.txt"))
-	require.True(t, contains(foundFiles, "another.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "another.txt"))
 }
 
 func TestAddingRemovingFileInSubDir(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, nil)
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, nil)
 
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
@@ -197,7 +190,7 @@ func TestAddingRemovingFileInSubDir(t *testing.T) {
 	c.args.SyncPeriod = 10 * time.Millisecond
 	go c.Run(ct)
 	time.Sleep(20 * time.Millisecond)
-	writeFile(t, dir, "t2.txt")
+	testutil.WriteFile(t, dir, "t2.txt")
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
 	time.Sleep(100 * time.Millisecond)
@@ -206,27 +199,27 @@ func TestAddingRemovingFileInSubDir(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 3)
-	require.True(t, contains(foundFiles, "t1.txt"))
-	require.True(t, contains(foundFiles, "t2.txt"))
-	require.True(t, contains(foundFiles, "t3.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
 
 	err = os.RemoveAll(subdir)
 	require.NoError(t, err)
 	time.Sleep(1000 * time.Millisecond)
 	foundFiles = c.getWatchedFiles()
 	require.Len(t, foundFiles, 2)
-	require.True(t, contains(foundFiles, "t1.txt"))
-	require.True(t, contains(foundFiles, "t2.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t2.txt"))
 }
 
 func TestExclude(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, []string{path.Join(dir, "**", "*.bad")})
+	c := testCreateComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, []string{path.Join(dir, "**", "*.bad")})
 	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
@@ -235,22 +228,100 @@ func TestExclude(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	subdir := path.Join(dir, "subdir")
 	os.Mkdir(subdir, 0755)
-	writeFile(t, subdir, "t3.txt")
+	testutil.WriteFile(t, subdir, "t3.txt")
 	time.Sleep(100 * time.Millisecond)
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 2)
-	require.True(t, contains(foundFiles, "t1.txt"))
-	require.True(t, contains(foundFiles, "t3.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t1.txt"))
+	require.True(t, testutil.ContainsPath(foundFiles, "t3.txt"))
+}
+
+// TestMultiplePatterns verifies that the {a,b,c} pattern syntax works for matching
+// multiple file extensions, multiple directories, and excluding multiple file types
+// in a single glob pattern. This mirrors the documentation example.
+// This is a feature of doublestar v4: https://github.com/grafana/alloy/issues/4423
+func TestMultiplePatterns(t *testing.T) {
+	dir := path.Join(os.TempDir(), "alloy_testing", "multi_pattern")
+	err := os.MkdirAll(dir, 0755)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.RemoveAll(dir)
+	})
+
+	// Create directory structure matching the documentation example:
+	// {nginx,apache,caddy}/*.{log,txt,json} excluding *.{gz,zip,bak,old}
+	for _, subdir := range []string{"nginx", "apache", "caddy", "other"} {
+		subdirPath := path.Join(dir, subdir)
+		err := os.MkdirAll(subdirPath, 0755)
+		require.NoError(t, err)
+
+		// Create files with various extensions in each directory
+		testutil.WriteFile(t, subdirPath, "access.log")
+		testutil.WriteFile(t, subdirPath, "error.txt")
+		testutil.WriteFile(t, subdirPath, "config.json")
+		testutil.WriteFile(t, subdirPath, "debug.yaml")      // Should not match (wrong extension)
+		testutil.WriteFile(t, subdirPath, "access.log.gz")   // Should be excluded
+		testutil.WriteFile(t, subdirPath, "error.txt.zip")   // Should be excluded
+		testutil.WriteFile(t, subdirPath, "config.json.bak") // Should be excluded
+		testutil.WriteFile(t, subdirPath, "old.log.old")     // Should be excluded
+	}
+
+	// Use pattern matching multiple directories and extensions with exclusions
+	// This mirrors: /var/log/{nginx,apache,caddy}/*.{log,txt,json} excluding *.{gz,zip,bak,old}
+	includePath := path.Join(dir, "{nginx,apache,caddy}", "*.{log,txt,json}")
+	excludePath := path.Join(dir, "{nginx,apache,caddy}", "*.{gz,zip,bak,old}")
+
+	c := testCreateComponent(t, dir, []string{includePath}, []string{excludePath})
+	c.args.SyncPeriod = 10 * time.Millisecond
+	err = c.Update(c.args)
+	require.NoError(t, err)
+
+	foundFiles := c.getWatchedFiles()
+
+	// Expected files: 3 directories × 3 extensions
+	expectedFiles := []string{
+		path.Join("nginx", "access.log"),
+		path.Join("nginx", "error.txt"),
+		path.Join("nginx", "config.json"),
+		path.Join("apache", "access.log"),
+		path.Join("apache", "error.txt"),
+		path.Join("apache", "config.json"),
+		path.Join("caddy", "access.log"),
+		path.Join("caddy", "error.txt"),
+		path.Join("caddy", "config.json"),
+	}
+
+	require.Len(t, foundFiles, len(expectedFiles),
+		"Expected %d files: %v", len(expectedFiles), expectedFiles)
+
+	// Verify all expected files are matched
+	for _, expected := range expectedFiles {
+		require.True(t, testutil.ContainsPath(foundFiles, expected),
+			"%s should be matched", expected)
+	}
+
+	// Verify files from "other" directory are NOT matched (wrong directory)
+	require.False(t, testutil.ContainsPath(foundFiles, path.Join("other", "access.log")),
+		"other/access.log should not be matched (wrong directory)")
+
+	// Verify excluded extensions are NOT matched
+	require.False(t, testutil.ContainsPath(foundFiles, "access.log.gz"), ".gz files should be excluded")
+	require.False(t, testutil.ContainsPath(foundFiles, "error.txt.zip"), ".zip files should be excluded")
+	require.False(t, testutil.ContainsPath(foundFiles, "config.json.bak"), ".bak files should be excluded")
+	require.False(t, testutil.ContainsPath(foundFiles, "old.log.old"), ".old files should be excluded")
+
+	// Verify wrong extensions are NOT matched
+	require.False(t, testutil.ContainsPath(foundFiles, "debug.yaml"), ".yaml files should not be matched")
 }
 
 func TestMultiLabels(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
-	writeFile(t, dir, "t1.txt")
+	testutil.WriteFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
 	})
-	c := createComponentWithLabels(t, dir, []string{path.Join(dir, "**", "*.txt"), path.Join(dir, "**", "*.txt")}, nil, map[string]string{
+	c := testCreateComponentWithLabels(t, dir, []string{path.Join(dir, "**", "*.txt"), path.Join(dir, "**", "*.txt")}, nil, map[string]string{
 		"foo":   "bar",
 		"fruit": "apple",
 	})
@@ -265,62 +336,6 @@ func TestMultiLabels(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 2)
-	require.True(t, contains([]discovery.Target{foundFiles[0]}, "t1.txt"))
-	require.True(t, contains([]discovery.Target{foundFiles[1]}, "t1.txt"))
-}
-
-// createComponent creates a component with the given paths and labels. The paths and excluded slices are zipped together
-// to create the set of targets to pass to the component.
-func createComponent(t *testing.T, dir string, paths []string, excluded []string) *Component {
-	return createComponentWithLabels(t, dir, paths, excluded, nil)
-}
-
-// createComponentWithLabels creates a component with the given paths and labels. The paths and excluded slices are
-// zipped together to create the set of targets to pass to the component.
-func createComponentWithLabels(t *testing.T, dir string, paths []string, excluded []string, labels map[string]string) *Component {
-	tPaths := make([]discovery.Target, 0)
-	for i, p := range paths {
-		tb := discovery.NewTargetBuilder()
-		tb.Set("__path__", p)
-		for k, v := range labels {
-			tb.Set(k, v)
-		}
-		if i < len(excluded) {
-			tb.Set("__path_exclude__", excluded[i])
-		}
-		tPaths = append(tPaths, tb.Target())
-	}
-	c, err := New(component.Options{
-		ID:       "test",
-		Logger:   util.TestAlloyLogger(t),
-		DataPath: dir,
-		OnStateChange: func(e component.Exports) {
-
-		},
-		Registerer: prometheus.DefaultRegisterer,
-		Tracer:     nil,
-	}, Arguments{
-		PathTargets: tPaths,
-		SyncPeriod:  1 * time.Second,
-	})
-
-	require.NoError(t, err)
-	require.NotNil(t, c)
-	return c
-}
-
-func contains(sources []discovery.Target, match string) bool {
-	for _, s := range sources {
-		p, _ := s.Get("__path__")
-		if strings.Contains(p, match) {
-			return true
-		}
-	}
-	return false
-}
-
-func writeFile(t *testing.T, dir string, name string) {
-	err := os.WriteFile(path.Join(dir, name), []byte("asdf"), 0664)
-	require.NoError(t, err)
-	time.Sleep(20 * time.Millisecond)
+	require.True(t, testutil.ContainsPath([]discovery.Target{foundFiles[0]}, "t1.txt"))
+	require.True(t, testutil.ContainsPath([]discovery.Target{foundFiles[1]}, "t1.txt"))
 }
