@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +14,42 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
+
+// Helper to generate test log lines with current timestamp to avoid historical filtering
+func testLogLine(line string) string {
+	now := time.Now()
+	// PostgreSQL log_line_prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
+	// %m is the first timestamp (appears at start of line)
+	// %s is the session start time (appears later in the line after several colons)
+	// We need to replace BOTH timestamps with current time
+	
+	// Replace the first timestamp (first 23 chars: "2025-12-12 15:29:16.068")
+	if len(line) > 23 {
+		nowStr := now.Format("2006-01-02 15:04:05.000")
+		result := nowStr + line[23:]
+		
+		// Find and replace the second timestamp (%s field)
+		// It appears after the SQLSTATE (5 chars) and a colon
+		// Pattern: ...:[SQLSTATE]:YYYY-MM-DD HH:MM:SS[.mmm] TZ:...
+		// Look for the pattern after position 50 to skip the first timestamp
+		if len(result) > 50 {
+			// Find ":YYYY-MM-DD " pattern for the second timestamp
+			for i := 50; i < len(result)-23; i++ {
+				if result[i] == ':' && i+23 < len(result) {
+					// Check if this looks like a timestamp (YYYY-MM-DD HH:MM:SS)
+					if result[i+1:i+5] == "2025" || result[i+1:i+5] == "2026" {
+						// Replace just the date/time part, keep the timezone
+						result = result[:i+1] + nowStr + result[i+1+23:]
+						break
+					}
+				}
+			}
+		}
+		return result
+	}
+	return line
+}
+
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
@@ -40,7 +77,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	}{
 		{
 			name:         "ERROR severity",
-			log:          `2025-12-12 15:29:16.068 GMT:[local]:app-user@books_store:[9112]:4:57014:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  canceling statement`,
+			log:          testLogLine(`2025-12-12 15:29:16.068 GMT:[local]:app-user@books_store:[9112]:4:57014:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  canceling statement`),
 			wantUser:     "app-user",
 			wantDB:       "books_store",
 			wantSev:      "ERROR",
@@ -48,7 +85,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "FATAL severity",
-			log:          `2025-12-12 15:29:31.529 GMT:[local]:conn_user@testdb:[9449]:4:53300:2025-12-12 15:29:31 GMT:91/57:0:693c34db.24e9::psqlFATAL:  too many connections`,
+			log:          testLogLine(`2025-12-12 15:29:31.529 GMT:[local]:conn_user@testdb:[9449]:4:53300:2025-12-12 15:29:31 GMT:91/57:0:693c34db.24e9::psqlFATAL:  too many connections`),
 			wantUser:     "conn_user",
 			wantDB:       "testdb",
 			wantSev:      "FATAL",
@@ -56,7 +93,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "PANIC severity",
-			log:          `2025-12-12 15:30:00.000 GMT:10.0.1.10(5432):admin@postgres:[9500]:1:XX000:2025-12-12 15:30:00 GMT:1/1:0:693c34db.9999::psqlPANIC:  system failure`,
+			log:          testLogLine(`2025-12-12 15:30:00.000 GMT:10.0.1.10(5432):admin@postgres:[9500]:1:XX000:2025-12-12 15:30:00 GMT:1/1:0:693c34db.9999::psqlPANIC:  system failure`),
 			wantUser:     "admin",
 			wantDB:       "postgres",
 			wantSev:      "PANIC",
@@ -64,7 +101,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "UTC timezone",
-			log:          `2025-12-12 15:29:16.068 UTC:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`,
+			log:          testLogLine(`2025-12-12 15:29:16.068 UTC:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`),
 			wantUser:     "app-user",
 			wantDB:       "books_store",
 			wantSev:      "ERROR",
@@ -72,7 +109,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 		},
 		{
 			name:         "EST timezone",
-			log:          `2025-12-12 15:29:16.068 EST:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 EST:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`,
+			log:          testLogLine(`2025-12-12 15:29:16.068 EST:10.0.1.5(12345):app-user@books_store:[9112]:4:40001:2025-12-12 15:29:15 EST:25/112:0:693c34cb.2398::psqlERROR:  could not serialize access`),
 			wantUser:     "app-user",
 			wantDB:       "books_store",
 			wantSev:      "ERROR",
@@ -133,8 +170,8 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 
 	// Send INFO and LOG messages (should be skipped)
 	skipLogs := []string{
-		`2025-12-12 15:29:42.201 GMT:::1:app-user@books_store:[9589]:2:00000:2025-12-12 15:29:42 GMT:159/363:0:693c34e6.2575::psqlINFO:  some info`,
-		`2025-12-12 15:29:42.201 GMT:::1:app-user@books_store:[9589]:2::2025-12-12 15:29:42 GMT:159/363:0:693c34e6.2575::psqlLOG:  connection received`,
+		testLogLine(`2025-12-12 15:29:42.201 GMT:::1:app-user@books_store:[9589]:2:00000:2025-12-12 15:29:42 GMT:159/363:0:693c34e6.2575::psqlINFO:  some info`),
+		testLogLine(`2025-12-12 15:29:42.201 GMT:::1:app-user@books_store:[9589]:2::2025-12-12 15:29:42 GMT:159/363:0:693c34e6.2575::psqlLOG:  connection received`),
 		"DETAIL:  Some detail line",
 		"HINT:  Some hint line",
 		"\tIndented continuation line",
@@ -184,25 +221,25 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 		sev  string
 	}{
 		{
-			log:  `2025-01-12 10:30:45 UTC:10.0.1.5:54321:user1@db1:[9112]:4:57014:2025-01-12 10:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  error 1`,
+			log:  testLogLine(`2025-01-12 10:30:45 UTC:10.0.1.5:54321:user1@db1:[9112]:4:57014:2025-01-12 10:29:15 UTC:25/112:0:693c34cb.2398::psqlERROR:  error 1`),
 			user: "user1",
 			db:   "db1",
 			sev:  "ERROR",
 		},
 		{
-			log:  `2025-01-12 10:31:00 UTC:10.0.1.5:54321:user1@db1:[9113]:5:57014:2025-01-12 10:29:15 UTC:25/113:0:693c34cb.2399::psqlERROR:  error 2`,
+			log:  testLogLine(`2025-01-12 10:31:00 UTC:10.0.1.5:54321:user1@db1:[9113]:5:57014:2025-01-12 10:29:15 UTC:25/113:0:693c34cb.2399::psqlERROR:  error 2`),
 			user: "user1",
 			db:   "db1",
 			sev:  "ERROR",
 		},
 		{
-			log:  `2025-01-12 10:32:00 UTC:10.0.1.5:54321:user1@db1:[9114]:6:57014:2025-01-12 10:29:15 UTC:25/114:0:693c34cb.2400::psqlERROR:  error 3`,
+			log:  testLogLine(`2025-01-12 10:32:00 UTC:10.0.1.5:54321:user1@db1:[9114]:6:57014:2025-01-12 10:29:15 UTC:25/114:0:693c34cb.2400::psqlERROR:  error 3`),
 			user: "user1",
 			db:   "db1",
 			sev:  "ERROR",
 		},
 		{
-			log:  `2025-01-12 10:33:00 UTC:10.0.1.5:54322:user2@db2:[9115]:7:28P01:2025-01-12 10:33:00 UTC:159/363:0:693c34e6.2575::psqlFATAL:  auth failed`,
+			log:  testLogLine(`2025-01-12 10:33:00 UTC:10.0.1.5:54322:user2@db2:[9115]:7:28P01:2025-01-12 10:33:00 UTC:159/363:0:693c34e6.2575::psqlFATAL:  auth failed`),
 			user: "user2",
 			db:   "db2",
 			sev:  "FATAL",
@@ -314,7 +351,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	// Send log with empty user and database (background worker termination)
 	collector.Receiver().Chan() <- loki.Entry{
 		Entry: push.Entry{
-			Line:      `2026-02-04 07:39:49.124 UTC::@:[26350]:1:57P01:2026-02-04 07:39:48 UTC:828/162213:0:6982f7c4.66ee:FATAL:  terminating background worker "parallel worker" due to administrator command`,
+			Line:      testLogLine(`2026-02-04 07:39:49.124 UTC::@:[26350]:1:57P01:2026-02-04 07:39:48 UTC:828/162213:0:6982f7c4.66ee:FATAL:  terminating background worker "parallel worker" due to administrator command`),
 			Timestamp: time.Now(),
 		},
 	}
@@ -463,28 +500,28 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 		},
 		{
 			name:              "Query canceled (57014)",
-			log:               `2025-12-12 15:29:16.068 GMT:[local]:app-user@books_store:[9112]:4:57014:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  canceling statement`,
+			log:               testLogLine(`2025-12-12 15:29:16.068 GMT:[local]:app-user@books_store:[9112]:4:57014:2025-12-12 15:29:15 GMT:25/112:0:693c34cb.2398::psqlERROR:  canceling statement`),
 			wantSQLState:      "57014",
 			wantSQLStateClass: "57",
 			wantSeverity:      "ERROR",
 		},
 		{
 			name:              "Too many connections (53300)",
-			log:               `2025-12-12 15:29:31.529 GMT:[local]:conn_user@testdb:[9449]:4:53300:2025-12-12 15:29:31 GMT:91/57:0:693c34db.24e9::psqlFATAL:  too many connections`,
+			log:               testLogLine(`2025-12-12 15:29:31.529 GMT:[local]:conn_user@testdb:[9449]:4:53300:2025-12-12 15:29:31 GMT:91/57:0:693c34db.24e9::psqlFATAL:  too many connections`),
 			wantSQLState:      "53300",
 			wantSQLStateClass: "53",
 			wantSeverity:      "FATAL",
 		},
 		{
 			name:              "Auth failed (28P01)",
-			log:               `2025-12-12 10:33:00 UTC:10.0.1.5:54322:user2@db2:[9115]:7:28P01:2025-12-12 10:33:00 UTC:159/363:0:693c34e6.2575::psqlFATAL:  password authentication failed`,
+			log:               testLogLine(`2025-12-12 10:33:00 UTC:10.0.1.5:54322:user2@db2:[9115]:7:28P01:2025-12-12 10:33:00 UTC:159/363:0:693c34e6.2575::psqlFATAL:  password authentication failed`),
 			wantSQLState:      "28P01",
 			wantSQLStateClass: "28",
 			wantSeverity:      "FATAL",
 		},
 		{
 			name:              "Internal error (XX000)",
-			log:               `2025-12-12 15:30:00.000 GMT:10.0.1.10(5432):admin@postgres:[9500]:1:XX000:2025-12-12 15:30:00 GMT:1/1:0:693c34db.9999::psqlPANIC:  unexpected internal error`,
+			log:               testLogLine(`2025-12-12 15:30:00.000 GMT:10.0.1.10(5432):admin@postgres:[9500]:1:XX000:2025-12-12 15:30:00 GMT:1/1:0:693c34db.9999::psqlPANIC:  unexpected internal error`),
 			wantSQLState:      "XX000",
 			wantSQLStateClass: "XX",
 			wantSeverity:      "PANIC",
@@ -525,9 +562,7 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 	}
 }
 
-func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
-	tmpDir := t.TempDir()
-
+func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
@@ -536,7 +571,6 @@ func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
-		DataPath:     tmpDir,
 	})
 	require.NoError(t, err)
 
@@ -546,19 +580,33 @@ func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// Send historical log (1 hour before start)
+	// Create timestamps relative to start time
+	historicalTime := startTime.Add(-1 * time.Hour)
+	recentTime := startTime.Add(1 * time.Second)
+
+	// Send historical log (1 hour before start) with timestamp in log line
+	historicalLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test historical error", 
+		historicalTime.Format("2006-01-02 15:04:05.000 MST"), 
+		historicalTime.Format("2006-01-02 15:04:05 MST"))
+	t.Logf("Historical line: %s", historicalLine)
+	
 	historicalEntry := loki.Entry{
 		Entry: push.Entry{
-			Timestamp: startTime.Add(-1 * time.Hour),
-			Line:      `2025-12-12 10:00:00.000 GMT:[local]:user@database:[1234]:1:28000:2025-12-12 10:00:00 GMT:1/1:0:000000.0::psqlERROR:  test historical error`,
+			Timestamp: time.Now(),
+			Line:      historicalLine,
 		},
 	}
 
-	// Send recent log (after start)
+	// Send recent log (after start) with timestamp in log line
+	recentLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test recent error", 
+		recentTime.Format("2006-01-02 15:04:05.000 MST"), 
+		recentTime.Format("2006-01-02 15:04:05 MST"))
+	t.Logf("Recent line: %s", recentLine)
+	
 	recentEntry := loki.Entry{
 		Entry: push.Entry{
-			Timestamp: startTime.Add(1 * time.Second),
-			Line:      `2025-12-12 22:00:00.000 GMT:[local]:user@database:[1234]:1:28000:2025-12-12 22:00:00 GMT:1/1:0:000000.0::psqlERROR:  test recent error`,
+			Timestamp: time.Now(),
+			Line:      recentLine,
 		},
 	}
 
@@ -580,101 +628,6 @@ func TestLogsCollector_Watermark_SkipsHistoricalLogs(t *testing.T) {
 		}
 	}
 
+	t.Logf("Total count: %f", totalCount)
 	require.Equal(t, float64(1), totalCount, "only recent log should be counted")
-}
-
-func TestLogsCollector_Watermark_PersistsAndReloads(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Create first collector and process a log
-	entryHandler1 := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-	registry1 := prometheus.NewRegistry()
-
-	collector1, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler1,
-		Logger:       log.NewNopLogger(),
-		Registry:     registry1,
-		DataPath:     tmpDir,
-	})
-	require.NoError(t, err)
-
-	timestamp := time.Now()
-
-	err = collector1.Start(context.Background())
-	require.NoError(t, err)
-
-	// Send a log entry
-	entry := loki.Entry{
-		Entry: push.Entry{
-			Timestamp: timestamp,
-			Line:      `2025-12-12 22:00:00.000 GMT:[local]:user@database:[1234]:1:28000:2025-12-12 22:00:00 GMT:1/1:0:000000.0::psqlERROR:  test error`,
-		},
-	}
-
-	collector1.Receiver().Chan() <- entry
-	time.Sleep(200 * time.Millisecond)
-
-	// Stop to ensure watermark is saved
-	collector1.Stop()
-	time.Sleep(100 * time.Millisecond) // Wait for final sync
-
-	// Create second collector (simulating restart)
-	entryHandler2 := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-	registry2 := prometheus.NewRegistry()
-
-	collector2, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler2,
-		Logger:       log.NewNopLogger(),
-		Registry:     registry2,
-		DataPath:     tmpDir,
-	})
-	require.NoError(t, err)
-
-	// Verify watermark was loaded
-	loadedWatermark := collector2.lastProcessedTimestamp.Load()
-	require.True(t, loadedWatermark.Equal(timestamp) || loadedWatermark.After(timestamp), "watermark should be loaded")
-
-	err = collector2.Start(context.Background())
-	require.NoError(t, err)
-	defer collector2.Stop()
-
-	// Send same log again (simulating historical re-processing)
-	collector2.Receiver().Chan() <- entry
-	time.Sleep(200 * time.Millisecond)
-
-	// Verify counter did NOT increment (log was skipped)
-	mfs, err := registry2.Gather()
-	require.NoError(t, err)
-
-	var totalCount float64
-	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_errors_total" {
-			for _, metric := range mf.GetMetric() {
-				totalCount += metric.GetCounter().GetValue()
-			}
-		}
-	}
-
-	require.Equal(t, float64(0), totalCount, "historical log should be skipped")
-}
-
-func TestLogsCollector_Watermark_FallsBackToStartTime(t *testing.T) {
-	// No data path specified
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-	registry := prometheus.NewRegistry()
-
-	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
-		DataPath:     "", // No path
-	})
-	require.NoError(t, err)
-
-	// Verify watermark equals start time
-	watermark := collector.lastProcessedTimestamp.Load()
-	require.True(t, watermark.Equal(collector.startTime), "watermark should equal start time")
 }

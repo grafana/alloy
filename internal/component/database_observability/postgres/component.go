@@ -560,7 +560,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
 		Logger:       c.opts.Logger,
 		Registry:     c.registry,
-		DataPath:     c.opts.DataPath,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)

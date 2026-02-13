@@ -3,8 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -20,13 +18,12 @@ import (
 
 const (
 	LogsCollector         = "logs"
-	watermarkFilename     = "dbo11y_pg_logs_watermark.txt"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 )
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
-	`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? [A-Z]{3,4}:` +
+	`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? (?:[A-Z]{3,4}|[+-]\d{2}):` +
 		`[^:]*:` +
 		`[^@]*@[^:]*:` +
 		`\[\d*\]:` +
@@ -53,7 +50,6 @@ type LogsArguments struct {
 	EntryHandler loki.EntryHandler
 	Logger       log.Logger
 	Registry     *prometheus.Registry
-	DataPath     string
 }
 
 type Logs struct {
@@ -76,38 +72,24 @@ type Logs struct {
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
 
-	// Watermark tracking
-	dataPath               string
-	lastProcessedTimestamp *atomic.Time
-	startTime              time.Time
-	watermarkQuit          chan struct{}
-	watermarkDone          chan struct{}
+	startTime time.Time
 }
 
 func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:                 log.With(args.Logger, "collector", LogsCollector),
-		entryHandler:           args.EntryHandler,
-		registry:               args.Registry,
-		receiver:               args.Receiver,
-		ctx:                    ctx,
-		cancel:                 cancel,
-		stopped:                atomic.NewBool(false),
-		dataPath:               args.DataPath,
-		lastProcessedTimestamp: atomic.NewTime(time.Time{}),
-		startTime:              time.Now(),
-		watermarkQuit:          make(chan struct{}),
-		watermarkDone:          make(chan struct{}),
+		logger:       log.With(args.Logger, "collector", LogsCollector),
+		entryHandler: args.EntryHandler,
+		registry:     args.Registry,
+		receiver:     args.Receiver,
+		ctx:          ctx,
+		cancel:       cancel,
+		stopped:      atomic.NewBool(false),
+		startTime:    time.Now(),
 	}
 
 	l.initMetrics()
-
-	if err := l.loadWatermark(); err != nil {
-		level.Warn(l.logger).Log("msg", "failed to load watermark, starting from now", "err", err)
-		l.lastProcessedTimestamp.Store(l.startTime)
-	}
 
 	return l, nil
 }
@@ -146,9 +128,8 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 func (l *Logs) Start(ctx context.Context) error {
 	level.Debug(l.logger).Log("msg", "collector started")
 
-	l.wg.Add(2)
+	l.wg.Add(1)
 	go l.run()
-	go l.syncWatermark()
 
 	return nil
 }
@@ -156,7 +137,6 @@ func (l *Logs) Start(ctx context.Context) error {
 func (l *Logs) Stop() {
 	l.cancel()
 	l.stopped.Store(true)
-	close(l.watermarkQuit)
 	l.wg.Wait()
 
 	l.registry.Unregister(l.errorsBySQLState)
@@ -165,97 +145,6 @@ func (l *Logs) Stop() {
 
 func (l *Logs) Stopped() bool {
 	return l.stopped.Load()
-}
-
-func (l *Logs) watermarkPath() string {
-	if l.dataPath == "" {
-		return ""
-	}
-	return filepath.Join(l.dataPath, watermarkFilename)
-}
-
-func (l *Logs) loadWatermark() error {
-	watermarkPath := l.watermarkPath()
-	if watermarkPath == "" {
-		level.Info(l.logger).Log("msg", "no watermark path specified, starting from now")
-		l.lastProcessedTimestamp.Store(l.startTime)
-		return nil
-	}
-
-	data, err := os.ReadFile(watermarkPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			level.Info(l.logger).Log("msg", "watermark file does not exist, starting from now", "path", watermarkPath)
-			l.lastProcessedTimestamp.Store(l.startTime)
-			return nil
-		}
-		return fmt.Errorf("failed to read watermark file: %w", err)
-	}
-
-	timestamp, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(string(data)))
-	if err != nil {
-		return fmt.Errorf("failed to parse watermark timestamp: %w", err)
-	}
-
-	l.lastProcessedTimestamp.Store(timestamp)
-	level.Info(l.logger).Log("msg", "loaded watermark from disk", "timestamp", timestamp, "path", watermarkPath)
-
-	return nil
-}
-
-func (l *Logs) saveWatermark() error {
-	watermarkPath := l.watermarkPath()
-	if watermarkPath == "" {
-		return nil
-	}
-
-	timestamp := l.lastProcessedTimestamp.Load()
-	if timestamp.IsZero() {
-		return nil
-	}
-
-	data := []byte(timestamp.Format(time.RFC3339Nano))
-
-	dir := filepath.Dir(watermarkPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create watermark directory: %w", err)
-	}
-
-	tmpPath := watermarkPath + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
-		return fmt.Errorf("failed to write watermark temp file: %w", err)
-	}
-
-	if err := os.Rename(tmpPath, watermarkPath); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to rename watermark file: %w", err)
-	}
-
-	level.Debug(l.logger).Log("msg", "saved watermark to disk", "timestamp", timestamp, "path", watermarkPath)
-
-	return nil
-}
-
-func (l *Logs) syncWatermark() {
-	defer l.wg.Done()
-	defer close(l.watermarkDone)
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-l.watermarkQuit:
-			if err := l.saveWatermark(); err != nil {
-				level.Error(l.logger).Log("msg", "failed to save watermark on shutdown", "err", err)
-			}
-			return
-		case <-ticker.C:
-			if err := l.saveWatermark(); err != nil {
-				level.Error(l.logger).Log("msg", "failed to sync watermark", "err", err)
-			}
-		}
-	}
 }
 
 func (l *Logs) run() {
@@ -281,12 +170,6 @@ func (l *Logs) run() {
 }
 
 func (l *Logs) parseTextLog(entry loki.Entry) error {
-	watermark := l.lastProcessedTimestamp.Load()
-
-	if !entry.Entry.Timestamp.After(watermark) {
-		return nil
-	}
-
 	line := entry.Entry.Line
 
 	if isContinuationLine(line) {
@@ -304,6 +187,29 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	l.trackValidFormat()
+
+	if len(line) > 30 {
+		colonIdx := strings.Index(line[20:], ":")
+		if colonIdx > 0 {
+			timestampStr := strings.TrimSpace(line[:20+colonIdx])
+
+			// Format: "YYYY-MM-DD HH:MM:SS[.mmm] TZ:..." where TZ can be GMT, UTC, -03, etc.
+			for _, layout := range []string{
+				"2006-01-02 15:04:05.000 MST",
+				"2006-01-02 15:04:05.000 -07",
+				"2006-01-02 15:04:05 MST",
+				"2006-01-02 15:04:05 -07",
+			} {
+				logTimestamp, err := time.Parse(layout, timestampStr)
+				if err == nil {
+					if !logTimestamp.After(l.startTime) {
+						return nil // Skip historical log
+					}
+					break // Found valid timestamp, continue processing
+				}
+			}
+		}
+	}
 
 	// Parse log line prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 	atIdx := strings.Index(line, "@")
@@ -355,10 +261,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	l.updateMetrics(parsed)
-
-	if entry.Entry.Timestamp.After(watermark) {
-		l.lastProcessedTimestamp.Store(entry.Entry.Timestamp)
-	}
 
 	return nil
 }
