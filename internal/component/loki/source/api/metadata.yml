@@ -1,0 +1,60 @@
+arguments:
+  type: object
+  description: "Configuration parameters for loki.source.api."
+  required:
+    - forward_to
+  allOf:
+    - "$ref": "../../../../../internal/component/common/net/schema.yml"
+  properties:
+    forward_to:
+      description: >-
+        List of receivers to send log entries to.
+      type: array
+      alloy:
+        type_override: "list(LogsReceiver)"
+
+    labels:
+      description: >-
+        The labels to associate with each received logs record.
+      type: object
+      items:
+        # TODO: this should display as "map(string)" without a type_override
+        type: object
+        additionalProperties:
+          type: string
+      alloy:
+        type: attribute
+        type_override: "map(string)"
+        default_override: "{}"
+
+    relabel_rules:
+      description: >-
+        Relabeling rules to apply on log entries.
+      type: array
+      items:
+        type: object
+      alloy:
+        type_override: "RelabelRules"
+        default_override: "{}"
+
+    use_incoming_timestamp:
+      description: >-
+        Whether to use the timestamp received from request.
+      type: boolean
+      alloy:
+        default_override: false
+
+    max_send_message_size:
+      description: >-
+        Maximum size of a request to the push API.	
+      type: string
+      alloy:
+        default_override: "\"100MiB\""
+
+    graceful_shutdown_timeout:
+      description: >-
+        Timeout for server’s graceful shutdown. If configured, should be greater than zero.
+      type: string
+      alloy:
+        type_override: "duration"
+        default_override: "\"30s\""
