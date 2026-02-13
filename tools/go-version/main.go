@@ -49,7 +49,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, "usage: <build-image|go-mod> <version>\n")
+	fmt.Fprintf(os.Stderr, "usage: <pr-1|pr-2> <version>\n")
 }
 
 func gitRoot() (string, error) {
