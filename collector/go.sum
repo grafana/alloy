@@ -1951,6 +1951,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsr
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.142.0/go.mod h1:F84TsYBAHua8Nh+1AhP++E1rf0ULMoJcjkuFfrYH9EU=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.142.0 h1:3LWr0Y519vpqs487v2B/GhUT1necfmtYbMcaVzLIBFA=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.142.0/go.mod h1:ClPuWTf0N81wynK60xQNpYIYi0vmVNymrF3oXIBNrHk=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.142.0 h1:od6CYA2isXyyBnf4QiywVI7KyJViADDA+WQbCUI/TJY=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.142.0/go.mod h1:4SrF1HUDDje3QNuPQOvOnU+cpcqd2SXDFjMWiWbd6wM=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.142.0 h1:sYH9NfckZcc5V1UQPD5XDxj4rHhJBjyH2yFH+MOBr/k=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.142.0/go.mod h1:J14Rk1QH1MapXqNGUy7R5YdfFEXu5UfiY94+OqyW/3I=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.142.0 h1:F4cRl/vKrvwHcc/NEh8Zk7JyK1gtYf78aYC6eXPWbAA=
