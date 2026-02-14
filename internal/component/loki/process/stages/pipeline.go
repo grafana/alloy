@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -73,8 +74,8 @@ func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.
 
 // Start will start the pipeline and forward entries to next.
 // The returned EntryHandler should be used to pass entries through the pipeline.
-func (p *Pipeline) Start(next chan<- loki.Entry) loki.EntryHandler {
-	handlerIn := make(chan loki.Entry)
+func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHandler {
+	ctx, cancel := context.WithCancel(context.Background())
 
 	pipelineIn := make(chan Entry)
 	pipelineOut := p.Run(pipelineIn)
@@ -83,24 +84,32 @@ func (p *Pipeline) Start(next chan<- loki.Entry) loki.EntryHandler {
 		wg   sync.WaitGroup
 		once sync.Once
 	)
+
 	wg.Go(func() {
 		for e := range pipelineOut {
-			next <- e.Entry
+			out <- e.Entry
 		}
 	})
 
 	wg.Go((func() {
 		defer close(pipelineIn)
-		for e := range handlerIn {
-			pipelineIn <- Entry{
-				Extracted: map[string]any{},
-				Entry:     e,
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case e := <-in:
+				pipelineIn <- Entry{
+					// NOTE: When entires pass through the the pipeline
+					// we always add all labels as extracted data.
+					Extracted: make(map[string]any, len(e.Labels)),
+					Entry:     e,
+				}
 			}
 		}
 	}))
 
-	return loki.NewEntryHandler(handlerIn, func() {
-		once.Do(func() { close(handlerIn) })
+	return loki.NewEntryHandler(in, func() {
+		once.Do(func() { cancel() })
 		wg.Wait()
 		p.Cleanup()
 	})
