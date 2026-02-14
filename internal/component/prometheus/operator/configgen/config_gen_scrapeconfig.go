@@ -3,7 +3,11 @@ package configgen
 // SEE https://github.com/prometheus-operator/prometheus-operator/blob/aa8222d7e9b66e9293ed11c9291ea70173021029/pkg/prometheus/promcfg.go
 
 import (
+	"cmp"
 	"fmt"
+	"net/url"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +17,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/aws"
 	"github.com/prometheus/prometheus/discovery/http"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -26,6 +31,7 @@ func (cg *ConfigGenerator) GenerateScrapeConfigConfigs(m *promopv1alpha1.ScrapeC
 			cfg = append(cfg, scrapeConfig)
 		}
 	}
+
 	for i, ep := range m.Spec.HTTPSDConfigs {
 		if scrapeConfig, err := cg.generateHTTPScrapeConfigConfig(m, ep, i); err != nil {
 			errors = append(errors, err)
@@ -33,6 +39,16 @@ func (cg *ConfigGenerator) GenerateScrapeConfigConfigs(m *promopv1alpha1.ScrapeC
 			cfg = append(cfg, scrapeConfig)
 		}
 	}
+
+	for i, ec2SdConfig := range m.Spec.EC2SDConfigs {
+		scrapeConfig, err := cg.generateEc2ScrapeConfigConfig(m, ec2SdConfig, i)
+		if err != nil {
+			errors = append(errors, err)
+		} else {
+			cfg = append(cfg, scrapeConfig)
+		}
+	}
+
 	return
 }
 
@@ -118,6 +134,116 @@ func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.Scra
 	}
 
 	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, httpSDConfig)
+	return cg.finalizeScrapeConfig(cfg, &relabels, &metricRelabels)
+}
+
+// generateEc2ScrapeConfigConfig generates a Prometheus scrape config for EC2 service discovery.
+// Adapted from https://github.com/prometheus-operator/prometheus-operator/blob/main/pkg/prometheus/promcfg.go#L3590
+func (cg *ConfigGenerator) generateEc2ScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, ec2Sd promopv1alpha1.EC2SDConfig, i int) (cfg *config.ScrapeConfig, err error) {
+	relabels := cg.initRelabelings()
+	metricRelabels := relabeler{}
+	cfg, err = cg.commonScrapeConfigConfig(m, i, &relabels, &metricRelabels)
+	cfg.JobName = fmt.Sprintf("scrapeConfig/%s/%s/ec2/%d", m.Namespace, m.Name, i)
+	if err != nil {
+		return nil, err
+	}
+
+	sdConfig := &aws.EC2SDConfig{}
+
+	if ec2Sd.Region != nil {
+		sdConfig.Region = *ec2Sd.Region
+	}
+
+	if ec2Sd.AccessKey != nil && ec2Sd.SecretKey != nil {
+		accessKey, err := cg.Secrets.GetSecretValue(m.Namespace, *ec2Sd.AccessKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve AWS access key from secret %s: %w", ec2Sd.AccessKey.Name, err)
+		}
+		secretKey, err := cg.Secrets.GetSecretValue(m.Namespace, *ec2Sd.SecretKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve AWS secret key from secret %s: %w", ec2Sd.SecretKey.Name, err)
+		}
+
+		sdConfig.AccessKey = accessKey
+		sdConfig.SecretKey = commonConfig.Secret(secretKey)
+	}
+
+	if ec2Sd.RoleARN != nil {
+		sdConfig.RoleARN = *ec2Sd.RoleARN
+	}
+
+	if ec2Sd.RefreshInterval != nil {
+		refreshInterval, err := model.ParseDuration(string(*ec2Sd.RefreshInterval))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse refresh interval: %w", err)
+		}
+		sdConfig.RefreshInterval = refreshInterval
+	}
+
+	if ec2Sd.Port != nil {
+		sdConfig.Port = int(*ec2Sd.Port)
+	}
+
+	if len(ec2Sd.Filters) > 0 {
+		// Sort the filters by name to generate a deterministic config.
+		slices.SortStableFunc(ec2Sd.Filters, func(a, b promopv1alpha1.Filter) int {
+			return cmp.Compare(a.Name, b.Name)
+		})
+
+		for _, filter := range ec2Sd.Filters {
+			sdConfig.Filters = append(sdConfig.Filters, &aws.EC2Filter{
+				Name:   filter.Name,
+				Values: filter.Values,
+			})
+		}
+	}
+
+	if ec2Sd.FollowRedirects != nil {
+		sdConfig.HTTPClientConfig.FollowRedirects = *ec2Sd.FollowRedirects
+	}
+
+	if ec2Sd.EnableHTTP2 != nil {
+		sdConfig.HTTPClientConfig.EnableHTTP2 = *ec2Sd.EnableHTTP2
+	}
+
+	if ec2Sd.TLSConfig != nil {
+		if sdConfig.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*ec2Sd.TLSConfig, m.Namespace); err != nil {
+			return nil, err
+		}
+	}
+
+	// Proxy settings
+	if !reflect.ValueOf(ec2Sd.ProxyConfig).IsZero() {
+		if ec2Sd.ProxyURL != nil {
+			u, err := url.Parse(*ec2Sd.ProxyURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse proxy URL %q: %w", *ec2Sd.ProxyURL, err)
+			}
+			sdConfig.HTTPClientConfig.ProxyURL = commonConfig.URL{URL: u}
+		}
+
+		if ec2Sd.NoProxy != nil {
+			sdConfig.HTTPClientConfig.NoProxy = *ec2Sd.NoProxy
+		}
+
+		if ec2Sd.ProxyFromEnvironment != nil {
+			sdConfig.HTTPClientConfig.ProxyFromEnvironment = *ec2Sd.ProxyFromEnvironment
+		}
+
+		if ec2Sd.ProxyConnectHeader != nil {
+			proxyConnectHeader := make(commonConfig.ProxyHeader)
+			for k, v := range ec2Sd.ProxyConnectHeader {
+				proxyConnectHeader[k] = make([]commonConfig.Secret, len(v))
+				for _, s := range v {
+					value, _ := cg.Secrets.GetSecretValue(m.Namespace, s)
+					proxyConnectHeader[k] = append(proxyConnectHeader[k], commonConfig.Secret(value))
+				}
+			}
+			sdConfig.HTTPClientConfig.ProxyConnectHeader = proxyConnectHeader
+		}
+	}
+
+	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, sdConfig)
 	return cg.finalizeScrapeConfig(cfg, &relabels, &metricRelabels)
 }
 

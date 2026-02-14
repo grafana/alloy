@@ -68,6 +68,36 @@ Example JSON response:
 ]
 ```
 
+### AWS EC2 Service Discovery
+
+The AWS EC2 Service Discovery discovers targets from AWS EC2 instances. The private IP address is used by default, but may be changed to the public IP address with relabeling.
+
+The IAM credentials used must have the `ec2:DescribeInstances` permission to discover scrape targets, and may optionally have the `ec2:DescribeAvailabilityZones` permission if you want the availability zone ID available as a label (see below).
+
+The following meta labels are available on targets during relabeling:
+
+- `__meta_ec2_ami`: the EC2 Amazon Machine Image
+- `__meta_ec2_architecture`: the architecture of the instance
+- `__meta_ec2_availability_zone`: the availability zone in which the instance is running
+- `__meta_ec2_availability_zone_id`: the availability zone ID  in which the instance is running (requires ec2:DescribeAvailabilityZones)
+- `__meta_ec2_instance_id`: the EC2 instance ID
+- `__meta_ec2_instance_lifecycle`: the lifecycle of the EC2 instance, set only for 'spot' or 'scheduled' instances, absent otherwise
+- `__meta_ec2_instance_state`: the state of the EC2 instance
+- `__meta_ec2_instance_type`: the type of the EC2 instance
+- `__meta_ec2_ipv6_addresses`: comma separated list of IPv6 addresses assigned to the instance's network interfaces, if present
+- `__meta_ec2_owner_id`: the ID of the AWS account that owns the EC2 instance
+- `__meta_ec2_platform`: the Operating System platform, set to 'windows' on Windows servers, absent otherwise
+- `__meta_ec2_primary_ipv6_addresses`: comma separated list of the Primary IPv6 addresses of the instance, if present. The list is ordered based on the position of each corresponding network interface in the attachment order.
+- `__meta_ec2_primary_subnet_id`: the subnet ID of the primary network interface, if available
+- `__meta_ec2_private_dns_name`: the private DNS name of the instance, if available
+- `__meta_ec2_private_ip`: the private IP address of the instance, if present
+- `__meta_ec2_public_dns_name`: the public DNS name of the instance, if available
+- `__meta_ec2_public_ip`: the public IP address of the instance, if available
+- `__meta_ec2_region`: the region of the instance
+- `__meta_ec2_subnet_id`: comma separated list of subnets IDs in which the instance is running, if available
+- `__meta_ec2_tag_<tagkey>`: each tag value of the instance
+- `__meta_ec2_vpc_id`: the ID of the VPC in which the instance is running, if available
+
 ## Usage
 
 ```alloy
@@ -353,10 +383,10 @@ The HTTP endpoint (`http://service-registry.internal:8080/discover`) returns JSO
 `prometheus.operator.scrapeconfigs` adds the following extra
 labels to all metrics scraped for [ScrapeConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1alpha1.ScrapeConfig) objects.
 
-|Label|Description|
-|---|---|
-|`__meta_kubernetes_scrapeconfig_namespace`|Namespace of the *ScrapeConfig* object|
-|`__meta_kubernetes_scrapeconfig_name`|Name of the *ScrapeConfig* object|
+| Label                                      | Description                            |
+| ------------------------------------------ | -------------------------------------- |
+| `__meta_kubernetes_scrapeconfig_namespace` | Namespace of the *ScrapeConfig* object |
+| `__meta_kubernetes_scrapeconfig_name`      | Name of the *ScrapeConfig* object      |
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
