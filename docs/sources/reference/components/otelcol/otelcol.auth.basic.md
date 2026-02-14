@@ -52,16 +52,12 @@ You can use the following arguments with `otelcol.auth.basic`:
 
 You can use the following block with `otelcol.auth.basic`:
 
-| Block                            | Description                                                                | Required |
-|----------------------------------|----------------------------------------------------------------------------|----------|
-| [`client_auth`][client_auth]     | Configures client authentication credentials for exporters.                | no       |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`htpasswd`][htpasswd]           | Configures server authentication using htpasswd format for receivers.      | no       |
-
-
-[client_auth]: #client_auth
-[debug_metrics]: #debug_metrics
-[htpasswd]: #htpasswd
+{{< docs/api-tree >}}
+otelcol.connector.count
+├── [client_auth](#client_auth) \[optional\]
+├── [debug_metrics](#debug_metrics) \[optional\]
+└── [htpasswd](#htpasswd) \[optional\]
+{{< /docs/api-tree >}}
 
 ### `client_auth`
 

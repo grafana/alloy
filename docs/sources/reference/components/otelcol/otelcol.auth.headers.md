@@ -44,13 +44,11 @@ The `otelcol.auth.headers` component doesn't support any arguments. You can conf
 
 You can use the following blocks with `otelcol.auth.headers`:
 
-| Block                            | Description                                                                | Required |
-|----------------------------------|----------------------------------------------------------------------------|----------|
-| [`header`][header]               | Custom header to attach to requests.                                       | yes      |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-
-[header]: #header
-[debug_metrics]: #debug_metrics
+{{< docs/api-tree >}}
+otelcol.connector.count
+├── [header](#header)  \[required\]
+└── [debug_metrics](#debug_metrics) \[optional\]
+{{< /docs/api-tree >}}
 
 ### `header`
 
