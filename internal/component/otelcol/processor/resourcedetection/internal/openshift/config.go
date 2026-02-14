@@ -10,6 +10,8 @@ const Name = "openshift"
 
 // Config can contain user-specified inputs to overwrite default values.
 // See `openshift.go#NewDetector` for more information.
+//
+// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/openshift/config.schema.yaml
 type Config struct {
 	// Address is the address of the openshift api server
 	Address string `alloy:"address,attr,optional"`

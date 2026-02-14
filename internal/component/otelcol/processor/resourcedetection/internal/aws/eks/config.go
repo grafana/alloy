@@ -7,8 +7,10 @@ import (
 
 const Name = "eks"
 
+// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/aws/eks/config.schema.yaml
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	NodeFromEnvVar     string                   `alloy:"node_from_env_var,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -19,6 +21,7 @@ var DefaultArguments = Config{
 		CloudProvider:  rac.ResourceAttributeConfig{Enabled: true},
 		K8sClusterName: rac.ResourceAttributeConfig{Enabled: false},
 	},
+	NodeFromEnvVar: "K8S_NODE_NAME",
 }
 
 var _ syntax.Defaulter = (*Config)(nil)
@@ -31,6 +34,7 @@ func (args *Config) SetToDefault() {
 func (args Config) Convert() map[string]any {
 	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
+		"node_from_env_var":   args.NodeFromEnvVar,
 	}
 }
 

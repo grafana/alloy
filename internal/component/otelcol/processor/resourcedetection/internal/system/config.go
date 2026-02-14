@@ -10,6 +10,8 @@ import (
 const Name = "system"
 
 // Config defines user-specified configurations unique to the system detector
+//
+// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/system/config.schema.yaml
 type Config struct {
 	// The HostnameSources is a priority list of sources from which hostname will be fetched.
 	// In case of the error in fetching hostname from source,

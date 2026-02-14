@@ -7,6 +7,7 @@ import (
 
 const Name = "akamai"
 
+// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/akamai/config.schema.yaml
 type Config struct {
 	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
 	ResourceAttributes    ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
@@ -31,6 +32,9 @@ func (args *Config) SetToDefault() {
 
 func (args Config) Convert() map[string]any {
 	return map[string]any{
+		// TODO(asnyder): As of writing, the upstream akamai config
+		// does not support this "fail_on_missing_metadata" option. Should
+		// we remove it?
 		"fail_on_missing_metadata": args.FailOnMissingMetadata,
 		"resource_attributes":      args.ResourceAttributes.Convert(),
 	}
