@@ -127,30 +127,34 @@ The `profiling_config` block describes how async-profiler is invoked.
 
 The following arguments are supported:
 
-| Name          | Type       | Description                                                                                                     | Default    | Required |
-| ------------- | ---------- | --------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `alloc`       | `string`   | Allocation profiling sampling configuration  It's passed as an `--alloc` argument to async-profiler.            | `"512k"`   | no       |
-| `cpu`         | `bool`     | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                 | `true`     | no       |
-| `event`       | `string`   | Sets the CPU profiling event. Can be one of `itimer`, `cpu` or `wall`.                                          | `"itimer"` | no       |
-| `interval`    | `duration` | How frequently to collect profiles from the targets.                                                            | `"60s"`    | no       |
-| `lock`        | `string`   | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                   | `"10ms"`   | no       |
-| `log_level`   | `string`   | Sets the log level in async profiler. one of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.              | `"INFO"`   | no       |
-| `per_thread`  | `bool`     | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                      | `false`    | no       |
-| `quiet`       | `bool`     | If set, suppresses the `Profiling started/stopped` log message.                                                 | `false`    | no       |
-| `sample_rate` | `int`      | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler. | `100`      | no       |
+| Name                              | Type            | Description                                                                                                        | Default    | Required |
+| --------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------ | ---------- | -------- |
+| `alloc`                           | `string`        | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.               | `"512k"`   | no       |
+| `cpu`                             | `bool`          | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                    | `true`     | no       |
+| `event`                           | `string`        | Sets the CPU profiling event. Refer to [`event`](#event) for supported values.                                     | `"itimer"` | no       |
+| `extra_arguments`                 | `list(string)`  | Extra async-profiler CLI arguments. They are appended as-is to the `start` subcommand.                             | `[]`       | no       |
+| `interval`                        | `duration`      | How frequently to collect profiles from the targets.                                                               | `"60s"`    | no       |
+| `lock`                            | `string`        | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                      | `"10ms"`   | no       |
+| `log_level`                       | `string`        | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                 | `"INFO"`   | no       |
+| `per_thread`                      | `bool`          | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                         | `false`    | no       |
+| `quiet`                           | `bool`          | If set, suppresses the `Profiling started/stopped` log message.                                                    | `false`    | no       |
+| `sample_rate`                     | `int`           | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.    | `100`      | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
 #### `event`
 
-The `event` argument sets the CPU profiling event:
-
-* `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) syscall, which generates a signal every time a process consumes CPU.
-* `cpu` - Uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available on every platform.
-* `wall` - This samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
-   For example, this can be helpful when profiling application start-up time or IO-intensive processes.
+The `event` argument configures the profiling mode used by async-profiler.
+async-profiler supports various profiling modes including CPU profiling, wall-clock profiling, and hardware performance monitoring events.
+For a complete overview of all available profiling modes and their use cases, refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) in the async-profiler documentation.
 
 #### `per_thread`
+
+{{< admonition type="note" >}}
+The `per_thread` option doesn't apply when using JFR output format.
+Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
+For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
+{{< /admonition >}}
 
 The `per_thread` argument sets per thread mode on async profiler. Threads are profiled separately and each stack trace ends with a frame that denotes a single thread.
 
