@@ -18,8 +18,8 @@ The `windows_exporter` itself comprises various _collectors_, which you can enab
 For more information on collectors, refer to the [`collectors-list`](#collectors-list) section.
 
 {{< admonition type="note" >}}
-The `blacklist` and `whitelist` configuration arguments are available for backwards compatibility but are deprecated.
-The `include` and `exclude` arguments are preferred going forward.
+The `blacklist` and `whitelist` configuration arguments are deprecated but remain available for backwards compatibility.
+Use the `include` and `exclude` arguments instead.
 {{< /admonition >}}
 
 [windows_exporter]: https://github.com/prometheus-community/windows_exporter/tree/{{< param "PROM_WIN_EXP_VERSION" >}}
@@ -41,20 +41,20 @@ You can use the following arguments with `prometheus.exporter.windows`:
 | -------------------- | -------------- | ----------------------------- | ------------------------------------------------------ | -------- |
 | `enabled_collectors` | `list(string)` | List of collectors to enable. | `["cpu","logical_disk","net","os","service","system"]` | no       |
 
-`enabled_collectors` defines a hand-picked list of enabled-by-default collectors.
-If set, anything not provided in that list is disabled by default.
+`enabled_collectors` defines a hand-picked list of collectors to enable by default.
+If you set this argument, the component disables any collectors not in the list.
 Refer to the [Collectors list](#collectors-list) for the default set.
 
 {{< admonition type="caution" >}}
 To use any of the configuration blocks below, you must add the corresponding collector name to the `enabled_collectors` list.
 For example, to use the `dns` block, you must include `"dns"` in your `enabled_collectors` list.
-Configuring a block without enabling its collector has no effect.
+A block has no effect unless you enable its collector.
 {{< /admonition >}}
 
 ## Blocks
 
 You can use the following blocks with `prometheus.exporter.windows`.
-Each block only takes effect if its corresponding collector is included in `enabled_collectors`.
+Each block only takes effect if you include its corresponding collector in `enabled_collectors`.
 
 | Name                                       | Description                                                               | Required |
 | ------------------------------------------ | ------------------------------------------------------------------------- | -------- |
@@ -84,15 +84,13 @@ Each block only takes effect if its corresponding collector is included in `enab
 | [`update`][update]                         | Configures the `update` collector.                                        | no       |
 
 {{< admonition type="caution" >}}
-Starting with v1.11.0, the `text_file` block is deprecated.
-It will be removed in a future release.
+The `text_file` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.11.0.
 Use the `textfile` block to configure the `textfile` collector.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-Starting with release 1.9.0, the `msmq` block is deprecated.
-It will be removed in a future release.
-You can still include this block in your configuration files. However, its usage is now a no-op.
+The `msmq` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.9.0.
+You can still include this block in your configuration files, but it has no effect.
 {{< /admonition >}}
 
 [dfsr]: #dfsr
@@ -116,14 +114,15 @@ You can still include this block in your configuration files. However, its usage
 [smb]: #smb
 [smtp]: #smtp
 [textfile]: #textfile
+[text_file]: #text_file-deprecated-use-textfile-instead
 [tcp]: #tcp
 [update]: #update
 
 ### `dfsr`
 
-| Name             | Type           | Description                            | Default                            | Required |
-| ---------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
-| `source_enabled` | `list(string)` | A list of DFSR Perflib sources to use. | `["connection","folder","volume"]` | no       |
+| Name              | Type           | Description                            | Default                            | Required |
+| ----------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
+| `sources_enabled` | `list(string)` | A list of DFSR `Perflib` sources to use. | `["connection","folder","volume"]` | no       |
 
 ### `dns`
 
@@ -141,7 +140,7 @@ You can still include this block in your configuration files. However, its usage
 
 | Name            | Type           | Description                                             | Default | Required |
 | --------------- | -------------- | ------------------------------------------------------- | ------- | -------- |
-| `file_patterns` | `list(string)` | A list of glob patterns matching files to be monitored. | `[]`    | no       |
+| `file_patterns` | `list(string)` | A list of glob patterns that match files to monitor.    | `[]`    | no       |
 
 ### `iis`
 
@@ -152,7 +151,7 @@ You can still include this block in your configuration files. However, its usage
 | `site_exclude` | `string` | Regular expression of sites to ignore.           | `"^$"`   | no       |
 | `site_include` | `string` | Regular expression of sites to report on.        | `"^.+$"` | no       |
 
-User-supplied `app_exclude`, `app_include`, `site_exclude` and `site_include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `app_exclude`, `app_include`, `site_exclude`, and `site_include` strings in a regular expression.
 
 ### `logical_disk`
 
@@ -167,9 +166,9 @@ The collectors specified by `enabled_list` can include the following:
 - `metrics`
 - `bitlocker_status`
 
-Volume names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+The component includes volume names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `mscluster`
 
@@ -183,7 +182,7 @@ The collectors specified by `enabled_list` can include the following:
 - `network`
 - `node`
 - `resource`
-- `resouregroup`
+- `resourcegroup`
 
 For example, you can set `enabled_list` to `["cluster"]`.
 
@@ -206,9 +205,9 @@ The collectors specified by `enabled_list` can include the following:
 - `metrics`
 - `nic_info`
 
-NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+The component includes NIC names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `network`
 
@@ -217,9 +216,9 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 | `exclude` | `string` | Regular expression of NICs to exclude. | `"^$"`   | no       |
 | `include` | `string` | Regular expression of NICs to include. | `"^.+$"` | no       |
 
-NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+The component includes NIC names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `netframework`
 
@@ -246,8 +245,8 @@ For example, you can set `enabled_list` to `["clrjit"]`.
 | --------- | -------- | ------------------------------------------------- | ------- | -------- |
 | `objects` | `string` | YAML string representing the counters to monitor. | `""`    | no       |
 
-The `objects` field should contain a YAML file as a string that satisfies the schema shown in the exporter's [documentation] for the `performancecounter` collector.
-While there are ways to construct this directly in {{< param "PRODUCT_NAME" >}} syntax using [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings] for example, the best way to configure this collector is to use a `local.file` component.
+The `objects` field accepts a YAML string that satisfies the schema in the exporter's [documentation] for the `performancecounter` collector.
+You can construct this directly in {{< param "PRODUCT_NAME" >}} syntax with [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings], but the best way to configure this collector is to use a `local.file` component.
 
 ```alloy
 local.file "counters" {
@@ -268,11 +267,24 @@ prometheus.exporter.windows "default" {
 The `performance_counters.yaml` file should be a YAML file that represents an array of objects matching the schema in the documentation, like the example below.
 
 ```yaml
+# Monitor Memory performance counters
 - name: memory
   object: "Memory"
   counters:
     - name: "Cache Faults/sec"
-      type: "counter" # optional
+      type: "counter"  # Use 'counter' for cumulative/rate metrics
+    - name: "Available Bytes"
+      type: "gauge"    # Use 'gauge' for point-in-time values
+
+# Monitor Processor performance counters
+- name: processor
+  object: "Processor"
+  instances: ["_Total"]  # Optional: filter to specific instances
+  counters:
+    - name: "% Processor Time"
+      type: "gauge"
+    - name: "Interrupts/sec"
+      type: "counter"
 ```
 
 [documentation]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.performancecounter.md
@@ -285,7 +297,7 @@ The `performance_counters.yaml` file should be a YAML file that represents an ar
 | `exclude` | `string` | Regular expression of physical disk to exclude. | `"^$"`   | no       |
 | `include` | `string` | Regular expression of physical disk to include. | `"^.+$"` | no       |
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `printer`
 
@@ -294,9 +306,9 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 | `exclude` | `string` | Regular expression of printer to exclude. | `"^$"`   | no       |
 | `include` | `string` | Regular expression of printer to include. | `"^.+$"` | no       |
 
-Printer must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+The component includes printers that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `process`
 
@@ -309,15 +321,15 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 The `counter_version` may be `0`, `1`, or `2`.
 
-- A value of `1` uses the Windows `Process` performance counters via the [registry][] API.
-- A value of `2` uses the Windows `Process V2` performance counters via the [pdh][] API. They're available starting in Windows 11.
-- A value of `0` checks to see if `Process V2` counters are available, and falls back to `Process` counters if they're not available.
+- A value of `1` uses the Windows `Process` performance counters through the [registry][] API.
+- A value of `2` uses the Windows `Process V2` performance counters through the [Performance Data Helper (PDH)][pdh] API. These counters are available starting in Windows 11.
+- A value of `0` checks if `Process V2` counters are available and falls back to `Process` counters if they aren't.
 
-Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+The component includes processes that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
-There is a warning in the upstream collector that use of `enable_iis_worker_process` may leak memory. Use with caution.
+The upstream collector warns that `enable_iis_worker_process` may leak memory. Use with caution.
 
 [pdh]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/collecting-performance-data
 [registry]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/using-the-registry-functions-to-consume-counter-data
@@ -329,9 +341,9 @@ There is a warning in the upstream collector that use of `enable_iis_worker_proc
 | `exclude` | `string` | Regular expression of tasks to exclude. | `"^$"`   | no       |
 | `include` | `string` | Regular expression of tasks to include. | `"^.+$"` | no       |
 
-For a task to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
+The component includes tasks that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `service`
 
@@ -340,14 +352,13 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 | `exclude` | `string` | Regular expression of services to exclude. | `"^$"`   | no       |
 | `include` | `string` | Regular expression of services to include. | `"^.+$"` | no       |
 
-For a service to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
+The component includes services that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 {{< admonition type="note" >}}
-Starting with release 1.9.0, the `use_api`, `where_clause`, and `enable_v2_collector` attributes are deprecated.
-They will be removed in a future release.
-You can still include these attributes in your configuration files. However, their usage is now a no-op.
+The `use_api`, `where_clause`, and `enable_v2_collector` attributes are deprecated as of {{< param "PRODUCT_NAME" >}} v1.9.0.
+You can still include these attributes in your configuration files, but they have no effect.
 {{< /admonition >}}
 
 ### `smb`
@@ -360,7 +371,7 @@ The collectors specified by `enabled_list` can include the following:
 
 - `ServerShares`
 
-For example, `enabled_list` may be set to `["ServerShares"]`.
+For example, you can set `enabled_list` to `["ServerShares"]`.
 
 ### `smb_client`
 
@@ -372,7 +383,7 @@ The collectors specified by `enabled_list` can include the following:
 
 - `ClientShares`
 
-For example, `enabled_list` may be set to `["ClientShares"]`.
+For example, you can set `enabled_list` to `["ClientShares"]`.
 
 ### `smtp`
 
@@ -381,9 +392,9 @@ For example, `enabled_list` may be set to `["ClientShares"]`.
 | `exclude` | `string` | Regular expression of virtual servers to ignore.  | `"^$"`   | no       |
 | `include` | `string` | Regular expression of virtual servers to include. | `"^.+$"` | no       |
 
-For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
+The component includes server names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `tcp`
 
@@ -400,22 +411,21 @@ For example, you can set `enabled_list` to `["metrics"]`.
 
 ### `textfile`
 
-| Name                  | Type           | Description                                                    | Default       | Required |
-| --------------------- | -------------- | -------------------------------------------------------------- | ------------- | -------- |
-| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | *see below*   | no       |
-| `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
+| Name                  | Type           | Description                                           | Default     | Required |
+| --------------------- | -------------- | ----------------------------------------------------- | ----------- | -------- |
+| `directories`         | `list(string)` | The list of directories containing files to ingest.   | _see below_ | no       |
+| `text_file_directory` | `string`       | Deprecated. The directory containing files to ingest. |             | no       |
 
-For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
-If both `text_file` and `textfile` are configured, the distinct values from each concatenate.
+By default, `directories` contains the `textfile_inputs` directory in the {{< param "PRODUCT_NAME" >}} installation directory.
+For example, if you install {{< param "PRODUCT_NAME" >}} in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
 
-The `text_file_directory` splits by `,` and appends to the list provided in `directories` if they're both configured.
-Until the deprecated field is removed, the default value remains in `text_file_directory` to ensure backward compatibility.
+The deprecated `text_file_directory` attribute accepts a comma-separated string of directories.
+If you set both `text_file_directory` and `directories`, the component combines them into a single list.
 
-The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
-By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
-For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+For backwards compatibility, you can also use the deprecated `text_file` block to configure the `textfile` collector.
+If you configure both blocks, the component combines the distinct directory values from each.
 
-Only files with the extension `.prom` inside the specified directories are read.
+The component only reads files with the `.prom` extension inside the specified directories.
 
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
@@ -423,22 +433,22 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 
 ### `text_file` (Deprecated: use `textfile` instead)
 
-| Name                  | Type           | Description                                                    | Default       | Required |
-| --------------------- | -------------- | -------------------------------------------------------------- | ------------- | -------- |
-| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | **see below** | no       |
-| `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
+| Name                  | Type           | Description                                           | Default     | Required |
+| --------------------- | -------------- | ----------------------------------------------------- | ----------- | -------- |
+| `directories`         | `list(string)` | The list of directories containing files to ingest.   | _see below_ | no       |
+| `text_file_directory` | `string`       | Deprecated. The directory containing files to ingest. |             | no       |
 
-For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
-If both `text_file` and `textfile` are configured, the distinct values from each concatenate.
+This block is deprecated. Use the `textfile` block instead.
 
-The `text_file_directory` splits by `,` and appends to the list provided in `directories` if they're both configured.
-Until the deprecated field is removed, the default value remains in `text_file_directory` to ensure backward compatibility.
+By default, `directories` contains the `textfile_inputs` directory in the {{< param "PRODUCT_NAME" >}} installation directory.
+For example, if you install {{< param "PRODUCT_NAME" >}} in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
 
-The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
-By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
-For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+The deprecated `text_file_directory` attribute accepts a comma-separated string of directories.
+If you set both `text_file_directory` and `directories`, the component combines them into a single list.
 
-Only files with the extension `.prom` inside the specified directories are read.
+If you configure both `text_file` and `textfile` blocks, the component combines the distinct directory values from each.
+
+The component only reads files with the `.prom` extension inside the specified directories.
 
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
@@ -457,7 +467,7 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 
 ## Component health
 
-`prometheus.exporter.windows` is only reported as unhealthy if given an invalid configuration.
+`prometheus.exporter.windows` reports as unhealthy only when you provide an invalid configuration.
 In those cases, exported fields retain their last healthy values.
 
 ## Debug information
@@ -478,7 +488,7 @@ Some collector blocks such as [`scheduled_task`][scheduled_task] accept a regula
 `prometheus.exporter.windows` prefixes some regular expression string arguments with `^(?:` and suffixes them with `)$`.
 For example, if a user sets an `exclude` argument to `".*"`, Alloy sets it to `"^(?:.*)$"`.
 
-To find out if a particular regular expression argument will be wrapped, refer to the collector block documentation.
+To find out if the component wraps a particular regular expression argument, refer to the collector block documentation.
 
 {{< admonition type="note" >}}
 The wrapping may change the behaviour of your regular expression.
@@ -489,9 +499,9 @@ However, `^(?:e.*)$` would only match "email".
 ## Collectors list
 
 The following table lists the available collectors in `windows_exporter`.
-Some collectors only work on specific operating systems, enabling a collector that's not supported by the host OS where {{< param "PRODUCT_NAME" >}} is running is a no-op.
+Some collectors only work on specific operating systems. If you enable a collector that the host OS doesn't support, it has no effect.
 
-Users can choose to enable a subset of collectors to limit the amount of metrics exposed by the `prometheus.exporter.windows` component, or disable collectors that are expensive to run.
+You can enable a subset of collectors to limit the amount of metrics that the `prometheus.exporter.windows` component exposes, or disable collectors that are expensive to run.
 
 | Name                                       | Description                                                    | Enabled by default |
 | ------------------------------------------ | -------------------------------------------------------------- | ------------------ |
@@ -527,8 +537,8 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`remote_fx`][remote_fx]                   | RemoteFX protocol (RDP) metrics                                |                    |
 | [`scheduled_task`][scheduled_task]         | Scheduled Tasks metrics                                        |                    |
 | [`service`][service]                       | Service state metrics                                          | Yes                |
-| [`smb`][smb]                               | IIS SMTP Server                                                |                    |
-| [`smb_client`][smb_client]                 | IIS SMTP Server                                                |                    |
+| [`smb`][smb]                               | SMB Server shares                                              |                    |
+| [`smb_client`][smb_client]                 | SMB Client shares                                              |                    |
 | [`smtp`][smtp]                             | IIS SMTP Server                                                |                    |
 | [`system`][system]                         | System calls                                                   | Yes                |
 | [`tcp`][tcp]                               | TCP connections                                                |                    |
@@ -546,7 +556,6 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [cache]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cache.md
 [cpu]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cpu.md
 [cpu_info]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cpu_info.md
-[cs]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cs.md
 [container]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.container.md
 [dfsr]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dfsr.md
 [dhcp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dhcp.md
@@ -590,11 +599,11 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 Refer to the linked documentation on each collector for more information on reported metrics, configuration settings and usage examples.
 
 {{< admonition type="caution" >}}
-Certain collectors cause {{< param "PRODUCT_NAME" >}} to crash if you use those collectors and the required infrastructure isn't installed.
+Certain collectors cause {{< param "PRODUCT_NAME" >}} to crash if you use them without the required infrastructure.
 These include but aren't limited to `mscluster`, `VMware`, `nps`, `dns`, `msmq`, `ad`, `hyperv`, and `scheduled_task`.
 
-The `cs` and `logon` collectors are deprecated and have been removed from the exporter.
-You can continue to use the configuration for these collectors, however this option will be removed in the future.
+The `cs` and `logon` collectors are deprecated and removed from the exporter.
+You can still configure these collectors, but they have no effect.
 {{< /admonition >}}
 
 ## Example
