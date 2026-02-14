@@ -24,6 +24,8 @@ Before you start, validate your OpenTelemetry YAML configuration with the `valid
 ./build/alloy otel validate --config=<CONFIG_FILE>
 ```
 
+Whilst this is an experimental feature, it is not hidden behind an `experimental` feature flag like regular components are to keep compatibility with the OpenTelemetry Collector.
+
 ## Run with the CLI
 
 The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" >}} `otel` command.
@@ -146,9 +148,83 @@ This starts both the {{< param "DEFAULT_ENGINE" >}} and {{< param "OTEL_ENGINE" 
 The output of both engines is visible in the logs.
 You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`.
 
-## Run with {{% param "PRODUCT_NAME" %}} Helm chart
+## Run with The OpenTelemetry Collector Helm chart
 
-TODO
+Use the upstream [OpenTelemetry Collector Helm chart](https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector) run the {{< param "OTEL_ENGINE" >}} . 
+This delivers an identical upstream collector experience and ensures you get improvements, bug fixes, and security updates as they are released.
+
+The following example Helm `values.yaml` incorporates the same configuration seen above into a Kubernetes deployment.
+
+{{< admonition type="note" >}}
+In this configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the Pod. It can be reached from other Pods in the cluster, not just with the `kubectl port-forward`.
+
+Additionally, we are setting the command.name key to `bin/otelcol`. This binary that runs the `alloy otel` subcommand. This is required as the Helm chart does not currently expose the use of custom subcommands.
+{{< /admonition >}}
+
+```yaml
+image:
+  repository: grafana/alloy
+  tag: latest
+
+command: 
+  name: "bin/otelcol"
+
+mode: deployment
+
+ports:
+  metrics:
+    enabled: true
+
+config:
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133 # This is necessary for the k8s liveliness check
+    basicauth/my_auth:
+      client_auth:
+        username: <USERNAME>
+        password: <PASSWORD>
+
+  receivers:
+    otlp:
+      protocols:
+        grpc: {}
+        http: {}
+
+  processors:
+    batch:
+      timeout: 1s
+      send_batch_size: 512
+
+  exporters:
+    otlphttp/my_backend:
+      endpoint: <URL>
+      auth:
+        authenticator: basicauth/my_auth
+
+  service:
+    telemetry:
+      metrics:
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0 
+                  port: 8888
+    extensions: [basicauth/my_auth, health_check]
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlphttp/my_backend]
+```
+
+Replace the following:
+
+- _`<USERNAME>`_: Your username. If you are using Grafana Cloud this is your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password. If you are using Grafana Cloud this is your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to. If you are using Grafana Cloud this is your Grafana Cloud OTLP endpoint URL.
+
+Refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case.
 
 ## Run with service installation
 
