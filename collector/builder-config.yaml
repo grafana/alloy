@@ -66,6 +66,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.142.0
@@ -144,4 +145,10 @@ replaces:
   - sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
   # Fork to grafana repo to address issue with freebsd build tags. This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
   - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
+  # Pin githubreceiver to v0.142.0 to ensure compatibility with other OTel components
+  - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver => github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver v0.142.0
+  # Pin confighttp to v0.142.0 to ensure compatibility across all OTel components
+  - go.opentelemetry.io/collector/config/confighttp => go.opentelemetry.io/collector/config/confighttp v0.142.0
+  # Pin zpagesextension to v0.142.0 to ensure compatibility
+  - go.opentelemetry.io/collector/extension/zpagesextension => go.opentelemetry.io/collector/extension/zpagesextension v0.142.0
   # END GENERATED REPLACES
