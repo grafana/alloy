@@ -49,20 +49,62 @@ func (args *CRIConfig) Validate() error {
 	return nil
 }
 
-func NewCRI(logger log.Logger, cfg CRIConfig, _ prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
+func NewCRI(logger log.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
+	partialLinesFlushedMetric, err := getPartialLinesFlushedMetric(registerer)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to register cri partial lines flushed metric", "err", err)
+	}
+	linesTruncatedMetric, err := getLinesTruncatedMetric(registerer)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to register cri lines truncated metric", "err", err)
+	}
 	return &cri{
-		logger:       logger,
-		cfg:          cfg,
-		partialLines: make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+		logger:                    logger,
+		cfg:                       cfg,
+		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+		partialLinesFlushedMetric: partialLinesFlushedMetric,
+		linesTruncatedMetric:      linesTruncatedMetric,
 	}, nil
+}
+
+func getPartialLinesFlushedMetric(registerer prometheus.Registerer) (prometheus.Counter, error) {
+	metric := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "loki_process_cri_partial_lines_flushed_total",
+		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded",
+	})
+	err := registerer.Register(metric)
+	if err != nil {
+		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			return existing.ExistingCollector.(prometheus.Counter), nil
+		}
+		return nil, err
+	}
+	return metric, nil
+}
+
+func getLinesTruncatedMetric(registerer prometheus.Registerer) (prometheus.Counter, error) {
+	metric := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "loki_process_cri_lines_truncated_total",
+		Help: "A count of lines that were truncated due to the max_partial_line_size limit",
+	})
+	err := registerer.Register(metric)
+	if err != nil {
+		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			return existing.ExistingCollector.(prometheus.Counter), nil
+		}
+		return nil, err
+	}
+	return metric, nil
 }
 
 var _ Stage = (*cri)(nil)
 
 type cri struct {
-	logger       log.Logger
-	cfg          CRIConfig
-	partialLines map[model.Fingerprint]Entry
+	logger                    log.Logger
+	cfg                       CRIConfig
+	partialLines              map[model.Fingerprint]Entry
+	partialLinesFlushedMetric prometheus.Counter
+	linesTruncatedMetric      prometheus.Counter
 }
 
 const (
@@ -103,6 +145,9 @@ func (c *cri) Run(in chan Entry) chan Entry {
 		if parsed.Flag == crip.FlagPartial {
 			if len(c.partialLines) >= c.cfg.MaxPartialLines {
 				level.Warn(c.logger).Log("msg", "cri stage: partial lines upperbound exceeded. merging it to single line", "threshold", c.cfg.MaxPartialLines)
+				if c.partialLinesFlushedMetric != nil {
+					c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
+				}
 
 				// Merge existing partialLines
 				entries := make([]Entry, 0, len(c.partialLines))
@@ -151,6 +196,9 @@ func (c *cri) Run(in chan Entry) chan Entry {
 func (c *cri) ensureTruncateIfRequired(e *Entry) {
 	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
 		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
+		if c.linesTruncatedMetric != nil {
+			c.linesTruncatedMetric.Inc()
+		}
 	}
 }
 
