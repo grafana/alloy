@@ -154,7 +154,8 @@ func (a *Arguments) Validate() error {
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets      []discovery.Target `alloy:"targets,attr"`
+	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr,optional"`
 }
 
 var (
@@ -183,6 +184,7 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	logsReceiver loki.LogsReceiver
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -191,13 +193,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:         opts,
+		args:         args,
+		receivers:    args.ForwardTo,
+		handler:      loki.NewLogsReceiver(),
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		openSQL:      openFn,
+		logsReceiver: loki.NewLogsReceiver(),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -211,6 +214,12 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		return nil, err
 	}
 	c.baseTarget = baseTarget
+
+	// Export logs receiver immediately so loki.source.file can wire to it
+	opts.OnStateChange(Exports{
+		Targets:      []discovery.Target{},
+		LogsReceiver: c.logsReceiver,
+	})
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -365,7 +374,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 
 	c.opts.OnStateChange(Exports{
-		Targets: targets,
+		Targets:      targets,
+		LogsReceiver: c.logsReceiver,
 	})
 
 	for _, collector := range c.collectors {
@@ -542,6 +552,22 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.HealthCheckCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, hcCollector)
+	}
+
+	// Logs collector is always enabled
+	logsCollector, err := collector.NewLogs(collector.LogsArguments{
+		Receiver:     c.logsReceiver,
+		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:       c.opts.Logger,
+		Registry:     c.registry,
+	})
+	if err != nil {
+		logStartError(collector.LogsCollector, "create", err)
+	} else {
+		if err := logsCollector.Start(context.Background()); err != nil {
+			logStartError(collector.LogsCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, logsCollector)
 	}
 
 	if len(startErrors) > 0 {
