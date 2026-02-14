@@ -11,7 +11,11 @@ metadata:
     {{- include "alloy.labels" $ | nindent 4 }}
     app.kubernetes.io/component: rbac
 rules:
+  {{- if $.Values.rbac.rules }}
   {{- $.Values.rbac.rules | toYaml | nindent 2 }}
+  {{- else }}
+  []
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -40,8 +44,12 @@ metadata:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: rbac
 rules:
+  {{- if or .Values.rbac.rules .Values.rbac.clusterRules }}
   {{- .Values.rbac.rules | toYaml | nindent 2 }}
   {{- .Values.rbac.clusterRules | toYaml | nindent 2 }}
+  {{- else }}
+  []
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
