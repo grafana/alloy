@@ -29,7 +29,7 @@ func TestGelf(t *testing.T) {
 	udpListenerAddr := componenttest.GetFreeAddr(t)
 	args := Arguments{
 		ListenAddress: udpListenerAddr,
-		Receivers:     []loki.LogsReceiver{ch1},
+		ForwardTo:     []loki.LogsReceiver{ch1},
 	}
 	c, err := New(opts, args)
 	ctx := t.Context()
