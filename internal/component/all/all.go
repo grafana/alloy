@@ -171,6 +171,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
 	_ "github.com/grafana/alloy/internal/component/pyroscope/enrich"                         // Import pyroscope.enrich
 	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java
+	_ "github.com/grafana/alloy/internal/component/pyroscope/profile/relabel"                // Import pyroscope.profile.relabel
 	_ "github.com/grafana/alloy/internal/component/pyroscope/receive_http"                   // Import pyroscope.receive_http
 	_ "github.com/grafana/alloy/internal/component/pyroscope/relabel"                        // Import pyroscope.relabel
 	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"                         // Import pyroscope.scrape
