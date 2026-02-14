@@ -9,6 +9,7 @@ internal API changes are not present.
 
 Unreleased
 ----------
+- Add clustering waitForSize and waitTimeout. (@evanfreed)
 
 1.6.0 (2026-02-05)
 ----------
