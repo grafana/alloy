@@ -12,19 +12,20 @@ import (
 // of the process, this will consume a negligible amount of memory.
 var tagsCache = make(map[reflect.Type]*objectFields)
 
+// tagsCacheMutex protects concurrent reads and writes to tagsCache.
+var tagsCacheMutex sync.RWMutex
+
 func getCachedTags(t reflect.Type) *objectFields {
 	if t.Kind() != reflect.Struct {
 		panic("getCachedTags called with non-struct type")
 	}
 
-	// Mutex to protect concurrent reads and writes to tagsCache
-	var tagCacheMutex sync.RWMutex
-	tagCacheMutex.RLock()
+	tagsCacheMutex.RLock()
 	if entry, ok := tagsCache[t]; ok {
-		tagCacheMutex.RUnlock()
+		tagsCacheMutex.RUnlock()
 		return entry
 	}
-	tagCacheMutex.RUnlock()
+	tagsCacheMutex.RUnlock()
 
 	ff := syntaxtags.Get(t)
 
@@ -68,9 +69,13 @@ func getCachedTags(t reflect.Type) *objectFields {
 		}
 	}
 
-	tagCacheMutex.Lock()
+	tagsCacheMutex.Lock()
+	if entry, ok := tagsCache[t]; ok {
+		tagsCacheMutex.Unlock()
+		return entry
+	}
 	tagsCache[t] = tree
-	tagCacheMutex.Unlock()
+	tagsCacheMutex.Unlock()
 
 	return tree
 }
