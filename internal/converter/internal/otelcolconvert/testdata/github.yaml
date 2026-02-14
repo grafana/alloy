@@ -1,0 +1,61 @@
+extensions:
+  bearertokenauth:
+    token: "ghp_1234567890abcdefghijklmnopqrstuvwxyz12"
+
+receivers:
+  github:
+    collection_interval: 60s
+    initial_delay: 1s
+    scrapers:
+      scraper:
+        github_org: grafana
+        search_query: "org:grafana"
+        endpoint: https://api.github.com
+        auth:
+          authenticator: bearertokenauth
+        metrics:
+          vcs.change.count:
+            enabled: false
+          vcs.change.duration:
+            enabled: false
+          vcs.change.time_to_approval:
+            enabled: false
+          vcs.change.time_to_merge:
+            enabled: false
+          vcs.ref.count:
+            enabled: false
+          vcs.ref.lines_delta:
+            enabled: false
+          vcs.ref.revisions_delta:
+            enabled: false
+          vcs.ref.time:
+            enabled: false
+          vcs.repository.count:
+            enabled: false
+          vcs.contributor.count:
+            enabled: true
+    webhook:
+      endpoint: 0.0.0.0:8080
+      path: /webhook-events
+      health_path: /webhook-health
+      secret: webhook-secret
+      required_headers:
+        X-Custom-Header: custom-value
+      service_name: github-webhook
+      include_span_events: true
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  extensions: [bearertokenauth]
+  pipelines:
+    metrics:
+      receivers: [github]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [github]
+      processors: []
+      exporters: [otlp]
