@@ -66,6 +66,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.142.0
@@ -147,4 +148,10 @@ replaces:
   - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98
   # Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
   - github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
+  # Pin githubreceiver to v0.142.0 to ensure compatibility with other OTel components
+  - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver => github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver v0.142.0
+  # Pin confighttp to v0.142.0 to ensure compatibility across all OTel components
+  - go.opentelemetry.io/collector/config/confighttp => go.opentelemetry.io/collector/config/confighttp v0.142.0
+  # Pin zpagesextension to v0.142.0 to ensure compatibility
+  - go.opentelemetry.io/collector/extension/zpagesextension => go.opentelemetry.io/collector/extension/zpagesextension v0.142.0
   # END GENERATED REPLACES
