@@ -16,6 +16,8 @@ The `/-/support?duration=N` endpoint returns a support bundle, a compressed file
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
 to debug an [issue][alloy-repo].
 
+You can generate a support bundle by clicking the **Support Bundle** link in the {{< param "PRODUCT_NAME" >}} web UI navbar, or by accessing the `/-/support` endpoint directly.
+
 This feature isn't covered by the [backward-compatibility][backward-compatibility] guarantees.
 
 {{< admonition type="note" >}}
