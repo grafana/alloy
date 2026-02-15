@@ -79,6 +79,7 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+## 	 SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
 
 include tools/make/*.mk
 
@@ -202,7 +203,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+alloy: generate-ui generate-source-code
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -273,6 +274,18 @@ ifeq ($(USE_CONTAINER),1)
 else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
 endif
+
+generate-source-code:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else ifeq ($(CI),true)
+	@echo "Skipping code generation (CI=1)"
+else ifeq ($(SKIP_CODE_GENERATION),1)
+	@echo "Skipping code generation (SKIP_CODE_GENERATION=1)"
+else
+	@$(MAKE) generate-module-dependencies generate-otel-collector-distro
+endif
+
 
 generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
