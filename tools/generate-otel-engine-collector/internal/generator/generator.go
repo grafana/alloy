@@ -35,16 +35,19 @@ func clearGeneratedFiles(collectorDir string) error {
 	return nil
 }
 
-// Generate clears existing generated files, runs the OTel builder in collectorDir, then go mod tidy,
-// then post-processes main.go and writes main_alloy.go using the embedded template.
-func Generate(collectorDir, builderVersion string) error {
+// Generate runs the OTel builder in collectorDir, then go mod tidy, then post-processes main.go
+// and writes main_alloy.go using the embedded template. If fromScratch is true, removes main*.go,
+// components.go, go.mod, and go.sum first so we generate from scratch.
+func Generate(collectorDir, builderVersion string, fromScratch bool) error {
 	configPath := filepath.Join(collectorDir, "builder-config.yaml")
-	if _, err := os.Stat(configPath); err != nil && !os.IsNotExist(err) {
+	if _, err := os.Stat(configPath); err != nil {
 		return fmt.Errorf("collector config not found at %s: %w", configPath, err)
 	}
 
-	if err := clearGeneratedFiles(collectorDir); err != nil {
-		return fmt.Errorf("clear generated files: %w", err)
+	if fromScratch {
+		if err := clearGeneratedFiles(collectorDir); err != nil {
+			return fmt.Errorf("clear generated files: %w", err)
+		}
 	}
 
 	builderCmd := exec.Command("go", "run", "go.opentelemetry.io/collector/cmd/builder@"+builderVersion,

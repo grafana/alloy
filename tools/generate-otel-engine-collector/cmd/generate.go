@@ -11,8 +11,9 @@ import (
 
 func newGenerateCommand() *cobra.Command {
 	var (
-		collectorDir   string
+		collectorDir    string
 		builderVersion string
+		fromScratch    bool
 	)
 	cmd := &cobra.Command{
 		Use:   "generate",
@@ -29,11 +30,12 @@ func newGenerateCommand() *cobra.Command {
 			if builderVersion == "" {
 				return fmt.Errorf("builder version is required: set --builder-version or BUILDER_VERSION")
 			}
-			return generator.Generate(collectorDir, builderVersion)
+			return generator.Generate(collectorDir, builderVersion, fromScratch)
 		},
 	}
 	cmd.Flags().StringVar(&collectorDir, "collector-dir", "", "Path to the collector directory (contains builder-config.yaml)")
 	cmd.Flags().StringVar(&builderVersion, "builder-version", "", "OTel builder version (e.g. v0.139.0); defaults to BUILDER_VERSION env")
+	cmd.Flags().BoolVar(&fromScratch, "from-scratch", false, "Remove main*.go, components.go, go.mod, go.sum before generating")
 	_ = cmd.MarkFlagRequired("collector-dir")
 	return cmd
 }
