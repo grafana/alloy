@@ -277,7 +277,7 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+	cd ./tools/generate-module-dependencies && $(GO_ENV) go run . generate --dependency-yaml=../../dependency-replacements.yaml --project-root=../..
 endif
 
 generate-source-code:
@@ -296,7 +296,7 @@ generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./tools/generate-otel-engine-collector && BUILDER_VERSION=$(BUILDER_VERSION) go generate
+	cd ./tools/generate-otel-engine-collector && go run . generate --collector-dir=../../collector --from-scratch --builder-version=$(BUILDER_VERSION)
 endif
 
 generate-ui:

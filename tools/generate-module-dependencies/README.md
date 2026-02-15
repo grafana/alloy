@@ -32,7 +32,6 @@ The tool supports two file types:
 
 - One-off run from repo root:
     - `make generate-module-dependencies`
-    - or `cd tools/generate-module-dependencies && go generate`
 
 ## Configuration
 
