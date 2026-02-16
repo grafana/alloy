@@ -88,7 +88,6 @@ func (e *alloyEngineExtension) isUp() int64 {
 	return 0
 }
 
-// Start is called when the extension is started.
 func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
 	e.stateMutex.Lock()
 	switch e.state {

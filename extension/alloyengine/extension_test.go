@@ -136,20 +136,20 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	require.Equal(t, stateTerminated, e.state)
 }
 
-func TestStartTwiceFails(t *testing.T) {
+func TestLifecycle_StartTwiceFails(t *testing.T) {
 	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
 	err := e.Start(context.Background(), componenttest.NewNopHost())
 	require.Error(t, err)
 }
 
-func TestReadyWhenNotStarted(t *testing.T) {
+func TestLifecycle_NotReadyWhenNotStarted(t *testing.T) {
 	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 	require.Error(t, e.Ready())
 	require.Error(t, e.NotReady())
 }
 
-func TestStayInStartingWhenReadyNotCalled(t *testing.T) {
+func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	e := newTestExtension(t, blockingCommandWithoutReady, defaultTestConfig())
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
 
@@ -164,7 +164,7 @@ func TestStayInStartingWhenReadyNotCalled(t *testing.T) {
 	require.NoError(t, e.Shutdown(shutdownCtx))
 }
 
-func TestShutdownWithRunCommandError(t *testing.T) {
+func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	expected := errors.New("shutdown error")
 	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
 
@@ -187,7 +187,7 @@ func TestShutdownWithRunCommandError(t *testing.T) {
 	require.Equal(t, stateTerminated, e.state)
 }
 
-func Test_RunSucceedsAfterRetries(t *testing.T) {
+func TestLifecycle__RunSucceedsAfterRetries(t *testing.T) {
 	testErr := errors.New("temporary failure")
 	factory, state := newRetryTrackingCommand(2, testErr) // Fail 2 times, succeed on 3rd attempt
 	cfg := defaultTestConfig()
