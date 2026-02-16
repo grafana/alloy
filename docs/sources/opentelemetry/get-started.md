@@ -175,7 +175,7 @@ ports:
   metrics:
     enabled: true
 
-config:
+alternateConfig:
   extensions:
     health_check:
       endpoint: 0.0.0.0:13133 # This is necessary for the k8s liveliness check
@@ -223,6 +223,11 @@ Replace the following:
 - _`<USERNAME>`_: Your username. If you are using Grafana Cloud this is your Grafana Cloud instance ID.
 - _`<PASSWORD>`_: Your password. If you are using Grafana Cloud this is your Grafana Cloud API token.
 - _`<URL>`_: The URL to export data to. If you are using Grafana Cloud this is your Grafana Cloud OTLP endpoint URL.
+
+The Helm chart ships with a default OpenTelemetry Collector configuration in the `config` field, which is described in the upstream Helm chart [documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/#configuration).
+If you want to completely override that default configuration, you can use the `alternateConfig` field.
+In the example above, `alternateConfig` field is used to ensure the configuration matches the other examples in this Getting Started document and does not inherit any of the chart’s defaults. 
+Alternatively, you can omit both config and alternateConfig to use the default configuration as-is, or provide your own `config` block that will be merged with the chart’s default configuration.
 
 Refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case.
 
