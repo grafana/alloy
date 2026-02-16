@@ -7,7 +7,6 @@ import (
 
 const Name = "eks"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/aws/eks/config.schema.yaml
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 	NodeFromEnvVar     string                   `alloy:"node_from_env_var,attr,optional"`

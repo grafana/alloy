@@ -10,8 +10,6 @@ import (
 const Name = "ec2"
 
 // Config defines user-specified configurations unique to the EC2 detector
-//
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/aws/ec2/config.schema.yaml
 type Config struct {
 	// Tags is a list of regex's to match ec2 instance tag keys that users want
 	// to add as resource attributes to processed data

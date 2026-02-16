@@ -7,7 +7,6 @@ import (
 
 const Name = "oraclecloud"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/oraclecloud/config.schema.yaml
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }

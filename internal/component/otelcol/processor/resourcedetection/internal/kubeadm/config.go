@@ -8,7 +8,6 @@ import (
 
 const Name = "kubeadm"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/kubeadm/config.schema.yaml
 type Config struct {
 	KubernetesAPIConfig otelcol.KubernetesAPIConfig `alloy:",squash"`
 	ResourceAttributes  ResourceAttributesConfig    `alloy:"resource_attributes,block,optional"`

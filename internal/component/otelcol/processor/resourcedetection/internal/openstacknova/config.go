@@ -7,7 +7,6 @@ import (
 
 const Name = "nova"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/openstack/nova/config.schema.yaml
 type Config struct {
 	FailOnMissingMetadata bool `alloy:"fail_on_missing_metadata,attr,optional"`
 

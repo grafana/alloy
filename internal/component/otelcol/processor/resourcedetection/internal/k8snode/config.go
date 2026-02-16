@@ -8,7 +8,6 @@ import (
 
 const Name = "kubernetes_node"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/k8snode/config.schema.yaml
 type Config struct {
 	KubernetesAPIConfig otelcol.KubernetesAPIConfig `alloy:",squash"`
 	// NodeFromEnv can be used to extract the node name from an environment

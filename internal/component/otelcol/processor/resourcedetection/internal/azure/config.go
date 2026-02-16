@@ -7,7 +7,6 @@ import (
 
 const Name = "azure"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/azure/config.schema.yaml
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 	Tags               []string                 `alloy:"tags,attr,optional"`

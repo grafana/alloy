@@ -7,7 +7,6 @@ import (
 
 const Name = "gcp"
 
-// See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/internal/gcp/config.schema.yaml
 type Config struct {
 	// Labels is a list of regex's to match GCE instance label keys that users want
 	// to add as resource attributes to processed data.
