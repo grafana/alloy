@@ -70,10 +70,6 @@ func getCachedTags(t reflect.Type) *objectFields {
 	}
 
 	tagsCacheMutex.Lock()
-	if entry, ok := tagsCache[t]; ok {
-		tagsCacheMutex.Unlock()
-		return entry
-	}
 	tagsCache[t] = tree
 	tagsCacheMutex.Unlock()
 
