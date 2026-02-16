@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/readyctx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -35,6 +36,19 @@ func newTestExtension(t *testing.T, factory func() *cobra.Command, config *Confi
 func blockingCommand() *cobra.Command {
 	return &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
+				fn()
+			}
+			<-cmd.Context().Done()
+			return nil
+		},
+	}
+}
+
+// blockingCommandWithoutReady blocks until context cancellation but never calls the ready callback.
+func blockingCommandWithoutReady() *cobra.Command {
+	return &cobra.Command{
+		RunE: func(cmd *cobra.Command, args []string) error {
 			<-cmd.Context().Done()
 			return nil
 		},
@@ -45,6 +59,9 @@ func blockingCommand() *cobra.Command {
 func shutdownErrorCommand(err error) *cobra.Command {
 	return &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
+				fn()
+			}
 			<-cmd.Context().Done()
 			return err
 		},
@@ -98,7 +115,7 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	host := componenttest.NewNopHost()
 
 	require.NoError(t, e.Start(ctx, host))
-	require.Equal(t, stateRunning, e.state)
+	require.Eventually(t, func() bool { return e.state == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 	require.NoError(t, e.Ready())
 	require.NoError(t, e.NotReady())
 
@@ -132,11 +149,27 @@ func TestReadyWhenNotStarted(t *testing.T) {
 	require.Error(t, e.NotReady())
 }
 
+func TestStayInStartingWhenReadyNotCalled(t *testing.T) {
+	e := newTestExtension(t, blockingCommandWithoutReady, defaultTestConfig())
+	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+
+	// Give the run goroutine time to start and block (without calling ready).
+	time.Sleep(50 * time.Millisecond)
+
+	// We should still be in stateStarting since the ready callback was never invoked.
+	require.Equal(t, stateStarting, e.state)
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	t.Cleanup(cancel)
+	require.NoError(t, e.Shutdown(shutdownCtx))
+}
+
 func TestShutdownWithRunCommandError(t *testing.T) {
 	expected := errors.New("shutdown error")
 	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
 
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+	require.Eventually(t, func() bool { return e.state == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	t.Cleanup(cancel)
