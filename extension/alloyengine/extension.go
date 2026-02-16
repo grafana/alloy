@@ -29,6 +29,16 @@ var (
 	stateRunError     state = 5
 )
 
+func (e *alloyEngineExtension) setState(newState state) {
+	e.stateMutex.Lock()
+	defer e.stateMutex.Unlock()
+	oldState := e.state
+	e.state = newState
+	if oldState != newState {
+		e.settings.Logger.Info("alloyengine extension state changed", zap.String("from", oldState.String()), zap.String("to", newState.String()))
+	}
+}
+
 func (s state) String() string {
 	switch s {
 	case stateNotStarted:
@@ -81,24 +91,21 @@ func (e *alloyEngineExtension) isUp() int64 {
 // Start is called when the extension is started.
 func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
 	e.stateMutex.Lock()
-	defer e.stateMutex.Unlock()
-
 	switch e.state {
 	case stateNotStarted:
 		break
 	default:
+		e.stateMutex.Unlock()
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", e.state.String())
 	}
+	e.stateMutex.Unlock()
 
 	runCtx, runCancel := context.WithCancel(context.Background())
 	e.runCancel = runCancel
 	e.runExited = make(chan struct{})
 
 	runCtx = readyctx.WithOnReady(runCtx, func() {
-		e.stateMutex.Lock()
-		defer e.stateMutex.Unlock()
-		e.state = stateRunning
-		e.settings.Logger.Info("alloyengine extension started successfully")
+		e.setState(stateRunning)
 	})
 
 	runCommand := e.runCommandFactory()
@@ -108,8 +115,7 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	e.state = stateStarting
-	e.settings.Logger.Debug("Alloy Engine Extension starting...")
+	e.setState(stateStarting)
 
 	go func() {
 		defer close(e.runExited)
@@ -118,8 +124,8 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 
 		e.stateMutex.Lock()
 		previousState := e.state
-		e.state = stateTerminated
 		e.stateMutex.Unlock()
+		e.setState(stateTerminated)
 
 		if err == nil {
 			e.settings.Logger.Debug("run command exited successfully without error")
@@ -143,9 +149,7 @@ func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ct
 		}
 
 		lastError = err
-		e.stateMutex.Lock()
-		e.state = stateRunError
-		e.stateMutex.Unlock()
+		e.setState(stateRunError)
 
 		// exponential backoff until 15s
 		delay := 15 * time.Second
@@ -172,11 +176,10 @@ func (e *alloyEngineExtension) Shutdown(ctx context.Context) error {
 	switch e.state {
 	case stateRunning:
 		e.settings.Logger.Info("alloyengine extension shutting down")
-		e.state = stateShuttingDown
+		e.stateMutex.Unlock()
+		e.setState(stateShuttingDown)
 		// guaranteed to be non-nil since we are in stateRunning
 		e.runCancel()
-		// unlock so that the run goroutine can transition to terminated
-		e.stateMutex.Unlock()
 
 		select {
 		case <-e.runExited:
