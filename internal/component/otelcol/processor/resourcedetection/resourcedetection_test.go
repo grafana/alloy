@@ -462,7 +462,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"eks": map[string]any{
-					"tags": []string{},
+					"tags":              []string{},
+					"node_from_env_var": "K8S_NODE_NAME",
 					"resource_attributes": map[string]any{
 						"cloud.platform": map[string]any{
 							"enabled": true,
@@ -502,6 +503,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			detectors = ["eks"]
 			eks {
+				node_from_env_var = "MY_CUSTOM_VAR"
 				resource_attributes {
 					cloud.account.id { enabled = true }
 					cloud.platform { enabled = true }
@@ -515,7 +517,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"eks": map[string]any{
-					"tags": []string{},
+					"tags":              []string{},
+					"node_from_env_var": "MY_CUSTOM_VAR",
 					"resource_attributes": map[string]any{
 						"cloud.account.id": map[string]any{
 							"enabled": true,
@@ -2049,7 +2052,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			detectors = ["akamai"]
 			akamai {
-				fail_on_missing_metadata = true
 				resource_attributes {
 					cloud.provider { enabled = false }
 					cloud.region { enabled = true }
@@ -2064,7 +2066,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"akamai": map[string]any{
-					"fail_on_missing_metadata": true,
 					"resource_attributes": map[string]any{
 						"cloud.provider": map[string]any{
 							"enabled": false,
