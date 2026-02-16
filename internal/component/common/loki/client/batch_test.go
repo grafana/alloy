@@ -90,7 +90,7 @@ func TestBatch_add(t *testing.T) {
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
 			},
-			expectedSizeBytes: batchSize(logEntries[0], logEntries[1], logEntries[0]),
+			expectedSizeBytes: batchSize(logEntries[0], logEntries[1], logEntries[2]),
 		},
 	}
 
