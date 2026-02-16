@@ -522,12 +522,6 @@ Use the `gcp` detector regardless of the GCP platform {{< param "PRODUCT_NAME" >
 [Google Cloud Client Libraries for Go]: https://github.com/googleapis/google-cloud-go
 [GCP metadata server]: https://cloud.google.com/compute/docs/storing-retrieving-metadata
 
-The `gcp` block supports the following attributes:
-
-| Attribute | Type           | Description                                                                                   | Default | Required |
-|-----------|----------------|-----------------------------------------------------------------------------------------------|---------|----------|
-| `labels`  | `list(string)` | A list of regular expressions to match GCE instance label keys to add as resource attributes. | `[]`    | no       |
-
 The `gcp` block supports the following blocks:
 
 | Block                                              | Description                                  | Required |

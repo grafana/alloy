@@ -8,9 +8,6 @@ import (
 const Name = "gcp"
 
 type Config struct {
-	// Labels is a list of regex's to match GCE instance label keys that users want
-	// to add as resource attributes to processed data.
-	Labels             []string                 `alloy:"labels,attr,optional"`
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
@@ -49,7 +46,6 @@ func (args *Config) SetToDefault() {
 
 func (args Config) Convert() map[string]any {
 	return map[string]any{
-		"labels":              args.Labels,
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
