@@ -102,7 +102,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 			mfs, _ := registry.Gather()
 			found := false
 			for _, mf := range mfs {
-				if mf.GetName() == "database_observability_postgres_errors_total" {
+				if mf.GetName() == "database_observability_pg_errors_total" {
 					for _, metric := range mf.GetMetric() {
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
@@ -168,7 +168,7 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	// Should have 0 metrics since all were skipped
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_errors_total" {
+		if mf.GetName() == "database_observability_pg_errors_total" {
 			require.Equal(t, 0, len(mf.GetMetric()), "should not create metrics for non-error logs")
 		}
 	}
@@ -243,7 +243,7 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var errorMetrics *dto.MetricFamily
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_errors_total" {
+		if mf.GetName() == "database_observability_pg_errors_total" {
 			errorMetrics = mf
 			break
 		}
@@ -306,7 +306,7 @@ func TestLogsCollector_InvalidFormat(t *testing.T) {
 	mfs, _ := registry.Gather()
 	found := false
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_error_log_parse_failures_total" {
+		if mf.GetName() == "database_observability_pg_error_log_parse_failures_total" {
 			found = true
 			require.Greater(t, mf.GetMetric()[0].GetCounter().GetValue(), 0.0)
 		}
@@ -350,7 +350,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var errorMetrics *dto.MetricFamily
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_errors_total" {
+		if mf.GetName() == "database_observability_pg_errors_total" {
 			errorMetrics = mf
 			break
 		}
@@ -374,7 +374,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 
 	// Verify no parse errors
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_error_log_parse_failures_total" {
+		if mf.GetName() == "database_observability_pg_error_log_parse_failures_total" {
 			require.Equal(t, 0.0, mf.GetMetric()[0].GetCounter().GetValue(), "should have no parse errors")
 		}
 	}
@@ -535,7 +535,7 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 			mfs, _ := registry.Gather()
 			found := false
 			for _, mf := range mfs {
-				if mf.GetName() == "database_observability_postgres_errors_total" {
+				if mf.GetName() == "database_observability_pg_errors_total" {
 					for _, metric := range mf.GetMetric() {
 						labels := make(map[string]string)
 						for _, label := range metric.GetLabel() {
@@ -614,7 +614,7 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_errors_total" {
+		if mf.GetName() == "database_observability_pg_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}
@@ -663,7 +663,7 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_postgres_errors_total" {
+		if mf.GetName() == "database_observability_pg_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}

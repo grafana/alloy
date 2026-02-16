@@ -97,16 +97,18 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 func (l *Logs) initMetrics() {
 	l.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "database_observability_postgres_errors_total",
-			Help: "PostgreSQL errors by severity with database, user, and SQLSTATE",
+			Namespace: "database_observability",
+			Name:      "pg_errors_total",
+			Help:      "Number of log lines with errors by severity and sql state code",
 		},
 		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "database_observability_postgres_error_log_parse_failures_total",
-			Help: "Failed to parse log lines",
+			Namespace: "database_observability",
+			Name:      "pg_error_log_parse_failures_total",
+			Help:      "Number of log lines with errors that failed to parse",
 		},
 	)
 
