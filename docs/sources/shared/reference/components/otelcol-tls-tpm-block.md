@@ -17,7 +17,7 @@ The [trusted platform module][tpm] (TPM) configuration can be used for loading T
 
 The `path` attribute is not supported on Windows.
 
-### Example
+In the example below, the private key `my-tss2-key.key` in TSS2 format will be loaded from the TPM device `/dev/tmprm0`:
 
 ```alloy
 otelcol.example.component "<LABEL>" {
@@ -32,7 +32,5 @@ otelcol.example.component "<LABEL>" {
     }
 }
 ```
-
-In the above example, the private key `my-tss2-key.key` in TSS2 format will be loaded from the TPM device `/dev/tmprm0`.
 
 [tpm]: https://trustedcomputinggroup.org/resource/trusted-platform-module-tpm-summary/
