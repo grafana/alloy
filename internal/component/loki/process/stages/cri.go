@@ -65,8 +65,6 @@ type cri struct {
 	partialLines map[model.Fingerprint]Entry
 }
 
-func (c *cri) Name() string { return StageTypeCRI }
-
 const (
 	criFlags   = "flags"
 	criStream  = "stream"
