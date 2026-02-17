@@ -217,7 +217,7 @@ func (e *alloyEngineExtension) NotReady() error {
 	defer e.stateMutex.Unlock()
 
 	switch e.state {
-	case stateRunning:
+	case stateStarting, stateRunning, stateRunError:
 		return nil
 	default:
 		return fmt.Errorf("alloyengine extension not ready in current state: %s", e.state.String())
