@@ -13,9 +13,6 @@ import (
 //go:embed main_alloy.tpl
 var mainAlloyTemplate []byte
 
-// Generate runs the OTel builder in collectorDir, then go mod tidy, then post-processes main.go
-// and writes main_alloy.go using the embedded template. If fromScratch is true, removes main*.go,
-// components.go, go.mod, and go.sum first so we generate from scratch.
 func Generate(collectorDir, builderVersion string, fromScratch bool) error {
 	configPath := filepath.Join(collectorDir, "builder-config.yaml")
 	if _, err := os.Stat(configPath); err != nil {
@@ -60,8 +57,6 @@ func runInDir(dir string, env []string, name string, args ...string) error {
 	return cmd.Run()
 }
 
-// clearGeneratedFiles removes main*.go, components.go, go.mod, and go.sum from collectorDir
-// so we generate from scratch.
 func clearGeneratedFiles(collectorDir string) error {
 	mainGlob := filepath.Join(collectorDir, "main*.go")
 	matches, err := filepath.Glob(mainGlob)

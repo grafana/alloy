@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Execute runs the root command.
 func Execute() {
 	if err := newRootCommand().Execute(); err != nil {
 		os.Exit(1)
