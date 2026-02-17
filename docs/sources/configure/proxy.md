@@ -1,7 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/configure/proxy-aggregation/
+canonical: https://grafana.com/docs/alloy/latest/configure/proxy/
 description: Learn how to use Grafana Alloy as a proxy or aggregation layer
-menuTitle: Proxy and aggregation layer
+menuTitle: Proxy layer
 title: Use Grafana Alloy as a proxy or aggregation layer
 weight: 200
 ---
@@ -269,6 +269,10 @@ However, proxying itself doesn't require a fleet management solution.
 If you use fleet management to deploy or manage proxy instances, configure remote write endpoints and self-monitoring pipelines consistently across edge and proxy layers.
 Fleet tooling controls configuration distribution and rollout, but it doesn't automatically create or enforce a proxy topology.
 You must explicitly design the data flow, including which instances push to proxies and how load balancing and routing are configured.
+
+For information about configuring a proxy for Fleet Management API traffic in restricted network environments, refer to [Custom proxy setup][fm-proxy] in the Fleet Management documentation.
+
+[fm-proxy]: https://grafana.com/docs/grafana-cloud/send-data/fleet-management/set-up/connectivity-options/self-managed/#custom-proxy-setup
 
 ## When to use a proxy layer
 
