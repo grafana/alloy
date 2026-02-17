@@ -79,7 +79,7 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
-## 	 SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
+##   SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary.
 
 include tools/make/*.mk
 
