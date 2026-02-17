@@ -60,9 +60,9 @@ func (t *ArgTable) sort() {
 	})
 }
 
-func (t *ArgTable) markdown() (string, error) {
+func (t *ArgTable) markdown() string {
 	if len(t.Rows) == 0 {
-		return "There are no arguments.", nil
+		return "There are no arguments."
 	}
 
 	var sb strings.Builder
@@ -79,7 +79,7 @@ func (t *ArgTable) markdown() (string, error) {
 			prop.Name, prop.Type, prop.Description, markdownCode(prop.DefaultValue), prop.Required))
 	}
 
-	return sb.String(), nil
+	return sb.String()
 }
 
 func markdownCode(s string) string {

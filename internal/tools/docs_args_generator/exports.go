@@ -45,9 +45,9 @@ func (t *ExportsTable) sort() {
 	})
 }
 
-func (t *ExportsTable) markdown() (string, error) {
+func (t *ExportsTable) markdown() string {
 	if len(t.Rows) == 0 {
-		return "There are no exports.", nil
+		return "There are no exports."
 	}
 
 	var sb strings.Builder
@@ -60,5 +60,5 @@ func (t *ExportsTable) markdown() (string, error) {
 			prop.Name, prop.Type, prop.Description))
 	}
 
-	return sb.String(), nil
+	return sb.String()
 }
