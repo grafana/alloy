@@ -51,15 +51,14 @@ type StageConfig struct {
 type Pipeline struct {
 	logger    log.Logger
 	stages    []Stage
-	jobName   *string
 	dropCount *prometheus.CounterVec
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
+func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, jobName, stage, registerer, minStability)
+		newStage, err := New(logger, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
@@ -68,7 +67,6 @@ func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, regis
 	return &Pipeline{
 		logger:    log.With(logger, "component", "pipeline"),
 		stages:    st,
-		jobName:   jobName,
 		dropCount: getDropCountMetric(registerer),
 	}, nil
 }
@@ -123,11 +121,6 @@ func (p *Pipeline) Run(in chan Entry) chan Entry {
 		in = m.Run(in)
 	}
 	return in
-}
-
-// Name implements Stage
-func (p *Pipeline) Name() string {
-	return StageTypePipeline
 }
 
 // Cleanup implements Stage.

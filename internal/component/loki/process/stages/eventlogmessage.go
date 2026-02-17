@@ -115,10 +115,6 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string
 	return nil
 }
 
-func (m *eventLogMessageStage) Name() string {
-	return StageTypeEventLogMessage
-}
-
 // Cleanup implements Stage.
 func (*eventLogMessageStage) Cleanup() {
 	// no-op
