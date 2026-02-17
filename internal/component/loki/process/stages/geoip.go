@@ -142,11 +142,6 @@ func (g *geoIPStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// Name implements Stage
-func (g *geoIPStage) Name() string {
-	return StageTypeGeoIP
-}
-
 // Cleanup implements Stage.
 func (*geoIPStage) Cleanup() {
 	// no-op
