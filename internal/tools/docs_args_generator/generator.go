@@ -50,7 +50,7 @@ func generate(ymlPath string, outputPath string) error {
 		return fmt.Errorf("failed to generate reference table: %w", err)
 	}
 
-	writeFiles(markdownTables, outputPath)
+	err = writeFiles(markdownTables, outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to write markdown tables: %w", err)
 	}
@@ -62,25 +62,13 @@ func generate(ymlPath string, outputPath string) error {
 func generateMarkdownTables(arguments []*ArgTable, blocks *BlocksTable, exports *ExportsTable) (map[string]string, error) {
 	res := make(map[string]string)
 	for _, table := range arguments {
-		tableStr, err := table.markdown()
-		if err != nil {
-			return nil, err
-		}
-		res[table.Name] = tableStr
+		res[table.Name] = table.markdown()
 	}
 
 	// TODO: Generate blocks link refs
-	blocksTableStr, err := blocks.markdown()
-	if err != nil {
-		return nil, err
-	}
-	res["__blocks"] = blocksTableStr
+	res["__blocks"] = blocks.markdown()
 
-	exportsTableStr, err := exports.markdown()
-	if err != nil {
-		return nil, err
-	}
-	res["__exports"] = exportsTableStr
+	res["__exports"] = exports.markdown()
 
 	return res, nil
 }

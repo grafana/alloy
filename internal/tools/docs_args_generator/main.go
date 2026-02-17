@@ -5,12 +5,11 @@ import (
 )
 
 func main() {
-	cmd, err := NewCommand()
-	cobra.CheckErr(err)
+	cmd := NewCommand()
 	cobra.CheckErr(cmd.Execute())
 }
 
-func NewCommand() (*cobra.Command, error) {
+func NewCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:          "docs_args_generator",
 		SilenceUsage: true,
@@ -19,5 +18,5 @@ func NewCommand() (*cobra.Command, error) {
 		},
 	}
 
-	return rootCmd, nil
+	return rootCmd
 }

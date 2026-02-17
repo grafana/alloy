@@ -67,9 +67,9 @@ func (t *BlocksTable) sort() {
 	})
 }
 
-func (t *BlocksTable) markdown() (string, error) {
+func (t *BlocksTable) markdown() string {
 	if len(t.Rows) == 0 {
-		return "There are no blocks.", nil
+		return "There are no blocks."
 	}
 
 	var sb strings.Builder
@@ -90,5 +90,5 @@ func (t *BlocksTable) markdown() (string, error) {
 		sb.WriteString(fmt.Sprintf("[%s]: #%s\n", prop.Name, prop.Name))
 	}
 
-	return sb.String(), nil
+	return sb.String()
 }
