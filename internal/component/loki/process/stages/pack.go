@@ -197,11 +197,6 @@ func (m *packStage) pack(e Entry) Entry {
 	return e
 }
 
-// Name implements Stage
-func (m *packStage) Name() string {
-	return StageTypePack
-}
-
 // Cleanup implements Stage.
 func (*packStage) Cleanup() {
 	// no-op

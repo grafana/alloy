@@ -210,11 +210,6 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 	out <- collapsed
 }
 
-// Name implements Stage
-func (m *multilineStage) Name() string {
-	return StageTypeMultiline
-}
-
 // Cleanup implements Stage.
 func (*multilineStage) Cleanup() {
 	// no-op

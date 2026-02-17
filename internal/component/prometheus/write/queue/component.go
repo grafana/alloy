@@ -7,10 +7,12 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/go-kit/log/level"
 	promqueue "github.com/grafana/walqueue/implementations/prometheus"
 	"github.com/prometheus/prometheus/storage"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
@@ -26,6 +28,8 @@ func init() {
 }
 
 func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
+	level.Warn(opts.Logger).Log("msg", "prometheus.write.queue is deprecated and will be removed in a future version. Migrate to prometheus.remote_write to prevent future errors.")
+
 	s := &Queue{
 		opts:      opts,
 		args:      args,

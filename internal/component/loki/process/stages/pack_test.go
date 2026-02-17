@@ -37,9 +37,8 @@ stage.match {
 // create a working pipeline.
 func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	plName := "test_pack_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	l1Lbls := model.LabelSet{
