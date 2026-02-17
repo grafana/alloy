@@ -26,7 +26,7 @@ The component requires specific permissions and configuration depending on your 
 {{< tabs >}}
 {{< tab-content name="Linux binary" >}}
 
-When you run {{< param "PRODUCT_NAME" >}} as a Linux binary or systemd service, the `alloy` user requires permissions to access the container runtime socket and related directories to collect container metrics from containers on the host.
+When you run {{< param "PRODUCT_NAME" >}} as a Linux binary or systemd service or configured to use the non-root `alloy` user, you will need to give the `alloy` user requires permissions to access the container runtime socket and related directories to collect container metrics from containers on the host.
 
 The component works with Docker, containerd, Container Runtime Interface for OpenShift (CRI-O), and systemd container runtimes.
 
