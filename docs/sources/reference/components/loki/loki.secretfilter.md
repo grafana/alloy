@@ -40,24 +40,32 @@ loki.secretfilter "<LABEL>" {
 
 You can use the following arguments with `loki.secretfilter`:
 
-| Name             | Type                 | Description                                                                                                                                 | Default                            | Required |
-| ---------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | -------- |
-| `forward_to`     | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                                                   |                                    | yes      |
-| `gitleaks_config` | `string`            | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                                                  | `""`                               | no       |
-| `origin_label`   | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.                                     | `""`                               | no       |
-| `redact_with`    | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"`                        | `""`                               | no       |
-| `redact_percent` | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                                         | `80`                               | no       |
+| Name              | Type                 | Description                                                                                                          | Default | Required |
+| ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
+| `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
+| `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
+| `redact_with`     | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
+| `redact_percent`  | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                  | `80`    | no       |
 
-The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config]. The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config). If `gitleaks_config` is empty, the component uses the default Gitleaks configuration [embedded in the component][embedded-config].
+The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config].
+The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config).
+If `gitleaks_config` is empty, the component uses the default Gitleaks configuration [embedded in the component][embedded-config].
 
 {{< admonition type="note" >}}
-The default configuration may change between {{< param "PRODUCT_NAME" >}} versions. For consistent behavior, use an external configuration file via `gitleaks_config`.
+The default configuration may change between {{< param "PRODUCT_NAME" >}} versions.
+For consistent behavior, use an external configuration file via `gitleaks_config`.
 {{< /admonition >}}
 
 **Redaction behavior:**
 
-- If `redact_with` is set, it is used as the replacement string for every detected secret. Supported placeholders: `$SECRET_NAME` (rule ID) and `$SECRET_HASH` (SHA1 hash of the secret).
-- If `redact_with` is not set, redaction is percentage-based (Gitleaks-style): `redact_percent` controls how much of the secret is redacted. For example, `80` shows the first 20% of the secret followed by `"..."`; `100` replaces the entire secret with `"REDACTED"`. When `redact_percent` is 0 or unset, 80% redaction is used.
+- If `redact_with` is set, it is used as the replacement string for every detected secret.
+  The supported placeholders are `$SECRET_NAME` (rule ID) and `$SECRET_HASH` (SHA1 hash of the secret).
+- If `redact_with` is not set, redaction is percentage-based (Gitleaks-style).
+  `redact_percent` controls how much of the secret is redacted.
+  For example, `80` shows the first 20% of the secret followed by `"..."`.
+  `100` replaces the entire secret with `"REDACTED"`.
+  When `redact_percent` is 0 or unset, 80% redaction is used.
 
 **Origin metric:** The `origin_label` argument specifies which Loki label to use for the `secrets_redacted_by_origin` metric, so you can track how many secrets were redacted per source or environment.
 
@@ -83,16 +91,22 @@ The following fields are exported and can be referenced by other components:
 
 `loki.secretfilter` exposes the following Prometheus metrics:
 
-| Name                                           | Type    | Description                                                       |
-| ---------------------------------------------- | ------- | ----------------------------------------------------------------- |
-| `loki_secretfilter_processing_duration_seconds` | Summary | Time taken to process and redact logs, in seconds.                 |
-| `loki_secretfilter_secrets_redacted_total`      | Counter | Total number of secrets redacted.                                  |
-| `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.          |
-| `loki_secretfilter_secrets_redacted_by_origin`  | Counter | Number of secrets redacted, partitioned by origin label (when `origin_label` is set). |
+| Name                                               | Type    | Description                                                                          |
+| -------------------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `loki_secretfilter_processing_duration_seconds`    | Summary | Time taken to process and redact logs, in seconds.                                   |
+| `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                    |
+| `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                |
+| `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set. |
 
 ## Example
 
-This example shows how to use `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`. You can instead omit `redact_with` to use percentage-based redaction (default 80% redacted), set `redact_percent` (e.g. `100` for full redaction), or set `gitleaks_config` to point to a custom Gitleaks TOML file.
+This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
+
+Alternatively, you can:
+
+- Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
+- Set `redact_percent` to `100` for full redaction.
+- Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
 
 ```alloy
 local.file_match "local_logs" {
