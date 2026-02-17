@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -40,8 +41,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="true"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
 				tables: map[database]map[schema]map[table]struct{}{
@@ -65,14 +66,89 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM public.users WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="public.users" engine="postgres" validated="true"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM public.users WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
 				tables: map[database]map[schema]map[table]struct{}{
 					"some_database": {
 						"public": {
 							"users": struct{}{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with uppercase table name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM SOME_TABLE WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"some_table": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with uppercase schema-qualified name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM PUBLIC.USERS WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"users": struct{}{}, // lowercase in registry
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "select query with mixed case table name matches lowercase registry",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM MyTable WHERE id = $1",
+				"some_database",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+			},
+			logsLines: []string{
+				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
+			},
+			tableRegistry: &TableRegistry{
+				tables: map[database]map[schema]map[table]struct{}{
+					"some_database": {
+						"public": {
+							"mytable": struct{}{}, // lowercase in registry
 						},
 					},
 				},
@@ -90,8 +166,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -106,8 +182,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"INSERT INTO some_table (id, name) VALUES (...)\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="INSERT INTO some_table (id, name) VALUES (...)" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -123,9 +199,9 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_other_table" engine="postgres" validated="false"`,
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_other_table" validated="false"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -140,8 +216,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -156,8 +232,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"DELETE FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="DELETE FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -173,9 +249,9 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_other_table" engine="postgres" validated="false"`,
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_other_table" validated="false"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -191,9 +267,9 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
-				`level="info" queryid="abc123" datname="some_database" table="other_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
+				`level="info" queryid="abc123" datname="some_database" table="other_table" validated="false"`,
 			},
 		},
 		{
@@ -214,10 +290,10 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"xyz456\" querytext=\"INSERT INTO some_table...\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="xyz456" datname="some_database" table="some_table" engine="postgres" validated="false"`,
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM another_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="another_table" engine="postgres" validated="false"`,
+				`level="info" queryid="xyz456" querytext="INSERT INTO some_table..." datname="some_database"`,
+				`level="info" queryid="xyz456" datname="some_database" table="some_table" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM another_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="another_table" validated="false"`,
 			},
 		},
 		{
@@ -232,8 +308,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1 AND name =\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1 AND name =" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -247,7 +323,7 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="START TRANSACTION" datname="some_database" engine="postgres"`,
+				`level="info" queryid="abc123" querytext="START TRANSACTION" datname="some_database"`,
 			},
 		},
 		{
@@ -267,9 +343,9 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"xyz456\" querytext=\"not valid sql\" datname=\"some_database\" engine=\"postgres\"",
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="xyz456" querytext="not valid sql" datname="some_database"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -290,10 +366,10 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1\" datname=\"other_schema\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="other_schema" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="other_schema"`,
+				`level="info" queryid="abc123" datname="other_schema" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -310,10 +386,10 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="employees_us_east" engine="postgres" validated="false"`,
-				`level="info" queryid="abc123" datname="some_database" table="employees_us_west" engine="postgres" validated="false"`,
-				`level="info" queryid="abc123" datname="some_database" table="employees_emea" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="employees_us_east" validated="false"`,
+				`level="info" queryid="abc123" datname="some_database" table="employees_us_west" validated="false"`,
+				`level="info" queryid="abc123" datname="some_database" table="employees_emea" validated="false"`,
 			},
 		},
 		{
@@ -328,8 +404,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SHOW CREATE TABLE some_table\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="SHOW CREATE TABLE some_table" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -343,7 +419,7 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SHOW VARIABLES LIKE $1\" datname=\"some_database\" engine=\"postgres\"",
+				`level="info" queryid="abc123" querytext="SHOW VARIABLES LIKE $1" datname="some_database"`,
 			},
 		},
 		{
@@ -358,8 +434,8 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`,
+				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE" datname="some_database"`,
+				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -367,7 +443,7 @@ func TestQueryDetails(t *testing.T) {
 			eventStatementsRows: [][]driver.Value{
 				{
 					"3871016669222913500",
-					`SELECT "pizza_to_ingredients"."pizza_id", "i"."id", "i"."name", "i"."calories_per_slice", "i"."vegetarian", "i"."type" FROM "ingredients" AS "i" JOIN "pizza_to_ingredients" AS "pizza_to_ingredients" ON ("pizza_to_ingredients"."pizza_id") IN ($1 /*, ... */) WHERE ("i"."id" = "pizza_to_ingredients"."ingredient_id")`,
+					`SELECT "pizza_to_ingredients"."pizza_id", "i"."id", "i"."name", "i"."calories_per_slice", "i"."vegetarian", "i"."type" FROM "ingredients" AS "i" JOIN "pizza_to_ingredients" AS "pizza_to_ingredients" ON ("pizza_to_ingredients"."pizza_id") IN ($1) WHERE ("i"."id" = "pizza_to_ingredients"."ingredient_id")`,
 					"quickpizza",
 				},
 				{
@@ -398,15 +474,15 @@ func TestQueryDetails(t *testing.T) {
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="3871016669222913500" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1 /*, ... */) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")" datname="quickpizza" engine="postgres"`,
-				`level="info" queryid="3871016669222913500" datname="quickpizza" table="ingredients" engine="postgres" validated="false"`,
-				`level="info" queryid="3871016669222913500" datname="quickpizza" table="pizza_to_ingredients" engine="postgres" validated="false"`,
-				`level="info" queryid="7865322458849960000" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\"" datname="quickpizza" engine="postgres"`,
-				`level="info" queryid="7865322458849960000" datname="quickpizza" table="quotes" engine="postgres" validated="false"`,
-				`level="info" queryid="5775615007769463000" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\"" datname="quickpizza" engine="postgres"`,
-				`level="info" queryid="5775615007769463000" datname="quickpizza" table="classical_names" engine="postgres" validated="false"`,
-				`level="info" queryid="7007034463187741000" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\"" datname="quickpizza" engine="postgres"`,
-				`level="info" queryid="7007034463187741000" datname="quickpizza" table="doughs" engine="postgres" validated="false"`,
+				`level="info" queryid="3871016669222913500" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")" datname="quickpizza"`,
+				`level="info" queryid="3871016669222913500" datname="quickpizza" table="ingredients" validated="false"`,
+				`level="info" queryid="3871016669222913500" datname="quickpizza" table="pizza_to_ingredients" validated="false"`,
+				`level="info" queryid="7865322458849960000" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\"" datname="quickpizza"`,
+				`level="info" queryid="7865322458849960000" datname="quickpizza" table="quotes" validated="false"`,
+				`level="info" queryid="5775615007769463000" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\"" datname="quickpizza"`,
+				`level="info" queryid="5775615007769463000" datname="quickpizza" table="classical_names" validated="false"`,
+				`level="info" queryid="7007034463187741000" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\"" datname="quickpizza"`,
+				`level="info" queryid="7007034463187741000" datname="quickpizza" table="doughs" validated="false"`,
 			},
 		},
 	}
@@ -431,7 +507,7 @@ func TestQueryDetails(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"queryid",
@@ -492,7 +568,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid", // not enough columns
@@ -500,7 +576,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -532,9 +608,9 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
+		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -555,7 +631,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -591,9 +667,9 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
+		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -614,9 +690,9 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(selectQueriesFromActivity).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -648,8 +724,224 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
+		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="false"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
+}
+
+func TestQueryDetails_TokenizeTableNames(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		sql     string
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "simple select",
+			sql:  "SELECT * FROM users",
+			want: []string{"users"},
+		},
+		{
+			name: "select with join",
+			sql:  "SELECT * FROM users u JOIN orders o ON u.id = o.user_id",
+			want: []string{"orders", "users"},
+		},
+		{
+			name: "select with schema qualified tables",
+			sql:  "SELECT * FROM public.users JOIN sales.orders ON users.id = orders.user_id",
+			want: []string{"public.users", "sales.orders"},
+		},
+		{
+			name: "insert statement",
+			sql:  "INSERT INTO users (name, email) VALUES ('John', 'john@example.com')",
+			want: []string{"users"},
+		},
+		{
+			name: "update statement",
+			sql:  "UPDATE users SET last_login = NOW() WHERE id = 1",
+			want: []string{"users"},
+		},
+		{
+			name: "delete statement",
+			sql:  "DELETE FROM users WHERE id = 1",
+			want: []string{"users"},
+		},
+		{
+			name: "with clause",
+			sql: `WITH active_users AS (
+				SELECT * FROM users WHERE status = 'active'
+			)
+			SELECT * FROM active_users au
+			JOIN orders o ON o.user_id = au.id`,
+			want: []string{"orders", "users"},
+		},
+		{
+			name: "subquery in where clause",
+			sql: `SELECT * FROM orders
+				WHERE user_id IN (SELECT id FROM users WHERE status = 'active')`,
+			want: []string{"orders", "users"},
+		},
+		{
+			name: "multiple schema qualified tables with aliases",
+			sql: `SELECT u.name, o.total, p.status
+				FROM public.users u
+				JOIN sales.orders o ON u.id = o.user_id
+				LEFT JOIN shipping.packages p ON o.id = p.order_id`,
+			want: []string{"public.users", "sales.orders", "shipping.packages"},
+		},
+		{
+			name: "truncated query with ...",
+			sql:  "SELECT * FROM users JOIN orders ON users.id = orders.user_id AND...",
+			want: []string{"users", "orders"},
+		},
+		{
+			name: "truncated query with incomplete comment",
+			sql:  "SELECT * FROM users JOIN orders ON users.id = orders.user_id /* some comment that gets truncated...",
+			want: []string{"users", "orders"},
+		},
+		{
+			name: "truncated query mid-table name",
+			sql:  "SELECT * FROM users JOIN ord...",
+			want: []string{"users", "ord"},
+		},
+		{
+			name: "truncated query with schema qualified tables",
+			sql:  "SELECT * FROM public.users JOIN sales.orders ON users.id = orders.user_id AND...",
+			want: []string{"public.users", "sales.orders"},
+		},
+		{
+			name: "query with table.* expression",
+			sql:  "SELECT u.*, o.* FROM users u JOIN orders o ON u.id = o.user_id",
+			want: []string{"users", "orders"},
+		},
+		{
+			name: "query with type cast",
+			sql:  "SELECT u.id, '2024-03-20'::timestamp FROM users u",
+			want: []string{"users"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tokenizeTableNames(sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)), tt.sql)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.ElementsMatch(t, got, tt.want)
+		})
+	}
+}
+
+func TestQueryDetails_RemoveComments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		sql     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "simple select",
+			sql:  "SELECT * FROM users",
+			want: "SELECT * FROM users",
+		},
+		{
+			name: "inline comment",
+			sql:  "SELECT * FROM users -- getting all users",
+			want: "SELECT * FROM users",
+		},
+		{
+			name: "block comment",
+			sql:  "SELECT * FROM /* important table */ users",
+			want: "SELECT * FROM  users",
+		},
+		{
+			name: "multiple comments",
+			sql:  "SELECT /* cols */ * FROM users -- table",
+			want: "SELECT  * FROM users",
+		},
+		{
+			name: "comment in string literal preserved",
+			sql:  "SELECT ' -- not a comment ' FROM users",
+			want: "SELECT ' -- not a comment ' FROM users",
+		},
+		{
+			name: "multiline block comment",
+			sql:  "SELECT * FROM users /* \n multiline \n comment */ WHERE id = 1",
+			want: "SELECT * FROM users  WHERE id = 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := removeComments(sqllexer.NewNormalizer(sqllexer.WithCollectComments(true)), tt.sql)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestQueryDetails_ExcludeDatabases(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:               db,
+		CollectInterval:  time.Second,
+		ExcludeDatabases: []string{"excluded_database"},
+		EntryHandler:     lokiClient,
+		Logger:           log.NewLogfmtLogger(os.Stderr),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause([]string{"excluded_database"}))).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"queryid",
+				"query",
+				"datname",
+			}).AddRow(
+				"def456",
+				"SELECT * FROM orders",
+				"another_database",
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	// Only the another_database should have logs emitted
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) >= 2 // query_association + query_parsed_table_name
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// Verify only another_database logs were emitted
+	for _, entry := range lokiClient.Received() {
+		require.Contains(t, entry.Line, "another_database", "included database should appear in logs")
+	}
 }

@@ -25,12 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/grafana/alloy/internal/component"
+	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
@@ -46,7 +46,7 @@ import (
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
 	ClusteringUpdated()
-	DebugInfo() interface{}
+	DebugInfo() any
 	GetScrapeConfig(ns, name string) []*config.ScrapeConfig
 }
 
@@ -59,6 +59,42 @@ type realCrdManagerFactory struct{}
 func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
 	return newCrdManager(opts, cluster, logger, args, kind, ls)
 }
+
+// CacheFactory creates controller-runtime caches with the given options.
+// This is returned by K8sFactory.New and can be called multiple times (e.g., once per namespace).
+type CacheFactory func(opts cache.Options) (cache.Cache, error)
+
+// K8sFactory creates Kubernetes clients and cache factories.
+// This allows tests to inject fake implementations while production code uses real ones.
+type K8sFactory interface {
+	// New creates a Kubernetes client and a cache factory.
+	// The cache factory can be called multiple times to create caches with different options.
+	New(clientConfig commonk8s.ClientArguments, logger log.Logger) (kubernetes.Interface, CacheFactory, error)
+}
+
+// realK8sFactory is the production implementation that creates real Kubernetes clients and caches.
+type realK8sFactory struct{}
+
+func (realK8sFactory) New(clientConfig commonk8s.ClientArguments, logger log.Logger) (kubernetes.Interface, CacheFactory, error) {
+	restConfig, err := clientConfig.BuildRESTConfig(logger)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating rest config: %w", err)
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating kubernetes client: %w", err)
+	}
+
+	cacheFactory := func(opts cache.Options) (cache.Cache, error) {
+		return cache.New(restConfig, opts)
+	}
+
+	return k8sClient, cacheFactory, nil
+}
+
+// defaultK8sFactory is the production K8sFactory used when none is injected.
+var defaultK8sFactory K8sFactory = realK8sFactory{}
 
 // crdManager is all of the fields required to run a crd based component.
 // on update, this entire thing should be recreated and restarted
@@ -84,7 +120,8 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
-	client *kubernetes.Clientset
+	client     kubernetes.Interface
+	k8sFactory K8sFactory
 
 	kind string
 }
@@ -114,17 +151,17 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.L
 		kind:              kind,
 		clusteringUpdated: make(chan struct{}, 1),
 		ls:                ls,
+		k8sFactory:        defaultK8sFactory,
 	}
 }
 
 func (c *crdManager) Run(ctx context.Context) error {
-	restConfig, err := c.args.Client.BuildRESTConfig(c.logger)
+	// Create Kubernetes client and cache factory
+	var err error
+	var cacheFactory CacheFactory
+	c.client, cacheFactory, err = c.k8sFactory.New(c.args.Client, c.logger)
 	if err != nil {
-		return fmt.Errorf("creating rest config: %w", err)
-	}
-	c.client, err = kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return fmt.Errorf("creating kubernetes client: %w", err)
+		return fmt.Errorf("creating kubernetes client and cache factory: %w", err)
 	}
 
 	unregisterer := util.WrapWithUnregisterer(c.opts.Registerer)
@@ -148,9 +185,12 @@ func (c *crdManager) Run(ctx context.Context) error {
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 
 	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
-	// TODO: Expose EnableTypeAndUnitLabels: https://github.com/grafana/alloy/issues/4659
-	// TODO: Expose AppendMetadata: https://github.com/grafana/alloy/issues/5036
-	c.scrapeManager, err = scrape.NewManager(&scrape.Options{}, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
+	scrapeOpts := &scrape.Options{
+		AppendMetadata:          c.args.Scrape.HonorMetadata,
+		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
+		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
+	}
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
@@ -165,7 +205,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// run informers after everything else is running
-	if err := c.runInformers(restConfig, ctx); err != nil {
+	if err := c.runInformers(cacheFactory, ctx); err != nil {
 		return err
 	}
 	level.Info(c.logger).Log("msg", "informers started")
@@ -248,7 +288,7 @@ func nonMetaLabelString(l model.LabelSet) string {
 }
 
 // DebugInfo returns debug information for the CRDManager.
-func (c *crdManager) DebugInfo() interface{} {
+func (c *crdManager) DebugInfo() any {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
@@ -276,7 +316,7 @@ func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 }
 
 // runInformers starts all the informers that are required to discover CRDs.
-func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) error {
+func (c *crdManager) runInformers(cacheFactory CacheFactory, ctx context.Context) error {
 	scheme := runtime.NewScheme()
 	for _, add := range []func(*runtime.Scheme) error{
 		promopv1.AddToScheme,
@@ -304,12 +344,12 @@ func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) 
 		if ls != labels.Nothing() {
 			opts.DefaultLabelSelector = ls
 		}
-		cache, err := cache.New(restConfig, opts)
+		informerCache, err := cacheFactory(opts)
 		if err != nil {
 			return err
 		}
 
-		informers := cache
+		informers := informerCache
 
 		go func() {
 			err := informers.Start(ctx)
@@ -515,18 +555,19 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 	c.addDebugInfo(pm.Namespace, pm.Name, err)
 }
 
-func (c *crdManager) onAddPodMonitor(obj interface{}) {
+func (c *crdManager) onAddPodMonitor(obj any) {
 	pm := obj.(*promopv1.PodMonitor)
 	level.Info(c.logger).Log("msg", "found pod monitor", "name", pm.Name)
 	c.addPodMonitor(pm)
 }
-func (c *crdManager) onUpdatePodMonitor(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdatePodMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addPodMonitor(newObj.(*promopv1.PodMonitor))
 }
 
-func (c *crdManager) onDeletePodMonitor(obj interface{}) {
+func (c *crdManager) onDeletePodMonitor(obj any) {
 	pm := obj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -571,18 +612,19 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	c.addDebugInfo(sm.Namespace, sm.Name, err)
 }
 
-func (c *crdManager) onAddServiceMonitor(obj interface{}) {
+func (c *crdManager) onAddServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	level.Info(c.logger).Log("msg", "found service monitor", "name", pm.Name)
 	c.addServiceMonitor(pm)
 }
-func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addServiceMonitor(newObj.(*promopv1.ServiceMonitor))
 }
 
-func (c *crdManager) onDeleteServiceMonitor(obj interface{}) {
+func (c *crdManager) onDeleteServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -618,18 +660,19 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 	c.addDebugInfo(p.Namespace, p.Name, err)
 }
 
-func (c *crdManager) onAddProbe(obj interface{}) {
+func (c *crdManager) onAddProbe(obj any) {
 	pm := obj.(*promopv1.Probe)
 	level.Info(c.logger).Log("msg", "found probe", "name", pm.Name)
 	c.addProbe(pm)
 }
-func (c *crdManager) onUpdateProbe(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdateProbe(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.Probe)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addProbe(newObj.(*promopv1.Probe))
 }
 
-func (c *crdManager) onDeleteProbe(obj interface{}) {
+func (c *crdManager) onDeleteProbe(obj any) {
 	pm := obj.(*promopv1.Probe)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -671,18 +714,19 @@ func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
 	c.addDebugInfo(pm.Namespace, pm.Name, err)
 }
 
-func (c *crdManager) onAddScrapeConfig(obj interface{}) {
+func (c *crdManager) onAddScrapeConfig(obj any) {
 	pm := obj.(*promopv1alpha1.ScrapeConfig)
 	level.Info(c.logger).Log("msg", "found scrape config", "name", pm.Name)
 	c.addScrapeConfig(pm)
 }
-func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj any) {
 	pm := oldObj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addScrapeConfig(newObj.(*promopv1alpha1.ScrapeConfig))
 }
 
-func (c *crdManager) onDeleteScrapeConfig(obj interface{}) {
+func (c *crdManager) onDeleteScrapeConfig(obj any) {
 	pm := obj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {

@@ -335,7 +335,7 @@ func (c *Component) updateController(args Arguments) error {
 }
 
 // DebugInfo returns debug information for loki.source.podlogs.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var info DebugInfo
 
 	info.DiscoveredPodLogs = c.reconciler.DebugInfo()

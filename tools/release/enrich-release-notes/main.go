@@ -13,6 +13,47 @@ import (
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
 
+// commitPattern matches a commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
+// It captures the short SHA from the link text, regardless of surrounding context.
+var commitPattern = regexp.MustCompile(`\(\[([a-f0-9]{7,40})\]\(https://github\.com/[^)]+\)\)`)
+
+// commitAuthorsQuery is the GraphQL query to fetch all authors for a commit.
+const commitAuthorsQuery = `query($owner: String!, $repo: String!, $oid: GitObjectID!) {
+	repository(owner: $owner, name: $repo) {
+		object(oid: $oid) {
+			... on Commit {
+				authors(first: 10) {
+					nodes {
+						user {
+							login
+						}
+					}
+				}
+			}
+		}
+	}
+}`
+
+// commitAuthorsResponse is the GraphQL response for the commit authors query.
+type commitAuthorsResponse struct {
+	Data struct {
+		Repository struct {
+			Object struct {
+				Authors struct {
+					Nodes []struct {
+						User *struct {
+							Login string `json:"login"`
+						} `json:"user"`
+					} `json:"nodes"`
+				} `json:"authors"`
+			} `json:"object"`
+		} `json:"repository"`
+	} `json:"data"`
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
+}
+
 func main() {
 	var (
 		tag        string
@@ -72,39 +113,100 @@ func main() {
 	fmt.Println("✅ Release notes updated successfully")
 }
 
-// addContributorInfo adds contributor usernames to PR references in the release notes.
+// extractCommitSHA extracts a commit SHA from a changelog line.
+// Returns the SHA if found, or an empty string if no commit link is present.
+func extractCommitSHA(line string) string {
+	matches := commitPattern.FindStringSubmatch(line)
+	if matches == nil {
+		return ""
+	}
+	return matches[1]
+}
+
+// addContributorInfo adds contributor usernames to changelog entries.
+// It extracts commit SHAs from each line and looks up the author + co-authors.
 func addContributorInfo(ctx context.Context, client *gh.Client, body string) string {
 	lines := strings.Split(body, "\n")
-	prPattern := regexp.MustCompile(`\[#(\d+)\]\([^)]+\)`)
 
 	for i, line := range lines {
-		matches := prPattern.FindStringSubmatch(line)
-		if matches == nil {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
-		prNumber := 0
-		if _, err := fmt.Sscanf(matches[1], "%d", &prNumber); err != nil {
+		fmt.Printf("   Processing line %d: %s\n", i, line)
+
+		sha := extractCommitSHA(line)
+		if sha == "" {
+			fmt.Printf("   No commit SHA found in line %d\n", i)
 			continue
 		}
 
-		pr, err := client.GetPR(ctx, prNumber)
+		contributors, err := getCommitContributors(ctx, client, sha)
 		if err != nil {
-			fmt.Printf("⚠️  Failed to get PR #%d: %v\n", prNumber, err)
+			fmt.Printf("⚠️  Commit %s: %v\n", sha, err)
+			continue
+		}
+		if len(contributors) == 0 {
+			fmt.Printf("   Commit %s: no human contributors found\n", sha)
 			continue
 		}
 
-		username := pr.GetUser().GetLogin()
-		fmt.Printf("   PR #%d authored by @%s\n", prNumber, username)
-
-		// Append username to the line if not already present
-		attribution := fmt.Sprintf("(@%s)", username)
-		if !strings.Contains(line, attribution) {
-			lines[i] = line + " " + attribution
-		}
+		fmt.Printf("   Commit %s: %v\n", sha, contributors)
+		lines[i] = line + " " + formatAttribution(contributors)
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// getCommitContributors returns human contributors for a commit (author + co-authors, excluding bots).
+// Uses GitHub's GraphQL API to fetch all authors associated with the commit (including co-authors) and their usernames.
+func getCommitContributors(ctx context.Context, client *gh.Client, sha string) ([]string, error) {
+	// Use GetCommit to expand short SHA to full SHA (more efficient than GetRefSHA
+	// which tries branch/tag resolution first)
+	commit, err := client.GetCommit(ctx, sha)
+	if err != nil {
+		return nil, fmt.Errorf("getting commit: %w", err)
+	}
+	fullSHA := commit.GetSHA()
+
+	variables := map[string]any{
+		"owner": client.Owner(),
+		"repo":  client.Repo(),
+		"oid":   fullSHA,
+	}
+
+	var result commitAuthorsResponse
+	if err := client.GraphQL(ctx, commitAuthorsQuery, variables, &result); err != nil {
+		return nil, err
+	}
+
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("graphql error: %s", result.Errors[0].Message)
+	}
+
+	// Extract unique usernames, filtering out bots
+	seen := make(map[string]bool)
+	var contributors []string
+	for _, node := range result.Data.Repository.Object.Authors.Nodes {
+		if node.User != nil && node.User.Login != "" {
+			login := node.User.Login
+			if !seen[login] && !gh.IsBot(login) {
+				seen[login] = true
+				contributors = append(contributors, login)
+			}
+		}
+	}
+
+	return contributors, nil
+}
+
+// formatAttribution formats a list of usernames as "(@user1, @user2)".
+func formatAttribution(usernames []string) string {
+	var mentions []string
+	for _, u := range usernames {
+		mentions = append(mentions, "@"+u)
+	}
+	return "(" + strings.Join(mentions, ", ") + ")"
 }
 
 // appendFooter reads the release notes footer template and appends it with version substitution.

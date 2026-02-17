@@ -29,8 +29,8 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
@@ -44,8 +44,8 @@ type ResourceAttributesConfig struct {
 	HostName              rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.availability_zone": r.CloudAvailabilityZone.Convert(),
 		"cloud.provider":          r.CloudProvider.Convert(),
 		"cloud.region":            r.CloudRegion.Convert(),

@@ -49,11 +49,13 @@ func Test_GetRelabelingRules(t *testing.T) {
 	t.Run("return relabeling rules with Azure config", func(t *testing.T) {
 		rr := GetRelabelingRules("some-server-id", &CloudProvider{
 			Azure: &AzureCloudProviderInfo{
-				Resource: "some-resource",
+				ServerName:     "some-resource",
+				ResourceGroup:  "some-resource-group",
+				SubscriptionID: "some-subscription-id",
 			},
 		})
 
-		require.Equal(t, 2, len(rr))
+		require.Equal(t, 4, len(rr))
 		require.Equal(t, "some-server-id", rr[0].Replacement)
 		require.Equal(t, "server_id", rr[0].TargetLabel)
 		require.Equal(t, relabel.Replace, rr[0].Action)
@@ -61,5 +63,13 @@ func Test_GetRelabelingRules(t *testing.T) {
 		require.Equal(t, "azure", rr[1].Replacement)
 		require.Equal(t, "provider_name", rr[1].TargetLabel)
 		require.Equal(t, relabel.Replace, rr[1].Action)
+
+		require.Equal(t, "some-resource-group", rr[2].Replacement)
+		require.Equal(t, "provider_region", rr[2].TargetLabel)
+		require.Equal(t, relabel.Replace, rr[2].Action)
+
+		require.Equal(t, "some-subscription-id", rr[3].Replacement)
+		require.Equal(t, "provider_account", rr[3].TargetLabel)
+		require.Equal(t, relabel.Replace, rr[3].Action)
 	})
 }

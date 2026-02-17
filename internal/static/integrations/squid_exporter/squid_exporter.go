@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"strconv"
 
 	se "github.com/boynux/squid-exporter/collector"
@@ -44,7 +45,13 @@ func (c *Config) validate() error {
 	if host == "" {
 		return ErrNoHostname
 	}
-	c.Host = host
+
+	if ip, err := netip.ParseAddr(host); err == nil && ip.IsValid() && ip.Is6() {
+		// Restore the explicit brackets for IPv6 addresses
+		c.Host = fmt.Sprintf("[%s]", host)
+	} else {
+		c.Host = host
+	}
 
 	if port == "" {
 		return ErrNoPort
@@ -59,7 +66,7 @@ func (c *Config) validate() error {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = Config{}
 
 	type plain Config
@@ -95,7 +102,7 @@ func New(c *Config) (integrations.Integration, error) {
 	}
 
 	seExporter := se.New(&se.CollectorConfig{
-		Hostname: c.Host,
+		Hostname: fmt.Sprintf("[%s]", c.Host),
 		Port:     c.Port,
 		Login:    c.Username,
 		Password: string(c.Password),

@@ -4,7 +4,6 @@ package file
 // tailer implements the reader interface by using the github.com/grafana/tail package to tail files.
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -17,8 +16,6 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/ianaindex"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
@@ -47,8 +44,9 @@ type tailer struct {
 
 	report sync.Once
 
-	file    *tail.File
-	decoder *encoding.Decoder
+	file          *tail.File
+	encoding      string
+	decompression DecompressionConfig
 }
 
 func newTailer(
@@ -58,14 +56,9 @@ func newTailer(
 	pos positions.Positions,
 	componentStopping func() bool,
 	opts sourceOptions,
-) (*tailer, error) {
+) *tailer {
 
-	decoder, err := getDecoder(opts.encoding)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get decoder: %w", err)
-	}
-
-	tailer := &tailer{
+	return &tailer{
 		metrics:              metrics,
 		logger:               log.With(logger, "component", "tailer", "path", opts.path),
 		receiver:             receiver,
@@ -82,65 +75,8 @@ func newTailer(
 		},
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-		decoder:           decoder,
-	}
-
-	return tailer, nil
-}
-
-// getLastLinePosition returns the offset of the start of the last line in the file at the given path.
-// It will read chunks of bytes starting from the end of the file to return the position of the last '\n' + 1.
-// If it cannot find any '\n' it will return 0.
-func getLastLinePosition(path string) (int64, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-
-	const chunkSize = 1024
-
-	buf := make([]byte, chunkSize)
-	fi, err := file.Stat()
-	if err != nil {
-		return 0, err
-	}
-
-	if fi.Size() == 0 {
-		return 0, nil
-	}
-
-	var pos = fi.Size() - chunkSize
-	if pos < 0 {
-		pos = 0
-	}
-
-	for {
-		_, err = file.Seek(pos, io.SeekStart)
-		if err != nil {
-			return 0, err
-		}
-
-		bytesRead, err := file.Read(buf)
-		if err != nil {
-			return 0, err
-		}
-
-		idx := bytes.LastIndexByte(buf[:bytesRead], '\n')
-		// newline found
-		if idx != -1 {
-			return pos + int64(idx) + 1, nil
-		}
-
-		// no newline found in the entire file
-		if pos == 0 {
-			return 0, nil
-		}
-
-		pos -= chunkSize
-		if pos < 0 {
-			pos = 0
-		}
+		encoding:          opts.encoding,
+		decompression:     opts.decompressionConfig,
 	}
 }
 
@@ -152,7 +88,7 @@ func (t *tailer) Run(ctx context.Context) {
 	default:
 	}
 
-	err := t.initRun()
+	pos, err := t.initRun()
 	if err != nil {
 		// We are retrying tailers until the target has disappeared.
 		// We are mostly interested in this log if this happens directly when
@@ -172,7 +108,7 @@ func (t *tailer) Run(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		// readLines closes done on exit
-		t.readLines(done)
+		t.readLines(pos, done)
 		cancel()
 	}()
 
@@ -183,23 +119,22 @@ func (t *tailer) Run(ctx context.Context) {
 	t.stop(done)
 }
 
-func (t *tailer) initRun() error {
+func (t *tailer) initRun() (int64, error) {
 	fi, err := os.Stat(t.key.Path)
 	if err != nil {
-		return fmt.Errorf("failed to tail file: %w", err)
+		return 0, fmt.Errorf("failed to tail file: %w", err)
 	}
+
+	startFromEnd := t.tailFromEnd
 
 	pos, err := t.positions.Get(t.key.Path, t.key.Labels)
 	if err != nil {
 		switch t.onPositionsFileError {
 		case OnPositionsFileErrorSkip:
-			return fmt.Errorf("failed to get file position: %w", err)
+			return 0, fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
-			pos, err = getLastLinePosition(t.key.Path)
-			if err != nil {
-				return fmt.Errorf("failed to get last line position after positions error: %w", err)
-			}
-			level.Info(t.logger).Log("msg", "retrieved the position of the last line after positions error")
+			startFromEnd = true
+			level.Info(t.logger).Log("msg", "reset position to end of file after position error")
 		default:
 			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
 			fallthrough
@@ -214,7 +149,7 @@ func (t *tailer) initRun() error {
 	if pos == 0 && t.legacyPositionUsed {
 		pos, err = t.positions.Get(t.key.Path, "{}")
 		if err != nil {
-			return fmt.Errorf("failed to get file position with empty labels: %w", err)
+			return 0, fmt.Errorf("failed to get file position with empty labels: %w", err)
 		}
 	}
 
@@ -227,60 +162,44 @@ func (t *tailer) initRun() error {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
 
-	// If no cached position is found and the tailFromEnd option is enabled.
-	if pos == 0 && t.tailFromEnd {
-		pos, err = getLastLinePosition(t.key.Path)
-		if err != nil {
-			level.Error(t.logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
-		} else {
-			t.positions.Put(t.key.Path, t.key.Labels, pos)
-			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line")
-		}
-	}
-
 	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
-		Decoder:       t.decoder,
+		StartFromEnd:  startFromEnd,
+		Encoding:      t.encoding,
+		Compression:   t.decompression.GetFormat(),
 		WatcherConfig: t.watcherConfig,
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to tail the file: %w", err)
+		return pos, fmt.Errorf("failed to tail the file: %w", err)
 	}
 
 	t.file = tail
 
-	return nil
-}
-
-func getDecoder(encoding string) (*encoding.Decoder, error) {
-	if encoding == "" {
-		return nil, nil
-	}
-
-	encoder, err := ianaindex.IANA.Encoding(encoding)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encoding, err)
-	}
-	return encoder.NewDecoder(), nil
+	return pos, nil
 }
 
 // readLines reads lines from the tailed file by calling Next() in a loop.
 // It processes each line by sending it to the receiver's channel and updates
 // position tracking periodically. It exits when Next() returns an error,
 // this happens when the tail.File is stopped or or we have a unrecoverable error.
-func (t *tailer) readLines(done chan struct{}) {
-	level.Info(t.logger).Log("msg", "tail routine: started")
+func (t *tailer) readLines(pos int64, done chan struct{}) {
+	level.Info(t.logger).Log("msg", "start tailing file")
+
+	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
+		level.Info(t.logger).Log("msg", "sleeping before reading file", "duration", t.decompression.InitialDelay.String())
+		time.Sleep(t.decompression.InitialDelay)
+	}
+
 	var (
+		lastOffset          = pos
 		entries             = t.receiver.Chan()
-		lastOffset          = int64(0)
 		positionInterval    = t.positions.SyncPeriod()
 		lastUpdatedPosition = time.Time{}
 	)
 
 	defer func() {
-		level.Info(t.logger).Log("msg", "tail routine: exited")
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
 		close(done)
@@ -290,8 +209,11 @@ func (t *tailer) readLines(done chan struct{}) {
 		line, err := t.file.Next()
 		if err != nil {
 			// We get context.Canceled if tail.File was stopped so we don't have to log it.
-			if !errors.Is(err, context.Canceled) {
-				level.Error(t.logger).Log("msg", "tail routine: stopping tailer", "err", err)
+			// If we get context.Canceled it means that tail.File was stopped. If we get EOF
+			// that means that we consumed the file fully and don't wait for more events, this
+			// happens when compression is configured.
+			if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
+				level.Error(t.logger).Log("msg", "failed to tail file", "err", err)
 			}
 			return
 		}
@@ -326,19 +248,19 @@ func (t *tailer) stop(done chan struct{}) {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
-			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "error", err)
+			level.Debug(t.logger).Log("msg", "failed to stop tailer", "error", err)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// Log as error for other reasons, as a resource leak may have happened.
-			level.Error(t.logger).Log("msg", "error stopping tailer", "error", err)
+			level.Error(t.logger).Log("msg", "failed to stop tailer", "error", err)
 		}
 	}
 
-	level.Debug(t.logger).Log("msg", "waiting for readline and position marker to exit", "path", t.key.Path)
+	level.Debug(t.logger).Log("msg", "waiting for readLines to exit")
 
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 	<-done
 
-	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.key.Path)
+	level.Info(t.logger).Log("msg", "stopped tailing file")
 
 	// We need to cleanup created metrics
 	t.cleanupMetrics()

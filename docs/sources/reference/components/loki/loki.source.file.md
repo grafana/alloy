@@ -48,8 +48,9 @@ You can use the following arguments with `loki.source.file`:
 | `on_positions_file_error` | `string`             | How to handle a corrupt positions file entry for a given file. | `"restart_from_beginning"` | no       |
 | `tail_from_end`           | `bool`               | Whether to tail from end if a stored position isn't found.     | `false`                    | no       |
 
-The `encoding` argument must be a valid [IANA encoding][] name.
-If not set, it defaults to UTF-8.
+The `encoding` argument must be a valid [IANA encoding][] name and if not set, it defaults to UTF-8. {{< param "PRODUCT_NAME" >}} can automatically change
+the encoding to `UTF-16` if the file includes a Byte Order Mark (BOM) for either `UTF-16BE` or `UTF-16LE`.
+The BOM will be taken into account even if {{< param "PRODUCT_NAME" >}} resumes tailing a file from the middle of the file. This can happen after {{< param "PRODUCT_NAME" >}} is restarted.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
@@ -67,8 +68,6 @@ The format of the positions file is different in Grafana Alloy, so this will con
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
 When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.
 
-If you want to read a UTF-16 file with a Byte Order Mark (BOM), set `encoding` to `UTF-16`.
-BOMs will be ignored if `encoding` is set to either `UTF-16BE` or `UTF-16LE`.
 
 ## Blocks
 
@@ -143,6 +142,11 @@ Benefits of using `file_match` over `local.file_match`:
 When `enabled` is set to `true`, you can use glob patterns, for example, `/tmp/*.log` or `/var/log/**/*.log`, directly in the `targets` argument's `__path__` label.
 The component periodically scans the filesystem based on `sync_period` and automatically discovers new files, removes deleted files, and ignores files older than `ignore_older_than` if specified.
 
+The glob patterns support the `{a,b,c}` syntax for matching multiple alternatives:
+
+* `/tmp/*.{log,txt,json}` matches files with `.log`, `.txt`, or `.json` extensions.
+* `/var/log/{nginx,apache}/*.log` matches `.log` files in either the `nginx` or `apache` subdirectories.
+
 ## Exported fields
 
 `loki.source.file` doesn't export any fields.
@@ -161,7 +165,6 @@ The component periodically scans the filesystem based on `sync_period` and autom
 
 ## Debug metrics
 
-* `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
 * `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
 * `loki_source_file_files_active_total` (gauge): Number of active files.
 * `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
@@ -255,6 +258,34 @@ local.file_match "logs" {
 loki.source.file "tmpfiles" {
   targets    = local.file_match.logs.targets
   forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "loki:3100/api/v1/push"
+  }
+}
+```
+
+### Match multiple patterns
+
+This example shows how to use the `{a,b,c}` pattern syntax to match multiple file extensions, multiple directories, and exclude multiple file types in a single configuration.
+
+```alloy
+loki.source.file "logs" {
+  targets    = [
+    // Match .log, .txt, and .json files from nginx, apache, or caddy directories
+    // Exclude compressed and backup files
+    {
+      __path__         = "/var/log/{nginx,apache,caddy}/*.{log,txt,json}",
+      __path_exclude__ = "/var/log/{nginx,apache,caddy}/*.{gz,zip,bak,old}",
+      "job"            = "webserver",
+    },
+  ]
+  forward_to = [loki.write.local.receiver]
+  file_match {
+    enabled = true
+  }
 }
 
 loki.write "local" {

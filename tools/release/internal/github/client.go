@@ -2,10 +2,12 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -150,9 +152,13 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	}
 
 	// Try as a commit SHA
-	commit, _, err := c.api.Git.GetCommit(ctx, c.owner, c.repo, ref)
+	commit, err := c.GetCommit(ctx, ref)
 	if err == nil {
-		return commit.GetSHA(), nil
+		sha := commit.GetSHA()
+		if sha == "" {
+			return "", fmt.Errorf("commit SHA is empty for ref: %s", ref)
+		}
+		return sha, nil
 	}
 
 	return "", fmt.Errorf("could not resolve ref: %s", ref)
@@ -370,4 +376,57 @@ func (c *Client) CreateIssueComment(ctx context.Context, issueNumber int, body s
 		return fmt.Errorf("creating comment on issue #%d: %w", issueNumber, err)
 	}
 	return nil
+}
+
+// GetCommit fetches a commit by SHA.
+func (c *Client) GetCommit(ctx context.Context, sha string) (*github.RepositoryCommit, error) {
+	commit, _, err := c.api.Repositories.GetCommit(ctx, c.owner, c.repo, sha, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getting commit %s: %w", sha, err)
+	}
+	return commit, nil
+}
+
+// GraphQL executes a GraphQL query against the GitHub API.
+// The result parameter should be a pointer to a struct that will be decoded from the response.
+func (c *Client) GraphQL(ctx context.Context, query string, variables map[string]any, result any) error {
+	reqBody := map[string]any{
+		"query":     query,
+		"variables": variables,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("marshaling graphql request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("creating graphql request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Get the HTTP client from the underlying go-github client (has auth configured)
+	httpClient := c.api.Client()
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("executing graphql request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("graphql request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("decoding graphql response: %w", err)
+	}
+
+	return nil
+}
+
+// IsBot checks if a username appears to be a bot account.
+func IsBot(username string) bool {
+	return strings.HasSuffix(username, "[bot]") || strings.HasSuffix(username, "-bot") || username == "Copilot"
 }

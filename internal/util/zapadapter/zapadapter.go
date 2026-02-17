@@ -97,7 +97,7 @@ func (lc *loggerCore) Sync() error {
 // keypair.
 type fieldEncoder struct {
 	// fields are the list of fields that will be passed to log.Logger.Log.
-	fields []interface{}
+	fields []any
 
 	// namespace is used to prefix keys before appending to fields. When a
 	// zap.Namespace field is logged, the OpenNamespace method of the
@@ -247,7 +247,7 @@ func (fe *fieldEncoder) AddUintptr(key string, value uintptr) {
 	fe.fields = append(fe.fields, fe.keyName(key), value)
 }
 
-func (fe *fieldEncoder) AddReflected(key string, value interface{}) error {
+func (fe *fieldEncoder) AddReflected(key string, value any) error {
 	fe.fields = append(fe.fields, fe.keyName(key), value)
 	return nil
 }
@@ -259,7 +259,7 @@ func (fe *fieldEncoder) OpenNamespace(key string) {
 // keyName returns the key to used for a named field. If the fieldEncoder isn't
 // namespaced, then the key name is k. Otherwise, the key name the combined
 // string of the namespace and key, delimiting each fragment by a period `.`.
-func (fe *fieldEncoder) keyName(k string) interface{} {
+func (fe *fieldEncoder) keyName(k string) any {
 	if len(fe.namespace) == 0 {
 		return k
 	}
@@ -280,13 +280,13 @@ func (k key) String() string {
 var _ zapcore.ObjectEncoder = (*objectFieldEncoder)(nil)
 
 type objectFieldEncoder struct {
-	obj       map[string]interface{}
+	obj       map[string]any
 	namespace []string
 }
 
 func newObjectFieldEncoder() *objectFieldEncoder {
 	return &objectFieldEncoder{
-		obj: make(map[string]interface{}),
+		obj: make(map[string]any),
 	}
 }
 
@@ -384,7 +384,7 @@ func (fe *objectFieldEncoder) AddUint8(key string, value uint8) {
 func (fe *objectFieldEncoder) AddUintptr(key string, value uintptr) {
 	fe.obj[fe.key(key)] = value
 }
-func (fe *objectFieldEncoder) AddReflected(key string, value interface{}) error {
+func (fe *objectFieldEncoder) AddReflected(key string, value any) error {
 	fe.obj[fe.key(key)] = value
 	return nil
 }
@@ -395,12 +395,12 @@ func (fe *objectFieldEncoder) OpenNamespace(key string) {
 var _ zapcore.ArrayEncoder = (*arrayFieldEncoder)(nil)
 
 type arrayFieldEncoder struct {
-	arr []interface{}
+	arr []any
 }
 
 func newArrayFieldEncoder() *arrayFieldEncoder {
 	return &arrayFieldEncoder{
-		arr: make([]interface{}, 0),
+		arr: make([]any, 0),
 	}
 }
 
@@ -488,7 +488,7 @@ func (fe *arrayFieldEncoder) AppendUint8(value uint8) {
 func (fe *arrayFieldEncoder) AppendUintptr(value uintptr) {
 	fe.arr = append(fe.arr, value)
 }
-func (fe *arrayFieldEncoder) AppendReflected(value interface{}) error {
+func (fe *arrayFieldEncoder) AppendReflected(value any) error {
 	fe.arr = append(fe.arr, value)
 	return nil
 }

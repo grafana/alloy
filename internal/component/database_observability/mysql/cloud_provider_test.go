@@ -29,7 +29,7 @@ func TestPopulateCloudProvider(t *testing.T) {
 
 		assert.Equal(t, &database_observability.CloudProvider{
 			Azure: &database_observability.AzureCloudProviderInfo{
-				Resource: "products-db",
+				ServerName: "products-db",
 			},
 		}, got)
 	})

@@ -57,7 +57,7 @@ type WatchConfig struct {
 }
 
 // UnmarshalYAML implement YAML Unmarshaler
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	// Apply defaults
 	c.MaxSegmentAge = DefaultMaxSegmentAge
 	c.WatchConfig = DefaultWatchConfig

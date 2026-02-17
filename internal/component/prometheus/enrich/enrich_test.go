@@ -145,7 +145,7 @@ func TestEnricher(t *testing.T) {
 	}
 }
 
-func getServiceData(name string) (interface{}, error) {
+func getServiceData(name string) (any, error) {
 	switch name {
 	case labelstore.ServiceName:
 		return labelstore.New(nil, prom.DefaultRegisterer), nil

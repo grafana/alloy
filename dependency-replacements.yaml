@@ -28,6 +28,14 @@ modules:
     path: go.mod
     file_type: mod
 
+  - name: extension
+    path: extension/alloyengine/go.mod
+    file_type: mod
+
+  - name: collector
+    path: collector/builder-config.yaml
+    file_type: ocb
+
 replaces:
   - comment: >
       TODO: remove this replace directive once the upstream issue is fixed:
@@ -69,11 +77,11 @@ replaces:
 
   - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
     dependency: github.com/google/cadvisor
-    replacement: github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+    replacement: github.com/grafana/cadvisor grafana-v0.54.1-noglobals
 
-  - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
+  - comment: TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
-    replacement: github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+    replacement: github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf
 
   - comment: TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
     dependency: github.com/prometheus/mysqld_exporter
@@ -91,19 +99,15 @@ replaces:
 
   - comment: Replace OpenTelemetry OBI with Grafana fork
     dependency: go.opentelemetry.io/obi
-    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
+    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
 
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler
-    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
+    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260123050037-c33a6e86a2f5
 
   - comment: Update openshift/client-go to version compatible with structured-merge-diff v6
     dependency: github.com/openshift/client-go
     replacement: github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
-
-  - comment: Use Grafana's patched k8sattributesprocessor with support for k8s.io/client-go v0.34.1
-    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor
-    replacement: github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23
 
   - comment: >
       Do not remove until bug in walqueue backwards compatibility is resolved:
@@ -118,3 +122,9 @@ replaces:
   - comment: Replace controller-runtime with pinned version
     dependency: sigs.k8s.io/controller-runtime
     replacement: sigs.k8s.io/controller-runtime v0.20.4
+
+  - comment: >
+      Fork to grafana repo to address issue with freebsd build tags.
+      This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
+    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
+    replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966

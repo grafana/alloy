@@ -22,20 +22,25 @@ point, only critical fixes should be merged into the branch until the release is
 
 1.  For `Use workflow from`, select the release branch in question.
 2.  Make sure to uncheck the `Dry run` box.
-3.  (This will create a draft release on GitHub.)
-4.  Add any relevant changelog details to the RC draft release and publish it.
-5.  (This will trigger CI to build/publish release artifacts and attach them to the release.)
+3.  (This will trigger workflows to create a draft release on GitHub, build the release artifacts,
+    and attach them to the release.)
+4.  Once everything is attached, add any relevant changelog details to the RC draft release and
+    publish it.
 
 ### 3. (Optional) Add critical fixes to the release
 
 1. If you need to add critical fixes to the release branch after testing an RC, check out the
    section below on backporting fixes to a release branch.
 
-### 4. When ready, move the release-please PR out of draft, review it, and merge it in
+### 4. When ready, cut the release
 
-1.  You might realize that some changelog entries don't look the way you want. To address that,
-    check out the section below on modifying a PR's changelog entry after it's been merged.
-1.  (This will trigger CI to build/publish release artifacts and attach them to the release.)
+1. Move the release-please PR out of draft and review it.
+   1. You might realize that some changelog entries don't look the way you want. To address that,
+      check out the section below on modifying a PR's changelog entry after it's been merged.
+2. Merge the release-please PR.
+3. (This will trigger workflows to create a draft release on GitHub, build the release artifacts,
+   and attach them to the release.)
+4. Once everything is attached, publish the release.
 
 ### 5. Validate the release on internal deployments
 
@@ -103,6 +108,8 @@ changelog entries. If you need to change one after the PR has already been merge
    feat: this is the overridden conventional commit-style title (#pr_number_goes_here)
    END_COMMIT_OVERRIDE
    ```
+3. Re-run the latest release-please workflow run for the branch the PR targets. This will trigger
+   the changelog to update.
 
 If you need to mark something as a **breaking change**, use the following:
 
@@ -164,7 +171,16 @@ are the steps you can take to do it manually:
    git merge --strategy ours origin/release/vN.M --message "chore: Forwardport release A.B.C to main"
    git cherry-pick --no-commit <release_please_commit_hash_from_earlier>
    git commit --amend --no-edit
+   git checkout -b tmp/manual-forwardport-for-A.B.C
+   git push -u origin tmp/manual-forwardport-for-A.B.C
+   gh pr create --draft --base main --title "chore: Forwardport release A.B.C to main"
+   ```
+6. **DO NOT MERGE THIS PR**. This is only needed to get a passing `zizmor` check for the new commit.
+7. Once `zizmor` reports green, run the following commands:
+   ```bash
+   git checkout main
    git push
    ```
-6. **Delete the Bypass** from `Important branches require pull requests (except trusted apps)` for
+8. The PR will automatically close itself.
+9. **Delete the Bypass** from `Important branches require pull requests (except trusted apps)` for
    the `Repository admin` role.

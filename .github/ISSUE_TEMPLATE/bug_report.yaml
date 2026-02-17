@@ -116,6 +116,7 @@ body:
       - otelcol.processor.interval
       - otelcol.processor.k8sattributes
       - otelcol.processor.memory_limiter
+      - otelcol.processor.metric_start_time
       - otelcol.processor.probabilistic_sampler
       - otelcol.processor.resourcedetection
       - otelcol.processor.span
@@ -154,6 +155,7 @@ body:
       - prometheus.exporter.catchpoint
       - prometheus.exporter.cloudwatch
       - prometheus.exporter.consul
+      - prometheus.exporter.databricks
       - prometheus.exporter.dnsmasq
       - prometheus.exporter.elasticsearch
       - prometheus.exporter.gcp

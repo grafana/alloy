@@ -237,7 +237,7 @@ func newController(o controllerOptions) *Runtime {
 					WorkerPool:           workerPool,
 				})
 			},
-			GetServiceData: func(name string) (interface{}, error) {
+			GetServiceData: func(name string) (any, error) {
 				svc, found := serviceMap.Get(name)
 				if !found {
 					return nil, fmt.Errorf("service %q does not exist", name)
@@ -330,7 +330,7 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 		ComponentBlocks: source.Components(),
 		ConfigBlocks:    source.Configs(),
 		DeclareBlocks:   source.Declares(),
-		ArgScope: vm.NewScope(map[string]interface{}{
+		ArgScope: vm.NewScope(map[string]any{
 			importsource.ModulePath: modulePath,
 		}),
 	})

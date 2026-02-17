@@ -70,7 +70,7 @@ func (w *WindowsEventStage) Run(in chan Entry) chan Entry {
 
 // Process a windows event message from extracted with the specified key, adding additional
 // entries into the extracted map.
-func (w *WindowsEventStage) processEntry(extracted map[string]interface{}, key string) error {
+func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) error {
 	value, ok := extracted[key]
 	if !ok {
 		if Debug {
@@ -165,7 +165,7 @@ func (w *WindowsEventStage) processEntry(extracted map[string]interface{}, key s
 	return nil
 }
 
-func (w *WindowsEventStage) sanitizeKey(ekey string, extracted map[string]interface{}) (string, error) {
+func (w *WindowsEventStage) sanitizeKey(ekey string, extracted map[string]any) (string, error) {
 	k := w.keyReplacer.Replace(ekey)
 	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
@@ -195,10 +195,6 @@ func (w *WindowsEventStage) logParseErr(err error) {
 	if Debug {
 		level.Debug(w.logger).Log("msg", err.Error())
 	}
-}
-
-func (w *WindowsEventStage) Name() string {
-	return StageTypeWindowsEvent
 }
 
 // Cleanup implements Stage.

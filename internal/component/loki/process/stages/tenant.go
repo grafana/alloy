@@ -58,7 +58,7 @@ func newTenantStage(logger log.Logger, cfg TenantConfig) (Stage, error) {
 }
 
 // Process implements Stage
-func (s *tenantStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (s *tenantStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	var tenantID string
 
 	// Get tenant ID from source or configured value
@@ -78,12 +78,7 @@ func (s *tenantStage) Process(labels model.LabelSet, extracted map[string]interf
 	labels[ReservedLabelTenantID] = model.LabelValue(tenantID)
 }
 
-// Name implements Stage
-func (s *tenantStage) Name() string {
-	return StageTypeTenant
-}
-
-func (s *tenantStage) getTenantFromSourceField(extracted map[string]interface{}) string {
+func (s *tenantStage) getTenantFromSourceField(extracted map[string]any) string {
 	// Get the tenant ID from the source data
 	value, ok := extracted[s.cfg.Source]
 	if !ok {

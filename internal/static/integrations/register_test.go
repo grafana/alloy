@@ -53,7 +53,7 @@ func (i *testIntegrationA) NewIntegration(l log.Logger) (Integration, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (i *testIntegrationA) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (i *testIntegrationA) UnmarshalYAML(unmarshal func(any) error) error {
 	i.Truth = true
 	type plain testIntegrationA
 	return unmarshal((*plain)(i))
@@ -79,7 +79,7 @@ type testFullConfig struct {
 	Configs Configs `yaml:"-"`
 }
 
-func (c *testFullConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *testFullConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// This default value should not change.
 	c.Default = 12345
 

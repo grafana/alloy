@@ -313,6 +313,12 @@ func TestExplainPlansOutput(t *testing.T) {
 		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
 	})
 
+	t.Run("zero rows", func(t *testing.T) {
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		_, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"message\": \"no matching row in const table\"}}"))
+		require.NoError(t, err)
+	})
+
 	currentTime := time.Now().Format(time.RFC3339)
 	tests := []struct {
 		dbVersion string
@@ -1523,7 +1529,7 @@ func TestExplainPlans(t *testing.T) {
 
 		t.Run("uses argument value on first request", func(t *testing.T) {
 			nextSeen := lastSeen.Add(time.Second * 45)
-			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_text",
@@ -1545,7 +1551,7 @@ func TestExplainPlans(t *testing.T) {
 		})
 
 		t.Run("uses oldest last seen value on subsequent requests", func(t *testing.T) {
-			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_text",
@@ -1588,7 +1594,7 @@ func TestExplainPlans(t *testing.T) {
 
 		t.Run("skips truncated queries", func(t *testing.T) {
 			logBuffer.Reset()
-			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1623,7 +1629,7 @@ func TestExplainPlans(t *testing.T) {
 		t.Run("skips non-select queries", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1670,10 +1676,41 @@ func TestExplainPlans(t *testing.T) {
 			lokiClient.Clear()
 		})
 
+		t.Run("skips no row result", func(t *testing.T) {
+			logBuffer.Reset()
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_sample_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"select * from some_table where id = 1",
+				lastSeen,
+			))
+
+			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+			mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
+				"json",
+			}).AddRow(
+				[]byte(`{"query_block": {"message": "no matching row in const table"}}`),
+			))
+
+			err = c.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			lokiClient.Clear()
+
+			require.NotContains(t, logBuffer.String(), "error")
+			require.Contains(t, logBuffer.String(), "no matching row in const table")
+		})
+
 		t.Run("passes queries beginning in select", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1710,7 +1747,7 @@ func TestExplainPlans(t *testing.T) {
 		t.Run("passes queries beginning in with", func(t *testing.T) {
 			lokiClient.Clear()
 			logBuffer.Reset()
-			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 				"schema_name",
 				"digest",
 				"query_sample_text",
@@ -1772,7 +1809,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -1804,7 +1841,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 		lokiClient.Clear()
 		logBuffer.Reset()
 
-		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 			"schema_name",
 			"digest",
 			"query_sample_text",
@@ -1862,17 +1899,12 @@ func TestSchemaDenylist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause([]string{"some_schema"}))).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
 		"last_seen",
 	}).AddRow(
-		"some_schema",
-		"some_digest1",
-		"select * from some_table where id = 1",
-		lastSeen,
-	).AddRow(
 		"different_schema",
 		"some_digest2",
 		"select * from some_table where id = 2",

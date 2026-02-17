@@ -220,7 +220,7 @@ func TestRuleGetter(t *testing.T) {
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
 }
 
-func getServiceData(name string) (interface{}, error) {
+func getServiceData(name string) (any, error) {
 	switch name {
 	case labelstore.ServiceName:
 		return labelstore.New(nil, prom.DefaultRegisterer), nil
