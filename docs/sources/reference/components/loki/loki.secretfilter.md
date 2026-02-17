@@ -26,6 +26,12 @@ Don't rely solely on this component to redact sensitive information.
 This component operates on log lines and doesn't scan labels or other metadata.
 {{< /admonition >}}
 
+{{< admonition type="caution" >}}
+Detecting secrets can be resource-intensive and can increase CPU usage significantly.
+Roll out this component gradually and monitor resource usage.
+Place `loki.secretfilter` after components that reduce log volume so it processes fewer lines.
+{{< /admonition >}}
+
 [gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Usage
