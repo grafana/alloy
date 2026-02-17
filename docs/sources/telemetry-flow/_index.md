@@ -73,7 +73,7 @@ Different component families use different naming conventions, but the underlyin
 | OpenTelemetry | `otelcol.receiver.*` | `otelcol.processor.*` | `otelcol.exporter.*`      |
 | Prometheus    | `prometheus.scrape`  | `prometheus.relabel`  | `prometheus.remote_write` |
 | Loki          | `loki.source.*`      | `loki.process`        | `loki.write`              |
-| Pyroscope     | `pyroscope.scrape`   | `pyroscope.ebpf`      | `pyroscope.write`         |
+| Pyroscope     | `pyroscope.scrape`   | `pyroscope.relabel`   | `pyroscope.write`         |
 
 Regardless of naming, the conceptual flow is the same: telemetry enters through ingestion components, optionally passes through transformation components, and leaves through output components.
 
