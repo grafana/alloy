@@ -48,9 +48,14 @@
 ##   generate-ui               Generate the UI assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
-##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
 ##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
+
+## Targets for generating source code:
 ##
+##   generate-module-dependencies Generate replace directives from dependency-replacements.yaml, will also run "go mod tidy" for modules.
+##   generate-otel-collector-distro Generate the OTel Engine distro from builder-config.yaml.
+
+
 ## Other targets:
 ##
 ##   build-container-cache  Create a cache for the build container to speed up
@@ -88,7 +93,7 @@ ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
 SERVICE_BINARY       		?= build/alloy-service
 ALLOYLINT_BINARY     		?= build/alloylint
-BUILDER_VERSION      		?= v0.139.0
+BUILDER_VERSION      		?= v0.142.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
@@ -272,7 +277,7 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+	cd ./tools/generate-module-dependencies && $(GO_ENV) go run . generate --dependency-yaml=../../dependency-replacements.yaml --project-root=../..
 endif
 
 generate-source-code:
@@ -291,11 +296,7 @@ generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	@if [ -f ./collector/go.mod ]; then \
-		cd ./collector && go mod tidy; \
-	fi
-	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
-	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
+	cd ./tools/generate-otel-engine-collector && go run . generate --collector-dir=../../collector --from-scratch --builder-version=$(BUILDER_VERSION)
 endif
 
 generate-ui:
