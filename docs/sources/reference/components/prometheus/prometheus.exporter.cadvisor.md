@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.cadvisor/
 aliases:
   - ../prometheus.exporter.cadvisor/ # /docs/alloy/latest/reference/components/prometheus.exporter.cadvisor/
-description: Learn about the prometheus.exporter.cadvisor component for {{< param "FULL_PRODUCT_NAME" >}}
+description: Learn about prometheus.exporter.cadvisor
 labels:
   stage: general-availability
   products:
