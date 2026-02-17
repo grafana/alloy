@@ -2,6 +2,7 @@ package stages
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -12,6 +13,11 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+)
+
+var (
+	errExpressionRequired   = errors.New("expression is required")
+	errCouldNotCompileRegex = errors.New("could not compile regular expression")
 )
 
 func init() {
@@ -29,12 +35,12 @@ type ReplaceConfig struct {
 
 func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {
 	if c.Expression == "" {
-		return nil, ErrExpressionRequired
+		return nil, errExpressionRequired
 	}
 
 	expr, err := regexp.Compile(c.Expression)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+		return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
 	}
 	return expr, nil
 }

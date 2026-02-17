@@ -26,7 +26,7 @@ func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 		c.MinLength = 13
 	}
 	if c.Source != nil && *c.Source == "" {
-		return ErrEmptyRegexStageSource
+		return errEmptySource
 	}
 	return nil
 }

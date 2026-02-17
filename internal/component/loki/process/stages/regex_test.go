@@ -228,30 +228,29 @@ func TestRegexConfig(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name              string
-		config            string
-		expectSyntaxErr   bool
-		expectValidateErr bool
+		name      string
+		config    string
+		expextErr bool
 	}
 
 	tests := []testCase{
 
 		{
-			name:            "empty config",
-			config:          "",
-			expectSyntaxErr: true,
+			name:      "empty config",
+			config:    "",
+			expextErr: true,
 		},
 		{
-			name:            "missing expression",
-			config:          "",
-			expectSyntaxErr: true,
+			name:      "missing expression",
+			config:    "",
+			expextErr: true,
 		},
 		{
 			name: "invalid expression",
 			config: `
 				expression = "(?P<ts[0-9]+).*"
 			`,
-			expectSyntaxErr: true,
+			expextErr: true,
 		},
 		{
 			name: "empty source",
@@ -259,7 +258,7 @@ func TestRegexConfig(t *testing.T) {
 				expression = "(?P<ts>[0-9]+).*"
 				source = ""
 			`,
-			expectValidateErr: true,
+			expextErr: true,
 		},
 		{
 			name: "valid without source",
@@ -281,16 +280,9 @@ func TestRegexConfig(t *testing.T) {
 			var cfg RegexConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
 
-			if tt.expectSyntaxErr {
+			if tt.expextErr {
 				require.Error(t, err)
 				return
-			} else {
-				require.NoError(t, err)
-			}
-
-			err = validateRegexConfig(cfg)
-			if tt.expectValidateErr {
-				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}

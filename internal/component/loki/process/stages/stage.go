@@ -99,10 +99,7 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(logger, *cfg.RegexConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newRegexStage(logger, *cfg.RegexConfig)
 	case cfg.TimestampConfig != nil:
 		s, err = newTimestampStage(logger, *cfg.TimestampConfig)
 		if err != nil {

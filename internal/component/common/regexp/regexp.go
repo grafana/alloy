@@ -53,7 +53,7 @@ func (r *Regexp) UnmarshalText(text []byte) error {
 	if err != nil {
 		return err
 	}
-	r = re
+	*r = *re
 	return nil
 }
 

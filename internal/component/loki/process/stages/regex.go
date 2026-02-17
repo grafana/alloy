@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/prometheus/common/model"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors.
-var (
-	ErrExpressionRequired    = errors.New("expression is required")
-	ErrCouldNotCompileRegex  = errors.New("could not compile regular expression")
-	ErrEmptyRegexStageSource = errors.New("empty source")
-)
+var errEmptySource = errors.New("empty source")
+
+var _ syntax.Validator = (*RegexConfig)(nil)
 
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
@@ -27,12 +27,11 @@ type RegexConfig struct {
 	LabelsFromGroups bool                   `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validateRegexConfig validates the config
-func validateRegexConfig(c RegexConfig) error {
+// Validate implements syntax.Validator.
+func (c *RegexConfig) Validate() error {
 	if c.Source != nil && *c.Source == "" {
-		return ErrEmptyRegexStageSource
+		return errEmptySource
 	}
-
 	return nil
 }
 
@@ -43,15 +42,11 @@ type regexStage struct {
 }
 
 // newRegexStage creates a newRegexStage
-func newRegexStage(logger log.Logger, config RegexConfig) (Stage, error) {
-	if err := validateRegexConfig(config); err != nil {
-		return nil, err
-	}
-
+func newRegexStage(logger log.Logger, config RegexConfig) Stage {
 	return toStage(&regexStage{
 		config: &config,
 		logger: log.With(logger, "component", "stage", "type", "regex"),
-	}), nil
+	})
 }
 
 // Process implements Stage
