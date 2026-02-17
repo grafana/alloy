@@ -85,15 +85,6 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 	}
 }
 
-func (e *alloyEngineExtension) isUp() int64 {
-	e.stateMutex.Lock()
-	defer e.stateMutex.Unlock()
-	if e.state == stateRunning {
-		return 1
-	}
-	return 0
-}
-
 func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
 	currentState := e.getState()
 	switch currentState {
