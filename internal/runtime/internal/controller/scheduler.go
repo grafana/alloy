@@ -4,10 +4,17 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+)
+
+var (
+	// TaskShutdownWarningTimeout is the duration after which a warning is logged
+	// when a task is taking too long to shut down.
+	TaskShutdownWarningTimeout = time.Minute
 )
 
 // RunnableNode is any BlockNode which can also be run.
@@ -18,10 +25,11 @@ type RunnableNode interface {
 
 // Scheduler runs components.
 type Scheduler struct {
-	ctx     context.Context
-	cancel  context.CancelFunc
-	running sync.WaitGroup
-	logger  log.Logger
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	running              sync.WaitGroup
+	logger               log.Logger
+	taskShutdownDeadline time.Duration
 
 	tasksMut sync.Mutex
 	tasks    map[string]*task
@@ -31,31 +39,39 @@ type Scheduler struct {
 // components which are running.
 //
 // Call Close to stop the Scheduler and all running components.
-func NewScheduler(logger log.Logger) *Scheduler {
+func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		ctx:    ctx,
-		cancel: cancel,
-		logger: logger,
+		ctx:                  ctx,
+		cancel:               cancel,
+		logger:               logger,
+		taskShutdownDeadline: taskShutdownDeadline,
 
 		tasks: make(map[string]*task),
 	}
 }
 
-// Synchronize synchronizes the running components to those defined by rr.
+// Synchronize adjusts the set of running components based on the provided
+// RunnableNodes in the following way,
 //
-// New RunnableNodes will be launched as new goroutines. RunnableNodes already
-// managed by Scheduler will be kept running, while running RunnableNodes that
-// are not in rr will be shut down and removed.
+// 1. Nodes already managed by the scheduler will be unchanged.
+// 2. Nodes which are no longer present will be told to shutdown.
+// 3. Nodes will be given 1 minute to shutdown before new nodes are created.
+// 4. Wait for any remaining nodes to shutdown
+//
+// Nodes are shutdown first to ensure any shared resources, such as ports,
+// are allowed to be freed before new nodes are scheduled. As a means to avoid,
+// long stretches of downtime we give this a 1 minute timeout.
 //
 // Existing components will be restarted if they stopped since the previous
 // call to Synchronize.
+//
+// Synchronize is not goroutine safe and should not be called concurrently.
 func (s *Scheduler) Synchronize(rr []RunnableNode) error {
-	s.tasksMut.Lock()
-	defer s.tasksMut.Unlock()
-
-	if s.ctx.Err() != nil {
-		return fmt.Errorf("Scheduler is closed")
+	select {
+	case <-s.ctx.Done():
+		return fmt.Errorf("scheduler is closed")
+	default:
 	}
 
 	newRunnables := make(map[string]RunnableNode, len(rr))
@@ -64,6 +80,7 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	}
 
 	// Stop tasks that are not defined in rr.
+	s.tasksMut.Lock()
 	var stopping sync.WaitGroup
 	for id, t := range s.tasks {
 		if _, keep := newRunnables[id]; keep {
@@ -76,8 +93,26 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			t.Stop()
 		}(t)
 	}
+	s.tasksMut.Unlock()
+
+	// Wrapping the waitgroup with a channel will allow us to wait with a timeout
+	doneStopping := make(chan struct{})
+	go func() {
+		stopping.Wait()
+		close(doneStopping)
+	}()
+
+	stoppingTimedOut := false
+	select {
+	case <-doneStopping:
+		// All tasks stopped successfully within timeout.
+	case <-time.After(TaskShutdownWarningTimeout):
+		level.Warn(s.logger).Log("msg", "Some tasks are taking longer than expected to shutdown, proceeding with new tasks")
+		stoppingTimedOut = true
+	}
 
 	// Launch new runnables that have appeared.
+	s.tasksMut.Lock()
 	for id, r := range newRunnables {
 		if _, exist := s.tasks[id]; exist {
 			continue
@@ -89,9 +124,9 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 		)
 
 		opts := taskOptions{
-			Context:  s.ctx,
-			Runnable: newRunnable,
-			OnDone: func(err error) {
+			context:  s.ctx,
+			runnable: newRunnable,
+			onDone: func(err error) {
 				defer s.running.Done()
 
 				if err != nil {
@@ -104,14 +139,22 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 				defer s.tasksMut.Unlock()
 				delete(s.tasks, nodeID)
 			},
+			logger:               log.With(s.logger, "taskID", nodeID),
+			taskShutdownDeadline: s.taskShutdownDeadline,
 		}
 
 		s.running.Add(1)
 		s.tasks[nodeID] = newTask(opts)
 	}
+	s.tasksMut.Unlock()
 
-	// Wait for all stopping runnables to exit.
-	stopping.Wait()
+	// If we timed out, wait for stopping tasks to fully exit before returning.
+	// Tasks shutting down cannot fully complete their shutdown until the taskMut
+	// lock is released.
+	if stoppingTimedOut {
+		<-doneStopping
+	}
+
 	return nil
 }
 
@@ -125,36 +168,64 @@ func (s *Scheduler) Close() error {
 
 // task is a scheduled runnable.
 type task struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	exited chan struct{}
+	ctx      context.Context
+	cancel   context.CancelFunc
+	exited   chan struct{}
+	opts     taskOptions
+	doneOnce sync.Once
 }
 
 type taskOptions struct {
-	Context  context.Context
-	Runnable RunnableNode
-	OnDone   func(error)
+	context              context.Context
+	runnable             RunnableNode
+	onDone               func(error)
+	logger               log.Logger
+	taskShutdownDeadline time.Duration
 }
 
 // newTask creates and starts a new task.
 func newTask(opts taskOptions) *task {
-	ctx, cancel := context.WithCancel(opts.Context)
+	ctx, cancel := context.WithCancel(opts.context)
 
 	t := &task{
 		ctx:    ctx,
 		cancel: cancel,
 		exited: make(chan struct{}),
+		opts:   opts,
 	}
 
 	go func() {
-		err := opts.Runnable.Run(t.ctx)
+		err := opts.runnable.Run(t.ctx)
 		close(t.exited)
-		opts.OnDone(err)
+		t.doneOnce.Do(func() {
+			t.opts.onDone(err)
+		})
 	}()
 	return t
 }
 
 func (t *task) Stop() {
 	t.cancel()
-	<-t.exited
+
+	deadlineDuration := t.opts.taskShutdownDeadline
+	if deadlineDuration == 0 {
+		deadlineDuration = time.Hour * 24 * 365 * 100 // infinite timeout ~= 100 years
+	}
+
+	deadlineCtx, deadlineCancel := context.WithTimeout(context.Background(), deadlineDuration)
+	defer deadlineCancel()
+
+	for {
+		select {
+		case <-t.exited:
+			return // Task exited normally.
+		case <-time.After(TaskShutdownWarningTimeout):
+			level.Warn(t.opts.logger).Log("msg", "task shutdown is taking longer than expected")
+		case <-deadlineCtx.Done():
+			t.doneOnce.Do(func() {
+				t.opts.onDone(fmt.Errorf("task shutdown deadline exceeded"))
+			})
+			return // Task took too long to exit, don't wait.
+		}
+	}
 }

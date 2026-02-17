@@ -2,18 +2,18 @@
 package memcached_exporter
 
 import (
-	"time"
-
 	"crypto/tls"
+	"time"
 
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/memcached_exporter/pkg/exporter"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/prometheus/memcached_exporter/pkg/exporter"
 )
 
 // DefaultConfig is the default config for memcached_exporter.
@@ -35,7 +35,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 
 	type plain Config
@@ -48,7 +48,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the address:port of the memcached server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.MemcachedAddress, nil
 }
 

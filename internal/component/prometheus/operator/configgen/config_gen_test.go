@@ -2,6 +2,7 @@ package configgen
 
 import (
 	"fmt"
+
 	"net/url"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	promconfig "github.com/prometheus/prometheus/config"
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
@@ -430,25 +432,29 @@ func TestGenerateAuthorization(t *testing.T) {
 
 func TestGenerateDefaultScrapeConfig(t *testing.T) {
 	tests := []struct {
-		name             string
-		scrapeOptions    operator.ScrapeOptions
-		expectedInterval time.Duration
-		expectedTimeout  time.Duration
+		name                     string
+		scrapeOptions            operator.ScrapeOptions
+		expectedInterval         time.Duration
+		expectedTimeout          time.Duration
+		expectedFallbackProtocol promconfig.ScrapeProtocol
 	}{
 		{
-			name:             "empty",
-			scrapeOptions:    operator.ScrapeOptions{},
-			expectedInterval: 1 * time.Minute,
-			expectedTimeout:  10 * time.Second,
+			name:                     "empty",
+			scrapeOptions:            operator.ScrapeOptions{},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
 		},
 		{
 			name: "defaults set",
 			scrapeOptions: operator.ScrapeOptions{
 				DefaultScrapeInterval: 30 * time.Second,
 				DefaultScrapeTimeout:  5 * time.Second,
+				DefaultSampleLimit:    100,
 			},
-			expectedInterval: 30 * time.Second,
-			expectedTimeout:  5 * time.Second,
+			expectedInterval:         30 * time.Second,
+			expectedTimeout:          5 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
 		},
 	}
 	for _, tt := range tests {
@@ -460,6 +466,8 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 
 			assert.Equal(t, model.Duration(tt.expectedInterval), got.ScrapeInterval)
 			assert.Equal(t, model.Duration(tt.expectedTimeout), got.ScrapeTimeout)
+			assert.Equal(t, tt.expectedFallbackProtocol, got.ScrapeFallbackProtocol)
+			assert.Equal(t, tt.scrapeOptions.DefaultSampleLimit, got.SampleLimit)
 		})
 	}
 }

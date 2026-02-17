@@ -40,6 +40,7 @@ type Arguments struct {
 	ForwardTo                     []storage.Appendable `alloy:"forward_to,attr"`
 	AddMetricSuffixes             bool                 `alloy:"add_metric_suffixes,attr,optional"`
 	ResourceToTelemetryConversion bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
+	HonorMetadata                 bool                 `alloy:"honor_metadata,attr,optional"`
 }
 
 // DefaultArguments holds defaults values.
@@ -50,6 +51,7 @@ var DefaultArguments = Arguments{
 	GCFrequency:                   5 * time.Minute,
 	AddMetricSuffixes:             true,
 	ResourceToTelemetryConversion: false,
+	HonorMetadata:                 false,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -87,7 +89,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls, prometheus.NoopMetadataStore{})
+	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls)
 
 	converter := convert.New(o.Logger, fanout, convertArgumentsToConvertOptions(c))
 
@@ -159,5 +161,6 @@ func convertArgumentsToConvertOptions(args Arguments) convert.Options {
 		IncludeScopeInfo:              args.IncludeScopeInfo,
 		AddMetricSuffixes:             args.AddMetricSuffixes,
 		ResourceToTelemetryConversion: args.ResourceToTelemetryConversion,
+		HonorMetadata:                 args.HonorMetadata,
 	}
 }

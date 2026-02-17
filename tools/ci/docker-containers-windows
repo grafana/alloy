@@ -16,6 +16,7 @@ set -euxo pipefail
 export TARGET_CONTAINER=${1:-}
 PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
 GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
+GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER:-}
 
 if [ "$GITHUB_REF_TYPE" = "tag" ]; then
   export GITHUB_TAG="$GITHUB_REF_NAME"
@@ -102,7 +103,7 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       --build-arg GOEXPERIMENT=cngcrypto     \
-      --build-arg GO_TAGS=cngcrypto          \
+      --build-arg GO_TAGS="cngcrypto" \
       -f ./Dockerfile.windows                \
       .
 
@@ -142,7 +143,7 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       --build-arg GOEXPERIMENT=cngcrypto   \
-      --build-arg GO_TAGS=cngcrypto        \
+      --build-arg GO_TAGS="cngcrypto" \
       -f ./Dockerfile.windows              \
       .
 
@@ -152,8 +153,25 @@ case "$TARGET_CONTAINER" in
     fi
     ;;
 
+  alloy-devel-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${VERSION_TAG}"
+
+    docker build                           \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG" \
+      --build-arg VERSION="$VERSION"       \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
+      --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
+      -f ./Dockerfile.windows              \
+      .
+
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$DEVEL_ALLOY_IMAGE:$TAG"
+    fi
+    ;;
+
   *)
-    echo "Usage: $0 alloy|alloy-cngcrypto|alloy-devel|alloy-devel-cngcrypto"
+    echo "Usage: $0 alloy|alloy-cngcrypto|alloy-devel|alloy-devel-cngcrypto|alloy-devel-pr"
     exit 1
     ;;
 esac

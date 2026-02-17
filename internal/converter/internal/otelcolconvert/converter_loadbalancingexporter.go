@@ -34,13 +34,14 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componen
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.ClientConfig.Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*loadbalancingexporter.Config).QueueSettings.StorageID)
+			queue := cfg.(*loadbalancingexporter.Config).QueueSettings.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -77,7 +78,7 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 
 func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 	var a *auth.Handler
-	if cfg.OTLP.ClientConfig.Auth != nil {
+	if cfg.OTLP.ClientConfig.Auth.HasValue() {
 		a = &auth.Handler{}
 	}
 
@@ -99,7 +100,7 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 				Compression: otelcol.CompressionType(cfg.OTLP.ClientConfig.Compression),
 
 				TLS:       toTLSClientArguments(cfg.OTLP.ClientConfig.TLS),
-				Keepalive: toKeepaliveClientArguments(cfg.OTLP.ClientConfig.Keepalive),
+				Keepalive: toKeepaliveClientArguments(cfg.OTLP.ClientConfig.Keepalive.Get()),
 
 				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ClientConfig.ReadBufferSize),
 				WriteBufferSize: units.Base2Bytes(cfg.OTLP.ClientConfig.WriteBufferSize),
@@ -116,10 +117,10 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 
 func toResolver(cfg loadbalancingexporter.ResolverSettings) loadbalancing.ResolverSettings {
 	return loadbalancing.ResolverSettings{
-		Static:      toStaticResolver(cfg.Static),
-		DNS:         toDNSResolver(cfg.DNS),
-		Kubernetes:  toKubernetesResolver(cfg.K8sSvc),
-		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap),
+		Static:      toStaticResolver(cfg.Static.Get()),
+		DNS:         toDNSResolver(cfg.DNS.Get()),
+		Kubernetes:  toKubernetesResolver(cfg.K8sSvc.Get()),
+		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap.Get()),
 	}
 }
 

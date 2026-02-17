@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	client "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
@@ -204,7 +205,7 @@ func testOptions(t *testing.T, alloyMetricsReg *client.Registry, fakeCluster *fa
 		Logger:     util.TestAlloyLogger(t),
 		Registerer: alloyMetricsReg,
 		ID:         "prometheus.scrape.test",
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case http.ServiceName:
 				return http.Data{
@@ -293,7 +294,7 @@ func waitForMetricValue(t *testing.T, alloyMetricsReg *client.Registry, name str
 				t,
 				alloyMetricsReg,
 				name,
-				nil,
+				labels.EmptyLabels(),
 				value,
 			)
 		},

@@ -110,7 +110,8 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 | `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS key_file.                                     | no       |
 | `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
 | `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
-| [`queue`][queue]                                          | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
+| [`sending_queue`][queue]                                  | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
+| `sending_queue` > [`batch`][batch]                        | Configures batching requests based on a timeout and a minimum number of items.    | no       |
 | [`retry`][retry]                                          | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
 | [`debug_metrics`][debug_metrics]                          | Configures the metrics that this component generates to monitor its state.        | no       |
 
@@ -137,6 +138,7 @@ There are two types of [queue][] and [retry][] blocks:
 [tpm]: #tpm
 [keepalive]: #keepalive
 [queue]: #queue
+[batch]: #batch
 [retry]: #retry
 [debug_metrics]: #debug_metrics
 
@@ -308,6 +310,12 @@ The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
 The `queue` block configures an in-memory buffer of batches before data is sent to the gRPC server.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `retry`
 

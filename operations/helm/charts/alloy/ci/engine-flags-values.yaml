@@ -1,0 +1,10 @@
+alloy:
+  listenAddr: 127.0.0.1
+  listenPort: 24680
+  uiPathPrefix: /ui
+  storagePath: /var/lib/alloy-data
+  stabilityLevel: public-preview
+  enableReporting: false
+  extraArgs:
+    - --log.level=debug
+    - --server.http.enable-pprof

@@ -7,6 +7,7 @@ import (
 	"github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud"
@@ -58,12 +59,7 @@ func TestConfigConversion(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      true,
-					NumConsumers: 10,
-					QueueSize:    1000,
-					Sizer:        exporterhelper.RequestSizerTypeRequests,
-				},
+				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
 			},
 		},
 		{
@@ -126,8 +122,6 @@ func TestConfigConversion(t *testing.T) {
 
 				sending_queue {
 					enabled = false
-					num_consumers = 57
-					queue_size = 567
 				}
 			`,
 			expected: googlecloudexporter.Config{
@@ -192,12 +186,7 @@ func TestConfigConversion(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      false,
-					NumConsumers: 57,
-					QueueSize:    567,
-					Sizer:        exporterhelper.RequestSizerTypeRequests,
-				},
+				QueueSettings: configoptional.None[exporterhelper.QueueBatchConfig](),
 			},
 		},
 	}

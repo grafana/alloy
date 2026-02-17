@@ -4,15 +4,15 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21 AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.27 AS ui-build
 ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
 RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
-    yarn --network-timeout=1200000                            \
-    && yarn run build
+    npm install                                               \
+    && npm run build
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21 AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.27 AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
@@ -26,14 +26,15 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-COPY --from=ui-build /ui/build /src/alloy/internal/web/ui/build
+COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled pyroscope_ebpf" \
+    GO_TAGS="netgo embedalloyui promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
+    SKIP_UI_BUILD=1 \
     make alloy
 
 ###
@@ -60,6 +61,11 @@ RUN apt-get update \
 
 COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /bin/alloy
 COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
+
+# Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY packaging/docker/otelcol.sh /bin/otelcol
+RUN chmod 755 /bin/otelcol
 
 # Create alloy user in container, but do not set it as default
 #

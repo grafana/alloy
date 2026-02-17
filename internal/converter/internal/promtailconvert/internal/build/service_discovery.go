@@ -9,9 +9,10 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 	prom_discover "github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/kubernetes"
 )
 
 func (s *ScrapeConfigBuilder) AppendSDs() {
@@ -86,6 +87,13 @@ func toDiscoveryConfig(cfg *scrapeconfig.Config) prom_discover.Configs {
 	}
 
 	for _, sd := range cfg.ServiceDiscoveryConfig.KubernetesSDConfigs {
+		// See https://github.com/grafana/loki/blob/main/clients/pkg/promtail/targets/file/filetargetmanager.go#L126
+		if sd.Role == kubernetes.RolePod {
+			sd.Selectors = append(sd.Selectors, kubernetes.SelectorConfig{
+				Role:  kubernetes.RolePod,
+				Field: `"spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)`,
+			})
+		}
 		sdConfigs = append(sdConfigs, sd)
 	}
 

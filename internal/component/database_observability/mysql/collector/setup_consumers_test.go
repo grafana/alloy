@@ -26,7 +26,7 @@ func Test_getSetupConsumers(t *testing.T) {
 				AddRow("events_statements_history", "YES"))
 
 		reg := prometheus.NewRegistry()
-		c, err := NewSetupConsumer(SetupConsumerArguments{
+		c, err := NewSetupConsumers(SetupConsumersArguments{
 			Registry:        reg,
 			DB:              db,
 			CollectInterval: 1 * time.Second,
@@ -55,7 +55,7 @@ func Test_getSetupConsumers(t *testing.T) {
 				AddRow("events_statements_history", "NO"))
 
 		reg := prometheus.NewRegistry()
-		c, err := NewSetupConsumer(SetupConsumerArguments{
+		c, err := NewSetupConsumers(SetupConsumersArguments{
 			Registry:        reg,
 			DB:              db,
 			CollectInterval: 1 * time.Second,
@@ -80,7 +80,7 @@ func Test_getSetupConsumers(t *testing.T) {
 		defer db.Close()
 		mock.ExpectQuery(selectSetupConsumers).WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewSetupConsumer(SetupConsumerArguments{
+		c, err := NewSetupConsumers(SetupConsumersArguments{
 			DB:              db,
 			Registry:        prometheus.NewRegistry(),
 			CollectInterval: 1 * time.Second,

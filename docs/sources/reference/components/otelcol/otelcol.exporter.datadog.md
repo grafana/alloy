@@ -55,21 +55,22 @@ This option won't change the hostname applied to metrics or traces if they alrea
 
 You can use the following blocks with `otelcol.exporter.datadog`:
 
-| Block                                  | Description                                                                | Required |
-|----------------------------------------|----------------------------------------------------------------------------|----------|
-| [`api`][api]                           | Configures authentication with Datadog                                     | yes      |
-| [`client`][client]                     | Configures the HTTP client used to send telemetry data.                    | no       |
-| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
-| [`host_metadata`][host_metadata]       | Host metadata specific configuration.                                      | no       |
-| [`logs`][logs]                         | Logs exporter specific configuration.                                      | no       |
-| [`metrics`][metrics]                   | Metric exporter specific configuration.                                    | no       |
-| metrics > [`exporter`][exporter]       | Metric Exporter specific configuration.                                    | no       |
-| metrics > [`histograms`][histograms]   | Histograms specific configuration.                                         | no       |
-| metrics > [`summaries`][summaries]     | Summaries specific configuration                                           | no       |
-| metrics > [`sums`][sums]               | Sums specific configuration                                                | no       |
-| [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
-| [`sending_queue`][queue]               | Configures batching of data before sending.                                | no       |
-| [`traces`][traces]                     | Trace exporter specific configuration.                                     | no       |
+| Block                                  | Description                                                                    | Required |
+|----------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`api`][api]                           | Configures authentication with Datadog                                         | yes      |
+| [`client`][client]                     | Configures the HTTP client used to send telemetry data.                        | no       |
+| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`host_metadata`][host_metadata]       | Host metadata specific configuration.                                          | no       |
+| [`logs`][logs]                         | Logs exporter specific configuration.                                          | no       |
+| [`metrics`][metrics]                   | Metric exporter specific configuration.                                        | no       |
+| metrics > [`exporter`][exporter]       | Metric Exporter specific configuration.                                        | no       |
+| metrics > [`histograms`][histograms]   | Histograms specific configuration.                                             | no       |
+| metrics > [`summaries`][summaries]     | Summaries specific configuration                                               | no       |
+| metrics > [`sums`][sums]               | Sums specific configuration                                                    | no       |
+| [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                                | no       |
+| [`sending_queue`][queue]               | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]     | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| [`traces`][traces]                     | Trace exporter specific configuration.                                         | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `metrics` > `summaries` refers to a `summaries` block defined inside a `metrics` block.
@@ -253,9 +254,15 @@ The `retry_on_failure` block configures how failed requests to Datadog are retri
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `traces`
 

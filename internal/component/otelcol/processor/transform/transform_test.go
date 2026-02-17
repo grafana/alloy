@@ -3,6 +3,7 @@ package transform_test
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -16,7 +17,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
-		expected map[string]interface{}
+		expected map[string]any
 		errorMsg string
 	}{
 		{
@@ -24,8 +25,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			output {}
 			`,
-			expected: map[string]interface{}{
-				"error_mode": "propagate",
+			expected: map[string]any{
+				"error_mode":         "propagate",
+				"trace_statements":   []any{},
+				"metric_statements":  []any{},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -34,8 +39,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			error_mode = "ignore"
 			output {}
 			`,
-			expected: map[string]interface{}{
-				"error_mode": "ignore",
+			expected: map[string]any{
+				"error_mode":         "ignore",
+				"trace_statements":   []any{},
+				"metric_statements":  []any{},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -51,16 +60,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "span",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["test"], "pass") where attributes["test"] == nil`,
 						},
 					},
 				},
+				"metric_statements":  []any{},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -97,41 +109,42 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "span",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(name, "bear")`,
 						},
-						"conditions": []interface{}{
+						"conditions": []any{
 							`attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
-				"metric_statements": []interface{}{
-					map[string]interface{}{
+				"metric_statements": []any{
+					map[string]any{
 						"context": "datapoint",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(metric.name, "bear")`,
 						},
-						"conditions": []interface{}{
+						"conditions": []any{
 							`attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "log",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(body, "bear")`,
 						},
-						"conditions": []interface{}{
+						"conditions": []any{
 							`attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -180,53 +193,54 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"error_mode": "propagate",
 						"context":    "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(resource.attributes["name"], "propagate")`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(resource.attributes["name"], "ignore")`,
 						},
 					},
 				},
-				"metric_statements": []interface{}{
-					map[string]interface{}{
+				"metric_statements": []any{
+					map[string]any{
 						"error_mode": "silent",
 						"context":    "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(resource.attributes["name"], "silent")`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(resource.attributes["name"], "ignore")`,
 						},
 					},
 				},
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"error_mode": "propagate",
 						"context":    "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(resource.attributes["name"], "propagate")`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(resource.attributes["name"], "ignore")`,
 						},
 					},
 				},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -242,17 +256,20 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["namespace"], attributes["k8s.namespace.name"])`,
 							`delete_key(attributes, "k8s.namespace.name")`,
 						},
 					},
 				},
+				"metric_statements":  []any{},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -275,35 +292,36 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(span.name, "bear") where span.attributes["http.path"] == "/animal"`,
 							`set(resource.attributes["name"], "bear")`,
 						},
 					},
 				},
-				"metric_statements": []interface{}{
-					map[string]interface{}{
+				"metric_statements": []any{
+					map[string]any{
 						"context": "",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"`,
 							`set(resource.attributes["name"], "bear")`,
 						},
 					},
 				},
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(log.body, "bear") where log.attributes["http.path"] == "/animal"`,
 							`set(resource.attributes["name"], "bear")`,
 						},
 					},
 				},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -344,53 +362,54 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "span",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["name"], "bear")`,
 							`keep_keys(attributes, ["http.method", "http.path"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(span.name, "bear") where span.attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
-				"metric_statements": []interface{}{
-					map[string]interface{}{
+				"metric_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["name"], "bear")`,
 							`keep_keys(attributes, ["http.method", "http.path"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["name"], "bear")`,
 							`keep_keys(attributes, ["http.method", "http.path"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(log.body, "bear") where log.attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -420,16 +439,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`replace_all_patterns(attributes, "key", "k8s\\.namespace\\.name", "namespace")`,
 						},
 					},
 				},
+				"metric_statements":  []any{},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -444,16 +466,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "log",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["body"], body)`,
 						},
 					},
 				},
+				"metric_statements":  []any{},
+				"trace_statements":   []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -469,16 +494,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["test"], Concat([attributes["foo"], attributes["bar"]], " "))`,
 						},
 					},
 				},
+				"metric_statements":  []any{},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -496,12 +524,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "log",
-						"statements": []interface{}{
+						"statements": []any{
 							`merge_maps(cache, ParseJSON(body), "upsert") where IsMatch(body, "^\\{")`,
 							`set(attributes["attr1"], cache["attr1"])`,
 							`set(attributes["attr2"], cache["attr2"])`,
@@ -509,6 +537,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []any{},
+				"profile_statements": []any{},
+				"trace_statements":   []any{},
 			},
 		},
 		{
@@ -574,21 +605,21 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "ignore",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`keep_keys(attributes, ["service.name", "service.namespace", "cloud.region", "process.command_line"])`,
 							`replace_pattern(attributes["process.command_line"], "password\\=[^\\s]*(\\s?)", "password=***")`,
 							`limit(attributes, 100, [])`,
 							`truncate_all(attributes, 4096)`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "span",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(status.code, 1) where attributes["http.path"] == "/health"`,
 							`set(name, attributes["http.route"])`,
 							`replace_match(attributes["http.target"], "/user/*/list/*", "/user/{userId}/list/{listId}")`,
@@ -597,41 +628,41 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
-				"metric_statements": []interface{}{
-					map[string]interface{}{
+				"metric_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`keep_keys(attributes, ["host.name"])`,
 							`truncate_all(attributes, 4096)`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "metric",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(description, "Sum") where type == "Sum"`,
 							`convert_sum_to_gauge() where name == "system.processes.count"`,
 							`convert_gauge_to_sum("cumulative", false) where name == "prometheus_metric"`,
 							`aggregate_on_attributes("sum") where name == "system.memory.usage"`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "datapoint",
-						"statements": []interface{}{
+						"statements": []any{
 							`limit(attributes, 100, ["host.name"])`,
 							`truncate_all(attributes, 4096)`,
 						},
 					},
 				},
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`keep_keys(attributes, ["service.name", "service.namespace", "cloud.region"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "log",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(severity_text, "FAIL") where body == "request failed"`,
 							`replace_all_matches(attributes, "/user/*/list/*", "/user/{userId}/list/{listId}")`,
 							`replace_all_patterns(attributes, "value", "/account/\\d{4}", "/account/{accountId}")`,
@@ -639,6 +670,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -685,53 +717,54 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"error_mode": "propagate",
-				"trace_statements": []interface{}{
-					map[string]interface{}{
+				"trace_statements": []any{
+					map[string]any{
 						"context": "span",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(name, "bear") where attributes["http.path"] == "/animal"`,
 							`keep_keys(attributes, ["http.method", "http.path"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["name"], "bear")`,
 						},
 					},
 				},
-				"metric_statements": []interface{}{
-					map[string]interface{}{
+				"metric_statements": []any{
+					map[string]any{
 						"context": "datapoint",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(metric.name, "bear") where attributes["http.path"] == "/animal"`,
 							`keep_keys(attributes, ["http.method", "http.path"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["name"], "bear")`,
 						},
 					},
 				},
-				"log_statements": []interface{}{
-					map[string]interface{}{
+				"log_statements": []any{
+					map[string]any{
 						"context": "log",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(body, "bear") where attributes["http.path"] == "/animal"`,
 							`keep_keys(attributes, ["http.method", "http.path"])`,
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"context": "resource",
-						"statements": []interface{}{
+						"statements": []any{
 							`set(attributes["name"], "bear")`,
 						},
 					},
 				},
+				"profile_statements": []any{},
 			},
 		},
 		{
@@ -863,10 +896,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			// Validate the two configs
 			require.NoError(t, actual.Validate())
-			require.NoError(t, expectedCfg.Validate())
+			// Don't validate expectedCfg, because it contains internal slices
+			// with OTTL functions that aren't part of the config -
+			// they are just a way to store internal state.
+			// The validation would fail because those functions won't be registered.
+			// You'd have to register those functions by creating a factory first.
 
-			// Compare the two configs
-			require.Equal(t, expectedCfg, *actual)
+			// Compare the two configs by marshaling to JSON.
+			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
 }

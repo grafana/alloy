@@ -13,8 +13,8 @@ import (
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
-	"github.com/prometheus-community/postgres_exporter/cmd/postgres_exporter"
 	"github.com/prometheus-community/postgres_exporter/collector"
+	postgres_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -38,7 +38,17 @@ type Config struct {
 	// EnabledCollectors is a list of additional collectors to enable. NOTE: Due to limitations of the postgres_exporter,
 	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
 	// user-facing docs for more information.
-	EnabledCollectors []string
+	EnabledCollectors  []string
+	StatStatementFlags *StatStatementFlags
+}
+
+// Config for the stat_statement collector flags
+type StatStatementFlags struct {
+	IncludeQuery     bool
+	QueryLength      uint
+	Limit            uint
+	ExcludeDatabases []string
+	ExcludeUsers     []string
 }
 
 // Name returns the name of the integration this config is for.
@@ -153,18 +163,17 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	logger := slog.New(logging.NewSlogGoKitHandler(log))
 
 	e := postgres_exporter.NewExporter(
 		dsns,
+		logger,
 		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
 		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
 		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
 		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
 		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
-		postgres_exporter.WithLogger(logger),
 		postgres_exporter.WithMetricPrefix("pg"),
 	)
 
@@ -173,11 +182,31 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e)), nil
 	}
 
+	// Build per-instance collector options.
+	collectorOpts := []collector.Option{
+		collector.WithCollectionTimeout("10s"),
+	}
+	if cfg.StatStatementFlags != nil {
+		collectorOpts = append(collectorOpts, collector.WithStatStatementsConfig(collector.StatStatementsConfig{
+			IncludeQuery:     cfg.StatStatementFlags.IncludeQuery,
+			QueryLength:      cfg.StatStatementFlags.QueryLength,
+			Limit:            cfg.StatStatementFlags.Limit,
+			ExcludeDatabases: cfg.StatStatementFlags.ExcludeDatabases,
+			ExcludeUsers:     cfg.StatStatementFlags.ExcludeUsers,
+		}))
+	}
+
 	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
 	// However, these can only work for the first DSN provided. This matches the current implementation of the exporter.
 	// TODO: Once https://github.com/prometheus-community/postgres_exporter/issues/999 is addressed, update the exporter
 	// and change this.
-	c, err := collector.NewPostgresCollector(logger, cfg.ExcludeDatabases, dsns[0], cfg.EnabledCollectors)
+	c, err := collector.NewPostgresCollector(
+		logger,
+		cfg.ExcludeDatabases,
+		dsns[0],
+		cfg.EnabledCollectors,
+		collectorOpts...,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
 	}

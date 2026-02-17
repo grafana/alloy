@@ -1,0 +1,14 @@
+{
+  "name": "@grafana/alloy-release-please-runner",
+  "version": "0.1.0",
+  "description": "Custom release-please runner with minor-only versioning strategy",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "release-please": "node index.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^22.0.1",
+    "release-please": "^17.1.3"
+  }
+}

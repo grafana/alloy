@@ -13,6 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configcompression"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
@@ -23,24 +24,35 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			TimeoutSettings: exporterhelper.TimeoutConfig{
 				Timeout: 5 * time.Second,
 			},
-			QueueSettings: exporterhelper.QueueBatchConfig{
-				Enabled:      true,
-				NumConsumers: 10,
-				QueueSize:    1000,
-				Sizer:        exporterhelper.RequestSizerTypeRequests,
-			},
+			QueueBatchConfig: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
 			Logs: kafkaexporter.SignalConfig{
-				Topic:    "otlp_logs",
-				Encoding: "otlp_proto",
+				Topic:                "otlp_logs",
+				TopicFromMetadataKey: "",
+				Encoding:             "otlp_proto",
 			},
 			Metrics: kafkaexporter.SignalConfig{
-				Topic:    "otlp_metrics",
-				Encoding: "otlp_proto",
+				Topic:                "otlp_metrics",
+				TopicFromMetadataKey: "",
+				Encoding:             "otlp_proto",
 			},
 			Traces: kafkaexporter.SignalConfig{
-				Topic:    "otlp_spans",
-				Encoding: "otlp_proto",
+				Topic:                "otlp_spans",
+				TopicFromMetadataKey: "",
+				Encoding:             "otlp_proto",
 			},
+			Profiles: kafkaexporter.SignalConfig{
+				Topic:                "",
+				TopicFromMetadataKey: "",
+				Encoding:             "",
+			},
+			Topic:                                "",
+			IncludeMetadataKeys:                  []string(nil),
+			TopicFromAttribute:                   "",
+			Encoding:                             "",
+			PartitionTracesByID:                  false,
+			PartitionMetricsByResourceAttributes: false,
+			PartitionLogsByResourceAttributes:    false,
+			PartitionLogsByTraceID:               false,
 			BackOffConfig: configretry.BackOffConfig{
 				Enabled:             true,
 				InitialInterval:     5 * time.Second,
@@ -52,7 +64,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			ClientConfig: configkafka.ClientConfig{
 				Brokers:         []string{"localhost:9092"},
 				ProtocolVersion: "2.0.0",
-				ClientID:        "sarama",
+				ClientID:        "otel-collector",
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -69,6 +81,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				CompressionParams: configcompression.CompressionParams{
 					Level: 0,
 				},
+				AllowAutoTopicCreation: true,
 			},
 		}
 	}
@@ -158,6 +171,38 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: defaultExpected(),
 		},
 		{
+			testName: "Partition by resource attributes",
+			cfg: `
+				protocol_version = "2.0.0"
+				partition_traces_by_id = true
+				partition_metrics_by_resource_attributes = true
+				partition_logs_by_resource_attributes = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.PartitionTracesByID = true
+				cfg.PartitionMetricsByResourceAttributes = true
+				cfg.PartitionLogsByResourceAttributes = true
+				return cfg
+			}(),
+		},
+		{
+			testName: "Partition logs by trace id",
+			cfg: `
+				protocol_version = "2.0.0"
+				partition_traces_by_id = true
+				partition_metrics_by_resource_attributes = true
+				partition_logs_by_trace_id = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.PartitionTracesByID = true
+				cfg.PartitionMetricsByResourceAttributes = true
+				cfg.PartitionLogsByTraceID = true
+				return cfg
+			}(),
+		},
+		{
 			testName: "Explicit",
 			cfg: `
 				protocol_version = "2.0.0"
@@ -169,6 +214,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				encoding = "otlp_json"
 				partition_traces_by_id = true
 				partition_metrics_by_resource_attributes = true
+				partition_logs_by_resource_attributes = true
 				timeout = "12s"
 
 				authentication {
@@ -229,23 +275,31 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      true,
+				QueueBatchConfig: configoptional.Some(exporterhelper.QueueBatchConfig{
 					NumConsumers: 11,
 					QueueSize:    1001,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
-				},
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
+				}),
 				Logs: kafkaexporter.SignalConfig{
-					Topic:    "logs_test_topic",
-					Encoding: "raw",
+					Topic:                "logs_test_topic",
+					TopicFromMetadataKey: "",
+					Encoding:             "raw",
 				},
 				Metrics: kafkaexporter.SignalConfig{
-					Topic:    "metrics_test_topic",
-					Encoding: "otlp_json",
+					Topic:                "metrics_test_topic",
+					TopicFromMetadataKey: "",
+					Encoding:             "otlp_json",
 				},
 				Traces: kafkaexporter.SignalConfig{
-					Topic:    "spans_test_topic",
-					Encoding: "zipkin_json",
+					Topic:                "spans_test_topic",
+					TopicFromMetadataKey: "",
+					Encoding:             "zipkin_json",
+				},
+				Profiles: kafkaexporter.SignalConfig{
+					Topic:                "",
+					TopicFromMetadataKey: "",
+					Encoding:             "",
 				},
 				BackOffConfig: configretry.BackOffConfig{
 					Enabled:             true,
@@ -282,11 +336,16 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					CompressionParams: configcompression.CompressionParams{
 						Level: 9,
 					},
-					FlushMaxMessages: 101,
+					FlushMaxMessages:       101,
+					AllowAutoTopicCreation: true,
 				},
+				Topic:                                "",
+				IncludeMetadataKeys:                  []string(nil),
 				TopicFromAttribute:                   "my-attr",
+				Encoding:                             "",
 				PartitionTracesByID:                  true,
 				PartitionMetricsByResourceAttributes: true,
+				PartitionLogsByResourceAttributes:    true,
 			},
 		},
 	}

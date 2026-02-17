@@ -13,9 +13,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
+	pyrotestlogger "github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 	"github.com/grafana/alloy/syntax"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -25,6 +24,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/atomic"
 )
 
@@ -85,19 +85,24 @@ func Test_Write_FanOut(t *testing.T) {
 			s.Close()
 		}
 	}()
+
 	createReceiver := func(t *testing.T, arg Arguments) pyroscope.Appendable {
 		t.Helper()
 		var wg sync.WaitGroup
 		wg.Add(1)
-		c, err := New(component.Options{
-			ID:         "1",
-			Logger:     util.TestAlloyLogger(t),
-			Registerer: prometheus.NewRegistry(),
-			OnStateChange: func(e component.Exports) {
+		c, err := New(
+			pyrotestlogger.TestLogger(t),
+			noop.Tracer{},
+			prometheus.NewRegistry(),
+			func(e Exports) {
 				defer wg.Done()
-				export = e.(Exports)
+				export = e
 			},
-		}, arg)
+			"Alloy/239",
+			"",
+			t.TempDir(),
+			arg,
+		)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
@@ -119,7 +124,7 @@ func Test_Write_FanOut(t *testing.T) {
 		}), []*pyroscope.RawSample{
 			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
-		require.EqualErrorf(t, err, "unknown: test", "expected error to be test")
+		require.ErrorContains(t, err, "unknown: test")
 		require.Equal(t, serverCount, pushTotal.Load())
 	})
 
@@ -165,15 +170,19 @@ func Test_Write_Update(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "1",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
+	c, err := New(
+		pyrotestlogger.TestLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
 			defer wg.Done()
-			export = e.(Exports)
+			export = e
 		},
-	}, argument)
+		"Alloy/239",
+		"",
+		t.TempDir(),
+		argument,
+	)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -303,15 +312,19 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 	wg.Add(1)
 	var err error
 	s.arguments = argument
-	s.component, err = New(component.Options{
-		ID:         "test-write-appendingest",
-		Logger:     util.TestAlloyLogger(s.T()),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
+	s.component, err = New(
+		pyrotestlogger.TestLogger(s.T()),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
 			defer wg.Done()
-			s.export = e.(Exports)
+			s.export = e
 		},
-	}, argument)
+		"Alloy/239",
+		"",
+		s.T().TempDir(),
+		argument,
+	)
 	s.Require().NoError(err)
 
 	go s.component.Run(s.ctx)
@@ -413,7 +426,7 @@ func (s *AppendIngestTestSuite) TestErrorHandling() {
 	})
 
 	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
-	s.ErrorContains(err, "remote error for endpoint[1]: pyroscope write error: status=400 msg=I don't like your profile")
+	s.ErrorContains(err, "remote error: pyroscope write error: status=400 msg=I don't like your profile")
 }
 
 func (s *AppendIngestTestSuite) TestRetryLogic() {
@@ -583,15 +596,19 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	var wg sync.WaitGroup
 	var export Exports
 	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "test-write-fanout-validate-labels",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
+	c, err := New(
+		pyrotestlogger.TestLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
 			defer wg.Done()
-			export = e.(Exports)
+			export = e
 		},
-	}, argument)
+		"Alloy/239",
+		"",
+		t.TempDir(),
+		argument,
+	)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

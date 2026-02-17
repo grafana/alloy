@@ -26,8 +26,15 @@ type Target struct {
 var (
 	seps = []byte{'\xff'}
 	// used in tests to simulate hash conflicts
-	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
-	stringSlicesPool = sync.Pool{New: func() interface{} { return make([]string, 0, 20) }}
+	labelSetEqualsFn  = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	stringSlicesPool  = sync.Pool{New: func() any { return make([]string, 0, 20) }}
+	borrowLabelsSlice = func() []string {
+		return stringSlicesPool.Get().([]string)
+	}
+	releaseLabelsSlice = func(labels []string) {
+		// We can ignore linter warning here, because slice headers are small and the underlying array will be reused.
+		stringSlicesPool.Put(labels[:0]) //nolint:staticcheck // SA6002
+	}
 
 	_ syntax.Capsule                = Target{}
 	_ syntax.ConvertibleIntoCapsule = Target{}
@@ -68,10 +75,10 @@ func NewTargetFromSpecificAndBaseLabelSet(own, group commonlabels.LabelSet) Targ
 // NewTargetFromModelLabels creates a target from model Labels.
 // NOTE: this is not optimised and should be avoided on a hot path.
 func NewTargetFromModelLabels(labels modellabels.Labels) Target {
-	l := make(commonlabels.LabelSet, len(labels))
-	for _, label := range labels {
+	l := make(commonlabels.LabelSet, labels.Len())
+	labels.Range(func(label modellabels.Label) {
 		l[commonlabels.LabelName(label.Name)] = commonlabels.LabelValue(label.Value)
-	}
+	})
 	return NewTargetFromLabelSet(l)
 }
 
@@ -86,17 +93,13 @@ func NewTargetFromMap(m map[string]string) Target {
 // PromLabels converts this target into prometheus/prometheus/model/labels.Labels. It is not efficient and should be
 // avoided on a hot path.
 func (t Target) PromLabels() modellabels.Labels {
-	// This method allocates less than Builder or ScratchBuilder, as proven by benchmarks.
-	lb := make([]modellabels.Label, 0, t.Len())
+	builder := modellabels.NewScratchBuilder(t.Len())
 	t.ForEachLabel(func(key string, value string) bool {
-		lb = append(lb, modellabels.Label{
-			Name:  key,
-			Value: value,
-		})
+		builder.Add(key, value)
 		return true
 	})
-	slices.SortFunc(lb, func(a, b modellabels.Label) int { return strings.Compare(a.Name, b.Name) })
-	return lb
+	builder.Sort()
+	return builder.Labels()
 }
 
 func (t Target) NonReservedLabelSet() commonlabels.LabelSet {
@@ -178,7 +181,7 @@ func (t Target) Len() int {
 func (t Target) AlloyCapsule() {}
 
 // ConvertInto is called by Alloy syntax to try converting Target to another type.
-func (t Target) ConvertInto(dst interface{}) error {
+func (t Target) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
 		result := make(map[string]syntax.Value, t.Len())
@@ -204,7 +207,7 @@ func (t Target) ConvertInto(dst interface{}) error {
 }
 
 // ConvertFrom is called by Alloy syntax to try converting from another type to Target.
-func (t *Target) ConvertFrom(src interface{}) error {
+func (t *Target) ConvertFrom(src any) error {
 	switch src := src.(type) {
 	case map[string]syntax.Value:
 		labelSet := make(commonlabels.LabelSet, len(src))
@@ -288,8 +291,8 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
-	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck //TODO(@piotr) take a look at this optimization SA6002
+	labelsInOrder := borrowLabelsSlice()
+	defer releaseLabelsSlice(labelsInOrder)
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -302,8 +305,8 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
-	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck //TODO(@piotr) take a look at this optimization SA6002
+	labelsInOrder := borrowLabelsSlice()
+	defer releaseLabelsSlice(labelsInOrder)
 
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))
@@ -312,10 +315,9 @@ func (t Target) groupLabelsHash() uint64 {
 	return t.hashLabelsInOrder(labelsInOrder)
 }
 
-// NOTE 1: This function is copied from Prometheus codebase and adapted to work correctly with Alloy types.
-// NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have
-//
-//	smooth rollouts without duplicated or missing data. There are tests to verify this behaviour. Do not change it.
+// NOTE 1: This function is copied from Prometheus codebase (labels.StableHash()) and adapted to work correctly with Alloy types.
+// NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have smooth clustering
+// rollouts without duplicated or missing scraping of targets. There are tests to verify this behaviour. Do not change it.
 func (t Target) hashLabelsInOrder(order []string) uint64 {
 	// This optimisation is adapted from prometheus/model/labels.
 	// Use xxhash.Sum64(b) for fast path as it's faster.

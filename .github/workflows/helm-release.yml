@@ -21,14 +21,14 @@ jobs:
       chartpath: ${{ steps.list-changed.outputs.chartpath }}
     steps:
       - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           path: source
           persist-credentials: false
 
       - name: Install chart-testing
-        uses: helm/chart-testing-action@0d28d3144d3a25ea2cc349d6e59901c4ff469b3b # v2.7.0
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
 
       - name: List changed charts
         id: list-changed
@@ -74,14 +74,14 @@ jobs:
       id-token: write # Needed to generate app token
     steps:
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
         with:
           repo_secrets: |
             ALLOYBOT_APP_ID=alloybot:app_id
             ALLOYBOT_PRIVATE_KEY=alloybot:private_key
           export_env: false
 
-      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      - uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: app-token
         with:
           app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
@@ -90,7 +90,7 @@ jobs:
           repositories: alloy,helm-charts
 
       - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           path: source
@@ -104,7 +104,7 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Checkout helm-charts
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           repository: grafana/helm-charts
@@ -119,7 +119,7 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Set up Helm
-        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           # renovate: datasource=github-releases packageName=helm/helm
           version: v3.10.3
@@ -171,7 +171,7 @@ jobs:
       # The tag name in grafana/helm-charts is <package>-<version>, while the
       # tag name for grafana/alloy is helm-chart/<version>.
       - name: Make github release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           name: ${{ steps.parse-chart.outputs.packagename }}
           repository: grafana/helm-charts

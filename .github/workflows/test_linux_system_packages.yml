@@ -17,12 +17,12 @@ jobs:
     name: Test Linux system packages
     runs-on: ubuntu-latest
     container:
-      image: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+      image: grafana/alloy-build-image:v0.1.27@sha256:1c3b0de3d5cdd1d2e8b7fab4da70e1bda6629eede4cfaee846d04c4e80f14708
       volumes:
         - /var/run/docker.sock
     steps:
     - name: Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
     - name: Set ownership
@@ -31,7 +31,7 @@ jobs:
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
       with:
         go-version-file: go.mod
         # TODO: Enable caching later

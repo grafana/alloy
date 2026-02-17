@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/exp/api/remote"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -79,7 +80,7 @@ func TestAlloyConfig(t *testing.T) {
 			}
 			`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -91,7 +92,7 @@ func TestAlloyConfig(t *testing.T) {
 			}
 			`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -103,7 +104,7 @@ func TestAlloyConfig(t *testing.T) {
 			}
 			`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV2
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV2MessageType
 			}),
 		},
 		{
@@ -114,7 +115,7 @@ func TestAlloyConfig(t *testing.T) {
 				protobuf_message = "invalid.message"
 			}
 			`,
-			errorMsg: "unknown remote write protobuf message invalid.message",
+			errorMsg: "unknown type for remote write protobuf message invalid.message",
 		},
 		{
 			testName: "RelabelConfig",
@@ -143,6 +144,7 @@ func TestAlloyConfig(t *testing.T) {
 				relabelCfg.SourceLabels = model.LabelNames{"instance"}
 				relabelCfg.TargetLabel = "instance"
 				relabelCfg.Action = "lowercase"
+				relabelCfg.NameValidationScheme = model.LegacyValidation
 
 				c.GlobalConfig.ExternalLabels = labels.FromMap(map[string]string{
 					"cluster": "local",
@@ -153,7 +155,7 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].WriteRelabelConfigs = []*relabel.Config{
 					relabelCfg,
 				}
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -175,7 +177,7 @@ func TestAlloyConfig(t *testing.T) {
 						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
 					},
 				}
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -198,7 +200,7 @@ func TestAlloyConfig(t *testing.T) {
 						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
 					},
 				}
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -211,7 +213,7 @@ func TestAlloyConfig(t *testing.T) {
 			}`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
 				c.RemoteWriteConfigs[0].SigV4Config = &sigv4.SigV4Config{}
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -236,7 +238,7 @@ func TestAlloyConfig(t *testing.T) {
 					Profile:   "example_profile",
 					RoleARN:   "example_role_arn",
 				}
-				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{

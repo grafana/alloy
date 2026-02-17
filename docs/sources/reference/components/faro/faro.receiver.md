@@ -61,11 +61,13 @@ You can use the following blocks with `faro.receiver`:
 | [`server`][server]                           | Configures the HTTP server.                          | no       |
 | `server` >  [`rate_limiting`][rate_limiting] | Configures rate limiting for the HTTP server.        | no       |
 | [`sourcemaps`][sourcemaps]                   | Configures sourcemap retrieval.                      | no       |
+| `sourcemaps` > [`cache`][cache]              | Configures sourcemap caching behavior.               | no       |
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
 
+[cache]: #cache
 [location]: #location
 [output]: #output
 [rate_limiting]: #rate_limiting
@@ -115,15 +117,29 @@ If the `api_key` argument is empty, no authentication checks are performed, and 
 
 The `rate_limiting` block configures rate limiting for client requests.
 
-| Name         | Type     | Description                          | Default | Required |
-|--------------|----------|--------------------------------------|---------|----------|
-| `enabled`    | `bool`   | Whether to enable rate limiting.     | `true`  | no       |
-| `rate`       | `number` | Rate of allowed requests per second. | `50`    | no       |
-| `burst_size` | `number` | Allowed burst size of requests.      | `100`   | no       |
+| Name         | Type     | Description                                   | Default  | Required |
+|--------------|----------|-----------------------------------------------|----------|----------|
+| `enabled`    | `bool`   | Whether to enable rate limiting.              | `true`   | no       |
+| `strategy`   | `string` | The strategy to use for rate limiting.        | `global` | no       |
+| `rate`       | `number` | Rate of allowed requests per second.          | `50`     | no       |
+| `burst_size` | `number` | Allowed burst size of requests.               | `100`    | no       |
+
+The following `strategy` strings are valid:
+
+* `"global"`: Global rate limiting.
+* `"per_app"`: Application/Environment based rate limiting.
 
 Rate limiting functions as a [token bucket algorithm][token-bucket], where a bucket has a maximum capacity for up to `burst_size` requests and refills at a rate of `rate` per second.
 
-Each HTTP request drains the capacity of the bucket by one. After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
+Each HTTP request drains the capacity of the bucket by one. 
+
+After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
+
+When `strategy` is `per_app`, rate limiting is applied per application and environment combination instead of globally.
+
+This prevents one application from affecting the rate limits of other applications sending their data on the same gateway.
+
+The application and environment are extracted from the Faro payload metadata using the `app.name` and `app.environment` fields. If these fields are missing, the request shares a rate limiter with other requests that also lack this metadata.
 
 Configuring the `rate` argument determines how fast the bucket refills, and configuring the `burst_size` argument determines how many requests can be received in a burst before the bucket is empty and starts rejecting requests.
 
@@ -135,7 +151,7 @@ The `sourcemaps` block configures how to retrieve sourcemaps.
 Sourcemaps are then used to transform file and line information from minified code into the file and line information from the original source code.
 
 | Name                    | Type           | Description                                | Default | Required |
-|-------------------------|----------------|--------------------------------------------|---------|----------|
+| ----------------------- | -------------- | ------------------------------------------ | ------- | -------- |
 | `download`              | `bool`         | Whether to download sourcemaps.            | `true`  | no       |
 | `download_from_origins` | `list(string)` | Which origins to download sourcemaps from. | `["*"]` | no       |
 | `download_timeout`      | `duration`     | Timeout when downloading sourcemaps.       | `"1s"`  | no       |
@@ -153,6 +169,25 @@ Setting `download_timeout` to `"0s"` disables timeouts.
 
 To retrieve sourcemaps from disk instead of the network, specify one or more [`location` blocks][location].
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
+
+#### `cache`
+
+The `cache` block configures sourcemap caching behavior.
+
+| Name                     | Type       | Description                                                                               | Default | Required |
+| ------------------------ | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `cleanup_check_interval` | `duration` | How often {{< param "PRODUCT_NAME" >}} checks cached sourcemaps for cleanup.              | `"30s"` | no       |
+| `error_cleanup_interval` | `duration` | How long {{< param "PRODUCT_NAME" >}} waits before retrying a failed source map download. | `"1h"`  | no       |
+| `ttl`                    | `duration` | How long {{< param "PRODUCT_NAME" >}} keeps an unused source map in the cache.            | `inf`   | no       |
+
+By default, {{< param "PRODUCT_NAME" >}} keeps sourcemaps in memory indefinitely.
+Set `ttl` to remove sourcemaps that are not accessed within the specified duration.
+
+{{< param "PRODUCT_NAME" >}} caches errors that occur while downloading or parsing a sourcemap.
+Use `error_cleanup_interval` to control how long these errors remain cached.
+
+Cached sourcemaps are checked for cleanup every 30 seconds by default.
+Set `cleanup_check_interval` to adjust this frequency.
 
 #### `location`
 
@@ -209,9 +244,11 @@ The template value is replaced with the release value provided by the [Faro Web 
 * `faro_receiver_request_message_bytes` (histogram): Size (in bytes) of HTTP requests received from clients.
 * `faro_receiver_response_message_bytes` (histogram): Size (in bytes) of HTTP responses sent to clients.
 * `faro_receiver_inflight_requests` (gauge): Current number of inflight requests.
-* `faro_receiver_sourcemap_cache_size` (counter): Number of items in sourcemap cache per origin.
+* `faro_receiver_sourcemap_cache_size` (gauge): Number of items in sourcemap cache per origin.
 * `faro_receiver_sourcemap_downloads_total` (counter): Total number of sourcemap downloads performed per origin and status.
 * `faro_receiver_sourcemap_file_reads_total` (counter): Total number of sourcemap retrievals using the filesystem per origin and status.
+* `faro_receiver_rate_limiter_active_app` (gauge): Number of active applications with rate limiters. Inactive limiters are cleaned up every 10 minutes.
+* `faro_receiver_rate_limiter_requests_total` (counter): Total number of requests processed by the rate limiter per app/environment.
 
 ## Example
 

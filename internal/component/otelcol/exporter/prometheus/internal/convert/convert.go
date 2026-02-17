@@ -29,7 +29,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	semconv "go.opentelemetry.io/collector/semconv/v1.6.1"
+	semconv "go.opentelemetry.io/otel/semconv/v1.6.1"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -67,6 +67,7 @@ type Options struct {
 	AddMetricSuffixes bool
 	// ResourceToTelemetryConversion controls whether to convert resource attributes to Prometheus-compatible datapoint attributes
 	ResourceToTelemetryConversion bool
+	HonorMetadata                 bool
 }
 
 var _ consumer.Metrics = (*Converter)(nil)
@@ -136,12 +137,17 @@ func (conv *Converter) consumeResourceMetrics(app storage.Appender, rm pmetric.R
 	resAttrs := rm.Resource().Attributes()
 	memResource := conv.getOrCreateResource(rm.Resource())
 
-	if conv.getOpts().IncludeTargetInfo {
-		if err := resourceMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write target_info metadata", "err", err)
-		}
+	opts := conv.getOpts()
+	if opts.IncludeTargetInfo {
+		// Write series data first, so the series exists before we write metadata.
 		if err := memResource.WriteTo(app, time.Now()); err != nil {
 			level.Error(conv.log).Log("msg", "failed to write target_info metric", "err", err)
+		}
+		// Write metadata after series data, so the series exists in the appender.
+		if opts.HonorMetadata {
+			if err := resourceMD.WriteTo(app, time.Now()); err != nil {
+				level.Warn(conv.log).Log("msg", "failed to write target_info metadata", "err", err)
+			}
 		}
 	}
 
@@ -177,15 +183,15 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 		instanceLabel string
 	)
 
-	if serviceName, ok := attrs.Get(semconv.AttributeServiceName); ok {
-		if serviceNamespace, ok := attrs.Get(semconv.AttributeServiceNamespace); ok {
+	if serviceName, ok := attrs.Get(string(semconv.ServiceNameKey)); ok {
+		if serviceNamespace, ok := attrs.Get(string(semconv.ServiceNamespaceKey)); ok {
 			jobLabel = fmt.Sprintf("%s/%s", serviceNamespace.AsString(), serviceName.AsString())
 		} else {
 			jobLabel = serviceName.AsString()
 		}
 	}
 
-	if instanceID, ok := attrs.Get(semconv.AttributeServiceInstanceID); ok {
+	if instanceID, ok := attrs.Get(string(semconv.ServiceInstanceIDKey)); ok {
 		instanceLabel = instanceID.AsString()
 	}
 
@@ -196,9 +202,9 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 	attrs.Range(func(k string, v pcommon.Value) bool {
 		// Skip attributes that we used for determining the job and instance
 		// labels.
-		if k == semconv.AttributeServiceName ||
-			k == semconv.AttributeServiceNamespace ||
-			k == semconv.AttributeServiceInstanceID {
+		if k == string(semconv.ServiceNameKey) ||
+			k == string(semconv.ServiceNamespaceKey) ||
+			k == string(semconv.ServiceInstanceIDKey) {
 
 			return true
 		}
@@ -228,12 +234,17 @@ func (conv *Converter) consumeScopeMetrics(app storage.Appender, memResource *me
 	})
 	memScope := conv.getOrCreateScope(memResource, sm.Scope())
 
-	if conv.getOpts().IncludeScopeInfo {
-		if err := scopeMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write otel_scope_info metadata", "err", err)
-		}
+	opts := conv.getOpts()
+	if opts.IncludeScopeInfo {
+		// Write series data first, so the series exists before we write metadata.
 		if err := memScope.WriteTo(app, time.Now()); err != nil {
 			level.Error(conv.log).Log("msg", "failed to write otel_scope_info metric", "err", err)
+		}
+		// Write metadata after series data, so the series exists in the appender.
+		if opts.HonorMetadata {
+			if err := scopeMD.WriteTo(app, time.Now()); err != nil {
+				level.Warn(conv.log).Log("msg", "failed to write otel_scope_info metadata", "err", err)
+			}
 		}
 	}
 
@@ -307,10 +318,8 @@ func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySer
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
-	if err := metricMD.WriteTo(app, time.Now()); err != nil {
-		level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
-	}
 
+	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.Gauge().DataPoints().Len(); dpcount++ {
 		dp := m.Gauge().DataPoints().At(dpcount)
 
@@ -321,6 +330,13 @@ func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySer
 		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
 		if err := writeSeries(app, memSeries, dp, getNumberDataPointValue(dp)); err != nil {
 			level.Error(conv.log).Log("msg", "failed to write metric sample", metricName, "err", err)
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
 		}
 	}
 }
@@ -442,10 +458,8 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
-	if err := metricMD.WriteTo(app, time.Now()); err != nil {
-		level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
-	}
 
+	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.Sum().DataPoints().Len(); dpcount++ {
 		dp := m.Sum().DataPoints().At(dpcount)
 
@@ -463,9 +477,16 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 		if convType == model.MetricTypeCounter {
 			for i := 0; i < dp.Exemplars().Len(); i++ {
 				if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", metricName, "err", err)
+					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", "metric_name", metricName, "err", err)
 				}
 			}
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
 		}
 	}
 }
@@ -485,10 +506,8 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
-	if err := metricMD.WriteTo(app, time.Now()); err != nil {
-		level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
-	}
 
+	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.Histogram().DataPoints().Len(); dpcount++ {
 		dp := m.Histogram().DataPoints().At(dpcount)
 
@@ -604,6 +623,13 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			}
 		}
 	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+		}
+	}
 }
 
 func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
@@ -619,10 +645,8 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
-	if err := metricMD.WriteTo(app, time.Now()); err != nil {
-		level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
-	}
 
+	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.ExponentialHistogram().DataPoints().Len(); dpcount++ {
 		dp := m.ExponentialHistogram().DataPoints().At(dpcount)
 
@@ -657,18 +681,25 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 			}
 		}
 	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+		}
+	}
 }
 
 // Convert Otel Exemplar to Prometheus Exemplar.
 func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Time) exemplar.Exemplar {
-	exemplarLabels := make(labels.Labels, 0)
+	exemplarLabels := labels.NewScratchBuilder(0)
 
 	if traceID := otelExemplar.TraceID(); !traceID.IsEmpty() {
-		exemplarLabels = append(exemplarLabels, labels.Label{Name: "trace_id", Value: hex.EncodeToString(traceID[:])})
+		exemplarLabels.Add("trace_id", hex.EncodeToString(traceID[:]))
 	}
 
 	if spanID := otelExemplar.SpanID(); !spanID.IsEmpty() {
-		exemplarLabels = append(exemplarLabels, labels.Label{Name: "span_id", Value: hex.EncodeToString(spanID[:])})
+		exemplarLabels.Add("span_id", hex.EncodeToString(spanID[:]))
 	}
 
 	var value float64
@@ -679,9 +710,10 @@ func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Ti
 		value = float64(otelExemplar.IntValue())
 	}
 
+	exemplarLabels.Sort()
 	return exemplar.Exemplar{
 		Value:  value,
-		Labels: exemplarLabels,
+		Labels: exemplarLabels.Labels(),
 		Ts:     timestamp.FromTime(ts),
 	}
 }
@@ -694,10 +726,8 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
-	if err := metricMD.WriteTo(app, time.Now()); err != nil {
-		level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
-	}
 
+	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.Summary().DataPoints().Len(); dpcount++ {
 		dp := m.Summary().DataPoints().At(dpcount)
 
@@ -740,6 +770,13 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			if err := writeSeries(app, quantile, dp, quantileVal); err != nil {
 				level.Error(conv.log).Log("msg", "failed to write histogram quantile sample", "metric name", metricName, "quantile", quantileLabel.Value, "err", err)
 			}
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
 		}
 	}
 }

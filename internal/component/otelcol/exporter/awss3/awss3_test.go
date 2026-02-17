@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -220,12 +221,7 @@ func TestConfig(t *testing.T) {
 					RetryMaxBackoff:   20 * time.Second,
 				},
 				MarshalerName: "otlp_json",
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      true,
-					NumConsumers: 10,
-					QueueSize:    1000,
-					Sizer:        exporterhelper.RequestSizerTypeRequests,
-				},
+				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
 			},
 		},
 		{
@@ -235,7 +231,9 @@ func TestConfig(t *testing.T) {
 			s3_uploader {
 				s3_bucket = "test"
 				s3_prefix = "logs"
+				s3_base_prefix = "base"
 				s3_partition_format = "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+				s3_partition_timezone = "UTC"
 				file_prefix = "prefix"
 				endpoint = "https://s3.amazonaws.com"
 				role_arn = "arn:aws:iam::123456789012:role/test"
@@ -244,35 +242,40 @@ func TestConfig(t *testing.T) {
 				compression = "gzip"
 				region = "us-east-2"
 			}
+			resource_attrs_to_s3 {
+				s3_bucket = "resource_bucket"
+				s3_prefix = "resource_prefix"
+			}
 			`,
 			expected: awss3exporter.Config{
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
 				S3Uploader: awss3exporter.S3UploaderConfig{
-					S3Bucket:          "test",
-					S3Prefix:          "logs",
-					S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
-					FilePrefix:        "prefix",
-					Endpoint:          "https://s3.amazonaws.com",
-					RoleArn:           "arn:aws:iam::123456789012:role/test",
-					S3ForcePathStyle:  true,
-					DisableSSL:        true,
-					Compression:       "gzip",
-					Region:            "us-east-2",
-					ACL:               "",
-					StorageClass:      "STANDARD",
-					RetryMode:         "standard",
-					RetryMaxAttempts:  3,
-					RetryMaxBackoff:   20 * time.Second,
+					S3Bucket:            "test",
+					S3Prefix:            "logs",
+					S3PartitionFormat:   "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+					S3PartitionTimezone: "UTC",
+					S3BasePrefix:        "base",
+					FilePrefix:          "prefix",
+					Endpoint:            "https://s3.amazonaws.com",
+					RoleArn:             "arn:aws:iam::123456789012:role/test",
+					S3ForcePathStyle:    true,
+					DisableSSL:          true,
+					Compression:         "gzip",
+					Region:              "us-east-2",
+					ACL:                 "",
+					StorageClass:        "STANDARD",
+					RetryMode:           "standard",
+					RetryMaxAttempts:    3,
+					RetryMaxBackoff:     20 * time.Second,
+				},
+				ResourceAttrsToS3: awss3exporter.ResourceAttrsToS3{
+					S3Prefix: "resource_prefix",
+					S3Bucket: "resource_bucket",
 				},
 				MarshalerName: "otlp_json",
-				QueueSettings: exporterhelper.QueueBatchConfig{
-					Enabled:      true,
-					NumConsumers: 10,
-					QueueSize:    1000,
-					Sizer:        exporterhelper.RequestSizerTypeRequests,
-				},
+				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
 			},
 		},
 	}

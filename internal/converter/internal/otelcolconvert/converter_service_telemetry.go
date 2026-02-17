@@ -5,11 +5,11 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/token/builder"
-	otel_tel "go.opentelemetry.io/collector/service/telemetry"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	"go.uber.org/zap/zapcore"
 )
 
-func convertTelemetry(file *builder.File, tel otel_tel.Config) diag.Diagnostics {
+func convertTelemetry(file *builder.File, tel *otelconftelemetry.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	diags.AddAll(convertLogging(file, tel.Logs))
@@ -50,7 +50,7 @@ func convertLoggingFormat(encoding string) (logging.Format, diag.Diagnostics) {
 	}
 }
 
-func convertLogging(file *builder.File, tel otel_tel.LogsConfig) diag.Diagnostics {
+func convertLogging(file *builder.File, tel otelconftelemetry.LogsConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	format, formatDiags := convertLoggingFormat(tel.Encoding)
@@ -107,7 +107,7 @@ func convertLogging(file *builder.File, tel otel_tel.LogsConfig) diag.Diagnostic
 // TODO: Support metrics conversion once upstream's "metrics" section is not experimental.
 // We might also need a way to configure somethings in the config file instead of via cmd args.
 // For example, the HTTTP server address.
-func convertMetrics(_ *builder.File, tel otel_tel.MetricsConfig) diag.Diagnostics {
+func convertMetrics(_ *builder.File, tel otelconftelemetry.MetricsConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	if len(tel.Readers) > 0 {
@@ -118,7 +118,7 @@ func convertMetrics(_ *builder.File, tel otel_tel.MetricsConfig) diag.Diagnostic
 }
 
 // TODO: Support metrics conversion once upstream's "traces" section is not experimental.
-func convertTraces(_ *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
+func convertTraces(_ *builder.File, tel otelconftelemetry.TracesConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	if len(tel.Processors) > 0 {

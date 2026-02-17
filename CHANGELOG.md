@@ -1,13 +1,341 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
-> to update the changelog._
+## [1.13.1](https://github.com/grafana/alloy/compare/v1.13.0...v1.13.1) (2026-02-13)
 
-This document contains a historical list of changes between releases. Only
-changes that impact end-user behavior are listed; changes to documentation or
-internal API changes are not present.
 
-Main (unreleased)
+### Bug Fixes 🐛
+
+* **database_observability.mysql:** Make query sample text nullable in MySQL query details collector [backport] ([#5519](https://github.com/grafana/alloy/issues/5519)) ([fc49bfe](https://github.com/grafana/alloy/commit/fc49bfe172aaed8a9ef5ee8bce7e639e59f432fb))
+* **database_observability.mysql:** Skip wait events with `NULL` timer_wait [backport] ([#5521](https://github.com/grafana/alloy/issues/5521)) ([2f43c91](https://github.com/grafana/alloy/commit/2f43c9123ef8ad75af72bd7c85dc3d08b4034ed1))
+* **database_observability.postgres:** Improvements to SET search_path for postgres explain plans [backport] ([#5520](https://github.com/grafana/alloy/issues/5520)) ([ecbb577](https://github.com/grafana/alloy/commit/ecbb577fce3ca5061294aae74406e98f5f2a464a))
+* **loki.process:** Registration of stage.metric when used inside stage.match [backport] ([#5495](https://github.com/grafana/alloy/issues/5495)) ([2bbc37e](https://github.com/grafana/alloy/commit/2bbc37e1c810d4c6c5655ec4204ff7e30a703d05))
+* **loki.source.docker:** Parse timestamp correctly when log line only contains newline [backport] ([#5496](https://github.com/grafana/alloy/issues/5496)) ([55a82f0](https://github.com/grafana/alloy/commit/55a82f0f634f57bbd5634e486afe276d8c176e51))
+* **loki.source.file:** Close file if we cannot find encoding [backport] ([#5531](https://github.com/grafana/alloy/issues/5531)) ([ccda4a5](https://github.com/grafana/alloy/commit/ccda4a50c38e230b2ed9caff718a8487da2b3f73))
+* **prometheus.receive_http:** Bump prometheus patch for bugfix [backport] ([#5516](https://github.com/grafana/alloy/issues/5516)) ([b3531fb](https://github.com/grafana/alloy/commit/b3531fb8730256eac7f34c877fa6cf73c5a8a60b))
+* **scheduling:** Shutdown runnables with a timeout before starting new ones [backport] ([#5443](https://github.com/grafana/alloy/issues/5443)) ([d446610](https://github.com/grafana/alloy/commit/d44661062d11711e9dae216fa98aaad61f027c30))
+
+## [1.13.0](https://github.com/grafana/alloy/compare/v1.12.1...v1.13.0) (2026-02-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **otelcol:** Upgrade to OTel Collector v0.142.0
+* **otelcol.receiver.kafka:** The global `topic` attribute has been deleted; use the `topics` attributes inside the `logs`, `metrics`, and `traces` blocks instead.
+* `otelcol.exporter` > `sending_queue` > `batch` > `min_size` changed from `8192` to `2000` and `max_size` changed from `0` to `3000`
+
+### Features 🌟
+
+* Add a `virtual_node_peer_attributes` and `virtual_node_extra_label` arguments to `otelcol.connector.servicegraph` ([#5058](https://github.com/grafana/alloy/issues/5058)) ([20900c6](https://github.com/grafana/alloy/commit/20900c6cc1c60800b60313c68c6a81834c4adab3))
+* Add an `otelcol.processor.metric_start_time` component ([#5342](https://github.com/grafana/alloy/issues/5342)) ([3fb13ac](https://github.com/grafana/alloy/commit/3fb13ac2809176a043e6021d938479300ba69e77))
+* Add job level `period`, `length`, and `add_cloudwatch_timestamp` options and labels_snake_case to CW exporter [backport] ([#5355](https://github.com/grafana/alloy/issues/5355)) ([60d73b7](https://github.com/grafana/alloy/commit/60d73b7813f2fe1e3c9b2e57e4a84d3be5f310c4))
+* Add missing configuration parameter `deployment_name_from_replicaset` to k8sattributes processor ([#5183](https://github.com/grafana/alloy/issues/5183)) ([b54ca77](https://github.com/grafana/alloy/commit/b54ca777eed56cbbd7f76ed84e71f7b7174747c5))
+* Add parcas symbols upload to pyroscope.ebpf ([#4948](https://github.com/grafana/alloy/issues/4948)) ([30f2242](https://github.com/grafana/alloy/commit/30f2242ca15b9888150f77968f8f5854f1fd37cb))
+* Add sharding for loki.write ([#4882](https://github.com/grafana/alloy/issues/4882)) ([7570d65](https://github.com/grafana/alloy/commit/7570d656498501c8777f7e970108795f7bbf4173))
+* Add unexposed otel engine and extension to codebase and change build structure ([#5114](https://github.com/grafana/alloy/issues/5114)) ([6438176](https://github.com/grafana/alloy/commit/6438176d0451b2ba17feb553eb24f2efeb079310))
+* **beyla.ebpf:** Add meta_cache_address to beyla.ebpf.attributes.kubernetes ([#4871](https://github.com/grafana/alloy/issues/4871)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **beyla.ebpf:** Upgrade Beyla to v2.8.5 ([f1f457f](https://github.com/grafana/alloy/commit/f1f457fa110e97623228426ee36479558a6397d4))
+* Change the defaults for `sending_queue` &gt; `batch` block inside `otelcol.exporter` components ([#5061](https://github.com/grafana/alloy/issues/5061)) ([714a2ed](https://github.com/grafana/alloy/commit/714a2ed6c57b3aa7172b8da194caf1fe8a724680))
+* **cluster:** Support DNS discovery mode prefixes in --cluster.join-addresses flag ([#5034](https://github.com/grafana/alloy/issues/5034)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **converter:** Update promtail converter to use file_match block for loki.source.file ([#4791](https://github.com/grafana/alloy/issues/4791)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Database_observability: add health check collector for postgres component ([#5222](https://github.com/grafana/alloy/issues/5222)) ([80917b1](https://github.com/grafana/alloy/commit/80917b1bc494b22faa4ea8df20c841bfe8579a76))
+* Database_observability: expose `exclude_schemas` and `exclude_databases` settings ([#5334](https://github.com/grafana/alloy/issues/5334)) ([37656f8](https://github.com/grafana/alloy/commit/37656f894551bfd857a5aed88462f87fc5a89361))
+* Database_observability: support Azure cloud provider config data ([#5245](https://github.com/grafana/alloy/issues/5245)) ([d7a469f](https://github.com/grafana/alloy/commit/d7a469fe41c26fd9ddb220bb512b1e942dfae48f))
+* Database_observability: support Azure privatelink db name ([#5260](https://github.com/grafana/alloy/issues/5260)) ([22e4991](https://github.com/grafana/alloy/commit/22e4991e4d21728bb22ab513d513dfc6840311b1))
+* Database_observability.mysql: support excluding schemas in all collectors [backport] ([#5380](https://github.com/grafana/alloy/issues/5380)) ([d67268c](https://github.com/grafana/alloy/commit/d67268c7d3013015bb67babddd252a3a955deb01))
+* Database_observability.postgres: support excluding DBs in all collectors [backport] ([#5383](https://github.com/grafana/alloy/issues/5383)) ([165492c](https://github.com/grafana/alloy/commit/165492c8b2cd63d73179111f02cddf3d6d567f90))
+* **database_observability:** Add health_check collector to validate configuration ([#5115](https://github.com/grafana/alloy/issues/5115)) ([6d96740](https://github.com/grafana/alloy/commit/6d96740f7b758ce8ffa1872108ffacdbda99b276))
+* **database_observability:** Always send explain plan log for each query including status ([#4969](https://github.com/grafana/alloy/issues/4969)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **database_observability:** Append cloud provider information labels to metrics ([#4942](https://github.com/grafana/alloy/issues/4942)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **database_observability:** Stop tracking own instrumentation queries ([#4991](https://github.com/grafana/alloy/issues/4991)) ([0b55557](https://github.com/grafana/alloy/commit/0b55557657fa3e9f1a3463444c372b6fdde4bcf2))
+* **deps:** Update Prometheus to v3.8.0 and Loki to v3.6.2 ([#5035](https://github.com/grafana/alloy/issues/5035)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Expose otel subcommand and add user-facing documentation ([#5244](https://github.com/grafana/alloy/issues/5244)) ([93f20b8](https://github.com/grafana/alloy/commit/93f20b83c247c6e9444444644c59278d0015e330))
+* Improve faro.receiver.sourcemaps caching strategy ([#4337](https://github.com/grafana/alloy/issues/4337)) ([41e655c](https://github.com/grafana/alloy/commit/41e655c75da5f78645d617ab34b778a1db7479e3))
+* **loki.process:** Mark stage.windowsevent as GA ([#4879](https://github.com/grafana/alloy/issues/4879)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **loki.source.file:** Refactor tailer to reduce resource usage ([#5003](https://github.com/grafana/alloy/issues/5003)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **loki.source.syslog:** Implement livedebugging support ([#5216](https://github.com/grafana/alloy/issues/5216)) ([e26badb](https://github.com/grafana/alloy/commit/e26badb1bb22d0dbe418bffe2e14e3b2dfc0eb08))
+* **loki.source.syslog:** Support cisco-specific syslog fields ([#5165](https://github.com/grafana/alloy/issues/5165)) ([3230ba0](https://github.com/grafana/alloy/commit/3230ba0560991c28e267e0f27c5f6ac3a2be5242))
+* **loki.source.syslog:** Support raw format ([#5140](https://github.com/grafana/alloy/issues/5140)) ([923d127](https://github.com/grafana/alloy/commit/923d127c50949f88a37ac808154240de0649df09))
+* **mimir.alerts.kubernetes:** Add `alertmanagerconfig_matcher` block to change the matcher strategy ([f2b9671](https://github.com/grafana/alloy/commit/f2b9671603375b2f42c81fa6195b994c3436bfec))
+* **mimir.alerts.kubernetes:** Add component to discover AlertmanagerConfig Kubernetes resources ([#3448](https://github.com/grafana/alloy/issues/3448)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **mixin:** Provide rendered mixin outputs ([#5118](https://github.com/grafana/alloy/issues/5118)) ([738b9fb](https://github.com/grafana/alloy/commit/738b9fb4e99595d5d202db9dbc89f71e95402ce0))
+* **otelcol.auth.basic:** Add htpasswd file based authentication ([#3916](https://github.com/grafana/alloy/issues/3916)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **otelcol.connector.count:** Add component to count spans, metrics, and logs ([#4913](https://github.com/grafana/alloy/issues/4913)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **otelcol.exporter.file:** Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute ([#4475](https://github.com/grafana/alloy/issues/4475)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **otelcol.exporter.prometheus:** Add `honor_metadata` config argument [backport] ([#5439](https://github.com/grafana/alloy/issues/5439)) ([32cb175](https://github.com/grafana/alloy/commit/32cb175fca3bf00250fdc2508a92024d2ac847ba))
+* **otelcol.receiver.awss3:** Add experimental receiver for traces stored in S3 ([#4928](https://github.com/grafana/alloy/issues/4928)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **otelcol.receiver.kafka:** Deprecate the `topic` attribute inside the `logs`, `metrics`, and `traces` blocks in favour of a new `topics` attribute. ([f1f457f](https://github.com/grafana/alloy/commit/f1f457fa110e97623228426ee36479558a6397d4))
+* **otelcol.receiver.kafka:** Remove the global `topic` attribute ([f1f457f](https://github.com/grafana/alloy/commit/f1f457fa110e97623228426ee36479558a6397d4))
+* **otelcol:** Upgrade to OTel Collector v0.142.0 ([f1f457f](https://github.com/grafana/alloy/commit/f1f457fa110e97623228426ee36479558a6397d4))
+* **prometheus.echo:** Add component for local metrics inspection in exposition format ([#4105](https://github.com/grafana/alloy/issues/4105)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **prometheus.exporter.cloudwatch:** Add delay option to account for CloudWatch ingestion latency ([#4936](https://github.com/grafana/alloy/issues/4936)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **prometheus.exporter.databricks:** Add Databricks exporter component ([#5054](https://github.com/grafana/alloy/issues/5054)) ([4442836](https://github.com/grafana/alloy/commit/44428361a210476c2fa89c4dbfd447a091391488))
+* **prometheus.operator.scrapeconfigs:** Add HTTP service discovery support via httpSDConfigs ([#4826](https://github.com/grafana/alloy/issues/4826)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **prometheus.remote_write:** Add metadata support to `prometheus.remote_write` component, but only if Remote Write v2 has been configured. In order for `prometheus.remote_write` to receive metadata, `prometheus.scrape` must be configured with `honor_metadata = true`. ([#5045](https://github.com/grafana/alloy/issues/5045)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **prometheus:** Reduce resource overhead by removing unnecessary labelstore usage ([#4890](https://github.com/grafana/alloy/issues/4890)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **pyroscope.ebpf:** Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile ([#4824](https://github.com/grafana/alloy/issues/4824)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **pyroscope.enrich:** Add experimental component to enrich profiles using discovery labels ([#4797](https://github.com/grafana/alloy/issues/4797)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Strip comments from normalized sql text in `database_observability.postgres` ([#5005](https://github.com/grafana/alloy/issues/5005)) ([a58721a](https://github.com/grafana/alloy/commit/a58721a0aa8e076fc66508f22e3f8317cee933d1))
+* Support setting default scrape limit for prometheus.operator components ([#5280](https://github.com/grafana/alloy/issues/5280)) ([40ffe08](https://github.com/grafana/alloy/commit/40ffe08377bebbbf8550b07b144c7180c54cb3cb))
+* **tracing:** Add send_traceparent option to enable traceparent header propagation ([#4874](https://github.com/grafana/alloy/issues/4874)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+
+
+### Bug Fixes 🐛
+
+* Add support for compressed files for tail package [backport] ([#5415](https://github.com/grafana/alloy/issues/5415)) ([311662f](https://github.com/grafana/alloy/commit/311662f5a163d4ec6b2f75fcd725fde980a421ac))
+* Allow loki.source.file to read renaming lines of a deleted file before it tries to re open a new one  ([#5270](https://github.com/grafana/alloy/issues/5270)) ([f8b1de8](https://github.com/grafana/alloy/commit/f8b1de892a8235edbf098131f8dc58c388f1d961))
+* Compute signatures from files so that loki.source.file can handle atomic writes ([#5143](https://github.com/grafana/alloy/issues/5143)) ([3090c4a](https://github.com/grafana/alloy/commit/3090c4a141430444864f6f5c1476265a14ed212c))
+* **converter:** Fix promtail converter to limit Kubernetes discovery to same node ([#5046](https://github.com/grafana/alloy/issues/5046)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Database_observability: add Azure provider relabeling rules [backport] ([#5382](https://github.com/grafana/alloy/issues/5382)) ([c121178](https://github.com/grafana/alloy/commit/c12117889fbad3de21962111b18c55327536e34a))
+* Database_observability: allow setting limit for mysql query_details ([#5314](https://github.com/grafana/alloy/issues/5314)) ([085f300](https://github.com/grafana/alloy/commit/085f300442915b85bde472bd0e5c410b9ee66ed3))
+* Database_observability: fix race in postgres query samples test ([#5315](https://github.com/grafana/alloy/issues/5315)) ([4f01753](https://github.com/grafana/alloy/commit/4f01753b6e393e64b4969ea77f5d72186db5c60e))
+* Database_observability: grant check only require SELECT *.* on perf_schema ([#5294](https://github.com/grafana/alloy/issues/5294)) ([490017c](https://github.com/grafana/alloy/commit/490017cdd16eebdb586f177d13c25d40ac796f8e))
+* Database_observability: reuse cloud provider regexes ([#5262](https://github.com/grafana/alloy/issues/5262)) ([6009c54](https://github.com/grafana/alloy/commit/6009c547c54defc54aed630f64c3f0fda8d75223))
+* Database_observability: update BackendXID type to int64 to better map to PG xid [backport] ([#5373](https://github.com/grafana/alloy/issues/5373)) ([1cb4b0f](https://github.com/grafana/alloy/commit/1cb4b0fc67a2c6b15439dce1c0e93ca3465afd0f))
+* Database_observability: update BackendXmin type to int64 to better map to PG BIGINT ([#5296](https://github.com/grafana/alloy/issues/5296)) ([d45ccc0](https://github.com/grafana/alloy/commit/d45ccc0f63d630c30a24a21a80ff6789b458edba))
+* **database_observability.mysql:** Add setup_actors collector to avoid tracking own queries ([#4978](https://github.com/grafana/alloy/issues/4978)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **database_observability.mysql:** Replace server_id label with hash from server_uuid and hostname ([#4943](https://github.com/grafana/alloy/issues/4943)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **database_observability.postgres:** Fix schema_details collection for mixed case table names ([#4872](https://github.com/grafana/alloy/issues/4872)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **database_observability:** Improve postgres version parsing for explain plans in database_observability component ([#5131](https://github.com/grafana/alloy/issues/5131)) ([23c7f37](https://github.com/grafana/alloy/commit/23c7f37afc25dabe267bb60d8b0ee0473f073e5b))
+* **database_observability:** Skip explain plans which lookup individual records and return no rows ([#5203](https://github.com/grafana/alloy/issues/5203)) ([b7c7cbb](https://github.com/grafana/alloy/commit/b7c7cbbf0a9542af8b89592b2ff011df8a2a362e))
+* **deps:** Update npm dependencies ([#5190](https://github.com/grafana/alloy/issues/5190)) ([cd027e2](https://github.com/grafana/alloy/commit/cd027e2f23f2e6649154f46ab953ac840c956d3a))
+* **docker:** Fix log corruption for multiplexed long lines ([#4713](https://github.com/grafana/alloy/issues/4713)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Ensure the squid exporter wrapper properly brackets ipv6 addresses ([#5199](https://github.com/grafana/alloy/issues/5199)) ([ee23162](https://github.com/grafana/alloy/commit/ee2316252e6e0ee901b0ff57c55d6d07750d14ab))
+* Guard pyroscope otel profiler code with unix go build tag [backport] ([#5360](https://github.com/grafana/alloy/issues/5360)) ([b1ecdb6](https://github.com/grafana/alloy/commit/b1ecdb6736d5f41923e4b54e54b23fb6d59e1e32))
+* HTTP/2 is no longer always disabled in loki.write ([#5267](https://github.com/grafana/alloy/issues/5267)) ([1c97c2d](https://github.com/grafana/alloy/commit/1c97c2d569fcda2f6761534150b063d1404dc388))
+* Invalid handling of `id` in `foreach` when using discovery components ([#5322](https://github.com/grafana/alloy/issues/5322)) ([61fe184](https://github.com/grafana/alloy/commit/61fe1845d3b109992cbb0ec99a062ac113c1a411)), closes [#5297](https://github.com/grafana/alloy/issues/5297)
+* Issues when reading files using non UTF-8 encoding in loki.source.file  ([#5259](https://github.com/grafana/alloy/issues/5259)) ([4740276](https://github.com/grafana/alloy/commit/4740276083121e5b1fac8e4ea0bedba96e4190e5))
+* **loki.process:** Implement encoding.TextMarshaler and encoding.TextUnmarshaler for TruncateSourceType [backport] ([#5428](https://github.com/grafana/alloy/issues/5428)) ([3585393](https://github.com/grafana/alloy/commit/3585393d187432a4cf75fe59ad89906568e7b2eb))
+* **loki.process:** Remove extraneous output stage from cri stage pipeline ([#5002](https://github.com/grafana/alloy/issues/5002)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **loki.source.api:** Prevent dropping request when relabel rules drop a specific stream. ([#4834](https://github.com/grafana/alloy/issues/4834)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **loki.source.file:** Make sure position is recorded when component exit [backport] ([#5418](https://github.com/grafana/alloy/issues/5418)) ([64fb278](https://github.com/grafana/alloy/commit/64fb278cec9b20b935f951b7a96144d8482efc6c))
+* **loki.source.file:** Update `tail_from_end` to properly handle file encoding [backport] ([#5436](https://github.com/grafana/alloy/issues/5436)) ([731e8e5](https://github.com/grafana/alloy/commit/731e8e596d3baa5f0980103a93247fba23572f54))
+* **mimir.alerts.kubernetes:** Fix crash when using Kubernetes secret or configmap in AlertmanagerConfig ([#5010](https://github.com/grafana/alloy/issues/5010)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **mixin:** Correct invalid queries in alloy logs dashboard  ([#5123](https://github.com/grafana/alloy/issues/5123)) ([ad8efd3](https://github.com/grafana/alloy/commit/ad8efd3511d3a64b9cd7aeb5d6c566b061c29918))
+* Only alert on cluster drift when cluster_name is set ([#5181](https://github.com/grafana/alloy/issues/5181)) ([8b6f056](https://github.com/grafana/alloy/commit/8b6f056e39f0348f5c7121e938d86d15a04a5e99))
+* **otelcol:** Allow configuration of force_attempt_http2 and default to true ([#5050](https://github.com/grafana/alloy/issues/5050)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Perform drain when file is deleted in tail package ([#5139](https://github.com/grafana/alloy/issues/5139)) ([2e48867](https://github.com/grafana/alloy/commit/2e48867c639c5170c547443f16227133d6c6f604))
+* Preserve meta labels in loki.source.podlogs ([#5097](https://github.com/grafana/alloy/issues/5097)) ([23d787c](https://github.com/grafana/alloy/commit/23d787c5c607a077dbb28dd382e6543aeee115fe))
+* Prevent panic in import.git when update fails ([#5198](https://github.com/grafana/alloy/issues/5198)) ([577a591](https://github.com/grafana/alloy/commit/577a591537aeae7dfd3758c30dc2980af622a415))
+* **prometheus.exporter.gcp:** Preserve colons in extra_filters filter expressions ([#5018](https://github.com/grafana/alloy/issues/5018)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **prometheus.operator:** Enable native histogram ingestion in internal scrape manager ([#4750](https://github.com/grafana/alloy/issues/4750)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* **relabel:** Fix default values for source_labels to prevent labeldrop issues ([#5059](https://github.com/grafana/alloy/issues/5059)) ([08796f8](https://github.com/grafana/alloy/commit/08796f80fbc0cde6f278ed0a1022b3aced36e036))
+* Remove Parca debug info upload from user configuration [backport] ([#5395](https://github.com/grafana/alloy/issues/5395)) ([58eb9cc](https://github.com/grafana/alloy/commit/58eb9cc3ed79bc4a84c59623adca43f10f0bfceb))
+* Revert doublestar v4 update [backport] ([#5435](https://github.com/grafana/alloy/issues/5435)) ([0e9e615](https://github.com/grafana/alloy/commit/0e9e615c26bb2ca2aef526259147e9f9b2f219fe))
+* Set content-encoding header in loki.write ([#5346](https://github.com/grafana/alloy/issues/5346)) ([ffd2bea](https://github.com/grafana/alloy/commit/ffd2bea7de35ae8599625b924dced7a3144e34c2))
+* Show correct fallback alloy version instead of v1.13.0 ([#5110](https://github.com/grafana/alloy/issues/5110)) ([e2e96e9](https://github.com/grafana/alloy/commit/e2e96e95ff0dab600befbe63165e10eea096b968))
+* Update to use doublestar v4 ([#5148](https://github.com/grafana/alloy/issues/5148)) ([d8f0b3e](https://github.com/grafana/alloy/commit/d8f0b3e9b5a8c8e842e0bc09adc059fd56c71165))
+
+## [1.12.2](https://github.com/grafana/alloy/compare/v1.12.1...v1.12.2) (2026-01-08)
+
+
+### Bug Fixes 🐛
+
+* Add missing configuration parameter `deployment_name_from_replicaset` to k8sattributes processor ([5b90a9d](https://github.com/grafana/alloy/commit/5b90a9d391d222eb9c8ea1e40e38a9dbbbd06ffd))
+* **database_observability:** Fix schema_details collector to fetch column definitions with case sensitive table names ([#4872](https://github.com/grafana/alloy/issues/4872)) ([560dff4](https://github.com/grafana/alloy/commit/560dff4ccef090e2db85ef6dd9e59aeacf54e3f2))
+* **deps:** Update jose2go to 1.7.0 ([#4858](https://github.com/grafana/alloy/issues/4858)) ([dfdd341](https://github.com/grafana/alloy/commit/dfdd341c8da5e7b972905d166a497e3093323be2))
+* **deps:** Update npm dependencies [backport] ([#5201](https://github.com/grafana/alloy/issues/5201)) ([8e06c26](https://github.com/grafana/alloy/commit/8e06c2673c0f5790eba84e9f7091270b3ab0bf2d))
+* Ensure the squid exporter wrapper properly brackets ipv6 addresses [backport] ([#5205](https://github.com/grafana/alloy/issues/5205)) ([e329cc6](https://github.com/grafana/alloy/commit/e329cc6ebdfd7fb52034b5f215082e2fac9640f6))
+* Preserve meta labels in loki.source.podlogs ([#5097](https://github.com/grafana/alloy/issues/5097)) ([ab4b21e](https://github.com/grafana/alloy/commit/ab4b21ec0c8b4e892ffa39035c6a53149ee05555))
+* Prevent panic in import.git when update fails [backport] ([#5204](https://github.com/grafana/alloy/issues/5204)) ([c82fbae](https://github.com/grafana/alloy/commit/c82fbae5431dca9fe3ba071c99978babc2f9b5b1))
+* show correct fallback alloy version instead of v1.13.0 ([#5110](https://github.com/grafana/alloy/issues/5110)) ([b72be99](https://github.com/grafana/alloy/commit/b72be995908ac761c0ea9a4f881367dc6ec6da13))
+
+## [1.12.1](https://github.com/grafana/alloy/compare/v1.12.0...v1.12.1) (2025-12-15)
+
+
+### Bug Fixes 🐛
+
+* update to Beyla 2.7.10 ([#5019](https://github.com/grafana/alloy/issues/5019)) ([c149393](https://github.com/grafana/alloy/commit/c149393881e8c155681de9c03f8701b1fdbc6ea4))
+
+## [1.12.0](https://github.com/grafana/alloy/compare/v1.11.3...v1.12.0) (2025-12-01)
+
+### Breaking changes
+
+- `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
+  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to missing data when using the exporter
+  with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
+  set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
+
+### Features
+
+- Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
+
+- (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
+  logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
+
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - `explain_plans`
+    - collector now changes schema before returning the connection to the pool (@cristiangreco)
+    - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
+  - enable `explain_plans` collector by default (@rgeyer)
+
+- (_Experimental_) Additions to experimental `database_observability.postgres` component:
+  - `explain_plans`
+    - added the explain plan collector (@rgeyer)
+    - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
+  - `query_samples`
+    - add `user` field to wait events within `query_samples` collector (@gaantunes)
+    - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+    - process turned idle rows to calculate finalization times precisely and emit first seen idle rows (@gaantunes)
+  - `query_details`
+    - escape queries coming from pg_stat_statements with quotes (@gaantunes)
+  - enable `explain_plans` collector by default (@rgeyer)
+  - safely generate server_id when UDP socket used for database connection (@matthewnolf)
+  - add table registry and include "validated" in parsed table name logs (@fridgepoet)
+  - add database exclusion list for Postgres schema_details collector (@fridgepoet)
+
+- Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
+
+- Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
+
+- Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
+
+- Send effective config to the remote server for the remotecfg service. (@erikbaranowski)
+
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano)
+
+- Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
+
+- Add `u_probe_links` & `load_probe` configuration fields to alloy pyroscope.ebpf to extend configuration of the opentelemetry-ebpf-profiler to allow uprobe profiling and dynamic probing. (@luweglarz)
+
+- Add `verbose_mode` configuration fields to alloy pyroscope.ebpf to be enable ebpf-profiler verbose mode. (@luweglarz)
+
+- Add `file_match` block to `loki.source.file` for built-in file discovery using glob patterns. (@kalleep)
+
+- Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
+
+- Add `lazy_mode` argument to the `pyroscope.ebpf` to defer eBPF profiler startup until there are targets to profile. (@luweglarz)
+
+- OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
+  - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.
+  - All `otelcol.exporter.*` components providing the `sending_queue` > `batch` block have default `batch` values.
+  - The `otelcol.processor.k8sattributes` component has support for extracting annotations from k8s jobs and daemonsets.
+  - The `otelcol.processor.resourcedecetion` component supports nine new detectors.
+  - The `otelcol.exporter.kafka` component supports partitioning logs by trace ID (`partition_logs_by_trace_id`) and configuring default behavior if topic does not exist (`allow_auto_topic_creation`).
+  - The `otelcol.receiver.kafka` component has new configuration options `max_partition_fetch_size`, `rack_id`, and `use_leader_epoch`.
+  - The `otelcol.exporter.s3` component has new configuration options `s3_base_prefix` and `s3_partition_timezone`.
+  - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
+  - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
+
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+
+### Enhancements
+
+- Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
+
+- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
+- Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
+
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
+
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
+- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
+
+- Update Beyla component to 2.7.8. (@grcevski)
+
+- Support delimiters in `stage.luhn`. (@dehaansa)
+
+- pyroscope.java: update async-profiler to 4.2 (@korniltsev-grafanista)
+- Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
+
+- `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
+
+- `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
+
+- `loki.source.podlogs` now supports `preserve_discovered_labels` parameter to preserve discovered pod metadata labels for use by downstream components. (@QuentinBisson)
+
+- Rework underlying framework of Alloy UI to use Vite instead of Create React App. (@jharvey10)
+
+- Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
+
+- `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
+
+- `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
+
+- Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
+
+### Bugfixes
+
+- Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
+
+- Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
+
+- Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
+
+- Fix prometheus.exporter.process ignoring the `remove_empty_groups` argument. (@mhamzahkhan)
+
+- Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
+- Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
+
+- Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
+
+- Fix `loki.write` no longer includes internal labels `__`.  (@matt-gp)
+
+- Fix missing native histograms custom buckets (NHCB) samples from `prometheus.remote_write`. (@krajorama)
+
+- `otelcol.receiver.prometheus` now supports mixed histograms if `prometheus.scrape` has `honor_metadata` set to `true`. (@ptodev)
+  A mixed histogram is one which has both classic and exponential buckets.
+
+- `loki.source.file` has better support for non-UTF-8 encoded files. (@ptodev)
+  * A BOM will be taken into account if the file is UTF-16 encoded and `encoding` is set to `UTF-16`. (Not `UTF-16BE` or `UTF-16LE`)
+  * The carriage return symbol in Windows log files with CLRF endings will no longer be part of the log line.
+  * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
+
+- Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
+
+- Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
+
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
+
+v1.11.3
+-----------------
+
+### Enhancements
+
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+- Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
+
+### Bugfixes
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
+
+- Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
+
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa)
+
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
+- Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
+
+- Support recovering from corrupted positions file entries in `loki.source.file`. (@dehaansa)
+
+### Other changes
+
+- Augment prometheus.scrape 'scheme' argument strengthening link to protocol. (@lewismc)
+
+- Stop `faro.receiver` losing trace context when exception has stack trace. (@duartesaraiva98)
+
+v1.11.2
+-----------------
+
+### Bugfixes
+
+- Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
+
+- Honor sync timeout when waiting for network availability for prometheus.operator.* components. (@dehaansa)
+
+- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
+
+- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
+
+- Fix potential deadlocks in `loki.source.file` and `loki.source.journal` when component is shutting down. (@kalleep, @thampiotr)
+
+v1.11.0
 -----------------
 
 ### Breaking changes
@@ -33,24 +361,49 @@ Main (unreleased)
 
     [1_11-release-notes]: https://grafana.com/docs/alloy/latest/release-notes/#v111
 
+- `scrape_native_histograms` attribute for `prometheus.scrape` is now set to `false`, whereas in previous versions of Alloy it would default to `true`. This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms - `scrape_native_histograms` has to be enabled. If `scrape_native_histograms` is enabled, `scrape_protocols` will automatically be configured correctly for you to include `PrometheusProto`. If you configure it explicitly, Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
+
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
+- [`otelcol.processor.batch`] Two arguments have different default values. (@ptodev)
+  - `send_batch_size` is now set to 2000 by default. It used to be 8192.
+  - `send_batch_max_size` is now set to 3000 by default. It used to be 0.
+  - This helps prevent issues with ingestion of batches that are too large.
+
+- OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.134.0. (@ptodev)
+  - The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release, use `otelcol.receiver.otelp` instead.
+  - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
+    Use `block_on_overflow` instead.
+  - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
+    Also removed the `SASL/AWS_MSK_IAM` authentication mechanism.
+  - [`otelcol.exporter.splunkhec`] The `batcher` block is deprecated and will be removed in a future release. Use the `queue` block instead.
+  - [`otelcol.exporter.loadbalancing`] Use a linear probe to decrease variance caused by hash collisions, which was causing a non-uniform distribution of loadbalancing.
+  - [`otelcol.connector.servicegraph`] The `database_name_attribute` argument has been removed.
+  - [`otelcol.connector.spanmetrics`] Adds a default maximum number of exemplars within the metric export interval.
+  - [`otelcol.processor.tail_sampling`] Add a new `block_on_overflow` config attribute.
 
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 - Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
 
+- Add the `otelcol.receiver.awsecscontainermetrics` receiver (from upstream OTEL contrib) to read AWS ECS task- and container-level resource usage metrics. (@gregbrowndev)
+
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+  - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
+  - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
+  - updated the config blocks and documentation (@cristiangreco)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
-  - add `schema_table` collector for postgres (@fridgepoet)
+  - add `schema_details` collector for postgres (@fridgepoet)
+  - include `server_id` label on logs and metrics (@matthewnolf)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
@@ -58,10 +411,22 @@ Main (unreleased)
 
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
-  
+
+- Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
+
+- Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
+
 ### Enhancements
 
+- Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
+
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
+
+- `pyroscope.write`, `pyroscope.receive_http` components include `trace_id` in logs and propagate it downstream. (@korniltsev)
+
+- Improve logging in `pyroscope.write` component. (@korniltsev)
+
+- Add comprehensive latency metrics to `pyroscope.write` component with endpoint-specific tracking for both push and ingest operations. (@korniltsev, @claude)
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
@@ -91,6 +456,33 @@ Main (unreleased)
 
 - `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
 
+- `loki.source.journal` now supports `legacy_positon` block that can be used to translate Static Agent or Promtail position files. (@kalleep)
+
+- Normalize attr key name in logfmt logger. (@zry98)
+
+- (_Experimental_) Add an extra parameter to the `array.combine_maps` standard library function
+  to enable preserving the first input list even if there is no match. (@ptodev)
+
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
+
+- Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
+
+- Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
+
+- Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
+
+- The Windows installer and executables are now code signed. (@martincostello)
+
+- Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
+
+- Add `protobuf_message` and `metadata_cache_size` arguments to `prometheus.write.queue` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@dehaansa)
+
+- Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
+
+- Reduce CPU of `prometheus.write.queue` by eliminating duplicate calls to calculate the protobuf Size. (@kgeckhart)
+
+- Use new cache for metadata cache in `prometheus.write.queue` and support disabling the metadata cache with it disable by default. (@kgeckhart, @dehaansa)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -103,9 +495,35 @@ Main (unreleased)
 
 - Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
-- Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+- Fix issue in `prometheus.remote_write`'s WAL which could allow it to hold an active series forever. (@kgeckhart)
 
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
+
+- Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
+
+- Fix `database_observability.mysql` and `database_observability.postgres` crashing alloy process due to uncaught errors.
+
+- Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
+
+- Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
+
+- Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
+
+- **Fix `loki.source.podlogs` component to properly collect logs from Kubernetes Jobs and CronJobs.** Previously, the component would fail to scrape logs from short-lived or terminated jobs due to race conditions between job completion and pod discovery. The fix includes:
+  - Job-aware termination logic with extended grace periods (10-60 seconds) to ensure all logs are captured
+  - Proper handling of pod deletion and race conditions between job completion and controller cleanup
+  - Separation of concerns: `shouldStopTailingContainer()` handles standard Kubernetes restart policies for regular pods, while `shouldStopTailingJobContainer()` handles job-specific lifecycle with grace periods
+  - Enhanced deduplication mechanisms to prevent duplicate log collection while ensuring comprehensive coverage
+  - Comprehensive test coverage including unit tests and deduplication validation
+  This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
+
+- Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
+
+- Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
+
+- Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
+
+- Fix excessive debug logs always being emitted by `prometheus.exporter.mongodb`. (@kalleep)
 
 v1.10.2
 -----------------
@@ -212,6 +630,8 @@ v1.10.0
 - Update the `prometheus.exporter.postgres` component with latest changes and bugfixes for Postgres17 (@cristiangreco)
 
 - Add `tail_from_end` argument to `loki.source.podlogs` to optionally start reading from the end of a log stream for newly discovered pods. (@harshrai654)
+
+- Remove limitation in `loki.source.file` when `legacy_position_file` is unset. Alloy can now recover legacy positions even if labels are added. (@kalleep)
 
 ### Bugfixes
 

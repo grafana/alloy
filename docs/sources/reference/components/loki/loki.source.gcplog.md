@@ -44,12 +44,14 @@ You can use the following arguments with `loki.source.gcplog`:
 
 You can use the following blocks with `loki.source.gcplog`:
 
-| Name                    | Description                                                                   | Required |
-| ----------------------- | ----------------------------------------------------------------------------- | -------- |
-| [`pull`][pull]          | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
-| [`push`][push]          | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
-| `push` > [`grpc`][grpc] | Configures the gRPC server that receives requests when using the `push` mode. | no       |
-| `push` > [`http`][http] | Configures the HTTP server that receives requests when using the `push` mode. | no       |
+| Name                           | Description                                                                   | Required |
+| ------------------------------ | ----------------------------------------------------------------------------- | -------- |
+| [`pull`][pull]                 | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
+| [`push`][push]                 | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
+| `push` > [`grpc`][grpc]        | Configures the gRPC server that receives requests when using the `push` mode. | no       |
+| `push` > `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
+| `push` > [`http`][http]        | Configures the HTTP server that receives requests when using the `push` mode. | no       |
+| `push` > `http` > [`tls`][tls] | Configures TLS for the HTTP server.                                           | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `push` > `grpc` refers to a `grpc` block defined inside a `push` block.
@@ -62,6 +64,7 @@ The `http` and `grpc` block are just used when the `push` block is configured.
 [http]: #http
 [pull]: #pull
 [push]: #push
+[tls]: #tls
 
 ### `pull`
 
@@ -110,7 +113,13 @@ The `labels` map is applied to every entry that passes through the component.
 
 ### `http`
 
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tls`
+
+The `tls` block configures TLS for the HTTP and gRPC servers.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

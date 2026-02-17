@@ -1,0 +1,505 @@
+{
+   "annotations": {
+      "list": [
+         {
+            "datasource": "$loki_datasource",
+            "enable": true,
+            "expr": "{cluster=\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"alloy\" | name_extracted=~\"alloy.*\"",
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "instant": false,
+            "name": "Deployments",
+            "titleFormat": "{{cluster}}/{{namespace}}"
+         }
+      ]
+   },
+   "graphTooltip": 1,
+   "links": [
+      {
+         "icon": "doc",
+         "targetBlank": true,
+         "title": "Documentation",
+         "tooltip": "Clustering documentation",
+         "type": "link",
+         "url": "https://grafana.com/docs/alloy/latest/reference/cli/run/#clustering"
+      },
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [
+            "alloy-mixin"
+         ],
+         "targetBlank": false,
+         "title": "Dashboards",
+         "type": "dashboards"
+      }
+   ],
+   "panels": [
+      {
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+         },
+         "title": "Node Info",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Information about a specific cluster node.\n\n* Lamport clock time: The observed Lamport time on the specific node's clock used to provide partial ordering around gossip messages. Nodes should ideally be observing roughly the same time, meaning they are up-to-date on the cluster state. If a node is falling behind, it means that it has not recently processed the same number of messages and may have an outdated view of its peers.\n\n* Internal cluster state observers: The number of Observer functions that are registered to run whenever the node detects a cluster change.\n\n* Gossip health score: A health score assigned to this node by the memberlist implementation. The lower, the better.\n\n* Gossip protocol version: The protocol version used by nodes to communicate with one another. It should match across all nodes.\n",
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 1
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(cluster_node_lamport_time{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}) \n",
+               "format": "table",
+               "instant": true,
+               "legendFormat": "__auto",
+               "range": false,
+               "refId": "Lamport clock time"
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(cluster_node_update_observers{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
+               "format": "table",
+               "instant": true,
+               "legendFormat": "__auto",
+               "range": false,
+               "refId": "Internal cluster state observers"
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(cluster_node_gossip_health_score{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
+               "format": "table",
+               "instant": true,
+               "legendFormat": "__auto",
+               "range": false,
+               "refId": "Gossip health score"
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(cluster_node_gossip_proto_version{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
+               "format": "table",
+               "instant": true,
+               "legendFormat": "__auto",
+               "range": false,
+               "refId": "Gossip protocol version"
+            }
+         ],
+         "title": "Node Info",
+         "transformations": [
+            {
+               "id": "renameByRegex",
+               "options": {
+                  "regex": "Value #(.*)",
+                  "renamePattern": "$1"
+               }
+            },
+            {
+               "id": "reduce",
+               "options": { }
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": { },
+                  "indexByName": { },
+                  "renameByName": {
+                     "Field": "Metric",
+                     "Max": "Value"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 1
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "rate(cluster_node_gossip_received_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "instant": false,
+               "legendFormat": "{{event}}",
+               "range": true
+            }
+         ],
+         "title": "Gossip ops/s",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Known peers to the node (including the local node).\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "suffix:peers"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 9
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(cluster_node_peers{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Known peers",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Known peers to the node by state (including the local node).\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "suffix:nodes"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 9
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "cluster_node_peers{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "instant": false,
+               "legendFormat": "{{state}}",
+               "range": true
+            }
+         ],
+         "title": "Peers by state",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
+         },
+         "title": "Gossip Transport",
+         "type": "row"
+      },
+      {
+         "datasource": "${datasource}",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "axisCenteredZero": true
+               },
+               "unit": "Bps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 18
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "rate(cluster_transport_rx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "instant": false,
+               "legendFormat": "rx",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "-1 * rate(cluster_transport_tx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "instant": false,
+               "legendFormat": "tx",
+               "range": true
+            }
+         ],
+         "title": "Transport bandwidth",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "percentunit"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 18
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "1 - (\n  rate(cluster_transport_tx_packets_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) /\n  rate(cluster_transport_tx_packets_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "Tx success %",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "1 - (\n  rate(cluster_transport_rx_packets_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) /\n  rate(cluster_transport_rx_packets_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "Rx success %",
+               "range": true
+            }
+         ],
+         "title": "Packet write success rate",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The number of packets enqueued currently to be decoded or encoded and sent during communication with other nodes.\n\nThe incoming and outgoing packet queue should be as empty as possible; a growing queue means that Alloy cannot keep up with the number of messages required to have all nodes informed of cluster changes, and the nodes may not converge in a timely fashion.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "pkts"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 18
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "cluster_transport_tx_packet_queue_length{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "instant": false,
+               "legendFormat": "tx queue",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "cluster_transport_rx_packet_queue_length{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "instant": false,
+               "legendFormat": "rx queue",
+               "range": true
+            }
+         ],
+         "title": "Pending packet queue",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "axisCenteredZero": true
+               },
+               "unit": "Bps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 26
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "rate(cluster_transport_stream_rx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "instant": false,
+               "legendFormat": "rx",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "-1 * rate(cluster_transport_stream_tx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "instant": false,
+               "legendFormat": "tx",
+               "range": true
+            }
+         ],
+         "title": "Stream bandwidth",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "percentunit"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 26
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "1 - (\n  rate(cluster_transport_stream_tx_packets_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) /\n  rate(cluster_transport_stream_tx_packets_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "Tx success %",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "1 - (\n  rate(cluster_transport_stream_rx_packets_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) /\n  rate(cluster_transport_stream_rx_packets_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n)\n",
+               "instant": false,
+               "legendFormat": "Rx success %",
+               "range": true
+            }
+         ],
+         "title": "Stream write success rate",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The number of open connections from this node to its peers.\n\nEach node picks up a subset of its peers to continuously gossip messages around cluster status using streaming HTTP/2 connections. This panel can be used to detect networking failures that result in cluster communication being disrupted and convergence taking longer than expected or outright failing.\n",
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 26
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "cluster_transport_streams{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "instant": false,
+               "legendFormat": "Open streams",
+               "range": true
+            }
+         ],
+         "title": "Open transport streams",
+         "type": "timeseries"
+      }
+   ],
+   "refresh": "10s",
+   "schemaVersion": 36,
+   "tags": [
+      "alloy-mixin"
+   ],
+   "templating": {
+      "list": [
+         {
+            "label": "Data Source",
+            "name": "datasource",
+            "query": "prometheus",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "label": "Loki Data Source",
+            "name": "loki_datasource",
+            "query": "loki",
+            "refresh": 1,
+            "sort": 2,
+            "type": "datasource"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "cluster",
+            "name": "cluster",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components, cluster)\n",
+               "refId": "cluster"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "namespace",
+            "name": "namespace",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\"}, namespace)\n",
+               "refId": "namespace"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "datasource": "${datasource}",
+            "label": "job",
+            "name": "job",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)\n",
+               "refId": "job"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         },
+         {
+            "allValue": ".*",
+            "datasource": "${datasource}",
+            "includeAll": true,
+            "label": "instance",
+            "multi": true,
+            "name": "instance",
+            "query": {
+               "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}, instance)\n",
+               "refId": "instance"
+            },
+            "refresh": 2,
+            "sort": 2,
+            "type": "query"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-1h",
+      "to": "now"
+   },
+   "timepicker": {
+      "refresh_intervals": [
+         "5s",
+         "10s",
+         "30s",
+         "1m",
+         "5m",
+         "15m",
+         "30m",
+         "1h",
+         "2h",
+         "1d"
+      ],
+      "time_options": [
+         "5m",
+         "15m",
+         "1h",
+         "6h",
+         "12h",
+         "24h",
+         "2d",
+         "7d",
+         "30d",
+         "90d"
+      ]
+   },
+   "timezone": "utc",
+   "title": "Alloy / Cluster Node",
+   "uid": "4047e755d822da63c8158cde32ae4dce"
+}

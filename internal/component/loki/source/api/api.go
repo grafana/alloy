@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/api/internal/lokipush"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
@@ -57,24 +58,22 @@ func (a *Arguments) labelSet() model.LabelSet {
 
 type Component struct {
 	opts               component.Options
-	entriesChan        chan loki.Entry
+	handler            loki.LogsBatchReceiver
 	uncheckedCollector *util.UncheckedCollector
 
 	serverMut sync.Mutex
 	server    *lokipush.PushAPIServer
 
-	// Use separate receivers mutex to address potential deadlock when Update drains the current server.
-	// e.g. https://github.com/grafana/agent/issues/3391
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               opts,
-		entriesChan:        make(chan loki.Entry),
-		receivers:          args.ForwardTo,
+		handler:            loki.NewLogsBatchReceiver(),
 		uncheckedCollector: util.NewUncheckedCollector(nil),
+
+		fanout: loki.NewFanout(args.ForwardTo),
 	}
 	opts.Registerer.MustRegister(c.uncheckedCollector)
 	err := c.Update(args)
@@ -85,26 +84,18 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) (err error) {
-	defer c.stop()
-
-	for {
-		select {
-		case entry := <-c.entriesChan:
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				select {
-				case receiver.Chan() <- entry:
-				case <-ctx.Done():
-					return
-				}
-			}
-		case <-ctx.Done():
-			return
+	defer func() {
+		// NOTE: We don't have to drain here because we force cancel all in-flight request.
+		c.serverMut.Lock()
+		defer c.serverMut.Unlock()
+		if c.server != nil {
+			c.server.ForceShutdown()
+			c.server = nil
 		}
-	}
+	}()
+
+	source.ConsumeBatch(ctx, c.handler, c.fanout)
+	return
 }
 
 func (c *Component) Update(args component.Arguments) error {
@@ -126,9 +117,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.serverMut.Lock()
 	defer c.serverMut.Unlock()
@@ -146,7 +135,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.uncheckedCollector.SetCollector(serverRegistry)
 
 		var err error
-		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, loki.NewEntryHandler(c.entriesChan, func() {}), serverRegistry, int64(newArgs.MaxSendMessageSize))
+		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, c.handler, serverRegistry, int64(newArgs.MaxSendMessageSize))
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
@@ -161,13 +150,4 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server.SetKeepTimestamp(newArgs.UseIncomingTimestamp)
 
 	return nil
-}
-
-func (c *Component) stop() {
-	c.serverMut.Lock()
-	defer c.serverMut.Unlock()
-	if c.server != nil {
-		c.server.Shutdown()
-		c.server = nil
-	}
 }

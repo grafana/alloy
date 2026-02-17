@@ -14,6 +14,8 @@ title: prometheus.exporter.cadvisor
 
 The `prometheus.exporter.cadvisor` component collects container metrics using [cAdvisor](https://github.com/google/cadvisor).
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy
@@ -47,6 +49,8 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
 
 For `allowlisted_container_labels` to take effect, `store_container_labels` must be set to `false`.
+
+If a container is using the `overlayfs` storage driver, ensure the `containerd_host` attribute is set correctly to be able to retrieve its metrics.
 
 `env_metadata_allowlist` is only supported for containerd and Docker runtimes.
 

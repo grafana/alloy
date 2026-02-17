@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -18,20 +19,21 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
-	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 	"github.com/grafana/dskit/backoff"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/mwitkow/go-conntrack"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/model/labels"
 
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
+
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
-	protocolUDP = "udp"
-	protocolTCP = "tcp"
+	ProtocolUDP = "udp"
+	ProtocolTCP = "tcp"
 )
 
 type Transport interface {
@@ -42,8 +44,10 @@ type Transport interface {
 	Wait()
 }
 
-type handleMessage func(labels.Labels, syslog.Message)
-type handleMessageError func(error)
+type (
+	handleMessage      = func(labels.Labels, syslog.Message)
+	handleMessageError = func(error)
+)
 
 type baseTransport struct {
 	config *scrapeconfig.SyslogTargetConfig
@@ -81,8 +85,28 @@ func (t *baseTransport) maxMessageLength() int {
 	return DefaultMaxMessageLength
 }
 
+func (t *baseTransport) streamParseConfig() syslogparser.StreamParseConfig {
+	ciscoCfg := t.config.RFC3164CiscoComponents
+	parseCfg := syslogparser.StreamParseConfig{
+		MaxMessageLength:      t.maxMessageLength(),
+		IsRFC3164Message:      t.config.IsRFC3164Message(),
+		UseRFC3164DefaultYear: t.config.RFC3164DefaultToCurrentYear,
+	}
+
+	if ciscoCfg != nil {
+		parseCfg.RFC3164CiscoComponents = &syslogparser.RFC3164CiscoComponents{
+			MessageCounter:  ciscoCfg.EnableAll || ciscoCfg.MessageCounter,
+			SequenceNumber:  ciscoCfg.EnableAll || ciscoCfg.SequenceNumber,
+			CiscoHostname:   ciscoCfg.EnableAll || ciscoCfg.Hostname,
+			SecondFractions: ciscoCfg.EnableAll || ciscoCfg.SecondFractions,
+		}
+	}
+
+	return parseCfg
+}
+
 func (t *baseTransport) connectionLabels(ip string) labels.Labels {
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.config.Labels {
 		lb.Set(string(k), string(v))
 	}
@@ -107,14 +131,21 @@ func lookupAddr(addr string) string {
 	return strings.Join(names, ",")
 }
 
-func newBaseTransport(config *scrapeconfig.SyslogTargetConfig, handleMessage handleMessage, handleError handleMessageError, logger log.Logger) *baseTransport {
+type TransportConfig struct {
+	Logger         log.Logger
+	Target         *scrapeconfig.SyslogTargetConfig
+	MessageHandler handleMessage
+	ErrorHandler   handleMessageError
+}
+
+func newBaseTransport(cfg TransportConfig) *baseTransport {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &baseTransport{
-		config:             config,
-		logger:             logger,
+		config:             cfg.Target,
+		logger:             cfg.Logger,
 		openConnections:    new(sync.WaitGroup),
-		handleMessage:      handleMessage,
-		handleMessageError: handleError,
+		handleMessage:      cfg.MessageHandler,
+		handleMessageError: cfg.ErrorHandler,
 		ctx:                ctx,
 		ctxCancel:          cancel,
 	}
@@ -163,15 +194,15 @@ type TCPTransport struct {
 	listener net.Listener
 }
 
-func NewSyslogTCPTransport(config *scrapeconfig.SyslogTargetConfig, handleMessage handleMessage, handleError handleMessageError, logger log.Logger) Transport {
+func NewSyslogTCPTransport(cfg TransportConfig) Transport {
 	return &TCPTransport{
-		baseTransport: newBaseTransport(config, handleMessage, handleError, logger),
+		baseTransport: newBaseTransport(cfg),
 	}
 }
 
 // Run implements SyslogTransport
 func (t *TCPTransport) Run() error {
-	l, err := net.Listen(protocolTCP, t.config.ListenAddress)
+	l, err := net.Listen(ProtocolTCP, t.config.ListenAddress)
 	l = conntrack.NewListener(l, conntrack.TrackWithName("syslog_target/"+t.config.ListenAddress))
 	if err != nil {
 		return fmt.Errorf("error setting up syslog target: %w", err)
@@ -196,7 +227,7 @@ func (t *TCPTransport) Run() error {
 	}
 
 	t.listener = l
-	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", protocolTCP, "tls", tlsEnabled)
+	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolTCP, "tls", tlsEnabled)
 
 	t.openConnections.Add(1)
 	go t.acceptConnections()
@@ -287,7 +318,7 @@ func (t *TCPTransport) acceptConnections() {
 		c, err := t.listener.Accept()
 		if err != nil {
 			if !t.Ready() {
-				level.Info(l).Log("msg", "syslog server shutting down", "protocol", protocolTCP, "err", t.ctx.Err())
+				level.Info(l).Log("msg", "syslog server shutting down", "protocol", ProtocolTCP, "err", t.ctx.Err())
 				return
 			}
 
@@ -321,16 +352,35 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 
 	lbs := t.connectionLabels(ipFromConn(c).String())
 
-	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, func(result *syslog.Result) {
+	cb := func(result *syslog.Result) {
 		if err := result.Error; err != nil {
 			t.handleMessageError(err)
 			return
 		}
 		t.handleMessage(lbs.Copy(), result.Message)
-	}, t.maxMessageLength())
+	}
 
+	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+		delim := t.config.RawFormatOptions.Delimiter()
+		for msg, err := range syslogparser.IterStreamRaw(c, delim) {
+			cb(&syslog.Result{
+				Message: msg,
+				Error:   err,
+			})
+		}
+
+		level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		return
+	}
+
+	parseCfg := t.streamParseConfig()
+	err := syslogparser.ParseStream(parseCfg, c, cb)
 	if err != nil {
-		level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		if errors.Is(err, io.EOF) {
+			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		} else {
+			level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		}
 	}
 }
 
@@ -355,25 +405,25 @@ type UDPTransport struct {
 	udpConn *net.UDPConn
 }
 
-func NewSyslogUDPTransport(config *scrapeconfig.SyslogTargetConfig, handleMessage handleMessage, handleError handleMessageError, logger log.Logger) Transport {
+func NewSyslogUDPTransport(cfg TransportConfig) Transport {
 	return &UDPTransport{
-		baseTransport: newBaseTransport(config, handleMessage, handleError, logger),
+		baseTransport: newBaseTransport(cfg),
 	}
 }
 
 // Run implements SyslogTransport
 func (t *UDPTransport) Run() error {
 	var err error
-	addr, err := net.ResolveUDPAddr(protocolUDP, t.config.ListenAddress)
+	addr, err := net.ResolveUDPAddr(ProtocolUDP, t.config.ListenAddress)
 	if err != nil {
 		return fmt.Errorf("error resolving UDP address: %w", err)
 	}
-	t.udpConn, err = net.ListenUDP(protocolUDP, addr)
+	t.udpConn, err = net.ListenUDP(ProtocolUDP, addr)
 	if err != nil {
 		return fmt.Errorf("error setting up syslog target: %w", err)
 	}
 	_ = t.udpConn.SetReadBuffer(1024 * 1024)
-	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", protocolUDP)
+	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolUDP)
 
 	t.openConnections.Add(1)
 	go t.acceptPackets()
@@ -399,7 +449,7 @@ func (t *UDPTransport) acceptPackets() {
 
 	for {
 		if !t.Ready() {
-			level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", protocolUDP, "err", t.ctx.Err())
+			level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
 			for _, stream := range streams {
 				if err = stream.Close(); err != nil {
 					level.Error(t.logger).Log("msg", "failed to close pipe", "err", err)
@@ -445,15 +495,27 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 		}
 
 		r := bytes.NewReader(datagram[:n])
-
-		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, r, func(result *syslog.Result) {
+		cb := func(result *syslog.Result) {
 			if err := result.Error; err != nil {
 				t.handleMessageError(err)
 			} else {
 				t.handleMessage(lbs.Copy(), result.Message)
 			}
-		}, t.maxMessageLength())
+		}
 
+		if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+			delim := t.config.RawFormatOptions.Delimiter()
+			for msg, err := range syslogparser.IterStreamRaw(r, delim) {
+				cb(&syslog.Result{
+					Message: msg,
+					Error:   err,
+				})
+			}
+			continue
+		}
+
+		parseCfg := t.streamParseConfig()
+		err = syslogparser.ParseStream(parseCfg, r, cb)
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 		}

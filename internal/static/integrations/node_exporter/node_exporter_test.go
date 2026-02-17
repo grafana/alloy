@@ -1,4 +1,4 @@
-//go:build !race && !windows
+//go:build !windows
 
 package node_exporter
 
@@ -28,12 +28,12 @@ import (
 func TestNodeExporter(t *testing.T) {
 	cfg := DefaultConfig
 
-	// Enable all collectors except perf
+	// Enable all collectors except perf, buddyinfo and systemd
 	cfg.SetCollectors = make([]string, 0, len(Collectors))
 	for c := range Collectors {
 		cfg.SetCollectors = append(cfg.SetCollectors, c)
 	}
-	cfg.DisableCollectors = []string{CollectorPerf, CollectorBuddyInfo}
+	cfg.DisableCollectors = []string{CollectorPerf, CollectorBuddyInfo, CollectorSystemd}
 
 	// Check that the flags convert and the integration initializes
 	logger := log.NewNopLogger()
@@ -55,7 +55,7 @@ func TestNodeExporter(t *testing.T) {
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 
-	p := textparse.NewPromParser(body, nil)
+	p := textparse.NewPromParser(body, nil, false)
 	for {
 		_, err := p.Next()
 		if err == io.EOF {

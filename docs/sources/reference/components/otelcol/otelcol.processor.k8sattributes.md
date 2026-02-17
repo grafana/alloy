@@ -145,10 +145,11 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-| Name               | Type           | Description                                                                 | Default     | Required |
-|--------------------|----------------|-----------------------------------------------------------------------------|-------------|----------|
-| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                                        | _See below_ | no       |
-| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][semantic conventions]. | `false`     | no       |
+| Name                              | Type           | Description                                                                              | Default     | Required |
+|-----------------------------------|----------------|------------------------------------------------------------------------------------------|-------------|----------|
+| `deployment_name_from_replicaset` | `bool`         | Whether to set the deployment name by trimming the hash from the end of the replica set. | `false`     | no       |
+| `metadata`                        | `list(string)` | Pre-configured metadata keys to add.                                                     | _See below_ | no       |
+| `otel_annotations`                | `bool`         | Whether to set the [recommended resource attributes][semantic conventions].              | `false`     | no       |
 
 The supported `metadata` keys are:
 
@@ -157,9 +158,11 @@ The supported `metadata` keys are:
 * `container.image.tag`
 * `k8s.container.name`
 * `k8s.cronjob.name`
+* `k8s.cronjob.uid`
 * `k8s.daemonset.name`
 * `k8s.daemonset.uid`
 * `k8s.deployment.name`
+* `k8s.deployment.uid`
 * `k8s.job.name`
 * `k8s.job.uid`
 * `k8s.namespace.name`
@@ -191,6 +194,8 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 * `k8s.pod.uid`
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
+
+When `deployment_name_from_replicaset` is set to `true`, the processor will extract deployment name from replicaset name by trimming pod template hash. This will disable watching for replicaset resources, which can be useful in environments with limited RBAC permissions as the processor will not need `get`, `watch`, and `list` permissions for replicasets.
 
 [semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 

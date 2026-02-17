@@ -2,15 +2,16 @@ package splunkhec_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/confighttp"
-	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -40,8 +41,8 @@ func TestConfigConversion(t *testing.T) {
 			ReadBufferSize:       0,
 			WriteBufferSize:      0,
 			Timeout:              10000000000,
-			Headers:              map[string]configopaque.String(nil),
-			Auth:                 (*configauth.Config)(nil),
+			Headers:              nil,
+			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
 			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
@@ -50,35 +51,28 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              confighttp.CookiesConfig{},
+			Cookies:              configoptional.None[confighttp.CookiesConfig](),
+			ForceAttemptHTTP2:    true,
 		},
-		QueueSettings: exporterhelper.QueueBatchConfig{
-			Enabled:      true,
+		QueueSettings: configoptional.Some(exporterhelper.QueueBatchConfig{
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    nil,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
-		},
+			Batch: configoptional.Some(exporterhelper.BatchConfig{
+				FlushTimeout: 200000000,
+				Sizer:        exporterhelper.RequestSizerTypeItems,
+				MinSize:      500,
+				MaxSize:      1000,
+			}),
+		}),
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
-			InitialInterval:     5000000000,
+			InitialInterval:     15 * time.Second,
 			RandomizationFactor: 0.5,
 			Multiplier:          1.5,
-			MaxInterval:         30000000000,
-			MaxElapsedTime:      300000000000,
-		},
-		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
-			Enabled:      false,
-			FlushTimeout: 200000000,
-			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
-				MinSize: 8192,
-				MaxSize: 0,
-				Sizer: func() exporterhelper.RequestSizerType {
-					var s exporterhelper.RequestSizerType
-					require.NoError(t, s.UnmarshalText([]byte("items")))
-					return s
-				}(),
-			},
+			MaxInterval:         60 * time.Second,
+			MaxElapsedTime:      10 * time.Minute,
 		},
 		LogDataEnabled:          true,
 		ProfilingDataEnabled:    true,
@@ -106,6 +100,11 @@ func TestConfigConversion(t *testing.T) {
 		},
 	}
 
+	expectedCustomise.OtelAttrsToHec.Source = "source"
+	expectedCustomise.OtelAttrsToHec.SourceType = "sourcetype"
+	expectedCustomise.OtelAttrsToHec.Index = "index"
+	expectedCustomise.OtelAttrsToHec.Host = "host"
+
 	expectedMinimal := &splunkhecexporter.Config{
 		ClientConfig: confighttp.ClientConfig{
 			Endpoint: "http://localhost:8088",
@@ -130,8 +129,8 @@ func TestConfigConversion(t *testing.T) {
 			}, ReadBufferSize: 0,
 			WriteBufferSize:      0,
 			Timeout:              15000000000,
-			Headers:              map[string]configopaque.String(nil),
-			Auth:                 (*configauth.Config)(nil),
+			Headers:              nil,
+			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
 			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
@@ -140,34 +139,27 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              confighttp.CookiesConfig{}},
-		QueueSettings: exporterhelper.QueueBatchConfig{
-			Enabled:      true,
+			ForceAttemptHTTP2:    true,
+			Cookies:              configoptional.None[confighttp.CookiesConfig](),
+		},
+		QueueSettings: configoptional.Some(exporterhelper.QueueBatchConfig{
 			NumConsumers: 10,
 			QueueSize:    1000,
-			StorageID:    (nil),
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
-		},
+			Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
+		}),
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
-			InitialInterval:     5000000000,
+			InitialInterval:     5 * time.Second,
 			RandomizationFactor: 0.5,
 			Multiplier:          1.5,
-			MaxInterval:         30000000000,
-			MaxElapsedTime:      300000000000,
+			MaxInterval:         30 * time.Second,
+			MaxElapsedTime:      5 * time.Minute,
 		},
-		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
+		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
 			Enabled:      false,
-			FlushTimeout: 200000000,
-			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
-				MinSize: 8192,
-				MaxSize: 0,
-				Sizer: func() exporterhelper.RequestSizerType {
-					var s exporterhelper.RequestSizerType
-					require.NoError(t, s.UnmarshalText([]byte("items")))
-					return s
-				}(),
-			},
+			FlushTimeout: 0,
+			MinSize:      0,
 		},
 		LogDataEnabled:       true,
 		ProfilingDataEnabled: true,
@@ -188,7 +180,9 @@ func TestConfigConversion(t *testing.T) {
 			Enabled:              false,
 			OverrideMetricsNames: map[string]string(nil),
 			ExtraAttributes:      map[string]string(nil),
-		}}
+		},
+		OtelAttrsToHec: splunkhecexporter.NewFactory().CreateDefaultConfig().(*splunkhecexporter.Config).OtelAttrsToHec,
+	}
 
 	tests := []struct {
 		testName string
@@ -209,6 +203,28 @@ func TestConfigConversion(t *testing.T) {
 				   timeout = "10s"
 				   insecure_skip_verify = true
 		        }
+				sending_queue {
+					enabled = true
+					num_consumers = 10
+					queue_size = 1000
+					batch {
+						flush_timeout = "200ms"
+						min_size = 500
+						max_size = 1000
+						sizer = "items"
+					}
+				}
+				retry_on_failure {
+					initial_interval = "15s"
+					max_interval = "60s"
+					max_elapsed_time = "10m"
+				}
+				otel_attrs_to_hec_metadata {
+					source = "source"
+					sourcetype = "sourcetype"
+					index = "index"
+					host = "host"
+				}
 			`,
 			expected: &expectedCustomise,
 		},
@@ -229,7 +245,7 @@ func TestConfigConversion(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
-			var args splunkhec.Arguments
+			var args config.SplunkHecArguments
 			err := syntax.Unmarshal([]byte(tt.alloyCfg), &args)
 			if err != nil {
 				t.Fatal(err)

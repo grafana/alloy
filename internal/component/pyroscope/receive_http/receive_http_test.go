@@ -12,16 +12,18 @@ import (
 	"testing"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
+	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/util"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -425,7 +427,12 @@ func startComponent(t *testing.T, appendables []pyroscope.Appendable) int {
 		ForwardTo: appendables,
 	}
 
-	comp, err := New(testOptions(t), args)
+	comp, err := New(
+		util.TestAlloyLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		args,
+	)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -540,12 +547,12 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func testOptions(t *testing.T) component.Options {
-	return component.Options{
-		ID:         "pyroscope.receive_http.test",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-	}
+func (a *testAppender) Client() debuginfogrpc.DebuginfoServiceClient {
+	return nil
+}
+
+func (a *testAppender) Upload(_ debuginfo.UploadJob) {
+	// no-op for tests
 }
 
 // TestUpdateArgs verifies that the component can be updated with new arguments. This explicitly also makes sure that the server is restarted when the server configuration changes. And there are no metric registration conflicts.
@@ -565,7 +572,12 @@ func TestUpdateArgs(t *testing.T) {
 		ForwardTo: forwardTo,
 	}
 
-	comp, err := New(testOptions(t), args)
+	comp, err := New(
+		util.TestAlloyLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		args,
+	)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

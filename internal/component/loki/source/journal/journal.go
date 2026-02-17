@@ -4,21 +4,22 @@ package journal
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/target"
-	"github.com/grafana/alloy/internal/featuregate"
-
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -37,13 +38,18 @@ var _ component.Component = (*Component)(nil)
 
 // Component represents reading from a journal
 type Component struct {
+	opts           component.Options
+	metrics        *metrics
+	recv           loki.LogsReceiver
+	positions      positions.Positions
+	targetsUpdated chan struct{}
+
+	fanout *loki.Fanout
+
 	mut       sync.RWMutex
-	t         *target.JournalTarget
-	metrics   *target.Metrics
-	o         component.Options
-	handler   chan loki.Entry
-	positions positions.Positions
-	receivers []loki.LogsReceiver
+	tailer    *tailer
+	args      Arguments
+	healthErr error
 }
 
 // New creates a new  component.
@@ -53,9 +59,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	positionFile := filepath.Join(o.DataPath, "positions.yml")
+	if args.LegacyPosition != nil {
+		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger)
+	}
+
 	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
+		PositionsFile:     positionFile,
 		IgnoreInvalidYaml: false,
 		ReadOnly:          false,
 	})
@@ -64,11 +75,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		metrics:   target.NewMetrics(o.Registerer),
-		o:         o,
-		handler:   make(chan loki.Entry),
-		positions: positionsFile,
-		receivers: args.Receivers,
+		metrics:        newMetrics(o.Registerer),
+		opts:           o,
+		recv:           loki.NewLogsReceiver(),
+		positions:      positionsFile,
+		fanout:         loki.NewFanout(args.ForwardTo),
+		targetsUpdated: make(chan struct{}, 1),
+		args:           args,
 	}
 	err = c.Update(args)
 	return c, err
@@ -77,29 +90,37 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run starts the component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.mut.RLock()
-		if c.t != nil {
-			c.t.Stop()
-		}
-		c.mut.RUnlock()
+		level.Info(c.opts.Logger).Log("msg", "loki.source.journal component shutting down")
+		// We need to stop posFile first so we don't record entries we are draining
+		c.positions.Stop()
 
+		source.Drain(c.recv, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			if c.tailer != nil {
+				if err := c.tailer.Stop(); err != nil {
+					level.Warn(c.opts.Logger).Log("msg", "error stopping journal tailer", "err", err)
+				}
+			}
+		})
 	}()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler:
-			c.mut.RLock()
-			lokiEntry := loki.Entry{
-				Labels: entry.Labels,
-				Entry:  entry.Entry,
+
+	var wg sync.WaitGroup
+	wg.Go(func() { source.Consume(ctx, c.recv, c.fanout) })
+	wg.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.targetsUpdated:
+				c.reloadTailer()
 			}
-			for _, r := range c.receivers {
-				r.Chan() <- lokiEntry
-			}
-			c.mut.RUnlock()
 		}
-	}
+
+	})
+
+	wg.Wait()
+	return nil
 }
 
 // Update updates the fields of the component.
@@ -107,21 +128,67 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	if c.t != nil {
-		err := c.t.Stop()
-		if err != nil {
-			return err
+
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	c.args = newArgs
+	select {
+	case c.targetsUpdated <- struct{}{}:
+	default: // Update notification already sent
+	}
+	return nil
+}
+
+// CurrentHealth implements component.HealthComponent. It returns an unhealthy
+// status if the server has terminated.
+func (c *Component) CurrentHealth() component.Health {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	if c.healthErr == nil {
+		return component.Health{
+			Health:     component.HealthTypeHealthy,
+			Message:    "journal tailer is running",
+			UpdateTime: time.Now(),
 		}
 	}
-	rcs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-	entryHandler := loki.NewEntryHandler(c.handler, func() {})
-
-	newTarget, err := target.NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, newArgs))
-	if err != nil {
-		return err
+	return component.Health{
+		Health:     component.HealthTypeUnhealthy,
+		Message:    c.healthErr.Error(),
+		UpdateTime: time.Now(),
 	}
-	c.t = newTarget
-	return nil
+}
+
+func (c *Component) reloadTailer() {
+	// Grab current state
+	c.mut.RLock()
+	var tailerToStop *tailer
+	if c.tailer != nil {
+		tailerToStop = c.tailer
+	}
+	rcs := alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
+	c.mut.RUnlock()
+
+	// Stop existing tailer
+	if tailerToStop != nil {
+		err := tailerToStop.Stop()
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "error stopping journal tailer", "err", err)
+		}
+	}
+
+	// Create new tailer
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	c.tailer = nil
+
+	tailer, err := newTailer(c.metrics, c.opts.Logger, c.recv, c.positions, c.opts.ID, rcs, convertArgs(c.opts.ID, c.args))
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "error creating journal tailer", "err", err, "path", c.args.Path)
+		c.healthErr = fmt.Errorf("error creating journal tailer: %w", err)
+	} else {
+		c.tailer = tailer
+		c.healthErr = nil
+	}
 }
 
 func convertArgs(job string, a Arguments) *scrapeconfig.JournalTargetConfig {

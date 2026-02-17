@@ -3,20 +3,47 @@
 
 package internal_test
 
-//TODO: Uncomment this test later. For now it's commented out because it depends on this package:
-// "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
-// ... which causes compilation issues with the Agent due to the fact that in Prometheus
-// textparse.MetricType changed to model.MetricType:
-// https://github.com/prometheus/prometheus/blob/12e317786b7ac864117f4be1a88a1aa29e5dcf9e/scrape/target.go#L89
-//
-// See:
-// https://github.com/prometheus/prometheus/commit/8065bef172e8d88e22399504b175a8c9115e9da3
-// https://github.com/prometheus/prometheus/commit/c83e1fc5748be3bd35bf0a31eb53690b412846a4
+// TODO: This test is commented out due to dependency issues
 
-// Test that staleness markers are emitted for timeseries that intermittently disappear.
-// This test runs the entire collector and end-to-end scrapes then checks with the
-// Prometheus remotewrite exporter that staleness markers are emitted per timeseries.
-// See https://github.com/open-telemetry/opentelemetry-collector/issues/3413
+// import (
+// 	"context"
+// 	"fmt"
+// 	"io"
+// 	"net/http"
+// 	"net/http/httptest"
+// 	"net/url"
+// 	"os"
+// 	"strings"
+// 	"sync/atomic"
+// 	"testing"
+// 	"time"
+
+// 	"github.com/gogo/protobuf/proto"
+// 	"github.com/golang/snappy"
+// 	"github.com/prometheus/prometheus/model/value"
+// 	"github.com/prometheus/prometheus/prompb"
+// 	"github.com/stretchr/testify/assert"
+// 	"github.com/stretchr/testify/require"
+// 	"go.opentelemetry.io/collector/component"
+// 	"go.opentelemetry.io/collector/confmap"
+// 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
+// 	"go.opentelemetry.io/collector/exporter"
+// 	"go.opentelemetry.io/collector/otelcol"
+// 	"go.opentelemetry.io/collector/processor"
+// 	"go.opentelemetry.io/collector/processor/batchprocessor"
+// 	"go.opentelemetry.io/collector/receiver"
+// 	"go.opentelemetry.io/collector/service/telemetry"
+// 	"go.uber.org/zap"
+// 	"go.uber.org/zap/zapcore"
+
+// 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
+// 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
+// )
+
+// // Test that staleness markers are emitted for timeseries that intermittently disappear.
+// // This test runs the entire collector and end-to-end scrapes then checks with the
+// // Prometheus remotewrite exporter that staleness markers are emitted per timeseries.
+// // See https://github.com/open-telemetry/opentelemetry-collector/issues/3413
 // func TestStalenessMarkersEndToEnd(t *testing.T) {
 // 	if testing.Short() {
 // 		t.Skip("This test can take a long time")
@@ -60,14 +87,14 @@ package internal_test
 // 	prweServer := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 // 		// Snappy decode the uploads.
 // 		payload, rerr := io.ReadAll(req.Body)
-// 		require.NoError(t, rerr)
+// 		assert.NoError(t, rerr)
 
 // 		recv := make([]byte, len(payload))
 // 		decoded, derr := snappy.Decode(recv, payload)
-// 		require.NoError(t, derr)
+// 		assert.NoError(t, derr)
 
 // 		writeReq := new(prompb.WriteRequest)
-// 		require.NoError(t, proto.Unmarshal(decoded, writeReq))
+// 		assert.NoError(t, proto.Unmarshal(decoded, writeReq))
 
 // 		select {
 // 		case <-ctx.Done():
@@ -88,8 +115,6 @@ package internal_test
 //           static_configs:
 //             - targets: [%q]
 
-// processors:
-//   batch:
 // exporters:
 //   prometheusremotewrite:
 //     endpoint: %q
@@ -100,41 +125,38 @@ package internal_test
 //   pipelines:
 //     metrics:
 //       receivers: [prometheus]
-//       processors: [batch]
 //       exporters: [prometheusremotewrite]`, serverURL.Host, prweServer.URL)
 
 // 	confFile, err := os.CreateTemp(os.TempDir(), "conf-")
 // 	require.NoError(t, err)
 // 	defer os.Remove(confFile.Name())
-// 	_, err = confFile.Write([]byte(cfg))
+// 	_, err = confFile.WriteString(cfg)
 // 	require.NoError(t, err)
 // 	// 4. Run the OpenTelemetry Collector.
-// 	receivers, err := receiver.MakeFactoryMap(prometheusreceiver.NewFactory())
+// 	receivers, err := otelcol.MakeFactoryMap[receiver.Factory](prometheusreceiver.NewFactory())
 // 	require.NoError(t, err)
-// 	exporters, err := exporter.MakeFactoryMap(prometheusremotewriteexporter.NewFactory())
+// 	exporters, err := otelcol.MakeFactoryMap[exporter.Factory](prometheusremotewriteexporter.NewFactory())
 // 	require.NoError(t, err)
-// 	processors, err := processor.MakeFactoryMap(batchprocessor.NewFactory())
+// 	processors, err := otelcol.MakeFactoryMap[processor.Factory](batchprocessor.NewFactory())
 // 	require.NoError(t, err)
 
 // 	factories := otelcol.Factories{
 // 		Receivers:  receivers,
 // 		Exporters:  exporters,
 // 		Processors: processors,
+// 		Telemetry: telemetry.NewFactory(
+// 			func() component.Config { return struct{}{} },
+// 		),
 // 	}
 
-// 	fmp := fileprovider.NewFactory().Create(confmap.ProviderSettings{})
-// 	configProvider, err := otelcol.NewConfigProvider(
-// 		otelcol.ConfigProviderSettings{
-// 			ResolverSettings: confmap.ResolverSettings{
-// 				URIs:      []string{confFile.Name()},
-// 				Providers: map[string]confmap.Provider{fmp.Scheme(): fmp},
-// 			},
-// 		})
-// 	require.NoError(t, err)
-
 // 	appSettings := otelcol.CollectorSettings{
-// 		Factories:      func() (otelcol.Factories, error) { return factories, nil },
-// 		ConfigProvider: configProvider,
+// 		Factories: func() (otelcol.Factories, error) { return factories, nil },
+// 		ConfigProviderSettings: otelcol.ConfigProviderSettings{
+// 			ResolverSettings: confmap.ResolverSettings{
+// 				URIs:              []string{confFile.Name()},
+// 				ProviderFactories: []confmap.ProviderFactory{fileprovider.NewFactory()},
+// 			},
+// 		},
 // 		BuildInfo: component.BuildInfo{
 // 			Command:     "otelcol",
 // 			Description: "OpenTelemetry Collector",
@@ -169,7 +191,7 @@ package internal_test
 
 // 	// 5. Let's wait on 10 fetches.
 // 	var wReqL []*prompb.WriteRequest
-// 	for i := 0; i < 10; i++ {
+// 	for range 10 {
 // 		wReqL = append(wReqL, <-prweUploads)
 // 	}
 // 	defer cancel()
@@ -177,13 +199,13 @@ package internal_test
 // 	// 6. Assert that we encounter the stale markers aka special NaNs for the various time series.
 // 	staleMarkerCount := 0
 // 	totalSamples := 0
-// 	require.True(t, len(wReqL) > 0, "Expecting at least one WriteRequest")
+// 	require.NotEmpty(t, wReqL, "Expecting at least one WriteRequest")
 // 	for i, wReq := range wReqL {
 // 		name := fmt.Sprintf("WriteRequest#%d", i)
-// 		require.True(t, len(wReq.Timeseries) > 0, "Expecting at least 1 timeSeries for:: "+name)
+// 		require.NotEmpty(t, wReq.Timeseries, "Expecting at least 1 timeSeries for:: "+name)
 // 		for j, ts := range wReq.Timeseries {
 // 			fullName := fmt.Sprintf("%s/TimeSeries#%d", name, j)
-// 			assert.True(t, len(ts.Samples) > 0, "Expected at least 1 Sample in:: "+fullName)
+// 			assert.NotEmpty(t, ts.Samples, "Expected at least 1 Sample in:: "+fullName)
 
 // 			// We are strictly counting series directly included in the scrapes, and no
 // 			// internal timeseries like "up" nor "scrape_seconds" etc.
@@ -206,11 +228,11 @@ package internal_test
 // 		}
 // 	}
 
-// 	require.True(t, totalSamples > 0, "Expected at least 1 sample")
+// 	require.Positive(t, totalSamples, "Expected at least 1 sample")
 // 	// On every alternative scrape the prior scrape will be reported as sale.
 // 	// Expect at least:
 // 	//    * The first scrape will NOT return stale markers
 // 	//    * (N-1 / alternatives) = ((10-1) / 2) = ~40% chance of stale markers being emitted.
 // 	chance := float64(staleMarkerCount) / float64(totalSamples)
-// 	require.True(t, chance >= 0.4, fmt.Sprintf("Expected at least one stale marker: %.3f", chance))
+// 	require.GreaterOrEqualf(t, chance, 0.4, "Expected at least one stale marker: %.3f", chance)
 // }

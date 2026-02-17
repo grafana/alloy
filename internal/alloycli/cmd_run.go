@@ -19,6 +19,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -53,7 +54,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-func runCommand() *cobra.Command {
+func RunCommand() *cobra.Command {
 	r := &alloyRun{
 		inMemoryAddr:          "alloy.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
@@ -68,11 +69,12 @@ func runCommand() *cobra.Command {
 		clusterRejoinInterval: 60 * time.Second,
 		disableSupportBundle:  false,
 		windowsPriority:       windowspriority.PriorityNormal,
+		taskShutdownDeadline:  10 * time.Minute,
 	}
 
 	cmd := &cobra.Command{
 		Use:   "run [flags] path",
-		Short: "Run Grafana Alloy",
+		Short: "Run Grafana Alloy with Default Engine",
 		Long: `The run subcommand runs Grafana Alloy in the foreground until an interrupt
 is received.
 
@@ -166,6 +168,7 @@ depending on the nature of the reload error.
 	if runtime.GOOS == "windows" {
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
+	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -201,13 +204,14 @@ type alloyRun struct {
 	enableCommunityComps         bool
 	disableSupportBundle         bool
 	windowsPriority              string
+	taskShutdownDeadline         time.Duration
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
-	ctx, cancel := interruptContext()
+	ctx, cancel := interruptContext(cmd.Context())
 	defer cancel()
 
 	if configPath == "" {
@@ -275,7 +279,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// registry that we want to keep can be given a custom registry so desired
 	// metrics are still exposed.
 	reg := prometheus.DefaultRegisterer
-	reg.MustRegister(newResourcesCollector(l))
+	_ = util.MustRegisterOrGet(reg, newResourcesCollector(l))
 
 	// There's a cyclic dependency between the definition of the Alloy controller,
 	// the reload/ready functions, and the HTTP service.
@@ -384,6 +388,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			remoteCfgService,
 			uiService,
 		},
+		TaskShutdownDeadline: fr.taskShutdownDeadline,
 	})
 
 	ready = f.Ready
@@ -425,7 +430,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
-			if err != nil {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				level.Error(l).Log("msg", "failed to start reporter", "err", err)
 			}
 		}()
@@ -482,8 +487,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 }
 
 // getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
-	return func() map[string]interface{} {
+func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
+	return func() map[string]any {
 		components := component.GetAllComponents(f, component.InfoOptions{})
 		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
 			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
@@ -495,7 +500,7 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 			}
 			componentNames[c.ComponentName] = struct{}{}
 		}
-		return map[string]interface{}{"enabled-components": maps.Keys(componentNames)}
+		return map[string]any{"enabled-components": maps.Keys(componentNames)}
 	}
 }
 
@@ -584,8 +589,8 @@ func addDeprecatedFlags(cmd *cobra.Command) {
 	deprecateFlagByName(cmd, "feature.prometheus.metric-validation-scheme")
 }
 
-func interruptContext() (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
+func interruptContext(parent context.Context) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(parent)
 
 	go func() {
 		defer cancel()

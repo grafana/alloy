@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	promtailmetric "github.com/grafana/loki/v3/clients/pkg/logentry/metric"
-	promtailstages "github.com/grafana/loki/v3/clients/pkg/logentry/stages"
-	"github.com/grafana/loki/v3/pkg/util/flagext"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
+	promtailmetric "github.com/grafana/alloy/internal/loki/promtail/metric"
+	promtailstages "github.com/grafana/alloy/internal/loki/promtail/stages"
+	"github.com/grafana/alloy/internal/loki/util/flagext"
 )
 
-func convertStage(st interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertStage(st any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	stage, ok := st.(promtailstages.PipelineStage)
 	if !ok {
 		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("invalid input YAML config, "+
@@ -96,18 +96,18 @@ func convertStage(st interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 	return stages.StageConfig{}, false
 }
 
-func convertStructuredMetadata(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertStructuredMetadata(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pLabels := &promtailstages.LabelsConfig{}
 	if err := mapstructure.Decode(cfg, pLabels); err != nil {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{StructuredMetadata: &stages.LabelsConfig{
+	return stages.StageConfig{StructuredMetadata: &stages.StructuredMetadataConfig{
 		Values: *pLabels,
 	}}, true
 }
 
-func convertGeoIP(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertGeoIP(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.GeoIPConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -122,7 +122,7 @@ func convertGeoIP(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig,
 	}, true
 }
 
-func convertEventLogMessage(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertEventLogMessage(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.EventLogMessageConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -144,7 +144,7 @@ func convertDecolorize(_ *diag.Diagnostics) (stages.StageConfig, bool) {
 	return stages.StageConfig{DecolorizeConfig: &stages.DecolorizeConfig{}}, true
 }
 
-func convertStaticLabels(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertStaticLabels(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.StaticLabelConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -157,7 +157,7 @@ func convertStaticLabels(cfg interface{}, diags *diag.Diagnostics) (stages.Stage
 	}, true
 }
 
-func convertLabelAllow(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertLabelAllow(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.LabelAllowConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -170,7 +170,7 @@ func convertLabelAllow(cfg interface{}, diags *diag.Diagnostics) (stages.StageCo
 	}, true
 }
 
-func convertPack(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertPack(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pPack := &promtailstages.PackConfig{}
 	// NOTE: using WeakDecode to match promtail behaviour
 	if err := mapstructure.WeakDecode(cfg, pPack); err != nil {
@@ -185,7 +185,7 @@ func convertPack(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 	}, true
 }
 
-func convertMultiline(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pMulti := &promtailstages.MultilineConfig{}
 	// NOTE: using WeakDecode to match promtail behaviour
 	if err := mapstructure.WeakDecode(cfg, pMulti); err != nil {
@@ -204,14 +204,15 @@ func convertMultiline(cfg interface{}, diags *diag.Diagnostics) (stages.StageCon
 
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:  defaultEmpty(pMulti.Expression),
-			MaxLines:    defaultZero(pMulti.MaxLines),
-			MaxWaitTime: maxWaitTime,
+			Expression:   defaultEmpty(pMulti.Expression),
+			MaxLines:     defaultZero(pMulti.MaxLines),
+			MaxWaitTime:  maxWaitTime,
+			TrimNewlines: true,
 		},
 	}, true
 }
 
-func convertLimit(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertLimit(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pLimit := &promtailstages.LimitConfig{}
 	// NOTE: using WeakDecode to match promtail behaviour
 	if err := mapstructure.WeakDecode(cfg, pLimit); err != nil {
@@ -229,7 +230,7 @@ func convertLimit(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig,
 	}, true
 }
 
-func convertSampling(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertSampling(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pSampling := &promtailstages.SamplingConfig{}
 	// NOTE: using WeakDecode to match promtail behaviour
 	if err := mapstructure.WeakDecode(cfg, pSampling); err != nil {
@@ -247,7 +248,7 @@ func convertSampling(cfg interface{}, diags *diag.Diagnostics) (stages.StageConf
 	}, true
 }
 
-func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertDrop(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pDrop := &promtailstages.DropConfig{}
 	// NOTE: using WeakDecode to match promtail behaviour
 	if err := mapstructure.WeakDecode(cfg, pDrop); err != nil {
@@ -258,7 +259,7 @@ func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 	source := ""
 	if pDrop.Source != nil {
 		switch s := pDrop.Source.(type) {
-		case []interface{}:
+		case []any:
 			strs := make([]string, len(s))
 			for i, v := range s {
 				str, ok := v.(string)
@@ -319,7 +320,7 @@ func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 	}}, true
 }
 
-func convertTenant(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertTenant(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pTenant := &promtailstages.TenantConfig{}
 	if err := mapstructure.Decode(cfg, pTenant); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -332,7 +333,7 @@ func convertTenant(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig
 	}}, true
 }
 
-func convertTemplate(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertTemplate(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pTemplate := &promtailstages.TemplateConfig{}
 	if err := mapstructure.Decode(cfg, pTemplate); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -344,7 +345,7 @@ func convertTemplate(cfg interface{}, diags *diag.Diagnostics) (stages.StageConf
 	}}, true
 }
 
-func convertMatch(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertMatch(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pMatch := &promtailstages.MatcherConfig{}
 	if err := mapstructure.Decode(cfg, pMatch); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -368,7 +369,7 @@ func convertMatch(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig,
 	}}, true
 }
 
-func convertCRI(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertCRI(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCRI := &promtailstages.CriConfig{}
 	if err := mapstructure.Decode(cfg, pCRI); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -392,7 +393,7 @@ func convertDocker() (stages.StageConfig, bool) {
 	return stages.StageConfig{DockerConfig: &stages.DockerConfig{}}, true
 }
 
-func convertOutput(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertOutput(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pOutput := &promtailstages.OutputConfig{}
 	if err := mapstructure.Decode(cfg, pOutput); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -403,7 +404,7 @@ func convertOutput(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig
 	}}, true
 }
 
-func convertTimestamp(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertTimestamp(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pTimestamp := &promtailstages.TimestampConfig{}
 	if err := mapstructure.Decode(cfg, pTimestamp); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -419,7 +420,7 @@ func convertTimestamp(cfg interface{}, diags *diag.Diagnostics) (stages.StageCon
 	}, true
 }
 
-func convertLabelDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertLabelDrop(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pLabelDrop := &promtailstages.LabelDropConfig{}
 	if err := mapstructure.Decode(cfg, pLabelDrop); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -430,7 +431,7 @@ func convertLabelDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageCon
 	}}, true
 }
 
-func convertLabels(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertLabels(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pLabels := &promtailstages.LabelsConfig{}
 	if err := mapstructure.Decode(cfg, pLabels); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -441,7 +442,7 @@ func convertLabels(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig
 	}}, true
 }
 
-func convertMetrics(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertMetrics(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pMetrics := promtailstages.MetricsConfig{}
 	if err := mapstructure.Decode(cfg, &pMetrics); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -488,7 +489,7 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 	// Create metric according to type
 	switch strings.ToLower(pMetric.MetricType) {
 	case promtailstages.MetricTypeCounter:
-		pCounter, err := promtailmetric.NewCounters(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
+		cfg, err := promtailmetric.ParseCounterConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create counter metric process stage: %v", err))
 			return stages.MetricConfig{}, false
@@ -499,13 +500,13 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			Source:          defaultEmpty(pMetric.Source),
 			Prefix:          pMetric.Prefix,
 			MaxIdle:         maxIdle,
-			Value:           defaultEmpty(pCounter.Cfg.Value),
-			Action:          pCounter.Cfg.Action,
-			MatchAll:        defaultFalse(pCounter.Cfg.MatchAll),
-			CountEntryBytes: defaultFalse(pCounter.Cfg.CountBytes),
+			Value:           defaultEmpty(cfg.Value),
+			Action:          cfg.Action,
+			MatchAll:        defaultFalse(cfg.MatchAll),
+			CountEntryBytes: defaultFalse(cfg.CountBytes),
 		}
 	case promtailstages.MetricTypeGauge:
-		pGauge, err := promtailmetric.NewGauges(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
+		cfg, err := promtailmetric.ParseGaugeConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create gauge metric process stage: %v", err))
 			return stages.MetricConfig{}, false
@@ -516,11 +517,11 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			Source:      defaultEmpty(pMetric.Source),
 			Prefix:      pMetric.Prefix,
 			MaxIdle:     maxIdle,
-			Value:       defaultEmpty(pGauge.Cfg.Value),
-			Action:      pGauge.Cfg.Action,
+			Value:       defaultEmpty(cfg.Value),
+			Action:      cfg.Action,
 		}
 	case promtailstages.MetricTypeHistogram:
-		pHistogram, err := promtailmetric.NewHistograms(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
+		cfg, err := promtailmetric.ParseHistogramConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create histogram metric process stage: %v", err))
 			return stages.MetricConfig{}, false
@@ -531,14 +532,14 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			Source:      defaultEmpty(pMetric.Source),
 			Prefix:      pMetric.Prefix,
 			MaxIdle:     maxIdle,
-			Value:       defaultEmpty(pHistogram.Cfg.Value),
-			Buckets:     pHistogram.Cfg.Buckets,
+			Value:       defaultEmpty(cfg.Value),
+			Buckets:     cfg.Buckets,
 		}
 	}
 	return fMetric, true
 }
 
-func convertReplace(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertReplace(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.ReplaceConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -552,7 +553,7 @@ func convertReplace(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfi
 		}}, true
 }
 
-func convertRegex(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertRegex(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.RegexConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -565,7 +566,7 @@ func convertRegex(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig,
 		}}, true
 }
 
-func convertLogfmt(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertLogfmt(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.LogfmtConfig{}
 	if err := mapstructure.Decode(cfg, pCfg); err != nil {
 		addInvalidStageError(diags, cfg, err)
@@ -578,7 +579,7 @@ func convertLogfmt(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig
 		}}, true
 }
 
-func convertJSONStage(iCfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
+func convertJSONStage(iCfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	pCfg := &promtailstages.JSONConfig{}
 	if err := mapstructure.Decode(iCfg, pCfg); err != nil {
 		addInvalidStageError(diags, iCfg, err)
@@ -592,7 +593,7 @@ func convertJSONStage(iCfg interface{}, diags *diag.Diagnostics) (stages.StageCo
 		}}, true
 }
 
-func addInvalidStageError(diags *diag.Diagnostics, iCfg interface{}, err error) {
+func addInvalidStageError(diags *diag.Diagnostics, iCfg any, err error) {
 	diags.Add(
 		diag.SeverityLevelError,
 		fmt.Sprintf("invalid pipeline stage config: %v - %v", iCfg, err),

@@ -16,9 +16,6 @@ var (
 	// debug level when debug level logging is not enabled. Log level allocations can become very expensive
 	// as we log numerous log entries per log line at debug level.
 	Debug = false
-
-	// Inspect is used to debug promtail pipelines by showing diffs between pipeline stages
-	Inspect = false
 )
 
 const (
@@ -158,7 +155,7 @@ func parseTimestampWithoutYear(layout string, location *time.Location, timestamp
 }
 
 // getString will convert the input variable to a string if possible
-func getString(unk interface{}) (string, error) {
+func getString(unk any) (string, error) {
 	switch i := unk.(type) {
 	case float64:
 		return strconv.FormatFloat(i, 'f', -1, 64), nil
@@ -186,14 +183,4 @@ func getString(unk interface{}) (string, error) {
 	default:
 		return "", fmt.Errorf("can't convert %v to string", unk)
 	}
-}
-
-func stringsContain(values []string, search string) bool {
-	for _, v := range values {
-		if search == v {
-			return true
-		}
-	}
-
-	return false
 }

@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"strings"
 
-	promtail_config "github.com/grafana/loki/v3/clients/pkg/promtail/config"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/limit"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
 	prom_config "github.com/prometheus/prometheus/config"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -16,6 +14,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
 	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
 	"github.com/grafana/alloy/internal/converter/internal/staticconvert/internal/build"
+	promtail_config "github.com/grafana/alloy/internal/loki/promtail/config"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
+	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	"github.com/grafana/alloy/internal/static/config"
 	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/syntax/scanner"
@@ -57,9 +58,17 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 		return nil, diags
 	}
 
-	prettyByte, newDiags := common.PrettyPrint(buf.Bytes())
+	prettyByte, newDiags := common.PrettyPrint([]byte(fixFunctionUse(buf.String())))
 	diags.AddAll(newDiags)
 	return prettyByte, diags
+}
+
+// There is not a way to express a function call in a struct to encode back into Alloy config, so we need to fix it
+func fixFunctionUse(buf string) string {
+	return strings.ReplaceAll(buf,
+		`"\"spec.nodeName=\" + coalesce(sys.env(\"HOSTNAME\"), constants.hostname)"`,
+		`"spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)`,
+	)
 }
 
 // AppendAll analyzes the entire static config in memory and transforms it into

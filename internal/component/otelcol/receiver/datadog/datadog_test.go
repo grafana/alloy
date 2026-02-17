@@ -69,9 +69,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 		// Check the arguments
 		require.Equal(t, otelArgs.Endpoint, httpAddr)
-		require.Equal(t, len(otelArgs.CORS.AllowedOrigins), 2)
-		require.Equal(t, otelArgs.CORS.AllowedOrigins[0], "https://*.test.com")
-		require.Equal(t, otelArgs.CORS.AllowedOrigins[1], "https://test.com")
+		require.Equal(t, len(otelArgs.CORS.Get().AllowedOrigins), 2)
+		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[0], "https://*.test.com")
+		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[1], "https://test.com")
 		require.Equal(t, otelArgs.ReadTimeout, time.Hour)
 	})
 }

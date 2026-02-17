@@ -15,9 +15,10 @@
 ##
 ## Targets for running tests:
 ##
-##   test              Run tests
-##   lint              Lint code
-##   integration-test  Run integration tests
+##   test                  Run tests
+##   lint                  Lint code
+##   integration-test      Run integration tests
+##   integration-test-k8s  Run Kubernetes integration tests
 ##
 ## Targets for building binaries:
 ##
@@ -45,9 +46,10 @@
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
-##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
+##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
 ##
 ## Other targets:
 ##
@@ -56,6 +58,8 @@
 ##   clean                  Clean caches and built binaries
 ##   help                   Displays this message
 ##   info                   Print Makefile-specific environment variables
+##   update-go-version-pr-1 Update Go version in build images (use VERSION=1.25.8)
+##   update-go-version-pr-2 Update Go version in go.mod and Dockerfiles (use VERSION=1.25.8)
 ##
 ## Environment variables:
 ##
@@ -74,20 +78,25 @@
 ##   GO_TAGS              Extra tags to use when building.
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
+##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 
 include tools/make/*.mk
 
-ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
-ALLOY_BINARY         ?= build/alloy
-SERVICE_BINARY       ?= build/alloy-service
-ALLOYLINT_BINARY     ?= build/alloylint
-GOOS                 ?= $(shell go env GOOS)
-GOARCH               ?= $(shell go env GOARCH)
-GOARM                ?= $(shell go env GOARM)
-CGO_ENABLED          ?= 1
-RELEASE_BUILD        ?= 0
-GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
+ALLOY_BINARY         		?= build/alloy
+SERVICE_BINARY       		?= build/alloy-service
+ALLOYLINT_BINARY     		?= build/alloylint
+BUILDER_VERSION      		?= v0.139.0
+JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+GOOS                 		?= $(shell go env GOOS)
+GOARCH               		?= $(shell go env GOARCH)
+GOARM                		?= $(shell go env GOARM)
+CGO_ENABLED          		?= 1
+RELEASE_BUILD        		?= 0
+GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -146,32 +155,45 @@ endif
 .PHONY: lint
 lint: alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
-# more without -race for packages that have known race detection issues. The
+# more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
-	$(GO_ENV) cd ./syntax && go test -race ./...
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		if echo "$$dir" | grep -qv testdata; then \
+			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
+		fi;\
+	done
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging  ./internal/tools/packaging_test
+	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
-.PHONY: integration-test
-integration-test:
-	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+.PHONY: integration-test-docker
+integration-test-docker:
+	cd integration-tests/docker && $(GO_ENV) go run .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
+	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 30m ./...
+
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+		$(GO_ENV) go build .
 
 #
 # Targets for building binaries
@@ -180,11 +202,11 @@ integration-test:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: generate-ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
 endif
 
 # alloy-service is not included in binaries since it's Windows-only.
@@ -228,14 +250,14 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest generate-snmp
-generate: generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest generate-snmp
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd operations/helm/charts/alloy && helm-docs
+	cd ./operations/helm/charts/alloy && helm-docs
 endif
 
 generate-helm-tests:
@@ -245,18 +267,31 @@ else
 	bash ./operations/helm/scripts/rebuild-tests.sh
 endif
 
+generate-module-dependencies:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+endif
+
+generate-otel-collector-distro:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@if [ -f ./collector/go.mod ]; then \
+		cd ./collector && go mod tidy; \
+	fi
+	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
+	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
+endif
+
 generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_UI_BUILD),1)
+	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
-	cd ./internal/web/ui && yarn --network-timeout=1200000 && yarn run build
-endif
-
-generate-versioned-files:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	sh ./tools/gen-versioned-files/gen-versioned-files.sh
+	cd ./internal/web/ui && npm install && npm run build
 endif
 
 generate-docs:
@@ -273,15 +308,48 @@ else
 	go generate ./internal/winmanifest
 endif
 
+.PHONY: generate-rendered-mixin
+generate-rendered-mixin:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	rm -rf operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	mkdir -p operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	cd operations/alloy-mixin && $(JB) install
+	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
+	$(JSONNET) -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
+endif
+
+.PHONY: test-mixin
+test-mixin: generate-rendered-mixin
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@echo "Running Jsonnet tests..."
+	@for test in operations/alloy-mixin/test/*_test.jsonnet; do \
+		echo "Testing $$test..."; \
+		$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor "$$test" || exit 1; \
+		echo ""; \
+	done
+	@echo "✅ All Jsonnet tests passed!"
+	@echo "Validating dashboards with Grizzly..."
+	@for dashboard in operations/alloy-mixin/rendered/dashboards/*.json; do \
+		echo "  Validating $$dashboard..."; \
+		$(GRIZZLY) show "$$dashboard" > /dev/null || exit 1; \
+	done
+	@echo "Grizzly validation passed!"
+	@echo "All mixin tests passed!"
+endif
+
 generate-snmp:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 # Fetch snmp.yml file of the same version as the snmp_exporter go module, use sed to update the file we need to fetch in common.go:
 	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
-	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
+	sed -i '' "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
 	go generate ./internal/static/integrations/snmp_exporter/common; \
-	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+	sed -i '' "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
 endif
 
 generate-gh-issue-templates:
@@ -297,6 +365,16 @@ endif
 #
 # build-container-cache and clean-build-container-cache are defined in
 # Makefile.build-container.
+
+.PHONY: update-go-version-pr-1
+update-go-version-pr-1:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version pr-1 $(VERSION)
+
+.PHONY: update-go-version-pr-2
+update-go-version-pr-2:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version pr-2 $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

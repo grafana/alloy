@@ -9,12 +9,15 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logqlmodel"
 	json "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+)
+
+const (
+	packedEntryKey = "_entry"
 )
 
 // Packed keeps track of the labels and log entry.
@@ -25,7 +28,7 @@ type Packed struct {
 
 // UnmarshalJSON populates a Packed struct where every key except the _entry key is added to the Labels field
 func (w *Packed) UnmarshalJSON(data []byte) error {
-	m := &map[string]interface{}{}
+	m := &map[string]any{}
 	err := json.Unmarshal(data, m)
 	if err != nil {
 		return err
@@ -33,7 +36,7 @@ func (w *Packed) UnmarshalJSON(data []byte) error {
 	w.Labels = map[string]string{}
 	for k, v := range *m {
 		// _entry key goes to the Entry field, everything else becomes a label
-		if k == logqlmodel.PackedEntryKey {
+		if k == packedEntryKey {
 			if s, ok := v.(string); ok {
 				w.Entry = s
 			} else {
@@ -93,7 +96,7 @@ func (w Packed) MarshalJSON() ([]byte, error) {
 		buf.WriteString(",")
 	}
 	// Add the line entry
-	buf.WriteString("\"" + logqlmodel.PackedEntryKey + "\":")
+	buf.WriteString("\"" + packedEntryKey + "\":")
 	buf.Write(b)
 
 	buf.WriteString("}")
@@ -192,11 +195,6 @@ func (m *packStage) pack(e Entry) Entry {
 	}
 
 	return e
-}
-
-// Name implements Stage
-func (m *packStage) Name() string {
-	return StageTypePack
 }
 
 // Cleanup implements Stage.

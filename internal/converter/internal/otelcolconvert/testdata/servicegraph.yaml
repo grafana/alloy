@@ -17,6 +17,7 @@ connectors:
     store_expiration_loop: 5s
     database_name_attributes: [db_name3, db_name4]
     metrics_flush_interval: 3m
+    virtual_node_peer_attributes: [example_attribute]
 
 exporters:
   otlp:

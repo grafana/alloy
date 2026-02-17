@@ -70,16 +70,6 @@ receivers:
 			expectedError: true,
 		},
 		{
-			name: "empty receiver config",
-			cfg: `
-receivers:
-  jaeger: {}
-remote_write:
-  - endpoint: example.com:12345
-`,
-			expectedError: true,
-		},
-		{
 			name: "nil jaeger config",
 			cfg: `
 receivers:
@@ -92,11 +82,6 @@ remote_write:
 receivers:
   push_receiver: {}
   jaeger:
-    protocols:
-      grpc:
-      thrift_http:
-      thrift_binary:
-      thrift_compact:
 exporters:
   otlp/0:
     endpoint: example.com:12345
@@ -1524,7 +1509,7 @@ service:
 			require.NoError(t, err)
 
 			// convert actual config to otel config
-			otelMapStructure := map[string]interface{}{}
+			otelMapStructure := map[string]any{}
 			err = yaml.Unmarshal([]byte(tc.expectedConfig), otelMapStructure)
 			require.NoError(t, err)
 

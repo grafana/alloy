@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/scrape"
@@ -65,7 +66,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 
 	type plain Config
@@ -73,7 +74,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML implements yaml.Marshaler.
-func (c Config) MarshalYAML() (interface{}, error) {
+func (c Config) MarshalYAML() (any, error) {
 	// We want users to be able to marshal instance.Configs directly without
 	// *needing* to call instance.MarshalConfig, so we call it internally
 	// here and return a map.
@@ -137,7 +138,7 @@ func (c *Config) ApplyDefaults(global GlobalConfig) error {
 		if sc.ScrapeProtocols == nil {
 			sc.ScrapeProtocols = c.global.Prometheus.ScrapeProtocols
 		}
-		if sc.MetricNameValidationScheme == "" {
+		if sc.MetricNameValidationScheme == model.UnsetValidation {
 			sc.MetricNameValidationScheme = c.global.Prometheus.MetricNameValidationScheme
 		}
 		if sc.MetricNameEscapingScheme == "" {
@@ -190,7 +191,7 @@ func (c *Config) ApplyDefaults(global GlobalConfig) error {
 	return nil
 }
 
-func getHash(data interface{}) (string, error) {
+func getHash(data any) (string, error) {
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return "", err

@@ -58,15 +58,18 @@ otelcol.connector.servicegraph "<LABEL>" {
 
 You can use the following arguments with `otelcol.connector.servicegraph`:
 
-| Name                        | Type             | Description                                                                              | Default                                                                                                                      | Required |
-|-----------------------------|------------------|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|----------|
-| `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.                       | `"1m"`                                                                                                                       | no       |
-| `database_name_attribute`   | `string`         | (Deprecated) The attribute name used to identify the database name from span attributes. | `"db.name"`                                                                                                                  | no       |
-| `database_name_attributes`  | `list(string)`   | The list of attribute names used to identify the database name from span attributes.     | `["db.name"]`                                                                                                                | no       |
-| `dimensions`                | `list(string)`   | A list of dimensions to add with the default dimensions.                                 | `[]`                                                                                                                         | no       |
-| `latency_histogram_buckets` | `list(duration)` | Buckets for latency histogram metrics.                                                   | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no       |
-| `metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components.                      | `"60s"`                                                                                                                      | no       |
-| `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.                              | `"2s"`                                                                                                                       | no       |
+| Name                             | Type             | Description                                                                              | Default                                                                                                                      | Required |
+|----------------------------------|------------------|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|----------|
+| `cache_loop`                     | `duration`       | Configures how often to delete series which have not been updated.                       | `"1m"`                                                                                                                       | no       |
+| `database_name_attribute`        | `string`         | (Deprecated) The attribute name used to identify the database name from span attributes. | `"db.name"`                                                                                                                  | no       |
+| `database_name_attributes`       | `list(string)`   | The list of attribute names used to identify the database name from span attributes.     | `["db.name"]`                                                                                                                | no       |
+| `dimensions`                     | `list(string)`   | A list of dimensions to add with the default dimensions.                                 | `[]`                                                                                                                         | no       |
+| `exponential_histogram_max_size` | `list(string)`   | the maximum number of buckets per positive or negative number range.                     | `[]`                                                                                                                         | no       |
+| `latency_histogram_buckets`      | `list(duration)` | Buckets for latency histogram metrics.                                                   | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no       |
+| `metrics_flush_interval`         | `duration`       | The interval at which metrics are flushed to downstream components.                      | `"60s"`                                                                                                                      | no       |
+| `store_expiration_loop`          | `duration`       | The time to expire old entries from the store periodically.                              | `"2s"`                                                                                                                       | no       |
+| `virtual_node_extra_label`       | `bool`           | Adds an extra `virtual_node` label with an optional value of `client` or `server`, indicating which node is the uninstrumented one.                             | `false`                                                                                                                      | no       |
+| `virtual_node_peer_attributes`   | `list(string)`   | The list of attributes used to identify virtual node peer.                               | `["peer.service", "db.name", "db.system"]`                                                                                   | no       |
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.
@@ -112,6 +115,19 @@ Additional labels can be included using the `dimensions` configuration option:
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
 
 The attributes in `database_name_attributes` are tried in order, selecting the first match.
+
+`virtual_node_peer_attributes` is useful when an OTel-instrumented client sends a request to a service that isn't OTel-instrumented.
+Normally, `otelcol.connector.servicegraph` can't pair the client span with the server span.
+When an edge expires, `otelcol.connector.servicegraph` checks if it has peer attributes listed in `virtual_node_peer_attributes`.
+If it finds an attribute, `otelcol.connector.servicegraph` aggregates the metrics with a virtual node.
+
+If no client span is found and `virtual_node_peer_attributes` is not an empty list,
+then the service span will be paired with a virtual node called `client="user"`.
+This is useful when a client that isn't OTel-instrumented (like a web browser) sends a request to an OTel-instrumented service.
+Without a virtual node, the client span is missing, and the server span expires without being paired.
+
+Attributes configured in the `virtual_node_peer_attributes` argument are ordered by priority, with earlier attributes having higher priority.
+An empty list disables the creation of a virtual node.
 
 [Span Kind]: https://opentelemetry.io/docs/concepts/signals/traces/#span-kind
 

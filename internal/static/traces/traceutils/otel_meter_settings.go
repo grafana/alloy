@@ -11,7 +11,7 @@ import (
 func PrometheusExporter(reg prometheus.Registerer) (otelmetric.Reader, error) {
 	return otelprom.New(
 		otelprom.WithRegisterer(reg),
-		otelprom.WithoutUnits(),
+		otelprom.WithoutUnits(), //nolint:staticcheck // WithoutUnits is deprecated but none of the translation strategies seem correct
 		otelprom.WithoutScopeInfo(),
 		otelprom.WithoutTargetInfo(),
 		otelprom.WithNamespace("traces"))

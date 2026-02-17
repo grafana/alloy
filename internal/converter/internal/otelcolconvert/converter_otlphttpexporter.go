@@ -35,13 +35,14 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).ClientConfig.Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*otlphttpexporter.Config).QueueConfig.StorageID)
+			queue := cfg.(*otlphttpexporter.Config).QueueConfig.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -71,7 +72,7 @@ func toOtelcolExporterOTLPHTTP(cfg *otlphttpexporter.Config) *otlphttp.Arguments
 
 func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArguments {
 	var a *auth.Handler
-	if cfg.Auth != nil {
+	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
 	}
 
@@ -92,6 +93,7 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,
+		ForceAttemptHTTP2:    cfg.ForceAttemptHTTP2,
 
 		Authentication: a,
 	}

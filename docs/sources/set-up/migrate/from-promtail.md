@@ -179,6 +179,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Promtail.
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from the Promtail Web UI.
+* If you are converting a Promtail configuration and not deploying as a Kubernetes daemonset, [modify the generated configuration][single-node-discovery] to ensure `discovery.kubernetes` discovery behaves as expected. The converter makes the same assumption as promtail that any `pod` discovery is for a daemonset deployment.
 
 [Promtail]: https://www.grafana.com/docs/loki/latest/clients/promtail/
 [debugging]: #debugging
@@ -192,3 +193,4 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [DebuggingUI]: ../../../troubleshoot/debug/
 [configuration]: ../../../get-started/configuration-syntax/
 [UI]: ../../../troubleshoot/debug/#alloy-ui
+[single-node-discovery]: ../../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node

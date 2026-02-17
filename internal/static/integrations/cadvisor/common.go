@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -101,7 +102,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 
 	type plain Config
@@ -130,9 +131,8 @@ func (c *Config) Name() string {
 	return name
 }
 
-// InstanceKey returns the agentKey
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 func init() {

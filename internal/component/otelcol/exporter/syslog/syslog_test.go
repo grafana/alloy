@@ -131,8 +131,8 @@ func createTestLogs(t time.Time) plog.Logs {
 	l.Attributes().PutStr("hostname", "test-host")
 	l.Attributes().PutStr("message", "This is a test log")
 	l.Attributes().PutStr("proc_id", "12345")
-	struc := map[string]interface{}{
-		"Auth": map[string]interface{}{"Realm": "ADMIN", "User": "root"},
+	struc := map[string]any{
+		"Auth": map[string]any{"Realm": "ADMIN", "User": "root"},
 	}
 	l.Attributes().PutEmptyMap("structured_data").FromRaw(struc)
 	return logs

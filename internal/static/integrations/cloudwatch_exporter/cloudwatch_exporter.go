@@ -33,17 +33,20 @@ type exporter struct {
 	logger               *slog.Logger
 	cachingClientFactory cachingFactory
 	scrapeConf           yaceModel.JobsConfig
+	labelsSnakeCase      bool
 }
 
 // NewCloudwatchExporter creates a new YACE wrapper, that implements Integration
-func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, fipsEnabled, debug bool, useAWSSDKVersionV2 bool) (*exporter, error) {
+func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, fipsEnabled, labelsSnakeCase, debug, useAWSSDKVersionV2 bool) (*exporter, error) {
 	var factory cachingFactory
 	var err error
 
+	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
+
 	if useAWSSDKVersionV2 {
-		factory, err = yaceClientsV2.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
+		factory, err = yaceClientsV2.NewFactory(l, conf, fipsEnabled)
 	} else {
-		factory = yaceClientsV1.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
+		factory = yaceClientsV1.NewFactory(l, conf, fipsEnabled)
 	}
 
 	if err != nil {
@@ -52,9 +55,10 @@ func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsCo
 
 	return &exporter{
 		name:                 name,
-		logger:               slog.New(logging.NewSlogGoKitHandler(logger)),
+		logger:               l,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
+		labelsSnakeCase:      labelsSnakeCase,
 	}, nil
 }
 
@@ -70,6 +74,11 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 		defer e.cachingClientFactory.Clear()
 
 		reg := prometheus.NewRegistry()
+		for _, metric := range yace.Metrics {
+			if err := reg.Register(metric); err != nil {
+				e.logger.Debug("Could not register cloudwatch api metric")
+			}
+		}
 		err := yace.UpdateMetrics(
 			context.Background(),
 			e.logger,
@@ -77,7 +86,7 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 			reg,
 			e.cachingClientFactory,
 			yace.MetricsPerQuery(metricsPerQuery),
-			yace.LabelsSnakeCase(labelsSnakeCase),
+			yace.LabelsSnakeCase(e.labelsSnakeCase),
 			yace.CloudWatchAPIConcurrency(cloudWatchConcurrency),
 			yace.TaggingAPIConcurrency(tagConcurrency),
 		)

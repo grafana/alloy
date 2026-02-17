@@ -6,19 +6,19 @@ import (
 
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 
+	"github.com/prometheus/common/model"
+	promconfig "github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/storage"
+	apiv1 "k8s.io/api/core/v1"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/prometheus/common/model"
-	promconfig "github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/storage"
-	apiv1 "k8s.io/api/core/v1"
 )
 
 type Arguments struct {
-
 	// Client settings to connect to Kubernetes.
 	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 
@@ -48,13 +48,27 @@ type ScrapeOptions struct {
 
 	// DefaultScrapeTimeout is the default timeout to scrape targets.
 	DefaultScrapeTimeout time.Duration `alloy:"default_scrape_timeout,attr,optional"`
+
+	// DefaultSampleLimit is the default sample limit per scrape.
+	DefaultSampleLimit uint `alloy:"default_sample_limit,attr,optional"`
+
+	// ScrapeNativeHistograms enables scraping of Prometheus native histograms.
+	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+
+	// HonorMetadata controls whether metric metadata should be passed to downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
+
+	// EnableTypeAndUnitLabels controls whether the metric's type and unit should be added as labels.
+	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
 	cfg := promconfig.DefaultGlobalConfig
 	cfg.ScrapeInterval = model.Duration(s.DefaultScrapeInterval)
 	cfg.ScrapeTimeout = model.Duration(s.DefaultScrapeTimeout)
-	cfg.MetricNameValidationScheme = promconfig.LegacyValidationConfig
+	cfg.SampleLimit = s.DefaultSampleLimit
+	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
+	cfg.MetricNameValidationScheme = model.LegacyValidation
 	cfg.MetricNameEscapingScheme = model.EscapeUnderscores
 	return cfg
 }

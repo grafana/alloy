@@ -8,15 +8,17 @@ import (
 	"github.com/githubexporter/github-exporter/exporter"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	config_util "github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	config_util "github.com/prometheus/common/config"
 )
 
 // DefaultConfig holds the default settings for the github_exporter integration
 var DefaultConfig = Config{
-	APIURL: "https://api.github.com",
+	APIURL:          "https://api.github.com",
+	GitHubRateLimit: 15000,
 }
 
 // Config controls github_exporter
@@ -38,10 +40,22 @@ type Config struct {
 
 	// A path to a file containing a GitHub authentication token that allows the API to be queried more often. If supplied, this supersedes `api_token`
 	APITokenFile string `yaml:"api_token_file,omitempty"`
+
+	// The path to the GitHub App private key.
+	GitHubAppKeyPath string `yaml:"github_app_key_path,omitempty"`
+
+	// The App ID of the GitHub App.
+	GitHubAppID int64 `yaml:"github_app_id,omitempty"`
+
+	// The Installation ID of the GitHub App.
+	GitHubAppInstallationID int64 `yaml:"github_app_installation_id,omitempty"`
+
+	// The rate limit threshold for GitHub App authentication. Default is 15,000.
+	GitHubRateLimit float64 `yaml:"github_rate_limit,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 
 	type plain Config
@@ -54,7 +68,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the hostname:port of the GitHub API server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(c.APIURL)
 	if err != nil {
 		return "", fmt.Errorf("could not parse url: %w", err)
@@ -83,10 +97,36 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	conf.SetRepositories(c.Repositories)
 	conf.SetOrganisations(c.Organizations)
 	conf.SetUsers(c.Users)
-	if c.APIToken != "" {
-		conf.SetAPIToken(string(c.APIToken))
+
+	// Determine authentication method and validate
+	hasTokenAuth := c.APIToken != "" || c.APITokenFile != ""
+	hasGitHubAppAuth := c.GitHubAppID != 0 && c.GitHubAppInstallationID != 0 && c.GitHubAppKeyPath != ""
+
+	if hasTokenAuth && hasGitHubAppAuth {
+		err := fmt.Errorf("cannot use both token authentication and GitHub App authentication")
+		return nil, err
 	}
-	if c.APITokenFile != "" {
+
+	// Configure GitHub App authentication if required fields are present
+	if hasGitHubAppAuth {
+		level.Debug(logger).Log("msg", "github authentication method", "method", "GitHub App")
+
+		conf.SetGitHubApp(true)
+		conf.SetGitHubAppKeyPath(c.GitHubAppKeyPath)
+		conf.SetGitHubAppId(c.GitHubAppID)
+		conf.SetGitHubAppInstallationId(c.GitHubAppInstallationID)
+		conf.SetGitHubRateLimit(c.GitHubRateLimit)
+		err = conf.SetAPITokenFromGitHubApp()
+		if err != nil {
+			level.Error(logger).Log("msg", "unable to authenticate with GitHub App", "err", err)
+			return nil, err
+		}
+	} else if c.APIToken != "" {
+		level.Debug(logger).Log("msg", "github authentication method", "method", "API Token")
+
+		conf.SetAPIToken(string(c.APIToken))
+	} else if c.APITokenFile != "" {
+		level.Debug(logger).Log("msg", "github authentication method", "method", "API Token File")
 		err = conf.SetAPITokenFromFile(c.APITokenFile)
 		if err != nil {
 			level.Error(logger).Log("msg", "unable to load GitHub API token from file", "err", err)

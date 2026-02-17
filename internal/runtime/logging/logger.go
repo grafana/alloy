@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/slogadapter"
+	"github.com/grafana/loki/pkg/push"
 )
 
 type EnabledAware interface {
@@ -146,7 +146,7 @@ func (l *Logger) RemoveTemporaryWriter() {
 }
 
 // Log implements log.Logger.
-func (l *Logger) Log(kvps ...interface{}) error {
+func (l *Logger) Log(kvps ...any) error {
 	// Buffer logs before confirming log format is configured in `logging` block
 	l.bufferMut.RLock()
 	if !l.hasLogFormat {
@@ -196,7 +196,7 @@ func (fw *lokiWriter) Write(p []byte) (int, error) {
 		select {
 		case receiver.Chan() <- loki.Entry{
 			Labels: model.LabelSet{"component": "alloy"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      string(p),
 			},
@@ -287,7 +287,7 @@ func (w *writerVar) Write(p []byte) (int, error) {
 }
 
 type bufferedItem struct {
-	kvps    []interface{}
+	kvps    []any
 	handler *deferredSlogHandler
 	record  slog.Record
 }

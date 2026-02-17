@@ -102,8 +102,9 @@ func customizeTarget(baseTarget discovery.Target, args component.Arguments) []di
 	return []discovery.Target{targetBuilder.Target()}
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 

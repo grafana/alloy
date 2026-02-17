@@ -73,7 +73,12 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `same_file_cache_size`    | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache.                       | `8`      | no       |
 | `sample_rate`             | `int`                    | How many times per second to collect profile samples.                                                                | `19`     | no       |
 | `symbols_map_size`        | `int`                    | Deprecated (no-op), previously controlled the size of eBPF symbols map .                                             | `16384`  | no       |
+| `load_probe`              | `bool`                   | Enable loading uprobe dynamically during runtime.                                                                    | `false`  | no       |
+| `u_probe_links`           | `list(string)`           | List of user-space symbols to collect stack-trace from, e.g. `["/usr/lib/libc.so.6:malloc"]`.                        |          | no       |
 | `v8_enabled`              | `bool`                   | A flag to enable/disable V8 profiling.                                                                               | `true`   | no       |
+| `off_cpu_threshold`       | `float`                  | A flag to adjust the off-cpu profiling threshold between 0 and 1 as float.                                           | `0`      | no       |
+| `verbose_mode`            | `bool`                   | Enable verbose logging for the eBPF profiler.                                                                        | `false`  | no       |
+| `lazy_mode`               | `bool`                   | Enable lazy mode to defer eBPF profiler startup until targets are discovered.                                        | `false`  | no       |
 
 Only the `forward_to` and `targets` fields are required.
 Omitted fields take their default values.
@@ -82,7 +87,7 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Blocks
 
-The `pyroscope.ebpf` component doesn't support any blocks. You can configure this component with arguments.
+`pyroscope.ebpf` doesn't support any blocks.
 
 ## Exported fields
 

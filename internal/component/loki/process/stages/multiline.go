@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // Configuration errors.
@@ -25,15 +26,17 @@ var (
 
 // MultilineConfig contains the configuration for a Multiline stage.
 type MultilineConfig struct {
-	Expression  string        `alloy:"firstline,attr"`
-	MaxLines    uint64        `alloy:"max_lines,attr,optional"`
-	MaxWaitTime time.Duration `alloy:"max_wait_time,attr,optional"`
+	Expression   string        `alloy:"firstline,attr"`
+	MaxLines     uint64        `alloy:"max_lines,attr,optional"`
+	MaxWaitTime  time.Duration `alloy:"max_wait_time,attr,optional"`
+	TrimNewlines bool          `alloy:"trim_newlines,attr,optional"`
 }
 
 // DefaultMultilineConfig applies the default values on
 var DefaultMultilineConfig = MultilineConfig{
-	MaxLines:    128,
-	MaxWaitTime: 3 * time.Second,
+	MaxLines:     128,
+	MaxWaitTime:  3 * time.Second,
+	TrimNewlines: true,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -166,7 +169,11 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.Wa
 			if state.buffer.Len() > 0 {
 				state.buffer.WriteRune('\n')
 			}
-			state.buffer.WriteString(e.Line)
+			line := e.Line
+			if m.cfg.TrimNewlines {
+				line = strings.TrimRight(line, "\r\n")
+			}
+			state.buffer.WriteString(line)
 			state.currentLines++
 
 			if state.currentLines == m.cfg.MaxLines {
@@ -182,7 +189,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		return
 	}
 	// copy extracted data.
-	extracted := make(map[string]interface{}, len(s.startLineEntry.Extracted))
+	extracted := make(map[string]any, len(s.startLineEntry.Extracted))
 	for k, v := range s.startLineEntry.Extracted {
 		extracted[k] = v
 	}
@@ -190,7 +197,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		Extracted: extracted,
 		Entry: loki.Entry{
 			Labels: s.startLineEntry.Entry.Labels.Clone(),
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
 				Line:               s.buffer.String(),
 				StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
@@ -201,11 +208,6 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 	s.currentLines = 0
 
 	out <- collapsed
-}
-
-// Name implements Stage
-func (m *multilineStage) Name() string {
-	return StageTypeMultiline
 }
 
 // Cleanup implements Stage.

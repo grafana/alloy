@@ -24,11 +24,11 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # 0.32.0
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
         with:
           image-ref: 'grafana/alloy-dev:latest'
           format: 'template'
@@ -37,6 +37,6 @@ jobs:
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@df559355d593797519d70b90fc8edd5db049e7a2 # v3.29.9
+        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
         with:
           sarif_file: 'trivy-results.sarif'

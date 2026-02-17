@@ -32,8 +32,8 @@
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    {{- range $values.extraEnv }}
-    - {{- toYaml . | nindent 6 }}
+    {{- with $values.extraEnv }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- if $values.envFrom }}
   envFrom:
@@ -60,15 +60,6 @@
       path: /-/ready
       port: {{ $values.listenPort }}
       scheme: {{ $values.listenScheme }}
-    initialDelaySeconds: {{ $values.initialDelaySeconds }}
-    timeoutSeconds: {{ $values.timeoutSeconds }}
-  {{- else }}
-  readinessProbe:
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - curl -f {{ $values.listenScheme }}://localhost:{{ $values.listenPort }}/-/ready || exit 1
     initialDelaySeconds: {{ $values.initialDelaySeconds }}
     timeoutSeconds: {{ $values.timeoutSeconds }}
   {{- end }}

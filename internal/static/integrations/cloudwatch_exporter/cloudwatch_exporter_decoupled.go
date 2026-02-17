@@ -26,6 +26,7 @@ type asyncExporter struct {
 	cachingClientFactory cachingFactory
 	scrapeConf           yaceModel.JobsConfig
 	registry             atomic.Pointer[prometheus.Registry]
+	labelsSnakeCase      bool
 	// scrapeInterval is the frequency in which a background go-routine collects new AWS metrics via YACE.
 	scrapeInterval time.Duration
 }
@@ -33,14 +34,16 @@ type asyncExporter struct {
 // NewDecoupledCloudwatchExporter creates a new YACE wrapper, that implements Integration. The decouple feature spawns a
 // background go-routine to perform YACE metric collection allowing for a decoupled collection of AWS metrics from the
 // ServerHandler.
-func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, debug bool, useAWSSDKVersionV2 bool) (*asyncExporter, error) {
+func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, labelsSnakeCase, debug, useAWSSDKVersionV2 bool) (*asyncExporter, error) {
 	var factory cachingFactory
 	var err error
 
+	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
+
 	if useAWSSDKVersionV2 {
-		factory, err = yaceClientsV2.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
+		factory, err = yaceClientsV2.NewFactory(l, conf, fipsEnabled)
 	} else {
-		factory = yaceClientsV1.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
+		factory = yaceClientsV1.NewFactory(l, conf, fipsEnabled)
 	}
 
 	if err != nil {
@@ -49,10 +52,11 @@ func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceMod
 
 	return &asyncExporter{
 		name:                 name,
-		logger:               slog.New(logging.NewSlogGoKitHandler(logger)),
+		logger:               l,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		registry:             atomic.Pointer[prometheus.Registry]{},
+		labelsSnakeCase:      labelsSnakeCase,
 		scrapeInterval:       scrapeInterval,
 	}, nil
 }
@@ -100,6 +104,11 @@ func (e *asyncExporter) scrape(ctx context.Context) {
 	defer e.cachingClientFactory.Clear()
 
 	reg := prometheus.NewRegistry()
+	for _, metric := range yace.Metrics {
+		if err := reg.Register(metric); err != nil {
+			e.logger.Debug("Could not register cloudwatch api metric")
+		}
+	}
 	err := yace.UpdateMetrics(
 		ctx,
 		e.logger,
@@ -107,7 +116,7 @@ func (e *asyncExporter) scrape(ctx context.Context) {
 		reg,
 		e.cachingClientFactory,
 		yace.MetricsPerQuery(metricsPerQuery),
-		yace.LabelsSnakeCase(labelsSnakeCase),
+		yace.LabelsSnakeCase(e.labelsSnakeCase),
 		yace.CloudWatchAPIConcurrency(cloudWatchConcurrency),
 		yace.TaggingAPIConcurrency(tagConcurrency),
 	)

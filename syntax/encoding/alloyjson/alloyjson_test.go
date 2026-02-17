@@ -14,7 +14,7 @@ import (
 func TestValues(t *testing.T) {
 	tt := []struct {
 		name       string
-		input      interface{}
+		input      any
 		expectJSON string
 	}{
 		{
@@ -53,7 +53,7 @@ func TestValues(t *testing.T) {
 		},
 		{
 			name:  "nested array",
-			input: []interface{}{"testing", []int{0, 1, 2}},
+			input: []any{"testing", []int{0, 1, 2}},
 			expectJSON: `{
 				"type": "array",
 				"value": [
@@ -104,6 +104,18 @@ func TestValues(t *testing.T) {
 					{ "key": "name", "value": { "type": "string", "value": "Scrooge McDuck" }}
 				]
 			}`,
+		},
+		{
+			name: "capsule with stringer",
+			input: capsuleWithStringer{
+				name: "MyName",
+			},
+			expectJSON: `{ "type": "capsule", "value": "MyName" }`,
+		},
+		{
+			name:       "capsule with stringer and empty string",
+			input:      capsuleWithStringer{},
+			expectJSON: `{ "type": "capsule", "value": "capsule(\"alloyjson_test.capsuleWithStringer\")" }`,
 		},
 		{
 			// nil arrays and objects must always be [] instead of null as that's
@@ -383,7 +395,7 @@ type capsuleConvertibleToObject struct {
 	address string
 }
 
-func (c capsuleConvertibleToObject) ConvertInto(dst interface{}) error {
+func (c capsuleConvertibleToObject) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
 		result := map[string]syntax.Value{
@@ -402,3 +414,11 @@ var (
 	_ syntax.Capsule                = capsuleConvertibleToObject{}
 	_ syntax.ConvertibleIntoCapsule = capsuleConvertibleToObject{}
 )
+
+type capsuleWithStringer struct {
+	name string
+}
+
+func (c capsuleWithStringer) String() string {
+	return c.name
+}

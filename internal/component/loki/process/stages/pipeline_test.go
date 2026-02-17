@@ -6,18 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/featuregate"
-
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
 )
@@ -54,8 +51,8 @@ func loadConfig(yml string) []StageConfig {
 	return config.Stages
 }
 
-func newPipelineFromConfig(cfg, name string) (*Pipeline, error) {
-	return NewPipeline(util_log.Logger, loadConfig(cfg), &name, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+func newPipelineFromConfig(cfg string) (*Pipeline, error) {
+	return NewPipeline(log.NewNopLogger(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 }
 
 // TODO(@tpaschalis) Comment these out until we port over the remaining
@@ -102,7 +99,7 @@ stage.output {
 }`
 
 func TestNewPipeline(t *testing.T) {
-	p, err := NewPipeline(util_log.Logger, loadConfig(testMultiStageAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, err := NewPipeline(log.NewNopLogger(), loadConfig(testMultiStageAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		panic(err)
 	}
@@ -214,7 +211,7 @@ func TestPipeline_Process(t *testing.T) {
 			err := syntax.Unmarshal([]byte(tt.config), &config)
 			require.NoError(t, err)
 
-			p, err := NewPipeline(util_log.Logger, loadConfig(tt.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewPipeline(log.NewNopLogger(), loadConfig(tt.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			out := processEntries(p, newEntry(nil, tt.initialLabels, tt.entry, tt.t))[0]
@@ -256,7 +253,7 @@ func BenchmarkPipeline(b *testing.B) {
 	}
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			pl, err := NewPipeline(bm.logger, bm.stgs, nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(bm.logger, bm.stgs, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				panic(err)
 			}
@@ -281,7 +278,7 @@ func BenchmarkPipeline(b *testing.B) {
 
 func TestPipeline_Wrap(t *testing.T) {
 	now := time.Now()
-	p, err := NewPipeline(util_log.Logger, loadConfig(testMultiStageAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, err := NewPipeline(log.NewNopLogger(), loadConfig(testMultiStageAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		panic(err)
 	}
@@ -310,15 +307,14 @@ func TestPipeline_Wrap(t *testing.T) {
 	}
 
 	for tName, tt := range tests {
-		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
-			c := fake.NewClient(func() {})
-			handler := p.Wrap(c)
+			c := loki.NewCollectingHandler()
+			handler := p.Start(c.Chan())
 
 			handler.Chan() <- loki.Entry{
 				Labels: tt.labels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line:      rawTestLine,
 					Timestamp: now,
 				},
@@ -337,7 +333,7 @@ func TestPipeline_Wrap(t *testing.T) {
 }
 
 func Test_PipelineParallel(t *testing.T) {
-	c := fake.NewClient(func() {})
+	handler := loki.NewCollectingHandler()
 	cfg := `
 stage.match {
 		selector = "{match=~\".*\"}"
@@ -369,10 +365,10 @@ stage.match {
 			}
 }
 `
-	p, err := newPipelineFromConfig(cfg, "test")
+	p, err := newPipelineFromConfig(cfg)
 	require.NoError(t, err)
 
-	e1 := p.Wrap(c)
+	e1 := p.Start(handler.Chan())
 	e2 := loki.AddLabelsMiddleware(model.LabelSet{"bar": "foo"}).Wrap(e1)
 	entryhandler := loki.AddLabelsMiddleware(model.LabelSet{"foo": "bar"}).Wrap(e2)
 
@@ -380,19 +376,19 @@ stage.match {
 	parallelism := 10
 	wg.Add(parallelism)
 
-	for i := 0; i < parallelism; i++ {
+	for i := range parallelism {
 		go func(i int) {
 			defer wg.Done()
 			entryhandler.Chan() <- loki.Entry{
 				Labels: make(model.LabelSet),
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      fmt.Sprintf(`{app:"%d", `, 5),
 				},
 			}
 			entryhandler.Chan() <- loki.Entry{
 				Labels: make(model.LabelSet),
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      fmt.Sprintf(` message:"%s"}`, time.Now()),
 				},
@@ -405,6 +401,6 @@ stage.match {
 	entryhandler.Stop()
 	e2.Stop()
 	e1.Stop()
-	c.Stop()
-	t.Log(c.Received())
+	handler.Stop()
+	t.Log(handler.Received())
 }

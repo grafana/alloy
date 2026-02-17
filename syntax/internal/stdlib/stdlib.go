@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,7 @@ var ExperimentalIdentifiers = map[string]bool{
 }
 
 // DeprecatedIdentifiers are deprecated in favour of the namespaced ones.
-var DeprecatedIdentifiers = map[string]interface{}{
+var DeprecatedIdentifiers = map[string]any{
 	"env":           os.Getenv,
 	"nonsensitive":  nonSensitive,
 	"concat":        concat,
@@ -51,7 +52,7 @@ var DeprecatedIdentifiers = map[string]interface{}{
 // Function identifiers are Go functions with exactly one non-error return
 // value, with an optionally supported error return value as the second return
 // value.
-var Identifiers = map[string]interface{}{
+var Identifiers = map[string]any{
 	"constants": constants,
 	"coalesce":  coalesce,
 	"json_path": jsonPath,
@@ -70,11 +71,11 @@ func init() {
 	maps.Copy(Identifiers, DeprecatedIdentifiers)
 }
 
-var file = map[string]interface{}{
+var file = map[string]any{
 	"path_join": filepath.Join,
 }
 
-var encoding = map[string]interface{}{
+var encoding = map[string]any{
 	"from_json":      jsonDecode,
 	"from_yaml":      yamlDecode,
 	"from_base64":    base64Decode,
@@ -82,9 +83,11 @@ var encoding = map[string]interface{}{
 	"to_json":        jsonEncode,
 	"to_base64":      base64Encode,
 	"to_URLbase64":   base64URLEncode,
+	"url_encode":     urlEncode,
+	"url_decode":     urlDecode,
 }
 
-var str = map[string]interface{}{
+var str = map[string]any{
 	"format":      fmt.Sprintf,
 	"join":        strings.Join,
 	"replace":     strings.ReplaceAll,
@@ -202,17 +205,17 @@ var groupBy = value.RawFunction(func(funcValue value.Value, args ...value.Value)
 	return value.Array(result...), nil
 })
 
-var array = map[string]interface{}{
+var array = map[string]any{
 	"concat":       concat,
 	"combine_maps": combineMaps,
 	"group_by":     groupBy,
 }
 
-var convert = map[string]interface{}{
+var convert = map[string]any{
 	"nonsensitive": nonSensitive,
 }
 
-var sys = map[string]interface{}{
+var sys = map[string]any{
 	"env": os.Getenv,
 }
 
@@ -315,9 +318,10 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 // args[0]: []map[string]string: lhs array
 // args[1]: []map[string]string: rhs array
 // args[2]: []string:            merge conditions
+// args[3]: bool:                (optional) retain unmatched elements from the lhs array
 var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
-	if len(args) != 3 {
-		return value.Value{}, fmt.Errorf("combine_maps: expected 3 arguments, got %d", len(args))
+	if len(args) != 3 && len(args) != 4 {
+		return value.Value{}, fmt.Errorf("combine_maps: expected 3 or 4 arguments, got %d", len(args))
 	}
 
 	// Validate args[0] and args[1]
@@ -373,6 +377,23 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 		}
 	}
 
+	// Validate args[3]
+	passthroughLHS := false
+	if len(args) == 4 {
+		if args[3].Type() != value.TypeBool {
+			return value.Null, value.ArgError{
+				Function: funcValue,
+				Argument: args[3],
+				Index:    3,
+				Inner: value.TypeError{
+					Value:    args[3],
+					Expected: value.TypeBool,
+				},
+			}
+		}
+		passthroughLHS = args[3].Bool()
+	}
+
 	convertIfNeeded := func(v value.Value) value.Value {
 		if v.Type() != value.TypeObject {
 			obj, _ := v.TryConvertToObject() // no need to check result as arguments were validated earlier.
@@ -385,6 +406,10 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	// how well the merge is going to go. If none of the merge conditions are met,
 	// the result array will be empty.
 	res := []value.Value{}
+	// However, if passthroughLHS is set to true, then we know the size of the result array.
+	if passthroughLHS {
+		res = make([]value.Value, 0, args[0].Len())
+	}
 
 	for i := 0; i < args[0].Len(); i++ {
 		for j := 0; j < args[1].Len(); j++ {
@@ -397,6 +422,8 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 					return value.Null, err
 				}
 				res = append(res, val)
+			} else if passthroughLHS {
+				res = append(res, args[0].Index(i))
 			}
 		}
 	}
@@ -404,8 +431,8 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	return value.Array(res...), nil
 })
 
-func jsonDecode(in string) (interface{}, error) {
-	var res interface{}
+func jsonDecode(in string) (any, error) {
+	var res any
 	err := json.Unmarshal([]byte(in), &res)
 	if err != nil {
 		return nil, err
@@ -413,8 +440,8 @@ func jsonDecode(in string) (interface{}, error) {
 	return res, nil
 }
 
-func yamlDecode(in string) (interface{}, error) {
-	var res interface{}
+func yamlDecode(in string) (any, error) {
+	var res any
 	err := yaml.Unmarshal([]byte(in), &res)
 	if err != nil {
 		return nil, err
@@ -448,8 +475,16 @@ func base64Encode(in string) (string, error) {
 	return encoded, nil
 }
 
-func jsonEncode(in interface{}) (string, error) {
-	v, ok := in.(map[string]interface{})
+func urlEncode(in string) (string, error) {
+	return url.QueryEscape(in), nil
+}
+
+func urlDecode(in string) (string, error) {
+	return url.QueryUnescape(in)
+}
+
+func jsonEncode(in any) (string, error) {
+	v, ok := in.(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("jsonEncode only supports map")
 	}
@@ -460,7 +495,7 @@ func jsonEncode(in interface{}) (string, error) {
 	return string(res), nil
 }
 
-func jsonPath(jsonString string, path string) ([]interface{}, error) {
+func jsonPath(jsonString string, path string) ([]any, error) {
 	jsonPathExpr, err := jp.ParseString(path)
 	if err != nil {
 		return nil, err

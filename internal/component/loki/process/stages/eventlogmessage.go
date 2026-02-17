@@ -63,7 +63,7 @@ func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
 
 // Process a event log message from extracted with the specified key, adding additional
 // entries into the extracted map
-func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, key string) error {
+func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string) error {
 	value, ok := extracted[key]
 	if !ok {
 		if Debug {
@@ -76,8 +76,7 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 		level.Warn(m.logger).Log("msg", "invalid label value parsed", "value", value)
 		return err
 	}
-	lines := strings.Split(s, "\r\n")
-	for _, line := range lines {
+	for line := range strings.SplitSeq(s, "\r\n") {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) < 2 {
 			level.Debug(m.logger).Log("msg", "invalid line parsed from message", "line", line)
@@ -114,10 +113,6 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 			"extracted_data", fmt.Sprintf("%v", extracted))
 	}
 	return nil
-}
-
-func (m *eventLogMessageStage) Name() string {
-	return StageTypeEventLogMessage
 }
 
 // Cleanup implements Stage.

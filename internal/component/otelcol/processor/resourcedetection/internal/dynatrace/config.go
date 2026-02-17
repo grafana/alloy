@@ -14,8 +14,9 @@ type Config struct {
 // DefaultArguments holds default settings for Config.
 var DefaultArguments = Config{
 	ResourceAttributes: ResourceAttributesConfig{
-		HostName:   rac.ResourceAttributeConfig{Enabled: true},
-		EntityHost: rac.ResourceAttributeConfig{Enabled: true},
+		HostName:       rac.ResourceAttributeConfig{Enabled: true},
+		EntityHost:     rac.ResourceAttributeConfig{Enabled: true},
+		SmartScapeHost: rac.ResourceAttributeConfig{Enabled: true},
 	},
 }
 
@@ -26,21 +27,23 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
 
 // ResourceAttributesConfig provides config for dynatrace resource attributes.
 type ResourceAttributesConfig struct {
-	HostName   rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
-	EntityHost rac.ResourceAttributeConfig `alloy:"dt.entity.host,block,optional"`
+	HostName       rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
+	EntityHost     rac.ResourceAttributeConfig `alloy:"dt.entity.host,block,optional"`
+	SmartScapeHost rac.ResourceAttributeConfig `alloy:"dt.smartscape.host,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"host.name":      r.HostName.Convert(),
-		"dt.entity.host": r.EntityHost.Convert(),
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
+		"host.name":          r.HostName.Convert(),
+		"dt.entity.host":     r.EntityHost.Convert(),
+		"dt.smartscape.host": r.SmartScapeHost.Convert(),
 	}
 }

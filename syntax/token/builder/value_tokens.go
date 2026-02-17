@@ -18,7 +18,7 @@ type Tokenizer interface {
 	AlloyTokenize() []Token
 }
 
-func tokenEncode(val interface{}) []Token {
+func tokenEncode(val any) []Token {
 	return valueTokens(value.Encode(val))
 }
 

@@ -1,5 +1,4 @@
 //go:build windows
-// +build windows
 
 // This code is adapted from loki/promtail. Last revision used to port changes to Alloy was v1.6.2-0.20231004111112-07cbef92268a.
 
@@ -12,10 +11,10 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/natefinch/atomic"
 	uberAtomic "go.uber.org/atomic"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
-	"github.com/natefinch/atomic"
+	"github.com/grafana/alloy/internal/component/loki/source/windowsevent/win_eventlog"
 )
 
 type bookMark struct {

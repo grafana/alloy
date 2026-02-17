@@ -13,19 +13,19 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-func Test_QueryLocks(t *testing.T) {
+func TestLocks(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	t.Run("no logs with no lock events", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: 10 * time.Second,
 			EntryHandler:    lokiClient,
@@ -67,9 +67,9 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -122,9 +122,9 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -189,9 +189,9 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -244,9 +244,9 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: 1 * time.Second,
 			EntryHandler:    lokiClient,
@@ -302,9 +302,9 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -366,9 +366,9 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		lokiClient := fake.NewClient(func() {})
+		lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: 10 * time.Second,
 			EntryHandler:    lokiClient,

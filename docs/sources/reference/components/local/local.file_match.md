@@ -14,6 +14,14 @@ title: local.file_match
 
 `local.file_match` discovers files on the local filesystem using glob patterns and the [doublestar][] library.
 
+{{< admonition type="note" >}}
+Use the built-in [`file_match`](../../loki/loki.source.file/#file_match) block in `loki.source.file` whenever possible.
+This provides better performance by integrating file discovery directly into the component, eliminating the overhead of a separate component.
+The performance benefit is especially noticeable in environments with many files to watch.
+
+Use the `local.file_match` component only when you need to share discovered targets across multiple components, reuse file discovery results in different parts of your configuration, or accept targets from other discovery components, for example,  `discovery.relabel` before file matching.
+{{< /admonition >}}
+
 [doublestar]: https://github.com/bmatcuk/doublestar
 
 ## Usage
@@ -49,6 +57,8 @@ The `__path__` field uses [doublestar][] style glob patterns:
 * `/tmp/**/*.log` matches all subdirectories of `tmp` and include any files that end in `*.log`.
 * `/tmp/apache/*.log` matches only files in `/tmp/apache/` that end in `*.log`.
 * `/tmp/**` matches all subdirectories of `tmp`, `tmp` itself, and all files.
+* `/tmp/*.{log,txt,json}` matches files with `.log`, `.txt`, or `.json` extensions in `/tmp/`.
+* `/var/log/{nginx,apache}/*.log` matches `.log` files in either the `nginx` or `apache` subdirectories.
 
 `local.file_match` doesn't ignore files when you set `ignore_older_than` to the default, `0s`.
 
@@ -138,7 +148,7 @@ local.file_match "labeled_logs" {
       "__address__" = "localhost",
       "instance"    = "web-server-01", 
       "job"         = "apache",
-      "service"     = "web"
+      "service"     = "web",
     },
     {
       "__path__"       = "/var/log/nginx/*.log",
@@ -146,8 +156,8 @@ local.file_match "labeled_logs" {
       "__address__"    = "localhost",
       "instance"       = "web-server-01",
       "job"            = "nginx", 
-      "service"        = "web"
-    }
+      "service"        = "web",
+    },
   ]
 }
 
@@ -158,11 +168,11 @@ loki.source.file "web_logs" {
 
 loki.write "endpoint" {
   endpoint {
-      url = <LOKI_URL>
-      basic_auth {
-          username = <USERNAME>
-          password = <PASSWORD>
-      }
+    url = "<LOKI_URL>"
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
+    }
   }
 }
 ```
@@ -172,6 +182,35 @@ Replace the following:
 * _`<LOKI_URL>`_: The URL of the Loki server to send logs to.
 * _`<USERNAME>`_: The username to use for authentication to the Loki API.
 * _`<PASSWORD>`_: The password to use for authentication to the Loki API.
+
+### Match multiple patterns
+
+This example shows how to use the `{a,b,c}` pattern syntax to match multiple file extensions, multiple directories, and exclude multiple file types in a single configuration.
+
+```alloy
+local.file_match "logs" {
+  path_targets = [
+    // Match .log, .txt, and .json files from nginx, apache, or caddy directories
+    // Exclude compressed and backup files
+    {
+      "__path__"         = "/var/log/{nginx,apache,caddy}/*.{log,txt,json}",
+      "__path_exclude__" = "/var/log/{nginx,apache,caddy}/*.{gz,zip,bak,old}",
+      "job"              = "webserver",
+    },
+  ]
+}
+
+loki.source.file "logs" {
+  targets    = local.file_match.logs.targets
+  forward_to = [loki.write.endpoint.receiver]
+}
+
+loki.write "endpoint" {
+  endpoint {
+    url = "<LOKI_URL>"
+  }
+}
+```
 
 ### Send Kubernetes Pod logs to Loki
 
@@ -210,10 +249,10 @@ loki.source.file "pods" {
 
 loki.write "endpoint" {
   endpoint {
-      url = <LOKI_URL>
+      url = "<LOKI_URL>"
       basic_auth {
-          username = <USERNAME>
-          password = <PASSWORD>
+          username = "<USERNAME>"
+          password = "<PASSWORD>"
       }
   }
 }

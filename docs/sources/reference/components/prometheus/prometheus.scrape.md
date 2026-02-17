@@ -33,7 +33,15 @@ The list of arguments that can be used to configure the block is presented below
 
 The scrape job name defaults to the component's unique identifier.
 
-If conflicting attributes are passed, for example, defining both a BearerToken and BearerTokenFile or configuring both Basic Authorization and OAuth2 at the same time, the component reports an error.
+One of the following can be provided:
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
+* [`oauth2`][oauth2] block
+
+If conflicting attributes are passed, for example, defining both a `bearer_token` and `bearer_token_file` or configuring both `basic_auth` and `oauth2` at the same time, the component reports an error.
 
 You can use the following arguments with `prometheus.scrape`:
 
@@ -48,12 +56,13 @@ You can use the following arguments with `prometheus.scrape`:
 | `enable_compression`                 | `bool`                  | Whether compression is enabled for the scrape.                                                                           | `true`                                                                                           | no       |
 | `enable_http2`                       | `bool`                  | Whether HTTP2 is supported for requests.                                                                                 | `true`                                                                                           | no       |
 | `enable_protobuf_negotiation`        | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                                              | `false`                                                                                          | no       |
+| `enable_type_and_unit_labels`        | `bool`                  | (Experimental) Whether the metric type and unit should be added as labels to scraped metrics.                            | `false`                                                                                          | no       |
 | `extra_metrics`                      | `bool`                  | Whether extra metrics should be generated for scrape targets. Currently, cannot be updated at runtime.                   | `false`                                                                                          | no       |
 | `follow_redirects`                   | `bool`                  | Whether redirects returned by the server should be followed.                                                             | `true`                                                                                           | no       |
 | `http_headers`                       | `map(list(secret))`     | Custom HTTP headers to be sent along with each request. The map key is the header name.                                  |                                                                                                  | no       |
 | `honor_labels`                       | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                                          | `false`                                                                                          | no       |
 | `honor_timestamps`                   | `bool`                  | Indicator whether the scraped timestamps should be respected.                                                            | `true`                                                                                           | no       |
-| `honor_metadata`                     | `bool`                  | (Experimental) Indicator whether metric metadata should be sent to downstream components.                                | `false`                                                                                          | no       |
+| `honor_metadata`                     | `bool`                  | (Experimental) Indicates whether to send metric metadata to downstream components.                                       | `false`                                                                                          | no       |
 | `job_name`                           | `string`                | The value to use for the job label if not already set.                                                                   | component name                                                                                   | no       |
 | `label_limit`                        | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                                             |                                                                                                  | no       |
 | `label_name_length_limit`            | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                                       |                                                                                                  | no       |
@@ -69,7 +78,7 @@ You can use the following arguments with `prometheus.scrape`:
 | `proxy_from_environment`             | `bool`                  | Use the proxy URL indicated by environment variables.                                                                    | `false`                                                                                          | no       |
 | `proxy_url`                          | `string`                | HTTP proxy to send requests through.                                                                                     |                                                                                                  | no       |
 | `sample_limit`                       | `uint`                  | More than this many samples post metric-relabeling causes the scrape to fail                                             |                                                                                                  | no       |
-| `scheme`                             | `string`                | The URL scheme with which to fetch metrics from targets.                                                                 |                                                                                                  | no       |
+| `scheme`                             | `string`                | The URL protocol scheme used to fetch metrics from targets.                                                        |                                                                                                  | no       |
 | `scrape_classic_histograms`          | `bool`                  | Whether to scrape a classic histogram that's also exposed as a native histogram.                                         | `false`                                                                                          | no       |
 | `scrape_failure_log_file`            | `string`                | File to which scrape failures are logged.                                                                                | `""`                                                                                             | no       |
 | `scrape_fallback_protocol`           | `string`                | The fallback protocol to use if the target does not provide a valid Content-Type header. See below for available values. | `PrometheusText0_0_4`                                                                            | no       |
@@ -81,23 +90,24 @@ You can use the following arguments with `prometheus.scrape`:
 | `track_timestamps_staleness`         | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                                      | `false`                                                                                          | no       |
 
 > **EXPERIMENTAL**: The `honor_metadata` argument is an [experimental][] feature.
-> Enabling it may increase resource consumption, particularly if a lot of metrics with different names are ingested.
-> Not all downstream components may be compatible with Prometheus metadata yet.
-> For example, `otelcol.receiver.prometheus` may work, but `prometheus.remote_write` may not.
-> Support for more components will be added soon.
+> If you enable this argument, resource consumption may increase, particularly if you ingest many metrics with different names.
+> Some downstream components aren't compatible with Prometheus metadata.
+> The following components are compatible:
+>
+> * `otelcol.receiver.prometheus`
+> * `prometheus.remote_write` only when configured for Remote Write v2.
+> * `prometheus.write_queue`
+>
+> **EXPERIMENTAL**: The `enable_type_and_unit_labels` argument is an [experimental][] feature.
+> When enabled and available from the scrape, the metric type and unit are added as labels to each scraped sample.
+> This provides additional schema information about metrics directly in the label set.
+> This feature doesn't require downstream components to support Remote Write v2.
+>
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 > To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
-
-At most, one of the following can be provided:
-
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`](#arguments) argument
-* [`bearer_token`](#arguments) argument
-* [`oauth2`][oauth2] block
 
 The `scrape_protocols` controls the preferred order of protocols to negotiate during a scrape.
 The following values are supported:
@@ -342,7 +352,7 @@ The following special labels can change the behavior of `prometheus.scrape`:
 * `__address__`: The name of the label that holds the `<host>:<port>` address of a scrape target.
 * `__metrics_path__`: The name of the label that holds the path on which to scrape a target.
 * `__param_<name>`: A prefix for labels that provide URL parameters `<name>` used to scrape a target.
-* `__scheme__`: the name of the label that holds the scheme (http,https) on which to  scrape a target.
+* `__scheme__`: the name of the label that holds the protocol scheme (`http`, `https`) on which to scrape a target.
 * `__scrape_interval__`: The name of the label that holds the scrape interval used to scrape a target.
 * `__scrape_timeout__`: The name of the label that holds the scrape timeout used to scrape a target.
 

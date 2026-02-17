@@ -169,7 +169,28 @@ func TestUnmarshal(t *testing.T) {
 		}
 	`
 	var args syslog.Arguments
-	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.NoError(t, syntax.Unmarshal([]byte(alloyCfg), &args))
+	_, err := args.Convert()
+	require.NoError(t, err)
+
+	alloyTCP := `
+		tcp {
+			listen_address = "localhost:1514"
+		}
+		output {}
+	`
+	require.NoError(t, syntax.Unmarshal([]byte(alloyTCP), &args))
+	_, err = args.Convert()
+	require.NoError(t, err)
+
+	alloyUDP := `
+		udp {
+			listen_address = "localhost:1514"
+		}
+		output {}
+	`
+	require.NoError(t, syntax.Unmarshal([]byte(alloyUDP), &args))
+	_, err = args.Convert()
 	require.NoError(t, err)
 }
 

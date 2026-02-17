@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/akamai"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ec2"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ecs"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/eks"
@@ -16,14 +17,21 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/digitalocean"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/dynatrace"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/hetzner"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/kubeadm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openshift"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openstacknova"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/oraclecloud"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/scaleway"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/upcloud"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/vultr"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -94,6 +102,9 @@ type DetectorConfig struct {
 	// Lambda contains user-specified configurations for the lambda detector
 	LambdaConfig lambda.Config `alloy:"lambda,block,optional"`
 
+	// AkamaiConfig contains user-specified configurations for the Akamai detector
+	AkamaiConfig akamai.Config `alloy:"akamai,block,optional"`
+
 	// Azure contains user-specified configurations for the azure detector
 	AzureConfig azure.Config `alloy:"azure,block,optional"`
 
@@ -106,11 +117,17 @@ type DetectorConfig struct {
 	// DockerConfig contains user-specified configurations for the docker detector
 	DockerConfig docker.Config `alloy:"docker,block,optional"`
 
+	// DigitalOceanConfig contains user-specified configurations for the DigitalOcean detector
+	DigitalOceanConfig digitalocean.Config `alloy:"digitalocean,block,optional"`
+
 	// GcpConfig contains user-specified configurations for the gcp detector
 	GcpConfig gcp.Config `alloy:"gcp,block,optional"`
 
 	// HerokuConfig contains user-specified configurations for the heroku detector
 	HerokuConfig heroku.Config `alloy:"heroku,block,optional"`
+
+	// HetznerConfig contains user-specified configurations for the Hetzner detector
+	HetznerConfig hetzner.Config `alloy:"hetzner,block,optional"`
 
 	// SystemConfig contains user-specified configurations for the System detector
 	SystemConfig system.Config `alloy:"system,block,optional"`
@@ -126,6 +143,21 @@ type DetectorConfig struct {
 
 	// Dynatrace contains user-specified configurations for the Dynatrace detector
 	DynatraceConfig dynatrace.Config `alloy:"dynatrace,block,optional"`
+
+	// OpenStackNovaConfig contains user-specified configurations for the OpenStack Nova detector
+	OpenStackNovaConfig openstacknova.Config `alloy:"nova,block,optional"`
+
+	// OracleCloudConfig contains user-specified configurations for the Oracle Cloud detector
+	OracleCloudConfig oraclecloud.Config `alloy:"oraclecloud,block,optional"`
+
+	// ScalewayConfig contains user-specified configurations for the Scaleway detector
+	ScalewayConfig scaleway.Config `alloy:"scaleway,block,optional"`
+
+	// UpCloudConfig contains user-specified configurations for the UpCloud detector
+	UpCloudConfig upcloud.Config `alloy:"upcloud,block,optional"`
+
+	// VultrConfig contains user-specified configurations for the Vultr detector
+	VultrConfig vultr.Config `alloy:"vultr,block,optional"`
 }
 
 func (dc *DetectorConfig) SetToDefault() {
@@ -135,16 +167,24 @@ func (dc *DetectorConfig) SetToDefault() {
 		EKSConfig:              eks.DefaultArguments,
 		ElasticbeanstalkConfig: elasticbeanstalk.DefaultArguments,
 		LambdaConfig:           lambda.DefaultArguments,
+		AkamaiConfig:           akamai.DefaultArguments,
 		AzureConfig:            azure.DefaultArguments,
 		AksConfig:              aks.DefaultArguments,
 		ConsulConfig:           consul.DefaultArguments,
 		DockerConfig:           docker.DefaultArguments,
+		DigitalOceanConfig:     digitalocean.DefaultArguments,
 		GcpConfig:              gcp.DefaultArguments,
 		HerokuConfig:           heroku.DefaultArguments,
+		HetznerConfig:          hetzner.DefaultArguments,
 		OpenShiftConfig:        openshift.DefaultArguments,
 		KubernetesNodeConfig:   k8snode.DefaultArguments,
 		KubeADMConfig:          kubeadm.DefaultArguments,
 		DynatraceConfig:        dynatrace.DefaultArguments,
+		OpenStackNovaConfig:    openstacknova.DefaultArguments,
+		OracleCloudConfig:      oraclecloud.DefaultArguments,
+		ScalewayConfig:         scaleway.DefaultArguments,
+		UpCloudConfig:          upcloud.DefaultArguments,
+		VultrConfig:            vultr.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -180,17 +220,25 @@ func (args *Arguments) Validate() error {
 			eks.Name,
 			elasticbeanstalk.Name,
 			lambda.Name,
+			akamai.Name,
 			azure.Name,
 			aks.Name,
 			consul.Name,
+			digitalocean.Name,
 			docker.Name,
 			gcp.Name,
 			heroku.Name,
+			hetzner.Name,
 			system.Name,
 			openshift.Name,
 			k8snode.Name,
 			kubeadm.Name,
-			dynatrace.Name:
+			dynatrace.Name,
+			openstacknova.Name,
+			oraclecloud.Name,
+			scaleway.Name,
+			upcloud.Name,
+			vultr.Name:
 		// Valid option - nothing to do
 		default:
 			return fmt.Errorf("invalid detector: %s", detector)
@@ -219,7 +267,7 @@ func (args Arguments) ConvertDetectors() []string {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	input := make(map[string]interface{})
+	input := make(map[string]any)
 
 	input["detectors"] = args.ConvertDetectors()
 	input["override"] = args.Override
@@ -230,17 +278,25 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["eks"] = args.DetectorConfig.EKSConfig.Convert()
 	input["elasticbeanstalk"] = args.DetectorConfig.ElasticbeanstalkConfig.Convert()
 	input["lambda"] = args.DetectorConfig.LambdaConfig.Convert()
+	input["akamai"] = args.DetectorConfig.AkamaiConfig.Convert()
 	input["azure"] = args.DetectorConfig.AzureConfig.Convert()
 	input["aks"] = args.DetectorConfig.AksConfig.Convert()
 	input["consul"] = args.DetectorConfig.ConsulConfig.Convert()
 	input["docker"] = args.DetectorConfig.DockerConfig.Convert()
+	input["digitalocean"] = args.DetectorConfig.DigitalOceanConfig.Convert()
 	input["gcp"] = args.DetectorConfig.GcpConfig.Convert()
 	input["heroku"] = args.DetectorConfig.HerokuConfig.Convert()
+	input["hetzner"] = args.DetectorConfig.HetznerConfig.Convert()
 	input["system"] = args.DetectorConfig.SystemConfig.Convert()
 	input["openshift"] = args.DetectorConfig.OpenShiftConfig.Convert()
 	input["k8snode"] = args.DetectorConfig.KubernetesNodeConfig.Convert()
 	input["kubeadm"] = args.DetectorConfig.KubeADMConfig.Convert()
 	input["dynatrace"] = args.DetectorConfig.DynatraceConfig.Convert()
+	input["nova"] = args.DetectorConfig.OpenStackNovaConfig.Convert()
+	input["oraclecloud"] = args.DetectorConfig.OracleCloudConfig.Convert()
+	input["scaleway"] = args.DetectorConfig.ScalewayConfig.Convert()
+	input["upcloud"] = args.DetectorConfig.UpCloudConfig.Convert()
+	input["vultr"] = args.DetectorConfig.VultrConfig.Convert()
 	var result resourcedetectionprocessor.Config
 	err := mapstructure.Decode(input, &result)
 

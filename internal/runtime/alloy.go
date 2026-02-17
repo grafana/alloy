@@ -114,6 +114,9 @@ type Options struct {
 
 	// EnableCommunityComps enables the use of community components.
 	EnableCommunityComps bool
+
+	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
+	TaskShutdownDeadline time.Duration
 }
 
 // Runtime is the Alloy system.
@@ -129,17 +132,19 @@ type Runtime struct {
 
 	loadFinished chan struct{}
 
-	loadMut    sync.RWMutex
-	loadedOnce atomic.Bool
+	loadMut      sync.RWMutex
+	loadedOnce   atomic.Bool
+	loadComplete atomic.Bool
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
 func New(o Options) *Runtime {
 	return newController(controllerOptions{
-		Options:        o,
-		ModuleRegistry: newModuleRegistry(),
-		IsModule:       false, // We are creating a new root controller.
-		WorkerPool:     worker.NewDefaultWorkerPool(),
+		Options:              o,
+		ModuleRegistry:       newModuleRegistry(),
+		IsModule:             false, // We are creating a new root controller.
+		WorkerPool:           worker.NewDefaultWorkerPool(),
+		TaskShutdownDeadline: o.TaskShutdownDeadline,
 	})
 }
 
@@ -153,6 +158,8 @@ type controllerOptions struct {
 	IsModule          bool               // Whether this controller is for a module.
 	// A worker pool to evaluate components asynchronously. A default one will be created if this is nil.
 	WorkerPool worker.Pool
+	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
+	TaskShutdownDeadline time.Duration
 }
 
 // newController creates a new, unstarted Alloy controller with a specific
@@ -185,7 +192,7 @@ func newController(o controllerOptions) *Runtime {
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(log),
+		sched:       controller.NewScheduler(log, o.TaskShutdownDeadline),
 
 		modules: o.ModuleRegistry,
 
@@ -230,7 +237,7 @@ func newController(o controllerOptions) *Runtime {
 					WorkerPool:           workerPool,
 				})
 			},
-			GetServiceData: func(name string) (interface{}, error) {
+			GetServiceData: func(name string) (any, error) {
 				svc, found := serviceMap.Get(name)
 				if !found {
 					return nil, fmt.Errorf("service %q does not exist", name)
@@ -297,10 +304,11 @@ func (f *Runtime) Run(ctx context.Context) {
 				}
 			}
 
-			err := f.sched.Synchronize(runnables)
-			if err != nil {
+			if err := f.sched.Synchronize(runnables); err != nil {
 				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
 			}
+
+			f.loadComplete.Store(true)
 		}
 	}
 }
@@ -322,7 +330,7 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 		ComponentBlocks: source.Components(),
 		ConfigBlocks:    source.Configs(),
 		DeclareBlocks:   source.Declares(),
-		ArgScope: vm.NewScope(map[string]interface{}{
+		ArgScope: vm.NewScope(map[string]any{
 			importsource.ModulePath: modulePath,
 		}),
 	})
@@ -344,6 +352,8 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 	f.loadMut.Lock()
 	defer f.loadMut.Unlock()
 
+	f.loadComplete.Store(false)
+
 	diags := f.loader.Apply(applyOptions)
 	if !f.loadedOnce.Load() && diags.HasErrors() {
 		// The first call to Load should not run any components if there were
@@ -363,4 +373,9 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 // Ready returns whether the Alloy controller has finished its initial load.
 func (f *Runtime) Ready() bool {
 	return f.loadedOnce.Load()
+}
+
+// LoadComplete returns true when the components loaded via LoadSource have been scheduled and are running. Used in testing.
+func (f *Runtime) LoadComplete() bool {
+	return f.loadComplete.Load()
 }

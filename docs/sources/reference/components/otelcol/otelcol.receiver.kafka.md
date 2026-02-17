@@ -44,7 +44,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 
 | Name                                       | Type            | Description                                                                                                           | Default            | Required |
 | ------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
-| `brokers`                                  | `array(string)` | Kafka brokers to connect to.                                                                                          |                    | yes      |
+| `brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                                                          |                    | yes      |
 | `protocol_version`                         | `string`        | Kafka protocol version to use.                                                                                        |                    | yes      |
 | `client_id`                                | `string`        | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
 | `default_fetch_size`                       | `int`           | The default number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
@@ -56,16 +56,26 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `initial_offset`                           | `string`        | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
 | `max_fetch_size`                           | `int`           | The maximum number of message bytes to fetch in a request.                                                            | `0`                | no       |
 | `max_fetch_wait`                           | `duration`      | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
+| `max_partition_fetch_size`                 | `int`           | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
 | `min_fetch_size`                           | `int`           | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
+| `rack_id`                                  | `string`        | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.            | `""`               | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
 | `session_timeout`                          | `duration`      | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
-| `topic`                                    | `string`        | (Deprecated) Kafka topic to read from.                                                                                | _See below_        | no       |
-
-{{< admonition type="warning" >}}
-The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
-{{< /admonition >}}
+| `use_leader_epoch`                         | `bool`          | Whether to use leader epoch for log truncation detection (KIP-320).                                                   | `true`             | no       |
 
 For `max_fetch_size`, the value `0` means no limit.
+
+For `max_partition_fetch_size`, this setting controls the maximum bytes to fetch per partition.
+If a single record batch is larger than this value, the broker will still return it to ensure the consumer can make progress.
+This setting only applies when using the franz-go client.
+
+The `rack_id` setting enables rack-aware replica selection.
+When configured and brokers support a rack-aware replica selector, the client will prefer fetching from the closest replica.
+
+The `use_leader_epoch` setting is experimental and controls whether the consumer uses leader epochs (KIP-320) for detecting log truncation.
+When enabled, the consumer uses the leader epoch returned by brokers to detect log truncation.
+Setting this to `false` clears the leader epoch from fetch offsets, disabling KIP-320.
+Disabling can improve compatibility with brokers that don't fully support leader epochs (for example, Azure Event Hubs), but you lose automatic log-truncation safety.
 
 `initial_offset` must be either `"latest"` or `"earliest"`.
 
@@ -104,7 +114,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                                         | no       |
 | `authentication` > [`plaintext`][plaintext]      | (Deprecated) Authenticates against Kafka brokers with plaintext.                           | no       |
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                                         | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                             | no       |
 | `authentication` > [`tls`][tls]                  | (Deprecated) Configures TLS for connecting to the Kafka brokers.                           | no       |
 | `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM settings for the TLS key_file.                                              | no       |
 | [`autocommit`][autocommit]                       | Configures how to automatically commit updated topic offsets to back to the Kafka brokers. | no       |
@@ -152,28 +162,46 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 
 The `logs` block configures how to receive logs from Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default        | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`    | `string` | The name of the Kafka topic on which logs will be received.                  | `"otlp_logs"`  | no       |
+| Name       | Type            | Description                                                                                    | Default          | Required |
+| ---------- | --------------- | ---------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                   | `"otlp_proto"`   | no       |
+| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which logs will be received. | `""`             | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which logs will be received.                                  | `["otlp_logs"]`  | no       |
+
+{{< admonition type="warning" >}}
+The `topic` argument is deprecated in favor of `topics`.
+If `topic` is set, it will take precedence over default value of `topics`.
+{{< /admonition >}}
 
 ### `metrics`
 
 The `metrics` block configures how to receive metrics from Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default          | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
-| `topic`    | `string` | The name of the Kafka topic on which metrics will be received.               | `"otlp_metrics"` | no       |
+| Name       | Type            | Description                                                                                       | Default             | Required |
+| ---------- | --------------- | ------------------------------------------------------------------------------------------------- | ------------------- | -------- |
+| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                      | `"otlp_proto"`      | no       |
+| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which metrics will be received. | `""`                | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which metrics will be received.                                  | `["otlp_metrics"]`  | no       |
+
+{{< admonition type="warning" >}}
+The `topic` argument is deprecated in favor of `topics`.
+If `topic` is set, it will take precedence over default value of `topics`.
+{{< /admonition >}}
 
 ### `traces`
 
 The `traces` block configures how to receive traces from Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default        | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`    | `string` | The name of the Kafka topic on which traces will be received.                | `"otlp_spans"` | no       |
+| Name       | Type            | Description                                                                                      | Default          | Required |
+| ---------- | --------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
+| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                     | `"otlp_proto"`   | no       |
+| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which traces will be received. | `""`             | no       |
+| `topics`   | `list(string)`  | The names of the Kafka topics on which traces will be received.                                  | `["otlp_spans"]` | no       |
+
+{{< admonition type="warning" >}}
+The `topic` argument is deprecated in favor of `topics`.
+If `topic` is set, it will take precedence over default value of `topics`.
+{{< /admonition >}}
 
 ### `authentication`
 

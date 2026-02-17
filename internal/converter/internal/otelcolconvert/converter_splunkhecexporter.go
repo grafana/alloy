@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -13,7 +12,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
-	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func init() {
@@ -32,10 +30,11 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*splunkhecexporter.Config).QueueSettings.StorageID)
+			queue := cfg.(*splunkhecexporter.Config).QueueSettings.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -53,14 +52,22 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 	return diags
 }
 
-func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec.Arguments {
-	return &splunkhec.Arguments{
-		Client:       toSplunkHecHTTPClientArguments(cfg),
-		Retry:        toRetryArguments(cfg.BackOffConfig),
-		Queue:        toQueueArguments(cfg.QueueSettings),
-		Splunk:       toSplunkConfig(cfg),
-		DebugMetrics: common.DefaultValue[splunkhec.Arguments]().DebugMetrics,
+func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.SplunkHecArguments {
+	v := &splunkhec_config.SplunkHecArguments{
+		SplunkHecClientArguments: toSplunkHecHTTPClientArguments(cfg),
+		RetrySettings:            toRetryArguments(cfg.BackOffConfig),
+		QueueSettings:            toQueueArguments(cfg.QueueSettings),
+		Splunk:                   toSplunkConfig(cfg),
+		DebugMetrics:             common.DefaultValue[splunkhec_config.SplunkHecArguments]().DebugMetrics,
 	}
+
+	// As the OTelAttrsToHec type is internal we can't build a function to convert it
+	v.OtelAttrsToHec.Host = cfg.OtelAttrsToHec.Host
+	v.OtelAttrsToHec.Source = cfg.OtelAttrsToHec.Source
+	v.OtelAttrsToHec.SourceType = cfg.OtelAttrsToHec.SourceType
+	v.OtelAttrsToHec.Index = cfg.OtelAttrsToHec.Index
+
+	return v
 }
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
@@ -75,6 +82,7 @@ func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_con
 		IdleConnTimeout:     cfg.IdleConnTimeout,
 		DisableKeepAlives:   cfg.DisableKeepAlives,
 		InsecureSkipVerify:  cfg.TLS.Insecure,
+		ForceAttemptHTTP2:   cfg.ForceAttemptHTTP2,
 	}
 }
 
@@ -99,7 +107,7 @@ func toSplunkConfig(cfg *splunkhecexporter.Config) splunkhec_config.SplunkConf {
 		UseMultiMetricFormat:    cfg.UseMultiMetricFormat,
 		Heartbeat:               toSplunkHecHeartbeat(cfg.Heartbeat),
 		Telemetry:               toSplunkHecTelemetry(cfg.Telemetry),
-		BatcherConfig:           toSplunkHecBatcherConfig(cfg.BatcherConfig),
+		DeprecatedBatcher:       toSplunkHecBatcherConfig(cfg.DeprecatedBatcher),
 		HecFields:               toSplunkHecFields(cfg.HecFields),
 	}
 }
@@ -119,13 +127,17 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 	}
 }
 
-func toSplunkHecBatcherConfig(cfg exporterhelper.BatcherConfig) splunkhec_config.BatcherConfig { //nolint:staticcheck
-	sizer, _ := cfg.SizeConfig.Sizer.MarshalText()
-	return splunkhec_config.BatcherConfig{
+func toSplunkHecBatcherConfig(cfg splunkhecexporter.DeprecatedBatchConfig) *splunkhec_config.DeprecatedBatchConfig {
+	if !cfg.Enabled {
+		return nil
+	}
+	//nolint:staticcheck
+	sizer, _ := cfg.Sizer.MarshalText()
+	return &splunkhec_config.DeprecatedBatchConfig{
 		Enabled:      cfg.Enabled,
 		FlushTimeout: cfg.FlushTimeout,
-		MinSize:      cfg.SizeConfig.MinSize,
-		MaxSize:      cfg.SizeConfig.MaxSize,
+		MinSize:      cfg.MinSize,
+		MaxSize:      cfg.MaxSize,
 		Sizer:        string(sizer),
 	}
 }

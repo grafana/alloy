@@ -131,7 +131,7 @@ func TestDeepSquash(t *testing.T) {
 }
 
 func Test_Get_Panics(t *testing.T) {
-	expectPanic := func(t *testing.T, expect string, v interface{}) {
+	expectPanic := func(t *testing.T, expect string, v any) {
 		t.Helper()
 		require.PanicsWithValue(t, expect, func() {
 			_ = syntaxtags.Get(reflect.TypeOf(v))

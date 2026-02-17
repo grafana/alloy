@@ -1,0 +1,66 @@
+beyla.ebpf "default" {
+  discovery {
+    services {
+      exe_path	 = "main" // this is instrumenting the otel-metrics-gen app
+    }
+  }
+  debug = true
+  metrics {
+    features = [
+      "application", 
+      ]
+  }
+  output {
+    traces = [otelcol.processor.attributes.beyla.input]
+  }
+}
+
+otelcol.processor.attributes "beyla" {
+  action {
+    key = "test_name"
+    value = "beyla"
+    action = "insert"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.beyla.input]
+  }
+}
+
+otelcol.processor.batch "beyla" {
+  output {
+    traces = [otelcol.exporter.otlphttp.beyla.input]
+  }
+}
+
+otelcol.exporter.otlphttp "beyla" {
+  traces_endpoint = "http://tempo:4318/v1/traces"
+  client {
+    endpoint = "ignore"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}
+
+prometheus.scrape "beyla" {
+  targets = beyla.ebpf.default.targets
+  honor_labels = true
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+  forward_to = [prometheus.remote_write.beyla.receiver]
+}
+
+prometheus.remote_write "beyla" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    queue_config {
+      max_samples_per_send = 100
+    }
+  }
+
+  external_labels = {
+    test_name = "beyla",
+  }
+}

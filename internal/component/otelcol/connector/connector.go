@@ -5,7 +5,6 @@ package connector
 import (
 	"context"
 	"errors"
-	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -15,7 +14,6 @@ import (
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 
-	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -25,12 +23,13 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
 const (
-	ConnectorTracesToTraces = iota
+	ConnectorTracesToTraces = iota + 1
 	ConnectorTracesToMetrics
 	ConnectorTracesToLogs
 	ConnectorMetricsToTraces
@@ -167,18 +166,19 @@ func (p *Connector) Update(args component.Arguments) error {
 	settings := otelconnector.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(p.opts.Logger),
-
+			Logger:         zapadapter.New(p.opts.Logger),
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
 		},
 
-		BuildInfo: otelcomponent.BuildInfo{
-			Command:     os.Args[0],
-			Description: "Grafana Alloy",
-			Version:     build.Version,
-		},
+		BuildInfo: otelcolutil.GetBuildInfo(),
 	}
+
+	resource, err := otelcolutil.GetTelemetrySettingsResource()
+	if err != nil {
+		return err
+	}
+	settings.TelemetrySettings.Resource = resource
 
 	connectorConfig, err := p.args.Convert()
 	if err != nil {
@@ -195,20 +195,32 @@ func (p *Connector) Update(args component.Arguments) error {
 	var metricsConnector otelconnector.Metrics
 	var logsConnector otelconnector.Logs
 
-	switch p.args.ConnectorType() {
-	case ConnectorTracesToMetrics:
-		if len(next.Traces) > 0 || len(next.Logs) > 0 {
-			return errors.New("this connector can only output metrics")
-		}
+	connectorType := p.args.ConnectorType()
 
-		if len(next.Metrics) > 0 {
-			fanout := fanoutconsumer.Metrics(next.Metrics)
-			metricsInterceptor := interceptconsumer.Metrics(fanout,
-				func(ctx context.Context, md pmetric.Metrics) error {
-					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
-					return fanout.ConsumeMetrics(ctx, md)
-				},
-			)
+	// Validate that the connector supports the requested output types
+	if !outputsToMetrics(connectorType) && len(next.Metrics) > 0 {
+		return errors.New("this connector cannot output metrics")
+	}
+
+	if !outputsToLogs(connectorType) && len(next.Logs) > 0 {
+		return errors.New("logs output is not supported yet")
+	}
+
+	if !outputsToTraces(connectorType) && len(next.Traces) > 0 {
+		return errors.New("traces output is not supported yet")
+	}
+
+	if len(next.Metrics) > 0 {
+		fanout := fanoutconsumer.Metrics(next.Metrics)
+		metricsInterceptor := interceptconsumer.Metrics(fanout,
+			func(ctx context.Context, md pmetric.Metrics) error {
+				livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+				return fanout.ConsumeMetrics(ctx, md)
+			},
+		)
+
+		// Create traces to metrics connector if supported
+		if (connectorType & ConnectorTracesToMetrics) != 0 {
 			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
 			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
@@ -216,8 +228,30 @@ func (p *Connector) Update(args component.Arguments) error {
 				components = append(components, tracesConnector)
 			}
 		}
-	default:
-		return errors.New("unsupported connector type")
+
+		// Create metrics to metrics connector if supported
+		if (connectorType & ConnectorMetricsToMetrics) != 0 {
+			metricsConnector, err = p.factory.CreateMetricsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+				return err
+			} else if metricsConnector != nil {
+				components = append(components, metricsConnector)
+			}
+		}
+
+		// Create logs to metrics connector if supported
+		if (connectorType & ConnectorLogsToMetrics) != 0 {
+			logsConnector, err = p.factory.CreateLogsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+				return err
+			} else if logsConnector != nil {
+				components = append(components, logsConnector)
+			}
+		}
+	}
+
+	if len(components) == 0 {
+		return errors.New("no connectors were created")
 	}
 
 	updateConsumersFunc := func() {
@@ -235,3 +269,27 @@ func (p *Connector) CurrentHealth() component.Health {
 }
 
 func (p *Connector) LiveDebugging() {}
+
+// outputsToMetrics checks if the connector can output metrics by testing if any of the
+// *ToMetrics flags are set in the connectorType.
+func outputsToMetrics(connectorType int) bool {
+	return (connectorType&ConnectorTracesToMetrics) != 0 ||
+		(connectorType&ConnectorMetricsToMetrics) != 0 ||
+		(connectorType&ConnectorLogsToMetrics) != 0
+}
+
+// outputsToLogs checks if the connector can output logs by testing if any of the
+// *ToLogs flags are set in the connectorType.
+func outputsToLogs(connectorType int) bool {
+	return (connectorType&ConnectorTracesToLogs) != 0 ||
+		(connectorType&ConnectorMetricsToLogs) != 0 ||
+		(connectorType&ConnectorLogsToLogs) != 0
+}
+
+// outputsToTraces checks if the connector can output traces by testing if any of the
+// *ToTraces flags are set in the connectorType.
+func outputsToTraces(connectorType int) bool {
+	return (connectorType&ConnectorTracesToTraces) != 0 ||
+		(connectorType&ConnectorMetricsToTraces) != 0 ||
+		(connectorType&ConnectorLogsToTraces) != 0
+}

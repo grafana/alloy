@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var testLabelsYaml = ` stage.json {
@@ -41,7 +40,7 @@ var testLabelsLogLineWithMissingKey = `
 `
 
 func TestLabelsPipeline_Labels(t *testing.T) {
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +114,7 @@ func TestLabels(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := validateLabelsConfig(test.config)
+			actual, err := validateLabelsConfig(test.config.Values)
 			if (err != nil) != (test.err != nil) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return
@@ -135,7 +134,7 @@ func TestLabelStage_Process(t *testing.T) {
 	sourceName := "diff_source"
 	tests := map[string]struct {
 		config         LabelsConfig
-		extractedData  map[string]interface{}
+		extractedData  map[string]any
 		inputLabels    model.LabelSet
 		expectedLabels model.LabelSet
 	}{
@@ -143,7 +142,7 @@ func TestLabelStage_Process(t *testing.T) {
 			LabelsConfig{Values: map[string]*string{
 				"testLabel": nil,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				"testLabel": "testValue",
 			},
 			model.LabelSet{},
@@ -155,7 +154,7 @@ func TestLabelStage_Process(t *testing.T) {
 			LabelsConfig{Values: map[string]*string{
 				"testLabel": &sourceName,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				sourceName: "testValue",
 			},
 			model.LabelSet{},
@@ -167,7 +166,7 @@ func TestLabelStage_Process(t *testing.T) {
 			LabelsConfig{Values: map[string]*string{
 				"testLabel": &sourceName,
 			}},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			model.LabelSet{},
 		},
@@ -176,7 +175,7 @@ func TestLabelStage_Process(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newLabelStage(util_log.Logger, test.config)
+			st, err := newLabelStage(log.NewNopLogger(), test.config)
 			if err != nil {
 				t.Fatal(err)
 			}

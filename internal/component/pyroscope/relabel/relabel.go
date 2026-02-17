@@ -15,9 +15,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
 	"sync"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -295,14 +296,19 @@ func toModelLabelSet(lbls labels.Labels) model.LabelSet {
 
 // toLabelsLabels converts model.LabelSet to labels.Labels
 func toLabelsLabels(ls model.LabelSet) labels.Labels {
-	result := make(labels.Labels, 0, len(ls))
+	result := labels.NewScratchBuilder(len(ls))
 	for name, value := range ls {
-		result = append(result, labels.Label{
-			Name:  string(name),
-			Value: string(value),
-		})
+		result.Add(string(name), string(value))
 	}
 	// Labels need to be sorted
-	sort.Sort(result)
-	return result
+	result.Sort()
+	return result.Labels()
+}
+
+func (c *Component) Upload(j debuginfo.UploadJob) {
+	c.fanout.Upload(j)
+}
+
+func (c *Component) Client() debuginfogrpc.DebuginfoServiceClient {
+	return c.fanout.Client()
 }

@@ -1,0 +1,75 @@
+# Install the task command from here: https://taskfile.dev
+# It's a much more human-friendly version of Makefiles.
+
+version: "3"
+
+dotenv:
+  - .env.credentials
+
+vars:
+  KUBECONFIG: build/kubeconfig.yaml
+  CLUSTERNAME: alloy-example
+
+tasks:
+  cluster:create:
+    desc: Create a kind cluster
+    run: once
+    status:
+      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
+    cmds:
+      - mkdir -p build
+      - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
+
+  cluster:delete:
+    desc: Delete the kind cluster
+    run: once
+    cmds:
+      - kind delete cluster --name {{.CLUSTERNAME}}
+      - rm -rf {{.KUBECONFIG}}
+
+  update-helm-repos:
+    desc: Update helm repositories
+    run: once
+    cmds:
+      - helm repo add grafana https://grafana.github.io/helm-charts
+      - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+      - helm repo update
+
+  deploy:alloy-helm:
+    desc: Deploy local Grafana Alloy helm chart
+    deps: [cluster:create]
+    vars:
+      ALLOY_VALUES_FILE: '{{.ALLOY_VALUES_FILE | default "config/alloy-helm/basic.yaml"}}'
+      ALLOY_CHART_PATH: '{{.TASK_DIR}}/../../operations/helm/charts/alloy'
+    preconditions:
+      - test -f {{.ALLOY_VALUES_FILE}}
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy {{.ALLOY_CHART_PATH}}
+        -n monitoring --create-namespace
+        -f {{.ALLOY_VALUES_FILE}}
+        --wait
+
+  deploy:cloud-onboarding:local:
+    desc: Deploy Grafana Cloud Onboarding helm chart
+    deps: [cluster:create, update-helm-repos]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
+        -n monitoring --create-namespace
+        grafana/grafana-cloud-onboarding
+        --set "cluster.name=example-kind-cluster"
+        --set "grafanaCloud.fleetManagement.auth.password={{.GRAFANA_CLOUD_API_KEY}}"
+        --set "grafanaCloud.fleetManagement.auth.username={{.REMOTE_CFG_USERNAME}}"
+        --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
+        --wait
+
+  remove:cloud-onboarding:local:
+    desc: Remove Grafana Cloud Onboarding helm chart
+    deps: [update-helm-repos]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
+
+  expose:
+    desc: Expose all services on localhost via port-forward
+    deps: [deploy:cloud-onboarding:local]
+    cmds:
+      - "{{.TASK_DIR}}/config/expose.sh {{.KUBECONFIG}}"

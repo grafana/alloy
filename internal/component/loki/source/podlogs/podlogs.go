@@ -10,19 +10,20 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/oklog/run"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/oklog/run"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func init() {
@@ -51,6 +52,10 @@ type Arguments struct {
 
 	// Node filtering settings to limit pod discovery to specific nodes.
 	NodeFilter NodeFilterConfig `alloy:"node_filter,block,optional"`
+
+	// PreserveDiscoveredLabels controls whether discovered Kubernetes meta labels
+	// are preserved when forwarding logs to downstream components.
+	PreserveDiscoveredLabels bool `alloy:"preserve_discovered_labels,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -279,15 +284,19 @@ func (c *Component) updateReconciler(args Arguments) error {
 	c.reconciler.SetDistribute(args.Clustering.Enabled)
 
 	var (
-		selectorChanged          = !reflect.DeepEqual(c.args.Selector, args.Selector)
-		namespaceSelectorChanged = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
-		nodeFilterChanged        = !reflect.DeepEqual(c.args.NodeFilter, args.NodeFilter)
+		selectorChanged                 = !reflect.DeepEqual(c.args.Selector, args.Selector)
+		namespaceSelectorChanged        = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
+		nodeFilterChanged               = !reflect.DeepEqual(c.args.NodeFilter, args.NodeFilter)
+		preserveDiscoveredLabelsChanged = c.args.PreserveDiscoveredLabels != args.PreserveDiscoveredLabels
 	)
+
+	// Update preserve discovered labels configuration
+	c.reconciler.UpdatePreserveMetaLabels(args.PreserveDiscoveredLabels)
 
 	// Update node filter configuration
 	c.reconciler.UpdateNodeFilter(args.NodeFilter.Enabled, args.NodeFilter.NodeName)
 
-	if !selectorChanged && !namespaceSelectorChanged && !nodeFilterChanged {
+	if !selectorChanged && !namespaceSelectorChanged && !nodeFilterChanged && !preserveDiscoveredLabelsChanged {
 		return nil
 	}
 
@@ -326,7 +335,7 @@ func (c *Component) updateController(args Arguments) error {
 }
 
 // DebugInfo returns debug information for loki.source.podlogs.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var info DebugInfo
 
 	info.DiscoveredPodLogs = c.reconciler.DebugInfo()

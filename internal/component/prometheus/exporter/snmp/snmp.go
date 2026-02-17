@@ -29,8 +29,9 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
@@ -210,7 +211,7 @@ func (t TargetsList) convert() []SNMPTarget {
 }
 
 // UnmarshalAlloy implements Alloy unmarshalling for Arguments.
-func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
+func (a *Arguments) UnmarshalAlloy(f func(any) error) error {
 	a.SetToDefault()
 
 	type args Arguments

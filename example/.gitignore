@@ -1,2 +1,2 @@
 # Add here any additional datasources for testing
-config/grafana/datasources/datasource-dev.yml
+docker-compose/config/grafana/datasources/datasource-dev.yml

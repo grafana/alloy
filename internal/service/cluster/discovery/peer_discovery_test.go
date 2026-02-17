@@ -425,6 +425,39 @@ func TestPeerDiscovery(t *testing.T) {
 			expected: []string{"10.10.10.11:8888"},
 		},
 		{
+			name: "dnssrvnoa records are parsed",
+			args: Options{
+				JoinPeers:   []string{"dnssrvnoa+_alloy-memberlist._tcp.service.consul", "dns+host2:7777"},
+				DefaultPort: 8888,
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupIPFn: func(name string) ([]net.IP, error) {
+					if name == "host2" {
+						return []net.IP{
+							net.ParseIP("192.168.1.10"),
+						}, nil
+					}
+
+					return nil, fmt.Errorf("unexpected name %q", name)
+				},
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					if name == "_alloy-memberlist._tcp.service.consul" {
+						return "", []*net.SRV{
+							{Target: "10.10.10.10"},
+							{Target: "10.10.10.11"},
+						}, nil
+					}
+
+					return "", nil, fmt.Errorf("unexpected name %q", name)
+				},
+			},
+			expected: []string{
+				"10.10.10.10:8888",
+				"10.10.10.11:8888",
+				"192.168.1.10:7777",
+			},
+		},
+		{
 			name: "go discovery factory error",
 			args: Options{
 				DiscoverPeers: "some.service:something",
