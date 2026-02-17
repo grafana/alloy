@@ -17,7 +17,6 @@ func Consume(ctx context.Context, recv loki.LogsReceiver, f *loki.Fanout) {
 }
 
 // ConsumeAndProcess continuously reads log entries from recv, processes them using processFn,
-
 // and forwards the processed entries to the fanout f.
 // It runs until ctx is cancelled or an error occurs while sending to the fanout.
 //
