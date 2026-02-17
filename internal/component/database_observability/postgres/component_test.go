@@ -499,6 +499,39 @@ func Test_parseCloudProvider(t *testing.T) {
 	})
 }
 
+func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
+	var exports Exports
+	opts := cmp.Options{
+		ID:         "test",
+		Logger:     kitlog.NewNopLogger(),
+		Registerer: nil,
+		OnStateChange: func(e cmp.Exports) {
+			exports = e.(Exports)
+		},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{
+				HTTPListenAddr:   "localhost:12345",
+				MemoryListenAddr: "",
+				BaseHTTPPath:     "/",
+				DialFunc:         nil,
+			}, nil
+		},
+	}
+
+	args := Arguments{
+		DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+		ForwardTo:      []loki.LogsReceiver{},
+		Targets:        []discovery.Target{},
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	require.NotNil(t, exports.LogsReceiver, "LogsReceiver should be exported immediately")
+	require.NotNil(t, c.logsReceiver, "component should have logsReceiver initialized")
+	assert.Equal(t, c.logsReceiver, exports.LogsReceiver)
+}
+
 func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
@@ -516,7 +549,6 @@ func Test_connectAndStartCollectors(t *testing.T) {
 			},
 		}
 
-		// Use unreachable DSN to trigger connection error
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/unreachable?sslmode=disable&connect_timeout=1"),
 			ForwardTo:      []loki.LogsReceiver{},
@@ -535,7 +567,6 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("closes existing connection before reconnecting", func(t *testing.T) {
 		// This test verifies that connectAndStartCollectors properly closes
 		// an existing connection before attempting a new one
-
 		opts := cmp.Options{
 			ID:            "test-component",
 			Logger:        kitlog.NewNopLogger(),
@@ -624,13 +655,14 @@ func TestPostgres_Reconnection(t *testing.T) {
 		mock1.ExpectPing().WillReturnError(assert.AnError)
 
 		c := &Component{
-			opts:      opts,
-			args:      args,
-			receivers: args.ForwardTo,
-			handler:   loki.NewLogsReceiver(),
-			registry:  prometheus.NewRegistry(),
-			healthErr: atomic.NewString(""),
-			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			opts:         opts,
+			args:         args,
+			receivers:    args.ForwardTo,
+			handler:      loki.NewLogsReceiver(),
+			registry:     prometheus.NewRegistry(),
+			healthErr:    atomic.NewString(""),
+			openSQL:      func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			logsReceiver: loki.NewLogsReceiver(),
 		}
 		c.instanceKey = "test-instance"
 		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
