@@ -275,6 +275,7 @@ else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
 endif
 
+.PHONY: generate-source-code
 generate-source-code:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
