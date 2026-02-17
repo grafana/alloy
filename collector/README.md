@@ -58,7 +58,7 @@ The custom generator performs two tasks:
 
 ## Building Locally
 
-`make alloy` runs the code generation steps described above automatically before building, so you generally don't need to do anything extra. Generation is skipped in CI and when `SKIP_CODE_GENERATION=1` is set.
+`make alloy` runs the code generation steps described above automatically before building, so you generally don't need to do anything extra. Generation is skipped when `CI=true` or when `SKIP_CODE_GENERATION=1` is set.
 
 To regenerate only (without building):
 
