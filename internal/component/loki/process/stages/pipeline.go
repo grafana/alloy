@@ -99,7 +99,7 @@ func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHa
 				return
 			case e := <-in:
 				pipelineIn <- Entry{
-					// NOTE: When entires pass through the the pipeline
+					// NOTE: When entires pass through the pipeline
 					// we always add all labels as extracted data.
 					Extracted: make(map[string]any, len(e.Labels)),
 					Entry:     e,
