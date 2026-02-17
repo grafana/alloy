@@ -144,8 +144,3 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 		extracted[o.cfgs.Source] = st
 	}
 }
-
-// Name implements Stage
-func (o *templateStage) Name() string {
-	return StageTypeTemplate
-}

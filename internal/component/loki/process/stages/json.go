@@ -170,11 +170,6 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	return nil
 }
 
-// Name implements Stage
-func (j *jsonStage) Name() string {
-	return StageTypeJSON
-}
-
 // Cleanup implements Stage.
 func (*jsonStage) Cleanup() {
 	// no-op
