@@ -2,17 +2,19 @@ package stages
 
 import (
 	"bytes"
-	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var protocolStr = "protocol"
@@ -222,62 +224,75 @@ func TestPipelineWithMissingKey_Regex(t *testing.T) {
 	}
 }
 
-func TestRegexConfig_validate(t *testing.T) {
+func TestRegexConfig(t *testing.T) {
 	t.Parallel()
-	tests := map[string]struct {
-		config any
-		err    error
-	}{
-		"empty config": {
-			nil,
-			ErrExpressionRequired,
+
+	type testCase struct {
+		name              string
+		config            string
+		expectSyntaxErr   bool
+		expectValidateErr bool
+	}
+
+	tests := []testCase{
+
+		{
+			name:            "empty config",
+			config:          "",
+			expectSyntaxErr: true,
 		},
-		"missing regex_expression": {
-			map[string]any{},
-			ErrExpressionRequired,
+		{
+			name:            "missing expression",
+			config:          "",
+			expectSyntaxErr: true,
 		},
-		"invalid regex_expression": {
-			map[string]any{
-				"expression": "(?P<ts[0-9]+).*",
-			},
-			errors.New(ErrCouldNotCompileRegex.Error() + ": error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
+		{
+			name: "invalid expression",
+			config: `
+				expression = "(?P<ts[0-9]+).*"
+			`,
+			expectSyntaxErr: true,
 		},
-		"empty source": {
-			map[string]any{
-				"expression": "(?P<ts>[0-9]+).*",
-				"source":     "",
-			},
-			ErrEmptyRegexStageSource,
+		{
+			name: "empty source",
+			config: `
+				expression = "(?P<ts>[0-9]+).*"
+				source = ""
+			`,
+			expectValidateErr: true,
 		},
-		"valid without source": {
-			map[string]any{
-				"expression": "(?P<ts>[0-9]+).*",
-			},
-			nil,
+		{
+			name: "valid without source",
+			config: `
+				expression = "(?P<ts>[0-9]+).*"
+			`,
 		},
-		"valid with source": {
-			map[string]any{
-				"expression": "(?P<ts>[0-9]+).*",
-				"source":     "log",
-			},
-			nil,
+		{
+			name: "valid with source",
+			config: `
+				expression = "(?P<ts>[0-9]+).*"
+				source     = "log"
+			`,
 		},
 	}
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
-			c, err := parseRegexConfig(tt.config)
-			if err != nil {
-				t.Fatalf("failed to create config: %s", err)
-			}
-			_, err = validateRegexConfig(*c)
-			if (err != nil) != (tt.err != nil) {
-				t.Errorf("RegexConfig.validate() expected error = %v, actual error = %v", tt.err, err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg RegexConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+
+			if tt.expectSyntaxErr {
+				require.Error(t, err)
 				return
+			} else {
+				require.NoError(t, err)
 			}
-			if (err != nil) && (err.Error() != tt.err.Error()) {
-				t.Errorf("RegexConfig.validate() expected error = %v, actual error = %v", tt.err, err)
-				return
+
+			err = validateRegexConfig(cfg)
+			if tt.expectValidateErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -297,7 +312,7 @@ func TestRegexParser_Parse(t *testing.T) {
 	}{
 		"successfully match expression on entry": {
 			RegexConfig{
-				Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
+				Expression: regexp.MustCompileNonEmpty("^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"),
 			},
 			map[string]any{},
 			model.LabelSet{},
@@ -319,7 +334,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"successfully match expression on entry with label extracted from named capture groups": {
 			RegexConfig{
-				Expression:       "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
+				Expression:       regexp.MustCompileNonEmpty("^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"),
 				LabelsFromGroups: true,
 			},
 			map[string]any{},
@@ -354,7 +369,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"successfully match expression on extracted[source]": {
 			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
+				Expression: regexp.MustCompileNonEmpty("^HTTP\\/(?P<protocol_version>.*)$"),
 				Source:     &protocolStr,
 			},
 			map[string]any{
@@ -370,7 +385,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"successfully match expression on extracted[source] with label extracted from named capture groups": {
 			RegexConfig{
-				Expression:       "^HTTP\\/(?P<protocol_version>.*)$",
+				Expression:       regexp.MustCompileNonEmpty("^HTTP\\/(?P<protocol_version>.*)$"),
 				Source:           &protocolStr,
 				LabelsFromGroups: true,
 			},
@@ -392,7 +407,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"failed to match expression on entry": {
 			RegexConfig{
-				Expression: "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<message>.*)$",
+				Expression: regexp.MustCompileNonEmpty("^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<message>.*)$"),
 			},
 			map[string]any{},
 			model.LabelSet{},
@@ -402,7 +417,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"failed to match expression on extracted[source]": {
 			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
+				Expression: regexp.MustCompileNonEmpty("^HTTP\\/(?P<protocol_version>.*)$"),
 				Source:     &protocolStr,
 			},
 			map[string]any{
@@ -417,7 +432,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"case insensitive": {
 			RegexConfig{
-				Expression: "(?i)(?P<bad>panic:|core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted)",
+				Expression: regexp.MustCompileNonEmpty("(?i)(?P<bad>panic:|core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted)"),
 			},
 			map[string]any{},
 			model.LabelSet{},
@@ -429,7 +444,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"missing extracted[source]": {
 			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
+				Expression: regexp.MustCompileNonEmpty("^HTTP\\/(?P<protocol_version>.*)$"),
 				Source:     &protocolStr,
 			},
 			map[string]any{},
@@ -440,7 +455,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		},
 		"invalid data type in extracted[source]": {
 			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
+				Expression: regexp.MustCompileNonEmpty("^HTTP\\/(?P<protocol_version>.*)$"),
 				Source:     &protocolStr,
 			},
 			map[string]any{
@@ -477,7 +492,8 @@ func BenchmarkRegexStage(b *testing.B) {
 	}{
 		{"apache common log",
 			RegexConfig{
-				Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"},
+				Expression: regexp.MustCompileNonEmpty("^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"),
+			},
 			regexLogFixture,
 		},
 	}
