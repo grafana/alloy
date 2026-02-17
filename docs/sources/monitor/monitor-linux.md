@@ -24,7 +24,7 @@ Clone the repository and use the examples to understand how {{< param "PRODUCT_N
 Before you begin, ensure you have the following:
 
 * [Docker](https://www.docker.com/) and Docker Compose installed
-* [Git](https://git-scm.com/) for cloning the repository  
+* [Git](https://git-scm.com/) for cloning the repository
 * A Linux host or Linux running in a virtual machine
 * Administrator privileges to run Docker commands
 * Available ports: 3000 (Grafana), 9090 (Prometheus), 3100 (Loki), and 12345 ({{< param "PRODUCT_NAME" >}} UI)
@@ -101,7 +101,7 @@ The metrics configuration in this scenario requires four components that work to
 The components are configured in this order to create a data pipeline:
 
 * `prometheus.exporter.unix` - collects system metrics
-* `discovery.relabel` - adds standard labels to metrics  
+* `discovery.relabel` - adds standard labels to metrics
 * `prometheus.scrape` - scrapes metrics from the exporter
 * `prometheus.remote_write` - sends metrics to Prometheus for storage
 
