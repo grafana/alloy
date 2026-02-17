@@ -156,7 +156,7 @@ This example shows how:
 ## Import modules
 
 To use modules in your configuration, you import them using one of the `import` configuration blocks.
-The component controller processes import statements during configuration loading to make custom components available in the importing module's namespace.
+The component controller processes import statements during configuration loading to make the imported custom components available.
 
 1. [`import.file`][import.file]: Imports a module from a file on disk.
 1. [`import.git`][import.git]: Imports a module from a file in a Git repository.
