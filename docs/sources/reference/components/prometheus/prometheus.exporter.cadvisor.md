@@ -381,12 +381,12 @@ spec:
 Key configuration requirements:
 
 * **hostNetwork: true**: Allows access to the host network stack
-* ***hostPID: true**: Enables process-level metrics collection
+* **hostPID: true**: Enables process-level metrics collection
 * **privileged: true**: Grants access to host resources
 * **Volume mounts**: Provide access to container runtime and system directories
 
 {{< admonition type="note" >}}
-For container run times other than Docker, such as containerd or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
+For container runtimes other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}
@@ -394,9 +394,9 @@ Running containers with privileged access in Kubernetes has security implication
 Consider using Pod Security Standards and RBAC to limit exposure, and only deploy to dedicated monitoring namespaces.
 {{< /admonition >}}
 
-For more information about deploying {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Deploy {{< param "PRODUCT_NAME" >}} on Kubernetes][k8s-deploy].
+For more information about deploying {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy].
 
-[k8s-deploy]: ../../../set-up/deploy/kubernetes/
+[deploy]: ../../../set-up/deploy/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
