@@ -49,6 +49,8 @@ func (i benchAppenderFlowsItem) name() string {
 	return fmt.Sprintf("pipeline=%s/targets=%d/metrics=%d", key, i.targetsCount, len(i.series))
 }
 
+// go test -bench="BenchmarkAppenderFlows" . -run ^$ -benchmem -count 6 -benchtime 5s | tee benchmarks
+// benchstat -row '.name /targets /metrics' -col '/pipeline' benchmarks
 func BenchmarkAppenderFlows(b *testing.B) {
 	labels := setupMetrics(2000)
 	cases := []benchAppenderFlowsItem{
