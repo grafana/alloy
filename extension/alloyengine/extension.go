@@ -116,7 +116,7 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 
 		err := e.runWithBackoffRetry(runCommand, runCtx)
 
-		previousState := currentState
+		previousState := e.getState()
 		e.setState(stateTerminated)
 
 		if err == nil {
