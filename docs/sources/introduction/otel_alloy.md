@@ -11,7 +11,8 @@ weight: 230
 # OpenTelemetry in {{% param "PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
-The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}} that lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
+The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}}.
+It lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -25,7 +26,7 @@ The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distri
 - **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
   It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
 
-- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that allows you to run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} in parallel.
+- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that lets you run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} in parallel.
 
 ## Included components
 
@@ -146,6 +147,5 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Next steps
 
-- [Run the {{< param "OTEL_ENGINE" >}}](../set-up/otel_engine/)
-- [OTel CLI](../reference/cli/otel/) reference documentation
-
+- Refer to [The {{< param "OTEL_ENGINE" >}}](../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
+- Refer to the [OTel CLI reference](../reference/cli/otel/) for more information about the OTel CLI.
