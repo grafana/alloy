@@ -23,6 +23,9 @@ FROM alpine:3.17 as helm
 RUN apk add --no-cache helm
 
 # Dependency: nsis (for building Windows installers)
+# TODO: Use nsis with conda so that we don't have to pull those packages from the internet.
+# https://nsis.sourceforge.io/Conda
+# TODO: Why do we use i386? Is it correct?
 FROM alpine:3.17 as nsis
 RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
  && unzip AccessControl.zip -d /usr/share/nsis/ \

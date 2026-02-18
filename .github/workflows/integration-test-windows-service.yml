@@ -34,6 +34,18 @@ jobs:
         run: choco install nsis -y
         shell: pwsh
 
+      - name: Install NSIS AccessControl plugin
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
+          $zipPath = "$env:TEMP\AccessControl.zip"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+          Expand-Archive -Path $zipPath -DestinationPath $env:TEMP\AccessControl -Force
+          Copy-Item -Path "$env:TEMP\AccessControl\Plugins\*" -Destination "$nsisPath\Plugins\" -Recurse -Force
+          New-Item -ItemType Directory -Path "$nsisPath\Plugins\x86-unicode" -Force
+          Copy-Item -Path "$nsisPath\Plugins\i386-unicode\AccessControl.dll" -Destination "$nsisPath\Plugins\x86-unicode\"
+        shell: pwsh
+
       - name: Add NSIS to PATH
         run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
         shell: pwsh
