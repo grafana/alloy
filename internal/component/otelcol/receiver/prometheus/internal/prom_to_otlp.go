@@ -16,16 +16,19 @@ import (
 
 const removeOldSemconvFeatureGateID = "receiver.prometheusreceiver.RemoveLegacyResourceAttributes"
 
-// TODO: Find a way to enable this feature gate again, at least for 1-2 more versions of Alloy.
-// Those conventions were deprecated a really long time ago:
-// https://www.honeycomb.io/blog/opentelemetry-http-attributes
-var removeOldSemconvFeatureGate = featuregate.GlobalRegistry().MustRegister(
-	removeOldSemconvFeatureGateID,
-	featuregate.StageAlpha,
-	featuregate.WithRegisterFromVersion("v0.101.0"),
-	featuregate.WithRegisterDescription("When enabled, the net.host.name, net.host.port, and http.scheme resource attributes are no longer added to metrics. Use server.address, server.port, and url.scheme instead."),
-	featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32814"),
-)
+// lookupFeatureGate finds a gate by ID in the global registry. If the gate is
+// registered by the upstream prometheusreceiver dependency, this will find and
+// return it. Otherwise, it will return nil. This is to avoid re-registering gates
+// since this module is largely a copy of the upstream prometheusreceiver dependency.
+func lookupFeatureGate(id string) *featuregate.Gate {
+	var g *featuregate.Gate
+	featuregate.GlobalRegistry().VisitAll(func(gate *featuregate.Gate) {
+		if gate.ID() == id {
+			g = gate
+		}
+	})
+	return g
+}
 
 // isDiscernibleHost checks if a host can be used as a value for the 'host.name' key.
 // localhost-like hosts and unspecified (0.0.0.0) hosts are not discernible.
@@ -56,13 +59,13 @@ func CreateResource(job, instance string, serviceDiscoveryLabels labels.Labels) 
 	attrs := resource.Attributes()
 	attrs.PutStr(string(conventions.ServiceNameKey), job)
 	if isDiscernibleHost(host) {
-		if !removeOldSemconvFeatureGate.IsEnabled() {
+		if g := lookupFeatureGate(removeOldSemconvFeatureGateID); g == nil || !g.IsEnabled() {
 			attrs.PutStr(string(oldconventions.NetHostNameKey), host)
 		}
 		attrs.PutStr(string(conventions.ServerAddressKey), host)
 	}
 	attrs.PutStr(string(conventions.ServiceInstanceIDKey), instance)
-	if !removeOldSemconvFeatureGate.IsEnabled() {
+	if g := lookupFeatureGate(removeOldSemconvFeatureGateID); g == nil || !g.IsEnabled() {
 		attrs.PutStr(string(conventions.NetHostPortKey), port)
 		attrs.PutStr(string(conventions.HTTPSchemeKey), serviceDiscoveryLabels.Get(model.SchemeLabel))
 	}
