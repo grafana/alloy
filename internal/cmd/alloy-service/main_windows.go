@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 
@@ -17,13 +16,10 @@ import (
 const serviceName = "Alloy"
 
 func main() {
-	logger, err := newLogger()
-	if err != nil {
-		// Ideally the logger never fails to be created, since if it does, there's
-		// nowhere to send the failure to.
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	// Service wrapper logs (e.g. "starting program", "service exited") go to
+	// stderr. Alloy's own logs are handled by the Alloy process; configure
+	// windows_event_log in Alloy's logging block to write to Windows Event Log.
+	logger := log.NewLogfmtLogger(os.Stderr)
 
 	managerConfig, err := loadConfig()
 	if err != nil {
@@ -37,9 +33,10 @@ func main() {
 		Environment: managerConfig.Environment,
 		Dir:         managerConfig.WorkingDirectory,
 
-		// Send logs directly to the event logger.
-		Stdout: logger,
-		Stderr: logger,
+		// Do not capture the child's stdout/stderr; Alloy logs via its own
+		// logger (e.g. windows_event_log in the logging config).
+		Stdout: nil,
+		Stderr: nil,
 	}
 
 	as := &alloyService{logger: logger, cfg: cfg}
