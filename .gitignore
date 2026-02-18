@@ -38,6 +38,7 @@ internal/service/graphql/graph/model/models_gen.go
 .image-tag
 /alloy
 collector/otel_engine
+collector/otel_engine.exe
 
 # local testing files
 /targets.yaml

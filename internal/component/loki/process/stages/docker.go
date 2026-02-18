@@ -23,10 +23,6 @@ type DockerStage struct {
 	logger log.Logger
 }
 
-func (d *DockerStage) Name() string {
-	return StageTypeDocker
-}
-
 // DockerLog represents the expected json format written by docker:
 // https://docs.docker.com/engine/logging/drivers/json-file/
 type DockerLog struct {

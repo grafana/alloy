@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/golang/snappy"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/config"
 	"go.uber.org/atomic"
@@ -69,8 +70,9 @@ type queue struct {
 }
 
 // append adds a log entry to the queue for the given tenant.
-// It returns true if the entry was successfully queued, false if the queue
-// is full and backpressure should be applied.
+// It returns true if the caller should not apply backpressure,
+// entry was queued or it was dropped due to max streams reached.
+// It returns false if the queue is full and backpressure should be applied.
 func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -78,31 +80,32 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	batch, ok := q.batches[tenantID]
 	if !ok {
 		// Create a new batch for this tenant.
-		batch := newBatch(q.cfg.MaxStreams)
+		batch := newBatch(q.cfg.MaxStreams, q.cfg.BatchSize)
 		_ = batch.add(entry, segmentNum)
 		q.batches[tenantID] = batch
 		return true
 	}
 
-	// If adding this entry would exceed the batch size limit, enqueue the
-	// current batch and start a new one.
-	if batch.sizeBytesAfter(entry.Entry) > q.cfg.BatchSize {
-		select {
-		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
-			// Successfully enqueued the batch.
-		default:
-			// Channel is full, signal backpressure.
-			return false
+	if err := batch.add(entry, segmentNum); err != nil {
+		// If adding this entry would exceed the batch size limit, enqueue the
+		// current batch and start a new one.
+		if errors.Is(err, errBatchSizeReached) {
+			select {
+			case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
+				// Successfully enqueued the batch.
+			default:
+				// Channel is full, signal backpressure.
+				return false
+			}
+
+			batch := newBatch(q.cfg.MaxStreams, q.cfg.BatchSize)
+			_ = batch.add(entry, segmentNum)
+			q.batches[tenantID] = batch
+			return true
 		}
 
-		batch := newBatch(q.cfg.MaxStreams)
-		_ = batch.add(entry, segmentNum)
-		q.batches[tenantID] = batch
-		return true
-	}
-
-	// Add entry to existing batch. If we cannot add entry to batch we will drop it.
-	if err := batch.add(entry, segmentNum); err != nil {
+		// If we could not add entry to batch that means that the configured maxStreams was reached and
+		// we should drop the entry.
 		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := reasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
@@ -333,6 +336,11 @@ func (s *shards) runShard(q *queue) {
 		}
 	}()
 
+	var (
+		protoBuffer  = make([]byte, s.cfg.BatchSize)
+		snappyBuffer = make([]byte, snappy.MaxEncodedLen(s.cfg.BatchSize))
+	)
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -343,11 +351,12 @@ func (s *shards) runShard(q *queue) {
 				// Channel is closed, when a graceful shutdown is successful.
 				return
 			}
-			s.sendBatch(b.TenantID, b.Batch)
+
+			s.sendBatch(b.TenantID, b.Batch, &protoBuffer, &snappyBuffer)
 		case <-maxWaitCheck.C:
 			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
-				s.sendBatch(b.TenantID, b.Batch)
+				s.sendBatch(b.TenantID, b.Batch, &protoBuffer, &snappyBuffer)
 			}
 		}
 	}
@@ -391,10 +400,19 @@ func (s *shards) initBatchMetrics(tenantID string) {
 }
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
-func (s *shards) sendBatch(tenantID string, batch *batch) {
+func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
 	defer batch.reportAsSentData(s.markerHandler)
-	buf, entriesCount, err := batch.encode()
 
+	r, entriesCount := batch.request()
+
+	size := r.Size()
+	// We adjust the reusable buffers size after the biggest batch we've seen.
+	if size > len(*protoBuf) {
+		*protoBuf = make([]byte, size)
+		*snappyBuf = make([]byte, snappy.MaxEncodedLen(size))
+	}
+
+	buf, err := encode(r, size, *protoBuf, *snappyBuf)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
 		return
