@@ -34,6 +34,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 |         | no       |
 
 [data_source_name]: format must adhere to the [pq library standards](https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig).
 
@@ -237,7 +238,7 @@ database_observability.postgres "orders_db" {
   forward_to       = [loki.relabel.orders_db.receiver]
   targets          = prometheus.exporter.postgres.orders_db.targets
 
-  enable_collectors = ["query_samples", "explain_plans"]  
+  enable_collectors = ["query_samples", "explain_plans"]
 }
 
 prometheus.exporter.postgres "orders_db" {
@@ -251,7 +252,7 @@ loki.source.file "postgres_logs" {
     __path__ = "/var/log/postgresql/postgresql-*.log",
     job      = "postgres-logs",
   }]
-  
+
   forward_to = [database_observability.postgres.orders_db.logs_receiver]
 }
 
@@ -325,18 +326,18 @@ otelcol.storage.file "cloudwatch" {
 otelcol.receiver.awscloudwatch "rds_logs" {
   region  = "us-east-1"
   storage = otelcol.storage.file.cloudwatch.handler
-  
+
   logs {
-    poll_interval = "1m"    
+    poll_interval = "1m"
     start_from = "2026-02-01T00:00:00Z" // Set this date to the closest possible to when you want to account logs from
-    
+
     groups {
       named {
         group_name = "/aws/rds/instance/production-db/postgresql" // Insert your Postgres RDS Cloudwatch log group here
       }
     }
   }
-  
+
   output {
     logs = [otelcol.exporter.loki.rds_logs.input]
   }
@@ -352,7 +353,7 @@ database_observability.postgres "rds_db" {
   data_source_name = "postgres://user:pass@rds-endpoint.region.rds.amazonaws.com:5432/postgres"
   targets          = prometheus.exporter.postgres.rds_db.targets
   forward_to       = [loki.relabel.rds_db.receiver]
-  
+
   cloud_provider {
     aws {
       arn = "arn:aws:rds:us-east-1:123456789012:db:production-db"
@@ -379,7 +380,7 @@ loki.relabel "rds_db" {
 
 discovery.relabel "rds_db" {
   targets = database_observability.postgres.rds_db.targets
-  
+
   rule {
     target_label = "job"
     replacement  = "integrations/db-o11y"
