@@ -4,7 +4,7 @@ description: Grafana Alloy is a flexible, high performance, vendor-neutral distr
 menuTitle: OpenTelemetry Engine
 title: The OpenTelemetry Engine
 noindex: true
-weight: 10
+weight: 95
 ---
 
 # The {{% param "FULL_OTEL_ENGINE" %}}
