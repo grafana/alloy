@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/
 aliases:
   - ../opentelemetry/get-started/ # /docs/alloy/latest/opentelemetry/get-started/
-description: Get started with the Alloy OpenTelemetry Engine
+description: Learn how to run the OpenTelemetry Engine using the CLI, Helm chart, or service installation
 menuTitle: OpenTelemetry Engine
 title: The OpenTelemetry Engine
 weight: 390

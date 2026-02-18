@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/introduction/otel_alloy/
 aliases:
   - ../opentelemetry/ # /docs/alloy/latest/opentelemetry/
-description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector
+description: Learn about the OpenTelemetry Engine, a bundled OpenTelemetry Collector distribution embedded within Grafana Alloy
 menuTitle: OpenTelemetry in Alloy
 title: OpenTelemetry in Alloy
 weight: 230
