@@ -286,7 +286,7 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		labelHashToUniqueRef: make(map[uint64]storage.SeriesRef),
 		cellPool: sync.Pool{
 			New: func() any {
-				return &Cell{Refs: make([]storage.SeriesRef, 100)}
+				return &Cell{Refs: make([]storage.SeriesRef, 0, 100)}
 			},
 		},
 		stopCleanup:     make(chan struct{}),
