@@ -9,7 +9,7 @@ weight: 200
 # Telemetry pipelines in {{% param "FULL_PRODUCT_NAME" %}}
 
 Telemetry moves through {{< param "PRODUCT_NAME" >}} in defined paths.
-Each path begins with ingestion, may include processing stages, and ends with export.
+Each path may begin with discovery, includes ingestion and optional processing stages, and ends with export.
 
 You construct these paths by connecting components in the configuration.
 There's no default pipeline.
@@ -19,11 +19,28 @@ A common pipeline looks like this:
 
 {{< mermaid >}}
 flowchart LR
-  Ingestion --> Transformation --> Output
+  Discovery -.->|targets| Ingestion -->|telemetry| Transformation -->|telemetry| Output
 {{< /mermaid >}}
+
+Discovery is optional. It's used for pull-based collection when you need to find scrape targets dynamically. Push-based ingestion and static configurations start directly at ingestion.
 
 That pattern is conceptual.
 The actual structure depends entirely on how you connect the components.
+
+## Discovery
+
+Discovery components find scrape targets and pass them to ingestion components.
+They don't collect telemetry themselves.
+
+Discovery components can find targets from:
+
+- Kubernetes resources.
+- Cloud provider APIs.
+- Service registries.
+- Static lists.
+- DNS records.
+
+Discovery is optional. If you use static targets or push-based ingestion, you don't need discovery components.
 
 ## Ingestion
 
@@ -39,7 +56,7 @@ Ingestion components accept telemetry from external systems such as:
 Ingestion components convert incoming data into the internal formats used within {{< param "PRODUCT_NAME" >}}.
 From that point forward, telemetry moves between components inside the configured paths.
 
-If an ingestion component has no downstream connection, its telemetry goes nowhere.
+If an ingestion component doesn't connect to another component, its telemetry goes nowhere.
 
 ## Transformation
 
@@ -53,7 +70,7 @@ Transformation components can:
 
 - Modify telemetry.
 - Filter telemetry.
-- Route telemetry to different downstream components.
+- Route telemetry to different receiving components.
 
 Transformation only happens when you connect a transformation component in the path.
 
@@ -63,11 +80,11 @@ Output components forward telemetry to their configured destinations, whether th
 
 An output component might send data to:
 
-- A metrics backend.
-- A log backend.
-- A tracing backend.
-- Another telemetry collector.
-- Another component within {{< param "PRODUCT_NAME" >}}.
+- A metrics backend, such as Mimir or Grafana Cloud, using `prometheus.remote_write`.
+- A log backend, such as Loki, using `loki.write`.
+- A tracing backend, such as Tempo or Jaeger, using `otelcol.exporter.otlp`.
+- Another telemetry collector using `otelcol.exporter.otlp`.
+- Another component within {{< param "PRODUCT_NAME" >}} using `forward_to` arguments.
 
 Output components are often the final stage in a pipeline, but they can also connect to other components, allowing you to chain pipelines together.
 
@@ -83,7 +100,7 @@ A pipeline isn't limited to a straight line.
 
 Because the configuration defines connected paths, telemetry can:
 
-- Branch to multiple downstream components.
+- Branch to multiple receiving components.
 - Merge into shared output components.
 - Remain isolated from other signal types.
 
@@ -99,8 +116,9 @@ Each signal type typically has its own pipeline, defined independently in the co
 
 To understand how telemetry flows in a configuration:
 
+1. Identify any discovery components and note which ingestion components receive their targets.
 1. Identify the ingestion components.
-1. Trace their downstream connections.
+1. Trace where each component sends telemetry.
 1. Note each transformation component in the path.
 1. Identify where the path ends.
 

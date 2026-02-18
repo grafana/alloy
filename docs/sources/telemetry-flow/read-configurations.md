@@ -23,7 +23,7 @@ When reviewing a configuration:
 1. Determine what signal type it handles.
 1. Locate its declared outputs.
 
-An ingestion component without downstream connections doesn't forward telemetry anywhere.
+An ingestion component that doesn't connect to other components doesn't forward telemetry anywhere.
 Its data stops at the boundary of the configuration.
 
 ## Follow the connections
@@ -33,7 +33,7 @@ From each ingestion component, trace its outputs to the next connected component
 At each step, ask:
 
 - Is this a transformation component?
-- Is this branching to multiple downstream components?
+- Is this branching to multiple receiving components?
 - Does this path merge with another path?
 
 Because connections are explicit, the path is visible in the configuration.
@@ -63,7 +63,7 @@ Output components forward telemetry to their configured destinations.
 
 For each path:
 
-1. Identify the final downstream component.
+1. Identify the final component in the path.
 1. Confirm it's an output component.
 1. Determine where it sends telemetry, such as an external system or another component.
 
@@ -89,8 +89,8 @@ Understanding these patterns makes it easier to reason about cost, performance, 
 
 When telemetry behaves unexpectedly:
 
-- Verify that the ingestion component connects to downstream components.
-- Trace the full downstream path.
+- Verify that the ingestion component connects to other components.
+- Trace the full path from ingestion to output.
 - Confirm transformation components are in the expected position.
 - Ensure the path ends at the correct output component.
 

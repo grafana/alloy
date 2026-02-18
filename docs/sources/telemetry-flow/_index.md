@@ -8,14 +8,14 @@ weight: 25
 
 # How {{% param "FULL_PRODUCT_NAME" %}} moves telemetry
 
-{{< param "PRODUCT_NAME" >}} runs a configuration that defines components and how they connect.
+The {{< param "PRODUCT_NAME" >}} configuration defines components and how they connect.
 
 Those connections determine exactly how telemetry moves through the system.
 
 Telemetry doesn't move automatically.
 It follows only the paths you define.
-If two components aren't connected, no data passes between them.
-If a transformation component isn't included in a path, no transformation occurs.
+If two components aren't connected, no telemetry passes between them.
+If there's no transformation along a path, it passes through unchanged.
 
 Understanding how telemetry flows through connected components makes it easier to reason about behavior, performance, and outcomes.
 
@@ -32,7 +32,7 @@ When {{< param "PRODUCT_NAME" >}} starts, it:
 1. Connects them according to their declared relationships.
 1. Begins passing telemetry along those connections.
 
-Telemetry flows from upstream components to downstream components.
+Telemetry flows from one component to the next along defined connections.
 The configuration defines the direction and structure of that flow.
 
 No global pipeline automatically handles all data.
@@ -40,18 +40,22 @@ Every path is explicit.
 
 ## Telemetry follows defined paths
 
-In most configurations, telemetry follows a pattern like this:
+Telemetry flows through the pipeline following a pattern like this:
 
 {{< mermaid >}}
 flowchart LR
-  Ingestion --> Transformation --> Output
+  Discovery -.->|targets| Ingestion -->|telemetry| Transformation -->|telemetry| Output
 {{< /mermaid >}}
+
+Discovery is optional. It's used for pull-based collection when you need to find scrape targets dynamically. Push-based ingestion and static configurations start directly at ingestion.
 
 This is a simplified representation of a single path.
 In practice, configurations often branch, merge, and contain multiple independent telemetry paths.
 
 Within any given path:
 
+- **Discovery components** find scrape targets and pass them to ingestion components.
+  They don't collect telemetry themselves.
 - **Ingestion components** handle protocol decoding and normalization so {{< param "PRODUCT_NAME" >}} can represent telemetry internally.
   They don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that component.
   They only handle ingestion, decoding, and normalization.
@@ -60,7 +64,7 @@ Within any given path:
 
 These roles are logical.
 An ingestion component doesn't modify data unless you configure it to do so.
-An output component doesn't filter data unless something upstream has filtered it.
+An output component doesn't filter data. It forwards whatever it receives.
 
 If you connect an ingestion component directly to an output component, telemetry passes through without intermediate modification.
 
@@ -68,14 +72,16 @@ If you connect an ingestion component directly to an output component, telemetry
 
 Different component families use different naming conventions, but the underlying flow pattern remains the same:
 
-| Pipeline type | Ingestion            | Transformation        | Output                    |
-| ------------- | -------------------- | --------------------- | ------------------------- |
-| OpenTelemetry | `otelcol.receiver.*` | `otelcol.processor.*` | `otelcol.exporter.*`      |
-| Prometheus    | `prometheus.scrape`  | `prometheus.relabel`  | `prometheus.remote_write` |
-| Loki          | `loki.source.*`      | `loki.process`        | `loki.write`              |
-| Pyroscope     | `pyroscope.scrape`   | `pyroscope.relabel`   | `pyroscope.write`         |
+| Pipeline type | Discovery      | Ingestion            | Transformation        | Output                    |
+| ------------- | -------------- | -------------------- | --------------------- | ------------------------- |
+| OpenTelemetry | —              | `otelcol.receiver.*` | `otelcol.processor.*` | `otelcol.exporter.*`      |
+| Prometheus    | `discovery.*`  | `prometheus.scrape`  | `prometheus.relabel`  | `prometheus.remote_write` |
+| Loki          | `discovery.*`  | `loki.source.*`      | `loki.process`        | `loki.write`              |
+| Pyroscope     | `discovery.*`  | `pyroscope.scrape`   | `pyroscope.relabel`   | `pyroscope.write`         |
 
-Regardless of naming, the conceptual flow is the same: telemetry enters through ingestion components, optionally passes through transformation components, and leaves through output components.
+`prometheus.exporter.*` components expose local metrics as scrape targets. They act as metric sources that `prometheus.scrape` can collect from, rather than discovering external targets.
+
+Regardless of naming, the conceptual flow is the same: discovery components find targets, ingestion components collect telemetry, transformation components process it, and output components forward it to destinations.
 
 ## Explicit configuration
 

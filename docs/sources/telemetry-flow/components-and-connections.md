@@ -39,10 +39,8 @@ Telemetry flows only along declared connections.
 If two components aren't connected, they don't share data.
 There's no implicit global pipeline or automatic chaining of components.
 
-Connections have direction:
-
-- Upstream components send telemetry.
-- Downstream components receive it.
+Connections have direction.
+One component sends telemetry, another receives it.
 
 The direction and structure of the flow come entirely from the configuration.
 
@@ -55,7 +53,6 @@ You can determine exactly where data goes by following connections.
 It doesn't automatically insert processing stages.
 It doesn't route telemetry unless you configure it to do so.
 
-If a component isn't connected to anything downstream, nothing consumes its output.
 If an ingestion component isn't connected to a transformation or output component, its telemetry doesn't go anywhere.
 
 You must define every data path.
@@ -81,8 +78,8 @@ There's no requirement that all telemetry types follow the same structure.
 Connections can form:
 
 - Straight paths
-- Branching paths that send telemetry to multiple downstream components
-- Merged paths where multiple upstream components feed into a shared output component
+- Branching paths where one component sends telemetry to multiple receiving components
+- Merged paths where multiple components send telemetry to a shared output component
 
 ## Reason about connections
 
@@ -90,7 +87,7 @@ When reviewing a configuration, ask:
 
 - Which components exist?
 - Which components connect to each other?
-- Which components have no downstream consumers?
+- Which components don't send telemetry anywhere?
 - Where does each path end?
 
 Answering these questions reveals how telemetry moves through the system.
