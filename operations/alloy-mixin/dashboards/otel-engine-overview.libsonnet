@@ -310,7 +310,7 @@ local filename = 'alloy-otel-engine-overview.json';
       // Signal-specific rows (collapsed by default)
       signalRow(
         title='Spans & Traces',
-        rowNum=1,
+        rowNum=2,
         signalName='spans',
         receiverAccepted='otelcol_receiver_accepted_spans_total',
         receiverRefused='otelcol_receiver_refused_spans_total',
@@ -321,7 +321,7 @@ local filename = 'alloy-otel-engine-overview.json';
       ),
       signalRow(
         title='Metrics',
-        rowNum=3,
+        rowNum=5,
         signalName='metric points',
         receiverAccepted='otelcol_receiver_accepted_metric_points_total',
         receiverRefused='otelcol_receiver_refused_metric_points_total',
@@ -332,7 +332,7 @@ local filename = 'alloy-otel-engine-overview.json';
       ),
       signalRow(
         title='Logs',
-        rowNum=5,
+        rowNum=8,
         signalName='log records',
         receiverAccepted='otelcol_receiver_accepted_log_records_total',
         receiverRefused='otelcol_receiver_refused_log_records_total',
@@ -345,7 +345,7 @@ local filename = 'alloy-otel-engine-overview.json';
       // Processing & Batching row (collapsed by default)
       (
         panel.new('Processing & Batching', 'row') +
-        rowPosition(7) +
+        rowPosition(11) +
         { collapsed: true } +
         {
           local normalNote = 'Requires "normal" telemetry level.',
@@ -358,7 +358,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'Incoming vs outgoing items across all processors. A gap between the two may indicate items being dropped or filtered.',
               ) +
               panel.withUnit('cps') +
-              panelPosition3Across(row=7, col=0) +
+              panelPosition3Across(row=11, col=0) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -380,7 +380,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'Incoming vs outgoing items broken down by the selected dimension.',
               ) +
               panel.withUnit('cps') +
-              panelPosition3Across(row=7, col=1) +
+              panelPosition3Across(row=11, col=1) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -402,7 +402,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'Items refused by processors, broken down by signal type and selected dimension.',
               ) +
               panel.withUnit('cps') +
-              panelPosition3Across(row=7, col=2) +
+              panelPosition3Across(row=11, col=2) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -424,7 +424,7 @@ local filename = 'alloy-otel-engine-overview.json';
               panel.withDescription(
                 'Distribution of batch sizes when sent. Shows how full batches are before being flushed. ' + normalNote,
               ) +
-              panelPosition3Across(row=8, col=0) +
+              panelPosition3Across(row=12, col=0) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -441,7 +441,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
               ) +
               panel.withUnit('cps') +
-              panelPosition3Across(row=8, col=1) +
+              panelPosition3Across(row=12, col=1) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -462,7 +462,7 @@ local filename = 'alloy-otel-engine-overview.json';
               panel.withDescription(
                 'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. ' + normalNote,
               ) +
-              panelPosition3Across(row=8, col=2) +
+              panelPosition3Across(row=12, col=2) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -479,7 +479,7 @@ local filename = 'alloy-otel-engine-overview.json';
       // Process Resources row (collapsed by default)
       (
         panel.new('Process Resources', 'row') +
-        rowPosition(9) +
+        rowPosition(13) +
         { collapsed: true } +
         {
           local avgLineStyle = [
@@ -492,10 +492,10 @@ local filename = 'alloy-otel-engine-overview.json';
             (
               panel.new(title='CPU usage', type='timeseries') +
               panel.withDescription(
-                'CPU time consumed by OTel engine processes, broken down by instance.',
+                'CPU cores used by OTel engine processes. 1.0 = 100% of one core.',
               ) +
-              panel.withUnit('percentunit') +
-              panelPosition3Across(row=9, col=0) +
+              panel.withUnit('short') +
+              panelPosition3Across(row=13, col=0) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -517,7 +517,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'Resident set size (physical memory) used by OTel engine processes.',
               ) +
               panel.withUnit('bytes') +
-              panelPosition3Across(row=9, col=1) +
+              panelPosition3Across(row=13, col=1) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -539,7 +539,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'Rate of heap memory allocation. High allocation rates often lead to GC pressure.',
               ) +
               panel.withUnit('Bps') +
-              panelPosition3Across(row=9, col=2) +
+              panelPosition3Across(row=13, col=2) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -562,7 +562,7 @@ local filename = 'alloy-otel-engine-overview.json';
       // Grafana Cloud connector row (collapsed by default)
       (
         panel.new('Grafana Cloud Connector', 'row') +
-        rowPosition(11) +
+        rowPosition(15) +
         { collapsed: true } +
         {
           local connectorNote = 'Only available when the grafanacloud connector is configured.',
@@ -573,7 +573,7 @@ local filename = 'alloy-otel-engine-overview.json';
               panel.withDescription(
                 'Number of unique hosts identified by the grafanacloud connector for Application Observability billing. ' + connectorNote,
               ) +
-              panelPosition3Across(row=11, col=0) +
+              panelPosition3Across(row=15, col=0) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -589,7 +589,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 'Total rate of datapoints sent to Grafana Cloud by the grafanacloud connector. ' + connectorNote,
               ) +
               panel.withUnit('cps') +
-              panelPosition3Across(row=11, col=1) +
+              panelPosition3Across(row=15, col=1) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
