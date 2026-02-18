@@ -19,8 +19,7 @@ local filename = 'alloy-otel-engine-overview.json';
       'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster", namespace=~"$namespace"}, job)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
     ),
-    dashboard.newTemplateVariableCustom('receiver_groupby', 'instance,receiver,transport,job,namespace,cluster') { label: 'Receiver group by' },
-    dashboard.newTemplateVariableCustom('exporter_groupby', 'instance,exporter,job,namespace,cluster') { label: 'Exporter group by' },
+    dashboard.newTemplateVariableCustom('groupby', 'instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod') { label: 'Group by' },
     {
       name: 'filters',
       type: 'adhoc',
@@ -70,7 +69,7 @@ local filename = 'alloy-otel-engine-overview.json';
           ])
         ),
         (
-          panel.new(title='Receiver: Accepted by ${receiver_groupby}', type='timeseries') +
+          panel.new(title='Receiver: Accepted by ${groupby}', type='timeseries') +
           panel.withDescription(
             'Accepted and refused %s rates broken down by the selected dimension.' % signalName,
           ) +
@@ -78,17 +77,17 @@ local filename = 'alloy-otel-engine-overview.json';
           panelPosition3Across(row=rowNum, col=1) +
           panel.withQueries([
             panel.newQuery(
-              expr='sum by(${receiver_groupby}) (%s)' % rateQuery(receiverAccepted),
-              legendFormat='{{${receiver_groupby}}} accepted',
+              expr='sum by(${groupby}) (%s)' % rateQuery(receiverAccepted),
+              legendFormat='{{${groupby}}} accepted',
             ),
             panel.newQuery(
-              expr='sum by(${receiver_groupby}) (%s)' % rateQuery(receiverRefused),
-              legendFormat='{{${receiver_groupby}}} refused',
+              expr='sum by(${groupby}) (%s)' % rateQuery(receiverRefused),
+              legendFormat='{{${groupby}}} refused',
             ),
           ])
         ),
         (
-          panel.new(title='Receiver: Refused by ${receiver_groupby}', type='timeseries') +
+          panel.new(title='Receiver: Refused by ${groupby}', type='timeseries') +
           panel.withDescription(
             'Refused %s rate broken down by the selected dimension.' % signalName,
           ) +
@@ -96,8 +95,8 @@ local filename = 'alloy-otel-engine-overview.json';
           panelPosition3Across(row=rowNum, col=2) +
           panel.withQueries([
             panel.newQuery(
-              expr='sum by(${receiver_groupby}) (%s)' % rateQuery(receiverRefused),
-              legendFormat='{{${receiver_groupby}}}',
+              expr='sum by(${groupby}) (%s)' % rateQuery(receiverRefused),
+              legendFormat='{{${groupby}}}',
             ),
           ])
         ),
@@ -124,7 +123,7 @@ local filename = 'alloy-otel-engine-overview.json';
           ])
         ),
         (
-          panel.new(title='Exporter: Sent by ${exporter_groupby}', type='timeseries') +
+          panel.new(title='Exporter: Sent by ${groupby}', type='timeseries') +
           panel.withDescription(
             'Sent %s rate broken down by the selected dimension.' % signalName,
           ) +
@@ -132,13 +131,13 @@ local filename = 'alloy-otel-engine-overview.json';
           panelPosition3Across(row=rowNum + 1, col=1) +
           panel.withQueries([
             panel.newQuery(
-              expr='sum by(${exporter_groupby}) (%s)' % rateQuery(exporterSent),
-              legendFormat='{{${exporter_groupby}}} sent',
+              expr='sum by(${groupby}) (%s)' % rateQuery(exporterSent),
+              legendFormat='{{${groupby}}} sent',
             ),
           ])
         ),
         (
-          panel.new(title='Exporter: Failed by ${exporter_groupby}', type='timeseries') +
+          panel.new(title='Exporter: Failed by ${groupby}', type='timeseries') +
           panel.withDescription(
             'Send-failed and enqueue-failed %s rates broken down by the selected dimension.' % signalName,
           ) +
@@ -146,12 +145,12 @@ local filename = 'alloy-otel-engine-overview.json';
           panelPosition3Across(row=rowNum + 1, col=2) +
           panel.withQueries([
             panel.newQuery(
-              expr='sum by(${exporter_groupby}) (%s)' % rateQuery(exporterSendFailed),
-              legendFormat='{{${exporter_groupby}}} send failed',
+              expr='sum by(${groupby}) (%s)' % rateQuery(exporterSendFailed),
+              legendFormat='{{${groupby}}} send failed',
             ),
             panel.newQuery(
-              expr='sum by(${exporter_groupby}) (%s)' % rateQuery(exporterEnqueueFailed),
-              legendFormat='{{${exporter_groupby}}} enqueue failed',
+              expr='sum by(${groupby}) (%s)' % rateQuery(exporterEnqueueFailed),
+              legendFormat='{{${groupby}}} enqueue failed',
             ),
           ])
         ),
@@ -353,38 +352,77 @@ local filename = 'alloy-otel-engine-overview.json';
               ])
             ),
             (
-              panel.new(title='Batch send triggers', type='timeseries') +
+              panel.newHeatmap('Batch send size', 'short') +
               panel.withDescription(
-                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
+                'Distribution of batch sizes when sent. Shows how full batches are before being flushed. ' + normalNote,
               ) +
-              panel.withUnit('cps') +
               panelPosition3Across(row=7, col=1) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
-                    sum(rate(otelcol_processor_batch_batch_size_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
+                    sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
-                  legendFormat='size trigger',
-                ),
-                panel.newQuery(
-                  expr=|||
-                    sum(rate(otelcol_processor_batch_timeout_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
-                  ||| % $._config,
-                  legendFormat='timeout trigger',
+                  format='heatmap',
+                  legendFormat='{{le}}',
                 ),
               ])
             ),
             (
-              panel.new(title='Batch metadata cardinality', type='timeseries') +
+              panel.new(title='Batch send triggers by ${groupby}', type='timeseries') +
               panel.withDescription(
-                'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. ' + normalNote,
+                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
               ) +
+              panel.withUnit('cps') +
               panelPosition3Across(row=7, col=2) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
-                    sum by(instance) (otelcol_processor_batch_metadata_cardinality{%(groupSelector)s})
+                    sum by(${groupby}) (rate(otelcol_processor_batch_batch_size_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
+                  legendFormat='{{${groupby}}} size trigger',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} timeout trigger',
+                ),
+              ])
+            ),
+            (
+              panel.new(title='Processor throughput by ${groupby}', type='timeseries') +
+              panel.withDescription(
+                'Incoming vs outgoing items broken down by the selected dimension.',
+              ) +
+              panel.withUnit('cps') +
+              panelPosition3Across(row=8, col=0) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_incoming_items_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} incoming',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_outgoing_items_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} outgoing',
+                ),
+              ])
+            ),
+            (
+              panel.new(title='Batch metadata cardinality by ${groupby}', type='timeseries') +
+              panel.withDescription(
+                'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. ' + normalNote,
+              ) +
+              panelPosition3Across(row=8, col=1) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{%(groupSelector)s})
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}}',
                 ),
               ])
             ),
