@@ -69,6 +69,7 @@ const selectPgStatActivity = `
 		)
 		AND d.datname NOT IN %s
 		%s
+		%s
 `
 
 const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
@@ -103,6 +104,7 @@ type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
 	ExcludeDatabases      []string
+	ExcludeUsers          []string
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
@@ -113,6 +115,7 @@ type QuerySamples struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
 	excludeDatabases      []string
+	excludeUsers          []string
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
 	excludeCurrentUser    bool
@@ -220,6 +223,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
 		excludeDatabases:      args.ExcludeDatabases,
+		excludeUsers:          args.ExcludeUsers,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
 		excludeCurrentUser:    args.ExcludeCurrentUser,
@@ -292,7 +296,8 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	}
 
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)

@@ -53,6 +53,8 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000",
 				"456",
 				"457",
@@ -61,7 +63,7 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -84,6 +86,8 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000",
 				"456",
 				"457",
@@ -105,6 +109,8 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000",
 				"456",
 				"457",
@@ -114,8 +120,8 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-				"level=\"info\" schema=\"some_other_schema\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_other_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 	}
@@ -182,6 +188,8 @@ func TestQuerySamples(t *testing.T) {
 						"waits.object_name",
 						"waits.object_type",
 						"waits.timer_wait",
+						"threads.PROCESSLIST_USER",
+						"threads.PROCESSLIST_HOST",
 						"statements.CPU_TIME",
 						"statements.MAX_CONTROLLED_MEMORY",
 						"statements.MAX_TOTAL_MEMORY",
@@ -266,6 +274,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -288,6 +298,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						"100000000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -314,9 +326,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[2].Labels)
 		assert.Equal(t, "level=\"info\" thread_id=\"890\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_object_type=\"wait_object_type\" wait_object_name=\"wait_object_name\" wait_time=\"0.100000ms\"", lokiEntries[2].Line)
 	})
@@ -363,6 +375,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -385,6 +399,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						nil, // NULL timer_wait
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -413,7 +429,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("query sample and multiple wait events are collected", func(t *testing.T) {
@@ -458,6 +474,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -480,6 +498,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -502,6 +522,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"350000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -524,6 +546,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"500000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -546,6 +570,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"700000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -572,18 +598,18 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[2].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[3].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[3].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[3].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[4].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[5].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[5].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[5].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[6].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[7].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[7].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[7].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[8].Labels)
 	})
 
@@ -629,6 +655,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -651,6 +679,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -673,6 +703,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						nil,
 						nil,
 						nil,
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -699,12 +731,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[2].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[3].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[3].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[3].Line)
 	})
 
 	t.Run("wait event with disabled sql redaction", func(t *testing.T) {
@@ -766,6 +798,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -788,6 +822,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"wait_object_name",
 					"wait_object_type",
 					"100000000",
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -814,9 +850,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[2].Labels)
 		assert.Equal(t, "level=\"info\" thread_id=\"890\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_object_type=\"wait_object_type\" wait_object_name=\"wait_object_name\" wait_time=\"0.100000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[2].Line)
 	})
@@ -881,6 +917,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -903,6 +941,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -929,7 +969,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -989,6 +1029,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1010,6 +1052,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1035,7 +1079,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1072,8 +1116,10 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"threads.PROCESSLIST_USER",
+				"threads.PROCESSLIST_HOST",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.000000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.000000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -1092,6 +1138,8 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 			},
 		},
 		{
@@ -1116,9 +1164,11 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"threads.PROCESSLIST_USER",
+				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -1137,6 +1187,8 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000", // CPU_TIME
 			},
 		},
@@ -1162,11 +1214,13 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"threads.PROCESSLIST_USER",
+				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
 				"statements.MAX_CONTROLLED_MEMORY",
 				"statements.MAX_TOTAL_MEMORY",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="1024b" max_total_memory="2048b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="1024b" max_total_memory="2048b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -1185,6 +1239,8 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000", // CPU_TIME
 				"1024",     // MAX_CONTROLLED_MEMORY
 				"2048",     // MAX_TOTAL_MEMORY
@@ -1341,6 +1397,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1362,6 +1420,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1387,7 +1447,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -1446,6 +1506,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1467,6 +1529,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1488,6 +1552,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1513,7 +1579,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -1589,6 +1655,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1610,6 +1678,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1635,7 +1705,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1715,6 +1785,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"statements.CPU_TIME",
 			"statements.MAX_CONTROLLED_MEMORY",
 			"statements.MAX_TOTAL_MEMORY",
@@ -1737,6 +1809,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
+				"some_user",   // PROCESSLIST_USER
+				"some_host",   // PROCESSLIST_HOST
 				555555,        // cpu_time
 				1048576,       // max_controlled_memory (1MB)
 				2097152,       // max_total_memory (2MB)
@@ -1767,7 +1841,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		assert.Equal(t, model.LabelSet{
 			"op": OP_QUERY_SAMPLE,
 		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"test_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"test_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
 	})
 
 	t.Run("asserts that expected query text is used in the constants", func(t *testing.T) {
@@ -1809,6 +1883,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1859,6 +1935,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1909,6 +1987,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1949,6 +2029,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1991,6 +2073,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -2035,6 +2119,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -2109,6 +2195,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -2128,6 +2216,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
+				"some_user",   // PROCESSLIST_USER
+				"some_host",   // PROCESSLIST_HOST
 				555555,        // cpu_time
 				1048576,       // max_controlled_memory (1MB)
 				2097152,       // max_total_memory (2MB)
@@ -2264,6 +2354,8 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -2285,6 +2377,8 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -2393,7 +2487,7 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
 		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
 		"errors", "object_schema", "object_name", "object_type", "index_name",
-		"lock_time", "digest_text", "cpu_time", "max_controlled_memory", "max_total_memory",
+		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory",
 	}))
 
 	c.fetchQuerySamples(t.Context())
