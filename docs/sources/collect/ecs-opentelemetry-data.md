@@ -123,7 +123,7 @@ This configuration collects ECS task and container metrics every 60 seconds and 
 
 #### Prometheus exporter
 
-If you prefer a stable approach, use the Prometheus ECS exporter as a sidecar container.
+You don't need to enable experimental stability in {{< param "PRODUCT_NAME" >}} to use the ECS exporter as a sidecar container.
 
 Use the following as a starting point for your {{< param "PRODUCT_NAME" >}} configuration:
 
