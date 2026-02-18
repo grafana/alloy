@@ -27,7 +27,7 @@ flowchart LR
 {{< /mermaid >}}
 
 Transformation components sit in the middle of that path.
-They receive telemetry from upstream components and forward the resulting telemetry downstream.
+They receive telemetry from earlier components in the path and forward the resulting telemetry to the next component.
 
 Those components are responsible for any:
 
@@ -59,17 +59,14 @@ If a transformation component isn't connected in the path between an ingestion a
 
 ## Signal-aware processing
 
-Metrics, logs, and traces move through separate pipelines.
-Processors operate on specific signal types.
+Metric, log, and trace connections are all defined explicitly.
+If a component supports multiple types of telemetry, each type needs to be explicitly connected to the next component in its pipeline.
 
 For example:
 
 - A metric-processing component only affects metric data.
 - A log-processing component only affects log data.
 - A trace-processing component only affects trace data.
-
-A component can't modify telemetry it doesn't receive.
-Signal type and connections both determine what gets processed.
 
 ## No modification at ingestion or output
 
@@ -78,20 +75,18 @@ Output components handle delivery to configured destinations.
 
 Unless explicitly documented for a specific component, neither ingestion nor output components perform semantic transformations on telemetry passing through them.
 
-All transformation logic belongs in configured processing stages.
-
 ## Find where modification occurs
 
 To determine where telemetry changes in a configuration:
 
 1. Start at an ingestion component.
-1. Follow downstream connections.
+1. Follow where each component sends telemetry.
 1. Identify any transformation components in the path.
 1. Inspect those components to understand their behavior.
 
 Those components define how telemetry changes before it leaves {{< param "PRODUCT_NAME" >}}.
 
-Understanding where modification occurs makes it easier to design pipelines that filter data, reduce noise, or control what gets sent to downstream systems.
+Understanding where modification occurs makes it easier to design pipelines that filter data, reduce noise, or control what gets sent to external systems.
 
 ## Next steps
 
