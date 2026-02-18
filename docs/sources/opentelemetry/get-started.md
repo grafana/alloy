@@ -4,7 +4,7 @@ description: Get started with the Alloy OpenTelemetry Engine
 menuTitle: Get Started
 title: Get Started with the Alloy OpenTelemetry Engine
 noindex: true
-weight: 10
+weight: 100
 ---
 
 # Get Started with the {{% param "FULL_OTEL_ENGINE" %}}
