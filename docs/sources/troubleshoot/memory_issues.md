@@ -10,87 +10,82 @@ weight: 200
 
 Memory problems in {{< param "PRODUCT_NAME" >}} usually appear as:
 
-- Pod restarts with `OOMKilled`
+- Kubernetes Pod restarts with `OOMKilled`
 - Memory spikes immediately after restart
 - Memory grows steadily and never drops
 - Memory remains high after traffic decreases
 
-Each pattern points to a different root cause. Match the behavior you observe and follow the corresponding steps.
+Each pattern points to a different root cause.
 
 ## {{% param "PRODUCT_NAME" %}} is `OOMKilled`
 
-Kubernetes terminates a container with `OOMKilled` when it exceeds its memory limit. This usually happens because the Pod limit is too low, `GOMEMLIMIT` isn't configured, write-ahead log (WAL) replay consumes additional memory at startup, or queues grow under `backpressure`.
+Kubernetes terminates a container with `OOMKilled` when it exceeds its memory limit.
+This usually happens because the Pod limit is too low, `GOMEMLIMIT` isn't configured, write-ahead log (WAL) replay consumes additional memory at startup, or internal queues grow when endpoints can't accept data fast enough.
 
 Start by validating resource configuration before assuming a leak.
 
 1. Inspect the Pod memory configuration.
 
    ```bash
-   kubectl describe pod <pod-name>
+   kubectl describe pod <POD_NAME>
    ```
 
-   Verify that memory requests and limits exist. If no limit is defined, set one. If the limit is close to observed usage, increase it.
+   Verify that memory requests and limits exist.
+   If no limit is defined, set one.
+   If the limit is close to observed usage, increase it.
 
-   Set the limit high enough to absorb WAL replay and temporary queue growth. In most environments, this means at least two to four times steady-state usage.
+   Set the limit high enough to absorb WAL replay and temporary queue growth.
+   In most environments, this means at least two to four times steady-state usage.
+   Refer to [Estimate resource usage][estimate-resource-usage] for baseline guidance.
 
 1. Configure `GOMEMLIMIT`.
 
-   Set `GOMEMLIMIT` slightly below the container memory limit.
+   Set `GOMEMLIMIT` to approximately 90% of your container memory limit.
+   For example, with a 2GiB limit, use `GOMEMLIMIT=1800MiB`.
 
-   Example for a 2Gi limit:
+   Without `GOMEMLIMIT`, the Go runtime may expand memory until Kubernetes terminates the container.
 
-   ```yaml
-   env:
-     - name: GOMEMLIMIT
-       value: "1800MiB"
-   ```
-
-   Redeploy and observe memory behavior. Without `GOMEMLIMIT`, the Go runtime may expand memory until Kubernetes terminates the container.
+   Refer to [Environment variables][env-vars] for configuration options, including automatic memory limit detection with `AUTOMEMLIMIT`.
 
 1. Check whether WAL replay triggers the spike.
 
-   If memory jumps immediately after startup, inspect the WAL directory size. Large WAL segments increase memory usage during replay.
+   If memory jumps immediately after startup, inspect the WAL directory size.
+   Large WAL segments increase memory usage during replay.
 
    If replay causes out of memory (OOM) errors:
    - Increase the memory limit.
    - Reduce WAL retention.
-   - Avoid repeated restarts.
+     Refer to the [WAL configuration][wal-config] for retention settings.
+   - Ensure you have [persistent storage](#configure-kubernetes-correctly) so the WAL persists across restarts and doesn't grow unbounded.
 
 1. Capture a heap profile if OOM continues.
 
-   Enable the debug server and collect:
-
-   ```bash
-   curl http://localhost:12345/debug/pprof/heap > heap.pb.gz
-   ```
-
-   Analyze:
-
-   ```bash
-   go tool pprof heap.pb.gz
-   ```
-
-   Identify the component retaining memory.
+   Collect heap and goroutine profiles to identify what consumes memory.
+   Refer to [Profile resource consumption][profile] for instructions.
 
 ## Memory spikes after restart
 
-Memory often increases sharply after {{< param "PRODUCT_NAME" >}} starts because it replays the WAL. Replay loads segments into memory and processes backlogged data. The spike should be temporary.
+Memory often increases sharply after {{< param "PRODUCT_NAME" >}} starts because it replays the WAL.
+Replay loads segments into memory and processes backlogged data.
+The spike should be temporary.
 
 If memory remains elevated or triggers restarts, review WAL size and limits.
 
 1. Inspect WAL size.
 
-   Check the size of the {{< param "PRODUCT_NAME" >}} data directory. Large WAL segments require additional memory during replay.
+   Check the size of the {{< param "PRODUCT_NAME" >}} data directory.
+   Large WAL segments require additional memory during replay.
 
 1. Observe memory after replay completes.
 
-   Memory should decrease once replay finishes and queues drain. If memory stabilizes at a lower level, replay caused the spike.
+   Memory should decrease once replay finishes and queues drain.
+   If memory stabilizes at a lower level, replay caused the spike.
 
 1. Reduce replay pressure if needed.
 
    - Increase Pod memory limit.
-   - Reduce WAL retention.
-   - Ensure persistent storage exists for WAL and positions data.
+   - Reduce WAL retention using [WAL configuration settings][wal-config].
+   - Ensure [persistent storage](#configure-kubernetes-correctly) exists for WAL and positions data.
 
 1. Avoid restart loops.
 
@@ -98,42 +93,42 @@ If memory remains elevated or triggers restarts, review WAL size and limits.
 
 ## Memory grows steadily over time
 
-Gradual memory growth usually indicates `backpressure`, sustained load increase, or a component retaining objects longer than expected. In some cases, this behavior indicates a leak.
+Gradual memory growth usually indicates that data is arriving faster than {{< param "PRODUCT_NAME" >}} can send it, sustained load increase, or a component retaining objects longer than expected.
+In some cases, this behavior indicates a leak.
 
-Determine whether traffic, downstream latency, or retained allocations cause the growth.
+Common causes include:
 
-1. Check downstream latency.
+- Remote write endpoints that respond slowly or reject requests
+- High cardinality causing large internal data structures
+- Processing components with expensive operations
 
-   Inspect remote write, log ingestion, or trace exporter latency. Slow downstream systems cause queues to grow and memory to increase.
+Determine whether traffic, endpoint latency, or retained allocations cause the growth.
+
+1. Check endpoint latency.
+
+   Inspect remote write, log ingestion, or trace exporter latency.
+   When endpoints respond slowly, components like `prometheus.remote_write` queue data in memory.
 
 1. Confirm whether traffic volume increased.
 
-   Compare ingestion rate to historical baselines. Increased load results in higher steady-state memory.
+   Compare ingestion rate to historical baselines.
+   Increased load results in higher steady-state memory.
+   Refer to [Estimate resource usage][estimate-resource-usage] for expected consumption per workload type.
 
-1. Capture two heap profiles several minutes apart.
+1. Capture heap profiles.
 
-   ```bash
-   curl http://localhost:12345/debug/pprof/heap > heap1.pb.gz
-   sleep 300
-   curl http://localhost:12345/debug/pprof/heap > heap2.pb.gz
-   ```
+   Collect two profiles several minutes apart and compare them to identify growing allocations.
+   Refer to [Profile resource consumption][profile] for instructions on collecting and analyzing heap profiles.
 
-   Compare:
+1. Inspect queue metrics.
 
-   ```bash
-   go tool pprof heap1.pb.gz
-   go tool pprof heap2.pb.gz
-   ```
-
-   Look for retained allocations that continue to grow.
-
-1. Inspect queue-related allocations.
-
-   If queues grow and don't drain, investigate downstream systems before adjusting {{< param "PRODUCT_NAME" >}}.
+   Check metrics like `prometheus_remote_storage_shards_desired` and `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` to determine if queues are falling behind.
+   Refer to [Monitor components][monitor-components] for information on component metrics.
 
 ## Memory remains high after traffic drops
 
-Memory should decrease after ingestion slows and queues drain. If memory remains high despite lower traffic, objects may remain retained in memory.
+Memory should decrease after ingestion slows and queues drain.
+If memory remains high despite lower traffic, the component may still hold objects in memory.
 
 Validate that the workload actually decreased, then inspect retained allocations.
 
@@ -144,31 +139,34 @@ Validate that the workload actually decreased, then inspect retained allocations
 1. Capture a heap profile.
 
    Identify retained objects and the component responsible.
+   Refer to [Profile resource consumption][profile] for instructions.
 
 1. Look for:
 
    - Exporters holding buffered data
-   - Queues that don't shrink
+   - Queues that haven't drained
    - Unbounded label or cardinality growth
 
 1. If retained allocations continue to grow with stable traffic, treat the behavior as a potential leak and collect:
 
-   - Support bundle
+   - [Support bundle][support-bundle]
    - Heap profile
    - {{< param "PRODUCT_NAME" >}} configuration
    - Pod specification
 
-   Provide these artifacts when opening a support case.
+   Provide these artifacts when [opening an issue][alloy-issues].
 
 ## Configure Kubernetes correctly
 
-Many memory incidents originate from resource configuration rather than defects. Incorrect limits, missing persistent storage, or unsuitable workload types increase replay cost and memory pressure.
+Many memory incidents originate from resource configuration rather than defects.
+Incorrect limits, missing persistent storage, or unsuitable workload types increase replay cost and memory pressure.
 
-Define memory requests and limits for every {{< param "PRODUCT_NAME" >}} Pod. Don't rely on defaults.
+Define memory requests and limits for every {{< param "PRODUCT_NAME" >}} Pod.
+Don't rely on defaults.
 
 Mount persistent storage for:
 
-- WAL
+- WAL data
 - Positions file
 
 Example:
@@ -184,14 +182,21 @@ volumes:
       claimName: alloy-pvc
 ```
 
-Use a DaemonSet for node-local log collection. Use a StatefulSet when stable identity or persistent storage per replica is required.
+{{< admonition type="note" >}}
+Without persistent storage, {{< param "PRODUCT_NAME" >}} loses buffered data on restart and must replay the WAL from scratch each time.
+Refer to [Data durability][data-durability] for more information.
+{{< /admonition >}}
 
-## Tune Go runtime settings
+Use a DaemonSet for node-local log collection.
+Use a StatefulSet when stable identity or persistent storage per replica is required.
+Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for deployment guidance.
 
-{{< param "PRODUCT_NAME" >}} relies on the Go garbage collector. Without limits, the runtime expands memory aggressively under load.
-
-Set `GOMEMLIMIT` in production environments to align Go memory with container limits.
-
-Adjust `GOGC` only after analyzing heap profiles. Lower values reduce peak memory at the cost of CPU.
-
-Avoid changing multiple runtime parameters at the same time without measuring impact.
+[estimate-resource-usage]: ../../set-up/estimate-resource-usage/
+[env-vars]: ../../reference/cli/environment-variables/#gomemlimit
+[wal-config]: ../../reference/components/prometheus/prometheus.remote_write/#wal
+[profile]: ../profile/
+[support-bundle]: ../support_bundle/
+[alloy-issues]: https://github.com/grafana/alloy/issues/
+[data-durability]: ../../introduction/requirements/#data-durability
+[deploy]: ../../set-up/deploy/
+[monitor-components]: ../component_metrics/
