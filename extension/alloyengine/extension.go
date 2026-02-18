@@ -20,13 +20,13 @@ var _ extension.Extension = (*alloyEngineExtension)(nil)
 
 type state int
 
-var (
-	stateNotStarted   state = 0
-	stateStarting     state = 1
-	stateRunning      state = 2
-	stateShuttingDown state = 3
-	stateTerminated   state = 4
-	stateRunError     state = 5
+const (
+	stateNotStarted state = iota
+	stateStarting
+	stateRunning
+	stateShuttingDown
+	stateTerminated
+	stateRunError
 )
 
 func (e *alloyEngineExtension) setState(newState state) {
