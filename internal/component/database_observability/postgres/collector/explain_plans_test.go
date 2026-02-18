@@ -2534,7 +2534,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause)).WillReturnRows(rows)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause, "")).WillReturnRows(rows)
 
 			ctx := context.Background()
 			err = explainPlan.populateQueryCache(ctx)
@@ -2570,7 +2570,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
 				AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
 
-			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}))
+			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}), "")
 			mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
 
 			ctx := context.Background()
@@ -2604,7 +2604,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()))
 
@@ -2630,7 +2630,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now()))
 
@@ -2657,7 +2657,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now().Add(-time.Minute)))
 
@@ -2757,7 +2757,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).WillReturnRows(rows)
 
 		ctx := context.Background()
 		err = explainPlan.fetchExplainPlans(ctx)
@@ -3105,7 +3105,7 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 	}
 
 	// Verify the query uses the custom exclusion clause that includes both default and user-provided exclusions
-	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}))
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}), "")
 
 	// Return only non-excluded database rows (simulating SQL-level filtering)
 	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
@@ -3119,6 +3119,47 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 	// Verify only included_db query is in the cache
 	assert.Len(t, explainPlan.queryCache, 1)
 	assert.Contains(t, explainPlan.queryCache, "included_db222222")
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlans_ExcludeUsers(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	post17ver := semver.MustParse("17.0.0")
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	explainPlan := &ExplainPlans{
+		dbConnection:       db,
+		dbVersion:          post17ver,
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeUsers:       []string{"excluded_user"},
+		perScrapeRatio:     1.0,
+		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		entryHandler:       lokiClient,
+	}
+
+	expectedExcludedUsersClause := buildExcludedUsersClause([]string{"excluded_user"}, "pg_get_userbyid(s.userid)")
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, expectedExcludedUsersClause)
+
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("testdb", "111111", "SELECT * FROM test_table", int64(5), time.Now())
+
+	mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
+
+	err = explainPlan.populateQueryCache(context.Background())
+	require.NoError(t, err)
+
+	assert.Len(t, explainPlan.queryCache, 1)
+	assert.Contains(t, explainPlan.queryCache, "testdb111111")
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
