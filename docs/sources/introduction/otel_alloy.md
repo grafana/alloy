@@ -147,5 +147,5 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Next steps
 
-- Refer to [The {{< param "OTEL_ENGINE" >}}](../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
-- Refer to the [OTel CLI reference](../reference/cli/otel/) for more information about the OTel CLI.
+- Refer to [The {{< param "OTEL_ENGINE" >}}](../../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
+- Refer to the [OTel CLI reference](../../reference/cli/otel/) for more information about the OTel CLI.
