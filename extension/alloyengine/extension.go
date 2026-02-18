@@ -169,7 +169,7 @@ func (e *alloyEngineExtension) Shutdown(ctx context.Context) error {
 	case stateStarting, stateRunning, stateRunError:
 		e.settings.Logger.Info("alloyengine extension shutting down")
 		e.setState(stateShuttingDown)
-		// guaranteed to be non-nil since we are in stateRunning
+		// guaranteed to be non-nil since runCancel is set in Start()
 		e.runCancel()
 
 		select {
