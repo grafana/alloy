@@ -196,20 +196,20 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_accepted_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_accepted_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}} accepted",
+                     "legendFormat": "{{${groupby}}} accepted",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}} refused",
+                     "legendFormat": "{{${groupby}}} refused",
                      "range": true
                   }
                ],
-               "title": "Receiver: Accepted by ${receiver_groupby}",
+               "title": "Receiver: Accepted by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -229,13 +229,13 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}}",
+                     "legendFormat": "{{${groupby}}}",
                      "range": true
                   }
                ],
-               "title": "Receiver: Refused by ${receiver_groupby}",
+               "title": "Receiver: Refused by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -295,13 +295,13 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_sent_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} sent",
+                     "legendFormat": "{{${groupby}}} sent",
                      "range": true
                   }
                ],
-               "title": "Exporter: Sent by ${exporter_groupby}",
+               "title": "Exporter: Sent by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -321,20 +321,46 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_send_failed_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_send_failed_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} send failed",
+                     "legendFormat": "{{${groupby}}} send failed",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_enqueue_failed_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_enqueue_failed_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} enqueue failed",
+                     "legendFormat": "{{${groupby}}} enqueue failed",
                      "range": true
                   }
                ],
-               "title": "Exporter: Failed by ${exporter_groupby}",
+               "title": "Exporter: Failed by ${groupby}",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Exporter send queue usage as a fraction of capacity. Values approaching 1 indicate backpressure and risk of data loss.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "percentunit"
+                  }
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 0,
+                  "y": 30
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"traces\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"traces\"}), 1)\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}}",
+                     "range": true
+                  }
+               ],
+               "title": "Exporter: Queue utilization by ${groupby}",
                "type": "timeseries"
             }
          ],
@@ -401,20 +427,20 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_accepted_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_accepted_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}} accepted",
+                     "legendFormat": "{{${groupby}}} accepted",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}} refused",
+                     "legendFormat": "{{${groupby}}} refused",
                      "range": true
                   }
                ],
-               "title": "Receiver: Accepted by ${receiver_groupby}",
+               "title": "Receiver: Accepted by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -434,13 +460,13 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}}",
+                     "legendFormat": "{{${groupby}}}",
                      "range": true
                   }
                ],
-               "title": "Receiver: Refused by ${receiver_groupby}",
+               "title": "Receiver: Refused by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -500,13 +526,13 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_sent_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} sent",
+                     "legendFormat": "{{${groupby}}} sent",
                      "range": true
                   }
                ],
-               "title": "Exporter: Sent by ${exporter_groupby}",
+               "title": "Exporter: Sent by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -526,20 +552,46 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_send_failed_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_send_failed_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} send failed",
+                     "legendFormat": "{{${groupby}}} send failed",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_enqueue_failed_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_enqueue_failed_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} enqueue failed",
+                     "legendFormat": "{{${groupby}}} enqueue failed",
                      "range": true
                   }
                ],
-               "title": "Exporter: Failed by ${exporter_groupby}",
+               "title": "Exporter: Failed by ${groupby}",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Exporter send queue usage as a fraction of capacity. Values approaching 1 indicate backpressure and risk of data loss.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "percentunit"
+                  }
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 0,
+                  "y": 50
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"metrics\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"metrics\"}), 1)\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}}",
+                     "range": true
+                  }
+               ],
+               "title": "Exporter: Queue utilization by ${groupby}",
                "type": "timeseries"
             }
          ],
@@ -606,20 +658,20 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_accepted_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_accepted_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}} accepted",
+                     "legendFormat": "{{${groupby}}} accepted",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_refused_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}} refused",
+                     "legendFormat": "{{${groupby}}} refused",
                      "range": true
                   }
                ],
-               "title": "Receiver: Accepted by ${receiver_groupby}",
+               "title": "Receiver: Accepted by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -639,13 +691,13 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${receiver_groupby}) (rate(otelcol_receiver_refused_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${receiver_groupby}}}",
+                     "legendFormat": "{{${groupby}}}",
                      "range": true
                   }
                ],
-               "title": "Receiver: Refused by ${receiver_groupby}",
+               "title": "Receiver: Refused by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -705,13 +757,13 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_sent_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} sent",
+                     "legendFormat": "{{${groupby}}} sent",
                      "range": true
                   }
                ],
-               "title": "Exporter: Sent by ${exporter_groupby}",
+               "title": "Exporter: Sent by ${groupby}",
                "type": "timeseries"
             },
             {
@@ -731,20 +783,46 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_send_failed_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_send_failed_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} send failed",
+                     "legendFormat": "{{${groupby}}} send failed",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${exporter_groupby}) (rate(otelcol_exporter_enqueue_failed_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
+                     "expr": "sum by(${groupby}) (rate(otelcol_exporter_enqueue_failed_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${exporter_groupby}}} enqueue failed",
+                     "legendFormat": "{{${groupby}}} enqueue failed",
                      "range": true
                   }
                ],
-               "title": "Exporter: Failed by ${exporter_groupby}",
+               "title": "Exporter: Failed by ${groupby}",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Exporter send queue usage as a fraction of capacity. Values approaching 1 indicate backpressure and risk of data loss.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "percentunit"
+                  }
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 0,
+                  "y": 70
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"logs\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"logs\"}), 1)\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}}",
+                     "range": true
+                  }
+               ],
+               "title": "Exporter: Queue utilization by ${groupby}",
                "type": "timeseries"
             }
          ],
@@ -796,7 +874,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Requires \"normal\" telemetry level.",
+               "description": "Incoming vs outgoing items broken down by the selected dimension.",
                "fieldConfig": {
                   "defaults": {
                      "unit": "cps"
@@ -811,25 +889,30 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum(rate(otelcol_processor_batch_batch_size_trigger_send_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_incoming_items_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "instant": false,
-                     "legendFormat": "size trigger",
+                     "legendFormat": "{{${groupby}}} incoming",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum(rate(otelcol_processor_batch_timeout_trigger_send_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_outgoing_items_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "instant": false,
-                     "legendFormat": "timeout trigger",
+                     "legendFormat": "{{${groupby}}} outgoing",
                      "range": true
                   }
                ],
-               "title": "Batch send triggers",
+               "title": "Processor throughput by ${groupby}",
                "type": "timeseries"
             },
             {
                "datasource": "${datasource}",
-               "description": "Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Requires \"normal\" telemetry level.",
+               "description": "Items refused by processors, broken down by signal type and selected dimension.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "cps"
+                  }
+               },
                "gridPos": {
                   "h": 10,
                   "w": 8,
@@ -839,17 +922,393 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(instance) (otelcol_processor_batch_metadata_cardinality{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}} spans",
+                     "range": true
+                  },
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}} metric points",
+                     "range": true
+                  }
+               ],
+               "title": "Processor refused by ${groupby}",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Distribution of batch sizes when sent. Shows how full batches are before being flushed. Requires \"normal\" telemetry level.",
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 0,
+                  "y": 80
+               },
+               "maxDataPoints": 30,
+               "options": {
+                  "calculate": false,
+                  "color": {
+                     "exponent": 0.5,
+                     "fill": "dark-orange",
+                     "mode": "scheme",
+                     "scale": "exponential",
+                     "scheme": "Oranges",
+                     "steps": 65
+                  },
+                  "exemplars": {
+                     "color": "rgba(255,0,255,0.7)"
+                  },
+                  "filterValues": {
+                     "le": 1.0000000000000001e-09
+                  },
+                  "tooltip": {
+                     "show": true,
+                     "yHistogram": true
+                  },
+                  "yAxis": {
+                     "unit": "short"
+                  }
+               },
+               "pluginVersion": "9.0.6",
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "format": "heatmap",
+                     "instant": false,
+                     "legendFormat": "{{le}}",
+                     "range": true
+                  }
+               ],
+               "title": "Batch send size",
+               "type": "heatmap"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Requires \"normal\" telemetry level.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "cps"
+                  }
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 8,
+                  "y": 80
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_batch_batch_size_trigger_send_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}} size trigger",
+                     "range": true
+                  },
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_batch_timeout_trigger_send_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}} timeout trigger",
+                     "range": true
+                  }
+               ],
+               "title": "Batch send triggers by ${groupby}",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Requires \"normal\" telemetry level.",
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 16,
+                  "y": 80
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}}",
+                     "range": true
+                  }
+               ],
+               "title": "Batch metadata cardinality by ${groupby}",
+               "type": "timeseries"
+            }
+         ],
+         "title": "Processing & Batching",
+         "type": "row"
+      },
+      {
+         "collapsed": true,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 90
+         },
+         "panels": [
+            {
+               "datasource": "${datasource}",
+               "description": "CPU time consumed by OTel engine processes, broken down by instance.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "percentunit"
+                  },
+                  "overrides": [
+                     {
+                        "matcher": {
+                           "id": "byName",
+                           "options": "average"
+                        },
+                        "properties": [
+                           {
+                              "id": "color",
+                              "value": {
+                                 "fixedColor": "green",
+                                 "mode": "fixed"
+                              }
+                           },
+                           {
+                              "id": "custom.lineStyle",
+                              "value": {
+                                 "dash": [
+                                    10,
+                                    10
+                                 ],
+                                 "fill": "dash"
+                              }
+                           },
+                           {
+                              "id": "custom.lineWidth",
+                              "value": 2
+                           }
+                        ]
+                     }
+                  ]
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 0,
+                  "y": 90
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "avg(sum by(instance) (rate(otelcol_process_cpu_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\n",
+                     "instant": false,
+                     "legendFormat": "average",
+                     "range": true
+                  },
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(instance) (rate(otelcol_process_cpu_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "instant": false,
                      "legendFormat": "__auto",
                      "range": true
                   }
                ],
-               "title": "Batch metadata cardinality",
+               "title": "CPU usage",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Resident set size (physical memory) used by OTel engine processes.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "bytes"
+                  },
+                  "overrides": [
+                     {
+                        "matcher": {
+                           "id": "byName",
+                           "options": "average"
+                        },
+                        "properties": [
+                           {
+                              "id": "color",
+                              "value": {
+                                 "fixedColor": "green",
+                                 "mode": "fixed"
+                              }
+                           },
+                           {
+                              "id": "custom.lineStyle",
+                              "value": {
+                                 "dash": [
+                                    10,
+                                    10
+                                 ],
+                                 "fill": "dash"
+                              }
+                           },
+                           {
+                              "id": "custom.lineWidth",
+                              "value": 2
+                           }
+                        ]
+                     }
+                  ]
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 8,
+                  "y": 90
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "avg(sum by(instance) (otelcol_process_memory_rss_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}))\n",
+                     "instant": false,
+                     "legendFormat": "average",
+                     "range": true
+                  },
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(instance) (otelcol_process_memory_rss_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+                     "instant": false,
+                     "legendFormat": "__auto",
+                     "range": true
+                  }
+               ],
+               "title": "Memory RSS",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Rate of heap memory allocation. High allocation rates often lead to GC pressure.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "Bps"
+                  },
+                  "overrides": [
+                     {
+                        "matcher": {
+                           "id": "byName",
+                           "options": "average"
+                        },
+                        "properties": [
+                           {
+                              "id": "color",
+                              "value": {
+                                 "fixedColor": "green",
+                                 "mode": "fixed"
+                              }
+                           },
+                           {
+                              "id": "custom.lineStyle",
+                              "value": {
+                                 "dash": [
+                                    10,
+                                    10
+                                 ],
+                                 "fill": "dash"
+                              }
+                           },
+                           {
+                              "id": "custom.lineWidth",
+                              "value": 2
+                           }
+                        ]
+                     }
+                  ]
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 16,
+                  "y": 90
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "avg(sum by(instance) (rate(otelcol_process_runtime_total_alloc_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval])))\n",
+                     "instant": false,
+                     "legendFormat": "average",
+                     "range": true
+                  },
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(instance) (rate(otelcol_process_runtime_total_alloc_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "instant": false,
+                     "legendFormat": "__auto",
+                     "range": true
+                  }
+               ],
+               "title": "Go allocation rate",
                "type": "timeseries"
             }
          ],
-         "title": "Processing & Batching",
+         "title": "Process Resources",
+         "type": "row"
+      },
+      {
+         "collapsed": true,
+         "datasource": "${datasource}",
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 110
+         },
+         "panels": [
+            {
+               "datasource": "${datasource}",
+               "description": "Number of unique hosts identified by the grafanacloud connector for Application Observability billing. Only available when the grafanacloud connector is configured.",
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 0,
+                  "y": 110
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum by(${groupby}) (otelcol_grafanacloud_host_count_ratio{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+                     "instant": false,
+                     "legendFormat": "{{${groupby}}}",
+                     "range": true
+                  }
+               ],
+               "title": "Unique hosts tracked",
+               "type": "timeseries"
+            },
+            {
+               "datasource": "${datasource}",
+               "description": "Total rate of datapoints sent to Grafana Cloud by the grafanacloud connector. Only available when the grafanacloud connector is configured.",
+               "fieldConfig": {
+                  "defaults": {
+                     "unit": "cps"
+                  }
+               },
+               "gridPos": {
+                  "h": 10,
+                  "w": 8,
+                  "x": 8,
+                  "y": 110
+               },
+               "targets": [
+                  {
+                     "datasource": "${datasource}",
+                     "expr": "sum(rate(otelcol_grafanacloud_datapoint_count_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "instant": false,
+                     "legendFormat": "total",
+                     "range": true
+                  }
+               ],
+               "title": "Datapoints sent rate",
+               "type": "timeseries"
+            }
+         ],
+         "title": "Grafana Cloud Connector",
          "type": "row"
       }
    ],
@@ -922,15 +1381,9 @@
             "type": "query"
          },
          {
-            "label": "Receiver group by",
-            "name": "receiver_groupby",
-            "query": "instance,receiver,transport,job,namespace,cluster",
-            "type": "custom"
-         },
-         {
-            "label": "Exporter group by",
-            "name": "exporter_groupby",
-            "query": "instance,exporter,job,namespace,cluster",
+            "label": "Group by",
+            "name": "groupby",
+            "query": "instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod",
             "type": "custom"
          },
          {

@@ -42,6 +42,7 @@ local filename = 'alloy-otel-engine-overview.json';
     exporterSent,
     exporterSendFailed,
     exporterEnqueueFailed,
+    queueDataType,
   ) = (
     panel.new(title, 'row') +
     rowPosition(rowNum) +
@@ -151,6 +152,24 @@ local filename = 'alloy-otel-engine-overview.json';
             panel.newQuery(
               expr='sum by(${groupby}) (%s)' % rateQuery(exporterEnqueueFailed),
               legendFormat='{{${groupby}}} enqueue failed',
+            ),
+          ])
+        ),
+        (
+          panel.new(title='Exporter: Queue utilization by ${groupby}', type='timeseries') +
+          panel.withDescription(
+            'Exporter send queue usage as a fraction of capacity. Values approaching 1 indicate backpressure and risk of data loss.',
+          ) +
+          panel.withUnit('percentunit') +
+          panelPosition3Across(row=rowNum + 2, col=0) +
+          panel.withQueries([
+            panel.newQuery(
+              expr=(|||
+                sum by(${groupby}) (otelcol_exporter_queue_size{%%(groupSelector)s, data_type="%s"})
+                /
+                clamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{%%(groupSelector)s, data_type="%s"}), 1)
+              ||| % [queueDataType, queueDataType]) % $._config,
+              legendFormat='{{${groupby}}}',
             ),
           ])
         ),
@@ -298,6 +317,7 @@ local filename = 'alloy-otel-engine-overview.json';
         exporterSent='otelcol_exporter_sent_spans_total',
         exporterSendFailed='otelcol_exporter_send_failed_spans_total',
         exporterEnqueueFailed='otelcol_exporter_enqueue_failed_spans_total',
+        queueDataType='traces',
       ),
       signalRow(
         title='Metrics',
@@ -308,6 +328,7 @@ local filename = 'alloy-otel-engine-overview.json';
         exporterSent='otelcol_exporter_sent_metric_points_total',
         exporterSendFailed='otelcol_exporter_send_failed_metric_points_total',
         exporterEnqueueFailed='otelcol_exporter_enqueue_failed_metric_points_total',
+        queueDataType='metrics',
       ),
       signalRow(
         title='Logs',
@@ -318,6 +339,7 @@ local filename = 'alloy-otel-engine-overview.json';
         exporterSent='otelcol_exporter_sent_log_records_total',
         exporterSendFailed='otelcol_exporter_send_failed_log_records_total',
         exporterEnqueueFailed='otelcol_exporter_enqueue_failed_log_records_total',
+        queueDataType='logs',
       ),
 
       // Processing & Batching row (collapsed by default)
@@ -329,6 +351,7 @@ local filename = 'alloy-otel-engine-overview.json';
           local normalNote = 'Requires "normal" telemetry level.',
 
           panels: [
+            // Row 1: Processor throughput
             (
               panel.new(title='Processor throughput', type='timeseries') +
               panel.withDescription(
@@ -352,50 +375,12 @@ local filename = 'alloy-otel-engine-overview.json';
               ])
             ),
             (
-              panel.newHeatmap('Batch send size', 'short') +
-              panel.withDescription(
-                'Distribution of batch sizes when sent. Shows how full batches are before being flushed. ' + normalNote,
-              ) +
-              panelPosition3Across(row=7, col=1) +
-              panel.withQueries([
-                panel.newQuery(
-                  expr=|||
-                    sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
-                  ||| % $._config,
-                  format='heatmap',
-                  legendFormat='{{le}}',
-                ),
-              ])
-            ),
-            (
-              panel.new(title='Batch send triggers by ${groupby}', type='timeseries') +
-              panel.withDescription(
-                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
-              ) +
-              panel.withUnit('cps') +
-              panelPosition3Across(row=7, col=2) +
-              panel.withQueries([
-                panel.newQuery(
-                  expr=|||
-                    sum by(${groupby}) (rate(otelcol_processor_batch_batch_size_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
-                  ||| % $._config,
-                  legendFormat='{{${groupby}}} size trigger',
-                ),
-                panel.newQuery(
-                  expr=|||
-                    sum by(${groupby}) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
-                  ||| % $._config,
-                  legendFormat='{{${groupby}}} timeout trigger',
-                ),
-              ])
-            ),
-            (
               panel.new(title='Processor throughput by ${groupby}', type='timeseries') +
               panel.withDescription(
                 'Incoming vs outgoing items broken down by the selected dimension.',
               ) +
               panel.withUnit('cps') +
-              panelPosition3Across(row=8, col=0) +
+              panelPosition3Across(row=7, col=1) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
@@ -412,17 +397,205 @@ local filename = 'alloy-otel-engine-overview.json';
               ])
             ),
             (
+              panel.new(title='Processor refused by ${groupby}', type='timeseries') +
+              panel.withDescription(
+                'Items refused by processors, broken down by signal type and selected dimension.',
+              ) +
+              panel.withUnit('cps') +
+              panelPosition3Across(row=7, col=2) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_refused_spans_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} spans',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_refused_metric_points_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} metric points',
+                ),
+              ])
+            ),
+            // Row 2: Batching
+            (
+              panel.newHeatmap('Batch send size', 'short') +
+              panel.withDescription(
+                'Distribution of batch sizes when sent. Shows how full batches are before being flushed. ' + normalNote,
+              ) +
+              panelPosition3Across(row=8, col=0) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  format='heatmap',
+                  legendFormat='{{le}}',
+                ),
+              ])
+            ),
+            (
+              panel.new(title='Batch send triggers by ${groupby}', type='timeseries') +
+              panel.withDescription(
+                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
+              ) +
+              panel.withUnit('cps') +
+              panelPosition3Across(row=8, col=1) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_batch_batch_size_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} size trigger',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}} timeout trigger',
+                ),
+              ])
+            ),
+            (
               panel.new(title='Batch metadata cardinality by ${groupby}', type='timeseries') +
               panel.withDescription(
                 'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. ' + normalNote,
               ) +
-              panelPosition3Across(row=8, col=1) +
+              panelPosition3Across(row=8, col=2) +
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
                     sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{%(groupSelector)s})
                   ||| % $._config,
                   legendFormat='{{${groupby}}}',
+                ),
+              ])
+            ),
+          ],
+        }
+      ),
+
+      // Process Resources row (collapsed by default)
+      (
+        panel.new('Process Resources', 'row') +
+        rowPosition(9) +
+        { collapsed: true } +
+        {
+          local avgLineStyle = [
+            { id: 'color', value: { fixedColor: 'green', mode: 'fixed' } },
+            { id: 'custom.lineStyle', value: { dash: [10, 10], fill: 'dash' } },
+            { id: 'custom.lineWidth', value: 2 },
+          ],
+
+          panels: [
+            (
+              panel.new(title='CPU usage', type='timeseries') +
+              panel.withDescription(
+                'CPU time consumed by OTel engine processes, broken down by instance.',
+              ) +
+              panel.withUnit('percentunit') +
+              panelPosition3Across(row=9, col=0) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    avg(sum by(instance) (rate(otelcol_process_cpu_seconds_total{%(groupSelector)s}[$__rate_interval])))
+                  ||| % $._config,
+                  legendFormat='average',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(instance) (rate(otelcol_process_cpu_seconds_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                ),
+              ]) +
+              panel.withOverridesByName('average', avgLineStyle)
+            ),
+            (
+              panel.new(title='Memory RSS', type='timeseries') +
+              panel.withDescription(
+                'Resident set size (physical memory) used by OTel engine processes.',
+              ) +
+              panel.withUnit('bytes') +
+              panelPosition3Across(row=9, col=1) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    avg(sum by(instance) (otelcol_process_memory_rss_bytes{%(groupSelector)s}))
+                  ||| % $._config,
+                  legendFormat='average',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(instance) (otelcol_process_memory_rss_bytes{%(groupSelector)s})
+                  ||| % $._config,
+                ),
+              ]) +
+              panel.withOverridesByName('average', avgLineStyle)
+            ),
+            (
+              panel.new(title='Go allocation rate', type='timeseries') +
+              panel.withDescription(
+                'Rate of heap memory allocation. High allocation rates often lead to GC pressure.',
+              ) +
+              panel.withUnit('Bps') +
+              panelPosition3Across(row=9, col=2) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    avg(sum by(instance) (rate(otelcol_process_runtime_total_alloc_bytes_total{%(groupSelector)s}[$__rate_interval])))
+                  ||| % $._config,
+                  legendFormat='average',
+                ),
+                panel.newQuery(
+                  expr=|||
+                    sum by(instance) (rate(otelcol_process_runtime_total_alloc_bytes_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                ),
+              ]) +
+              panel.withOverridesByName('average', avgLineStyle)
+            ),
+          ],
+        }
+      ),
+
+      // Grafana Cloud connector row (collapsed by default)
+      (
+        panel.new('Grafana Cloud Connector', 'row') +
+        rowPosition(11) +
+        { collapsed: true } +
+        {
+          local connectorNote = 'Only available when the grafanacloud connector is configured.',
+
+          panels: [
+            (
+              panel.new(title='Unique hosts tracked', type='timeseries') +
+              panel.withDescription(
+                'Number of unique hosts identified by the grafanacloud connector for Application Observability billing. ' + connectorNote,
+              ) +
+              panelPosition3Across(row=11, col=0) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum by(${groupby}) (otelcol_grafanacloud_host_count_ratio{%(groupSelector)s})
+                  ||| % $._config,
+                  legendFormat='{{${groupby}}}',
+                ),
+              ])
+            ),
+            (
+              panel.new(title='Datapoints sent rate', type='timeseries') +
+              panel.withDescription(
+                'Total rate of datapoints sent to Grafana Cloud by the grafanacloud connector. ' + connectorNote,
+              ) +
+              panel.withUnit('cps') +
+              panelPosition3Across(row=11, col=1) +
+              panel.withQueries([
+                panel.newQuery(
+                  expr=|||
+                    sum(rate(otelcol_grafanacloud_datapoint_count_total{%(groupSelector)s}[$__rate_interval]))
+                  ||| % $._config,
+                  legendFormat='total',
                 ),
               ])
             ),
