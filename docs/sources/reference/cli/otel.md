@@ -6,8 +6,6 @@ labels:
   products:
     - oss
 title: otel
-_build:
-  list: false
 noindex: true
 weight: 350
 ---

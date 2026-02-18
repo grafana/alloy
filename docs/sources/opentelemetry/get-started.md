@@ -3,8 +3,6 @@ canonical: https://grafana.com/docs/alloy/latest/opentelemetry/get-started
 description: Get started with the Alloy OpenTelemetry Engine
 menuTitle: Get Started
 title: Get Started with the Alloy OpenTelemetry Engine
-_build:
-  list: false
 noindex: true
 weight: 10
 ---

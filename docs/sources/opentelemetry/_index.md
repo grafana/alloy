@@ -3,8 +3,6 @@ canonical: https://grafana.com/docs/alloy/latest/opentelemetry/
 description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector
 menuTitle: OpenTelemetry Engine
 title: The OpenTelemetry Engine
-_build:
-  list: false
 noindex: true
 weight: 10
 ---
