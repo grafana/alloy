@@ -19,6 +19,7 @@ import (
 const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
+	OP_QUERY_SAMPLE_V2    = "query_sample_v2"
 	OP_WAIT_EVENT         = "wait_event"
 	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
@@ -385,6 +386,33 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
+
+			logMessageV2 := fmt.Sprintf(
+				`user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+				row.User.String, row.Host.String, row.ThreadID.String,
+				row.StatementEventID.String, row.StatementEndEventID.String,
+				row.RowsExamined,
+				row.RowsSent,
+				row.RowsAffected,
+				row.Errors,
+				row.MaxControlledMemory,
+				row.MaxTotalMemory,
+				cpuTime,
+				elapsedTime,
+				elapsedTime,
+			)
+			if c.disableQueryRedaction && row.SQLText.Valid {
+				logMessageV2 += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+				logging.LevelInfo,
+				OP_QUERY_SAMPLE_V2,
+				logMessageV2,
+				map[string]string{"schema": row.Schema.String},
+				map[string]string{"digest": row.Digest.String},
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
 		}
 
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
@@ -431,17 +459,15 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessageV2 += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 			}
 
-			structuredMetadata := map[string]string{
-				"schema":          row.Schema.String,
-				"digest":          row.Digest.String,
-				"wait_event_name": row.WaitEventName.String,
-			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
 				logging.LevelInfo,
 				OP_WAIT_EVENT_V2,
 				waitLogMessageV2,
-				structuredMetadata,
+				map[string]string{"schema": row.Schema.String},
+				map[string]string{
+					"digest":          row.Digest.String,
+					"wait_event_name": row.WaitEventName.String,
+				},
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
 		}

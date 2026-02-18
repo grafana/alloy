@@ -20,6 +20,7 @@ import (
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
+	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -159,6 +160,15 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
+		)
+
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+			logging.LevelInfo,
+			OP_QUERY_ASSOCIATION_V2,
+			fmt.Sprintf(`querytext=%q`, queryText),
+			map[string]string{"datname": string(databaseName)},
+			map[string]string{"queryid": queryID},
+			time.Now().UnixNano(),
 		)
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
