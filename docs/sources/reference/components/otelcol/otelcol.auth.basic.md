@@ -142,7 +142,7 @@ These examples show how to perform basic authentication using the `client_auth` 
 
 #### Use client authentication
 
-This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication with a single username and password combination:
+This example configures [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] to use basic authentication with a single username and password combination:
 
 ```alloy
 otelcol.receiver.otlp "example" {
@@ -267,3 +267,4 @@ otelcol.auth.basic "creds" {
 
 [otelcol.receiver.otlp]: ../otelcol.receiver.otlp/
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
