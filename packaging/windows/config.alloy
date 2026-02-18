@@ -1,3 +1,4 @@
 logging {
-	level = "info"
+	level             = "info"
+	windows_event_log = true
 }
