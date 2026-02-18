@@ -34,5 +34,9 @@ jobs:
         run: choco install nsis -y
         shell: pwsh
 
+      - name: Add NSIS to PATH
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
+        shell: pwsh
+
       - name: Build installer and run Windows service integration test
         run: '& "C:/Program Files/git/bin/bash.exe" -c ''make integration-test-windows-service'''
