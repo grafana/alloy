@@ -2,11 +2,13 @@ package prometheus_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -32,48 +34,63 @@ func TestCommit(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func BenchmarkAppenderFlows(b *testing.B) {
-	numberOfMetrics := []int{2000}
-	for _, n := range numberOfMetrics {
-		metrics := setupMetrics(n)
-		now := time.Now().UnixMilli()
+type benchAppenderFlowsItem struct {
+	series        []labels.Labels
+	targetsCount  int
+	useLabelStore bool
+}
 
-		testName := fmt.Sprintf("labelstore/new-metrics=%d", n)
-		ls := labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer)
-		rw1 := remotewrite.NewInterceptor("1", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
-		rw2 := remotewrite.NewInterceptor("2", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
-		children := []storage.Appendable{rw1, rw2}
+func (i benchAppenderFlowsItem) name() string {
+	key := "seriesref"
+	if i.useLabelStore {
+		key = "labelstore"
+	}
+
+	return fmt.Sprintf("pipeline=%s/targets=%d/metrics=%d", key, i.targetsCount, len(i.series))
+}
+
+func BenchmarkAppenderFlows(b *testing.B) {
+	labels := setupMetrics(2000)
+	cases := []benchAppenderFlowsItem{
+		{
+			series:        labels,
+			targetsCount:  1,
+			useLabelStore: true,
+		},
+		{
+			series:        labels,
+			targetsCount:  2,
+			useLabelStore: true,
+		},
+		{
+			series:        labels,
+			targetsCount:  1,
+			useLabelStore: false,
+		},
+		{
+			series:        labels,
+			targetsCount:  2,
+			useLabelStore: false,
+		},
+	}
+
+	for _, c := range cases {
+		now := time.Now().UnixMilli()
+		ls := labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer, c.useLabelStore)
+
+		children := make([]storage.Appendable, c.targetsCount)
+		for i := range c.targetsCount {
+			children[i] = remotewrite.NewInterceptor(strconv.Itoa(i), &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
+		}
 		fanout := prometheus.NewFanout(children, "fanout", promclient.DefaultRegisterer, ls)
 
-		b.Run(testName, func(b *testing.B) {
+		tname := c.name()
+		b.Run(tname, func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
 				app := fanout.Appender(b.Context())
-				for _, metric := range metrics {
-					app.Append(0, metric, now, 1.0)
-				}
-				app.Commit()
-
-				b.StopTimer()
-				fanout.Clear()
-				b.StartTimer()
-			}
-		})
-
-		testName = fmt.Sprintf("seriesref/new-metrics=%d", n)
-		ls = labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer, false)
-		rw1 = remotewrite.NewInterceptor("1", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
-		rw2 = remotewrite.NewInterceptor("2", &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
-		children = []storage.Appendable{rw1, rw2}
-		fanout = prometheus.NewFanout(children, "fanout", promclient.DefaultRegisterer, ls)
-
-		b.Run(testName, func(b *testing.B) {
-			b.ReportAllocs()
-			b.ResetTimer()
-			for b.Loop() {
-				app := fanout.Appender(b.Context())
-				for _, metric := range metrics {
+				for _, metric := range c.series {
 					app.Append(0, metric, now, 1.0)
 				}
 				app.Commit()
