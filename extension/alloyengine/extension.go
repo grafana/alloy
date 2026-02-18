@@ -166,7 +166,7 @@ func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ct
 func (e *alloyEngineExtension) Shutdown(ctx context.Context) error {
 	currentState := e.getState()
 	switch currentState {
-	case stateRunning:
+	case stateStarting, stateRunning, stateRunError:
 		e.settings.Logger.Info("alloyengine extension shutting down")
 		e.setState(stateShuttingDown)
 		// guaranteed to be non-nil since we are in stateRunning
