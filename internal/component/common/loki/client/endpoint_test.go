@@ -404,7 +404,6 @@ func TestEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
