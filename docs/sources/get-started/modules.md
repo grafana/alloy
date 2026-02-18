@@ -22,10 +22,13 @@ Modules enable powerful configuration management capabilities:
 {{< admonition type="note" >}}
 Most {{< param "PRODUCT_NAME" >}} users don't need modules when they first get started.
 You can collect, process, and export metrics, logs, traces, and profiles using built-in components directly in your configuration.
-Modules don't add capabilities to {{< param "PRODUCT_NAME" >}} or enable signal types—they're purely a way to organize and reuse configuration.
+Modules don't add capabilities to {{< param "PRODUCT_NAME" >}} or enable signal types, they're purely a way to organize and reuse configuration.
 Think of a module as a function in programming: it packages logic you already have so you can reuse it cleanly.
 
 If you're just getting started, you can skip modules for now and return to them when your configuration grows or you need reuse.
+However, if you plan to use [Fleet Management][] to manage multiple collectors, understanding modules helps you create reusable configurations that can be distributed across your fleet.
+
+[Fleet Management]: https://grafana.com/docs/grafana-cloud/send-data/fleet-management/
 {{< /admonition >}}
 
 A _module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration that contains components, custom component definitions, and import statements.
