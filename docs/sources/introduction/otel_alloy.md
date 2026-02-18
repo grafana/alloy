@@ -78,10 +78,10 @@ The following sections list all included components:
 - [hostmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/hostmetricsreceiver)
 - [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/influxdbreceiver)
 - [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/jaegerreceiver)
-- [k8sobjectsreceiver](github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver)
+- [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8sobjectsreceiver)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kafkareceiver)
-- [kubeletstatsreceiver](github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver)
-- [prometheusreceive](github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver)
+- [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kubeletstatsreceiver)
+- [prometheusreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver)
 - [solace](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/solacereceiver)
 - [splunkhec](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/splunkhecreceiver)
 - [syslog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/syslogreceiver)
@@ -146,6 +146,6 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Next steps
 
-- [Get started](./get-started/) with the {{< param "OTEL_ENGINE" >}}
+- [Run the {{< param "OTEL_ENGINE" >}}](../set-up/otel_engine/)
 - [OTel CLI](../reference/cli/otel/) reference documentation
 

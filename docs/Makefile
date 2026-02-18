@@ -5,7 +5,7 @@ export SHELLOPTS := pipefail:errexit
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rule
 
-CHECK_CLOUDWATCH_INTEGRATION ?= 1
+CHECK_CLOUDWATCH_INTEGRATION ?= 0
 
 include docs.mk
 

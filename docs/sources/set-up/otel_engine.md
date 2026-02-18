@@ -23,7 +23,7 @@ Before you start, validate your OpenTelemetry YAML configuration with the `valid
 ./build/alloy otel validate --config=<CONFIG_FILE>
 ```
 
-Whilst this is an experimental feature, it is not hidden behind an `experimental` feature flag like regular components are to keep compatibility with the OpenTelemetry Collector.
+While this is an experimental feature, it isn't hidden behind an `experimental` feature flag like regular components are to keep compatibility with the OpenTelemetry Collector.
 
 ## Run with the CLI
 
@@ -68,9 +68,9 @@ service:
 
 Replace the following:
 
-- _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
-- _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
-- _`<URL>`_: The URL to export data to, if you are using Grafana Cloud this will be your Grafana Cloud OTLP endpoint URL.
+- _`<USERNAME>`_: Your username. If you're using Grafana Cloud, this is your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password. If you're using Grafana Cloud, this is your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to. If you're using Grafana Cloud, this is your Grafana Cloud OTLP endpoint URL.
 
 For more information about where to find these values for Grafana Cloud, refer to [Send data using OpenTelemetry Protocol](https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/).
 
@@ -132,9 +132,9 @@ service:
 Replace the following:
 
 - _`<ALLOY_CONFIG_PATH>`_: The path to your {{< param "DEFAULT_ENGINE" >}} configuration file.
-- _`<USERNAME>`_: Your username, if you are using Grafana Cloud this will be your Grafana Cloud instance ID.
-- _`<PASSWORD>`_: Your password, if you are using Grafana Cloud this will be your Grafana Cloud API token.
-- _`<URL>`_: The URL to export data to, if you are using Grafana Cloud this will be your Grafana Cloud OTLP endpoint URL.
+- _`<USERNAME>`_: Your username. If you're using Grafana Cloud, this is your Grafana Cloud instance ID.
+- _`<PASSWORD>`_: Your password. If you're using Grafana Cloud, this is your Grafana Cloud API token.
+- _`<URL>`_: The URL to export data to. If you're using Grafana Cloud, this is your Grafana Cloud OTLP endpoint URL.
 
 This example adds the `alloyengine` block in the extension declarations and enables the extension in the `service` block.
 You can then run {{< param "PRODUCT_NAME" >}} with the exact same command as before:
@@ -147,17 +147,17 @@ This starts both the {{< param "DEFAULT_ENGINE" >}} and {{< param "OTEL_ENGINE" 
 The output of both engines is visible in the logs.
 You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`.
 
-## Run with The OpenTelemetry Collector Helm chart
+## Run with the OpenTelemetry Collector Helm chart
 
-Use the upstream [OpenTelemetry Collector Helm chart](https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector) run the {{< param "OTEL_ENGINE" >}} . 
-This delivers an identical upstream collector experience and ensures you get improvements, bug fixes, and security updates as they are released.
+Use the upstream [OpenTelemetry Collector Helm chart](https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector) to run the {{< param "OTEL_ENGINE" >}}.
+This delivers an identical upstream collector experience and ensures you get improvements, bug fixes, and security updates as they're released.
 
-The following example Helm `values.yaml` incorporates the same configuration seen above into a Kubernetes deployment.
+The following example Helm `values.yaml` incorporates the same configuration seen above into a Kubernetes Deployment.
 
 {{< admonition type="note" >}}
 In this configuration, binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the Pod, so other Pods in the cluster can reach it without using `kubectl port-forward`.
 
-The configuration also sets the `command.name` key to `bin/otelcol`. This is the binary that runs the `alloy otel` subcommand. The Helm chart doesn't expose custom commands, so this setting is necessary.
+The configuration also sets the `command.name` key to `bin/otelcol`. This is the binary that runs the `alloy otel` sub-command. The Helm chart doesn't expose custom commands, so this setting is necessary.
 {{< /admonition >}}
 
 ```yaml
@@ -225,15 +225,15 @@ Replace the following:
 
 The Helm chart ships with a default OpenTelemetry Collector configuration in the `config` field, which is described in the upstream Helm chart [documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/#configuration).
 If you want to completely override that default configuration, you can use the `alternateConfig` field.
-In the example above, `alternateConfig` field is used to ensure the configuration matches the other examples in this Getting Started document and does not inherit any of the chart’s defaults. 
-Alternatively, you can omit both config and alternateConfig to use the default configuration as-is, or provide your own `config` block that will be merged with the chart’s default configuration.
+In the example above, the `alternateConfig` field is used to ensure the configuration matches the other examples in this document and doesn't inherit any of the chart's defaults.
+Alternatively, you can omit both `config` and `alternateConfig` to use the default configuration as-is, or provide your own `config` block that merges with the chart's default configuration.
 
 Refer to the [upstream documentation](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/) for more information about how to configure the helm chart to work for your use case.
 
 ## Run with service installation
 
 Service installation support for systemd, launchd, and similar systems isn't included in the initial experimental release.
-Service installers will work seamlessly with the {{< param "OTEL_ENGINE" >}} as the feature matures.
+Service installers work seamlessly with the {{< param "OTEL_ENGINE" >}} as the feature matures.
 In the meantime, use the CLI or Helm options for testing.
 
 ## Considerations
