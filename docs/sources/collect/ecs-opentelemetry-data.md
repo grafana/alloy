@@ -84,7 +84,7 @@ Complete the following steps to create a sample task. Refer to the [ADOT doc][ad
 
 #### Native receiver
 
-The `otelcol.receiver.awsecscontainermetrics` component reads the reads AWS ECS task- and container-level metadata, and resource usage metrics such as CPU, memory, network, and disk, and forwards them to other otelcol.* components.
+The `otelcol.receiver.awsecscontainermetrics` component reads AWS ECS task- and container-level metadata, and resource usage metrics such as CPU, memory, network, and disk, and forwards them to other otelcol.* components.
 
 {{< admonition type="note" >}}
 The `otelcol.receiver.awsecscontainermetrics` component is experimental. You must set the `--stability.level=experimental` flag to use it. Refer to [Permitted stability levels][stability-levels] for more information.
@@ -186,7 +186,8 @@ Complete the following steps to create a sample task.
 
      For the Prometheus exporter, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`.
 
-     Make sure you don't omit the double quotes around the command.
+     Make sure you include the double quotes around the command.
+
    - **Prometheus exporter only:** Add the Prometheus ECS exporter as a sidecar container:
 
      1. Add a container to the task.
@@ -204,7 +205,7 @@ For ECS Clusters running on EC2, you can collect instance metrics by using AWS A
 
 You can follow the steps described in [Configure {{< param "PRODUCT_NAME" >}}](#configure-alloy) to create another task, with the following changes:
 
-- If you're using the Prometheus exporter, you don't need to add the ecs-exporter sidecar for EC2 instance metrics.
+- If you're using the `awsecscontainermetrics` receiver, you don't need to add the ecs-exporter sidecar for EC2 instance metrics.
 - Run the task as a daemon so it automatically runs one instance per node in your cluster.
 - Update your {{< param "PRODUCT_NAME" >}} configuration to collect metrics from the instance.
    The configuration varies depending on the type of EC2 node. Refer to the [`collect`](https://grafana.com/docs/alloy/latest/collect/) documentation for details.
