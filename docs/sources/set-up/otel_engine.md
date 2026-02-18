@@ -1,13 +1,14 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/opentelemetry/get-started
+canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/
+aliases:
+  - ../opentelemetry/get-started/ # /docs/alloy/latest/opentelemetry/get-started/
 description: Get started with the Alloy OpenTelemetry Engine
-menuTitle: Get Started
-title: Get Started with the Alloy OpenTelemetry Engine
-noindex: true
-weight: 100
+menuTitle: OpenTelemetry Engine
+title: The OpenTelemetry Engine
+weight: 390
 ---
 
-# Get Started with the {{% param "FULL_OTEL_ENGINE" %}}
+# The {{% param "FULL_OTEL_ENGINE" %}}
 
 You can run the {{< param "OTEL_ENGINE" >}} using the CLI, Helm chart, or service installation.
 
