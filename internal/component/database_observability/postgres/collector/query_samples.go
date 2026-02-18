@@ -21,6 +21,7 @@ import (
 const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
+	OP_QUERY_SAMPLE_V2    = "query_sample_v2"
 	OP_WAIT_EVENT         = "wait_event"
 	OP_WAIT_EVENT_V2      = "wait_event_v2"
 )
@@ -30,7 +31,6 @@ const (
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxnAborted = "idle in transaction (aborted)"
-	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -479,6 +479,16 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		ts,
 	)
 
+	sampleV2Labels := c.buildQuerySampleV2Labels(state, state.EndAt)
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+		logging.LevelInfo,
+		OP_QUERY_SAMPLE_V2,
+		sampleV2Labels,
+		map[string]string{"datname": state.LastRow.DatabaseName.String},
+		map[string]string{"queryid": fmt.Sprintf("%d", state.LastRow.QueryID.Int64)},
+		ts,
+	)
+
 	for _, we := range state.tracker.WaitEvents() {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
@@ -492,17 +502,16 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		)
 
 		waitEventLabelsV2 := c.buildWaitEventLabelsV2(state, we)
-		structuredMetadata := map[string]string{
-			"datname":         state.LastRow.DatabaseName.String,
-			"queryid":         fmt.Sprintf("%d", state.LastRow.QueryID.Int64),
-			"wait_event_type": we.WaitEventType,
-			"wait_event_name": fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent),
-		}
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
 			logging.LevelInfo,
 			OP_WAIT_EVENT_V2,
 			waitEventLabelsV2,
-			structuredMetadata,
+			map[string]string{"datname": state.LastRow.DatabaseName.String},
+			map[string]string{
+				"queryid":         fmt.Sprintf("%d", state.LastRow.QueryID.Int64),
+				"wait_event_type": we.WaitEventType,
+				"wait_event_name": fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent),
+			},
 			we.LastTimestamp.UnixNano(),
 		)
 	}
@@ -546,6 +555,50 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		xactDuration,
 		queryDuration,
 		state.LastRow.QueryID.Int64,
+	)
+	if state.LastCpuTime != "" {
+		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction && state.LastRow.Query.Valid {
+		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+	}
+	return labels
+}
+
+func (c *QuerySamples) buildQuerySampleV2Labels(state *SampleState, endAt sql.NullTime) string {
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	end := state.LastRow.Now
+	if endAt.Valid {
+		end = endAt.Time
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
+
+	clientAddr := ""
+	if state.LastRow.ClientAddr.Valid {
+		clientAddr = state.LastRow.ClientAddr.String
+		if state.LastRow.ClientPort.Valid {
+			clientAddr = fmt.Sprintf("%s:%d", clientAddr, state.LastRow.ClientPort.Int32)
+		}
+	}
+
+	labels := fmt.Sprintf(
+		`pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s"`,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.ApplicationName.String,
+		clientAddr,
+		state.LastRow.BackendType.String,
+		state.LastRow.State.String,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		xactDuration,
+		queryDuration,
 	)
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)

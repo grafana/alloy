@@ -27,15 +27,20 @@ func BuildLokiEntry(level logging.Level, op, line string) loki.Entry {
 	return BuildLokiEntryWithTimestamp(level, op, line, time.Now().UnixNano())
 }
 
-// BuildLokiEntryWithStructuredMetadata creates a Loki entry with structured metadata.
-// structuredMetadata: High-cardinality metadata not indexed but still queryable (e.g., "queryid", "digest", "wait_event_type")
-// Empty string values are omitted from structured metadata.
-func BuildLokiEntryWithStructuredMetadata(level logging.Level, op, line string, structuredMetadata map[string]string, timestamp int64) loki.Entry {
+// BuildLokiEntryWithIndexedLabelsAndStructuredMetadata creates a Loki entry with additional
+// indexed labels (beyond op) and structured metadata.
+// indexedLabels: Low-cardinality labels that are indexed (e.g., "datname"). Empty values are omitted.
+// structuredMetadata: High-cardinality metadata not indexed but still queryable (e.g., "queryid"). Empty values are omitted.
+func BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(level logging.Level, op, line string, indexedLabels map[string]string, structuredMetadata map[string]string, timestamp int64) loki.Entry {
 	labels := model.LabelSet{
 		"op": model.LabelValue(op),
 	}
+	for key, value := range indexedLabels {
+		if value != "" {
+			labels[model.LabelName(key)] = model.LabelValue(value)
+		}
+	}
 
-	// Convert structured metadata to LabelsAdapter
 	var structuredMetadataLabels push.LabelsAdapter
 	for key, value := range structuredMetadata {
 		if value != "" {

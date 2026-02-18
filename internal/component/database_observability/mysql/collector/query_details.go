@@ -20,6 +20,7 @@ import (
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
+	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -151,6 +152,15 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
+		)
+
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+			logging.LevelInfo,
+			OP_QUERY_ASSOCIATION_V2,
+			fmt.Sprintf(`parseable="%t" digest_text="%s"`, parserErr == nil, digestText),
+			map[string]string{"schema": schema},
+			map[string]string{"digest": digest},
+			time.Now().UnixNano(),
 		)
 
 		for _, table := range tables {
