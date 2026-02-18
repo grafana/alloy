@@ -84,7 +84,7 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           110 * time.Millisecond,
+			inputDelay:           200 * time.Millisecond,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -404,6 +404,7 @@ func TestEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
