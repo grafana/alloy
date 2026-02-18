@@ -183,7 +183,7 @@ func (e *alloyEngineExtension) Shutdown(ctx context.Context) error {
 		e.settings.Logger.Info("alloyengine extension shutdown completed (not started)")
 		return nil
 	default:
-		e.settings.Logger.Warn("alloyengine extension shutdown in current state is a no-op", zap.String("state", e.state.String()))
+		e.settings.Logger.Warn("alloyengine extension shutdown in current state is a no-op", zap.String("state", e.getState().String()))
 		return nil
 	}
 }

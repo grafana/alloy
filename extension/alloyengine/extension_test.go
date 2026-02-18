@@ -115,7 +115,7 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	host := componenttest.NewNopHost()
 
 	require.NoError(t, e.Start(ctx, host))
-	require.Eventually(t, func() bool { return e.state == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
+	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 	require.NoError(t, e.Ready())
 	require.NoError(t, e.NotReady())
 
@@ -133,7 +133,7 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 			return false
 		}
 	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
-	require.Equal(t, stateTerminated, e.state)
+	require.Equal(t, stateTerminated, e.getState())
 }
 
 func TestLifecycle_StartTwiceFails(t *testing.T) {
@@ -157,7 +157,7 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// We should still be in stateStarting since the ready callback was never invoked.
-	require.Equal(t, stateStarting, e.state)
+	require.Equal(t, stateStarting, e.getState())
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	t.Cleanup(cancel)
@@ -169,7 +169,7 @@ func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
 
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
-	require.Eventually(t, func() bool { return e.state == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
+	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	t.Cleanup(cancel)
@@ -184,10 +184,10 @@ func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 			return false
 		}
 	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
-	require.Equal(t, stateTerminated, e.state)
+	require.Equal(t, stateTerminated, e.getState())
 }
 
-func TestLifecycle__RunSucceedsAfterRetries(t *testing.T) {
+func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {
 	testErr := errors.New("temporary failure")
 	factory, state := newRetryTrackingCommand(2, testErr) // Fail 2 times, succeed on 3rd attempt
 	cfg := defaultTestConfig()
@@ -208,5 +208,5 @@ func TestLifecycle__RunSucceedsAfterRetries(t *testing.T) {
 	// Verify it succeeded after 3 attempts (2 failures + 1 success)
 	require.Equal(t, 3, state.attempts)
 	require.Equal(t, 3, state.succeededAt)
-	require.Equal(t, stateTerminated, e.state)
+	require.Equal(t, stateTerminated, e.getState())
 }
