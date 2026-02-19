@@ -483,7 +483,6 @@ func Test_validateDropConfig(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-
 		})
 	}
 }
