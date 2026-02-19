@@ -158,19 +158,19 @@ endif
 #
 
 .PHONY: lint
-lint: generate-graphql-stubs alloylint
+lint: graphql alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
-run-alloylint: generate-graphql-stubs alloylint
+run-alloylint: graphql alloylint
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
-test: generate-graphql-stubs
+test: graphql
 	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
 		if echo "$$dir" | grep -qv testdata; then \
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
@@ -207,7 +207,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-graphql-stubs generate-ui
+alloy: graphql generate-ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -255,15 +255,23 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql-stubs
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql-stubs
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro graphql
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro graphql
 
-generate-graphql-stubs:
+GRAPHQL_DIR    := internal/service/graphql
+GRAPHQL_SCHEMA := $(wildcard $(GRAPHQL_DIR)/graph/schema/*.graphqls)
+GRAPHQL_CONFIG := $(GRAPHQL_DIR)/gqlgen.yml
+
+# Produces: graph/generated.go, graph/model/models_gen.go, graph/*.resolvers.go
+build/.graphql.stamp: $(GRAPHQL_SCHEMA) $(GRAPHQL_CONFIG)
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./internal/service/graphql && GOOS= GOARCH= go generate ./...
+	cd ./$(GRAPHQL_DIR) && GOOS= GOARCH= go generate ./...
+	@mkdir -p $(@D) && touch $@
 endif
+
+graphql: build/.graphql.stamp
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
