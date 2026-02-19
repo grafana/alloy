@@ -1,0 +1,54 @@
+name: Integration test (Windows service)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'integration-tests/windows-service/**'
+      - 'packaging/**'
+      - 'internal/cmd/alloy-service/**'
+      - 'internal/runtime/logging/**'
+      - '.github/workflows/integration-test-windows-service.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  integration_test_windows_service:
+    name: Windows service integration test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install NSIS
+        run: choco install nsis -y
+        shell: pwsh
+
+      - name: Install NSIS AccessControl plugin
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
+          $zipPath = "$env:TEMP\AccessControl.zip"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+          Expand-Archive -Path $zipPath -DestinationPath $env:TEMP\AccessControl -Force
+          Copy-Item -Path "$env:TEMP\AccessControl\Plugins\*" -Destination "$nsisPath\Plugins\" -Recurse -Force
+          New-Item -ItemType Directory -Path "$nsisPath\Plugins\x86-unicode" -Force
+          Copy-Item -Path "$nsisPath\Plugins\i386-unicode\AccessControl.dll" -Destination "$nsisPath\Plugins\x86-unicode\"
+        shell: pwsh
+
+      - name: Add NSIS to PATH
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
+        shell: pwsh
+
+      - name: Build installer and run Windows service integration test
+        run: '& "C:/Program Files/git/bin/bash.exe" -c ''make integration-test-windows-service'''

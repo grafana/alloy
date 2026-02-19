@@ -12,8 +12,9 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level  Level  `alloy:"level,attr,optional"`
-	Format Format `alloy:"format,attr,optional"`
+	Level           Level  `alloy:"level,attr,optional"`
+	Format          Format `alloy:"format,attr,optional"`
+	WindowsEventLog bool   `alloy:"windows_event_log,attr,optional"`
 
 	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }
