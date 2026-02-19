@@ -561,10 +561,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:     c.logsReceiver,
-		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
-		Logger:       c.opts.Logger,
-		Registry:     c.registry,
+		Receiver:         c.logsReceiver,
+		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:           c.opts.Logger,
+		Registry:         c.registry,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
