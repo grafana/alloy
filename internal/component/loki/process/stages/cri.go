@@ -12,6 +12,7 @@ import (
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -50,14 +51,8 @@ func (args *CRIConfig) Validate() error {
 }
 
 func NewCRI(logger log.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
-	partialLinesFlushedMetric, err := getPartialLinesFlushedMetric(registerer)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to register cri partial lines flushed metric", "err", err)
-	}
-	linesTruncatedMetric, err := getLinesTruncatedMetric(registerer)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to register cri lines truncated metric", "err", err)
-	}
+	partialLinesFlushedMetric := getPartialLinesFlushedMetric(registerer)
+	linesTruncatedMetric := getLinesTruncatedMetric(registerer)
 	return &cri{
 		logger:                    logger,
 		cfg:                       cfg,
@@ -67,34 +62,20 @@ func NewCRI(logger log.Logger, cfg CRIConfig, registerer prometheus.Registerer, 
 	}, nil
 }
 
-func getPartialLinesFlushedMetric(registerer prometheus.Registerer) (prometheus.Counter, error) {
+func getPartialLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
 	metric := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "loki_process_cri_partial_lines_flushed_total",
 		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded",
 	})
-	err := registerer.Register(metric)
-	if err != nil {
-		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
-			return existing.ExistingCollector.(prometheus.Counter), nil
-		}
-		return nil, err
-	}
-	return metric, nil
+	return util.MustRegisterOrGet(registerer, metric).(prometheus.Counter)
 }
 
-func getLinesTruncatedMetric(registerer prometheus.Registerer) (prometheus.Counter, error) {
+func getLinesTruncatedMetric(registerer prometheus.Registerer) prometheus.Counter {
 	metric := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "loki_process_cri_lines_truncated_total",
 		Help: "A count of lines that were truncated due to the max_partial_line_size limit",
 	})
-	err := registerer.Register(metric)
-	if err != nil {
-		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
-			return existing.ExistingCollector.(prometheus.Counter), nil
-		}
-		return nil, err
-	}
-	return metric, nil
+	return util.MustRegisterOrGet(registerer, metric).(prometheus.Counter)
 }
 
 var _ Stage = (*cri)(nil)
