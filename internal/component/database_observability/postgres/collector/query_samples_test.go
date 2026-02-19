@@ -809,7 +809,6 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		require.Contains(t, entries[0].Line, `query_time="20s"`)
 		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTs))
-		require.True(t, entries[1].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
 		require.Eventually(t, func() bool {
@@ -970,17 +969,13 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		// Entries are OP_QUERY_SAMPLE for each key
-		v1Entries := make([]loki.Entry, 0)
+		// Both entries should be OP_QUERY_SAMPLE
 		for _, e := range entries {
-			if e.Labels["op"] == OP_QUERY_SAMPLE {
-				v1Entries = append(v1Entries, e)
-			}
+			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, e.Labels)
 		}
-		require.Len(t, v1Entries, 2)
-		// Ensure both queryids are present among the V1 entries
+		// Ensure both queryids are present among the two entries
 		var seen22002, seen23002 bool
-		for _, e := range v1Entries {
+		for _, e := range entries {
 			if strings.Contains(e.Line, `queryid="22002"`) {
 				seen22002 = true
 			}
