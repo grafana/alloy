@@ -39,12 +39,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM some_table WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -66,12 +64,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM public.users WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM public.users WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -93,12 +89,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM SOME_TABLE WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -120,12 +114,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -147,12 +139,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM MyTable WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -174,12 +164,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table" datname="some_database"`,
-				`level="info" querytext="WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -192,12 +180,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="INSERT INTO some_table (id, name) VALUES (...)" datname="some_database"`,
-				`level="info" querytext="INSERT INTO some_table (id, name) VALUES (...)"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -210,13 +196,11 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table" datname="some_database"`,
-				`level="info" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_other_table" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
@@ -230,12 +214,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2" datname="some_database"`,
-				`level="info" querytext="UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -248,12 +230,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="DELETE FROM some_table WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="DELETE FROM some_table WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -266,13 +246,11 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)" datname="some_database"`,
-				`level="info" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_other_table" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
@@ -286,13 +264,11 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC" datname="some_database"`,
-				`level="info" querytext="SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="other_table" validated="false"`,
 			},
@@ -310,18 +286,14 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="xyz456" querytext="INSERT INTO some_table..." datname="some_database"`,
-				`level="info" querytext="INSERT INTO some_table..."`,
 				`level="info" queryid="xyz456" datname="some_database" table="some_table" validated="false"`,
 				`level="info" queryid="abc123" querytext="SELECT * FROM another_table WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM another_table WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="another_table" validated="false"`,
 			},
 		},
@@ -334,12 +306,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1 AND name =" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM some_table WHERE id = $1 AND name ="`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -352,11 +322,9 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="START TRANSACTION" datname="some_database"`,
-				`level="info" querytext="START TRANSACTION"`,
 			},
 		},
 		{
@@ -372,16 +340,12 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="xyz456" querytext="not valid sql" datname="some_database"`,
-				`level="info" querytext="not valid sql"`,
 				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM some_table WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -398,18 +362,14 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "other_schema"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM some_table WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="other_schema"`,
-				`level="info" querytext="SELECT * FROM some_table WHERE id = $1"`,
 				`level="info" queryid="abc123" datname="other_schema" table="some_table" validated="false"`,
 			},
 		},
@@ -422,14 +382,12 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea"`,
 				`level="info" queryid="abc123" datname="some_database" table="employees_us_east" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="employees_us_west" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="employees_emea" validated="false"`,
@@ -444,12 +402,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SHOW CREATE TABLE some_table" datname="some_database"`,
-				`level="info" querytext="SHOW CREATE TABLE some_table"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -462,11 +418,9 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SHOW VARIABLES LIKE $1" datname="some_database"`,
-				`level="info" querytext="SHOW VARIABLES LIKE $1"`,
 			},
 		},
 		{
@@ -478,12 +432,10 @@ func TestQueryDetails(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE" datname="some_database"`,
-				`level="info" querytext="SELECT * FROM some_table WHERE"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -513,32 +465,24 @@ func TestQueryDetails(t *testing.T) {
 			},
 			logsLabels: []model.LabelSet{
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "quickpizza"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "quickpizza"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "quickpizza"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION_V2, "datname": "quickpizza"},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				`level="info" queryid="3871016669222913500" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")" datname="quickpizza"`,
-				`level="info" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")"`,
 				`level="info" queryid="3871016669222913500" datname="quickpizza" table="ingredients" validated="false"`,
 				`level="info" queryid="3871016669222913500" datname="quickpizza" table="pizza_to_ingredients" validated="false"`,
 				`level="info" queryid="7865322458849960000" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\"" datname="quickpizza"`,
-				`level="info" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\""`,
 				`level="info" queryid="7865322458849960000" datname="quickpizza" table="quotes" validated="false"`,
 				`level="info" queryid="5775615007769463000" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\"" datname="quickpizza"`,
-				`level="info" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\""`,
 				`level="info" queryid="5775615007769463000" datname="quickpizza" table="classical_names" validated="false"`,
 				`level="info" queryid="7007034463187741000" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\"" datname="quickpizza"`,
-				`level="info" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\""`,
 				`level="info" queryid="7007034463187741000" datname="quickpizza" table="doughs" validated="false"`,
 			},
 		},
@@ -555,13 +499,11 @@ func TestQueryDetails(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
-				DB:                       db,
-				CollectInterval:          time.Second,
-				EntryHandler:             lokiClient,
-				TableRegistry:            tc.tableRegistry,
-				Logger:                   log.NewLogfmtLogger(os.Stderr),
-				EnableIndexedLabels:      true,
-				EnableStructuredMetadata: true,
+				DB:              db,
+				CollectInterval: time.Second,
+				EntryHandler:    lokiClient,
+				TableRegistry:   tc.tableRegistry,
+				Logger:          log.NewLogfmtLogger(os.Stderr),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -619,12 +561,10 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:                       db,
-			CollectInterval:          time.Second,
-			EntryHandler:             lokiClient,
-			Logger:                   log.NewLogfmtLogger(os.Stderr),
-			EnableIndexedLabels:      true,
-			EnableStructuredMetadata: true,
+			DB:              db,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -654,7 +594,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -670,10 +610,8 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" querytext="SELECT * FROM some_table WHERE id = ?"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -686,12 +624,10 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:                       db,
-			CollectInterval:          time.Second,
-			EntryHandler:             lokiClient,
-			Logger:                   log.NewLogfmtLogger(os.Stderr),
-			EnableIndexedLabels:      true,
-			EnableStructuredMetadata: true,
+			DB:              db,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -717,7 +653,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -733,10 +669,8 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" querytext="SELECT * FROM some_table WHERE id = ?"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -749,12 +683,10 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:                       db,
-			CollectInterval:          time.Second,
-			EntryHandler:             lokiClient,
-			Logger:                   log.NewLogfmtLogger(os.Stderr),
-			EnableIndexedLabels:      true,
-			EnableStructuredMetadata: true,
+			DB:              db,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -778,7 +710,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -794,10 +726,8 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" querytext="SELECT * FROM some_table WHERE id = ?"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 }
 
@@ -973,13 +903,11 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 	defer lokiClient.Stop()
 
 	collector, err := NewQueryDetails(QueryDetailsArguments{
-		DB:                       db,
-		CollectInterval:          time.Second,
-		ExcludeDatabases:         []string{"excluded_database"},
-		EntryHandler:             lokiClient,
-		Logger:                   log.NewLogfmtLogger(os.Stderr),
-		EnableIndexedLabels:      true,
-		EnableStructuredMetadata: true,
+		DB:               db,
+		CollectInterval:  time.Second,
+		ExcludeDatabases: []string{"excluded_database"},
+		EntryHandler:     lokiClient,
+		Logger:           log.NewLogfmtLogger(os.Stderr),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)
@@ -1000,9 +928,9 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 	err = collector.Start(t.Context())
 	require.NoError(t, err)
 
-	// Only the another_database should have logs emitted (query_association + query_association_v2 + query_parsed_table_name)
+	// Only the another_database should have logs emitted (query_association + query_parsed_table_name)
 	require.Eventually(t, func() bool {
-		return len(lokiClient.Received()) >= 3
+		return len(lokiClient.Received()) >= 2
 	}, 5*time.Second, 100*time.Millisecond)
 
 	collector.Stop()
@@ -1013,10 +941,9 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 
 	require.NoError(t, mock.ExpectationsWereMet())
 
-	// Verify only another_database logs were emitted (V2 entries carry datname as indexed label)
+	// Verify only another_database logs were emitted
 	for _, entry := range lokiClient.Received() {
-		lineAndLabels := entry.Line + fmt.Sprintf("%v", entry.Labels)
-		require.Contains(t, lineAndLabels, "another_database", "included database should appear in logs or labels")
+		require.Contains(t, entry.Line, "another_database", "included database should appear in logs")
 	}
 }
 
@@ -1031,13 +958,11 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	defer lokiClient.Stop()
 
 	collector, err := NewQueryDetails(QueryDetailsArguments{
-		DB:                       db,
-		CollectInterval:          time.Second,
-		ExcludeUsers:             []string{"excluded_user"},
-		EntryHandler:             lokiClient,
-		Logger:                   log.NewLogfmtLogger(os.Stderr),
-		EnableIndexedLabels:      true,
-		EnableStructuredMetadata: true,
+		DB:              db,
+		CollectInterval: time.Second,
+		ExcludeUsers:    []string{"excluded_user"},
+		EntryHandler:    lokiClient,
+		Logger:          log.NewLogfmtLogger(os.Stderr),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)
@@ -1085,6 +1010,14 @@ func TestQueryDetails_LogFormatFlags(t *testing.T) {
 		assocV2Line              string
 		assocV2SM                push.LabelsAdapter
 	}{
+		{
+			name:                     "both indexed labels and structured metadata enabled",
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: true,
+			assocV2Labels:            model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
+			assocV2Line:              `level="info" querytext="SELECT * FROM some_table WHERE id = $1"`,
+			assocV2SM:                push.LabelsAdapter{{Name: "queryid", Value: "abc123"}},
+		},
 		{
 			name:                     "only indexed labels enabled",
 			enableIndexedLabels:      true,
