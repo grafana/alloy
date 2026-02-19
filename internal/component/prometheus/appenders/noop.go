@@ -40,7 +40,7 @@ func (n Noop) AppendHistogram(ref storage.SeriesRef, _ labels.Labels, _ int64, _
 	return ref, nil
 }
 
-func (n Noop) AppendHistogramCTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (n Noop) AppendHistogramSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	return ref, nil
 }
 
@@ -48,6 +48,6 @@ func (n Noop) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, _ metadata.
 	return ref, nil
 }
 
-func (n Noop) AppendCTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
+func (n Noop) AppendSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
 	return ref, nil
 }

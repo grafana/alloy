@@ -124,9 +124,9 @@ func (s *seriesRefMapping) AppendHistogram(ref storage.SeriesRef, l labels.Label
 	})
 }
 
-func (s *seriesRefMapping) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (s *seriesRefMapping) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
+		return appender.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
 	})
 }
 
@@ -136,9 +136,9 @@ func (s *seriesRefMapping) UpdateMetadata(ref storage.SeriesRef, l labels.Labels
 	})
 }
 
-func (s *seriesRefMapping) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+func (s *seriesRefMapping) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
 	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.AppendCTZeroSample(ref, l, t, ct)
+		return appender.AppendSTZeroSample(ref, l, t, st)
 	})
 }
 

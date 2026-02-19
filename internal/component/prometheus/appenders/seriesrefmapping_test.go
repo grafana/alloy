@@ -661,9 +661,9 @@ type mockAppender struct {
 	appendFn                      func(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error)
 	appendExemplarFn              func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error)
 	appendHistogramFn             func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error)
-	appendHistogramCTZeroSampleFn func(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error)
+	appendHistogramSTZeroSampleFn func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error)
 	updateMetadataFn              func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error)
-	appendCTZeroSampleFn          func(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error)
+	appendSTZeroSampleFn          func(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error)
 	commitFn                      func() error
 	rollbackFn                    func() error
 	setOptionsFn                  func(opts *storage.AppendOptions)
@@ -695,9 +695,9 @@ func (m *mockAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t
 	return ref, nil
 }
 
-func (m *mockAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	if m.appendHistogramCTZeroSampleFn != nil {
-		return m.appendHistogramCTZeroSampleFn(ref, l, t, ct, h, fh)
+func (m *mockAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if m.appendHistogramSTZeroSampleFn != nil {
+		return m.appendHistogramSTZeroSampleFn(ref, l, t, st, h, fh)
 	}
 	return ref, nil
 }
@@ -709,9 +709,9 @@ func (m *mockAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, md
 	return ref, nil
 }
 
-func (m *mockAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
-	if m.appendCTZeroSampleFn != nil {
-		return m.appendCTZeroSampleFn(ref, l, t, ct)
+func (m *mockAppender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
+	if m.appendSTZeroSampleFn != nil {
+		return m.appendSTZeroSampleFn(ref, l, t, st)
 	}
 	return ref, nil
 }
