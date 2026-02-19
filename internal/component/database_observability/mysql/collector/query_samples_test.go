@@ -144,11 +144,13 @@ func TestQuerySamples(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:              db,
-				EngineVersion:   latestCompatibleVersion,
-				CollectInterval: time.Second,
-				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				DB:                       db,
+				EngineVersion:            latestCompatibleVersion,
+				CollectInterval:          time.Second,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -246,11 +248,13 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -349,11 +353,13 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -450,11 +456,13 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -633,11 +641,13 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -763,12 +773,14 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			EngineVersion:         latestCompatibleVersion,
-			CollectInterval:       time.Second,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
-			DisableQueryRedaction: true,
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction:    true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -888,12 +900,14 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			EngineVersion:         latestCompatibleVersion,
-			CollectInterval:       time.Second,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
-			DisableQueryRedaction: true,
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction:    true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1002,12 +1016,14 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			EngineVersion:         latestCompatibleVersion,
-			CollectInterval:       time.Second,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
-			DisableQueryRedaction: false,
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction:    false,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1289,11 +1305,13 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:              db,
-				EngineVersion:   semver.MustParse(tc.mysqlVersion),
-				CollectInterval: time.Second,
-				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				DB:                       db,
+				EngineVersion:            semver.MustParse(tc.mysqlVersion),
+				CollectInterval:          time.Second,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(os.Stderr),
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -1360,11 +1378,13 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1494,11 +1514,13 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1628,11 +1650,13 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			EngineVersion:            latestCompatibleVersion,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1857,12 +1881,14 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		lokiClient := loki.NewCollectingHandler()
 		c := &QuerySamples{
-			dbConnection:  db,
-			engineVersion: latestCompatibleVersion,
-			timerBookmark: 1e12,
-			lastUptime:    4,
-			entryHandler:  lokiClient,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			dbConnection:             db,
+			engineVersion:            latestCompatibleVersion,
+			timerBookmark:            1e12,
+			lastUptime:               4,
+			entryHandler:             lokiClient,
+			logger:                   log.NewLogfmtLogger(os.Stderr),
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: true,
 		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -2349,6 +2375,8 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			Logger:                      log.NewLogfmtLogger(os.Stderr),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
+			EnableIndexedLabels:         true,
+			EnableStructuredMetadata:    true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)

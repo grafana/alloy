@@ -68,6 +68,10 @@ type Arguments struct {
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
+	// Temporary feature flags for structured logging experiments.
+	EnableIndexedLabels      bool `alloy:"enable_indexed_labels,attr,optional"`
+	EnableStructuredMetadata bool `alloy:"enable_structured_metadata,attr,optional"`
+
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
@@ -109,8 +113,10 @@ type SchemaDetailsArguments struct {
 }
 
 var DefaultArguments = Arguments{
-	ExcludeDatabases: []string{},
-	ExcludeUsers:     []string{},
+	ExcludeDatabases:         []string{},
+	ExcludeUsers:             []string{},
+	EnableIndexedLabels:      false,
+	EnableStructuredMetadata: false,
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
@@ -469,13 +475,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
-			EntryHandler:     entryHandler,
-			TableRegistry:    tableRegistry,
-			Logger:           c.opts.Logger,
+			DB:                       c.dbConnection,
+			CollectInterval:          c.args.QueryTablesArguments.CollectInterval,
+			ExcludeDatabases:         c.args.ExcludeDatabases,
+			ExcludeUsers:             c.args.ExcludeUsers,
+			EntryHandler:             entryHandler,
+			TableRegistry:            tableRegistry,
+			Logger:                   c.opts.Logger,
+			EnableIndexedLabels:      c.args.EnableIndexedLabels,
+			EnableStructuredMetadata: c.args.EnableStructuredMetadata,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -488,14 +496,16 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QuerySamplesCollector] {
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
-			ExcludeUsers:          c.args.ExcludeUsers,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
+			DB:                       c.dbConnection,
+			CollectInterval:          c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:         c.args.ExcludeDatabases,
+			ExcludeUsers:             c.args.ExcludeUsers,
+			EntryHandler:             entryHandler,
+			Logger:                   c.opts.Logger,
+			DisableQueryRedaction:    c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:       c.args.QuerySampleArguments.ExcludeCurrentUser,
+			EnableIndexedLabels:      c.args.EnableIndexedLabels,
+			EnableStructuredMetadata: c.args.EnableStructuredMetadata,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)

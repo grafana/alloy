@@ -554,11 +554,13 @@ func TestQueryDetails(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
-				DB:              db,
-				CollectInterval: time.Second,
-				EntryHandler:    lokiClient,
-				TableRegistry:   tc.tableRegistry,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				DB:                       db,
+				CollectInterval:          time.Second,
+				EntryHandler:             lokiClient,
+				TableRegistry:            tc.tableRegistry,
+				Logger:                   log.NewLogfmtLogger(os.Stderr),
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -616,10 +618,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -681,10 +685,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -742,10 +748,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -964,11 +972,13 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 	defer lokiClient.Stop()
 
 	collector, err := NewQueryDetails(QueryDetailsArguments{
-		DB:               db,
-		CollectInterval:  time.Second,
-		ExcludeDatabases: []string{"excluded_database"},
-		EntryHandler:     lokiClient,
-		Logger:           log.NewLogfmtLogger(os.Stderr),
+		DB:                       db,
+		CollectInterval:          time.Second,
+		ExcludeDatabases:         []string{"excluded_database"},
+		EntryHandler:             lokiClient,
+		Logger:                   log.NewLogfmtLogger(os.Stderr),
+		EnableIndexedLabels:      true,
+		EnableStructuredMetadata: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)
@@ -1020,11 +1030,13 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	defer lokiClient.Stop()
 
 	collector, err := NewQueryDetails(QueryDetailsArguments{
-		DB:              db,
-		CollectInterval: time.Second,
-		ExcludeUsers:    []string{"excluded_user"},
-		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(os.Stderr),
+		DB:                       db,
+		CollectInterval:          time.Second,
+		ExcludeUsers:             []string{"excluded_user"},
+		EntryHandler:             lokiClient,
+		Logger:                   log.NewLogfmtLogger(os.Stderr),
+		EnableIndexedLabels:      true,
+		EnableStructuredMetadata: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)

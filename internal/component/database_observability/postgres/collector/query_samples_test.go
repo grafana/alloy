@@ -164,12 +164,14 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			defer lokiClient.Stop()
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:                    db,
-				CollectInterval:       time.Millisecond,
-				EntryHandler:          lokiClient,
-				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-				DisableQueryRedaction: tc.disableQueryRedaction,
-				ExcludeCurrentUser:    true,
+				DB:                       db,
+				CollectInterval:          time.Millisecond,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				DisableQueryRedaction:    tc.disableQueryRedaction,
+				ExcludeCurrentUser:       true,
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
@@ -283,12 +285,14 @@ func TestQuerySamples_FetchQuerySamples_ErrorCases(t *testing.T) {
 			defer lokiClient.Stop()
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:                    db,
-				CollectInterval:       time.Millisecond,
-				EntryHandler:          lokiClient,
-				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-				DisableQueryRedaction: tc.disableQueryRedaction,
-				ExcludeCurrentUser:    true,
+				DB:                       db,
+				CollectInterval:          time.Millisecond,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				DisableQueryRedaction:    tc.disableQueryRedaction,
+				ExcludeCurrentUser:       true,
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
@@ -352,12 +356,14 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -413,12 +419,14 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 
 		require.NoError(t, err)
@@ -482,12 +490,14 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -552,12 +562,14 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -623,12 +635,14 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -716,12 +730,14 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -784,12 +800,14 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -859,12 +877,14 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -934,12 +954,14 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                       db,
+			CollectInterval:          time.Millisecond,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:    true,
+			ExcludeCurrentUser:       true,
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 
@@ -1076,11 +1098,13 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 			defer lokiClient.Stop()
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:                 db,
-				CollectInterval:    time.Millisecond,
-				EntryHandler:       lokiClient,
-				Logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-				ExcludeCurrentUser: tc.excludeCurrentUser,
+				DB:                       db,
+				CollectInterval:          time.Millisecond,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				ExcludeCurrentUser:       tc.excludeCurrentUser,
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
@@ -1148,11 +1172,13 @@ func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 
 	// Exclude "excluded_db" database
 	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-		DB:               db,
-		CollectInterval:  time.Millisecond,
-		ExcludeDatabases: []string{"excluded_db"},
-		EntryHandler:     lokiClient,
-		Logger:           log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		DB:                       db,
+		CollectInterval:          time.Millisecond,
+		ExcludeDatabases:         []string{"excluded_db"},
+		EntryHandler:             lokiClient,
+		Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		EnableIndexedLabels:      true,
+		EnableStructuredMetadata: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, sampleCollector)
@@ -1228,11 +1254,13 @@ func TestQuerySamples_ExcludeUsers(t *testing.T) {
 	defer lokiClient.Stop()
 
 	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-		DB:              db,
-		CollectInterval: time.Millisecond,
-		ExcludeUsers:    []string{"excluded_user"},
-		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		DB:                       db,
+		CollectInterval:          time.Millisecond,
+		ExcludeUsers:             []string{"excluded_user"},
+		EntryHandler:             lokiClient,
+		Logger:                   log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		EnableIndexedLabels:      true,
+		EnableStructuredMetadata: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, sampleCollector)
