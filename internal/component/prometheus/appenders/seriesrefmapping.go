@@ -57,6 +57,8 @@ func (s *seriesRefMapping) SetOptions(opts *storage.AppendOptions) {
 }
 
 func (s *seriesRefMapping) Commit() error {
+	defer s.recordLatency()
+
 	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
 
 	var multiErr error
@@ -70,6 +72,8 @@ func (s *seriesRefMapping) Commit() error {
 }
 
 func (s *seriesRefMapping) Rollback() error {
+	defer s.recordLatency()
+
 	// We still track rolled back series so we can properly
 	// clean up any series that was appended
 	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
@@ -82,6 +86,15 @@ func (s *seriesRefMapping) Rollback() error {
 		}
 	}
 	return multiErr
+}
+
+func (s *seriesRefMapping) recordLatency() {
+	if s.start.IsZero() {
+		return
+	}
+
+	duration := time.Since(s.start)
+	s.writeLatency.Observe(duration.Seconds())
 }
 
 func (s *seriesRefMapping) resetFields() {
