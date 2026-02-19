@@ -2,6 +2,7 @@ package value
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/grafana/alloy/syntax/internal/syntaxtags"
 )
@@ -11,14 +12,20 @@ import (
 // of the process, this will consume a negligible amount of memory.
 var tagsCache = make(map[reflect.Type]*objectFields)
 
+// tagsCacheMutex protects concurrent reads and writes to tagsCache.
+var tagsCacheMutex sync.RWMutex
+
 func getCachedTags(t reflect.Type) *objectFields {
 	if t.Kind() != reflect.Struct {
 		panic("getCachedTags called with non-struct type")
 	}
 
+	tagsCacheMutex.RLock()
 	if entry, ok := tagsCache[t]; ok {
+		tagsCacheMutex.RUnlock()
 		return entry
 	}
+	tagsCacheMutex.RUnlock()
 
 	ff := syntaxtags.Get(t)
 
@@ -62,7 +69,10 @@ func getCachedTags(t reflect.Type) *objectFields {
 		}
 	}
 
+	tagsCacheMutex.Lock()
 	tagsCache[t] = tree
+	tagsCacheMutex.Unlock()
+
 	return tree
 }
 

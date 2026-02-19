@@ -190,7 +190,7 @@ func (d *decoder) decode(val Value, into reflect.Value) (err error) {
 		into.Set(val.rv.Convert(goByteSlice))
 		return nil
 	case convVal.Type() != targetType:
-		converted, err := tryCapsuleConvert(convVal, into, targetType)
+		converted, err := TryCapsuleConvert(convVal, into, targetType)
 		if err != nil {
 			return err
 		} else if converted {
@@ -242,7 +242,7 @@ func (d *decoder) decode(val Value, into reflect.Value) (err error) {
 			return nil
 		}
 
-		converted, err := tryCapsuleConvert(convVal, into, targetType)
+		converted, err := TryCapsuleConvert(convVal, into, targetType)
 		if err != nil {
 			return err
 		} else if converted {
@@ -356,7 +356,7 @@ func (d *decoder) decodeFromInterface(val Value, into reflect.Value) (ok bool, e
 	return false, nil
 }
 
-func tryCapsuleConvert(from Value, into reflect.Value, intoType Type) (ok bool, err error) {
+func TryCapsuleConvert(from Value, into reflect.Value, intoType Type) (ok bool, err error) {
 	// Check to see if we can use capsule conversion.
 	if from.Type() == TypeCapsule {
 		cc, ok := from.Interface().(ConvertibleIntoCapsule)
@@ -366,7 +366,7 @@ func tryCapsuleConvert(from Value, into reflect.Value, intoType Type) (ok bool, 
 			err := cc.ConvertInto(into.Addr().Interface())
 			if err == nil {
 				return true, nil
-			} else if err != nil && !errors.Is(err, ErrNoConversion) {
+			} else if !errors.Is(err, ErrNoConversion) {
 				return false, Error{Value: from, Inner: err}
 			}
 		}
@@ -378,7 +378,7 @@ func tryCapsuleConvert(from Value, into reflect.Value, intoType Type) (ok bool, 
 			err := cc.ConvertFrom(from.Interface())
 			if err == nil {
 				return true, nil
-			} else if err != nil && !errors.Is(err, ErrNoConversion) {
+			} else if !errors.Is(err, ErrNoConversion) {
 				return false, Error{Value: from, Inner: err}
 			}
 		}
