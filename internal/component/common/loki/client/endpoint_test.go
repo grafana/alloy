@@ -84,7 +84,7 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           110 * time.Millisecond,
+			inputDelay:           200 * time.Millisecond,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
