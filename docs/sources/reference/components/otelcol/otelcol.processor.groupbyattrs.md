@@ -124,7 +124,7 @@ With the following configuration, the groupbyattrs will re-associate the metrics
 otelcol.processor.groupbyattrs "default" {
   keys = [ "host.name" ]
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -202,7 +202,7 @@ You can use `otelcol.processor.groupbyattrs` with its default configuration to c
 ```alloy
 otelcol.processor.groupbyattrs "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
