@@ -203,7 +203,6 @@ func TestPipeline_Process(t *testing.T) {
 	}
 
 	for tName, tt := range tests {
-		tt := tt
 
 		t.Run(tName, func(t *testing.T) {
 			var config Configs

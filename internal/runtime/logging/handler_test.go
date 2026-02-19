@@ -56,7 +56,7 @@ func TestSlogTester(t *testing.T) {
 	require.NoError(t, err)
 	results := func() []map[string]any {
 		var ms []map[string]any
-		for _, line := range bytes.Split(buf.Bytes(), []byte{'\n'}) {
+		for line := range bytes.SplitSeq(buf.Bytes(), []byte{'\n'}) {
 			if len(line) == 0 {
 				continue
 			}

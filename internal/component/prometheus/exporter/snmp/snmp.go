@@ -3,6 +3,7 @@ package snmp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -49,9 +50,7 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 	for _, tgt := range snmpTargets {
 		target := make(map[string]string, len(tgt.Labels)+baseTarget.Len())
 		// Set extra labels first, meaning that any other labels will override
-		for k, v := range tgt.Labels {
-			target[k] = v
-		}
+		maps.Copy(target, tgt.Labels)
 		baseTarget.ForEachLabel(func(key string, value string) bool {
 			target[key] = value
 			return true

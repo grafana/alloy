@@ -120,7 +120,7 @@ func TestClusterE2E(t *testing.T) {
 				verifyLookupInvariants(t, state.peers)
 			},
 			changes: func(state *testState) {
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					startNewNode(t, state, fmt.Sprintf("new-node-%d", i))
 				}
 			},
@@ -161,7 +161,7 @@ func TestClusterE2E(t *testing.T) {
 				verifyLookupInvariants(t, state.peers)
 			},
 			changes: func(state *testState) {
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					state.peers[i].shutdown()
 				}
 				state.peers = state.peers[4:]
@@ -600,12 +600,10 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	state.peers = append(state.peers, newPeer)
 
 	// Increment the WaitGroup before starting the node
-	state.shutdownGroup.Add(1)
-	go func() {
+	state.shutdownGroup.Go(func() {
 		// Ensure the WaitGroup is decremented when the node finishes running
-		defer state.shutdownGroup.Done()
 		f.Run(peerCtx)
-	}()
+	})
 
 	src, err := runtime.ParseSource(t.Name(), []byte(state.testCase.alloyConfig))
 	require.NoError(t, err)

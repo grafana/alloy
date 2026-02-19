@@ -58,7 +58,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 
 		sched := controller.NewScheduler(logger, 1*time.Minute)
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			// If a new runnable is created, runFunc will panic since the WaitGroup
 			// only supports 1 goroutine.
 			sched.Synchronize([]controller.RunnableNode{

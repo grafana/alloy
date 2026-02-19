@@ -2,6 +2,7 @@ package podlogs
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -418,13 +419,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 			}
 
 			for _, expectedPod := range tt.expectedPodNames {
-				found := false
-				for _, actualPod := range actualPodNames {
-					if actualPod == expectedPod {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(actualPodNames, expectedPod)
 				if !found {
 					t.Errorf("expected pod %s not found in actual pods %v", expectedPod, actualPodNames)
 				}

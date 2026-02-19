@@ -159,12 +159,10 @@ func (s *Runner[TaskType]) ApplyTasks(ctx context.Context, tt []TaskType) error 
 			Task:   definedTask,
 		}
 
-		s.running.Add(1)
-		go func() {
-			defer s.running.Done()
+		s.running.Go(func() {
 			defer close(newWorker.Exited)
 			newWorker.Worker.Run(workerCtx)
-		}()
+		})
 
 		_ = s.workers.Add(newTask)
 	}

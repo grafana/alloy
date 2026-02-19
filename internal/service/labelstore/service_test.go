@@ -167,7 +167,7 @@ func BenchmarkStaleness(b *testing.B) {
 	ls := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
 
 	tracking := make([]StalenessTracker, 100_000)
-	for i := 0; i < 100_000; i++ {
+	for i := range 100_000 {
 		l := labels.FromStrings("id", strconv.Itoa(i))
 		gid := ls.GetOrAddGlobalRefID(l)
 		var val float64
@@ -185,11 +185,9 @@ func BenchmarkStaleness(b *testing.B) {
 	b.StartTimer()
 	var wg sync.WaitGroup
 	for i := 0; i < b.N; i++ {
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			ls.TrackStaleness(tracking)
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 }

@@ -110,7 +110,7 @@ func TestPush(t *testing.T) {
 	wantLabelSet := model.LabelSet{"foo": "bar", "message_id": "5187581549398349", "resource_type": "k8s_cluster"}
 	wantLogLine := "{\"insertId\":\"4affa858-e5f2-47f7-9254-e609b5c014d0\",\"labels\":{},\"logName\":\"projects/test-project/logs/cloudaudit.googleapis.com%2Fdata_access\",\"receiveTimestamp\":\"2022-09-06T18:07:43.417714046Z\",\"resource\":{\"labels\":{\"cluster_name\":\"dev-us-central-42\",\"location\":\"us-central1\",\"project_id\":\"test-project\"},\"type\":\"k8s_cluster\"},\"timestamp\":\"2022-09-06T18:07:42.363113Z\"}\n"
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)

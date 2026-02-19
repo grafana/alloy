@@ -101,7 +101,6 @@ func TestValidate(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := tt.cfg.Validate()

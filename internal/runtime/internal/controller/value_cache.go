@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
@@ -109,9 +110,7 @@ func (vc *valueCache) CreateModuleExports() map[string]any {
 	defer vc.mut.RUnlock()
 
 	exports := make(map[string]any)
-	for k, v := range vc.moduleExports {
-		exports[k] = v
-	}
+	maps.Copy(exports, vc.moduleExports)
 	return exports
 }
 

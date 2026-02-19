@@ -264,7 +264,6 @@ func TestRegexConfig_validate(t *testing.T) {
 		},
 	}
 	for tName, tt := range tests {
-		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			c, err := parseRegexConfig(tt.config)
 			if err != nil {

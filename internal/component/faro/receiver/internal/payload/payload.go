@@ -19,7 +19,7 @@ type Payload struct {
 	Logs         []Log         `json:"logs,omitempty"`
 	Measurements []Measurement `json:"measurements,omitempty"`
 	Events       []Event       `json:"events,omitempty"`
-	Meta         Meta          `json:"meta,omitempty"`
+	Meta         Meta          `json:"meta"`
 	Traces       *Traces       `json:"traces,omitempty"`
 }
 
@@ -52,7 +52,7 @@ type Exception struct {
 	Value      string           `json:"value,omitempty"`
 	Stacktrace *Stacktrace      `json:"stacktrace,omitempty"`
 	Timestamp  time.Time        `json:"timestamp"`
-	Trace      TraceContext     `json:"trace,omitempty"`
+	Trace      TraceContext     `json:"trace"`
 	Context    ExceptionContext `json:"context,omitempty"`
 }
 
@@ -63,13 +63,14 @@ func (e Exception) Message() string {
 
 // String is the string representation of an Exception
 func (e Exception) String() string {
-	var stacktrace = e.Message()
+	var stacktrace strings.Builder
+	stacktrace.WriteString(e.Message())
 	if e.Stacktrace != nil {
 		for _, frame := range e.Stacktrace.Frames {
-			stacktrace += frame.String()
+			stacktrace.WriteString(frame.String())
 		}
 	}
-	return stacktrace
+	return stacktrace.String()
 }
 
 // KeyVal representation of the exception object
@@ -192,7 +193,7 @@ type Log struct {
 	LogLevel  LogLevel     `json:"level,omitempty"`
 	Context   LogContext   `json:"context,omitempty"`
 	Timestamp time.Time    `json:"timestamp"`
-	Trace     TraceContext `json:"trace,omitempty"`
+	Trace     TraceContext `json:"trace"`
 }
 
 // KeyVal representation of a Log object
@@ -215,8 +216,8 @@ type MeasurementContext map[string]string
 type Measurement struct {
 	Type      string             `json:"type,omitempty"`
 	Values    map[string]float64 `json:"values,omitempty"`
-	Timestamp time.Time          `json:"timestamp,omitempty"`
-	Trace     TraceContext       `json:"trace,omitempty"`
+	Timestamp time.Time          `json:"timestamp"`
+	Trace     TraceContext       `json:"trace"`
 	Context   MeasurementContext `json:"context,omitempty"`
 }
 
@@ -299,13 +300,13 @@ func (u User) KeyVal() *KeyVal {
 
 // Meta holds metadata about an app event
 type Meta struct {
-	SDK     SDK     `json:"sdk,omitempty"`
-	App     App     `json:"app,omitempty"`
-	User    User    `json:"user,omitempty"`
-	Session Session `json:"session,omitempty"`
-	Page    Page    `json:"page,omitempty"`
-	Browser Browser `json:"browser,omitempty"`
-	View    View    `json:"view,omitempty"`
+	SDK     SDK     `json:"sdk"`
+	App     App     `json:"app"`
+	User    User    `json:"user"`
+	Session Session `json:"session"`
+	Page    Page    `json:"page"`
+	Browser Browser `json:"browser"`
+	View    View    `json:"view"`
 }
 
 // KeyVal produces key->value representation of the app event metadata
@@ -365,8 +366,8 @@ type Event struct {
 	Name       string            `json:"name"`
 	Domain     string            `json:"domain,omitempty"`
 	Attributes map[string]string `json:"attributes,omitempty"`
-	Timestamp  time.Time         `json:"timestamp,omitempty"`
-	Trace      TraceContext      `json:"trace,omitempty"`
+	Timestamp  time.Time         `json:"timestamp"`
+	Trace      TraceContext      `json:"trace"`
 }
 
 // KeyVal produces key -> value representation of Event metadata

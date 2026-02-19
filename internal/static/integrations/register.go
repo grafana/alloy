@@ -14,8 +14,8 @@ var (
 	registeredIntegrations = []Config{}
 	configFieldNames       = make(map[reflect.Type]string)
 
-	emptyStructType = reflect.TypeOf(struct{}{})
-	configsType     = reflect.TypeOf(Configs{})
+	emptyStructType = reflect.TypeFor[struct{}]()
+	configsType     = reflect.TypeFor[Configs]()
 )
 
 // RegisterIntegration dynamically registers a new integration. The Config
@@ -240,7 +240,7 @@ func getConfigTypeForIntegrations(integrations []Config, out reflect.Type) refle
 		fields = append(fields, reflect.StructField{
 			Name: fieldName,
 			Tag:  reflect.StructTag(fmt.Sprintf(`yaml:"%s,omitempty"`, cfg.Name())),
-			Type: reflect.PointerTo(reflect.TypeOf(util.RawYAML{})),
+			Type: reflect.PointerTo(reflect.TypeFor[util.RawYAML]()),
 		})
 	}
 	return reflect.StructOf(fields)

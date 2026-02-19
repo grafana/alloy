@@ -160,7 +160,7 @@ func TestComponent(t *testing.T) {
 			"foo":      "bar",
 		}
 
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			select {
 			case logEntry := <-ch1.Chan():
 				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
@@ -355,7 +355,7 @@ func TestUpdate_NoLeak(t *testing.T) {
 
 		// Update a bunch of times to ensure that no goroutines get leaked between
 		// updates.
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			err := ctrl.Update(args)
 			require.NoError(t, err)
 		}
@@ -410,7 +410,7 @@ func TestTwoTargets(t *testing.T) {
 		require.NoError(t, err)
 
 		foundF1, foundF2 := false, false
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			select {
 			case logEntry := <-ch1.Chan():
 				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
@@ -532,12 +532,10 @@ func TestEncoding(t *testing.T) {
 				ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 
 				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+				wg.Go(func() {
 					err := c.Run(ctx)
 					require.NoError(t, err)
-				}()
+				})
 
 				expectedLabelSet := model.LabelSet{
 					"filename": model.LabelValue(filePath),

@@ -208,9 +208,7 @@ func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 	}
 
 	cn.importedContent = make(map[string]string)
-	for k, v := range importedContent {
-		cn.importedContent[k] = v
-	}
+	maps.Copy(cn.importedContent, importedContent)
 	cn.importedDeclares = make(map[string]ast.Body)
 	cn.importConfigNodesChildren = make(map[string]*ImportConfigNode)
 

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -268,12 +269,7 @@ func (p *Discovery) findPodContainerID(statuses *[]v1.ContainerStatus, container
 }
 
 func (d *Discovery) podInTargetNamespaces(pod v1.Pod) bool {
-	for _, ns := range d.targetNamespaces {
-		if pod.Namespace == ns {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(d.targetNamespaces, pod.Namespace)
 }
 
 func podSource(pod v1.Pod) string {

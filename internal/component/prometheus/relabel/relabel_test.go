@@ -79,7 +79,7 @@ func TestNil(t *testing.T) {
 func TestLRU(t *testing.T) {
 	relabeller := generateRelabel(t)
 
-	for i := 0; i < 600_000; i++ {
+	for i := range 600_000 {
 		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
 		relabeller.relabel(storage.SeriesRef(i), 0, lbls)
 	}

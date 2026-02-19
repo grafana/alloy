@@ -415,11 +415,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	// Alloy controller
 	{
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			f.Run(ctx)
-		}()
+		})
 	}
 
 	// Report usage of enabled components

@@ -43,11 +43,9 @@ func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo *s
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 
 	if expectedDebugInfo != nil {
 		require.EventuallyWithT(t, func(c *assert.CollectT) {

@@ -222,7 +222,7 @@ func TestConfig_Validate(t *testing.T) {
 
 func TestMergeConfigWithQueryParams_MapsAllExpectedFieldsByYamlNameFromConfig(t *testing.T) {
 	// We want to be sure all expected fields are mappable by the yaml name and reflect allows us to do that programmatically
-	thing := reflect.TypeOf(azure_exporter.Config{})
+	thing := reflect.TypeFor[azure_exporter.Config]()
 	var mappableFields []reflect.StructField
 	for i := 0; i < thing.NumField(); i++ {
 		field := thing.Field(i)

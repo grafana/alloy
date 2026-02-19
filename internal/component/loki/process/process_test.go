@@ -151,11 +151,9 @@ func TestJSONLabelsStage(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	wgRun := sync.WaitGroup{}
 
-	wgRun.Add(1)
-	go func() {
+	wgRun.Go(func() {
 		c.Run(ctx)
-		wgRun.Done()
-	}()
+	})
 
 	// Choose a timestamp which is different from the one in the json log line that is being sent.
 	ingestionTs, err := time.Parse(time.RFC3339, "2020-11-15T02:08:41-07:00")
@@ -187,7 +185,7 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	// The log entry should be received in both channels, with the processing
 	// stages correctly applied.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.Equal(t, expectedTs, logEntry.Timestamp)
@@ -283,7 +281,7 @@ stage.label_keep {
 
 	// The log entry should be received in both channels, with the processing
 	// stages correctly applied.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
@@ -383,7 +381,7 @@ stage.labels {
 
 	// The log entry should be received in both channels, with the processing
 	// stages correctly applied.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.Equal(t, wantLogline, logEntry.Line)
@@ -472,7 +470,7 @@ stage.static_labels {
 
 	// The lines were received after processing by each component, with no
 	// race condition between them.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
@@ -555,11 +553,9 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 	res.c, err = New(opts, args)
 	require.NoError(t, err)
 
-	res.wgRun.Add(1)
-	go func() {
+	res.wgRun.Go(func() {
 		res.c.Run(ctx)
-		res.wgRun.Done()
-	}()
+	})
 
 	return &res
 }
@@ -588,8 +584,7 @@ func (r *testFrequentUpdate) drainLogs() {
 
 // Continuously send entries to both channels
 func (r *testFrequentUpdate) sendLogs() {
-	r.wgSend.Add(1)
-	go func() {
+	r.wgSend.Go(func() {
 		for r.keepSending.Load() {
 			ts := time.Now()
 			logEntry := loki.Entry{
@@ -605,8 +600,7 @@ func (r *testFrequentUpdate) sendLogs() {
 				// continue
 			}
 		}
-		r.wgSend.Done()
-	}()
+	})
 }
 
 func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
@@ -620,14 +614,12 @@ func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
 	require.NoError(r.t, err)
 	args2.ForwardTo = []loki.LogsReceiver{r.receiver2}
 
-	r.wgUpdate.Add(1)
-	go func() {
+	r.wgUpdate.Go(func() {
 		for r.keepUpdating.Load() {
 			r.c.Update(args1)
 			r.c.Update(args2)
 		}
-		r.wgUpdate.Done()
-	}()
+	})
 }
 
 func TestDeadlockWithFrequentUpdates(t *testing.T) {
@@ -765,7 +757,7 @@ func TestLeakyUpdate(t *testing.T) {
 	tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
 	tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
 		tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
 	}
@@ -966,12 +958,12 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 	}
 
 	// Send logs.
-	for i := 0; i < numLogsToSend; i++ {
+	for range numLogsToSend {
 		t.component.receiver.Chan() <- t.logEntry
 	}
 
 	// Receive logs.
-	for i := 0; i < numLogsToSend; i++ {
+	for range numLogsToSend {
 		select {
 		case logEntry := <-t.logReceiver.Chan():
 			require.True(t.t, t.logTimestamp.Equal(logEntry.Timestamp))

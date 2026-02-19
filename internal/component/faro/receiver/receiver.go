@@ -111,11 +111,9 @@ func (c *Component) Run(ctx context.Context) error {
 			actorCtx, actorCancel := context.WithCancel(ctx)
 			cancelCurrentActor = actorCancel
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				newActor(actorCtx)
-			}()
+			})
 		}
 	}
 }

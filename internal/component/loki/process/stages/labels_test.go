@@ -111,7 +111,6 @@ func TestLabels(t *testing.T) {
 		},
 	}
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			actual, err := validateLabelsConfig(test.config.Values)
@@ -172,7 +171,6 @@ func TestLabelStage_Process(t *testing.T) {
 		},
 	}
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			st, err := newLabelStage(log.NewNopLogger(), test.config)

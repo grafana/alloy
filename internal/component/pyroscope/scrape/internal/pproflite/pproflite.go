@@ -69,8 +69,8 @@ type Label struct {
 	NumUnit int64
 }
 
-func (f *Label) fields() []interface{} {
-	return []interface{}{nil, &f.Key, &f.Str, &f.Num, &f.NumUnit}
+func (f *Label) fields() []any {
+	return []any{nil, &f.Key, &f.Str, &f.Num, &f.NumUnit}
 }
 
 func (f *Label) decode(val molecule.Value) error {
@@ -111,8 +111,8 @@ type Mapping struct {
 
 func (f Mapping) field() int { return 3 }
 
-func (f *Mapping) fields() []interface{} {
-	return []interface{}{
+func (f *Mapping) fields() []any {
+	return []any{
 		nil,
 		&f.ID,
 		&f.MemoryStart,
@@ -147,8 +147,8 @@ type Location struct {
 
 func (f Location) field() int { return 4 }
 
-func (f *Location) fields() []interface{} {
-	return []interface{}{
+func (f *Location) fields() []any {
+	return []any{
 		nil,
 		&f.ID,
 		&f.MappingID,
@@ -225,8 +225,8 @@ type Line struct {
 	Line       int64
 }
 
-func (f *Line) fields() []interface{} {
-	return []interface{}{nil, &f.FunctionID, &f.Line}
+func (f *Line) fields() []any {
+	return []any{nil, &f.FunctionID, &f.Line}
 }
 
 func (f *Line) decode(val molecule.Value) error {
@@ -258,8 +258,8 @@ type Function struct {
 
 func (f Function) field() int { return 5 }
 
-func (f *Function) fields() []interface{} {
-	return []interface{}{
+func (f *Function) fields() []any {
+	return []any{
 		nil,
 		&f.ID,
 		&f.Name,
@@ -411,8 +411,8 @@ type ValueType struct {
 	Unit int64
 }
 
-func (f *ValueType) fields() []interface{} {
-	return []interface{}{nil, &f.Type, &f.Unit}
+func (f *ValueType) fields() []any {
+	return []any{nil, &f.Type, &f.Unit}
 }
 
 func (f *ValueType) decode(val molecule.Value) error {

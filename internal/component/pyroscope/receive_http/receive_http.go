@@ -185,9 +185,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 	// Start copying the request body to all pipes
 	for i := range appendables {
 		appendable := appendables[i].Appender()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			var lb = labels.NewBuilder(labels.EmptyLabels())
 
 			for idx := range req.Msg.Series {
@@ -204,7 +202,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 					)
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if errs != nil {
@@ -271,9 +269,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 	// Process each appendable with a new reader from the buffer]
 	for i, appendable := range appendables {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			profile := &pyroscope.IncomingProfile{
 				RawBody:     buf.Bytes(),
 				ContentType: r.Header.Values(pyroscope.HeaderContentType),
@@ -285,7 +281,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 				err = fmt.Errorf("failed to ingest profile to appendable %d: %w", i, err)
 				pyroutil.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

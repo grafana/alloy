@@ -222,7 +222,7 @@ func Test_TargetRun(t *testing.T) {
 			for i := range 10 {
 				claim.Send(&sarama.ConsumerMessage{
 					Timestamp: time.Unix(0, int64(i)),
-					Value:     []byte(fmt.Sprintf("%d", i)),
+					Value:     fmt.Appendf(nil, "%d", i),
 					Key:       []byte(tt.inMessageKey),
 					Offset:    tt.inMessageOffset,
 				})

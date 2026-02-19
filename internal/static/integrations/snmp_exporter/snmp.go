@@ -82,7 +82,7 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 	}
 
 	var nmodules []*collector.NamedModule
-	for _, moduleName := range strings.Split(moduleParam, ",") {
+	for moduleName := range strings.SplitSeq(moduleParam, ",") {
 		module, ok := (*snmpCfg).Modules[moduleName]
 		if !ok {
 			http.Error(w, fmt.Sprintf("Unknown module '%s'", moduleName), http.StatusBadRequest)

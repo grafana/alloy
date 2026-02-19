@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -217,10 +218,8 @@ func (a *Arguments) Convert() (kt.Config, error) {
 
 func (a *Arguments) validateAssignor() error {
 	validAssignors := []string{sarama.StickyBalanceStrategyName, sarama.RoundRobinBalanceStrategyName, sarama.RangeBalanceStrategyName}
-	for _, validAssignor := range validAssignors {
-		if a.Assignor == validAssignor {
-			return nil
-		}
+	if slices.Contains(validAssignors, a.Assignor) {
+		return nil
 	}
 	return fmt.Errorf("assignor value %s is invalid, must be one of: %v", a.Assignor, validAssignors)
 }

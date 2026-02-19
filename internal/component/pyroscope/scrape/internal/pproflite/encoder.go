@@ -57,7 +57,7 @@ func (e *Encoder) Encode(f Field) error {
 	}
 }
 
-func encodeFields(ps *molecule.ProtoStream, fields []interface{}) error {
+func encodeFields(ps *molecule.ProtoStream, fields []any) error {
 	for i, f := range fields {
 		if f == nil {
 			continue

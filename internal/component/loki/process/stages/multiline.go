@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -190,9 +191,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 	}
 	// copy extracted data.
 	extracted := make(map[string]any, len(s.startLineEntry.Extracted))
-	for k, v := range s.startLineEntry.Extracted {
-		extracted[k] = v
-	}
+	maps.Copy(extracted, s.startLineEntry.Extracted)
 	collapsed := Entry{
 		Extracted: extracted,
 		Entry: loki.Entry{

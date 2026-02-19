@@ -102,7 +102,6 @@ func TestScrapePool(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt
 		p.sync(tt.groups)
 		actual := p.ActiveTargets()
 		sort.Sort(Targets(actual))

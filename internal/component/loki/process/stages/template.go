@@ -3,8 +3,10 @@ package stages
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/sha3"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"reflect"
 	"regexp"
 	"strings"
@@ -17,8 +19,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-
-	"golang.org/x/crypto/sha3"
 )
 
 // Config Errors.
@@ -57,9 +57,7 @@ var extraFunctionMap = template.FuncMap{
 var functionMap = sprig.TxtFuncMap()
 
 func init() {
-	for k, v := range extraFunctionMap {
-		functionMap[k] = v
-	}
+	maps.Copy(functionMap, extraFunctionMap)
 }
 
 // TemplateConfig configures template value extraction.

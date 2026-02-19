@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -461,12 +462,7 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 }
 
 func (args Metrics) hasNetworkFeature() bool {
-	for _, feature := range args.Features {
-		if feature == "network" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(args.Features, "network")
 }
 
 func (args Metrics) hasAppFeature() bool {

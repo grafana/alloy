@@ -126,10 +126,8 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 func (p *PPROFReporter) Start(ctx context.Context) error {
 	ctx, cancelReporting := context.WithCancel(ctx)
 	p.cancelReporting = cancelReporting
-	p.wg.Add(1)
 
-	go func() {
-		defer p.wg.Done()
+	p.wg.Go(func() {
 		tick := time.NewTicker(p.cfg.ReportInterval)
 		defer tick.Stop()
 		for {
@@ -140,7 +138,7 @@ func (p *PPROFReporter) Start(ctx context.Context) error {
 				p.reportProfile(ctx)
 			}
 		}
-	}()
+	})
 
 	return nil
 }

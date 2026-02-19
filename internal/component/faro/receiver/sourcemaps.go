@@ -338,7 +338,7 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 	}
 
 	pathParts := []string{rootPath.String()}
-	for _, part := range strings.Split(strings.TrimPrefix(strings.Split(sourceURL, "?")[0], loc.MinifiedPathPrefix), "/") {
+	for part := range strings.SplitSeq(strings.TrimPrefix(strings.Split(sourceURL, "?")[0], loc.MinifiedPathPrefix), "/") {
 		if len(part) > 0 && part != "." && part != ".." {
 			pathParts = append(pathParts, part)
 		}

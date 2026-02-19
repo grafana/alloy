@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-var customEqualityType = reflect.TypeOf((*CustomEquality)(nil)).Elem()
+var customEqualityType = reflect.TypeFor[CustomEquality]()
 
 // CustomEquality allows to define custom Equals implementation. This can be used, for example, with exported types,
 // so that the Runtime can short-circuit propagating updates when it is not necessary. If a struct is passed to

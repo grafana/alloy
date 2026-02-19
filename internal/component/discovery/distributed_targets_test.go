@@ -253,12 +253,12 @@ func BenchmarkDistributedTargets(b *testing.B) {
 	)
 
 	targets := make([]Target, 0, numTargets)
-	for i := 0; i < numTargets; i++ {
+	for i := range numTargets {
 		targets = append(targets, mkTarget("instance", fmt.Sprintf("%d", i), "host", "pie", "location", "kitchen_counter", "flavour", "delicious", "size", "XXL"))
 	}
 
 	peers := make([]peer.Peer, 0, numPeers)
-	for i := 0; i < numPeers; i++ {
+	for i := range numPeers {
 		peerName := fmt.Sprintf("peer_%d", i)
 		peers = append(peers, peer.Peer{Name: peerName, Addr: peerName, Self: i == 0, State: peer.StateParticipant})
 	}

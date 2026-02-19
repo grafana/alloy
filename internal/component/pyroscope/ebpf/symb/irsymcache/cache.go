@@ -156,11 +156,9 @@ func NewFSCache(logger log.Logger, impl TableFactory, opt Options) (*Resolver, e
 		return nil, err
 	}
 
-	res.wg.Add(1)
-	go func() {
-		defer res.wg.Done()
+	res.wg.Go(func() {
 		convertLoop(res, shutdown)
-	}()
+	})
 
 	return res, nil
 }

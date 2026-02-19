@@ -225,7 +225,7 @@ func TestWorkerPool(t *testing.T) {
 			require.Equal(t, 1, pool.QueueSize())
 
 			// Submit a lot of tasks with random keys - no task should be blocked by the above one.
-			for i := 0; i < tasksCount; i++ {
+			for i := range tasksCount {
 				err = pool.SubmitWithKey(fmt.Sprintf("t%d", i), func() { tasksDone.Inc() })
 				require.NoError(t, err)
 			}
@@ -265,7 +265,7 @@ func TestWorkerPool(t *testing.T) {
 			require.NoError(t, err)
 
 			// Submit a lot of tasks with same key - all should be a no-op, since this task is already in queue
-			for i := 0; i < tasksCount; i++ {
+			for range tasksCount {
 				err = pool.SubmitWithKey("k1", func() { tasksDone.Inc() })
 				require.NoError(t, err)
 			}
@@ -351,7 +351,7 @@ func BenchmarkQueue(b *testing.B) {
 		elementsStr := fmt.Sprintf("%d elements", queueSize)
 		b.Run("slice "+elementsStr, func(b *testing.B) {
 			var slice []string
-			for i := 0; i < queueSize; i++ {
+			for i := range queueSize {
 				slice = append(slice, fmt.Sprintf("some.component.name.%d", i))
 			}
 
@@ -375,7 +375,7 @@ func BenchmarkQueue(b *testing.B) {
 
 		b.Run("list "+elementsStr, func(b *testing.B) {
 			l := list.New()
-			for i := 0; i < queueSize; i++ {
+			for i := range queueSize {
 				l.PushBack(fmt.Sprintf("some.component.name.%d", i))
 			}
 
@@ -388,7 +388,7 @@ func BenchmarkQueue(b *testing.B) {
 
 				// iterate to an arbitrary element
 				toRemove := l.Front()
-				for j := 0; j < 5; j++ {
+				for range 5 {
 					toRemove = toRemove.Next()
 				}
 				// remove it from the queue using copy

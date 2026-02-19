@@ -142,7 +142,7 @@ func TestStorage_RepeatedCommitWithMetadata(t *testing.T) {
 	expectedHistograms := []record.RefHistogramSample{}
 	expectedFloatHistograms := []record.RefFloatHistogramSample{}
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		t.Run(fmt.Sprintf("Commit %d", i), func(t *testing.T) {
 			// Write some samples
 			payload := buildMixedTypeSeries(int64(i * 100))
@@ -426,7 +426,7 @@ func TestStorage_Truncate(t *testing.T) {
 
 	// Forcefully create a bunch of new segments so when we truncate
 	// there's enough segments to be considered for truncation.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_, err := s.wal.NextSegmentSync()
 		require.NoError(t, err)
 	}
@@ -494,7 +494,7 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 
 	// Forcefully create a bunch of new segments so when we truncate
 	// there's enough segments to be considered for truncation.
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := s.wal.NextSegmentSync()
 		require.NoError(t, err)
 	}
@@ -666,7 +666,7 @@ func BenchmarkCreateSeries(b *testing.B) {
 func labelsForTest(lName string, seriesCount int) [][]labels.Label {
 	var s [][]labels.Label
 
-	for i := 0; i < seriesCount; i++ {
+	for i := range seriesCount {
 		lset := []labels.Label{
 			{Name: "a", Value: lName},
 			{Name: "instance", Value: "localhost" + strconv.Itoa(i)},

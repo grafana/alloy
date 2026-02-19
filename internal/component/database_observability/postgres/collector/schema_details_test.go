@@ -1191,7 +1191,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		require.NotNil(t, collector)
 
 		// declare mocks for two runs
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{

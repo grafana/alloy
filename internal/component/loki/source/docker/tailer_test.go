@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -138,17 +139,13 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	// Stress test the concurrency of StartIfNotRunning and Stop
 	wg := sync.WaitGroup{}
 	for range 1000 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			tgt.startIfNotRunning()
-		}()
+		})
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			tgt.stop()
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -389,12 +386,7 @@ func assertExpectedLog(c *assert.CollectT, entryHandler *loki.CollectingHandler,
 }
 
 func containsString(slice []string, str string) bool {
-	for _, item := range slice {
-		if item == str {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, str)
 }
 
 func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHandler) {

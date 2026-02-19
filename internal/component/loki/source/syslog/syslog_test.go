@@ -67,7 +67,7 @@ func Test(t *testing.T) {
 
 	wantLabelSet := model.LabelSet{"protocol": model.LabelValue(syslogtarget.ProtocolTCP)}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
@@ -92,7 +92,7 @@ func Test(t *testing.T) {
 
 	wantLabelSet = model.LabelSet{"protocol": "udp"}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)

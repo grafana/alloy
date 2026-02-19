@@ -132,11 +132,9 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			// Run the component in a goroutine
 			var wg sync.WaitGroup
 			var runErr error
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				runErr = comp.Run(ctx)
-			}()
+			})
 
 			// Ensure we wait for the goroutine to exit before test completes
 			defer func() {
@@ -264,13 +262,11 @@ func startTestMetricsServer(t *testing.T) (*http.Server, string) {
 	}
 
 	var serverWg sync.WaitGroup
-	serverWg.Add(1)
-	go func() {
-		defer serverWg.Done()
+	serverWg.Go(func() {
 		// Intentionally not logging errors here to avoid race with test completion.
 		// We expect http.ErrServerClosed when the server is shut down.
 		_ = server.Serve(listener)
-	}()
+	})
 
 	// Use t.Cleanup to ensure the server goroutine is properly waited for
 	// before the test completes, avoiding races with t.Logf or other test state.

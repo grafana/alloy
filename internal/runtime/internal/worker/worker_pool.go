@@ -90,9 +90,7 @@ func (w *fixedWorkerPool) Stop(timeout time.Duration) error {
 
 func (w *fixedWorkerPool) start() {
 	for i := 0; i < w.workersCount; i++ {
-		w.allStopped.Add(1)
-		go func() {
-			defer w.allStopped.Done()
+		w.allStopped.Go(func() {
 			for {
 				select {
 				case <-w.quit:
@@ -101,7 +99,7 @@ func (w *fixedWorkerPool) start() {
 					f()
 				}
 			}
-		}()
+		})
 	}
 }
 

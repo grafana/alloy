@@ -123,12 +123,10 @@ func TestComponent(t *testing.T) {
 	wg := sync.WaitGroup{}
 	var ctx context.Context
 	ctx, cancel = context.WithTimeout(t.Context(), 10*time.Second)
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		err := component.Run(ctx)
 		assert.NilError(t, err)
-		wg.Done()
-	}()
+	})
 	wg.Wait()
 	cancel()
 	assert.Equal(t, true, endpointCalled)

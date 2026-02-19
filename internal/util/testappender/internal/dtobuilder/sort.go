@@ -39,7 +39,7 @@ func sortMetrics(mm []*dto.Metric) {
 // labelsLess implements the sort.Slice "less" function, returning true if a
 // should appear before b in a list of sorted labels.
 func labelsLess(a, b []*dto.LabelPair) bool {
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		// If all labels have matched but we've gone past the length
 		// of b, that means that a > b.
 		// If we've gone past the length of b, then a has more labels

@@ -294,7 +294,7 @@ func mockDiscoverPeers(peers []string, err error) func() ([]string, error) {
 
 func buildPeers(count int) []peer.Peer {
 	var peers []peer.Peer
-	for i := 0; i < count; i++ {
+	for i := range count {
 		peers = append(peers, peer.Peer{
 			Name: fmt.Sprintf("peer_%d", i),
 		})

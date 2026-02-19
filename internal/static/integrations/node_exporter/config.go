@@ -2,6 +2,7 @@ package node_exporter
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"runtime"
 	"strings"
@@ -273,9 +274,7 @@ func init() {
 func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 	validCollectors := make(map[string]bool)
 	collectors := make(map[string]CollectorState, len(Collectors))
-	for k, v := range Collectors {
-		collectors[k] = v
-	}
+	maps.Copy(collectors, Collectors)
 
 	// Override the set of defaults with the provided set of collectors if
 	// set_collectors has at least one element in it.

@@ -171,7 +171,7 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 		close(done)
 	}()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err = ctrl.LoadSource(f, nil, "")
 		require.NoError(t, err)
 	}

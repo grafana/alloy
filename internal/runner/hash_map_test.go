@@ -50,10 +50,10 @@ func Test_hashMap(t *testing.T) {
 		// with the other set. This helps us test that deletes work when there's
 		// collisions too.
 		var tasks []*mockTask
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			tasks = append(tasks, newBasicMockTask(uint64(i)))
 		}
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			tasks = append(tasks, newBasicMockTask(uint64(i)))
 		}
 

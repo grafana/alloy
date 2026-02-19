@@ -60,7 +60,7 @@ func TestLimitWaitPipeline(t *testing.T) {
 	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitWaitAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 5
-	for i := 0; i < logCount; i++ {
+	for range logCount {
 		logs = append(logs, newEntry(nil, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now()))
 	}
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestLimitDropPipeline(t *testing.T) {
 	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 10
-	for i := 0; i < logCount; i++ {
+	for range logCount {
 		logs = append(logs, newEntry(nil, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now()))
 	}
 	require.NoError(t, err)
@@ -96,13 +96,13 @@ func TestLimitByLabelPipeline(t *testing.T) {
 	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitByLabelAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 5
-	for i := 0; i < logCount; i++ {
+	for range logCount {
 		logs = append(logs, newEntry(nil, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now()))
 	}
-	for i := 0; i < logCount; i++ {
+	for range logCount {
 		logs = append(logs, newEntry(nil, model.LabelSet{"app": "poki"}, testMatchLogLineApp2, time.Now()))
 	}
-	for i := 0; i < logCount; i++ {
+	for range logCount {
 		logs = append(logs, newEntry(nil, model.LabelSet{}, testNonAppLogLine, time.Now()))
 	}
 	require.NoError(t, err)

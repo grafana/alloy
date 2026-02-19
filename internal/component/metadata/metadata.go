@@ -34,17 +34,17 @@ var (
 	TypeTargets = Type{
 		Name: "Targets",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]discovery.Target{}))
+			return hasFieldOfType(args, reflect.TypeFor[[]discovery.Target]())
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
-			return hasFieldOfType(exports, reflect.TypeOf([]discovery.Target{}))
+			return hasFieldOfType(exports, reflect.TypeFor[[]discovery.Target]())
 		},
 	}
 
 	TypeLokiLogs = Type{
 		Name: "Loki `LogsReceiver`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]loki.LogsReceiver{}))
+			return hasFieldOfType(args, reflect.TypeFor[[]loki.LogsReceiver]())
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
 			return hasFieldOfType(exports, reflect.TypeOf(loki.NewLogsReceiver()))
@@ -54,33 +54,30 @@ var (
 	TypePromMetricsReceiver = Type{
 		Name: "Prometheus `MetricsReceiver`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]storage.Appendable{}))
+			return hasFieldOfType(args, reflect.TypeFor[[]storage.Appendable]())
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
-			var a *storage.Appendable = nil
-			return hasFieldOfType(exports, reflect.TypeOf(a).Elem())
+			return hasFieldOfType(exports, reflect.TypeFor[storage.Appendable]())
 		},
 	}
 
 	TypePyroProfilesReceiver = Type{
 		Name: "Pyroscope `ProfilesReceiver`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]pyroscope.Appendable{}))
+			return hasFieldOfType(args, reflect.TypeFor[[]pyroscope.Appendable]())
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
-			var a *pyroscope.Appendable = nil
-			return hasFieldOfType(exports, reflect.TypeOf(a).Elem())
+			return hasFieldOfType(exports, reflect.TypeFor[pyroscope.Appendable]())
 		},
 	}
 
 	TypeOTELReceiver = Type{
 		Name: "OpenTelemetry `otelcol.Consumer`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]otelcol.Consumer{}))
+			return hasFieldOfType(args, reflect.TypeFor[[]otelcol.Consumer]())
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
-			var a *otelcol.Consumer = nil
-			return hasFieldOfType(exports, reflect.TypeOf(a).Elem())
+			return hasFieldOfType(exports, reflect.TypeFor[otelcol.Consumer]())
 		},
 	}
 

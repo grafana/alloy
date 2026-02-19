@@ -7,6 +7,7 @@ package positions
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -287,9 +288,7 @@ func (p *positions) save() {
 	}
 	p.mtx.Lock()
 	positions := make(map[Entry]string, len(p.positions))
-	for k, v := range p.positions {
-		positions[k] = v
-	}
+	maps.Copy(positions, p.positions)
 	p.mtx.Unlock()
 
 	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {

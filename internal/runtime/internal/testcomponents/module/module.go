@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -109,9 +110,7 @@ func (c *ModuleComponent) setLatestArgs(args map[string]any) {
 	defer c.mut.Unlock()
 
 	c.latestArgs = make(map[string]any)
-	for key, value := range args {
-		c.latestArgs[key] = value
-	}
+	maps.Copy(c.latestArgs, args)
 }
 
 func (c *ModuleComponent) getLatestArgs() map[string]any {

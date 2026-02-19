@@ -989,10 +989,10 @@ func splitPath(id string) (string, string) {
 }
 
 func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
-	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
-	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
-	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
-	pyroscopeAppendableType := reflect.TypeOf((*pyroscope.Appendable)(nil)).Elem()
+	otelConsumerType := reflect.TypeFor[otelcol.Consumer]()
+	appendableType := reflect.TypeFor[storage.Appendable]()
+	logsReceiverType := reflect.TypeFor[loki.LogsReceiver]()
+	pyroscopeAppendableType := reflect.TypeFor[pyroscope.Appendable]()
 	if cn, ok := n.(ComponentNode); ok {
 		for _, ref := range refs {
 			if tn, ok := ref.Target.(ComponentNode); ok {

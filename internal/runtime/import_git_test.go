@@ -67,11 +67,9 @@ testImport.add "cc" {
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 
 	// Check for initial condition
 	require.Eventually(t, func() bool {
@@ -134,11 +132,9 @@ testImport.add "cc" {
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 
 	// Check for initial condition
 	require.Eventually(t, func() bool {
@@ -217,11 +213,9 @@ testImport.add "cc" {
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 
 	// Check for final condition.
 	require.Eventually(t, func() bool {
@@ -281,11 +275,9 @@ testImport.add "cc" {
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 
 	// Check for final condition.
 	require.Eventually(t, func() bool {
@@ -375,9 +367,7 @@ testImport.add "cc" {
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 }

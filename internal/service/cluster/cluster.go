@@ -339,9 +339,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		limiter := rate.NewLimiter(rate.Every(stateUpdateMinInterval), 1)
 		for {
 			select {
@@ -351,13 +349,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				s.notifyComponentsOfClusterChanges(ctx, limiter, host)
 			}
 		}
-	}()
+	})
 
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
-		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			t := time.NewTicker(s.opts.RejoinInterval)
 			defer t.Stop()
@@ -381,7 +377,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	<-ctx.Done()
