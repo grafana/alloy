@@ -83,7 +83,7 @@ This component exports the following fields that other components can reference:
 
 This example uses the `otelcol.receiver.prometheus` component as a bridge between the Prometheus and OpenTelemetry ecosystems.
 The component exposes a receiver which the `prometheus.scrape` component uses to send Prometheus metric data to.
-The receiver converts the metrics to OTLP format and forwards them to the `otelcol.exporter.otlp` component, which sends them to an OTLP-capable endpoint:
+The receiver converts the metrics to OTLP format and forwards them to the `otelcol.exporter.otlphttp` component, which sends them to an OTLP-capable endpoint:
 
 ```alloy
 prometheus.scrape "default" {
@@ -95,11 +95,11 @@ prometheus.scrape "default" {
 
 otelcol.receiver.prometheus "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
   }

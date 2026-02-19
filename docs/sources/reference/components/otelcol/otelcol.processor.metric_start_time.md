@@ -179,11 +179,11 @@ otelcol.receiver.prometheus "default" {
 
 otelcol.processor.metric_start_time "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
@@ -205,11 +205,11 @@ otelcol.processor.metric_start_time "default" {
   strategy = "subtract_initial_point"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
@@ -233,11 +233,11 @@ otelcol.processor.metric_start_time "default" {
   start_time_metric_regex  = "^.+_start_time$"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
