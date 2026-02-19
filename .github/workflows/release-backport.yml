@@ -1,20 +1,17 @@
 name: Backport PR
 
 on:
-  # SECURITY: This workflow uses pull_request_target, which runs with access to
-  # secrets and the base repo's context. This is safe here because:
+  # SECURITY: This workflow uses workflow_run to create pull requests and write commits.
   #
-  # 1. We NEVER checkout PR code - only the base repo's default branch (see ref: below)
-  # 2. We use ZERO attacker-controlled data from the PR in commands:
-  #    - PR number is an integer (not injectable)
-  #    - Labels require write access (only maintainers can add them)
-  # 3. The workflow only runs after a PR is merged (maintainer-approved)
-  #
-  # The backport tool operates on commit SHAs as data, it never executes PR code.
+  # - The artifact only contains the PR number (integer)
+  # - The default branch is checked out, not PR code
+  # - The backport tool uses PR number to fetch commits via API, not execute code
+  # - PR state and labels are verified via API before processing
   #
   # zizmor: ignore[dangerous-triggers] see above
-  pull_request_target:
-    types: [labeled, closed]
+  workflow_run:
+    workflows: ["Backport PR - Trigger"]
+    types: [completed]
 
 permissions:
   contents: write
@@ -23,41 +20,13 @@ permissions:
 
 jobs:
   backport:
-    # Only run in the upstream repo, not in forks. This prevents forks from
-    # accidentally exposing secrets if they enable Actions with similar config.
-    if: github.repository == 'grafana/alloy'
+    # Only run if the trigger workflow succeeded.
+    if: >
+      github.repository == 'grafana/alloy' &&
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Check if PR is merged and find backport labels 🏷️
-        id: check
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-
-            if (!pr.merged_at) {
-              console.log('PR is not merged, skipping');
-              core.setOutput('should_backport', 'false');
-              return;
-            }
-
-            const labels = pr.labels || [];
-            const backportLabels = labels
-              .map(l => l.name)
-              .filter(name => name.startsWith('backport/'));
-
-            if (backportLabels.length === 0) {
-              console.log('No backport labels found, skipping');
-              core.setOutput('should_backport', 'false');
-              return;
-            }
-
-            console.log(`PR is merged and has backport labels: ${backportLabels.join(', ')}`);
-            core.setOutput('labels', JSON.stringify(backportLabels));
-            core.setOutput('should_backport', 'true');
-
       - name: Get GitHub app secrets 🔐
-        if: steps.check.outputs.should_backport == 'true'
         id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
         with:
@@ -67,8 +36,7 @@ jobs:
             ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
       - name: Generate token 🔐
-        if: steps.check.outputs.should_backport == 'true'
-        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: app-token
         with:
           app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
@@ -76,32 +44,76 @@ jobs:
           owner: grafana
           repositories: alloy
 
+      - name: Download PR info artifact 🛬
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: backport-info
+          path: backport-info
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ steps.app-token.outputs.token }}
+
+      - name: Read PR number 📖
+        id: pr-number
+        run: |
+          PR_NUMBER=$(cat backport-info/pr_number)
+          echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "PR number: ${PR_NUMBER}"
+
+      - name: Verify PR is merged and get backport labels 🏷️
+        id: pr-info
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            if (!pr.merged) {
+              core.setFailed(`PR #${prNumber} is not merged`);
+              return;
+            }
+
+            console.log(`PR #${prNumber} is merged`);
+
+            const backportLabels = pr.labels
+              .map(l => l.name)
+              .filter(name => name.startsWith('backport/'));
+
+            if (backportLabels.length === 0) {
+              core.setFailed(`PR #${prNumber} has no backport labels`);
+              return;
+            }
+
+            console.log(`Backport labels: ${backportLabels.join(', ')}`);
+            core.setOutput('labels', JSON.stringify(backportLabels));
+
       - name: Checkout repository 🛎️
-        if: steps.check.outputs.should_backport == 'true'
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           token: ${{ steps.app-token.outputs.token }}
-          # Explicitly checkout the base repository's default branch to ensure
-          # we only run trusted tooling from upstream, never code from forks.
-          # The cherry-pick operation works on commit SHAs fetched from history,
-          # so it doesn't need the PR's branch checked out.
           ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
           persist-credentials: true # Needed for subsequent git operations
 
       - name: Set up Go 🏗️
-        if: steps.check.outputs.should_backport == 'true'
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: tools/go.mod
           cache-dependency-path: tools/go.sum
 
       - name: Run backport tool 🍒
-        if: steps.check.outputs.should_backport == 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-          LABELS: ${{ steps.check.outputs.labels }}
+          LABELS: ${{ steps.pr-info.outputs.labels }}
+          PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
         run: |
           cd tools
 
@@ -109,6 +121,6 @@ jobs:
           echo "${LABELS}" | jq -r '.[]' | while IFS= read -r label; do
             echo "🍒 Processing backport for label: $label"
             go run ./release/backport \
-              --pr "${{ github.event.pull_request.number }}" \
+              --pr "${PR_NUMBER}" \
               --label "$label"
           done

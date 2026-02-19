@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/grafana/replace-generator/cmd"
@@ -63,13 +63,13 @@ func TestE2EMod(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read expected go.mod: %v", err)
 			}
-			expectedGoMod := strings.TrimSpace(string(expectedContent))
+			expectedGoMod := string(normalizeLineEndings(expectedContent))
 
 			actualContent, err := os.ReadFile(goModPath)
 			if err != nil {
 				t.Fatalf("Failed to read actual go.mod: %v", err)
 			}
-			actualGoMod := strings.TrimSpace(string(actualContent))
+			actualGoMod := string(normalizeLineEndings(actualContent))
 
 			if actualGoMod != expectedGoMod {
 				t.Errorf("go.mod content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedGoMod, actualGoMod)
@@ -127,17 +127,23 @@ func TestE2EOCB(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read expected builder yaml: %v", err)
 			}
-			expectedYaml := strings.TrimSpace(string(expectedContent))
+			expectedYaml := string(normalizeLineEndings(expectedContent))
 
 			actualContent, err := os.ReadFile(builderYamlPath)
 			if err != nil {
 				t.Fatalf("Failed to read actual builder yaml: %v", err)
 			}
-			actualYaml := strings.TrimSpace(string(actualContent))
+			actualYaml := string(normalizeLineEndings(actualContent))
 
 			if actualYaml != expectedYaml {
 				t.Errorf("builder yaml content mismatch.\nExpected:\n%s\n\nActual:\n%s", expectedYaml, actualYaml)
 			}
 		})
 	}
+}
+
+// normalizeLineEndings will replace '\r\n' with '\n'.
+func normalizeLineEndings(data []byte) []byte {
+	normalized := bytes.TrimSpace(bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'}))
+	return normalized
 }

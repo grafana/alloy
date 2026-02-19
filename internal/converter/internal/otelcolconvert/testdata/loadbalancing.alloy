@@ -38,10 +38,6 @@ otelcol.exporter.loadbalancing "default" {
 	routing_key = "service"
 
 	sending_queue {
-		enabled       = false
-		num_consumers = 0
-		queue_size    = 0
-		sizer         = ""
-		storage       = otelcol.storage.file.default_fs.handler
+		storage = otelcol.storage.file.default_fs.handler
 	}
 }

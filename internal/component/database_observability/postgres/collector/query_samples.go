@@ -84,6 +84,8 @@ const selectPgStatActivity = `
 				s.query_id != 0
 			)
 		)
+		AND d.datname NOT IN %s
+		%s
 		%s
 `
 
@@ -108,8 +110,8 @@ type QuerySamplesInfo struct {
 	WaitEvent       sql.NullString
 	State           sql.NullString
 	BackendType     sql.NullString
-	BackendXID      sql.NullInt32
-	BackendXmin     sql.NullInt32
+	BackendXID      sql.NullInt64
+	BackendXmin     sql.NullInt64
 	QueryID         sql.NullInt64
 	Query           sql.NullString
 	BlockedByPIDs   pq.Int64Array
@@ -118,6 +120,8 @@ type QuerySamplesInfo struct {
 type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
+	ExcludeDatabases      []string
+	ExcludeUsers          []string
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
@@ -128,6 +132,8 @@ type QuerySamplesArguments struct {
 type QuerySamples struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
+	excludeDatabases      []string
+	excludeUsers          []string
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
 	excludeCurrentUser    bool
@@ -235,6 +241,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
 		dbConnection:                 args.DB,
 		collectInterval:              args.CollectInterval,
+		excludeDatabases:             args.ExcludeDatabases,
+		excludeUsers:                 args.ExcludeUsers,
 		entryHandler:                 args.EntryHandler,
 		disableQueryRedaction:        args.DisableQueryRedaction,
 		excludeCurrentUser:           args.ExcludeCurrentUser,
@@ -313,7 +321,10 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	if c.excludeCurrentUser {
 		excludeCurrentUserClauseField = excludeCurrentUserClause
 	}
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludeCurrentUserClauseField)
+
+	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -376,7 +387,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	sample := QuerySamplesInfo{}
-	scanArgs := []interface{}{
+	scanArgs := []any{
 		&sample.Now,
 		&sample.DatabaseName,
 		&sample.PID,
@@ -571,8 +582,8 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		clientAddr,
 		state.LastRow.BackendType.String,
 		state.LastRow.State.String,
-		state.LastRow.BackendXID.Int32,
-		state.LastRow.BackendXmin.Int32,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
 		xactDuration,
 		queryDuration,
 		state.LastRow.QueryID.Int64,
@@ -600,8 +611,8 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
 		we.LastState,
-		state.LastRow.BackendXID.Int32,
-		state.LastRow.BackendXmin.Int32,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
 		we.LastWaitTime,
 		we.WaitEventType,
 		we.WaitEvent,

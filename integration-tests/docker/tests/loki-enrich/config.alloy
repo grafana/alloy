@@ -1,0 +1,52 @@
+logging {
+	level = "debug"
+}
+
+// Receive logs via HTTP API
+loki.source.api "network_device" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port = 1514
+  }
+  labels = {
+    job = "network_device_logs",
+  }
+  forward_to = [loki.enrich.enricher.receiver]
+}
+
+// Enrich logs with device metadata
+loki.enrich "enricher" {
+  targets = [{
+	"hostname" = "router1.example.com",
+	"environment" = "production",
+    "datacenter" = "us-east",
+    "role" = "core-router",
+    "rack" = "rack1",
+  }, {
+	"hostname" = "router2.example.com", 
+    "environment" = "production",
+    "datacenter" = "us-west",
+    "role" = "edge-router",
+    "rack" = "rack2",
+
+  }]
+  // List of labels to copy from discovered targets to logs
+  labels_to_copy = [
+    "environment",
+    "datacenter",
+    "role",
+    "rack",
+  ]
+  // Match on hostname/IP from logs
+  target_match_label = "hostname"
+  logs_match_label = "host"
+  
+  forward_to = [loki.write.enriched.receiver]
+}
+
+// Write enriched logs to Loki
+loki.write "enriched" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -1,4 +1,4 @@
-package main
+package alloy
 
 import (
 	_ "embed"
@@ -13,7 +13,7 @@ var fallbackVersionJSON []byte
 // fallbackVersion returns a version string to use for when the version isn't
 // explicitly set at build time. The version string will always have -devel
 // appended to it.
-func fallbackVersion() string {
+func FallbackVersion() string {
 	return fallbackVersionFromJSON(fallbackVersionJSON)
 }
 

@@ -208,14 +208,14 @@ func (app *Appender) Rollback() error {
 	return nil
 }
 
-// AppendCTZeroSample implements storage.Appender.
-func (app *Appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64) (storage.SeriesRef, error) {
-	panic("this test appender does not yet implement AppendCTZeroSample")
+// AppendSTZeroSample implements storage.Appender.
+func (app *Appender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, st int64) (storage.SeriesRef, error) {
+	panic("this test appender does not yet implement AppendSTZeroSample")
 }
 
-// AppendHistogramCTZeroSample implements storage.Appender.
-func (app *Appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	panic("this test appender does not yet implement AppendHistogramCTZeroSample")
+// AppendHistogramSTZeroSample implements storage.Appender.
+func (app *Appender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	panic("this test appender does not yet implement AppendHistogramSTZeroSample")
 }
 
 // SetOptions implements storage.Appender.

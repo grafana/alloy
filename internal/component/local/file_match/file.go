@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util/glob"
 )
 
 func init() {
@@ -42,10 +43,15 @@ type Component struct {
 	watches        []watch
 	watchDog       *time.Ticker
 	targetsChanged chan struct{}
+	globber        glob.Globber
 }
 
 // New creates a new local.file_match component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	return newComponent(o, args, glob.NewGlobber())
+}
+
+func newComponent(o component.Options, args Arguments, globber glob.Globber) (*Component, error) {
 	c := &Component{
 		opts:     o,
 		mut:      sync.Mutex{},
@@ -54,6 +60,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		watchDog: time.NewTicker(args.SyncPeriod),
 		// Buffered channel to avoid blocking
 		targetsChanged: make(chan struct{}, 1),
+		globber:        globber,
 	}
 
 	if err := c.Update(args); err != nil {
@@ -92,6 +99,7 @@ func (c *Component) Update(args component.Arguments) error {
 			target:          v,
 			log:             c.opts.Logger,
 			ignoreOlderThan: c.args.IgnoreOlderThan,
+			globber:         c.globber,
 		})
 	}
 

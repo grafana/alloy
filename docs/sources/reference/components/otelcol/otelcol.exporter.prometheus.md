@@ -36,19 +36,33 @@ otelcol.exporter.prometheus "<LABEL>" {
 
 You can use the following arguments with `otelcol.exporter.prometheus`:
 
-| Name                               | Type                    | Description                                                       | Default | Required |
-| ---------------------------------- | ----------------------- | ----------------------------------------------------------------- | ------- | -------- |
-| `forward_to`                       | `list(MetricsReceiver)` | Where to forward converted Prometheus metrics.                    |         | yes      |
-| `add_metric_suffixes`              | `bool`                  | Whether to add type and unit suffixes to metric names.            | `true`  | no       |
-| `gc_frequency`                     | `duration`              | How often to clean up stale metrics from memory.                  | `"5m"`  | no       |
-| `include_scope_info`               | `bool`                  | Whether to include `otel_scope_info` metrics.                     | `false` | no       |
-| `include_scope_labels`             | `bool`                  | Whether to include additional OTLP labels in all metrics.         | `true`  | no       |
-| `include_target_info`              | `bool`                  | Whether to include `target_info` metrics.                         | `true`  | no       |
-| `resource_to_telemetry_conversion` | `bool`                  | Whether to convert OTel resource attributes to Prometheus labels. | `false` | no       |
+| Name                               | Type                    | Description                                                                    | Default | Required |
+| ---------------------------------- | ----------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
+| `forward_to`                       | `list(MetricsReceiver)` | Where to forward converted Prometheus metrics.                                 |         | yes      |
+| `add_metric_suffixes`              | `bool`                  | Whether to add type and unit suffixes to metric names.                         | `true`  | no       |
+| `gc_frequency`                     | `duration`              | How often to clean up stale metrics from memory.                               | `"5m"`  | no       |
+| `honor_metadata`                   | `bool`                  | (Experimental) Whether to send metric metadata to downstream components.       | `false` | no       |
+| `include_scope_info`               | `bool`                  | Whether to include `otel_scope_info` metrics.                                  | `false` | no       |
+| `include_scope_labels`             | `bool`                  | Whether to include additional OTLP labels in all metrics.                      | `true`  | no       |
+| `include_target_info`              | `bool`                  | Whether to include `target_info` metrics.                                      | `true`  | no       |
+| `resource_to_telemetry_conversion` | `bool`                  | Whether to convert OTel resource attributes to Prometheus labels.              | `false` | no       |
 
 By default, OpenTelemetry resources are converted into `target_info` metrics.
 OpenTelemetry instrumentation scopes are converted into `otel_scope_info` metrics.
 Set the `include_scope_info` and `include_target_info` arguments to `false`, respectively, to disable the custom metrics.
+
+{{< admonition type="warning" >}}
+**EXPERIMENTAL**: The `honor_metadata` argument is an [experimental][] feature.
+If you enable this argument, resource consumption may increase, particularly if you ingest many metrics with different names.
+Some downstream components aren't compatible with Prometheus metadata.
+The following components are compatible:
+
+* `otelcol.receiver.prometheus`
+* `prometheus.remote_write` only when configured for Remote Write v2.
+* `prometheus.write_queue`
+
+[experimental]: ../../../get-started/configuration-syntax/expressions/function_calls/#experimental-functions
+{{< /admonition >}}
 
 When `include_scope_labels` is `true`  the `otel_scope_name` and `otel_scope_version` labels are added to every converted metric sample.
 

@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Linux
 menuTitle: Linux
 title: Install Grafana Alloy on Linux
-weight: 300
+weight: 200
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Linux
@@ -32,9 +32,10 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
    {{< code >}}
 
    ```debian-ubuntu
-   sudo mkdir -p /etc/apt/keyrings/
-   wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
-   echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+   sudo mkdir -p /etc/apt/keyrings
+   sudo wget -O /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg-full.key
+   sudo chmod 644 /etc/apt/keyrings/grafana.asc
+   echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
    ```
 
    ```rhel-fedora
@@ -124,7 +125,7 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
    ```
 
    ```rhel-fedora
-   sudo rm -i /etc/yum.repos.d/rpm.grafana.repo
+   sudo rm -i /etc/yum.repos.d/grafana.repo
    ```
 
    ```suse-opensuse

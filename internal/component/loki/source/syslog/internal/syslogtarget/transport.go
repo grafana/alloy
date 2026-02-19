@@ -45,8 +45,8 @@ type Transport interface {
 }
 
 type (
-	handleMessage      func(labels.Labels, syslog.Message)
-	handleMessageError func(error)
+	handleMessage      = func(labels.Labels, syslog.Message)
+	handleMessageError = func(error)
 )
 
 type baseTransport struct {
@@ -131,14 +131,21 @@ func lookupAddr(addr string) string {
 	return strings.Join(names, ",")
 }
 
-func newBaseTransport(config *scrapeconfig.SyslogTargetConfig, handleMessage handleMessage, handleError handleMessageError, logger log.Logger) *baseTransport {
+type TransportConfig struct {
+	Logger         log.Logger
+	Target         *scrapeconfig.SyslogTargetConfig
+	MessageHandler handleMessage
+	ErrorHandler   handleMessageError
+}
+
+func newBaseTransport(cfg TransportConfig) *baseTransport {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &baseTransport{
-		config:             config,
-		logger:             logger,
+		config:             cfg.Target,
+		logger:             cfg.Logger,
 		openConnections:    new(sync.WaitGroup),
-		handleMessage:      handleMessage,
-		handleMessageError: handleError,
+		handleMessage:      cfg.MessageHandler,
+		handleMessageError: cfg.ErrorHandler,
 		ctx:                ctx,
 		ctxCancel:          cancel,
 	}
@@ -187,9 +194,9 @@ type TCPTransport struct {
 	listener net.Listener
 }
 
-func NewSyslogTCPTransport(config *scrapeconfig.SyslogTargetConfig, handleMessage handleMessage, handleError handleMessageError, logger log.Logger) Transport {
+func NewSyslogTCPTransport(cfg TransportConfig) Transport {
 	return &TCPTransport{
-		baseTransport: newBaseTransport(config, handleMessage, handleError, logger),
+		baseTransport: newBaseTransport(cfg),
 	}
 }
 
@@ -398,9 +405,9 @@ type UDPTransport struct {
 	udpConn *net.UDPConn
 }
 
-func NewSyslogUDPTransport(config *scrapeconfig.SyslogTargetConfig, handleMessage handleMessage, handleError handleMessageError, logger log.Logger) Transport {
+func NewSyslogUDPTransport(cfg TransportConfig) Transport {
 	return &UDPTransport{
-		baseTransport: newBaseTransport(config, handleMessage, handleError, logger),
+		baseTransport: newBaseTransport(cfg),
 	}
 }
 

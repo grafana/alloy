@@ -58,7 +58,7 @@ type UnmarshaledConfig struct {
 
 // MarshalYAML helps implement yaml.Marshaller for structs that have a Configs
 // field that should be inlined in the YAML string.
-func MarshalYAML(v interface{}) (interface{}, error) {
+func MarshalYAML(v any) (any, error) {
 	inVal := reflect.ValueOf(v)
 	for inVal.Kind() == reflect.Pointer {
 		inVal = inVal.Elem()
@@ -124,7 +124,7 @@ func getRawIntegrationConfig(uc UnmarshaledConfig) (v reflect.Value, err error) 
 
 // UnmarshalYAML helps implement yaml.Unmarshaller for structs that have a
 // Configs field that should be inlined in the YAML string.
-func UnmarshalYAML(out interface{}, unmarshal func(interface{}) error) error {
+func UnmarshalYAML(out any, unmarshal func(any) error) error {
 	return unmarshalIntegrationsWithList(registeredIntegrations, out, unmarshal)
 }
 
@@ -133,7 +133,7 @@ func UnmarshalYAML(out interface{}, unmarshal func(interface{}) error) error {
 // Prometheus:
 //
 //	https://github.com/prometheus/prometheus/blob/511511324adfc4f4178f064cc104c2deac3335de/discovery/registry.go#L111
-func unmarshalIntegrationsWithList(integrations []Config, out interface{}, unmarshal func(interface{}) error) error {
+func unmarshalIntegrationsWithList(integrations []Config, out any, unmarshal func(any) error) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer {
 		return fmt.Errorf("integrations: can only unmarshal into a struct pointer, got %T", out)

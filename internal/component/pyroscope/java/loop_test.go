@@ -10,14 +10,15 @@ import (
 	"testing"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
 )
 
 type mockProfiler struct {
@@ -36,6 +37,14 @@ func (m *mockProfiler) Execute(argv []string) (string, string, error) {
 
 type mockAppendable struct {
 	mock.Mock
+}
+
+func (m *mockAppendable) Upload(j debuginfo.UploadJob) {
+
+}
+
+func (m *mockAppendable) Client() debuginfogrpc.DebuginfoServiceClient {
+	return nil
 }
 
 func (m *mockAppendable) Appender() pyroscope.Appender {

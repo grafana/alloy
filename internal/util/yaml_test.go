@@ -37,7 +37,7 @@ type typeTwo struct {
 	Unmarshaled bool   `yaml:"-"`
 }
 
-func (t *typeTwo) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *typeTwo) UnmarshalYAML(unmarshal func(any) error) error {
 	type rawType typeTwo
 	if err := unmarshal((*rawType)(t)); err != nil {
 		return err

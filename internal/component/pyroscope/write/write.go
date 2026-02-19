@@ -9,16 +9,19 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -32,6 +35,7 @@ import (
 	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -112,6 +116,12 @@ type Component struct {
 	metrics       *metrics
 	userAgent     string
 	uid           string
+	dataPath      string
+
+	mu             sync.Mutex
+	receiver       *fanOutClient
+	runCtx         context.Context
+	receiverCancel context.CancelFunc
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -126,11 +136,12 @@ func New(
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
 	userAgent, uid string,
+	dataPath string,
 	c Arguments,
 ) (*Component, error) {
 
 	m := newMetrics(reg)
-	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid)
+	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid, dataPath)
 	if err != nil {
 		return nil, err
 	}
@@ -145,42 +156,119 @@ func New(
 		metrics:       m,
 		userAgent:     userAgent,
 		uid:           uid,
+		dataPath:      dataPath,
+		receiver:      receiver,
 	}, nil
 }
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
+	var receiverCtx context.Context
+
+	c.mu.Lock()
+	c.runCtx = ctx
+	receiverCtx, c.receiverCancel = context.WithCancel(ctx)
+	c.receiver.Start(receiverCtx)
+	c.mu.Unlock()
+
 	<-ctx.Done()
+
+	c.mu.Lock()
+	c.receiverCancel()
+	c.receiver.Wait()
+	c.runCtx = nil
+	c.receiverCancel = nil
+	c.mu.Unlock()
+
 	return ctx.Err()
 }
 
 // Update implements Component.
 func (c *Component) Update(newConfig Arguments) error {
 	c.cfg = newConfig
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.userAgent, c.uid)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.userAgent, c.uid, c.dataPath)
 	if err != nil {
 		return err
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.receiverCancel != nil {
+		c.receiverCancel()
+		c.receiver.Wait()
+	}
+
+	c.receiver = receiver
 	c.onStateChange(Exports{Receiver: receiver})
+
+	if c.runCtx != nil {
+		var receiverCtx context.Context
+		receiverCtx, c.receiverCancel = context.WithCancel(c.runCtx)
+		c.receiver.Start(receiverCtx)
+	}
+
 	return nil
 }
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
-	pushClients   []pushv1connect.PusherServiceClient
+	pushClients []pushv1connect.PusherServiceClient
+
+	debugInfos []*debuginfo.Client
+
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
 	metrics       *metrics
 	tracer        trace.Tracer
 	logger        log.Logger
+
+	uploaderWg sync.WaitGroup
+}
+
+func (f *fanOutClient) Client() debuginfogrpc.DebuginfoServiceClient {
+	for _, client := range f.debugInfos {
+		cl := client.Client()
+		if cl != nil {
+			return cl
+		}
+	}
+	return nil
+}
+
+func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
+	for _, u := range f.debugInfos {
+		u.Upload(j)
+	}
+}
+
+func (f *fanOutClient) Start(ctx context.Context) {
+	for _, u := range f.debugInfos {
+		f.uploaderWg.Add(1)
+		go func(c *debuginfo.Client) {
+			defer f.uploaderWg.Done()
+			if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				level.Error(f.logger).Log("msg", "debuginfo uploader error", "err", err)
+			}
+		}(u)
+	}
+}
+
+func (f *fanOutClient) Wait() {
+	f.uploaderWg.Wait()
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
+	debugInfos := make([]*debuginfo.Client, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
-	for _, endpoint := range config.Endpoints {
+	for i, endpoint := range config.Endpoints {
+		u, err := url.Parse(endpoint.URL)
+		if err != nil {
+			return nil, err
+		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -196,11 +284,19 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
 		)
 		ingestClients[endpoint] = httpClient
+
+		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
+		debugInfo := debuginfo.NewClient(logger, func() (*grpc.ClientConn, error) {
+			return newDebugInfoGRPCClient(u, endpoint)
+		}, metrics.debugInfoUploadBytes, endpointDataPath)
+		debugInfos = append(debugInfos, debugInfo)
 	}
+
 	return &fanOutClient{
 		logger:        logger,
 		tracer:        tracer,
 		pushClients:   pushClients,
+		debugInfos:    debugInfos,
 		ingestClients: ingestClients,
 		config:        config,
 		metrics:       metrics,

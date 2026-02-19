@@ -12,11 +12,6 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
-var (
-	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
-)
-
 var engineVersionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)(?P<suffix>.*)?$`)
 
 type ConnectionInfoArguments struct {
@@ -82,7 +77,9 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 		if c.CloudProvider.Azure != nil {
 			providerName = "azure"
-			dbInstanceIdentifier = c.CloudProvider.Azure.Resource
+			dbInstanceIdentifier = c.CloudProvider.Azure.ServerName
+			providerRegion = c.CloudProvider.Azure.ResourceGroup
+			providerAccount = c.CloudProvider.Azure.SubscriptionID
 		}
 	} else {
 		parts, err := ParseURL(c.DSN)
@@ -92,14 +89,14 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		if host, ok := parts["host"]; ok {
 			if strings.HasSuffix(host, "rds.amazonaws.com") {
 				providerName = "aws"
-				matches := rdsRegex.FindStringSubmatch(host)
+				matches := database_observability.RdsRegex.FindStringSubmatch(host)
 				if len(matches) > 3 {
 					dbInstanceIdentifier = matches[1]
 					providerRegion = matches[3]
 				}
 			} else if strings.HasSuffix(host, "postgres.database.azure.com") {
 				providerName = "azure"
-				matches := azureRegex.FindStringSubmatch(host)
+				matches := database_observability.AzurePostgreSQLRegex.FindStringSubmatch(host)
 				if len(matches) > 1 {
 					dbInstanceIdentifier = matches[1]
 				}

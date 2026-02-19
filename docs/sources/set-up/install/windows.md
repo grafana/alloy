@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Windows
 menuTitle: Windows
 title: Install Grafana Alloy on Windows
-weight: 500
+weight: 300
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Windows
@@ -48,7 +48,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
-1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`..
+1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`.
 1. Run the following command as Administrator.
 
    {{< code >}}
@@ -73,6 +73,8 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 - `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
 - `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
 - `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
+- `/FORCEREGISTRY=yes` At the start of installation, delete all Alloy registry keys and then run the rest of the install as normal so that install options such as `/STABILITY` and `/DISABLEREPORTING` are written fresh.
+  By default, the installer preserves existing registry values on upgrade; use this flag to reset them and apply the options passed on the command line, and to remove any old or unused registry keys from previous versions.
 - `/RUNTIMEPRIORITY="normal|below_normal|above_normal|high|idle|realtime"` Set the runtime priority of the {{< param "PRODUCT_NAME" >}} process. Default: `normal`
 - `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
 - `/USERNAME="<username>"` Set the fully qualified user that Windows uses to run the service. Default: `NT AUTHORITY\LocalSystem`
@@ -117,7 +119,7 @@ To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the
 
 ### Uninstall with WinGet
 
-To install {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
+To uninstall {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
 
 {{< code >}}
 

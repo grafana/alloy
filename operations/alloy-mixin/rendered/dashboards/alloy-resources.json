@@ -159,7 +159,7 @@
                "range": true
             }
          ],
-         "title": "Memory (heap inuse)",
+         "title": "Memory (heap in use)",
          "type": "timeseries"
       },
       {
@@ -261,7 +261,7 @@
                "refId": "cluster"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -273,7 +273,7 @@
                "refId": "namespace"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -285,7 +285,7 @@
                "refId": "job"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -300,7 +300,7 @@
                "refId": "instance"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          }
       ]
