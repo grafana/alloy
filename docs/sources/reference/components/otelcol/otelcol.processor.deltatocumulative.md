@@ -103,23 +103,23 @@ The following fields are exported and can be referenced by other components:
 
 ### Basic usage
 
-This example converts delta temporality metrics to cumulative before sending it to [otelcol.exporter.otlp][] for further processing:
+This example converts delta temporality metrics to cumulative before sending it to [otelcol.exporter.otlphttp][] for further processing:
 
 ```alloy
 otelcol.processor.deltatocumulative "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }
 }
 ```
 
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 
 ### Export Prometheus data
 

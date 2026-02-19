@@ -111,11 +111,11 @@ otelcol.processor.filter "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = env("<OTLP_ENDPOINT>")
   }
