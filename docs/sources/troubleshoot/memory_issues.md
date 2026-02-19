@@ -45,7 +45,7 @@ Start by validating resource configuration before assuming a leak.
 
    Without `GOMEMLIMIT`, the Go runtime may expand memory until Kubernetes terminates the container.
 
-   Refer to [Environment variables][env-vars] for configuration options, including automatic memory limit detection with `AUTOMEMLIMIT`.
+   Refer to [Environment variables][env-vars] for more information.
 
 1. Check whether WAL replay triggers the spike.
 
@@ -61,7 +61,7 @@ Start by validating resource configuration before assuming a leak.
 1. Capture a heap profile if OOM continues.
 
    Collect heap and goroutine profiles to identify what consumes memory.
-   Refer to [Profile resource consumption][profile] for instructions.
+   Refer to [Profile resource consumption][profile] for more information.
 
 ## Memory spikes after restart
 
@@ -113,17 +113,17 @@ Determine whether traffic, endpoint latency, or retained allocations cause the g
 
    Compare ingestion rate to historical baselines.
    Increased load results in higher steady-state memory.
-   Refer to [Estimate resource usage][estimate-resource-usage] for expected consumption per workload type.
+   Refer to [Estimate resource usage][estimate-resource-usage] for more information.
 
 1. Capture heap profiles.
 
    Collect two profiles several minutes apart and compare them to identify growing allocations.
-   Refer to [Profile resource consumption][profile] for instructions on collecting and analyzing heap profiles.
+   Refer to [Profile resource consumption][profile] for more information.
 
 1. Inspect queue metrics.
 
    Check metrics like `prometheus_remote_storage_shards_desired` and `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` to determine if queues are falling behind.
-   Refer to [Monitor components][monitor-components] for information on component metrics.
+   Refer to [Monitor components][monitor-components] for more information.
 
 ## Memory remains high after traffic drops
 
@@ -139,7 +139,7 @@ Validate that the workload actually decreased, then inspect retained allocations
 1. Capture a heap profile.
 
    Identify retained objects and the component responsible.
-   Refer to [Profile resource consumption][profile] for instructions.
+   Refer to [Profile resource consumption][profile] for more information.
 
 1. Look for:
 
@@ -189,7 +189,7 @@ Refer to [Data durability][data-durability] for more information.
 
 Use a DaemonSet for node-local log collection.
 Use a StatefulSet when stable identity or persistent storage per replica is required.
-Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for deployment guidance.
+Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information.
 
 [estimate-resource-usage]: ../../set-up/estimate-resource-usage/
 [env-vars]: ../../reference/cli/environment-variables/#gomemlimit
