@@ -201,7 +201,7 @@ The following arguments are supported:
 | Name                 | Type     | Description                                         | Default   | Required |
 | -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
 | `compression`        | `string` | Time to wait between retries.                       | `"none"`  | no       |
-| `flush_max_messages` | `number` | Time to wait between retries.                       | `0`       | no       |
+| `flush_max_messages` | `number` | Maximum number of messages to buffer before flushing to the broker. | `10000`   | no       |
 | `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
 | `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
 
