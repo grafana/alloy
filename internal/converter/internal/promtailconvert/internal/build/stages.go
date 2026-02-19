@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -203,9 +204,20 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		maxWaitTime = d
 	}
 
+	if pMulti.Expression == nil {
+		addInvalidStageError(diags, cfg, errors.New("missing required expression"))
+		return stages.StageConfig{}, false
+	}
+
+	expr, err := regexp.CompileNonEmpty(*pMulti.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, errors.New("missing required expression"))
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:   defaultEmpty(pMulti.Expression),
+			Expression:   expr,
 			MaxLines:     defaultZero(pMulti.MaxLines),
 			MaxWaitTime:  maxWaitTime,
 			TrimNewlines: true,
