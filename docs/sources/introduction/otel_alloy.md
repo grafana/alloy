@@ -1,18 +1,18 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/opentelemetry/
-description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OpenTelemetry Collector
-menuTitle: OpenTelemetry Engine
-title: The OpenTelemetry Engine
-_build:
-  list: false
-noindex: true
-weight: 10
+canonical: https://grafana.com/docs/alloy/latest/introduction/otel_alloy/
+aliases:
+  - ../opentelemetry/ # /docs/alloy/latest/opentelemetry/
+description: Learn about the OpenTelemetry Engine, a bundled OpenTelemetry Collector distribution embedded within Grafana Alloy
+menuTitle: OpenTelemetry in Alloy
+title: OpenTelemetry in Alloy
+weight: 230
 ---
 
-# The {{% param "FULL_OTEL_ENGINE" %}}
+# OpenTelemetry in {{% param "PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
-The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}} that lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
+The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}}.
+It lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -26,7 +26,7 @@ The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distri
 - **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
   It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
 
-- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that allows you to run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} in parallel.
+- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that lets you run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} in parallel.
 
 ## Included components
 
@@ -79,10 +79,10 @@ The following sections list all included components:
 - [hostmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/hostmetricsreceiver)
 - [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/influxdbreceiver)
 - [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/jaegerreceiver)
-- [k8sobjectsreceiver](github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver)
+- [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8sobjectsreceiver)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kafkareceiver)
-- [kubeletstatsreceiver](github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver)
-- [prometheusreceive](github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver)
+- [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kubeletstatsreceiver)
+- [prometheusreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver)
 - [solace](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/solacereceiver)
 - [splunkhec](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/splunkhecreceiver)
 - [syslog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/syslogreceiver)
@@ -147,6 +147,5 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Next steps
 
-- [Get started](./get-started/) with the {{< param "OTEL_ENGINE" >}}
-- [OTel CLI](../reference/cli/otel/) reference documentation
-
+- Refer to [The {{< param "OTEL_ENGINE" >}}](../../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
+- Refer to the [OTel CLI reference](../../reference/cli/otel/) for more information about the OTel CLI.
