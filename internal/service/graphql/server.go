@@ -37,7 +37,7 @@ func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host, logger l
 
 	r.Handle(path.Join(urlPrefix, "/graphql"), provider.srv)
 
-	// Only register the playground unless explicitly disabled
+	// Only register the playground if explicitly enabled
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("ALLOY_ENABLE_GRAPHQL_PLAYGROUND")))
 
 	var playgroundEnabled = map[string]struct{}{
@@ -63,6 +63,8 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](100))
 
 	srv.Use(extension.Introspection{})
+	// It's unlikely we will need caching of queries, but given sufficient query volume, this could be
+	// turned on to reduce CPU at the expense of memory.
 	// srv.Use(extension.AutomaticPersistedQuery{
 	// 	Cache: lru.New[string](100),
 	// })
