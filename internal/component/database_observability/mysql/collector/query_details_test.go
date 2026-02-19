@@ -428,11 +428,13 @@ func TestQueryTables(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
-				DB:              db,
-				CollectInterval: time.Second,
-				StatementsLimit: 250,
-				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				DB:                       db,
+				CollectInterval:          time.Second,
+				StatementsLimit:          250,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(os.Stderr),
+				EnableIndexedLabels:      true,
+				EnableStructuredMetadata: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -489,11 +491,13 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 250,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			CollectInterval:          time.Second,
+			StatementsLimit:          250,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -557,11 +561,13 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 250,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			CollectInterval:          time.Second,
+			StatementsLimit:          250,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -622,11 +628,13 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 250,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                       db,
+			CollectInterval:          time.Second,
+			StatementsLimit:          250,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			EnableIndexedLabels:      true,
+			EnableStructuredMetadata: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)

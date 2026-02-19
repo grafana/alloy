@@ -46,24 +46,28 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB               *sql.DB
-	CollectInterval  time.Duration
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	TableRegistry    *TableRegistry
+	DB                       *sql.DB
+	CollectInterval          time.Duration
+	ExcludeDatabases         []string
+	ExcludeUsers             []string
+	EntryHandler             loki.EntryHandler
+	TableRegistry            *TableRegistry
+	EnableIndexedLabels      bool
+	EnableStructuredMetadata bool
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection     *sql.DB
-	collectInterval  time.Duration
-	excludeDatabases []string
-	excludeUsers     []string
-	entryHandler     loki.EntryHandler
-	tableRegistry    *TableRegistry
-	normalizer       *sqllexer.Normalizer
+	dbConnection             *sql.DB
+	collectInterval          time.Duration
+	excludeDatabases         []string
+	excludeUsers             []string
+	entryHandler             loki.EntryHandler
+	tableRegistry            *TableRegistry
+	enableIndexedLabels      bool
+	enableStructuredMetadata bool
+	normalizer               *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -73,15 +77,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:     args.DB,
-		collectInterval:  args.CollectInterval,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		entryHandler:     args.EntryHandler,
-		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:          &atomic.Bool{},
+		dbConnection:             args.DB,
+		collectInterval:          args.CollectInterval,
+		excludeDatabases:         args.ExcludeDatabases,
+		excludeUsers:             args.ExcludeUsers,
+		entryHandler:             args.EntryHandler,
+		tableRegistry:            args.TableRegistry,
+		enableIndexedLabels:      args.EnableIndexedLabels,
+		enableStructuredMetadata: args.EnableStructuredMetadata,
+		normalizer:               sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		logger:                   log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:                  &atomic.Bool{},
 	}, nil
 }
 
@@ -162,14 +168,33 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
 		)
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
-			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION_V2,
-			fmt.Sprintf(`querytext=%q`, queryText),
-			map[string]string{"datname": string(databaseName)},
-			map[string]string{"queryid": queryID},
-			time.Now().UnixNano(),
-		)
+		if c.enableIndexedLabels || c.enableStructuredMetadata {
+			logMessageV2 := fmt.Sprintf(`querytext=%q`, queryText)
+			if !c.enableIndexedLabels {
+				logMessageV2 = fmt.Sprintf(`datname="%s" `, databaseName) + logMessageV2
+			}
+			if !c.enableStructuredMetadata {
+				logMessageV2 += fmt.Sprintf(` queryid="%s"`, queryID)
+			}
+
+			indexedLabels := map[string]string{}
+			if c.enableIndexedLabels {
+				indexedLabels["datname"] = string(databaseName)
+			}
+			structuredMetadata := map[string]string{}
+			if c.enableStructuredMetadata {
+				structuredMetadata["queryid"] = queryID
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				logMessageV2,
+				indexedLabels,
+				structuredMetadata,
+				time.Now().UnixNano(),
+			)
+		}
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {

@@ -37,23 +37,27 @@ const selectQueryTablesSamples = `
 	LIMIT %d`
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	StatementsLimit int
-	ExcludeSchemas  []string
-	EntryHandler    loki.EntryHandler
+	DB                       *sql.DB
+	CollectInterval          time.Duration
+	StatementsLimit          int
+	ExcludeSchemas           []string
+	EntryHandler             loki.EntryHandler
+	EnableIndexedLabels      bool
+	EnableStructuredMetadata bool
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	statementsLimit int
-	excludeSchemas  []string
-	entryHandler    loki.EntryHandler
-	sqlParser       parser.Parser
-	normalizer      *sqllexer.Normalizer
+	dbConnection             *sql.DB
+	collectInterval          time.Duration
+	statementsLimit          int
+	excludeSchemas           []string
+	entryHandler             loki.EntryHandler
+	enableIndexedLabels      bool
+	enableStructuredMetadata bool
+	sqlParser                parser.Parser
+	normalizer               *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -63,15 +67,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	c := &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		statementsLimit: args.StatementsLimit,
-		excludeSchemas:  args.ExcludeSchemas,
-		entryHandler:    args.EntryHandler,
-		sqlParser:       parser.NewTiDBSqlParser(),
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
-		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:         &atomic.Bool{},
+		dbConnection:             args.DB,
+		collectInterval:          args.CollectInterval,
+		statementsLimit:          args.StatementsLimit,
+		excludeSchemas:           args.ExcludeSchemas,
+		entryHandler:             args.EntryHandler,
+		enableIndexedLabels:      args.EnableIndexedLabels,
+		enableStructuredMetadata: args.EnableStructuredMetadata,
+		sqlParser:                parser.NewTiDBSqlParser(),
+		normalizer:               sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
+		logger:                   log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:                  &atomic.Bool{},
 	}
 
 	return c, nil
@@ -154,14 +160,33 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
 		)
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
-			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION_V2,
-			fmt.Sprintf(`parseable="%t" digest_text="%s"`, parserErr == nil, digestText),
-			map[string]string{"schema": schema},
-			map[string]string{"digest": digest},
-			time.Now().UnixNano(),
-		)
+		if c.enableIndexedLabels || c.enableStructuredMetadata {
+			logMessageV2 := fmt.Sprintf(`parseable="%t" digest_text="%s"`, parserErr == nil, digestText)
+			if !c.enableIndexedLabels {
+				logMessageV2 = fmt.Sprintf(`schema="%s" `, schema) + logMessageV2
+			}
+			if !c.enableStructuredMetadata {
+				logMessageV2 += fmt.Sprintf(` digest="%s"`, digest)
+			}
+
+			indexedLabels := map[string]string{}
+			if c.enableIndexedLabels {
+				indexedLabels["schema"] = schema
+			}
+			structuredMetadata := map[string]string{}
+			if c.enableStructuredMetadata {
+				structuredMetadata["digest"] = digest
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				logMessageV2,
+				indexedLabels,
+				structuredMetadata,
+				time.Now().UnixNano(),
+			)
+		}
 
 		for _, table := range tables {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
