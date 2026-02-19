@@ -150,7 +150,29 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.otlphttp` doesn't expose any component-specific debug information.
 
-## Example
+## Examples
+
+### Grafana Cloud
+
+This example creates an exporter which can send OTLP logs, metrics, and traces to Grafana Cloud using basic authentication:
+
+```alloy
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = `https://otlp-gateway-prod-gb-south-0.grafana.net/otlp`
+    auth     = otelcol.auth.basic.creds.handler
+  }
+}
+
+otelcol.auth.basic "creds" {
+  client_auth {
+    username = sys.env("OTLP_USERNAME")
+    password = sys.env("OTLP_API_KEY")
+  }
+}
+```
+
+### Local Tempo database
 
 This example creates an exporter to send data to a locally running Grafana Tempo without TLS:
 
@@ -165,6 +187,7 @@ otelcol.exporter.otlphttp "tempo" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

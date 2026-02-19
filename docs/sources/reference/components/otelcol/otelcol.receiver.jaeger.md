@@ -268,13 +268,21 @@ otelcol.receiver.jaeger "default" {
 
 otelcol.processor.batch "default" {
   output {
-    traces = [otelcol.exporter.otlp.default.input]
+    traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
-    endpoint = "my-otlp-server:4317"
+    endpoint = `https://otlp-gateway-prod-gb-south-0.grafana.net/otlp`
+    auth     = otelcol.auth.basic.creds.handler
+  }
+}
+
+otelcol.auth.basic "creds" {
+  client_auth {
+    username = sys.env("OTLP_USERNAME")
+    password = sys.env("OTLP_API_KEY")
   }
 }
 ```
