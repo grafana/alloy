@@ -158,12 +158,12 @@ endif
 #
 
 .PHONY: lint
-lint: alloylint
+lint: generate-graphql-stubs alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
-run-alloylint: alloylint
+run-alloylint: generate-graphql-stubs alloylint
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
