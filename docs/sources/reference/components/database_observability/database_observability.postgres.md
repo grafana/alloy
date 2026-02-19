@@ -26,15 +26,17 @@ database_observability.postgres "<LABEL>" {
 
 You can use the following arguments with `database_observability.postgres`:
 
-| Name                 | Type                 | Description                                                 | Default | Required |
-|----------------------|----------------------|-------------------------------------------------------------|---------|----------|
-| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
-| `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
-| `targets`            | `list(map(string))`  | List of targets to scrape.                                  |         | yes      |
-| `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
-| `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 |         | no       |
+| Name                         | Type                 | Description                                                                             | Default | Required |
+|------------------------------|----------------------|-----------------------------------------------------------------------------------------|---------|----------|
+| `data_source_name`           | `secret`             | [Data Source Name][] for the Postgres server to connect to.                             |         | yes      |
+| `forward_to`                 | `list(LogsReceiver)` | Where to forward log entries after processing.                                          |         | yes      |
+| `targets`                    | `list(map(string))`  | List of targets to scrape.                                                              |         | yes      |
+| `disable_collectors`         | `list(string)`       | A list of collectors to disable from the default set.                                   |         | no       |
+| `enable_collectors`          | `list(string)`       | A list of collectors to enable on top of the default set.                               |         | no       |
+| `exclude_databases`          | `list(string)`       | A list of databases to exclude from monitoring.                                         |         | no       |
+| `exclude_users`              | `list(string)`       | A list of users to exclude from monitoring.                                             |         | no       |
+| `enable_indexed_labels`      | `boolean`            | Whether to use Loki indexed labels for improved performance. Experimental feature.      | `false` | no       |
+| `enable_structured_metadata` | `boolean`            | Whether to use Loki structured metadata for improved performance. Experimental feature. | `false` | no       |
 
 [data_source_name]: format must adhere to the [pq library standards](https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig).
 
@@ -65,7 +67,7 @@ You can use the following blocks with `database_observability.postgres`:
 |------------------------------------|---------------------------------------------------|----------|
 | [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
 | `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
-| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.        | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
