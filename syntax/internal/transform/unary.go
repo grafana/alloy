@@ -1,11 +1,11 @@
-package vm
+package transform
 
 import (
 	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/grafana/alloy/syntax/token"
 )
 
-func evalUnaryOp(op token.Token, val value.Value) (value.Value, error) {
+func UnaryOp(op token.Token, val value.Value) (value.Value, error) {
 	switch op {
 	case token.NOT:
 		if val.Type() != value.TypeBool {
@@ -29,5 +29,5 @@ func evalUnaryOp(op token.Token, val value.Value) (value.Value, error) {
 		}
 	}
 
-	panic("syntax/vm: unreachable")
+	panic("unary: unreachable")
 }

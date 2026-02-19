@@ -186,7 +186,7 @@ Use the count connector with minimal configuration to count all telemetry data u
 ```alloy
 otelcol.connector.count "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -247,7 +247,7 @@ otelcol.connector.count "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
