@@ -31,8 +31,7 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	case reflect.Map:
 		return checkMapBlock(b, rv)
 	case reflect.Interface:
-		var m map[string]any
-		rv := reflect.MakeMap(reflect.TypeOf(m))
+		rv := reflect.MakeMap(reflect.TypeFor[map[string]any]())
 		return checkMapBlock(b, rv)
 	case reflect.Struct:
 		s := structState{

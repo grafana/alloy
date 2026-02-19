@@ -461,7 +461,7 @@ func (p *printer) writeString(pos token.Position, s string, isLit bool) {
 
 func (p *printer) writeIndent() {
 	depth := p.cfg.Indent + p.indent
-	for i := 0; i < depth; i++ {
+	for range depth {
 		p.output = append(p.output, '\t')
 	}
 
@@ -477,7 +477,7 @@ func (p *printer) writeByte(ch byte, n int) {
 		p.writeIndent()
 	}
 
-	for i := 0; i < n; i++ {
+	for range n {
 		p.output = append(p.output, ch)
 	}
 
@@ -499,7 +499,7 @@ func (p *printer) writeByte(ch byte, n int) {
 //
 // writeWritespace is only safe to be called when len(p.whitespace) >= n.
 func (p *printer) writeWritespace(n int) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		switch ch := p.whitespace[i]; ch {
 		case wsIgnore: // no-op
 		case wsIndent:

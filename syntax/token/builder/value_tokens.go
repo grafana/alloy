@@ -46,7 +46,7 @@ func valueTokens(v value.Value) []Token {
 	case value.TypeArray:
 		toks = append(toks, Token{token.LBRACK, ""})
 		elems := v.Len()
-		for i := 0; i < elems; i++ {
+		for i := range elems {
 			elem := v.Index(i)
 
 			toks = append(toks, valueTokens(elem)...)
@@ -89,7 +89,7 @@ func objectTokens(v value.Value) []Token {
 		sort.Strings(keys)
 	}
 
-	for i := 0; i < len(keys); i++ {
+	for i := range keys {
 		if scanner.IsValidIdentifier(keys[i]) {
 			toks = append(toks, Token{token.IDENT, keys[i]})
 		} else {

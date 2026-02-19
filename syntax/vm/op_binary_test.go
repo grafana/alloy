@@ -152,7 +152,7 @@ func TestVM_Capsule_Conversion(t *testing.T) {
 
 			expectTy := reflect.TypeOf(tc.expect)
 			if expectTy == nil {
-				expectTy = reflect.TypeOf((*any)(nil)).Elem()
+				expectTy = reflect.TypeFor[any]()
 			}
 			rv := reflect.New(expectTy)
 

@@ -197,7 +197,7 @@ func TestVM_Evaluate(t *testing.T) {
 				vPtr = reflect.New(reflect.TypeOf(tc.expect)).Interface()
 			} else {
 				// Create a new any pointer.
-				vPtr = reflect.New(reflect.TypeOf((*any)(nil)).Elem()).Interface()
+				vPtr = reflect.New(reflect.TypeFor[any]()).Interface()
 			}
 
 			require.NoError(t, eval.Evaluate(scope, vPtr))

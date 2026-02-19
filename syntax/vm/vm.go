@@ -132,8 +132,7 @@ func (vm *Evaluator) evaluateDecode(scope *Scope, assoc map[value.Value]ast.Node
 	}
 
 	if rv.Kind() == reflect.Interface {
-		var anyMap map[string]any
-		into := reflect.MakeMap(reflect.TypeOf(anyMap))
+		into := reflect.MakeMap(reflect.TypeFor[map[string]any]())
 		if err := vm.evaluateMap(scope, assoc, node, into); err != nil {
 			return err
 		}
@@ -274,7 +273,7 @@ func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs []syntaxtags.Fi
 		field     = reflectutil.GetOrAlloc(rv, labelField)
 		fieldType = field.Type()
 	)
-	if !reflect.TypeOf(node.Label).AssignableTo(fieldType) {
+	if !reflect.TypeFor[string]().AssignableTo(fieldType) {
 		// The Label struct field needs to be a string.
 		panic(fmt.Sprintf("syntax/vm: cannot assign block label to non-string type %s", fieldType))
 	}
