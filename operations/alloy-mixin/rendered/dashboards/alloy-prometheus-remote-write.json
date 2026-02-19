@@ -568,7 +568,7 @@
                "refId": "cluster"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -580,7 +580,7 @@
                "refId": "namespace"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -592,7 +592,7 @@
                "refId": "job"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -607,7 +607,7 @@
                "refId": "instance"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -622,7 +622,7 @@
                "refId": "component_path"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -637,7 +637,7 @@
                "refId": "component"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          },
          {
@@ -652,7 +652,7 @@
                "refId": "url"
             },
             "refresh": 2,
-            "sort": 2,
+            "sort": 1,
             "type": "query"
          }
       ]
