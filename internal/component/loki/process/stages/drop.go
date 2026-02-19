@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 
+	alloyregexp "github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -31,26 +32,26 @@ var (
 
 // DropConfig contains the configuration for a dropStage
 type DropConfig struct {
-	DropReason string           `alloy:"drop_counter_reason,attr,optional"`
-	Source     string           `alloy:"source,attr,optional"`
-	Value      string           `alloy:"value,attr,optional"`
-	Separator  string           `alloy:"separator,attr,optional"`
-	Expression string           `alloy:"expression,attr,optional"`
-	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
-	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
+	DropReason string              `alloy:"drop_counter_reason,attr,optional"`
+	Source     string              `alloy:"source,attr,optional"`
+	Value      string              `alloy:"value,attr,optional"`
+	Separator  string              `alloy:"separator,attr,optional"`
+	Expression *alloyregexp.Regexp `alloy:"expression,attr,optional"`
+	OlderThan  time.Duration       `alloy:"older_than,attr,optional"`
+	LongerThan units.Base2Bytes    `alloy:"longer_than,attr,optional"`
 }
 
 // validateDropConfig validates the DropConfig for the dropStage
 func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	if cfg == nil ||
-		(cfg.Source == "" && cfg.Expression == "" && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
+		(cfg.Source == "" && cfg.Expression == nil && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
 
 		return nil, errors.New(ErrDropStageEmptyConfig)
 	}
 	if cfg.DropReason == "" {
 		cfg.DropReason = defaultDropReason
 	}
-	if cfg.Value != "" && cfg.Expression != "" {
+	if cfg.Value != "" && cfg.Expression != nil {
 		return nil, errors.New(ErrDropStageInvalidConfig)
 	}
 	if cfg.Separator == "" {
@@ -59,23 +60,22 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	if cfg.Value != "" && cfg.Source == "" {
 		return nil, errors.New(ErrDropStageNoSourceWithValue)
 	}
-	var (
-		expr *regexp.Regexp
-		err  error
-	)
-	if cfg.Expression != "" {
-		if expr, err = regexp.Compile(cfg.Expression); err != nil {
-			return nil, fmt.Errorf(ErrDropStageInvalidRegex, err)
-		}
+
+	var expr *regexp.Regexp
+	if cfg.Expression != nil {
+		expr = cfg.Expression.Regexp
 	}
+
 	// The first step to exclude `value` and fully replace it with the `expression`.
 	// It will simplify code and less confusing for the end-user on which option to choose.
 	if cfg.Value != "" {
+		var err error
 		expr, err = regexp.Compile(fmt.Sprintf("^%s$", regexp.QuoteMeta(cfg.Value)))
 		if err != nil {
 			return nil, fmt.Errorf(ErrDropStageInvalidRegex, err)
 		}
 	}
+
 	return expr, nil
 }
 

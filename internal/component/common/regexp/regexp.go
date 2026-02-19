@@ -6,8 +6,7 @@ package regexp
 import (
 	"encoding"
 	"errors"
-
-	"github.com/grafana/regexp"
+	"regexp"
 )
 
 // Compile parses a regular expression and returns a Regexp.

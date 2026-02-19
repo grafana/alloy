@@ -322,11 +322,21 @@ func convertDrop(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		}
 	}
 
+	var expr *regexp.Regexp
+	if pDrop.Expression != nil {
+		var err error
+		expr, err = regexp.Compile(*pDrop.Expression)
+		if err != nil {
+			addInvalidStageError(diags, pDrop, err)
+			return stages.StageConfig{}, false
+		}
+	}
+
 	return stages.StageConfig{DropConfig: &stages.DropConfig{
 		DropReason: defaultEmpty(pDrop.DropReason),
 		Source:     source,
 		Value:      defaultEmpty(pDrop.Value),
-		Expression: defaultEmpty(pDrop.Expression),
+		Expression: expr,
 		OlderThan:  olderThan,
 		LongerThan: longerThan,
 		Separator:  defaultEmpty(pDrop.Separator),
