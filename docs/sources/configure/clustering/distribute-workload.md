@@ -22,7 +22,13 @@ Clustering with target auto-distribution allows a fleet of {{< param "PRODUCT_NA
 
 ## Enable clustering in components
 
-To enable workload distribution, add a `clustering` block with `enabled = true` to each component that should participate.
+To enable workload distribution, add a `clustering` block with `enabled = true` to each component that should participate:
+
+```alloy
+clustering {
+  enabled = true
+}
+```
 
 {{< admonition type="note" >}}
 Components don't automatically participate in clustering.
@@ -71,7 +77,7 @@ This example shows how to configure `prometheus.scrape` to distribute scrape tar
 
 1. Validate that auto-distribution works:
 
-   1. Using the {{< param "PRODUCT_NAME" >}} [UI][] on each node, navigate to the details page for the `prometheus.scrape` component.
+   1. Use the {{< param "PRODUCT_NAME" >}} [UI][] on each node, navigate to the details page for the `prometheus.scrape` component.
 
    1. Compare the **Debug Info** sections between two different nodes to ensure that they don't scrape the same sets of targets.
 
