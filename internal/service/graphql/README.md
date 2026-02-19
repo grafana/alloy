@@ -10,7 +10,7 @@ make generate
 ```
 or
 ```
-make generate-graphql-stubs
+make graphql
 ```
 
 From here, you can start Alloy like normal and the GraphQL API will be reachable at
