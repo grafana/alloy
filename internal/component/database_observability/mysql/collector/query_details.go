@@ -161,29 +161,14 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		)
 
 		if c.enableIndexedLabels || c.enableStructuredMetadata {
-			logMessageV2 := fmt.Sprintf(`parseable="%t" digest_text="%s"`, parserErr == nil, digestText)
-			if !c.enableIndexedLabels {
-				logMessageV2 = fmt.Sprintf(`schema="%s" `, schema) + logMessageV2
-			}
-			if !c.enableStructuredMetadata {
-				logMessageV2 += fmt.Sprintf(` digest="%s"`, digest)
-			}
-
-			indexedLabels := map[string]string{}
-			if c.enableIndexedLabels {
-				indexedLabels["schema"] = schema
-			}
-			structuredMetadata := map[string]string{}
-			if c.enableStructuredMetadata {
-				structuredMetadata["digest"] = digest
-			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+			c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_ASSOCIATION_V2,
-				logMessageV2,
-				indexedLabels,
-				structuredMetadata,
+				fmt.Sprintf(`parseable="%t" digest_text="%s"`, parserErr == nil, digestText),
+			[]database_observability.Field{{Name: "schema", Value: schema}},
+			[]database_observability.Field{{Name: "digest", Value: digest}},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
 				time.Now().UnixNano(),
 			)
 		}

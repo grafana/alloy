@@ -394,7 +394,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			)
 
 			if c.enableIndexedLabels || c.enableStructuredMetadata {
-				logMessageV2 := fmt.Sprintf(
+				baseLogMessage := fmt.Sprintf(
 					`user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 					row.User.String, row.Host.String, row.ThreadID.String,
 					row.StatementEventID.String, row.StatementEndEventID.String,
@@ -408,32 +408,19 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					elapsedTime,
 					elapsedTime,
 				)
-				if !c.enableIndexedLabels {
-					logMessageV2 = fmt.Sprintf(`schema="%s" `, row.Schema.String) + logMessageV2
-				}
-				if !c.enableStructuredMetadata {
-					logMessageV2 += fmt.Sprintf(` digest="%s"`, row.Digest.String)
-				}
 				if c.disableQueryRedaction && row.SQLText.Valid {
-					logMessageV2 += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+					baseLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 				}
 
-				indexedLabels := map[string]string{}
-				if c.enableIndexedLabels {
-					indexedLabels["schema"] = row.Schema.String
-				}
-				structuredMetadata := map[string]string{}
-				if c.enableStructuredMetadata {
-					structuredMetadata["digest"] = row.Digest.String
-				}
-
-				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+				c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
 					logging.LevelInfo,
 					OP_QUERY_SAMPLE_V2,
-					logMessageV2,
-					indexedLabels,
-					structuredMetadata,
-					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+					baseLogMessage,
+				[]database_observability.Field{{Name: "schema", Value: row.Schema.String}},
+				[]database_observability.Field{{Name: "digest", Value: row.Digest.String}},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
 			}
 		}
@@ -468,7 +455,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			)
 
 			if c.enableIndexedLabels || c.enableStructuredMetadata {
-				waitLogMessageV2 := fmt.Sprintf(
+				waitBaseLogMessage := fmt.Sprintf(
 					`thread_id="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_object_type="%s" wait_object_name="%s" wait_time="%fms"`,
 					row.ThreadID.String,
 					row.StatementEventID.String,
@@ -478,32 +465,21 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.WaitObjectName.String,
 					waitTime,
 				)
-				if !c.enableIndexedLabels {
-					waitLogMessageV2 = fmt.Sprintf(`schema="%s" `, row.Schema.String) + waitLogMessageV2
-				}
-				if !c.enableStructuredMetadata {
-					waitLogMessageV2 += fmt.Sprintf(` digest="%s" wait_event_name="%s"`, row.Digest.String, row.WaitEventName.String)
-				}
 				if c.disableQueryRedaction && row.SQLText.Valid {
-					waitLogMessageV2 += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+					waitBaseLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 				}
 
-				waitIndexedLabels := map[string]string{}
-				if c.enableIndexedLabels {
-					waitIndexedLabels["schema"] = row.Schema.String
-				}
-				waitStructuredMetadata := map[string]string{}
-				if c.enableStructuredMetadata {
-					waitStructuredMetadata["digest"] = row.Digest.String
-					waitStructuredMetadata["wait_event_name"] = row.WaitEventName.String
-				}
-
-				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+				c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
 					logging.LevelInfo,
 					OP_WAIT_EVENT_V2,
-					waitLogMessageV2,
-					waitIndexedLabels,
-					waitStructuredMetadata,
+					waitBaseLogMessage,
+				[]database_observability.Field{{Name: "schema", Value: row.Schema.String}},
+				[]database_observability.Field{
+					{Name: "digest", Value: row.Digest.String},
+					{Name: "wait_event_name", Value: row.WaitEventName.String},
+				},
+					c.enableIndexedLabels,
+					c.enableStructuredMetadata,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
 			}
