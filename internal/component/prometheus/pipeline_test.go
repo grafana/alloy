@@ -305,6 +305,17 @@ func BenchmarkPipelines(b *testing.B) {
 
 					for b.Loop() {
 						var wg sync.WaitGroup
+						errCh := make(chan error, 1)
+
+						reportErr := func(err error) {
+							if err == nil {
+								return
+							}
+							select {
+							case errCh <- err:
+							default:
+							}
+						}
 
 						for appenderIndex := range c {
 							wg.Add(1)
@@ -315,13 +326,23 @@ func BenchmarkPipelines(b *testing.B) {
 								for metricIndex, metric := range metricsForAppenders[appenderIndex] {
 									ref := storage.SeriesRef(appenderIndex*numMetrics + metricIndex + 1)
 									_, err := a.Append(ref, metric, time.Now().UnixMilli(), float64(metricIndex))
-									require.NoError(b, err)
+									if err != nil {
+										reportErr(fmt.Errorf("append failed for appender=%d metric=%d: %w", appenderIndex, metricIndex, err))
+										return
+									}
 								}
-								require.NoError(b, a.Commit())
+								if err := a.Commit(); err != nil {
+									reportErr(fmt.Errorf("commit failed for appender=%d: %w", appenderIndex, err))
+								}
 							}(appenderIndex)
 						}
 
 						wg.Wait()
+						select {
+						case err := <-errCh:
+							b.Fatal(err)
+						default:
+						}
 					}
 				})
 			}
