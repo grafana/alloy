@@ -1,6 +1,6 @@
 module github.com/grafana/alloy/extension/alloyengine
 
-go 1.25.7
+go 1.26.0
 
 replace github.com/grafana/alloy => ../..
 
@@ -1088,7 +1088,7 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
-replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
+replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.8
 
 // Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
