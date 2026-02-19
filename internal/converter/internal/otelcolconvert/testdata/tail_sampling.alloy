@@ -264,10 +264,10 @@ otelcol.processor.tail_sampling "default" {
 			}
 		}
 	}
-	decision_wait               = "10s"
-	num_traces                  = 100
-	expected_new_traces_per_sec = 10
-	sample_on_first_match       = true
+	decision_wait                   = "10s"
+	num_traces                      = 100
+	expected_new_traces_per_sec     = 10
+	sample_on_first_match           = true
 	drop_pending_traces_on_shutdown = true
 
 	output {
