@@ -232,14 +232,14 @@ func (f *failingAppender) AppendHistogram(ref storage.SeriesRef, _ labels.Labels
 	return ref, errors.New("append histogram failed")
 }
 
-func (f *failingAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return ref, errors.New("append histogram ct zero failed")
+func (f *failingAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return ref, errors.New("append histogram st zero failed")
 }
 
 func (f *failingAppender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, _ metadata.Metadata) (storage.SeriesRef, error) {
 	return ref, errors.New("update metadata failed")
 }
 
-func (f *failingAppender) AppendCTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
-	return ref, errors.New("append ct zero failed")
+func (f *failingAppender) AppendSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
+	return ref, errors.New("append st zero failed")
 }

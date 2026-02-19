@@ -76,11 +76,11 @@ func (p *passthrough) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t 
 	return p.wrapping.AppendHistogram(ref, l, t, h, fh)
 }
 
-func (p *passthrough) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (p *passthrough) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	if p.start.IsZero() {
 		p.start = time.Now()
 	}
-	return p.wrapping.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
+	return p.wrapping.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
 }
 
 func (p *passthrough) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
@@ -90,9 +90,9 @@ func (p *passthrough) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m m
 	return p.wrapping.UpdateMetadata(ref, l, m)
 }
 
-func (p *passthrough) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+func (p *passthrough) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
 	if p.start.IsZero() {
 		p.start = time.Now()
 	}
-	return p.wrapping.AppendCTZeroSample(ref, l, t, ct)
+	return p.wrapping.AppendSTZeroSample(ref, l, t, st)
 }
