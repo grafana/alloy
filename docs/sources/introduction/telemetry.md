@@ -1,9 +1,9 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/telemetry-flow/
+canonical: https://grafana.com/docs/alloy/latest/introduction/telemetry/
 description: Learn how Grafana Alloy moves telemetry through connected components and defined data paths
 menuTitle: Telemetry flow
 title: How Grafana Alloy moves telemetry
-weight: 25
+weight: 225
 ---
 
 # How {{% param "FULL_PRODUCT_NAME" %}} moves telemetry
@@ -15,17 +15,17 @@ Understanding telemetry flow makes it easier to reason about behavior, performan
 
 ## The explicit model
 
-{{< param "PRODUCT_NAME" >}} doesn't apply hidden behavior.
+{{< param "PRODUCT_NAME" >}} executes exactly what you configure.
 
-- Telemetry moves only along the connections you define.
-- If two components aren't connected, no data passes between them.
-- There's no global pipeline or automatic chaining.
+- You define every connection between components.
+- You specify every transformation, filter, and routing rule.
+- Telemetry moves only along the paths you create.
 
-You must define every transformation, filtering decision, routing rule, or sampling policy in the configuration.
-{{< param "PRODUCT_NAME" >}} executes exactly what the configuration defines.
+This gives you precise control and makes behavior predictable.
+If telemetry changes, it's because a component in the configuration changed it.
+If telemetry reaches a destination, it's because a path leads there.
 
-This explicit model is intentional.
-It gives you precise control and makes behavior predictable.
+There are no automatic transformations, no implicit pipelines, and no hidden behavior.
 
 ## The pipeline pattern
 
@@ -33,7 +33,20 @@ Telemetry flows through pipelines following this pattern:
 
 {{< mermaid >}}
 flowchart LR
-  Discovery -.->|targets| Ingestion -->|telemetry| Transformation -->|telemetry| Output
+
+  Discovery[Discovery]
+  Ingestion[Ingestion]
+  Transformation[Transformation]
+  Output[Output]
+
+  Discovery -.->|targets| Ingestion
+  Ingestion -->|telemetry| Transformation
+  Transformation -->|telemetry| Output
+
+  %% Grafana styling
+  classDef grafana fill:#ffffff,stroke:#F05A28,stroke-width:2px,rx:8,ry:8,color:#1f2937,font-weight:600;
+
+  class Discovery,Ingestion,Transformation,Output grafana
 {{< /mermaid >}}
 
 Discovery is optional.
@@ -50,7 +63,9 @@ Discovery components can find targets from:
 - Kubernetes resources
 - Cloud provider APIs
 - Service registries
-- Static lists
+- Container runtimes
+- File-based configuration
+- HTTP endpoints
 - DNS records
 
 ### Ingestion
@@ -78,14 +93,12 @@ If you connect an ingestion component directly to an output component, telemetry
 ### Output
 
 Output components forward telemetry to configured destinations.
-They don't filter or transform data.
-They forward whatever they receive.
 
 An output component might send data to:
 
-- A metrics backend, such as Mimir or Grafana Cloud, using `prometheus.remote_write`
-- A log backend, such as Loki, using `loki.write`
-- A tracing backend, such as Tempo or Jaeger, using `otelcol.exporter.otlp`
+- A metrics backend, such as Grafana Mimir or any Prometheus-compatible endpoint, using `prometheus.remote_write`
+- A log backend, such as Grafana Loki or any compatible log storage, using `loki.write`
+- A tracing backend, such as Grafana Tempo or any OTLP-compatible endpoint, using `otelcol.exporter.otlp`
 - Another telemetry collector using `otelcol.exporter.otlp`
 - Another component within {{< param "PRODUCT_NAME" >}} using `forward_to` arguments
 
@@ -100,21 +113,22 @@ Different component families use different naming conventions, but the underlyin
 | Loki          | `discovery.*`  | `loki.source.*`      | `loki.process`        | `loki.write`              |
 | Pyroscope     | `discovery.*`  | `pyroscope.scrape`   | `pyroscope.relabel`   | `pyroscope.write`         |
 
-`prometheus.exporter.*` components expose local metrics as scrape targets.
-They act as metric sources that `prometheus.scrape` can collect from, rather than discovering external targets.
+This table shows common components.
+Some components don't fit neatly into these categories.
+For example, `prometheus.exporter.*` components expose local metrics as scrape targets rather than discovering external targets.
+Refer to the [component reference](../reference/components/) for a complete list.
 
 ## Signal types
 
-Metric, log, and trace connections are all defined explicitly.
-If a component supports multiple types of telemetry, each type needs to be explicitly connected to the next component in its pipeline.
+Metric, log, trace, and profile connections are all defined explicitly.
+If a component supports multiple signal types, each type needs its own explicit connection to the next component in its pipeline.
 
-A metric-processing component only affects metric data.
-A log-processing component only affects log data.
-A trace-processing component only affects trace data.
+A processing component only affects its specific signal type.
+A metric processor doesn't touch logs, and a log processor doesn't touch traces.
 
 Each signal type typically has its own pipeline, defined independently in the configuration.
 
-## Branching and merging
+## Branch and merge patterns
 
 Pipelines aren't limited to straight lines.
 
@@ -127,7 +141,7 @@ Telemetry can:
 A single ingestion component may feed one output, multiple outputs, or multiple transformation chains.
 Separate ingestion components may remain isolated, share transformation components, or converge on a shared output.
 
-## Reading configurations
+## Read configurations as data flow
 
 To understand how telemetry flows in a configuration, trace the data path:
 
@@ -137,10 +151,10 @@ To understand how telemetry flows in a configuration, trace the data path:
 1. Note transformation components and understand their behavior.
 1. Identify where each path ends.
 
-Because connections are explicit, the path is visible in the configuration.
+Explicit connections let you trace the data path in the configuration.
 Connection order determines execution order, not the textual order of components in the configuration file.
 
-### Troubleshooting
+### Troubleshoot
 
 When telemetry behaves unexpectedly:
 
@@ -150,6 +164,9 @@ When telemetry behaves unexpectedly:
 - Ensure the path ends at the correct output component.
 
 Unexpected behavior usually reflects an unexpected connection or a missing one.
+
+The {{< param "PRODUCT_NAME" >}} UI can help visualize these connections.
+Refer to [Debug](../troubleshoot/debug/) for more information.
 
 ## Next steps
 
