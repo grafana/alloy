@@ -218,7 +218,7 @@ func (args *Arguments) SetToDefault() {
 			CompressionParams: CompressionParams{
 				Level: 0, // Default compression level
 			},
-			FlushMaxMessages:       0,
+			FlushMaxMessages:       10000,
 			AllowAutoTopicCreation: true,
 		},
 	}

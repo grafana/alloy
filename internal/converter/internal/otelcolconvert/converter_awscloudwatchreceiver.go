@@ -81,9 +81,11 @@ func toAutodiscoverConfig(cfg *awscloudwatchreceiver.AutodiscoverConfig) *awsclo
 	*limit = cfg.Limit
 
 	return &awscloudwatch.AutodiscoverConfig{
-		Prefix:  cfg.Prefix,
-		Limit:   limit,
-		Streams: toStreamConfig(cfg.Streams),
+		Prefix:                cfg.Prefix,
+		Limit:                 limit,
+		Streams:               toStreamConfig(cfg.Streams),
+		AccountIdentifiers:    cfg.AccountIdentifiers,
+		IncludeLinkedAccounts: cfg.IncludeLinkedAccounts,
 	}
 }
 
