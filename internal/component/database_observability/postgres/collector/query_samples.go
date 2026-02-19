@@ -486,30 +486,15 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	)
 
 	if c.enableIndexedLabels || c.enableStructuredMetadata {
-		sampleV2Labels := c.buildQuerySampleV2Labels(state, state.EndAt)
-		if !c.enableIndexedLabels {
-			sampleV2Labels = fmt.Sprintf(`datname="%s" `, state.LastRow.DatabaseName.String) + sampleV2Labels
-		}
-		if !c.enableStructuredMetadata {
-			sampleV2Labels += fmt.Sprintf(` queryid="%d"`, state.LastRow.QueryID.Int64)
-		}
-
-		sampleIndexedLabels := map[string]string{}
-		if c.enableIndexedLabels {
-			sampleIndexedLabels["datname"] = state.LastRow.DatabaseName.String
-		}
-		sampleStructuredMetadata := map[string]string{}
-		if c.enableStructuredMetadata {
-			sampleStructuredMetadata["queryid"] = fmt.Sprintf("%d", state.LastRow.QueryID.Int64)
-		}
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+		c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE_V2,
-			sampleV2Labels,
-			sampleIndexedLabels,
-			sampleStructuredMetadata,
-			ts,
+			c.buildQuerySampleV2Labels(state, state.EndAt),
+		[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
+		[]database_observability.Field{{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)}},
+		c.enableIndexedLabels,
+		c.enableStructuredMetadata,
+		ts,
 		)
 	}
 
@@ -526,35 +511,19 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		)
 
 		if c.enableIndexedLabels || c.enableStructuredMetadata {
-			waitEventLabelsV2 := c.buildWaitEventLabelsV2(state, we)
-			if !c.enableIndexedLabels {
-				waitEventLabelsV2 = fmt.Sprintf(`datname="%s" `, state.LastRow.DatabaseName.String) + waitEventLabelsV2
-			}
-			if !c.enableStructuredMetadata {
-				waitEventLabelsV2 += fmt.Sprintf(` queryid="%d" wait_event_type="%s" wait_event_name="%s"`,
-					state.LastRow.QueryID.Int64,
-					we.WaitEventType,
-					fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent),
-				)
-			}
-
-			waitIndexedLabels := map[string]string{}
-			if c.enableIndexedLabels {
-				waitIndexedLabels["datname"] = state.LastRow.DatabaseName.String
-			}
-			waitStructuredMetadata := map[string]string{}
-			if c.enableStructuredMetadata {
-				waitStructuredMetadata["queryid"] = fmt.Sprintf("%d", state.LastRow.QueryID.Int64)
-				waitStructuredMetadata["wait_event_type"] = we.WaitEventType
-				waitStructuredMetadata["wait_event_name"] = fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
-			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+			waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+			c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
 				logging.LevelInfo,
 				OP_WAIT_EVENT_V2,
-				waitEventLabelsV2,
-				waitIndexedLabels,
-				waitStructuredMetadata,
+				c.buildWaitEventLabelsV2(state, we),
+			[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
+			[]database_observability.Field{
+				{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)},
+				{Name: "wait_event_type", Value: we.WaitEventType},
+				{Name: "wait_event_name", Value: waitEventFullName},
+			},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
 				we.LastTimestamp.UnixNano(),
 			)
 		}

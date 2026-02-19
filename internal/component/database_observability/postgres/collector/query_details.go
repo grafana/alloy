@@ -169,29 +169,14 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		)
 
 		if c.enableIndexedLabels || c.enableStructuredMetadata {
-			logMessageV2 := fmt.Sprintf(`querytext=%q`, queryText)
-			if !c.enableIndexedLabels {
-				logMessageV2 = fmt.Sprintf(`datname="%s" `, databaseName) + logMessageV2
-			}
-			if !c.enableStructuredMetadata {
-				logMessageV2 += fmt.Sprintf(` queryid="%s"`, queryID)
-			}
-
-			indexedLabels := map[string]string{}
-			if c.enableIndexedLabels {
-				indexedLabels["datname"] = string(databaseName)
-			}
-			structuredMetadata := map[string]string{}
-			if c.enableStructuredMetadata {
-				structuredMetadata["queryid"] = queryID
-			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithIndexedLabelsAndStructuredMetadata(
+			c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_ASSOCIATION_V2,
-				logMessageV2,
-				indexedLabels,
-				structuredMetadata,
+				fmt.Sprintf(`querytext=%q`, queryText),
+			[]database_observability.Field{{Name: "datname", Value: string(databaseName)}},
+			[]database_observability.Field{{Name: "queryid", Value: queryID}},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
 				time.Now().UnixNano(),
 			)
 		}
