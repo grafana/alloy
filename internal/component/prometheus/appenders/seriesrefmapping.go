@@ -185,8 +185,6 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		childRef, err := af(child, ref)
 		if err != nil {
 			appendErr = multierror.Append(appendErr, err)
-
-			// TODO should I make the childRef zero here?
 		}
 
 		s.childRefs = append(s.childRefs, childRef)
@@ -219,7 +217,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 }
 
 type uniqRefChildren struct {
-	childRefs *[]storage.SeriesRef
+	childRefs []storage.SeriesRef
 	labelHash uint64
 }
 
@@ -327,7 +325,7 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 	}
 
 	if mapping, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
-		return *mapping.childRefs
+		return mapping.childRefs
 	}
 	return nil
 }
@@ -356,7 +354,7 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lb
 
 	s.labelHashToUniqueRef[labelHash] = uniqueRef
 	s.uniqueRefToChildRefs[uniqueRef] = uniqRefChildren{
-		childRefs: &childRefSlice,
+		childRefs: childRefSlice,
 		labelHash: labelHash,
 	}
 
@@ -387,7 +385,7 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 	}
 
 	s.uniqueRefToChildRefs[uniqueRef] = uniqRefChildren{
-		childRefs: &childRefSlice,
+		childRefs: childRefSlice,
 		labelHash: lbls.Hash(),
 	}
 }
@@ -484,6 +482,7 @@ func (s *SeriesRefMappingStore) Clear() {
 
 	clear(s.uniqueRefToChildRefs)
 	clear(s.uniqueRefTimestamps)
+	clear(s.labelHashToUniqueRef)
 
 	// reset the pool
 	s.cellPool = sync.Pool{

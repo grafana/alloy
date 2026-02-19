@@ -11,10 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -330,69 +327,6 @@ func BenchmarkPipelines(b *testing.B) {
 			}
 		}
 	}
-}
-
-type noopAppender struct {
-	refCounter atomic.Uint64
-}
-
-func (n noopAppender) Append(storage.SeriesRef, labels.Labels, int64, float64) (storage.SeriesRef, error) {
-	return storage.SeriesRef(n.refCounter.Inc()), nil
-}
-
-func (n noopAppender) Commit() error {
-	return nil
-}
-
-func (n noopAppender) Rollback() error {
-	return nil
-}
-
-func (n noopAppender) SetOptions(*storage.AppendOptions) {
-}
-
-func (n noopAppender) AppendExemplar(storage.SeriesRef, labels.Labels, exemplar.Exemplar) (storage.SeriesRef, error) {
-	return storage.SeriesRef(n.refCounter.Inc()), nil
-}
-
-func (n noopAppender) AppendHistogram(storage.SeriesRef, labels.Labels, int64, *histogram.Histogram, *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return storage.SeriesRef(n.refCounter.Inc()), nil
-}
-
-func (n noopAppender) AppendHistogramCTZeroSample(storage.SeriesRef, labels.Labels, int64, int64, *histogram.Histogram, *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return storage.SeriesRef(n.refCounter.Inc()), nil
-}
-
-func (n noopAppender) UpdateMetadata(storage.SeriesRef, labels.Labels, metadata.Metadata) (storage.SeriesRef, error) {
-	return storage.SeriesRef(n.refCounter.Inc()), nil
-}
-
-func (n noopAppender) AppendCTZeroSample(storage.SeriesRef, labels.Labels, int64, int64) (storage.SeriesRef, error) {
-	return storage.SeriesRef(n.refCounter.Inc()), nil
-}
-
-type noopStore struct {
-	refCounter atomic.Uint64
-}
-
-func (n noopStore) Querier(int64, int64) (storage.Querier, error) {
-	return nil, nil
-}
-
-func (n noopStore) ChunkQuerier(int64, int64) (storage.ChunkQuerier, error) {
-	return nil, nil
-}
-
-func (n noopStore) Appender(context.Context) storage.Appender {
-	return noopAppender(n)
-}
-
-func (n noopStore) StartTime() (int64, error) {
-	return 0, nil
-}
-
-func (n noopStore) Close() error {
-	return nil
 }
 
 func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
