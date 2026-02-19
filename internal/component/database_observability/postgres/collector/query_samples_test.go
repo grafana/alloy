@@ -11,6 +11,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -1300,4 +1301,111 @@ func TestQuerySamples_ExcludeUsers(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return mock.ExpectationsWereMet() == nil
 	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func TestQuerySamples_LogFormatFlags(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	now := time.Now()
+	stateChangeTime := now.Add(-10 * time.Second)
+	queryStartTime := now.Add(-30 * time.Second)
+	xactStartTime := now.Add(-2 * time.Minute)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"query",
+	}
+
+	testcases := []struct {
+		name                     string
+		enableIndexedLabels      bool
+		enableStructuredMetadata bool
+		sampleV2Labels           model.LabelSet
+		sampleV2Line             string
+		sampleV2SM               push.LabelsAdapter
+	}{
+		{
+			name:                     "only indexed labels enabled",
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: false,
+			sampleV2Labels:           model.LabelSet{"op": OP_QUERY_SAMPLE_V2, "datname": "testdb"},
+			sampleV2Line:             `level="info" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" cpu_time="10s" query="SELECT * FROM t" queryid="999"`,
+			sampleV2SM:               nil,
+		},
+		{
+			name:                     "only structured metadata enabled",
+			enableIndexedLabels:      false,
+			enableStructuredMetadata: true,
+			sampleV2Labels:           model.LabelSet{"op": OP_QUERY_SAMPLE_V2},
+			sampleV2Line:             `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" cpu_time="10s" query="SELECT * FROM t"`,
+			sampleV2SM:               push.LabelsAdapter{{Name: "queryid", Value: "999"}},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient := loki.NewCollectingHandler()
+			defer lokiClient.Stop()
+
+			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+				DB:                       db,
+				CollectInterval:          time.Millisecond,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewNopLogger(),
+				DisableQueryRedaction:    true,
+				ExcludeCurrentUser:       true,
+				EnableIndexedLabels:      tc.enableIndexedLabels,
+				EnableStructuredMetadata: tc.enableStructuredMetadata,
+			})
+			require.NoError(t, err)
+
+			// First scrape: active row
+			mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows(columns).AddRow(
+					now, "testdb", 1000, sql.NullInt64{},
+					"testuser", "testapp", "127.0.0.1", 5432,
+					"client backend", backendStartTime, sql.NullInt32{Int32: 10, Valid: true}, sql.NullInt32{Int32: 20, Valid: true},
+					xactStartTime, "active", stateChangeTime, sql.NullString{},
+					sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 999, Valid: true},
+					"SELECT * FROM t",
+				))
+			// Second scrape: no rows -> finalize
+			mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows(columns))
+
+			require.NoError(t, sampleCollector.Start(t.Context()))
+
+			// expect: query_sample (V1) + query_sample_v2 = 2
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == 2
+			}, 5*time.Second, 100*time.Millisecond)
+
+			entries := lokiClient.Received()
+			require.Len(t, entries, 2)
+			// entries[0] = query_sample (V1), entries[1] = query_sample_v2
+			require.Equal(t, tc.sampleV2Labels, entries[1].Labels)
+			require.Equal(t, tc.sampleV2Line, entries[1].Line)
+			require.Equal(t, tc.sampleV2SM, entries[1].StructuredMetadata)
+
+			sampleCollector.Stop()
+			require.Eventually(t, func() bool {
+				return sampleCollector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
+
+			require.Eventually(t, func() bool {
+				return mock.ExpectationsWereMet() == nil
+			}, 5*time.Second, 100*time.Millisecond)
+		})
+	}
 }
