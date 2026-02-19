@@ -60,15 +60,15 @@ func TestQuerySamples(t *testing.T) {
 				"456",
 				"457",
 			}},
-		logsLabels: []model.LabelSet{
-			{"op": OP_QUERY_SAMPLE},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+			},
 		},
-		logsLines: []string{
-			"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-		},
-	},
-	{
-		name: "multiple schemas",
+		{
+			name: "multiple schemas",
 			rows: [][]driver.Value{{
 				"some_schema",
 				"890",
@@ -116,16 +116,16 @@ func TestQuerySamples(t *testing.T) {
 				"456",
 				"457",
 			}},
-		logsLabels: []model.LabelSet{
-			{"op": OP_QUERY_SAMPLE},
-			{"op": OP_QUERY_SAMPLE},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_other_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+			},
 		},
-		logsLines: []string{
-			"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-			"level=\"info\" schema=\"some_other_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-		},
-	},
-}
+	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -138,13 +138,13 @@ func TestQuerySamples(t *testing.T) {
 			logBuffer := syncbuffer.Buffer{}
 			lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   latestCompatibleVersion,
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-		})
+			collector, err := NewQuerySamples(QuerySamplesArguments{
+				DB:              db,
+				EngineVersion:   latestCompatibleVersion,
+				CollectInterval: time.Second,
+				EntryHandler:    lokiClient,
+				Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
@@ -1250,13 +1250,13 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 
 			lokiClient := loki.NewCollectingHandler()
 
-		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			EngineVersion:   semver.MustParse(tc.mysqlVersion),
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-		})
+			collector, err := NewQuerySamples(QuerySamplesArguments{
+				DB:              db,
+				EngineVersion:   semver.MustParse(tc.mysqlVersion),
+				CollectInterval: time.Second,
+				EntryHandler:    lokiClient,
+				Logger:          log.NewLogfmtLogger(os.Stderr),
+			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
@@ -1286,24 +1286,24 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 			err = collector.Start(t.Context())
 			require.NoError(t, err)
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == 1
+			}, 5*time.Second, 100*time.Millisecond)
 
-		collector.Stop()
-		lokiClient.Stop()
+			collector.Stop()
+			lokiClient.Stop()
 
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+			require.Eventually(t, func() bool {
+				return collector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
+			err = mock.ExpectationsWereMet()
+			require.NoError(t, err)
 
-		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, tc.expectedLogOutput, lokiEntries[0].Line)
-	})
+			lokiEntries := lokiClient.Received()
+			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+			require.Equal(t, tc.expectedLogOutput, lokiEntries[0].Line)
+		})
 	}
 }
 
