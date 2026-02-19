@@ -1,13 +1,19 @@
 package appenders
 
 import (
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -382,5 +388,352 @@ func TestConcurrentTrackingIsCorrect(t *testing.T) {
 	// All refs should still be retrievable (tracking shouldn't break anything)
 	for _, ref := range uniqueRefs {
 		require.NotNil(t, store.GetMapping(ref, lbls))
+	}
+}
+
+func TestSeriesRefMappingAppendReusesExistingMapping(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[77] = []storage.SeriesRef{101, 202}
+
+	child1 := &mockAppender{}
+	child2 := &mockAppender{}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_reuse", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_reuse", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	lbls := labels.FromStrings("job", "test")
+	ref, err := app.Append(77, lbls, 123, 42)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(77), ref)
+	require.Equal(t, []storage.SeriesRef{101}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{202}, child2.appendRefs)
+	require.Len(t, store.createCalls, 0)
+	require.Len(t, store.updateCalls, 0)
+	require.Equal(t, []storage.SeriesRef{77}, store.cell.Refs)
+	require.Equal(t, float64(2), testutil.ToFloat64(samplesForwarded))
+}
+
+func TestSeriesRefMappingAppendUpdatesExistingMappingWhenRefsChange(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[33] = []storage.SeriesRef{11, 22}
+
+	child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 111, nil
+	}}
+	child2 := &mockAppender{}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_update", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_update", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	lbls := labels.FromStrings("job", "test")
+	ref, err := app.Append(33, lbls, 123, 42)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(33), ref)
+	require.Len(t, store.updateCalls, 1)
+	require.Equal(t, storage.SeriesRef(33), store.updateCalls[0].uniqueRef)
+	require.Equal(t, []storage.SeriesRef{111, 22}, store.updateCalls[0].refs)
+	require.Len(t, store.createCalls, 0)
+}
+
+func TestSeriesRefMappingAppendCreatesMappingWhenMultipleChildrenReturnNonZeroRefs(t *testing.T) {
+	store := newMockMappingStore()
+
+	child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 5001, nil
+	}}
+	child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 6002, nil
+	}}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_create", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_create", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	lbls := labels.FromStrings("job", "test")
+	ref, err := app.Append(0, lbls, 123, 42)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(1000), ref)
+	require.Len(t, store.createCalls, 1)
+	require.Equal(t, []storage.SeriesRef{5001, 6002}, store.createCalls[0].refs)
+	require.Equal(t, []storage.SeriesRef{1000}, store.cell.Refs)
+}
+
+func TestSeriesRefMappingAppendReturnsOriginalOrSingleRefWhenMappingNotNeeded(t *testing.T) {
+	t.Run("all children return zero", func(t *testing.T) {
+		store := newMockMappingStore()
+
+		child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return 0, nil
+		}}
+		child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return 0, nil
+		}}
+
+		writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_zero", Help: "test"})
+		samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_zero", Help: "test"})
+		app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+		ref, err := app.Append(42, labels.EmptyLabels(), 1, 1)
+		require.NoError(t, err)
+		require.Equal(t, storage.SeriesRef(42), ref)
+		require.Len(t, store.createCalls, 0)
+	})
+
+	t.Run("only one child returns non-zero", func(t *testing.T) {
+		store := newMockMappingStore()
+
+		child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return 0, nil
+		}}
+		child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return 77, nil
+		}}
+
+		writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_single", Help: "test"})
+		samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_single", Help: "test"})
+		app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+		ref, err := app.Append(42, labels.EmptyLabels(), 1, 1)
+		require.NoError(t, err)
+		require.Equal(t, storage.SeriesRef(77), ref)
+		require.Len(t, store.createCalls, 0)
+	})
+}
+
+func TestSeriesRefMappingAppendErrorSkipsMappingUpdate(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[88] = []storage.SeriesRef{11, 22}
+
+	child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 111, nil
+	}}
+	child2 := &mockAppender{appendFn: func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return ref, errors.New("child append failed")
+	}}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_error", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_error", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	ref, err := app.Append(88, labels.EmptyLabels(), 1, 1)
+	require.Error(t, err)
+	require.Equal(t, storage.SeriesRef(0), ref)
+	require.Len(t, store.updateCalls, 0)
+	require.Len(t, store.createCalls, 0)
+	require.Equal(t, float64(1), testutil.ToFloat64(samplesForwarded))
+}
+
+func TestSeriesRefMappingCommitTracksRefsAndAggregatesErrors(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[101] = []storage.SeriesRef{11, 22}
+
+	child1 := &mockAppender{commitFn: func() error { return errors.New("child1 commit failed") }}
+	child2 := &mockAppender{commitFn: func() error { return errors.New("child2 commit failed") }}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_commit", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_commit", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	_, err := app.Append(101, labels.EmptyLabels(), 1, 1)
+	require.NoError(t, err)
+
+	err = app.Commit()
+	require.ErrorContains(t, err, "child1 commit failed")
+	require.ErrorContains(t, err, "child2 commit failed")
+	require.Len(t, store.trackCalls, 1)
+	require.Equal(t, []storage.SeriesRef{101}, store.trackCalls[0].refs)
+	require.Empty(t, store.cell.Refs)
+	require.Equal(t, 1, child1.commitCalls)
+	require.Equal(t, 1, child2.commitCalls)
+}
+
+func TestSeriesRefMappingRollbackTracksRefs(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[202] = []storage.SeriesRef{33, 44}
+
+	child1 := &mockAppender{rollbackFn: func() error { return nil }}
+	child2 := &mockAppender{rollbackFn: func() error { return errors.New("child2 rollback failed") }}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_rollback", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_rollback", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	_, err := app.Append(202, labels.EmptyLabels(), 1, 1)
+	require.NoError(t, err)
+
+	err = app.Rollback()
+	require.ErrorContains(t, err, "child2 rollback failed")
+	require.Len(t, store.trackCalls, 1)
+	require.Equal(t, []storage.SeriesRef{202}, store.trackCalls[0].refs)
+	require.Equal(t, 1, child1.rollbackCalls)
+	require.Equal(t, 1, child2.rollbackCalls)
+}
+
+type createCall struct {
+	refs []storage.SeriesRef
+	lbls labels.Labels
+}
+
+type updateCall struct {
+	uniqueRef storage.SeriesRef
+	refs      []storage.SeriesRef
+	lbls      labels.Labels
+}
+
+type trackCall struct {
+	ts   int64
+	refs []storage.SeriesRef
+}
+
+type mockMappingStore struct {
+	mappingByRef  map[storage.SeriesRef][]storage.SeriesRef
+	mappingByHash map[uint64]storage.SeriesRef
+	createCalls   []createCall
+	updateCalls   []updateCall
+	trackCalls    []trackCall
+	createRef     storage.SeriesRef
+	cell          *Cell
+}
+
+func newMockMappingStore() *mockMappingStore {
+	return &mockMappingStore{
+		mappingByRef:  map[storage.SeriesRef][]storage.SeriesRef{},
+		mappingByHash: map[uint64]storage.SeriesRef{},
+		createRef:     1000,
+		cell:          &Cell{Refs: make([]storage.SeriesRef, 0, 10)},
+	}
+}
+
+func (m *mockMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
+	if uniqueRef == 0 {
+		mappedRef, ok := m.mappingByHash[lbls.Hash()]
+		if !ok {
+			return nil
+		}
+		uniqueRef = mappedRef
+	}
+
+	refs, ok := m.mappingByRef[uniqueRef]
+	if !ok {
+		return nil
+	}
+
+	return copyRefs(refs)
+}
+
+func (m *mockMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
+	newRef := m.createRef
+	m.createRef++
+
+	copiedRefs := copyRefs(refResults)
+	m.mappingByRef[newRef] = copiedRefs
+	m.mappingByHash[lbls.Hash()] = newRef
+	m.createCalls = append(m.createCalls, createCall{refs: copiedRefs, lbls: lbls})
+
+	return newRef
+}
+
+func (m *mockMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels) {
+	copiedRefs := copyRefs(refResults)
+	m.mappingByRef[uniqueRef] = copiedRefs
+	m.mappingByHash[lbls.Hash()] = uniqueRef
+	m.updateCalls = append(m.updateCalls, updateCall{uniqueRef: uniqueRef, refs: copiedRefs, lbls: lbls})
+}
+
+func (m *mockMappingStore) TrackAppendedSeries(ts int64, cell *Cell) {
+	m.trackCalls = append(m.trackCalls, trackCall{ts: ts, refs: copyRefs(cell.Refs)})
+	cell.Refs = cell.Refs[:0]
+}
+
+func (m *mockMappingStore) GetCellForAppendedSeries() *Cell {
+	return m.cell
+}
+
+func copyRefs(in []storage.SeriesRef) []storage.SeriesRef {
+	out := make([]storage.SeriesRef, len(in))
+	copy(out, in)
+	return out
+}
+
+type mockAppender struct {
+	appendFn                      func(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error)
+	appendExemplarFn              func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error)
+	appendHistogramFn             func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error)
+	appendHistogramCTZeroSampleFn func(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error)
+	updateMetadataFn              func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error)
+	appendCTZeroSampleFn          func(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error)
+	commitFn                      func() error
+	rollbackFn                    func() error
+	setOptionsFn                  func(opts *storage.AppendOptions)
+
+	appendRefs    []storage.SeriesRef
+	commitCalls   int
+	rollbackCalls int
+}
+
+func (m *mockAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	m.appendRefs = append(m.appendRefs, ref)
+	if m.appendFn != nil {
+		return m.appendFn(ref, l, t, v)
+	}
+	return ref, nil
+}
+
+func (m *mockAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	if m.appendExemplarFn != nil {
+		return m.appendExemplarFn(ref, l, e)
+	}
+	return ref, nil
+}
+
+func (m *mockAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if m.appendHistogramFn != nil {
+		return m.appendHistogramFn(ref, l, t, h, fh)
+	}
+	return ref, nil
+}
+
+func (m *mockAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if m.appendHistogramCTZeroSampleFn != nil {
+		return m.appendHistogramCTZeroSampleFn(ref, l, t, ct, h, fh)
+	}
+	return ref, nil
+}
+
+func (m *mockAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, md metadata.Metadata) (storage.SeriesRef, error) {
+	if m.updateMetadataFn != nil {
+		return m.updateMetadataFn(ref, l, md)
+	}
+	return ref, nil
+}
+
+func (m *mockAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	if m.appendCTZeroSampleFn != nil {
+		return m.appendCTZeroSampleFn(ref, l, t, ct)
+	}
+	return ref, nil
+}
+
+func (m *mockAppender) Commit() error {
+	m.commitCalls++
+	if m.commitFn != nil {
+		return m.commitFn()
+	}
+	return nil
+}
+
+func (m *mockAppender) Rollback() error {
+	m.rollbackCalls++
+	if m.rollbackFn != nil {
+		return m.rollbackFn()
+	}
+	return nil
+}
+
+func (m *mockAppender) SetOptions(opts *storage.AppendOptions) {
+	if m.setOptionsFn != nil {
+		m.setOptionsFn(opts)
 	}
 }
