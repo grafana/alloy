@@ -219,9 +219,20 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		return ref, nil
 	}
 
-	// Only one child returned a non-zero ref, use that
+	// Only one child returned a non-zero ref.
 	if nonZeroCount == 1 {
-		return firstNonZeroRef, nil
+		// Avoid leaking child-local refs to upstream callers.
+		//
+		// - If we already got a non-zero input ref, keep returning it.
+		// - If this is a new series (ref == 0), allocate a unique ref mapping so
+		//   future appends route the expected refs to each child.
+		if ref != 0 {
+			return ref, nil
+		}
+
+		uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
+		s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
+		return uniqueRef, nil
 	}
 
 	// We got different refs back and need to create a new mapping
