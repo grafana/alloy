@@ -928,9 +928,9 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 	err = collector.Start(t.Context())
 	require.NoError(t, err)
 
-	// Only the another_database should have logs emitted (query_association + query_parsed_table_name)
+	// Only the another_database should have logs emitted
 	require.Eventually(t, func() bool {
-		return len(lokiClient.Received()) >= 2
+		return len(lokiClient.Received()) >= 2 // query_association + query_parsed_table_name
 	}, 5*time.Second, 100*time.Millisecond)
 
 	collector.Stop()
