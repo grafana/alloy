@@ -8,21 +8,25 @@ weight: 200
 
 # Troubleshoot memory issues
 
-Memory problems in {{< param "PRODUCT_NAME" >}} usually appear as:
+Most memory issues in {{< param "PRODUCT_NAME" >}} stem from misconfigured resource limits, write-ahead log (WAL) replay, or slow remote endpoints.
+Symptoms include:
 
 - Kubernetes Pod restarts with `OOMKilled`
 - Memory spikes immediately after restart
 - Memory grows steadily and never drops
 - Memory remains high after traffic decreases
 
-Each pattern points to a different root cause.
-
 ## {{% param "PRODUCT_NAME" %}} is `OOMKilled`
 
 Kubernetes terminates a container with `OOMKilled` when it exceeds its memory limit.
-This usually happens because the Pod limit is too low, `GOMEMLIMIT` isn't configured, write-ahead log (WAL) replay consumes additional memory at startup, or internal queues grow when endpoints can't accept data fast enough.
+Common causes include:
 
-Start by validating resource configuration before assuming a leak.
+- Pod memory limit is too low
+- `GOMEMLIMIT` isn't configured
+- WAL replay consumes additional memory at startup
+- Internal queues grow when remote endpoints can't accept data fast enough
+
+Validate resource configuration.
 
 1. Inspect the Pod memory configuration.
 
@@ -63,6 +67,8 @@ Start by validating resource configuration before assuming a leak.
    Collect heap and goroutine profiles to identify what consumes memory.
    Refer to [Profile resource consumption][profile] for more information.
 
+If profiling suggests a memory leak, refer to [Report a potential memory leak](#report-a-potential-memory-leak).
+
 ## Memory spikes after restart
 
 Memory often increases sharply after {{< param "PRODUCT_NAME" >}} starts because it replays the WAL.
@@ -90,6 +96,9 @@ If memory remains elevated or triggers restarts, review WAL size and limits.
 1. Avoid restart loops.
 
    Frequent restarts increase replay cost and can create repeated spikes.
+
+If spikes persist after adjusting these settings, [capture a profile][profile] during startup to identify the source.
+If profiling suggests a memory leak, refer to [Report a potential memory leak](#report-a-potential-memory-leak).
 
 ## Memory grows steadily over time
 
@@ -125,6 +134,8 @@ Determine whether traffic, endpoint latency, or retained allocations cause the g
    Check metrics like `prometheus_remote_storage_shards_desired` and `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` to determine if queues are falling behind.
    Refer to [Monitor components][monitor-components] for more information.
 
+If memory continues to grow with stable traffic and healthy endpoints, refer to [Report a potential memory leak](#report-a-potential-memory-leak).
+
 ## Memory remains high after traffic drops
 
 Memory should decrease after ingestion slows and queues drain.
@@ -147,14 +158,8 @@ Validate that the workload actually decreased, then inspect retained allocations
    - Queues that haven't drained
    - Unbounded label or cardinality growth
 
-1. If retained allocations continue to grow with stable traffic, treat the behavior as a potential leak and collect:
-
-   - [Support bundle][support-bundle]
-   - Heap profile
-   - {{< param "PRODUCT_NAME" >}} configuration
-   - Pod specification
-
-   Provide these artifacts when [opening an issue][alloy-issues].
+If retained allocations continue to grow with stable traffic, treat the behavior as a potential leak.
+Refer to [Report a potential memory leak](#report-a-potential-memory-leak) for next steps.
 
 ## Configure Kubernetes correctly
 
@@ -190,6 +195,17 @@ Refer to [Data durability][data-durability] for more information.
 Use a DaemonSet for node-local log collection.
 Use a StatefulSet when stable identity or persistent storage per replica is required.
 Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information.
+
+## Report a potential memory leak
+
+If local troubleshooting doesn't identify the root cause, collect the following information and [open an issue][alloy-issues]:
+
+- [Support bundle][support-bundle]
+- Profile (heap and goroutine)
+- {{< param "PRODUCT_NAME" >}} configuration
+- Pod specification
+
+Redact any sensitive information before attaching files.
 
 [estimate-resource-usage]: ../../set-up/estimate-resource-usage/
 [env-vars]: ../../reference/cli/environment-variables/#gomemlimit
