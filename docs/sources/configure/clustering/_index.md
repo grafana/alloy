@@ -10,7 +10,7 @@ weight: 100
 
 # Configure clustering
 
-You can configure {{< param "PRODUCT_NAME" >}} to run with [clustering][] so that individual instances can work together for workload distribution and high availability.
+You can configure {{< param "PRODUCT_NAME" >}} to run with [clustering][] so that individual {{< param "PRODUCT_NAME" >}} instances can work together for workload distribution and high availability.
 
 To configure clustering, complete these two steps:
 
@@ -37,7 +37,7 @@ The following components support workload distribution through clustering:
 | [`loki.source.kubernetes`][loki.source.kubernetes]                           | Distributes Kubernetes log collection across cluster nodes.         |
 | [`loki.source.podlogs`][loki.source.podlogs]                                 | Distributes PodLogs log collection across cluster nodes.            |
 
-To enable clustering in a component, add a `clustering` block with `enabled = true`:
+To enable clustering in a component, you must add a `clustering` block with `enabled = true`:
 
 ```alloy
 prometheus.scrape "example" {
