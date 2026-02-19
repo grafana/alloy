@@ -2,7 +2,6 @@ package stages
 
 import (
 	"bytes"
-	"errors"
 	"maps"
 	"reflect"
 	"text/template"
@@ -13,11 +12,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-)
-
-var (
-	errExpressionRequired   = errors.New("expression is required")
-	errCouldNotCompileRegex = errors.New("could not compile regular expression")
 )
 
 func init() {
