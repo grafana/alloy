@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
 	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Config Errors.
@@ -28,7 +29,7 @@ type PatternConfig struct {
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validatePatternConfig validates the config and return a regex
+// validatePatternConfig validates the config and return a matcher
 func validatePatternConfig(c PatternConfig) (*pattern.Matcher, error) {
 	if c.Pattern == "" {
 		return nil, ErrPatternRequired
