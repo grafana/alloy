@@ -73,8 +73,8 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 - `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
 - `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
 - `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
-- `/FORCEREGISTRY=yes` Force the installer to write install options such as `/STABILITY` and `/DISABLEREPORTING` to the Windows registry even when upgrading.
-  By default, the installer preserves registry values on upgrade, so options passed during an upgrade aren't applied unless you use this flag.
+- `/FORCEREGISTRY=yes` At the start of installation, delete all Alloy registry keys and then run the rest of the install as normal so that install options such as `/STABILITY` and `/DISABLEREPORTING` are written fresh.
+  By default, the installer preserves existing registry values on upgrade; use this flag to reset them and apply the options passed on the command line, and to remove any old or unused registry keys from previous versions.
 - `/RUNTIMEPRIORITY="normal|below_normal|above_normal|high|idle|realtime"` Set the runtime priority of the {{< param "PRODUCT_NAME" >}} process. Default: `normal`
 - `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
 - `/USERNAME="<username>"` Set the fully qualified user that Windows uses to run the service. Default: `NT AUTHORITY\LocalSystem`
