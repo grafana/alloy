@@ -69,14 +69,12 @@ func MimirMetricsTest(t *testing.T, metrics []string, histogramMetrics []string,
 
 	AssertMetricsAvailable(t, metrics, histogramMetrics, testName)
 	for _, metric := range metrics {
-		metric := metric
 		t.Run(metric, func(t *testing.T) {
 			t.Parallel()
 			AssertMetricData(t, MetricQuery(metric, testName), metric, testName)
 		})
 	}
 	for _, metric := range histogramMetrics {
-		metric := metric
 		t.Run(metric, func(t *testing.T) {
 			t.Parallel()
 			AssertHistogramData(t, MetricQuery(metric, testName), metric, testName)
