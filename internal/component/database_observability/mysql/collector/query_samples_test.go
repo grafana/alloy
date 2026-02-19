@@ -11,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2562,4 +2563,154 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	c.fetchQuerySamples(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQuerySamples_LogFormatFlags(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	testcases := []struct {
+		name                     string
+		enableIndexedLabels      bool
+		enableStructuredMetadata bool
+		sampleV2Labels           model.LabelSet
+		sampleV2Line             string
+		sampleV2SM               push.LabelsAdapter
+		waitV2Labels             model.LabelSet
+		waitV2Line               string
+		waitV2SM                 push.LabelsAdapter
+	}{
+		{
+			name:                     "only indexed labels enabled",
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: false,
+			sampleV2Labels:           model.LabelSet{"op": OP_QUERY_SAMPLE_V2, "schema": "some_schema"},
+			sampleV2Line:             `level="info" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" digest="some_digest"`,
+			sampleV2SM:               nil,
+			waitV2Labels:             model.LabelSet{"op": OP_WAIT_EVENT_V2, "schema": "some_schema"},
+			waitV2Line:               `level="info" thread_id="890" event_id="123" wait_event_id="124" wait_end_event_id="124" wait_object_type="wait_object_type" wait_object_name="wait_object_name" wait_time="0.100000ms" digest="some_digest" wait_event_name="wait/io/file/innodb/innodb_data_file"`,
+			waitV2SM:                 nil,
+		},
+		{
+			name:                     "only structured metadata enabled",
+			enableIndexedLabels:      false,
+			enableStructuredMetadata: true,
+			sampleV2Labels:           model.LabelSet{"op": OP_QUERY_SAMPLE_V2},
+			sampleV2Line:             `level="info" schema="some_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			sampleV2SM:               push.LabelsAdapter{{Name: "digest", Value: "some_digest"}},
+			waitV2Labels:             model.LabelSet{"op": OP_WAIT_EVENT_V2},
+			waitV2Line:               `level="info" schema="some_schema" thread_id="890" event_id="123" wait_event_id="124" wait_end_event_id="124" wait_object_type="wait_object_type" wait_object_name="wait_object_name" wait_time="0.100000ms"`,
+			waitV2SM: push.LabelsAdapter{
+				{Name: "digest", Value: "some_digest"},
+				{Name: "wait_event_name", Value: "wait/io/file/innodb/innodb_data_file"},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient := loki.NewCollectingHandler()
+
+			collector, err := NewQuerySamples(QuerySamplesArguments{
+				DB:                       db,
+				EngineVersion:            latestCompatibleVersion,
+				CollectInterval:          time.Second,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(os.Stderr),
+				EnableIndexedLabels:      tc.enableIndexedLabels,
+				EnableStructuredMetadata: tc.enableStructuredMetadata,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, collector)
+
+			mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(
+				sqlmock.NewRows([]string{"uptime"}).AddRow("1"),
+			)
+			mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+				sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1),
+			)
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).
+				WithArgs(1e12, 1e12).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRows([]driver.Value{
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"124",
+					"124",
+					"wait/io/file/innodb/innodb_data_file",
+					"wait_object_name",
+					"wait_object_type",
+					"100000000",
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				}))
+
+			err = collector.Start(t.Context())
+			require.NoError(t, err)
+
+			// expect: query_sample (V1) + query_sample_v2 + wait_event (V1) + wait_event_v2 = 4
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == 4
+			}, 5*time.Second, 100*time.Millisecond)
+
+			collector.Stop()
+			lokiClient.Stop()
+
+			require.Eventually(t, func() bool {
+				return collector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
+
+			require.NoError(t, mock.ExpectationsWereMet())
+
+			entries := lokiClient.Received()
+			// entries[0] = query_sample (V1), entries[1] = query_sample_v2
+			// entries[2] = wait_event (V1), entries[3] = wait_event_v2
+			assert.Equal(t, tc.sampleV2Labels, entries[1].Labels)
+			assert.Equal(t, tc.sampleV2Line, entries[1].Line)
+			assert.Equal(t, tc.sampleV2SM, entries[1].StructuredMetadata)
+
+			assert.Equal(t, tc.waitV2Labels, entries[3].Labels)
+			assert.Equal(t, tc.waitV2Line, entries[3].Line)
+			assert.ElementsMatch(t, tc.waitV2SM, entries[3].StructuredMetadata)
+		})
+	}
 }

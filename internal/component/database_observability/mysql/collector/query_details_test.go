@@ -9,7 +9,9 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -711,4 +713,94 @@ func TestQueryDetailsExcludeSchemas(t *testing.T) {
 
 	c.tablesFromEventsStatements(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQueryDetails_LogFormatFlags(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	testcases := []struct {
+		name                     string
+		enableIndexedLabels      bool
+		enableStructuredMetadata bool
+		assocV2Labels            model.LabelSet
+		assocV2Line              string
+		assocV2SM                push.LabelsAdapter
+	}{
+		{
+			name:                     "only indexed labels enabled",
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: false,
+			assocV2Labels:            model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "schema": "some_schema"},
+			assocV2Line:              "level=\"info\" parseable=\"true\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\" digest=\"abc123\"",
+			assocV2SM:                nil,
+		},
+		{
+			name:                     "only structured metadata enabled",
+			enableIndexedLabels:      false,
+			enableStructuredMetadata: true,
+			assocV2Labels:            model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2},
+			assocV2Line:              "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
+			assocV2SM:                push.LabelsAdapter{{Name: "digest", Value: "abc123"}},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient := loki.NewCollectingHandler()
+
+			collector, err := NewQueryDetails(QueryDetailsArguments{
+				DB:                       db,
+				CollectInterval:          time.Second,
+				StatementsLimit:          250,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(os.Stderr),
+				EnableIndexedLabels:      tc.enableIndexedLabels,
+				EnableStructuredMetadata: tc.enableStructuredMetadata,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, collector)
+
+			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"digest",
+					"digest_text",
+					"schema_name",
+					"query_sample_text",
+				}).AddRow(
+					"abc123",
+					"SELECT * FROM `some_table` WHERE `id` = ?",
+					"some_schema",
+					"select * from some_table where id = 1",
+				))
+
+			err = collector.Start(t.Context())
+			require.NoError(t, err)
+
+			// expect: query_association (V1) + query_association_v2 + query_parsed_table_name = 3
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == 3
+			}, 5*time.Second, 100*time.Millisecond)
+
+			collector.Stop()
+			lokiClient.Stop()
+
+			require.Eventually(t, func() bool {
+				return collector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
+
+			require.NoError(t, mock.ExpectationsWereMet())
+
+			entries := lokiClient.Received()
+			// entries[0] = query_association (V1), entries[1] = query_association_v2, entries[2] = query_parsed_table_name
+			assert.Equal(t, tc.assocV2Labels, entries[1].Labels)
+			assert.Equal(t, tc.assocV2Line, entries[1].Line)
+			assert.Equal(t, tc.assocV2SM, entries[1].StructuredMetadata)
+		})
+	}
 }
