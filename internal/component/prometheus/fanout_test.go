@@ -136,7 +136,7 @@ func (n noopAppender) AppendHistogram(storage.SeriesRef, labels.Labels, int64, *
 	return storage.SeriesRef(n.refCounter.Inc()), nil
 }
 
-func (n noopAppender) AppendHistogramCTZeroSample(storage.SeriesRef, labels.Labels, int64, int64, *histogram.Histogram, *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (n noopAppender) AppendHistogramSTZeroSample(storage.SeriesRef, labels.Labels, int64, int64, *histogram.Histogram, *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	return storage.SeriesRef(n.refCounter.Inc()), nil
 }
 
@@ -144,7 +144,7 @@ func (n noopAppender) UpdateMetadata(storage.SeriesRef, labels.Labels, metadata.
 	return storage.SeriesRef(n.refCounter.Inc()), nil
 }
 
-func (n noopAppender) AppendCTZeroSample(storage.SeriesRef, labels.Labels, int64, int64) (storage.SeriesRef, error) {
+func (n noopAppender) AppendSTZeroSample(storage.SeriesRef, labels.Labels, int64, int64) (storage.SeriesRef, error) {
 	return storage.SeriesRef(n.refCounter.Inc()), nil
 }
 
