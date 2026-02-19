@@ -60,11 +60,12 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
 
+	// Cache parsed queries as their AST
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](100))
 
 	srv.Use(extension.Introspection{})
-	// It's unlikely we will need caching of queries, but given sufficient query volume, this could be
-	// turned on to reduce CPU at the expense of memory.
+	// This is only useful for large queries at high volume. Should that become needed, the following
+	// could be turned on.
 	// srv.Use(extension.AutomaticPersistedQuery{
 	// 	Cache: lru.New[string](100),
 	// })
