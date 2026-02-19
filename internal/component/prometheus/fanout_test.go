@@ -38,6 +38,23 @@ func TestCommit(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestNewFanoutIgnoresNilChildren(t *testing.T) {
+	ls := labelstore.New(nil, promclient.DefaultRegisterer)
+	fanout := prometheus.NewFanout([]storage.Appendable{nil, nil}, "", promclient.DefaultRegisterer, ls)
+	app := fanout.Appender(t.Context())
+	err := app.Commit()
+	require.NoError(t, err)
+}
+
+func TestNewFanoutWithNilLabelStore(t *testing.T) {
+	fanout := prometheus.NewFanout([]storage.Appendable{noopStore{}}, "", promclient.DefaultRegisterer, nil)
+	app := fanout.Appender(t.Context())
+	_, err := app.Append(0, labels.FromStrings("foo", "bar"), time.Now().UnixMilli(), 1.0)
+	require.NoError(t, err)
+	err = app.Commit()
+	require.NoError(t, err)
+}
+
 type benchAppenderFlowsItem struct {
 	series        []labels.Labels
 	targetsCount  int

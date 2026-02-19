@@ -44,6 +44,15 @@ type Fanout struct {
 	seriesRefMappingStore *appenders.SeriesRefMappingStore
 }
 
+func normalizeChildren(children []storage.Appendable) []storage.Appendable {
+	if len(children) == 0 {
+		return nil
+	}
+
+	cloned := slices.Clone(children)
+	return slices.DeleteFunc(cloned, func(i storage.Appendable) bool { return i == nil })
+}
+
 // NewFanout creates a fanout appendable.
 func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -62,13 +71,10 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 	})
 	_ = register.Register(s)
 
-	useLabelStore := true
-	if ls != nil {
-		useLabelStore = ls.Enabled()
-	}
+	useLabelStore := ls != nil && ls.Enabled()
 
 	return &Fanout{
-		children:       children,
+		children:       normalizeChildren(children),
 		componentID:    componentID,
 		writeLatency:   wl,
 		samplesCounter: s,
@@ -81,8 +87,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 
 // UpdateChildren allows changing of the children of the fanout.
 func (f *Fanout) UpdateChildren(children []storage.Appendable) {
-	// We don't want to keep nil children around.
-	c := slices.DeleteFunc(children, func(i storage.Appendable) bool { return i == nil })
+	c := normalizeChildren(children)
 
 	f.mut.Lock()
 	defer f.mut.Unlock()
