@@ -168,10 +168,11 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 			}
 
 			if newChildRef != childRef {
-				// Child ref changed, need to update mapping
-				existingChildRefs[childIndex] = newChildRef
 				refUpdateRequired = true
 			}
+
+			// Track refs in the local reuse buffer instead of mutating the shared mapping slice.
+			s.childRefs = append(s.childRefs, newChildRef)
 		}
 
 		if appendErr != nil {
@@ -179,7 +180,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		}
 
 		if refUpdateRequired {
-			s.store.UpdateMapping(ref, existingChildRefs, lbls)
+			s.store.UpdateMapping(ref, s.childRefs, lbls)
 		}
 
 		return ref, nil
@@ -318,10 +319,11 @@ type Cell struct {
 // If the passed uniqueRef is zero, the method will attempt to find a mapping using passed labels.
 // Returns nil if no mapping exists.
 //
-// The returned slice may be modified by the caller, but UpdateMapping must be called
-// afterwards to persist changes. Note that concurrent appenders may race to update the
-// same mapping with different values, which is safe because stale mappings are self-correcting -
-// using a stale ref will cause the child appender to return a new ref on the next append.
+// The returned slice must be treated as read-only. Callers that need to change a mapping
+// must provide an updated slice to UpdateMapping. Concurrent appenders may race to update
+// the same mapping with different values, which is safe because stale mappings are
+// self-correcting - using a stale ref will cause the child appender to return a new ref
+// on the next append.
 func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
 	s.refMappingMu.RLock()
 	defer s.refMappingMu.RUnlock()
