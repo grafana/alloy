@@ -490,11 +490,11 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE_V2,
 			c.buildQuerySampleV2Labels(state, state.EndAt),
-		[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
-		[]database_observability.Field{{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)}},
-		c.enableIndexedLabels,
-		c.enableStructuredMetadata,
-		ts,
+			[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
+			[]database_observability.Field{{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)}},
+			c.enableIndexedLabels,
+			c.enableStructuredMetadata,
+			ts,
 		)
 	}
 
@@ -516,12 +516,12 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 				logging.LevelInfo,
 				OP_WAIT_EVENT_V2,
 				c.buildWaitEventLabelsV2(state, we),
-			[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
-			[]database_observability.Field{
-				{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)},
-				{Name: "wait_event_type", Value: we.WaitEventType},
-				{Name: "wait_event_name", Value: waitEventFullName},
-			},
+				[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
+				[]database_observability.Field{
+					{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)},
+					{Name: "wait_event_type", Value: we.WaitEventType},
+					{Name: "wait_event_name", Value: waitEventFullName},
+				},
 				c.enableIndexedLabels,
 				c.enableStructuredMetadata,
 				we.LastTimestamp.UnixNano(),
