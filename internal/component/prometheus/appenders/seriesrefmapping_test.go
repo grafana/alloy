@@ -481,7 +481,7 @@ func TestSeriesRefMappingAppendReturnsOriginalOrSingleRefWhenMappingNotNeeded(t 
 		require.Len(t, store.createCalls, 0)
 	})
 
-	t.Run("only one child returns non-zero", func(t *testing.T) {
+	t.Run("only one child returns non-zero with non-zero input ref", func(t *testing.T) {
 		store := newMockMappingStore()
 
 		child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
@@ -497,9 +497,57 @@ func TestSeriesRefMappingAppendReturnsOriginalOrSingleRefWhenMappingNotNeeded(t 
 
 		ref, err := app.Append(42, labels.EmptyLabels(), 1, 1)
 		require.NoError(t, err)
-		require.Equal(t, storage.SeriesRef(77), ref)
+		require.Equal(t, storage.SeriesRef(42), ref)
 		require.Len(t, store.createCalls, 0)
 	})
+
+	t.Run("only one child returns non-zero with zero input ref creates mapping", func(t *testing.T) {
+		store := newMockMappingStore()
+
+		child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return 0, nil
+		}}
+		child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return 77, nil
+		}}
+
+		writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_single_zero_ref", Help: "test"})
+		samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_single_zero_ref", Help: "test"})
+		app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+		ref, err := app.Append(0, labels.EmptyLabels(), 1, 1)
+		require.NoError(t, err)
+		require.Equal(t, storage.SeriesRef(1000), ref)
+		require.Len(t, store.createCalls, 1)
+		require.Equal(t, []storage.SeriesRef{0, 77}, store.createCalls[0].refs)
+		require.Equal(t, []storage.SeriesRef{1000}, store.cell.Refs)
+	})
+}
+
+func TestSeriesRefMappingAppendSingleNonZeroDoesNotLeakChildRef(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[77] = []storage.SeriesRef{11, 22}
+
+	child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 0, nil
+	}}
+	child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 77, nil
+	}}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_single_no_leak", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_single_no_leak", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	lbls := labels.FromStrings("job", "single")
+	ref, err := app.Append(0, lbls, 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(1000), ref)
+
+	_, err = app.Append(ref, lbls, 2, 2)
+	require.NoError(t, err)
+	require.Equal(t, []storage.SeriesRef{0, 0}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{0, 77}, child2.appendRefs)
 }
 
 func TestSeriesRefMappingAppendErrorSkipsMappingUpdate(t *testing.T) {
