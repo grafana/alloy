@@ -3,20 +3,28 @@ package typecheck
 import (
 	"testing"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/stretchr/testify/require"
 )
 
 type Args struct {
-	Arg1       string      `alloy:"arg1,attr,optional"`
-	Arg2       string      `alloy:"arg2,attr"`
-	Block1     Block1      `alloy:"block1,block"`
-	Block2     []Block1    `alloy:"block2,block,optional"`
-	Block3     [2]Block1   `alloy:"block3,block,optional"`
-	Block4     Block2      `alloy:"block4,block,optional"`
-	InnerBlock InnerBlock  `alloy:",squash"`
-	EnumBlock  []EnumBlock `alloy:"enum,enum,optional"`
+	Arg1       string            `alloy:"arg1,attr,optional"`
+	Arg2       string            `alloy:"arg2,attr"`
+	Int        int               `alloy:"int,attr,optional"`
+	Int2       int               `alloy:"int2,attr,optional"`
+	Bool       bool              `alloy:"bool,attr,optional"`
+	Capsule    alloytypes.Secret `alloy:"capsule,attr,optional"`
+	Block1     Block1            `alloy:"block1,block"`
+	Block2     []Block1          `alloy:"block2,block,optional"`
+	Block3     [2]Block1         `alloy:"block3,block,optional"`
+	Block4     Block2            `alloy:"block4,block,optional"`
+	InnerBlock InnerBlock        `alloy:",squash"`
+	EnumBlock  []EnumBlock       `alloy:"enum,enum,optional"`
+	Arr        []string          `alloy:"arr,attr,optional"`
+	ArrArr     [][]string        `alloy:"arrarr,attr,optional"`
+	Obj        map[string]string `alloy:"obj,attr,optional"`
 }
 
 type Block1 struct {
@@ -45,7 +53,7 @@ func TestBlock(t *testing.T) {
 	type TestCase struct {
 		desc        string
 		src         []byte
-		expectedErr string
+		expectedErr []string
 	}
 
 	tests := []TestCase{
@@ -56,6 +64,10 @@ func TestBlock(t *testing.T) {
 					arg1 = "test"
 					arg2 = "test"	
 					arg3 = true
+					capsule = "secret"
+					int = -1
+					int2 = 1 + 1
+					bool = 1 < 10
 					block1 {
 						arg1 = "test"
 						arg2 = "test"
@@ -99,7 +111,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `2:5: missing required attribute "arg2"`,
+			expectedErr: []string{`2:5: missing required attribute "arg2"`},
 		},
 
 		{
@@ -117,7 +129,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `4:6: attribute "arg1" may only be provided once`,
+			expectedErr: []string{`4:6: attribute "arg1" may only be provided once`},
 		},
 		{
 			desc: "unknown attribute",
@@ -134,7 +146,7 @@ func TestBlock(t *testing.T) {
 						}
 					}
 				`),
-			expectedErr: `3:7: unrecognized attribute name "unknown"`,
+			expectedErr: []string{`3:7: unrecognized attribute name "unknown"`},
 		},
 		{
 			desc: "missing block",
@@ -145,7 +157,7 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 				}
 			`),
-			expectedErr: `2:5: missing required block "block1"`,
+			expectedErr: []string{`2:5: missing required block "block1"`},
 		},
 		{
 			desc: "missing required attribute in block",
@@ -160,7 +172,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `7:6: missing required attribute "arg2"`,
+			expectedErr: []string{`7:6: missing required attribute "arg2"`},
 		},
 		{
 			desc: "missing required attribute in slice block",
@@ -184,7 +196,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `16:6: missing required attribute "arg2"`,
+			expectedErr: []string{`16:6: missing required attribute "arg2"`},
 		},
 		{
 			desc: "to many blocks when type is array with 2 elements",
@@ -206,7 +218,11 @@ func TestBlock(t *testing.T) {
 					block3 {}
 				}
 			`),
-			expectedErr: `12:6: block "block3" must be specified exactly 2 times, but was specified 3 times (and 2 more diagnostics)`,
+			expectedErr: []string{
+				`12:6: block "block3" must be specified exactly 2 times, but was specified 3 times`,
+				`14:6: block "block3" must be specified exactly 2 times, but was specified 3 times`,
+				`16:6: block "block3" must be specified exactly 2 times, but was specified 3 times`,
+			},
 		},
 		{
 			desc: "enum block",
@@ -234,7 +250,7 @@ func TestBlock(t *testing.T) {
 					}
 	
 					enum.block2 {
-						arg3 = "test"
+						arg3 = true
 					}
 				}
 			`),
@@ -267,7 +283,7 @@ func TestBlock(t *testing.T) {
 					enum.block2 {}
 				}
 			`),
-			expectedErr: `24:6: missing required attribute "arg3"`,
+			expectedErr: []string{`24:6: missing required attribute "arg3"`},
 		},
 		{
 			desc: "missing required attribute nested block",
@@ -286,7 +302,46 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `12:7: missing required attribute "nested_arg"`,
+			expectedErr: []string{`12:7: missing required attribute "nested_arg"`},
+		},
+		{
+			desc: "wrong literal",
+			src: []byte(`
+				test "name" {
+					arg1 = true
+					arg2 = "test"	
+					arg3 = true
+					arr = ["test", 1]
+					obj = { "key" = 1 }
+					capsule = 1
+					int = -"test"
+					int2 = 1 + "test"
+					bool = 10 < "test"
+
+					block1 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					block2 {
+						arg2 = "test"
+					}
+					
+					block2 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+				}
+			`),
+			expectedErr: []string{
+				`3:13: expected string, got bool`,
+				`6:21: expected string, got number`,
+				`7:22: expected string, got number`,
+				`8:16: expected capsule, got number`,
+				`9:13: expected number, got string`,
+				`10:13: expected number, got string`,
+				`11:13: expected number, got string`,
+			},
 		},
 	}
 
@@ -294,11 +349,11 @@ func TestBlock(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			file, err := parser.ParseFile("", tt.src)
 			require.NoError(t, err)
-			diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
-			if tt.expectedErr == "" {
-				require.Len(t, diag, 0)
-			} else {
-				require.EqualError(t, diag, tt.expectedErr)
+			diags := Block(file.Body[0].(*ast.BlockStmt), &Args{})
+
+			require.Equal(t, len(tt.expectedErr), len(diags))
+			for i := range diags {
+				require.EqualError(t, diags[i], tt.expectedErr[i])
 			}
 		})
 	}

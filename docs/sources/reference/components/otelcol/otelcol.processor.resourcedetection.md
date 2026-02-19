@@ -1198,9 +1198,9 @@ otelcol.processor.resourcedetection "default" {
   detectors = ["env"]
 
   output {
-    logs    = [otelcol.exporter.otlp.default.input]
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -1215,9 +1215,9 @@ otelcol.processor.resourcedetection "default" {
   detectors = ["env", "ec2"]
 
   output {
-    logs    = [otelcol.exporter.otlp.default.input]
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -1232,9 +1232,9 @@ otelcol.processor.resourcedetection "default" {
   detectors = ["ec2"]
 
   output {
-    logs    = [otelcol.exporter.otlp.default.input]
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -1260,9 +1260,9 @@ otelcol.processor.resourcedetection "default" {
   }
 
   output {
-    logs    = [otelcol.exporter.otlp.default.input]
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -1279,9 +1279,9 @@ otelcol.processor.resourcedetection "default" {
   detectors = ["kubernetes_node"]
 
   output {
-    logs    = [otelcol.exporter.otlp.default.input]
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -1308,9 +1308,9 @@ otelcol.processor.resourcedetection "default" {
   }
 
   output {
-    logs    = [otelcol.exporter.otlp.default.input]
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```

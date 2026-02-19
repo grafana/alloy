@@ -131,7 +131,7 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 [composite]: #composite
 [composite_sub_policy]: #composite_sub_policy
 [output]: #output
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 [debug_metrics]: #debug_metrics
 
 ### `output`
@@ -376,7 +376,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlp][] for further processing.
+This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp][] for further processing.
 This example shows an impractical number of policies for the purpose of demonstrating how to set up each type.
 
 ```alloy
@@ -590,11 +590,11 @@ otelcol.processor.tail_sampling "default" {
   }
 
   output {
-    traces = [otelcol.exporter.otlp.production.input]
+    traces = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }

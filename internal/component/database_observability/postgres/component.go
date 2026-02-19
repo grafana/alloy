@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
@@ -109,6 +110,7 @@ type SchemaDetailsArguments struct {
 
 var DefaultArguments = Arguments{
 	ExcludeDatabases: []string{},
+	ExcludeUsers:     []string{},
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
@@ -154,7 +156,8 @@ func (a *Arguments) Validate() error {
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets      []discovery.Target `alloy:"targets,attr"`
+	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr,optional"`
 }
 
 var (
@@ -183,6 +186,7 @@ type Component struct {
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	logsReceiver loki.LogsReceiver
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -191,13 +195,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:         opts,
+		args:         args,
+		receivers:    args.ForwardTo,
+		handler:      loki.NewLogsReceiver(),
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		openSQL:      openFn,
+		logsReceiver: loki.NewLogsReceiver(),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -211,6 +216,12 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		return nil, err
 	}
 	c.baseTarget = baseTarget
+
+	// Export logs receiver immediately so loki.source.file can wire to it
+	opts.OnStateChange(Exports{
+		Targets:      []discovery.Target{},
+		LogsReceiver: c.logsReceiver,
+	})
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -365,7 +376,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 
 	c.opts.OnStateChange(Exports{
-		Targets: targets,
+		Targets:      targets,
+		LogsReceiver: c.logsReceiver,
 	})
 
 	for _, collector := range c.collectors {
@@ -460,6 +472,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			DB:               c.dbConnection,
 			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
 			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeUsers:     c.args.ExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
 			Logger:           c.opts.Logger,
@@ -478,6 +491,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
 			ExcludeDatabases:      c.args.ExcludeDatabases,
+			ExcludeUsers:          c.args.ExcludeUsers,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
@@ -515,6 +529,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeUsers:     c.args.ExcludeUsers,
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
@@ -542,6 +557,24 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.HealthCheckCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, hcCollector)
+	}
+
+	// Logs collector is always enabled
+	logsCollector, err := collector.NewLogs(collector.LogsArguments{
+		Receiver:         c.logsReceiver,
+		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:           c.opts.Logger,
+		Registry:         c.registry,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
+	})
+	if err != nil {
+		logStartError(collector.LogsCollector, "create", err)
+	} else {
+		if err := logsCollector.Start(context.Background()); err != nil {
+			logStartError(collector.LogsCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, logsCollector)
 	}
 
 	if len(startErrors) > 0 {
