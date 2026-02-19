@@ -126,10 +126,7 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(logger, *cfg.ReplaceConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newReplaceStage(logger, *cfg.ReplaceConfig)
 	case cfg.LimitConfig != nil:
 		s, err = newLimitStage(logger, *cfg.LimitConfig, registerer)
 		if err != nil {

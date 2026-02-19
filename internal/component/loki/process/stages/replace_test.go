@@ -1,15 +1,15 @@
 package stages
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testReplaceAlloySingleStageWithoutSource = `
@@ -168,49 +168,47 @@ func TestReplace(t *testing.T) {
 }
 
 func TestReplaceConfigValidation(t *testing.T) {
-	t.Parallel()
-	tests := map[string]struct {
-		config ReplaceConfig
-		err    error
-	}{
-		"missing regex_expression": {
-			ReplaceConfig{},
-			errExpressionRequired,
+	type testCase struct {
+		name      string
+		cfg       string
+		expectErr bool
+	}
+
+	tests := []testCase{
+		{
+			name:      "empty config",
+			cfg:       "",
+			expectErr: true,
 		},
-		"invalid regex_expression": {
-			ReplaceConfig{
-				Expression: "(?P<ts[0-9]+).*",
-				Replace:    "test",
-			},
-			fmt.Errorf("%v: %w", errCouldNotCompileRegex, errors.New("error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`")),
+		{
+			name: "invalid expression",
+			cfg: `
+				expression = "(?P<ts[0-9]+).*"	
+			`,
+			expectErr: true,
 		},
-		"valid without source": {
-			ReplaceConfig{
-				Expression: "(?P<ts>[0-9]+).*",
-				Replace:    "test",
-			},
-			nil,
+		{
+			name: "valid without source",
+			cfg: `
+				expression = "(?P<ts>[0-9]+).*"
+			`,
 		},
-		"valid with source": {
-			ReplaceConfig{
-				Expression: "(?P<ts>[0-9]+).*",
-				Source:     "log",
-				Replace:    "test",
-			},
-			nil,
+		{
+			name: "valid with source",
+			cfg: `
+				expression = "(?P<ts>[0-9]+).*"
+				source     = "log"
+			`,
 		},
 	}
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
-			_, err := getExpressionRegex(tt.config)
-			if (err != nil) != (tt.err != nil) {
-				t.Errorf("ReplaceConfig.validate() expected error = %v, actual error = %v", tt.err, err)
-				return
-			}
-			if (err != nil) && (err.Error() != tt.err.Error()) {
-				t.Errorf("ReplaceConfig.validate() expected error = %v, actual error = %v", tt.err, err)
-				return
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg ReplaceConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

@@ -558,9 +558,16 @@ func convertReplace(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool)
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+
+	expr, err := regexp.CompileNonEmpty(pCfg.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		ReplaceConfig: &stages.ReplaceConfig{
-			Expression: pCfg.Expression,
+			Expression: expr,
 			Source:     defaultEmpty(pCfg.Source),
 			Replace:    pCfg.Replace,
 		}}, true
