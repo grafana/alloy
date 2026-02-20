@@ -66,7 +66,7 @@ func CompileNonEmpty(s string) (*NonEmptyRegexp, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &NonEmptyRegexp{re}, err
+	return &NonEmptyRegexp{re}, nil
 }
 
 // MustCompileNonEmpty is like CompileNonEmpty but panics on error.
