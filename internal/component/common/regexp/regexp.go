@@ -40,7 +40,7 @@ type Regexp struct {
 
 // MarshalText implements encoding.TextMarshaler for Regexp.
 func (r Regexp) MarshalText() (text []byte, err error) {
-	if r.String() != "" {
+	if r.Regexp != nil && r.Regexp.String() != "" {
 		return []byte(r.String()), nil
 	}
 	return nil, nil
@@ -79,8 +79,8 @@ func MustCompileNonEmpty(s string) *NonEmptyRegexp {
 }
 
 var (
-	_ encoding.TextMarshaler   = Regexp{}
-	_ encoding.TextUnmarshaler = (*Regexp)(nil)
+	_ encoding.TextMarshaler   = NonEmptyRegexp{}
+	_ encoding.TextUnmarshaler = (*NonEmptyRegexp)(nil)
 )
 
 // NonEmptyRegexp is like Regexp but guarantees the pattern is non-empty.
@@ -91,7 +91,7 @@ type NonEmptyRegexp struct {
 
 // MarshalText implements encoding.TextMarshaler for NonEmptyRegexp.
 func (r NonEmptyRegexp) MarshalText() (text []byte, err error) {
-	if r.String() != "" {
+	if r.Regexp != nil && r.Regexp.String() != "" {
 		return []byte(r.String()), nil
 	}
 	return nil, nil
