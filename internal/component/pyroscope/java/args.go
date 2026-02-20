@@ -1,7 +1,6 @@
 package java
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -20,15 +19,16 @@ type Arguments struct {
 }
 
 type ProfilingConfig struct {
-	Interval   time.Duration `alloy:"interval,attr,optional"`
-	SampleRate int           `alloy:"sample_rate,attr,optional"`
-	Alloc      string        `alloy:"alloc,attr,optional"`
-	Lock       string        `alloy:"lock,attr,optional"`
-	CPU        bool          `alloy:"cpu,attr,optional"`
-	Event      string        `alloy:"event,attr,optional"`
-	PerThread  bool          `alloy:"per_thread,attr,optional"`
-	LogLevel   string        `alloy:"log_level,attr,optional"`
-	Quiet      bool          `alloy:"quiet,attr,optional"`
+	Interval       time.Duration `alloy:"interval,attr,optional"`
+	SampleRate     int           `alloy:"sample_rate,attr,optional"`
+	Alloc          string        `alloy:"alloc,attr,optional"`
+	Lock           string        `alloy:"lock,attr,optional"`
+	CPU            bool          `alloy:"cpu,attr,optional"`
+	Event          string        `alloy:"event,attr,optional"`
+	PerThread      bool          `alloy:"per_thread,attr,optional"`
+	LogLevel       string        `alloy:"log_level,attr,optional"`
+	Quiet          bool          `alloy:"quiet,attr,optional"`
+	ExtraArguments []string      `alloy:"extra_arguments,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
@@ -38,27 +38,23 @@ func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
 }
 
 func (arg *Arguments) Validate() error {
-	switch arg.ProfilingConfig.Event {
-	case "itimer", "cpu", "wall":
-		return nil
-	default:
-		return fmt.Errorf("invalid event: '%s'. Event must be one of 'itimer', 'cpu' or 'wall'", arg.ProfilingConfig.Event)
-	}
+	return nil
 }
 
 func DefaultArguments() Arguments {
 	return Arguments{
 		TmpDir: "/tmp",
 		ProfilingConfig: ProfilingConfig{
-			Interval:   60 * time.Second,
-			SampleRate: 100,
-			Alloc:      "10ms",
-			Lock:       "512k",
-			CPU:        true,
-			Event:      "itimer",
-			PerThread:  false,
-			LogLevel:   "INFO",
-			Quiet:      false,
+			Interval:       60 * time.Second,
+			SampleRate:     100,
+			Alloc:          "512k",
+			Lock:           "10ms",
+			CPU:            true,
+			Event:          "itimer",
+			PerThread:      false,
+			LogLevel:       "INFO",
+			Quiet:          false,
+			ExtraArguments: []string{},
 		},
 	}
 }
