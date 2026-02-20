@@ -4,76 +4,49 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"regexp"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors.
-var (
-	ErrExpressionRequired    = errors.New("expression is required")
-	ErrCouldNotCompileRegex  = errors.New("could not compile regular expression")
-	ErrEmptyRegexStageSource = errors.New("empty source")
-)
+var errEmptySource = errors.New("empty source")
+
+var _ syntax.Validator = (*RegexConfig)(nil)
 
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression       string  `alloy:"expression,attr"`
-	Source           *string `alloy:"source,attr,optional"`
-	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
+	Expression       *regexp.NonEmptyRegexp `alloy:"expression,attr"`
+	Source           *string                `alloy:"source,attr,optional"`
+	LabelsFromGroups bool                   `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validateRegexConfig validates the config and return a regex
-func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
-	if c.Expression == "" {
-		return nil, ErrExpressionRequired
-	}
-
+// Validate implements syntax.Validator.
+func (c *RegexConfig) Validate() error {
 	if c.Source != nil && *c.Source == "" {
-		return nil, ErrEmptyRegexStageSource
+		return errEmptySource
 	}
-
-	expr, err := regexp.Compile(c.Expression)
-	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
-	}
-
-	return expr, nil
+	return nil
 }
 
 // regexStage sets extracted data using regular expressions
 type regexStage struct {
-	config     *RegexConfig
-	expression *regexp.Regexp
-	logger     log.Logger
+	config *RegexConfig
+	logger log.Logger
 }
 
 // newRegexStage creates a newRegexStage
-func newRegexStage(logger log.Logger, config RegexConfig) (Stage, error) {
-	expression, err := validateRegexConfig(config)
-	if err != nil {
-		return nil, err
-	}
+func newRegexStage(logger log.Logger, config RegexConfig) Stage {
 	return toStage(&regexStage{
-		config:     &config,
-		expression: expression,
-		logger:     log.With(logger, "component", "stage", "type", "regex"),
-	}), nil
-}
-
-// parseRegexConfig processes an incoming configuration into a RegexConfig
-func parseRegexConfig(config any) (*RegexConfig, error) {
-	cfg := &RegexConfig{}
-	err := mapstructure.Decode(config, cfg)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
+		config: &config,
+		logger: log.With(logger, "component", "stage", "type", "regex"),
+	})
 }
 
 // Process implements Stage
@@ -108,15 +81,15 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 		return
 	}
 
-	match := r.expression.FindStringSubmatch(*input)
+	match := r.config.Expression.FindStringSubmatch(*input)
 	if match == nil {
 		if Debug {
-			level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.expression)
+			level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.config.Expression)
 		}
 		return
 	}
 
-	for i, name := range r.expression.SubexpNames() {
+	for i, name := range r.config.Expression.SubexpNames() {
 		if i != 0 && name != "" {
 			extracted[name] = match[i]
 			if r.config.LabelsFromGroups {

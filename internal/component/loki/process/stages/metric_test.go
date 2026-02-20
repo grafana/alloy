@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -382,7 +383,7 @@ func TestMetricStage_Process(t *testing.T) {
 	}}
 	regexHTTPFixture := `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932ms"`
 	regexStageConfig := StageConfig{RegexConfig: &RegexConfig{
-		Expression: "(?P<get>\"GET).*HTTP/1.1\" (?P<status>\\d*) (?P<time>\\d*ms)",
+		Expression: regexp.MustCompileNonEmpty("(?P<get>\"GET).*HTTP/1.1\" (?P<status>\\d*) (?P<time>\\d*ms)"),
 	}}
 	timeSource := "time"
 	trueVal := "true"

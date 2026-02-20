@@ -2,62 +2,41 @@ package stages
 
 import (
 	"bytes"
-	"fmt"
+	"maps"
 	"reflect"
-	"regexp"
 	"text/template"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
-	for k, v := range extraFunctionMap {
-		functionMap[k] = v
-	}
+	maps.Copy(functionMap, extraFunctionMap)
 }
 
 // ReplaceConfig contains a regexStage configuration
 type ReplaceConfig struct {
-	Expression string `alloy:"expression,attr"`
-	Source     string `alloy:"source,attr,optional"`
-	Replace    string `alloy:"replace,attr,optional"`
-}
-
-func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {
-	if c.Expression == "" {
-		return nil, ErrExpressionRequired
-	}
-
-	expr, err := regexp.Compile(c.Expression)
-	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
-	}
-	return expr, nil
+	Expression *regexp.NonEmptyRegexp `alloy:"expression,attr"`
+	Source     string                 `alloy:"source,attr,optional"`
+	Replace    string                 `alloy:"replace,attr,optional"`
 }
 
 // replaceStage sets extracted data using regular expressions
 type replaceStage struct {
-	cfg        ReplaceConfig
-	expression *regexp.Regexp
-	logger     log.Logger
+	cfg    ReplaceConfig
+	logger log.Logger
 }
 
 // newReplaceStage creates a newReplaceStage
-func newReplaceStage(logger log.Logger, config ReplaceConfig) (Stage, error) {
-	expression, err := getExpressionRegex(config)
-	if err != nil {
-		return nil, err
-	}
-
+func newReplaceStage(logger log.Logger, config ReplaceConfig) Stage {
 	return toStage(&replaceStage{
-		cfg:        config,
-		expression: expression,
-		logger:     log.With(logger, "component", "stage", "type", "replace"),
-	}), nil
+		cfg:    config,
+		logger: log.With(logger, "component", "stage", "type", "replace"),
+	})
 }
 
 // Process implements Stage
@@ -87,11 +66,11 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	}
 
 	// Get string of matched captured groups. We will use this to extract all named captured groups
-	match := r.expression.FindStringSubmatch(*input)
-	matchAllIndex := r.expression.FindAllStringSubmatchIndex(*input, -1)
+	match := r.cfg.Expression.FindStringSubmatch(*input)
+	matchAllIndex := r.cfg.Expression.FindAllStringSubmatchIndex(*input, -1)
 
 	if matchAllIndex == nil {
-		level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.expression)
+		level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.cfg.Expression)
 		return
 	}
 
@@ -118,7 +97,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	}
 
 	// All the named captured group will be extracted
-	for i, name := range r.expression.SubexpNames() {
+	for i, name := range r.cfg.Expression.SubexpNames() {
 		if i != 0 && name != "" {
 			if v, ok := capturedMap[match[i]]; ok {
 				extracted[name] = v

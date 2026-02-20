@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/mitchellh/mapstructure"
 
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -202,9 +204,20 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		maxWaitTime = d
 	}
 
+	if pMulti.Expression == nil {
+		addInvalidStageError(diags, cfg, errors.New("missing required expression"))
+		return stages.StageConfig{}, false
+	}
+
+	expr, err := regexp.CompileNonEmpty(*pMulti.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, fmt.Errorf("invalid expression: %v", err))
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:   defaultEmpty(pMulti.Expression),
+			Expression:   expr,
 			MaxLines:     defaultZero(pMulti.MaxLines),
 			MaxWaitTime:  maxWaitTime,
 			TrimNewlines: true,
@@ -309,11 +322,21 @@ func convertDrop(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		}
 	}
 
+	var expr *regexp.Regexp
+	if pDrop.Expression != nil {
+		var err error
+		expr, err = regexp.Compile(*pDrop.Expression)
+		if err != nil {
+			addInvalidStageError(diags, pDrop, err)
+			return stages.StageConfig{}, false
+		}
+	}
+
 	return stages.StageConfig{DropConfig: &stages.DropConfig{
 		DropReason: defaultEmpty(pDrop.DropReason),
 		Source:     source,
 		Value:      defaultEmpty(pDrop.Value),
-		Expression: defaultEmpty(pDrop.Expression),
+		Expression: expr,
 		OlderThan:  olderThan,
 		LongerThan: longerThan,
 		Separator:  defaultEmpty(pDrop.Separator),
@@ -545,9 +568,16 @@ func convertReplace(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool)
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+
+	expr, err := regexp.CompileNonEmpty(pCfg.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		ReplaceConfig: &stages.ReplaceConfig{
-			Expression: pCfg.Expression,
+			Expression: expr,
 			Source:     defaultEmpty(pCfg.Source),
 			Replace:    pCfg.Replace,
 		}}, true
@@ -559,9 +589,16 @@ func convertRegex(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+
+	re, err := regexp.CompileNonEmpty(pCfg.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		RegexConfig: &stages.RegexConfig{
-			Expression: pCfg.Expression,
+			Expression: re,
 			Source:     pCfg.Source,
 		}}, true
 }

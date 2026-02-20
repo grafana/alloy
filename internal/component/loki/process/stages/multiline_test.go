@@ -11,18 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/util"
 )
 
 func TestMultilineStageProcess(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
+	mcfg := MultilineConfig{Expression: regexp.MustCompileNonEmpty("^START"), MaxWaitTime: 3 * time.Second, TrimNewlines: true}
 	stage := &multilineStage{
 		cfg:    mcfg,
-		regex:  regex,
 		logger: logger,
 	}
 
@@ -44,13 +41,9 @@ func TestMultilineStageProcess(t *testing.T) {
 
 func TestMultilineStageMultiStreams(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
+	mcfg := MultilineConfig{Expression: regexp.MustCompileNonEmpty("^START"), MaxWaitTime: 3 * time.Second, TrimNewlines: true}
 	stage := &multilineStage{
 		cfg:    mcfg,
-		regex:  regex,
 		logger: logger,
 	}
 
@@ -85,13 +78,9 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 
 func TestMultilineStageProcessLeaveNewlines(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: false}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
+	mcfg := MultilineConfig{Expression: regexp.MustCompileNonEmpty("^START"), MaxWaitTime: 3 * time.Second, TrimNewlines: false}
 	stage := &multilineStage{
 		cfg:    mcfg,
-		regex:  regex,
 		logger: logger,
 	}
 
@@ -113,13 +102,9 @@ func TestMultilineStageProcessLeaveNewlines(t *testing.T) {
 
 func TestMultilineStageMaxWaitTime(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
+	mcfg := MultilineConfig{Expression: regexp.MustCompileNonEmpty("^START"), MaxWaitTime: 100 * time.Millisecond, TrimNewlines: true}
 	stage := &multilineStage{
 		cfg:    mcfg,
-		regex:  regex,
 		logger: logger,
 	}
 
@@ -175,13 +160,9 @@ func simpleEntry(line, label string) Entry {
 
 func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
+	mcfg := MultilineConfig{Expression: regexp.MustCompileNonEmpty("^START"), MaxWaitTime: 3 * time.Second, TrimNewlines: true}
 	stage := &multilineStage{
 		cfg:    mcfg,
-		regex:  regex,
 		logger: logger,
 	}
 
