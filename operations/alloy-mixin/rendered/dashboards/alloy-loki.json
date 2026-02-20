@@ -321,8 +321,11 @@
             "type": "datasource"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
+            "includeAll": true,
             "label": "cluster",
+            "multi": true,
             "name": "cluster",
             "query": {
                "query": "label_values(alloy_component_controller_running_components, cluster)\n",
@@ -333,8 +336,11 @@
             "type": "query"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
+            "includeAll": true,
             "label": "namespace",
+            "multi": true,
             "name": "namespace",
             "query": {
                "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\"}, namespace)\n",
@@ -345,8 +351,11 @@
             "type": "query"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
+            "includeAll": true,
             "label": "job",
+            "multi": true,
             "name": "job",
             "query": {
                "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)\n",
@@ -387,7 +396,7 @@
             "multi": true,
             "name": "url",
             "query": {
-               "query": "label_values(loki_write_sent_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=\"$job\", instance=~\"$instance\"}, host)\n",
+               "query": "label_values(loki_write_sent_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}, host)\n",
                "refId": "url"
             },
             "refresh": 2,

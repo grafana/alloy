@@ -40,7 +40,8 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: false,
+        includeAll: true,
+        allValue: '.*',
       },
       {
         name: 'namespace',
@@ -51,7 +52,8 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: false,
+        includeAll: true,
+        allValue: '.*',
       },
       {
         name: 'job',
@@ -118,7 +120,8 @@ local filename = 'alloy-logs.json';
       refresh: 2,
       sort: 1,
       multi: true,
-      includeAll: false,
+      includeAll: true,
+      allValue: '.*',
     },
     {
       name: 'instance',

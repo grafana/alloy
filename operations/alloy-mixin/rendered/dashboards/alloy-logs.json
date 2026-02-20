@@ -229,8 +229,9 @@
             "type": "datasource"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
-            "includeAll": false,
+            "includeAll": true,
             "label": "Cluster",
             "multi": true,
             "name": "cluster",
@@ -240,8 +241,9 @@
             "type": "query"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
-            "includeAll": false,
+            "includeAll": true,
             "label": "Namespace",
             "multi": true,
             "name": "namespace",

@@ -445,11 +445,11 @@ local filename = 'alloy-prometheus-remote-write.json';
   local k8sUrlQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       |||
     else
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       ||| % $._config,
 
   local componentPathQuery =
@@ -475,11 +475,11 @@ local filename = 'alloy-prometheus-remote-write.json';
   local urlQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       |||
     else
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       ||| % $._config,
 
   local prometheusTemplateVariables =

@@ -180,21 +180,21 @@ local filename = 'alloy-loki.json';
   local k8sEndpointQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(loki_write_sent_bytes_total{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"}, host)
       |||
     else
       |||
-        label_values(loki_write_sent_bytes_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"}, host)
       ||| % $._config,
 
   local endpointQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(loki_write_sent_bytes_total{job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{job=~"$job", instance=~"$instance"}, host)
       |||
     else
       |||
-        label_values(loki_write_sent_bytes_total{%(filterSelector)s, job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{%(filterSelector)s, job=~"$job", instance=~"$instance"}, host)
       ||| % $._config,
 
   local lokiTemplateVariables =

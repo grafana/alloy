@@ -75,15 +75,15 @@ local dashboard = import './dashboard.jsonnet';
         if enableK8sCluster then
             (
                 [
-                    dashboard.newTemplateVariable(
+                    dashboard.newMultiTemplateVariable(
                     name='cluster', 
                     query=clusterTemplateQuery,
                     setenceCaseLabels=setenceCaseLabels),
-                    dashboard.newTemplateVariable(
+                    dashboard.newMultiTemplateVariable(
                     name='namespace', 
                     query=namespaceTemplateQuery,
                     setenceCaseLabels=setenceCaseLabels),
-                    dashboard.newTemplateVariable(
+                    dashboard.newMultiTemplateVariable(
                     name='job', 
                     query=k8sJobTemplateQuery,
                     setenceCaseLabels=setenceCaseLabels),
@@ -100,7 +100,7 @@ local dashboard = import './dashboard.jsonnet';
         else
             (
                 [
-                    dashboard.newTemplateVariable(
+                    dashboard.newMultiTemplateVariable(
                     name='job', 
                     query=jobTemplateQuery,
                     setenceCaseLabels=setenceCaseLabels),                
