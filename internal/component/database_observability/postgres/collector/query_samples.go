@@ -266,11 +266,6 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
 
-	if c.baseThrottleInterval < 30*time.Second {
-		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with base throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.baseThrottleInterval))
-	}
-	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with base throttle interval: %s", c.baseThrottleInterval))
-
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx

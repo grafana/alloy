@@ -94,8 +94,8 @@ type AzureCloudProviderInfo struct {
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	BaseThrottleInterval  time.Duration `alloy:"base_throttle_interval,attr,optional"`
 	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
+	DisableThrottling     bool          `alloy:"disable_throttling,attr,optional"`
 }
 
 type QueryTablesArguments struct {
@@ -115,7 +115,6 @@ var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
-		BaseThrottleInterval:  1 * time.Minute,
 		ExcludeCurrentUser:    true,
 	},
 	QueryTablesArguments: QueryTablesArguments{
@@ -488,20 +487,18 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		c.collectors = append(c.collectors, qCollector)
 	}
 
-	// StatStatementsRegistry is used to provide execution rates for QuerySamples adaptive throttling.
-	var statStmtsRegistry *collector.StatStatementsRegistry
-	ssRegistry, err := collector.NewStatStatementsRegistry(collector.StatStatementsRegistryArguments{
+	// StatStatementsRegistry is used to provide execution rates for QuerySamples adaptive throttling.	
+	statStatementsRegistry, err := collector.NewStatStatementsRegistry(collector.StatStatementsRegistryArguments{
 		DB:               c.dbConnection,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		Logger:           c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.StatStatementsRegistryName, "create", err)
-	} else if err := ssRegistry.Start(context.Background()); err != nil {
+	} else if err := statStatementsRegistry.Start(context.Background()); err != nil {
 		logStartError(collector.StatStatementsRegistryName, "start", err)
-	} else {
-		statStmtsRegistry = ssRegistry
-		c.collectors = append(c.collectors, statStmtsRegistry)
+	} else {		
+		c.collectors = append(c.collectors, statStatementsRegistry)
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
@@ -513,9 +510,9 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			BaseThrottleInterval:  c.args.QuerySampleArguments.BaseThrottleInterval,
+			BaseThrottleInterval:  throttleInterval(c.args.QuerySampleArguments.DisableThrottling),
 			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
-			ExecutionRateProvider: statStmtsRegistry,
+			ExecutionRateProvider: statStatementsRegistry,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -664,6 +661,13 @@ func instanceKey(dsn string) (string, error) {
 		hostport += fmt.Sprintf(":%s", p)
 	}
 	return fmt.Sprintf("postgresql://%s/%s", hostport, s["dbname"]), nil
+}
+
+func throttleInterval(disabled bool) time.Duration {
+	if disabled {
+		return 0
+	}
+	return 1 * time.Minute
 }
 
 func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, systemID string) loki.EntryHandler {

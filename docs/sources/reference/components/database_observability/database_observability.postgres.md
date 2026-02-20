@@ -118,16 +118,12 @@ The `azure` block supplies the identifying information for the database being mo
 
 ### `query_samples`
 
-| Name                      | Type       | Description                                                                            | Default | Required |
-|---------------------------|------------|----------------------------------------------------------------------------------------|---------|----------|
-| `base_throttle_interval`  | `duration` | Base interval for adaptive throttling of query sample emits. Set to `"0s"` to disable. | `"1m"`  | no       |
-| `collect_interval`        | `duration` | How frequently to collect information from database.                                   | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters).                          | `false` | no       |
-| `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.                                | `true`  | no       |
-
-`base_throttle_interval` uses a logarithmic backoff based on the per‑minute rate of finalized samples for the same query over a fixed 5‑minute window.
-This prevents an overly high sampling rate for hot queries.
-Samples with wait events, idle-in-transaction states, or observed CPU load are exempt from throttling and always emit immediately without advancing the throttle window.
+| Name                      | Type       | Description                                                   | Default | Required |
+|---------------------------|------------|---------------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+| `disable_throttling`      | `bool`     | Disable adaptive throttling of query sample emits.            | `false` | no       |
+| `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.       | `true`  | no       |
 
 ### `schema_details`
 
