@@ -51,6 +51,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						autodiscover {
 							prefix = "app-"
 							limit = 10
+							account_identifiers = ["111111111111", "222222222222"]
+							include_linked_accounts = true
 							streams {
 								prefixes = ["api-", "web-"]
 								names = ["main", "error"]
@@ -69,8 +71,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxEventsPerRequest: 1000,
 					Groups: awscloudwatchreceiver.GroupConfig{
 						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
-							Prefix: "app-",
-							Limit:  10,
+							Prefix:                "app-",
+							Limit:                 10,
+							AccountIdentifiers:    []string{"111111111111", "222222222222"},
+							IncludeLinkedAccounts: boolPtr(true),
 							Streams: awscloudwatchreceiver.StreamConfig{
 								Prefixes: []*string{ptr("api-"), ptr("web-")},
 								Names:    []*string{ptr("main"), ptr("error")},
@@ -201,6 +205,23 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	}
 }
 
+func TestAutodiscoverConfig_Convert_DefaultLimitWhenUnset(t *testing.T) {
+	defaults := awscloudwatch.AutodiscoverConfig{}
+	defaults.SetToDefault()
+	require.NotNil(t, defaults.Limit)
+
+	cfg := &awscloudwatch.AutodiscoverConfig{
+		Prefix: "app-",
+		Streams: awscloudwatch.StreamConfig{
+			Prefixes: []*string{ptr("api-")},
+		},
+	}
+
+	converted := cfg.Convert()
+	require.NotNil(t, converted)
+	require.Equal(t, *defaults.Limit, converted.Limit)
+}
+
 func TestArguments_Validate(t *testing.T) {
 	tests := []struct {
 		testName      string
@@ -285,4 +306,8 @@ func TestArguments_Validate(t *testing.T) {
 // Helper function to create string pointers
 func ptr(s string) *string {
 	return &s
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }

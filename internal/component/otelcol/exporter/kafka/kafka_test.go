@@ -81,6 +81,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				CompressionParams: configcompression.CompressionParams{
 					Level: 0,
 				},
+				FlushMaxMessages:       10000,
 				AllowAutoTopicCreation: true,
 			},
 		}

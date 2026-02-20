@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
+	splunktranslator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 )
@@ -142,7 +143,7 @@ func toSplunkHecBatcherConfig(cfg splunkhecexporter.DeprecatedBatchConfig) *splu
 	}
 }
 
-func toSplunkHecFields(cfg splunkhecexporter.OtelToHecFields) splunkhec_config.HecFields {
+func toSplunkHecFields(cfg splunktranslator.OtelToHecFields) splunkhec_config.HecFields {
 	return splunkhec_config.HecFields{
 		SeverityText:   cfg.SeverityText,
 		SeverityNumber: cfg.SeverityNumber,

@@ -8,6 +8,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
+	splunktranslator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -151,11 +152,11 @@ type HecFields struct {
 	SeverityNumber string `alloy:"severity_number,attr,optional"`
 }
 
-func (args *HecFields) Convert() *splunkhecexporter.OtelToHecFields {
+func (args *HecFields) Convert() *splunktranslator.OtelToHecFields {
 	if args == nil {
 		return nil
 	}
-	return &splunkhecexporter.OtelToHecFields{
+	return &splunktranslator.OtelToHecFields{
 		SeverityText:   args.SeverityText,
 		SeverityNumber: args.SeverityNumber,
 	}
