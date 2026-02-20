@@ -94,6 +94,13 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
 	}
 
+	runCommand := e.runCommandFactory()
+	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
+	err := runCommand.ParseFlags(e.config.flagsAsSlice())
+	if err != nil {
+		return fmt.Errorf("failed to parse flags: %w", err)
+	}
+
 	runCtx, runCancel := context.WithCancel(context.Background())
 	e.runCancel = runCancel
 	e.runExited = make(chan struct{})
@@ -101,13 +108,6 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 	runCtx = readyctx.WithOnReady(runCtx, func() {
 		e.setState(stateRunning)
 	})
-
-	runCommand := e.runCommandFactory()
-	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
-	err := runCommand.ParseFlags(e.config.flagsAsSlice())
-	if err != nil {
-		return fmt.Errorf("failed to parse flags: %w", err)
-	}
 
 	e.setState(stateStarting)
 
