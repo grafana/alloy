@@ -1052,7 +1052,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.95 // indirect
 	github.com/minio/minlz v1.0.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/nwaples/rardecode/v2 v2.1.0 // indirect
+	github.com/nwaples/rardecode/v2 v2.2.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/rs/xid v1.6.0 // indirect
