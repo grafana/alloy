@@ -211,7 +211,7 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 
 	expr, err := regexp.CompileNonEmpty(*pMulti.Expression)
 	if err != nil {
-		addInvalidStageError(diags, cfg, errors.New("missing required expression"))
+		addInvalidStageError(diags, cfg, fmt.Errorf("invalid expression: %v", err))
 		return stages.StageConfig{}, false
 	}
 
