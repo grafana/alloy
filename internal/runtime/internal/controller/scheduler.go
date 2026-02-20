@@ -106,7 +106,6 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			t.Stop()
 		}
 		close(doneStopping)
-
 	}()
 
 	stoppingTimedOut := false
