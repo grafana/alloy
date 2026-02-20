@@ -42,7 +42,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 		})
 
 		started.Wait()
-		require.NoError(t, sched.Close())
+		sched.Stop()
 		finished.Wait()
 	})
 
@@ -67,7 +67,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 		}
 
 		started.Wait()
-		require.NoError(t, sched.Close())
+		sched.Stop()
 	})
 
 	t.Run("Runnables which no longer exist are shutdown before new ones are created", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 		finished.Wait()
 
 		finished.Add(2)
-		require.NoError(t, sched.Close())
+		sched.Stop()
 		finished.Wait()
 	})
 
@@ -180,7 +180,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			require.True(t, oldTaskExited.Load(), "old task should have exited")
 			require.True(t, newTaskStarted.Load(), "new task should still be running")
 
-			require.NoError(t, sched.Close())
+			sched.Stop()
 		})
 	})
 	t.Run("Task shutdown deadline logs warnings and errors", func(t *testing.T) {
@@ -234,7 +234,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 				t.Error("Synchronize should have returned after deadline")
 			}
 
-			require.NoError(t, sched.Close())
+			sched.Stop()
 
 			// Sleep long enough to let the runFunc exit to preventing a synctest panic
 			time.Sleep(time.Minute)
