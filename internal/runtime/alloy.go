@@ -265,9 +265,11 @@ func newController(o controllerOptions) (*Runtime, error) {
 // Run starts the Alloy controller, blocking until the provided context is
 // canceled. Run must only be called once.
 func (f *Runtime) Run(ctx context.Context) {
-	defer func() { _ = f.sched.Close() }()
-	defer f.loader.Cleanup(!f.opts.IsModule)
-	defer level.Debug(f.log).Log("msg", "Alloy controller exiting")
+	defer func() {
+		level.Debug(f.log).Log("msg", "Alloy controller exiting")
+		f.loader.Cleanup(!f.opts.IsModule)
+		f.sched.Stop()
+	}()
 
 	level.Debug(f.log).Log("msg", "Running alloy controller")
 

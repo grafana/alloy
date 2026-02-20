@@ -31,8 +31,9 @@ type Scheduler struct {
 	logger               log.Logger
 	taskShutdownDeadline time.Duration
 
-	tasksMut sync.Mutex
-	tasks    map[string]*task
+	tasksMut      sync.Mutex
+	tasks         map[string]*task
+	stoppingOrder []string
 }
 
 // NewScheduler creates a new Scheduler. Call Synchronize to manage the set of
@@ -74,32 +75,36 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	default:
 	}
 
-	newRunnables := make(map[string]RunnableNode, len(rr))
-	for _, r := range rr {
-		newRunnables[r.NodeID()] = r
+	var (
+		taskLen          = len(rr)
+		newRunnables     = make(map[string]RunnableNode, taskLen)
+		toStop           = make([]*task, 0, taskLen)
+		newStoppingOrder = make([]string, taskLen)
+	)
+
+	for i, r := range rr {
+		id := r.NodeID()
+		newRunnables[id] = r
+		// We stop tasks in reversed order from how they are scheduled.
+		newStoppingOrder[taskLen-1-i] = id
 	}
 
-	// Stop tasks that are not defined in rr.
 	s.tasksMut.Lock()
-	var stopping sync.WaitGroup
-	for id, t := range s.tasks {
-		if _, keep := newRunnables[id]; keep {
-			continue
+	for _, id := range s.stoppingOrder {
+		if _, keep := newRunnables[id]; !keep {
+			if task, ok := s.tasks[id]; ok {
+				toStop = append(toStop, task)
+			}
 		}
-
-		level.Debug(s.logger).Log("msg", "Stopping task", "id", id)
-		stopping.Add(1)
-		go func(t *task) {
-			defer stopping.Done()
-			t.Stop()
-		}(t)
 	}
 	s.tasksMut.Unlock()
 
-	// Wrapping the waitgroup with a channel will allow us to wait with a timeout
 	doneStopping := make(chan struct{})
 	go func() {
-		stopping.Wait()
+		for _, t := range toStop {
+			// NOTE: we cannot hold lock when calling Stop because onDone will mutate running tasks.
+			t.Stop()
+		}
 		close(doneStopping)
 	}()
 
@@ -112,8 +117,9 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 		stoppingTimedOut = true
 	}
 
-	// Launch new runnables that have appeared.
 	s.tasksMut.Lock()
+	s.stoppingOrder = newStoppingOrder
+	// Launch new runnables that have appeared.
 	for id, r := range newRunnables {
 		if _, exist := s.tasks[id]; exist {
 			continue
@@ -125,12 +131,11 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			newRunnable = r
 		)
 
-		opts := taskOptions{
-			context:  s.ctx,
+		s.running.Add(1)
+		s.tasks[nodeID] = newTask(taskOptions{
 			runnable: newRunnable,
 			onDone: func(err error) {
 				defer s.running.Done()
-
 				if err != nil {
 					level.Error(s.logger).Log("msg", "node exited with error", "node", nodeID, "err", err)
 				} else {
@@ -143,10 +148,7 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			},
 			logger:               log.With(s.logger, "taskID", nodeID),
 			taskShutdownDeadline: s.taskShutdownDeadline,
-		}
-
-		s.running.Add(1)
-		s.tasks[nodeID] = newTask(opts)
+		})
 	}
 	s.tasksMut.Unlock()
 
@@ -160,12 +162,25 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	return nil
 }
 
-// Close stops the Scheduler and returns after all running goroutines have
+// Stop stops the Scheduler and returns after all running goroutines have
 // exited.
-func (s *Scheduler) Close() error {
+func (s *Scheduler) Stop() {
 	s.cancel()
+
+	s.tasksMut.Lock()
+	toStop := make([]*task, 0, len(s.tasks))
+	for _, id := range s.stoppingOrder {
+		if task, ok := s.tasks[id]; ok {
+			toStop = append(toStop, task)
+		}
+	}
+	s.tasksMut.Unlock()
+
+	for _, t := range toStop {
+		t.Stop()
+	}
+
 	s.running.Wait()
-	return nil
 }
 
 // task is a scheduled runnable.
@@ -178,7 +193,6 @@ type task struct {
 }
 
 type taskOptions struct {
-	context              context.Context
 	runnable             RunnableNode
 	onDone               func(error)
 	logger               log.Logger
@@ -187,7 +201,7 @@ type taskOptions struct {
 
 // newTask creates and starts a new task.
 func newTask(opts taskOptions) *task {
-	ctx, cancel := context.WithCancel(opts.context)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	t := &task{
 		ctx:    ctx,
