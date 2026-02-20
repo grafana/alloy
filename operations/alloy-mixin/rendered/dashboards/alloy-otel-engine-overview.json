@@ -37,23 +37,48 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Number of instances with OTel engine metrics.\n",
+         "description": "Current number of pods with OTel engine metrics.\n",
          "gridPos": {
-            "h": 10,
+            "h": 5,
             "w": 8,
             "x": 0,
             "y": 0
+         },
+         "options": {
+            "colorMode": "none",
+            "graphMode": "none"
          },
          "targets": [
             {
                "datasource": "${datasource}",
                "expr": "count(otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
-               "instant": false,
+               "instant": true,
                "legendFormat": "count",
+               "range": false
+            }
+         ],
+         "title": "Pods count",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Count of series with process uptime under 60 seconds, grouped by the selected dimension.\n",
+         "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 5
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "count by(${groupby}) (otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"} < 60) or vector(0)\n",
+               "instant": false,
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
-         "title": "Instances Count",
+         "title": "Recently started by ${groupby}",
          "type": "timeseries"
       },
       {
