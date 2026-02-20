@@ -11,18 +11,26 @@ import (
 	"go.uber.org/goleak"
 )
 
-func TestStatStatementsRegistry_NoRateBeforeFirstDelta(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
+func newTestRegistry(t *testing.T, excludeDatabases ...string) (*StatStatementsRegistry, sqlmock.Sqlmock) {
+	t.Helper()
+	// Register goleak first so it runs last (t.Cleanup is LIFO), after db.Close.
+	t.Cleanup(func() {
+		goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+	})
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
-	defer db.Close()
-
+	t.Cleanup(func() { db.Close() })
 	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
+		DB:               db,
+		ExcludeDatabases: excludeDatabases,
+		Logger:           log.NewNopLogger(),
 	})
 	require.NoError(t, err)
+	return registry, mock
+}
+
+func TestStatStatementsRegistry_NoRateBeforeFirstDelta(t *testing.T) {
+	registry, mock := newTestRegistry(t)
 
 	expectedQuery := buildStatStatementsQuery(nil)
 
@@ -45,17 +53,7 @@ func TestStatStatementsRegistry_NoRateBeforeFirstDelta(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_RateComputedAfterTwoSnapshots(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t)
 
 	expectedQuery := buildStatStatementsQuery(nil)
 
@@ -92,17 +90,7 @@ func TestStatStatementsRegistry_RateComputedAfterTwoSnapshots(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_ResetDetected(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t)
 
 	expectedQuery := buildStatStatementsQuery(nil)
 
@@ -133,17 +121,7 @@ func TestStatStatementsRegistry_ResetDetected(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_NewQueryidAppearsAfterFirstSnapshot(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t)
 
 	expectedQuery := buildStatStatementsQuery(nil)
 
@@ -179,18 +157,7 @@ func TestStatStatementsRegistry_NewQueryidAppearsAfterFirstSnapshot(t *testing.T
 }
 
 func TestStatStatementsRegistry_ExcludeDatabases(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:               db,
-		ExcludeDatabases: []string{"excluded_db"},
-		Logger:           log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t, "excluded_db")
 
 	// The query should use the exclusion clause including "excluded_db".
 	expectedQuery := buildStatStatementsQuery([]string{"excluded_db"})
@@ -205,22 +172,12 @@ func TestStatStatementsRegistry_ExcludeDatabases(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_DBError(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t)
 
 	expectedQuery := buildStatStatementsQuery(nil)
 	mock.ExpectQuery(expectedQuery).WillReturnError(errMockQuerySamplesFailed)
 
-	err = registry.refresh(t.Context())
+	err := registry.refresh(t.Context())
 	require.ErrorContains(t, err, "failed to query pg_stat_statements")
 
 	// After an error, no rates should be available.
@@ -231,20 +188,10 @@ func TestStatStatementsRegistry_DBError(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_StartStop(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, _ := newTestRegistry(t)
 
 	require.NoError(t, registry.Start(t.Context()))
-	require.False(t, registry.Stopped())
+	require.True(t, registry.running.Load())
 
 	registry.Stop()
 	require.Eventually(t, func() bool {
@@ -253,17 +200,7 @@ func TestStatStatementsRegistry_StartStop(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_SameQueryIDMultipleDatabases(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t)
 
 	expectedQuery := buildStatStatementsQuery(nil)
 
@@ -301,17 +238,7 @@ func TestStatStatementsRegistry_SameQueryIDMultipleDatabases(t *testing.T) {
 }
 
 func TestStatStatementsRegistry_Snapshot(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	registry, err := NewStatStatementsRegistry(StatStatementsRegistryArguments{
-		DB:     db,
-		Logger: log.NewNopLogger(),
-	})
-	require.NoError(t, err)
+	registry, mock := newTestRegistry(t)
 
 	// Before any refresh the snapshot is empty.
 	require.Empty(t, registry.Snapshot())

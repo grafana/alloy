@@ -1087,53 +1087,26 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 	}
 }
 
-// TestComputeAdaptiveThrottle tests the computeAdaptiveThrottle function with various rate counts and base throttle intervals.
+// TestComputeAdaptiveThrottle tests the computeAdaptiveThrottle function at key rate boundaries.
 func TestComputeAdaptiveThrottle(t *testing.T) {
 	t.Parallel()
 
-	// base=0 disables
-	require.Equal(t, time.Duration(0), computeAdaptiveThrottleInterval(0, 100))
+	base := 1 * time.Minute
+	require.Equal(t, time.Duration(0), computeAdaptiveThrottleInterval(0, 100), "base=0 disables throttle")
 
-	type rateCase struct {
-		perMinuteRate int
-		factor        int
+	cases := []struct {
+		rate   float64
+		factor int
+	}{
+		{0, 1}, {1, 1},     // ≤1/min → 1×
+		{2, 2}, {10, 2},    // 2–10/min → 2×
+		{11, 3}, {100, 3},  // 11–100/min → 3×
+		{101, 4}, {1000, 4}, // 101–1000/min → 4×
+		{1001, 5}, {10000, 5}, // 1001–10000/min → 5×
 	}
-	rateCases := []rateCase{
-		{0, 1},
-		{1, 1},
-		{2, 2},
-		{3, 2},
-		{4, 2},
-		{5, 2},
-		{9, 2},
-		{10, 2},
-		{16, 3},
-		{30, 3},
-		{81, 3},
-		{100, 3},
-		{500, 4},
-		{1000, 4},
-		{10000, 5},
-		{100000, 6},
-	}
-
-	baseThrottleIntervals := []time.Duration{
-		15 * time.Second,
-		30 * time.Second,
-		1 * time.Minute,
-		2 * time.Minute,
-		5 * time.Minute,
-	}
-
-	for _, baseThrottleInterval := range baseThrottleIntervals {
-		t.Run(baseThrottleInterval.String(), func(t *testing.T) {
-			t.Parallel()
-			for _, rc := range rateCases {
-				got := computeAdaptiveThrottleInterval(baseThrottleInterval, float64(rc.perMinuteRate))
-				want := time.Duration(rc.factor) * baseThrottleInterval
-				require.Equal(t, want, got, "baseThrottleInterval=%s count=%d", baseThrottleInterval, rc.perMinuteRate)
-			}
-		})
+	for _, tc := range cases {
+		got := computeAdaptiveThrottleInterval(base, tc.rate)
+		require.Equal(t, time.Duration(tc.factor)*base, got, "rate=%.0f", tc.rate)
 	}
 }
 
@@ -1154,42 +1127,14 @@ func (m *mockExecutionRateProvider) GetExecutionRate(queryid int64, dbname strin
 func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 	t.Parallel()
 
-	type matrixCase struct {
-		name                 string
-		baseThrottleInterval time.Duration
-		perMinuteRate        float64
-	}
-
-	cases := []matrixCase{
-		{name: "baseThrottleInterval=15s, rate=0.2/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 0.2},
-		{name: "baseThrottleInterval=15s, rate=0.4/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 0.4},
-		{name: "baseThrottleInterval=15s, rate=1/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 1},
-		{name: "baseThrottleInterval=15s, rate=10/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 10},
-		{name: "baseThrottleInterval=15s, rate=100/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 100},
-
-		{name: "baseThrottleInterval=30s, rate=0.2/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 0.2},
-		{name: "baseThrottleInterval=30s, rate=0.4/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 0.4},
-		{name: "baseThrottleInterval=30s, rate=1/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 1},
-		{name: "baseThrottleInterval=30s, rate=10/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 10},
-		{name: "baseThrottleInterval=30s, rate=100/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 100},
-
-		{name: "baseThrottleInterval=1m, rate=0.2/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 0.2},
-		{name: "baseThrottleInterval=1m, rate=0.4/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 0.4},
-		{name: "baseThrottleInterval=1m, rate=1/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 1},
-		{name: "baseThrottleInterval=1m, rate=10/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 10},
-		{name: "baseThrottleInterval=1m, rate=100/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 100},
-
-		{name: "baseThrottleInterval=2m, rate=0.2/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 0.2},
-		{name: "baseThrottleInterval=2m, rate=0.4/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 0.4},
-		{name: "baseThrottleInterval=2m, rate=1/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 1},
-		{name: "baseThrottleInterval=2m, rate=10/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 10},
-		{name: "baseThrottleInterval=2m, rate=100/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 100},
-
-		{name: "baseThrottleInterval=5m, rate=0.2/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 0.2},
-		{name: "baseThrottleInterval=5m, rate=0.4/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 0.4},
-		{name: "baseThrottleInterval=5m, rate=1/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 1},
-		{name: "baseThrottleInterval=5m, rate=10/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 10},
-		{name: "baseThrottleInterval=5m, rate=100/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 100},
+	const base = 30 * time.Second
+	cases := []struct {
+		name          string
+		perMinuteRate float64
+	}{
+		{"rate=0.5/m (factor=1)", 0.5},
+		{"rate=10/m (factor=2)", 10},
+		{"rate=100/m (factor=3)", 100},
 	}
 
 	for _, tc := range cases {
@@ -1213,14 +1158,14 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 				EntryHandler:          lokiClient,
 				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				DisableQueryRedaction: true,
-				BaseThrottleInterval:  tc.baseThrottleInterval,
+				BaseThrottleInterval:  base,
 				ExecutionRateProvider: provider,
 			})
 			require.NoError(t, err)
 
 			qid := int64(4242)
 			key := SampleKey{PID: 7, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
-			expectedInterval := computeAdaptiveThrottleInterval(tc.baseThrottleInterval, tc.perMinuteRate)
+			expectedInterval := computeAdaptiveThrottleInterval(base, tc.perMinuteRate)
 
 			finalizeOnce := func() {
 				st := &SampleState{

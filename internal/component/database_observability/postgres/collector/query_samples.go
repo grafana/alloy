@@ -126,10 +126,7 @@ type QuerySamplesArguments struct {
 	Logger                log.Logger
 	DisableQueryRedaction bool
 	BaseThrottleInterval  time.Duration
-	ExcludeCurrentUser    bool
-	// ExecutionRateProvider, when non-nil, supplies per-queryid execution rates
-	// for adaptive throttling. If nil, or if the provider has no data for a
-	// given queryid yet, the sample is emitted unconditionally.
+	ExcludeCurrentUser    bool	
 	ExecutionRateProvider ExecutionRateProvider
 }
 
@@ -665,14 +662,13 @@ func isThrottleExempt(sample *SampleState) bool {
 	return false
 }
 
-// computeAdaptiveThrottleInterval scales the base interval using a logarithmic factor derived
-// from the per-minute execution rate. This provides gentle backoff at high rates,
-// avoiding excessive sampling:
+// computeAdaptiveThrottleInterval scales the base interval by a logarithmic
+// factor of the per-minute execution rate:
 //
-//	factor = 1 + ceil(log10(max(1, per-minute-rate)))
+//	factor = 1 + ceil(log10(rate))   (rate > 1)
 //	effective = baseThrottleInterval * factor
 //
-// If baseThrottleInterval is 0, adaptive throttling is disabled and 0 is returned.
+// Returns 0 when baseThrottleInterval is 0 (throttling disabled).
 func computeAdaptiveThrottleInterval(baseThrottleInterval time.Duration, perMinuteRate float64) time.Duration {
 	if baseThrottleInterval <= 0 {
 		return 0
@@ -680,12 +676,6 @@ func computeAdaptiveThrottleInterval(baseThrottleInterval time.Duration, perMinu
 	if perMinuteRate <= 1 {
 		return baseThrottleInterval
 	}
-	r := perMinuteRate
-	f := 1 + int(math.Ceil(math.Log10(r)))
-	if f < 1 {
-		f = 1
-	} else if f > 10 {
-		f = 10
-	}
+	f := 1 + int(math.Ceil(math.Log10(perMinuteRate)))
 	return time.Duration(f) * baseThrottleInterval
 }
