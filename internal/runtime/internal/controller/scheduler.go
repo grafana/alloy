@@ -92,14 +92,30 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	s.tasksMut.Lock()
 	for _, id := range s.stoppingOrder {
 		if _, keep := newRunnables[id]; !keep {
-			toStop = append(toStop, s.tasks[id])
+			if task, ok := s.tasks[id]; ok {
+				toStop = append(toStop, task)
+			}
 		}
 	}
 	s.tasksMut.Unlock()
 
-	for _, t := range toStop {
-		// NOTE: we cannot hold lock when calling Stop because onDone will mutate running tasks
-		t.Stop()
+	doneStopping := make(chan struct{})
+	go func() {
+		for _, t := range toStop {
+			// NOTE: we cannot hold lock when calling Stop because onDone will mutate running tasks.
+			t.Stop()
+		}
+		close(doneStopping)
+
+	}()
+
+	stoppingTimedOut := false
+	select {
+	case <-doneStopping:
+		// All tasks stopped successfully within timeout.
+	case <-time.After(TaskShutdownWarningTimeout):
+		level.Warn(s.logger).Log("msg", "Some tasks are taking longer than expected to shutdown, proceeding with new tasks")
+		stoppingTimedOut = true
 	}
 
 	s.tasksMut.Lock()
@@ -137,13 +153,19 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	}
 	s.tasksMut.Unlock()
 
+	// If we timed out, wait for stopping tasks to fully exit before returning.
+	// Tasks shutting down cannot fully complete their shutdown until the taskMut
+	// lock is released.
+	if stoppingTimedOut {
+		<-doneStopping
+	}
+
 	return nil
 }
 
 // Stop stops the Scheduler and returns after all running goroutines have
 // exited.
 func (s *Scheduler) Stop() {
-	// FIXME handle this..
 	s.cancel()
 
 	s.tasksMut.Lock()
