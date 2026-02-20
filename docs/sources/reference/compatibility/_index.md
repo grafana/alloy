@@ -288,6 +288,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 - [loki.source.kubernetes](../components/loki/loki.source.kubernetes)
 - [loki.source.kubernetes_events](../components/loki/loki.source.kubernetes_events)
 - [loki.source.podlogs](../components/loki/loki.source.podlogs)
+- [loki.source.string](../components/loki/loki.source.string)
 - [loki.source.syslog](../components/loki/loki.source.syslog)
 - [loki.source.windowsevent](../components/loki/loki.source.windowsevent)
 {{< /collapse >}}
