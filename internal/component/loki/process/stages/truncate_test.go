@@ -80,7 +80,7 @@ func Test_TruncateStage_Process(t *testing.T) {
 			config: []*RuleConfig{
 				{
 					Limit:      15,
-					SourceType: TruncateSourceLabel,
+					SourceType: SourceTypeLabel,
 					Suffix:     "[truncated]",
 				},
 			},
@@ -96,7 +96,7 @@ func Test_TruncateStage_Process(t *testing.T) {
 			config: []*RuleConfig{
 				{
 					Limit:      15,
-					SourceType: TruncateSourceLabel,
+					SourceType: SourceTypeLabel,
 					Suffix:     "[truncated]",
 					Sources:    []string{"app"},
 				},
@@ -113,7 +113,7 @@ func Test_TruncateStage_Process(t *testing.T) {
 			config: []*RuleConfig{
 				{
 					Limit:      15,
-					SourceType: TruncateSourceStructuredMetadata,
+					SourceType: SourceTypeStructuredMetadata,
 					Suffix:     "<trunc>",
 				},
 			},
@@ -132,7 +132,7 @@ func Test_TruncateStage_Process(t *testing.T) {
 			config: []*RuleConfig{
 				{
 					Limit:      15,
-					SourceType: TruncateSourceStructuredMetadata,
+					SourceType: SourceTypeStructuredMetadata,
 					Suffix:     "<trunc>",
 					Sources:    []string{"meta1"},
 				},
@@ -155,18 +155,18 @@ func Test_TruncateStage_Process(t *testing.T) {
 				},
 				{
 					Limit:      15,
-					SourceType: TruncateSourceLabel,
+					SourceType: SourceTypeLabel,
 					Suffix:     "[truncated]",
 					Sources:    []string{"app"},
 				},
 				{
 					Limit:      15,
-					SourceType: TruncateSourceStructuredMetadata,
+					SourceType: SourceTypeStructuredMetadata,
 					Suffix:     "<trunc>",
 				},
 				{
 					Limit:      8,
-					SourceType: TruncateSourceExtractedMap,
+					SourceType: SourceTypeExtractedMap,
 					Sources:    []string{"field2"},
 				},
 			},
@@ -298,7 +298,7 @@ func Test_ValidateTruncateConfig(t *testing.T) {
 			config: &TruncateConfig{
 				Rules: []*RuleConfig{{
 					Limit:      10,
-					SourceType: TruncateSourceLabel,
+					SourceType: SourceTypeLabel,
 					Suffix:     "...",
 				}},
 			},
@@ -309,7 +309,7 @@ func Test_ValidateTruncateConfig(t *testing.T) {
 			config: &TruncateConfig{
 				Rules: []*RuleConfig{{
 					Limit:      10,
-					SourceType: TruncateSourceStructuredMetadata,
+					SourceType: SourceTypeStructuredMetadata,
 					Suffix:     "...",
 				}},
 			},
@@ -321,7 +321,7 @@ func Test_ValidateTruncateConfig(t *testing.T) {
 				Rules: []*RuleConfig{
 					{
 						Limit:      10,
-						SourceType: TruncateSourceLabel,
+						SourceType: SourceTypeLabel,
 						Sources:    []string{"app"},
 						Suffix:     "...",
 					},

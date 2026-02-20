@@ -1,6 +1,8 @@
 package stages
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 
@@ -15,12 +17,35 @@ type StructuredMetadataConfig struct {
 	Regex  string             `alloy:"regex,attr,optional"`
 }
 
+// validateStructuredMetadataConfig validates the structured metadata stage config.
+func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, error) {
+	// We must not mutate the c.Values, create a copy with changes we need.
+	ret := map[string]string{}
+	if c == nil {
+		return nil, errors.New(ErrEmptyLabelStageConfig)
+	}
+	for labelName, labelSrc := range c {
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
+		if !model.LabelName(labelName).IsValid() {
+			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
+		}
+		// If no label source was specified, use the key name
+		if labelSrc == nil || *labelSrc == "" {
+			ret[labelName] = labelName
+		} else {
+			ret[labelName] = *labelSrc
+		}
+	}
+	return ret, nil
+}
+
 func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig) (Stage, error) {
 	var validatedLabelsConfig map[string]string
 	var err error
 
 	if len(configs.Values) > 0 {
-		validatedLabelsConfig, err = validateLabelsConfig(configs.Values)
+		validatedLabelsConfig, err = validateStructuredMetadataConfig(configs.Values)
 		if err != nil {
 			return nil, err
 		}
@@ -79,6 +104,30 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 
 		return s.extractFromLabels(e)
 	})
+}
+
+type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
+
+func processLabelsConfigs(logger log.Logger, extracted map[string]any, labelsConfig map[string]string, consumer labelsConsumer) {
+	for lName, lSrc := range labelsConfig {
+		if lValue, ok := extracted[lSrc]; ok {
+			s, err := getString(lValue)
+			if err != nil {
+				if Debug {
+					level.Debug(logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
+				}
+				continue
+			}
+			labelValue := model.LabelValue(s)
+			if !labelValue.IsValid() {
+				if Debug {
+					level.Debug(logger).Log("msg", "invalid label value parsed", "value", labelValue)
+				}
+				continue
+			}
+			consumer(model.LabelName(lName), labelValue)
+		}
+	}
 }
 
 func (s *structuredMetadataStage) extractFromLabels(e Entry) Entry {
