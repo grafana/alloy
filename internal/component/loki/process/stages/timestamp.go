@@ -146,10 +146,18 @@ func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]an
 	// Update the log entry timestamp with the parsed one
 	*t = *parsedTs
 
-	// The timestamp has been correctly parsed, so we should store it in the map
-	// containing the last known timestamp used by the "fudge" action on failure.
+	// When fudge is enabled, ensure multiple messages with the exact same parsed
+	// timestamp get distinct timestamps (lastKnown+1ns each) so message order is
+	// preserved in Loki and Grafana.
 	if ts.config.ActionOnFailure == TimestampActionOnFailureFudge {
-		ts.lastKnownTimestamps.Add(labels.String(), *t)
+		labelsStr := labels.String()
+		if lastTimestamp, ok := ts.lastKnownTimestamps.Get(labelsStr); ok {
+			lastKnown := lastTimestamp.(time.Time)
+			if !parsedTs.After(lastKnown) {
+				*t = lastKnown.Add(1 * time.Nanosecond)
+			}
+		}
+		ts.lastKnownTimestamps.Add(labelsStr, *t)
 	}
 }
 

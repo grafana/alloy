@@ -1857,7 +1857,7 @@ The `action_on_failure` field defines what should happen when the source field d
 
 The supported actions are:
 
-* fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
+* fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering. When parsing succeeds, the stage also ensures that entries whose parsed timestamp is equal to (or before) the last emitted timestamp for that stream are advanced by 1 nanosecond, so that multiple messages with the exact same timestamp keep a stable order in Loki and Grafana.
 * skip: Don't change the timestamp and keep the time when the log entry was scraped.
 
 The following stage fetches the `time` value from the shared values map, parses it as a RFC3339 format, and sets it as the log entry's timestamp.
