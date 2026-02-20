@@ -90,6 +90,16 @@ otelcol.processor.tail_sampling "default" {
 	}
 
 	policy {
+		name = "test-policy-8b"
+		type = "bytes_limiting"
+
+		bytes_limiting {
+			bytes_per_second = 2048
+			burst_capacity   = 4096
+		}
+	}
+
+	policy {
 		name = "test-policy-9"
 		type = "string_attribute"
 
@@ -168,6 +178,34 @@ otelcol.processor.tail_sampling "default" {
 					values = ["value1", "value2"]
 				}
 			}
+
+			and_sub_policy {
+				name = "test-and-policy-3"
+				type = "bytes_limiting"
+
+				bytes_limiting {
+					bytes_per_second = 1024
+					burst_capacity   = 2048
+				}
+			}
+		}
+	}
+
+	policy {
+		name = "drop-policy-1"
+		type = "drop"
+
+		drop {
+			drop_sub_policy {
+				name = "test-drop-policy-1"
+				type = "string_attribute"
+
+				string_attribute {
+					key                    = "url.path"
+					values                 = ["\\/health", "\\/metrics"]
+					enabled_regex_matching = true
+				}
+			}
 		}
 	}
 
@@ -205,6 +243,16 @@ otelcol.processor.tail_sampling "default" {
 				type = "always_sample"
 			}
 
+			composite_sub_policy {
+				name = "test-composite-policy-4"
+				type = "bytes_limiting"
+
+				bytes_limiting {
+					bytes_per_second = 512
+					burst_capacity   = 1024
+				}
+			}
+
 			rate_allocation {
 				policy  = "test-composite-policy-1"
 				percent = 50
@@ -216,9 +264,11 @@ otelcol.processor.tail_sampling "default" {
 			}
 		}
 	}
-	decision_wait               = "10s"
-	num_traces                  = 100
-	expected_new_traces_per_sec = 10
+	decision_wait                   = "10s"
+	num_traces                      = 100
+	expected_new_traces_per_sec     = 10
+	sample_on_first_match           = true
+	drop_pending_traces_on_shutdown = true
 
 	output {
 		traces = [otelcol.exporter.otlp.default.input]
