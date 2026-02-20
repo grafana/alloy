@@ -26,7 +26,7 @@ const (
 )
 
 const (
-	queryTextClause     = ", s.query"	
+	queryTextClause     = ", s.query"
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxn        = "idle in transaction"
@@ -126,7 +126,7 @@ type QuerySamplesArguments struct {
 	Logger                log.Logger
 	DisableQueryRedaction bool
 	BaseThrottleInterval  time.Duration
-	ExcludeCurrentUser    bool	
+	ExcludeCurrentUser    bool
 	ExecutionRateProvider ExecutionRateProvider
 }
 
@@ -238,16 +238,16 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
-		dbConnection:                 args.DB,
-		collectInterval:              args.CollectInterval,
-		excludeDatabases:             args.ExcludeDatabases,
-		excludeUsers:                 args.ExcludeUsers,
-		entryHandler:                 args.EntryHandler,
-		disableQueryRedaction:        args.DisableQueryRedaction,
-		excludeCurrentUser:           args.ExcludeCurrentUser,
-		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:                      &atomic.Bool{},
-		samples:                      map[SampleKey]*SampleState{},
+		dbConnection:          args.DB,
+		collectInterval:       args.CollectInterval,
+		excludeDatabases:      args.ExcludeDatabases,
+		excludeUsers:          args.ExcludeUsers,
+		entryHandler:          args.EntryHandler,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		excludeCurrentUser:    args.ExcludeCurrentUser,
+		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:               &atomic.Bool{},
+		samples:               map[SampleKey]*SampleState{},
 		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](idleEmittedCacheSize, nil, idleEmittedCacheTTL),
 		baseThrottleInterval:  args.BaseThrottleInterval,
 		executionRateProvider: args.ExecutionRateProvider,

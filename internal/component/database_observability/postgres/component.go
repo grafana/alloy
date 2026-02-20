@@ -487,7 +487,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		c.collectors = append(c.collectors, qCollector)
 	}
 
-	// StatStatementsRegistry is used to provide execution rates for QuerySamples adaptive throttling.	
+	// StatStatementsRegistry is used to provide execution rates for QuerySamples adaptive throttling.
 	statStatementsRegistry, err := collector.NewStatStatementsRegistry(collector.StatStatementsRegistryArguments{
 		DB:               c.dbConnection,
 		ExcludeDatabases: c.args.ExcludeDatabases,
@@ -497,7 +497,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		logStartError(collector.StatStatementsRegistryName, "create", err)
 	} else if err := statStatementsRegistry.Start(context.Background()); err != nil {
 		logStartError(collector.StatStatementsRegistryName, "start", err)
-	} else {		
+	} else {
 		c.collectors = append(c.collectors, statStatementsRegistry)
 	}
 
