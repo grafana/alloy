@@ -66,13 +66,11 @@ A list of valid AWS regions can be found on Amazon's documentation for [Regions,
 
 You can use the following blocks with `otelcol.auth.sigv4`:
 
-| Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`assume_role`][assume_role]     | Configuration for assuming a role.                                         | no       |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-
-[assume_role]: #assume_role
-[debug_metrics]: #debug_metrics
+{{< docs/api-tree >}}
+otelcol.connector.count
+├── [assume_role](#assume_role)  \[optional\]
+└── [debug_metrics](#debug_metrics) \[optional\]
+{{< /docs/api-tree >}}
 
 ### `assume_role`
 
