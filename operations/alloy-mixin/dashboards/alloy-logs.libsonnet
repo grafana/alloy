@@ -3,6 +3,20 @@ local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-logs.json';
 
 {
+  local filtersTemplateVariable = {
+    name: 'filters',
+    type: 'adhoc',
+    datasource: {
+      type: 'prometheus',
+      uid: '${datasource}',
+    },
+  },
+
+  local groupByTemplateVariable = dashboard.newGroupByTemplateVariable(
+    query='level,job,instance,namespace,cluster,pod',
+    defaultValue='level'
+  ),
+
   // Build the Loki label selector based on config
   local baseLabels = if $._config.enableK8sCluster then
     'cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", level=~"$level"'
@@ -16,7 +30,7 @@ local filename = 'alloy-logs.json';
       '{%s}' % baseLabels,
 
   local lokiTemplateVariables = 
-    if $._config.enableK8sCluster then [
+    if $._config.enableK8sCluster then ([
       {
         name: 'cluster',
         label: 'Cluster',
@@ -26,7 +40,8 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: false,
+        includeAll: true,
+        allValue: '.*',
       },
       {
         name: 'namespace',
@@ -37,7 +52,8 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: false,
+        includeAll: true,
+        allValue: '.*',
       },
       {
         name: 'job',
@@ -93,8 +109,8 @@ local filename = 'alloy-logs.json';
           },
         ],
       },
-    ]
-  else [
+    ] + [filtersTemplateVariable, groupByTemplateVariable])
+  else ([
     {
       name: 'job',
       label: 'Job',
@@ -104,7 +120,8 @@ local filename = 'alloy-logs.json';
       refresh: 2,
       sort: 1,
       multi: true,
-      includeAll: false,
+      includeAll: true,
+      allValue: '.*',
     },
     {
       name: 'instance',
@@ -148,7 +165,7 @@ local filename = 'alloy-logs.json';
         },
       ],
     },
-  ],
+  ] + [filtersTemplateVariable, groupByTemplateVariable]),
 
   grafanaDashboards+::
     if $._config.enableLokiLogs then {
@@ -175,8 +192,8 @@ local filename = 'alloy-logs.json';
                   type: 'loki',
                   uid: '${loki_datasource}',
                 },
-                expr: 'sum by (level) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
-                legendFormat: '{{ level }}',
+                expr: 'sum by (${groupby}) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
+                legendFormat: '{{${groupby}}}',
               },
             ]) +
             {

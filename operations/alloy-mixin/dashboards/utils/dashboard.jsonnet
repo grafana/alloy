@@ -86,6 +86,18 @@
     query: query,
   },
 
+  newGroupByTemplateVariable(query, defaultValue='instance'):: std.prune(
+    $.newTemplateVariableCustom('groupby', query) {
+      label: 'Group by',
+      allowCustomValue: true,
+      current: {
+        selected: true,
+        text: defaultValue,
+        value: defaultValue,
+      },
+    }
+  ),
+
   newLokiAnnotation(name, expression, color):: {
     name: name,
     datasource: '$loki_datasource',
