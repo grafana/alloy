@@ -1137,45 +1137,59 @@ func TestComputeAdaptiveThrottle(t *testing.T) {
 	}
 }
 
+// mockExecutionRateProvider is a simple ExecutionRateProvider for use in tests.
+type mockExecutionRateProvider struct {
+	rates map[StatStatementsKey]float64
+}
+
+func newMockExecutionRateProvider() *mockExecutionRateProvider {
+	return &mockExecutionRateProvider{rates: make(map[StatStatementsKey]float64)}
+}
+
+func (m *mockExecutionRateProvider) GetExecutionRate(queryid int64, dbname string) (float64, bool) {
+	rate, ok := m.rates[StatStatementsKey{QueryID: queryid, DBName: dbname}]
+	return rate, ok
+}
+
 func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 	t.Parallel()
 
 	type matrixCase struct {
 		name                 string
 		baseThrottleInterval time.Duration
-		rateCount            int // count of finalizations in the fixed 5m window (per-minute ≈ rateCount/5)
+		perMinuteRate        float64
 	}
 
 	cases := []matrixCase{
-		{name: "baseThrottleInterval=15s, rate=0.2/m", baseThrottleInterval: 15 * time.Second, rateCount: 1},
-		{name: "baseThrottleInterval=15s, rate=0.4/m", baseThrottleInterval: 15 * time.Second, rateCount: 2},
-		{name: "baseThrottleInterval=15s, rate=1/m", baseThrottleInterval: 15 * time.Second, rateCount: 5},
-		{name: "baseThrottleInterval=15s, rate=10/m", baseThrottleInterval: 15 * time.Second, rateCount: 50},
-		{name: "baseThrottleInterval=15s, rate=100/m", baseThrottleInterval: 15 * time.Second, rateCount: 500},
+		{name: "baseThrottleInterval=15s, rate=0.2/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 0.2},
+		{name: "baseThrottleInterval=15s, rate=0.4/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 0.4},
+		{name: "baseThrottleInterval=15s, rate=1/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 1},
+		{name: "baseThrottleInterval=15s, rate=10/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 10},
+		{name: "baseThrottleInterval=15s, rate=100/m", baseThrottleInterval: 15 * time.Second, perMinuteRate: 100},
 
-		{name: "baseThrottleInterval=30s, rate=0.2/m", baseThrottleInterval: 30 * time.Second, rateCount: 1},
-		{name: "baseThrottleInterval=30s, rate=0.4/m", baseThrottleInterval: 30 * time.Second, rateCount: 2},
-		{name: "baseThrottleInterval=30s, rate=1/m", baseThrottleInterval: 30 * time.Second, rateCount: 5},
-		{name: "baseThrottleInterval=30s, rate=10/m", baseThrottleInterval: 30 * time.Second, rateCount: 50},
-		{name: "baseThrottleInterval=30s, rate=100/m", baseThrottleInterval: 30 * time.Second, rateCount: 500},
+		{name: "baseThrottleInterval=30s, rate=0.2/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 0.2},
+		{name: "baseThrottleInterval=30s, rate=0.4/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 0.4},
+		{name: "baseThrottleInterval=30s, rate=1/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 1},
+		{name: "baseThrottleInterval=30s, rate=10/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 10},
+		{name: "baseThrottleInterval=30s, rate=100/m", baseThrottleInterval: 30 * time.Second, perMinuteRate: 100},
 
-		{name: "baseThrottleInterval=1m, rate=0.2/m", baseThrottleInterval: 1 * time.Minute, rateCount: 1},
-		{name: "baseThrottleInterval=1m, rate=0.4/m", baseThrottleInterval: 1 * time.Minute, rateCount: 2},
-		{name: "baseThrottleInterval=1m, rate=1/m", baseThrottleInterval: 1 * time.Minute, rateCount: 5},
-		{name: "baseThrottleInterval=1m, rate=10/m", baseThrottleInterval: 1 * time.Minute, rateCount: 50},
-		{name: "baseThrottleInterval=1m, rate=100/m", baseThrottleInterval: 1 * time.Minute, rateCount: 500},
+		{name: "baseThrottleInterval=1m, rate=0.2/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 0.2},
+		{name: "baseThrottleInterval=1m, rate=0.4/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 0.4},
+		{name: "baseThrottleInterval=1m, rate=1/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 1},
+		{name: "baseThrottleInterval=1m, rate=10/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 10},
+		{name: "baseThrottleInterval=1m, rate=100/m", baseThrottleInterval: 1 * time.Minute, perMinuteRate: 100},
 
-		{name: "baseThrottleInterval=2m, rate=0.2/m", baseThrottleInterval: 2 * time.Minute, rateCount: 1},
-		{name: "baseThrottleInterval=2m, rate=0.4/m", baseThrottleInterval: 2 * time.Minute, rateCount: 2},
-		{name: "baseThrottleInterval=2m, rate=1/m", baseThrottleInterval: 2 * time.Minute, rateCount: 5},
-		{name: "baseThrottleInterval=2m, rate=10/m", baseThrottleInterval: 2 * time.Minute, rateCount: 50},
-		{name: "baseThrottleInterval=2m, rate=100/m", baseThrottleInterval: 2 * time.Minute, rateCount: 500},
+		{name: "baseThrottleInterval=2m, rate=0.2/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 0.2},
+		{name: "baseThrottleInterval=2m, rate=0.4/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 0.4},
+		{name: "baseThrottleInterval=2m, rate=1/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 1},
+		{name: "baseThrottleInterval=2m, rate=10/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 10},
+		{name: "baseThrottleInterval=2m, rate=100/m", baseThrottleInterval: 2 * time.Minute, perMinuteRate: 100},
 
-		{name: "baseThrottleInterval=5m, rate=0.2/m", baseThrottleInterval: 5 * time.Minute, rateCount: 1},
-		{name: "baseThrottleInterval=5m, rate=0.4/m", baseThrottleInterval: 5 * time.Minute, rateCount: 2},
-		{name: "baseThrottleInterval=5m, rate=1/m", baseThrottleInterval: 5 * time.Minute, rateCount: 5},
-		{name: "baseThrottleInterval=5m, rate=10/m", baseThrottleInterval: 5 * time.Minute, rateCount: 50},
-		{name: "baseThrottleInterval=5m, rate=100/m", baseThrottleInterval: 5 * time.Minute, rateCount: 500},
+		{name: "baseThrottleInterval=5m, rate=0.2/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 0.2},
+		{name: "baseThrottleInterval=5m, rate=0.4/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 0.4},
+		{name: "baseThrottleInterval=5m, rate=1/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 1},
+		{name: "baseThrottleInterval=5m, rate=10/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 10},
+		{name: "baseThrottleInterval=5m, rate=100/m", baseThrottleInterval: 5 * time.Minute, perMinuteRate: 100},
 	}
 
 	for _, tc := range cases {
@@ -1190,6 +1204,9 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 			defer lokiClient.Stop()
 
+			provider := newMockExecutionRateProvider()
+			provider.rates[StatStatementsKey{QueryID: int64(4242), DBName: "db"}] = tc.perMinuteRate
+
 			c, err := NewQuerySamples(QuerySamplesArguments{
 				DB:                    db,
 				CollectInterval:       10 * time.Millisecond,
@@ -1197,11 +1214,13 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				DisableQueryRedaction: true,
 				BaseThrottleInterval:  tc.baseThrottleInterval,
+				ExecutionRateProvider: provider,
 			})
 			require.NoError(t, err)
 
 			qid := int64(4242)
 			key := SampleKey{PID: 7, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+			expectedInterval := computeAdaptiveThrottleInterval(tc.baseThrottleInterval, tc.perMinuteRate)
 
 			finalizeOnce := func() {
 				st := &SampleState{
@@ -1220,48 +1239,25 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 				c.emitAndDeleteSample(key)
 			}
 
-			// Populate the 5m window with (tc.rateCount - 1) suppressed finalizations
-			// so that the next one (allowed) observes tc.rateCount events within 5 minutes.
-			for i := 0; i < tc.rateCount-1; i++ {
-				c.lastEmittedByQueryID.Add(qid, time.Now())
-				finalizeOnce()
-			}
+			throttleKey := StatStatementsKey{QueryID: qid, DBName: "db"}
 
-			// Helper to compute expected interval using current window size plus the in-flight finalization
-			expectedNow := func() time.Duration {
-				// Per-minute normalization from the fixed 5m window
-				var count int
-				if w, ok := c.recentFinalizationsByQueryID.Get(qid); ok {
-					count = len(w) + 1
-				} else {
-					count = 1
-				}
-				perMinute := float64(count) * float64(time.Minute) / float64(finalizationRateWindow)
-				if perMinute < 1 {
-					perMinute = 1
-				}
-				return computeAdaptiveThrottleInterval(tc.baseThrottleInterval, perMinute)
-			}
-
-			// Allow an emission: set last emission far in the past
-			c.lastEmittedByQueryID.Add(qid, time.Now().Add(-100*time.Hour))
+			// Allow first emission: set last emission far in the past.
+			c.lastEmitted.Add(throttleKey, time.Now().Add(-100*time.Hour))
 			finalizeOnce()
 			require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond, "first allowed emission must pass")
 
-			// Immediate next should be suppressed (interval not elapsed)
+			// Immediate next should be suppressed (interval not elapsed).
 			finalizeOnce()
 			time.Sleep(20 * time.Millisecond)
 			require.Equal(t, 1, len(lokiClient.Received()))
 
-			// Advance logical time by adjusting lastEmitted; just under the threshold -> still suppressed
-			exp := expectedNow()
-			c.lastEmittedByQueryID.Add(qid, time.Now().Add(-exp+100*time.Millisecond))
+			// Just under the threshold -> still suppressed.
+			c.lastEmitted.Add(throttleKey, time.Now().Add(-expectedInterval+100*time.Millisecond))
 			finalizeOnce()
 			require.Equal(t, 1, len(lokiClient.Received()))
 
-			// Beyond the expected interval -> should emit
-			exp = expectedNow()
-			c.lastEmittedByQueryID.Add(qid, time.Now().Add(-exp-100*time.Millisecond))
+			// Beyond the expected interval -> should emit.
+			c.lastEmitted.Add(throttleKey, time.Now().Add(-expectedInterval-100*time.Millisecond))
 			finalizeOnce()
 			require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 300*time.Millisecond, 10*time.Millisecond)
 		})
@@ -1279,6 +1275,9 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
+	provider := newMockExecutionRateProvider()
+	provider.rates[StatStatementsKey{QueryID: int64(7777), DBName: "db"}] = 60.0 // high rate that would throttle if checked
+
 	c, err := NewQuerySamples(QuerySamplesArguments{
 		DB:                    db,
 		CollectInterval:       10 * time.Millisecond,
@@ -1286,14 +1285,14 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 		Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		DisableQueryRedaction: true,
 		BaseThrottleInterval:  1 * time.Second,
+		ExecutionRateProvider: provider,
 	})
 	require.NoError(t, err)
 
 	qid := int64(7777)
 	key := SampleKey{PID: 42, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
 
-	// Prepare an exempt sample ("idle in transaction") which should emit but not
-	// update the adaptive rate window nor lastEmitted.
+	// Exempt sample ("idle in transaction"): must always emit and must NOT set lastEmitted.
 	exempt := &SampleState{
 		LastRow: QuerySamplesInfo{
 			DatabaseName: sql.NullString{String: "db", Valid: true},
@@ -1308,15 +1307,13 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 	c.samples[key] = exempt
 	c.emitAndDeleteSample(key)
 
-	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond)
-	// Exempt emissions must not grow the recent finalization window nor set lastEmitted.
-	if w, ok := c.recentFinalizationsByQueryID.Get(qid); ok {
-		require.Equal(t, 0, len(w))
-	}
-	_, found := c.lastEmittedByQueryID.Get(qid)
-	require.False(t, found)
+	throttleKey := StatStatementsKey{QueryID: qid, DBName: "db"}
 
-	// Now a non-exempt (active) sample should emit and set lastEmitted/window as usual.
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond)
+	_, found := c.lastEmitted.Get(throttleKey)
+	require.False(t, found, "exempt emission must not update lastEmitted")
+
+	// Non-exempt (active) sample: must emit and set lastEmitted.
 	nonExempt := &SampleState{
 		LastRow: QuerySamplesInfo{
 			DatabaseName: sql.NullString{String: "db", Valid: true},
@@ -1332,13 +1329,120 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 	c.emitAndDeleteSample(key)
 
 	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 300*time.Millisecond, 10*time.Millisecond)
-	if w, ok := c.recentFinalizationsByQueryID.Get(qid); ok {
-		require.Equal(t, 1, len(w))
-	} else {
-		require.Fail(t, "recentFinalizationsByQueryID entry not found")
+	_, found = c.lastEmitted.Get(throttleKey)
+	require.True(t, found, "non-exempt emission must update lastEmitted")
+}
+
+func TestAdaptiveThrottle_NoRegistryData_EmitsUnconditionally(t *testing.T) {
+	t.Parallel()
+
+	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	// Provider has no data for qid 9999 — registry still warming up.
+	provider := newMockExecutionRateProvider()
+
+	c, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                    db,
+		CollectInterval:       10 * time.Millisecond,
+		EntryHandler:          lokiClient,
+		Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		BaseThrottleInterval:  1 * time.Minute,
+		ExecutionRateProvider: provider,
+	})
+	require.NoError(t, err)
+
+	qid := int64(9999)
+	key := SampleKey{PID: 1, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+
+	for i := 0; i < 3; i++ {
+		st := &SampleState{
+			LastRow: QuerySamplesInfo{
+				DatabaseName: sql.NullString{String: "db", Valid: true},
+				PID:          1,
+				QueryID:      sql.NullInt64{Int64: qid, Valid: true},
+				State:        sql.NullString{String: "active", Valid: true},
+				Now:          time.Now(),
+			},
+			LastSeenAt: time.Now(),
+			tracker:    newWaitEventTracker(),
+		}
+		c.samples[key] = st
+		c.emitAndDeleteSample(key)
 	}
-	_, found = c.lastEmittedByQueryID.Get(qid)
-	require.True(t, found)
+
+	// All three calls must have emitted — no data means no throttling.
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 300*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestAdaptiveThrottle_SameQueryIDDifferentDatabases(t *testing.T) {
+	t.Parallel()
+
+	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	qid := int64(5050)
+	provider := newMockExecutionRateProvider()
+	// High rate in db1 only; db2 has no data yet (registry warming up).
+	provider.rates[StatStatementsKey{QueryID: qid, DBName: "db1"}] = 100.0
+
+	base := 1 * time.Minute
+	c, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                   db,
+		CollectInterval:      10 * time.Millisecond,
+		EntryHandler:         lokiClient,
+		Logger:               log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		BaseThrottleInterval: base,
+		ExecutionRateProvider: provider,
+	})
+	require.NoError(t, err)
+
+	keyDB1 := SampleKey{PID: 1, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+	keyDB2 := SampleKey{PID: 2, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+
+	finalize := func(sampleKey SampleKey, dbname string) {
+		st := &SampleState{
+			LastRow: QuerySamplesInfo{
+				DatabaseName: sql.NullString{String: dbname, Valid: true},
+				PID:          sampleKey.PID,
+				QueryID:      sql.NullInt64{Int64: qid, Valid: true},
+				State:        sql.NullString{String: "active", Valid: true},
+				Now:          time.Now(),
+			},
+			LastSeenAt: time.Now(),
+			tracker:    newWaitEventTracker(),
+		}
+		c.samples[sampleKey] = st
+		c.emitAndDeleteSample(sampleKey)
+	}
+
+	// Prime db1's lastEmitted so the next call will be throttled.
+	adaptiveInterval := computeAdaptiveThrottleInterval(base, 100.0)
+	c.lastEmitted.Add(StatStatementsKey{QueryID: qid, DBName: "db1"}, time.Now())
+
+	// db1 should be throttled — emitted too recently.
+	finalize(keyDB1, "db1")
+	time.Sleep(20 * time.Millisecond)
+	require.Equal(t, 0, len(lokiClient.Received()), "db1 should be throttled")
+
+	// db2 shares the same queryid but has no registry data → must emit unconditionally.
+	finalize(keyDB2, "db2")
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 300*time.Millisecond, 10*time.Millisecond, "db2 must emit despite db1 being throttled")
+
+	// After the adaptive interval, db1 should emit too.
+	c.lastEmitted.Add(StatStatementsKey{QueryID: qid, DBName: "db1"}, time.Now().Add(-adaptiveInterval-100*time.Millisecond))
+	finalize(keyDB1, "db1")
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 300*time.Millisecond, 10*time.Millisecond, "db1 must emit after interval elapses")
 }
 
 func TestQuerySamples_ExcludeDatabases(t *testing.T) {

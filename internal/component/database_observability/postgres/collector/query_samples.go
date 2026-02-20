@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"sort"
 	"time"
 
 	"github.com/go-kit/log"
@@ -27,8 +26,7 @@ const (
 )
 
 const (
-	queryTextClause     = ", s.query"
-	waitEventTypeLock   = "Lock"
+	queryTextClause     = ", s.query"	
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxn        = "idle in transaction"
@@ -36,13 +34,10 @@ const (
 )
 
 const (
-	// Bounds for adaptive throttle caches keyed by queryid.
+	// Bounds for the last-emitted cache keyed by queryid.
 	throttleCacheSize = 1000
 	// A higher value to prevent throttling from being too permissive due to TTL.
 	throttleCacheTTL = 1 * time.Hour
-
-	// Window for finalization rate calculation.
-	finalizationRateWindow = 5 * time.Minute
 
 	// Cache for emitted samples to avoid duplicates.
 	idleEmittedCacheSize = 1000
@@ -117,6 +112,11 @@ type QuerySamplesInfo struct {
 	BlockedByPIDs   pq.Int64Array
 }
 
+// ExecutionRateProvider supplies per-(queryid, datname) execution rates for adaptive throttling.
+type ExecutionRateProvider interface {
+	GetExecutionRate(queryid int64, dbname string) (float64, bool)
+}
+
 type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
@@ -127,6 +127,10 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction bool
 	BaseThrottleInterval  time.Duration
 	ExcludeCurrentUser    bool
+	// ExecutionRateProvider, when non-nil, supplies per-queryid execution rates
+	// for adaptive throttling. If nil, or if the provider has no data for a
+	// given queryid yet, the sample is emitted unconditionally.
+	ExecutionRateProvider ExecutionRateProvider
 }
 
 type QuerySamples struct {
@@ -143,14 +147,12 @@ type QuerySamples struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 
-	// in-memory state of running samples
-	samples map[SampleKey]*SampleState
-	// keep track of idle keys that were already emitted to avoid duplicates
+	samples     map[SampleKey]*SampleState
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
-	// adaptive throttling controls
-	baseThrottleInterval         time.Duration
-	lastEmittedByQueryID         *expirable.LRU[int64, time.Time]
-	recentFinalizationsByQueryID *expirable.LRU[int64, []time.Time]
+
+	baseThrottleInterval  time.Duration
+	executionRateProvider ExecutionRateProvider
+	lastEmitted           *expirable.LRU[StatStatementsKey, time.Time]
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -249,10 +251,10 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                      &atomic.Bool{},
 		samples:                      map[SampleKey]*SampleState{},
-		idleEmitted:                  expirable.NewLRU[SampleKey, struct{}](idleEmittedCacheSize, nil, idleEmittedCacheTTL),
-		baseThrottleInterval:         args.BaseThrottleInterval,
-		lastEmittedByQueryID:         expirable.NewLRU[int64, time.Time](throttleCacheSize, nil, throttleCacheTTL),
-		recentFinalizationsByQueryID: expirable.NewLRU[int64, []time.Time](throttleCacheSize, nil, throttleCacheTTL),
+		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](idleEmittedCacheSize, nil, idleEmittedCacheTTL),
+		baseThrottleInterval:  args.BaseThrottleInterval,
+		executionRateProvider: args.ExecutionRateProvider,
+		lastEmitted:           expirable.NewLRU[StatStatementsKey, time.Time](throttleCacheSize, nil, throttleCacheTTL),
 	}, nil
 }
 
@@ -500,33 +502,27 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		ts = state.EndAt.Time.UnixNano()
 	}
 
-	// Adaptive throttling for query sample emissions
 	now := time.Now()
 	qid := state.LastRow.QueryID.Int64
+	dbname := state.LastRow.DatabaseName.String
 	isExempt := isThrottleExempt(state)
 
-	var perMinuteRate float64
-	if !isExempt {
-		window, _ := c.recentFinalizationsByQueryID.Get(qid)
-		cutoff := now.Add(-finalizationRateWindow)
-		cutoffIndex := sort.Search(len(window), func(j int) bool { return window[j].After(cutoff) })
-		window = append(window[cutoffIndex:], now)
-		c.recentFinalizationsByQueryID.Add(qid, window)
-		perMinuteRate = float64(len(window)) * float64(time.Minute) / float64(finalizationRateWindow)
-	}
-
 	shouldEmit := true
-	if !isExempt && c.baseThrottleInterval > 0 {
-		adaptiveThrottleInterval := computeAdaptiveThrottleInterval(c.baseThrottleInterval, perMinuteRate)
-		if last, ok := c.lastEmittedByQueryID.Get(qid); ok {
-			if now.Sub(last) < adaptiveThrottleInterval {
-				shouldEmit = false
+	if !isExempt && c.baseThrottleInterval > 0 && c.executionRateProvider != nil {
+		throttleKey := StatStatementsKey{QueryID: qid, DBName: dbname}
+		if rate, ok := c.executionRateProvider.GetExecutionRate(qid, dbname); ok {
+			adaptiveThrottleInterval := computeAdaptiveThrottleInterval(c.baseThrottleInterval, rate)
+			if last, lastOk := c.lastEmitted.Get(throttleKey); lastOk {
+				if now.Sub(last) < adaptiveThrottleInterval {
+					shouldEmit = false
+				}
 			}
 		}
+		// No rate for this (queryid, datname) yet (registry warming up) — emit unconditionally.
 	}
 	if shouldEmit {
 		if !isExempt {
-			c.lastEmittedByQueryID.Add(qid, now)
+			c.lastEmitted.Add(StatStatementsKey{QueryID: qid, DBName: dbname}, now)
 		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
@@ -670,7 +666,7 @@ func isThrottleExempt(sample *SampleState) bool {
 }
 
 // computeAdaptiveThrottleInterval scales the base interval using a logarithmic factor derived
-// from the per-minute finalization rate. This provides gentle backoff at high rates,
+// from the per-minute execution rate. This provides gentle backoff at high rates,
 // avoiding excessive sampling:
 //
 //	factor = 1 + ceil(log10(max(1, per-minute-rate)))
