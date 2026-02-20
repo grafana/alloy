@@ -1087,6 +1087,218 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 	}
 }
 
+// TestComputeAdaptiveThrottle tests the computeAdaptiveThrottle function at key rate boundaries.
+func TestComputeAdaptiveThrottle(t *testing.T) {
+	t.Parallel()
+
+	base := 1 * time.Minute
+	require.Equal(t, time.Duration(0), computeAdaptiveThrottleInterval(0, 100), "base=0 disables throttle")
+
+	cases := []struct {
+		rate   float64
+		factor int
+	}{
+		{0, 1}, {1, 1}, // ≤1/min → 1×
+		{2, 2}, {10, 2}, // 2–10/min → 2×
+		{11, 3}, {100, 3}, // 11–100/min → 3×
+		{101, 4}, {1000, 4}, // 101–1000/min → 4×
+		{1001, 5}, {10000, 5}, // 1001–10000/min → 5×
+	}
+	for _, tc := range cases {
+		got := computeAdaptiveThrottleInterval(base, tc.rate)
+		require.Equal(t, time.Duration(tc.factor)*base, got, "rate=%.0f", tc.rate)
+	}
+}
+
+// mockExecutionRateProvider is a simple ExecutionRateProvider for use in tests.
+type mockExecutionRateProvider struct {
+	rates map[StatStatementsKey]float64
+}
+
+func newMockExecutionRateProvider() *mockExecutionRateProvider {
+	return &mockExecutionRateProvider{rates: make(map[StatStatementsKey]float64)}
+}
+
+func (m *mockExecutionRateProvider) GetExecutionRate(queryid int64, dbname string) (float64, bool) {
+	rate, ok := m.rates[StatStatementsKey{QueryID: queryid, DBName: dbname}]
+	return rate, ok
+}
+
+// newThrottleCollector creates a QuerySamples instance wired with a mock rate
+// provider. base is the BaseThrottleInterval (use a short value in tests for speed).
+func newThrottleCollector(t *testing.T, base time.Duration, provider ExecutionRateProvider) (*QuerySamples, *loki.CollectingHandler) {
+	t.Helper()
+	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+
+	lokiClient := loki.NewCollectingHandler()
+	t.Cleanup(lokiClient.Stop)
+
+	var logBuffer syncbuffer.Buffer
+	c, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                    db,
+		CollectInterval:       10 * time.Millisecond,
+		EntryHandler:          lokiClient,
+		Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		DisableQueryRedaction: true,
+		BaseThrottleInterval:  base,
+		ExecutionRateProvider: provider,
+	})
+	require.NoError(t, err)
+	return c, lokiClient
+}
+
+// makeSample builds a minimal active SampleState for the given (pid, qid, dbname).
+func makeSample(pid int, qid int64, dbname string) *SampleState {
+	return &SampleState{
+		LastRow: QuerySamplesInfo{
+			DatabaseName: sql.NullString{String: dbname, Valid: true},
+			PID:          pid,
+			QueryID:      sql.NullInt64{Int64: qid, Valid: true},
+			State:        sql.NullString{String: "active", Valid: true},
+			Now:          time.Now(),
+		},
+		LastSeenAt: time.Now(),
+		tracker:    newWaitEventTracker(),
+	}
+}
+
+// TestAdaptiveThrottle_SuppressAndEmit verifies the end-to-end suppression/emission
+// behaviour: a sample is suppressed while the throttle window is active and emitted
+// once it has elapsed. Rate→factor mapping is covered by TestComputeAdaptiveThrottle.
+func TestAdaptiveThrottle_SuppressAndEmit(t *testing.T) {
+	t.Parallel()
+
+	const (
+		base          = 30 * time.Second
+		perMinuteRate = 10.0 // factor=2 → effective interval = 60s
+		qid           = int64(4242)
+	)
+	throttleKey := StatStatementsKey{QueryID: qid, DBName: "db"}
+	expectedInterval := computeAdaptiveThrottleInterval(base, perMinuteRate)
+
+	provider := newMockExecutionRateProvider()
+	provider.rates[throttleKey] = perMinuteRate
+
+	c, lokiClient := newThrottleCollector(t, base, provider)
+
+	finalize := func() {
+		key := SampleKey{PID: 7, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+		c.samples[key] = makeSample(7, qid, "db")
+		c.emitAndDeleteSample(key)
+	}
+
+	// Allow first emission.
+	c.lastEmitted.Add(throttleKey, time.Now().Add(-100*time.Hour))
+	finalize()
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond)
+
+	// Immediate repeat: suppressed.
+	finalize()
+	time.Sleep(20 * time.Millisecond)
+	require.Equal(t, 1, len(lokiClient.Received()))
+
+	// Just under threshold: still suppressed.
+	c.lastEmitted.Add(throttleKey, time.Now().Add(-expectedInterval+100*time.Millisecond))
+	finalize()
+	require.Equal(t, 1, len(lokiClient.Received()))
+
+	// Beyond threshold: emits.
+	c.lastEmitted.Add(throttleKey, time.Now().Add(-expectedInterval-100*time.Millisecond))
+	finalize()
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 300*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
+	t.Parallel()
+
+	const qid = int64(7777)
+	throttleKey := StatStatementsKey{QueryID: qid, DBName: "db"}
+
+	provider := newMockExecutionRateProvider()
+	provider.rates[throttleKey] = 60.0 // high rate that would throttle if checked
+
+	c, lokiClient := newThrottleCollector(t, 1*time.Second, provider)
+	key := SampleKey{PID: 42, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+
+	// Exempt sample ("idle in transaction"): must always emit and must NOT set lastEmitted.
+	c.samples[key] = &SampleState{
+		LastRow: QuerySamplesInfo{
+			DatabaseName: sql.NullString{String: "db", Valid: true},
+			PID:          42,
+			QueryID:      sql.NullInt64{Int64: qid, Valid: true},
+			State:        sql.NullString{String: "idle in transaction", Valid: true},
+			Now:          time.Now(),
+		},
+		LastSeenAt: time.Now(),
+		tracker:    newWaitEventTracker(),
+	}
+	c.emitAndDeleteSample(key)
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond)
+	_, found := c.lastEmitted.Get(throttleKey)
+	require.False(t, found, "exempt emission must not update lastEmitted")
+
+	// Non-exempt (active) sample: must emit and set lastEmitted.
+	c.samples[key] = makeSample(42, qid, "db")
+	c.emitAndDeleteSample(key)
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 300*time.Millisecond, 10*time.Millisecond)
+	_, found = c.lastEmitted.Get(throttleKey)
+	require.True(t, found, "non-exempt emission must update lastEmitted")
+}
+
+func TestAdaptiveThrottle_NoRegistryData_EmitsUnconditionally(t *testing.T) {
+	t.Parallel()
+
+	// Provider has no data for qid 9999 — registry still warming up.
+	c, lokiClient := newThrottleCollector(t, 1*time.Minute, newMockExecutionRateProvider())
+
+	const qid = int64(9999)
+	for range 3 {
+		key := SampleKey{PID: 1, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+		c.samples[key] = makeSample(1, qid, "db")
+		c.emitAndDeleteSample(key)
+	}
+	// All three must emit — no rate data means no throttling.
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 300*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestAdaptiveThrottle_SameQueryIDDifferentDatabases(t *testing.T) {
+	t.Parallel()
+
+	const qid = int64(5050)
+	provider := newMockExecutionRateProvider()
+	// High rate in db1 only; db2 has no data yet (registry warming up).
+	provider.rates[StatStatementsKey{QueryID: qid, DBName: "db1"}] = 100.0
+
+	const base = 1 * time.Minute
+	c, lokiClient := newThrottleCollector(t, base, provider)
+
+	finalize := func(pid int, dbname string) {
+		key := SampleKey{PID: pid, QueryID: qid, QueryStartNs: time.Now().UnixNano()}
+		c.samples[key] = makeSample(pid, qid, dbname)
+		c.emitAndDeleteSample(key)
+	}
+
+	// Prime db1's lastEmitted so the next call will be throttled.
+	adaptiveInterval := computeAdaptiveThrottleInterval(base, 100.0)
+	c.lastEmitted.Add(StatStatementsKey{QueryID: qid, DBName: "db1"}, time.Now())
+
+	// db1 should be throttled — emitted too recently.
+	finalize(1, "db1")
+	time.Sleep(20 * time.Millisecond)
+	require.Equal(t, 0, len(lokiClient.Received()), "db1 should be throttled")
+
+	// db2 shares the same queryid but has no registry data → must emit unconditionally.
+	finalize(2, "db2")
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 300*time.Millisecond, 10*time.Millisecond, "db2 must emit despite db1 being throttled")
+
+	// After the adaptive interval, db1 should emit too.
+	c.lastEmitted.Add(StatStatementsKey{QueryID: qid, DBName: "db1"}, time.Now().Add(-adaptiveInterval-100*time.Millisecond))
+	finalize(1, "db1")
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 300*time.Millisecond, 10*time.Millisecond, "db1 must emit after interval elapses")
+}
+
 func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
