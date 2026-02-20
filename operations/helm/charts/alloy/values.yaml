@@ -40,6 +40,17 @@ alloy:
     # -- Key in ConfigMap to get config from.
     key: null
 
+  secret:
+    # -- Create a new Secret for the config file. Takes precedence over configMap if both are configured.
+    create: false
+    # -- Content to assign to the new Secret. This is passed into `tpl` allowing for templating from values.
+    content: ''
+
+    # -- Name of existing Secret to use. Used when create is false.
+    name: null
+    # -- Key in Secret to get config from.
+    key: null
+
   clustering:
     # -- Deploy Alloy in a cluster to allow for load distribution.
     enabled: false
