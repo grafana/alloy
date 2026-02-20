@@ -177,11 +177,12 @@ var tt = []struct {
 		testLogs["npm_token"].log,
 		true,
 	},
+	// Default embedded config disables generic-api-key rule, so no redaction for this pattern.
 	{
 		"generic_api_key",
 		testConfigs["default"],
 		testLogs["generic_api_key"].log,
-		true,
+		false,
 	},
 	{
 		"multiple_secrets",

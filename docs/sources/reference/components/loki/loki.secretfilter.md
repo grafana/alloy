@@ -46,17 +46,18 @@ loki.secretfilter "<LABEL>" {
 
 You can use the following arguments with `loki.secretfilter`:
 
-| Name              | Type                 | Description                                                                                                          | Default | Required |
-| ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
-| `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
-| `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
-| `redact_with`     | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
-| `redact_percent`  | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                  | `80`    | no       |
+| Name              | Type                 | Description                                                                                                          | Default               | Required |
+| ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------- | -------- |
+| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |                       | yes      |
+| `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`                  | no       |
+| `disabled_rules`  | `list(string)`       | When `gitleaks_config` is not set: Gitleaks rule IDs to disable from the default gitleaks config.                    | `["generic-api-key"]` | no       |
+| `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`                  | no       |
+| `redact_with`     | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`                  | no       |
+| `redact_percent`  | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                 | `80`                  | no       |
 
 The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config].
 The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config).
-If `gitleaks_config` is empty, the component uses the default Gitleaks configuration [embedded in the component][embedded-config].
+If `gitleaks_config` is empty, the component uses the default Gitleaks configuration with the rules listed in `disabled_rules` removed (default: `["generic-api-key"]` to reduce noise).
 
 {{< admonition type="note" >}}
 The default configuration may change between {{< param "PRODUCT_NAME" >}} versions.
@@ -74,8 +75,6 @@ For consistent behavior, use an external configuration file via `gitleaks_config
   When `redact_percent` is 0 or unset, 80% redaction is used.
 
 **Origin metric:** The `origin_label` argument specifies which Loki label to use for the `secrets_redacted_by_origin` metric, so you can track how many secrets were redacted per source or environment.
-
-[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
 
 ## Blocks
 

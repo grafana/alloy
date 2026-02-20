@@ -43,6 +43,7 @@ type Arguments struct {
 	RedactWith     string              `alloy:"redact_with,attr,optional"`     // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
 	RedactPercent  uint                `alloy:"redact_percent,attr,optional"`  // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
 	GitleaksConfig string              `alloy:"gitleaks_config,attr,optional"` // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
+	DisabledRules  []string            `alloy:"disabled_rules,attr,optional"`  // When gitleaks_config is empty: gitleaks rule IDs to disable in the built-in default config (e.g. "generic-api-key"). Ignored when gitleaks_config is set. Defaults to ["generic-api-key"] when not specified.
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -173,11 +174,47 @@ func loadGitleaksConfig(path string) (config.Config, error) {
 	return cfg, nil
 }
 
+// defaultDetectorConfig returns the gitleaks default config with the given rule IDs removed.
+// We start from NewDetectorDefaultConfig and drop rules in code to avoid gitleaks' extend logic
+// and its global state (extendDepth), which would break when multiple components or tests run.
+func defaultDetectorConfig(disabledRules []string) (*detect.Detector, error) {
+	det, err := detect.NewDetectorDefaultConfig()
+	if err != nil {
+		return nil, err
+	}
+	cfg := det.Config
+	disabledSet := make(map[string]struct{}, len(disabledRules))
+	for _, ruleID := range disabledRules {
+		delete(cfg.Rules, ruleID)
+		disabledSet[ruleID] = struct{}{}
+	}
+	var newOrdered []string
+	for _, id := range cfg.OrderedRules {
+		if _, ok := disabledSet[id]; !ok {
+			newOrdered = append(newOrdered, id)
+		}
+	}
+	cfg.OrderedRules = newOrdered
+	// Rebuild keywords set after removing rules
+	cfg.Keywords = make(map[string]struct{})
+	for _, r := range cfg.Rules {
+		for _, k := range r.Keywords {
+			cfg.Keywords[strings.ToLower(k)] = struct{}{}
+		}
+	}
+	return detect.NewDetector(cfg), nil
+}
+
 // newDetectorFromArgs creates a gitleaks detector from component arguments.
-// If GitleaksConfig is empty, the default gitleaks config is used.
+// If GitleaksConfig is empty, the built-in default is used with args.DisabledRules removed
+// (defaulting to ["generic-api-key"] when DisabledRules is not specified).
 func newDetectorFromArgs(args Arguments) (*detect.Detector, error) {
 	if args.GitleaksConfig == "" {
-		return detect.NewDetectorDefaultConfig()
+		disabledRules := args.DisabledRules
+		if disabledRules == nil {
+			disabledRules = []string{"generic-api-key"}
+		}
+		return defaultDetectorConfig(disabledRules)
 	}
 	cfg, err := loadGitleaksConfig(args.GitleaksConfig)
 	if err != nil {
