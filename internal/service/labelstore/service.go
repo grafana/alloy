@@ -19,7 +19,7 @@ const ServiceName = "labelstore"
 
 type Service struct {
 	log                 log.Logger
-	mut                 sync.RWMutex
+	mut                 sync.Mutex
 	globalRefID         uint64
 	mappings            map[string]*remoteWriteMapping
 	labelsHashToGlobal  map[uint64]uint64
@@ -212,8 +212,8 @@ func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 
 // GetLocalRefID returns the local refid for a component global combo, or 0 if not found
 func (s *Service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
-	s.mut.RLock()
-	defer s.mut.RUnlock()
+	s.mut.Lock()
+	defer s.mut.Unlock()
 
 	m, found := s.mappings[componentID]
 	if !found {
