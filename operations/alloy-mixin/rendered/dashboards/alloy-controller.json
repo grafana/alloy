@@ -57,7 +57,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "count(group(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}) by (instance))\n",
+               "expr": "count(group(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}) by (${groupby}))\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -293,7 +293,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by (instance) (rate(alloy_component_evaluation_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+               "expr": "sum by (${groupby}) (rate(alloy_component_evaluation_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -523,6 +523,18 @@
             },
             "name": "filters",
             "type": "adhoc"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "instance,component_path,component_id,controller_path,health_type,job,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

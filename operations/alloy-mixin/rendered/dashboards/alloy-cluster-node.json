@@ -132,9 +132,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "rate(cluster_node_gossip_received_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "expr": "sum by(${groupby}) (rate(cluster_node_gossip_received_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "{{event}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -474,6 +474,18 @@
             },
             "name": "filters",
             "type": "adhoc"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "event",
+               "value": "event"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "event,state,instance,job,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

@@ -19,7 +19,10 @@ local filename = 'alloy-otel-engine-overview.json';
       'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster", namespace=~"$namespace"}, job)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
     ),
-    dashboard.newTemplateVariableCustom('groupby', 'instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod') { label: 'Group by' },
+    dashboard.newGroupByTemplateVariable(
+      query='instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod',
+      defaultValue='instance'
+    ),
     {
       name: 'filters',
       type: 'adhoc',

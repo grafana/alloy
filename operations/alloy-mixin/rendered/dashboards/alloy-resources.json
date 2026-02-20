@@ -45,9 +45,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "rate(alloy_resources_process_cpu_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "expr": "sum by(${groupby}) (rate(alloy_resources_process_cpu_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -71,9 +71,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "alloy_resources_process_resident_memory_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "expr": "sum by(${groupby}) (alloy_resources_process_resident_memory_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -101,9 +101,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "rate(go_gc_duration_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[5m])\nand on(instance)\nalloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "expr": "sum by(${groupby}) (\n  rate(go_gc_duration_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[5m])\n  and on(instance)\n  alloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -127,9 +127,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "go_goroutines{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\nand on(instance)\nalloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "expr": "sum by(${groupby}) (\n  go_goroutines{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n  and on(instance)\n  alloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -153,9 +153,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "go_memstats_heap_inuse_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\nand on(instance)\nalloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n",
+               "expr": "sum by(${groupby}) (\n  go_memstats_heap_inuse_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n  and on(instance)\n  alloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -186,9 +186,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "rate(alloy_resources_machine_rx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "expr": "sum by(${groupby}) (rate(alloy_resources_machine_rx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -219,9 +219,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "rate(alloy_resources_machine_tx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "expr": "sum by(${groupby}) (rate(alloy_resources_machine_tx_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -310,6 +310,18 @@
             },
             "name": "filters",
             "type": "adhoc"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "instance,job,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

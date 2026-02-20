@@ -1381,6 +1381,12 @@
             "type": "query"
          },
          {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
             "label": "Group by",
             "name": "groupby",
             "query": "instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod",

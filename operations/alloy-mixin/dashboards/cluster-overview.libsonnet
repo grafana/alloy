@@ -10,7 +10,13 @@ local cluster_node_filename = 'alloy-cluster-node.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=false,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,state,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
 
   local minClusterSizeLineStyle = [
     {
@@ -271,9 +277,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (cluster_node_peers{%(groupSelector)s})
+              sum by(${groupby}) (cluster_node_peers{%(groupSelector)s})
             ||| % $._config,
-            legendFormat='{{instance}}',
+            legendFormat='{{${groupby}}}',
           ),
           panel.newQuery(
             expr= |||

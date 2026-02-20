@@ -307,9 +307,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by(instance) (cluster_node_peers{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "expr": "sum by(${groupby}) (cluster_node_peers{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
                "instant": false,
-               "legendFormat": "{{instance}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             },
             {
@@ -390,6 +390,18 @@
             },
             "name": "filters",
             "type": "adhoc"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "instance,state,job,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

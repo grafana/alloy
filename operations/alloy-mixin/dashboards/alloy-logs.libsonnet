@@ -12,6 +12,11 @@ local filename = 'alloy-logs.json';
     },
   },
 
+  local groupByTemplateVariable = dashboard.newGroupByTemplateVariable(
+    query='level,job,instance,namespace,cluster,pod',
+    defaultValue='level'
+  ),
+
   // Build the Loki label selector based on config
   local baseLabels = if $._config.enableK8sCluster then
     'cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", level=~"$level"'
@@ -102,7 +107,7 @@ local filename = 'alloy-logs.json';
           },
         ],
       },
-    ] + [filtersTemplateVariable])
+    ] + [filtersTemplateVariable, groupByTemplateVariable])
   else ([
     {
       name: 'job',
@@ -157,7 +162,7 @@ local filename = 'alloy-logs.json';
         },
       ],
     },
-  ] + [filtersTemplateVariable]),
+  ] + [filtersTemplateVariable, groupByTemplateVariable]),
 
   grafanaDashboards+::
     if $._config.enableLokiLogs then {
@@ -184,8 +189,8 @@ local filename = 'alloy-logs.json';
                   type: 'loki',
                   uid: '${loki_datasource}',
                 },
-                expr: 'sum by (level) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
-                legendFormat: '{{ level }}',
+                expr: 'sum by (${groupby}) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
+                legendFormat: '{{${groupby}}}',
               },
             ]) +
             {

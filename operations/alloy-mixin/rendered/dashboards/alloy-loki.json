@@ -64,7 +64,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by(instance) (loki_source_file_files_active_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
+               "expr": "sum by(${groupby}) (loki_source_file_files_active_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"})\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -97,7 +97,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by (instance) (rate(loki_source_file_read_lines_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
+               "expr": "sum by (${groupby}) (rate(loki_source_file_read_lines_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -142,7 +142,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by (instance) (rate(loki_source_journal_target_lines_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
+               "expr": "sum by (${groupby}) (rate(loki_source_journal_target_lines_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -181,7 +181,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by(instance) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n/\nsum by(instance) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])) * 100 \n",
+               "expr": "sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n/\nsum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])) * 100 \n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -207,23 +207,23 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "histogram_quantile(\n  0.99,\n  sum by (le, instance) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "expr": "histogram_quantile(\n  0.99,\n  sum by (le, ${groupby}) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} p99",
+               "legendFormat": "{{${groupby}}} p99",
                "range": true
             },
             {
                "datasource": "${datasource}",
-               "expr": "histogram_quantile(\n  0.95,\n  sum by (le, instance) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "expr": "histogram_quantile(\n  0.95,\n  sum by (le, ${groupby}) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} p95",
+               "legendFormat": "{{${groupby}}} p95",
                "range": true
             },
             {
                "datasource": "${datasource}",
-               "expr": "histogram_quantile(\n  0.50,\n  sum by (le, instance) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "expr": "histogram_quantile(\n  0.50,\n  sum by (le, ${groupby}) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} p50",
+               "legendFormat": "{{${groupby}}} p50",
                "range": true
             }
          ],
@@ -254,7 +254,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by (instance) (rate(loki_write_sent_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
+               "expr": "sum by (${groupby}) (rate(loki_write_sent_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -287,7 +287,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by(instance) (rate(loki_write_dropped_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
+               "expr": "sum by(${groupby}) (rate(loki_write_dropped_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -393,6 +393,18 @@
             "refresh": 2,
             "sort": 1,
             "type": "query"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "instance,host,status_code,job,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

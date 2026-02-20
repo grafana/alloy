@@ -9,7 +9,13 @@ local filename = 'alloy-controller.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=false,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,component_path,component_id,controller_path,health_type,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
 
   [filename]:
     dashboard.new(name='Alloy / Controller', tag=$._config.dashboardTag) +
@@ -36,7 +42,7 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              count(group(alloy_component_controller_running_components{%(groupSelector)s}) by (instance))
+              count(group(alloy_component_controller_running_components{%(groupSelector)s}) by (${groupby}))
             ||| % $._config,
           ),
         ])
@@ -208,7 +214,7 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (instance) (rate(alloy_component_evaluation_seconds_count{%(groupSelector)s}[$__rate_interval]))
+              sum by (${groupby}) (rate(alloy_component_evaluation_seconds_count{%(groupSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
