@@ -179,7 +179,7 @@ positions:
 		}()
 
 		yaml := []byte(`
-Version: v2
+some_new_property: new_unexpected_value
 positions:
   ? path: /tmp/random.log
     labels: '{job="tmp"}'
