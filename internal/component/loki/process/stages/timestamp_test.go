@@ -344,6 +344,23 @@ func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
 				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.500000000Z"),
 			},
 		},
+		"should add nanoseconds to identical parsed timestamps to preserve message order": {
+			config: TimestampConfig{
+				Source:          "time",
+				Format:          time.RFC3339Nano,
+				ActionOnFailure: TimestampActionOnFailureFudge,
+			},
+			inputEntries: []inputEntry{
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+			},
+			expectedTimestamps: []time.Time{
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z"),
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z"),
+			},
+		},
 		"should fudge the timestamp based on the last known value on timestamp parsing failure": {
 			config: TimestampConfig{
 				Source: "time",
