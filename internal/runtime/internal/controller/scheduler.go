@@ -85,7 +85,7 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	for i, r := range rr {
 		id := r.NodeID()
 		newRunnables[id] = r
-		// We stopp tasks in reversed order from how they are scheduled.
+		// We stop tasks in reversed order from how they are scheduled.
 		newStoppingOrder[taskLen-1-i] = id
 	}
 
@@ -171,7 +171,9 @@ func (s *Scheduler) Stop() {
 	s.tasksMut.Lock()
 	toStop := make([]*task, 0, len(s.tasks))
 	for _, id := range s.stoppingOrder {
-		toStop = append(toStop, s.tasks[id])
+		if task, ok := s.tasks[id]; ok {
+			toStop = append(toStop, task)
+		}
 	}
 	s.tasksMut.Unlock()
 
@@ -180,7 +182,6 @@ func (s *Scheduler) Stop() {
 	}
 
 	s.running.Wait()
-	return
 }
 
 // task is a scheduled runnable.
