@@ -62,44 +62,57 @@ local dashboard = import './dashboard.jsonnet';
             |||
                 label_values(alloy_component_controller_running_components{%s, job=~"$job"}, instance)
             ||| % filterSelector;
+
+        local filtersTemplateVariable = {
+            name: 'filters',
+            type: 'adhoc',
+            datasource: {
+                type: 'prometheus',
+                uid: '${datasource}',
+            },
+        };
         
         if enableK8sCluster then
-            [
-                dashboard.newTemplateVariable(
-                name='cluster', 
-                query=clusterTemplateQuery,
-                setenceCaseLabels=setenceCaseLabels),
-                dashboard.newTemplateVariable(
-                name='namespace', 
-                query=namespaceTemplateQuery,
-                setenceCaseLabels=setenceCaseLabels),
-                dashboard.newTemplateVariable(
-                name='job', 
-                query=k8sJobTemplateQuery,
-                setenceCaseLabels=setenceCaseLabels),
-            ] + 
-            if includeInstance then
-                [   
-                    dashboard.newMultiTemplateVariable(
-                    name='instance', 
-                    query=k8sInstanceTemplateQuery,
-                    setenceCaseLabels=setenceCaseLabels) 
-                ]
-            else []
-        else
-            [
-                dashboard.newTemplateVariable(
-                name='job', 
-                query=jobTemplateQuery,
-                setenceCaseLabels=setenceCaseLabels),                
-            ] + 
-            if includeInstance then
+            (
                 [
-                    dashboard.newMultiTemplateVariable(
-                    name='instance', 
-                    query=instanceTemplateQuery,
-                    setenceCaseLabels=setenceCaseLabels)
-                ]
-            else []
+                    dashboard.newTemplateVariable(
+                    name='cluster', 
+                    query=clusterTemplateQuery,
+                    setenceCaseLabels=setenceCaseLabels),
+                    dashboard.newTemplateVariable(
+                    name='namespace', 
+                    query=namespaceTemplateQuery,
+                    setenceCaseLabels=setenceCaseLabels),
+                    dashboard.newTemplateVariable(
+                    name='job', 
+                    query=k8sJobTemplateQuery,
+                    setenceCaseLabels=setenceCaseLabels),
+                ] + 
+                if includeInstance then
+                    [   
+                        dashboard.newMultiTemplateVariable(
+                        name='instance', 
+                        query=k8sInstanceTemplateQuery,
+                        setenceCaseLabels=setenceCaseLabels) 
+                    ]
+                else []
+            ) + [filtersTemplateVariable]
+        else
+            (
+                [
+                    dashboard.newTemplateVariable(
+                    name='job', 
+                    query=jobTemplateQuery,
+                    setenceCaseLabels=setenceCaseLabels),                
+                ] + 
+                if includeInstance then
+                    [
+                        dashboard.newMultiTemplateVariable(
+                        name='instance', 
+                        query=instanceTemplateQuery,
+                        setenceCaseLabels=setenceCaseLabels)
+                    ]
+                else []
+            ) + [filtersTemplateVariable]
     )
 }

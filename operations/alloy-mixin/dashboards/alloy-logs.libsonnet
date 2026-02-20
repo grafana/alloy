@@ -3,6 +3,15 @@ local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-logs.json';
 
 {
+  local filtersTemplateVariable = {
+    name: 'filters',
+    type: 'adhoc',
+    datasource: {
+      type: 'prometheus',
+      uid: '${datasource}',
+    },
+  },
+
   // Build the Loki label selector based on config
   local baseLabels = if $._config.enableK8sCluster then
     'cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", level=~"$level"'
@@ -16,7 +25,7 @@ local filename = 'alloy-logs.json';
       '{%s}' % baseLabels,
 
   local lokiTemplateVariables = 
-    if $._config.enableK8sCluster then [
+    if $._config.enableK8sCluster then ([
       {
         name: 'cluster',
         label: 'Cluster',
@@ -93,8 +102,8 @@ local filename = 'alloy-logs.json';
           },
         ],
       },
-    ]
-  else [
+    ] + [filtersTemplateVariable])
+  else ([
     {
       name: 'job',
       label: 'Job',
@@ -148,7 +157,7 @@ local filename = 'alloy-logs.json';
         },
       ],
     },
-  ],
+  ] + [filtersTemplateVariable]),
 
   grafanaDashboards+::
     if $._config.enableLokiLogs then {

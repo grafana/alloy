@@ -611,6 +611,14 @@
             "type": "query"
          },
          {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "name": "filters",
+            "type": "adhoc"
+         },
+         {
             "allValue": ".*",
             "datasource": "${datasource}",
             "includeAll": true,
