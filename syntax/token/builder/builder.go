@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-var goAlloyDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
+var goAlloyDefaulter = reflect.TypeFor[value.Defaulter]()
 
 // An Expr represents a single Alloy expression.
 type Expr struct {

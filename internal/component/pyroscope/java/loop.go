@@ -67,11 +67,9 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 	}
 	_ = level.Debug(p.logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
 
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
+	p.wg.Go(func() {
 		p.loop(ctx)
-	}()
+	})
 	return p
 }
 

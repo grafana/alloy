@@ -91,7 +91,7 @@ func (c *consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	resourceLogs := logs.ResourceLogs()
 
 	rsLen := td.ResourceSpans().Len()
-	for i := 0; i < rsLen; i++ {
+	for i := range rsLen {
 		// Create a logs scope
 		resLog := resourceLogs.AppendEmpty()
 		scopeLogs := resLog.ScopeLogs()
@@ -105,7 +105,7 @@ func (c *consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 			svc = svcAtt.Str()
 		}
 
-		for j := 0; j < ssLen; j++ {
+		for j := range ssLen {
 			// Create a log records slice
 			scopeLog := scopeLogs.AppendEmpty()
 			logRecords := scopeLog.LogRecords()
@@ -127,7 +127,7 @@ func (c *consumer) consumeSpans(serviceName string, ss ptrace.ScopeSpans, rs pco
 
 	// Loop through the spans
 	spanLen := ss.Spans().Len()
-	for k := 0; k < spanLen; k++ {
+	for k := range spanLen {
 		span := ss.Spans().At(k)
 		traceID := span.TraceID().String()
 
@@ -194,7 +194,7 @@ func (c *consumer) consumeSpans(serviceName string, ss ptrace.ScopeSpans, rs pco
 
 func (c *consumer) consumeEvents(output pcommon.Map, events ptrace.SpanEventSlice, logRecords plog.LogRecordSlice) error {
 	eventsLen := events.Len()
-	for i := 0; i < eventsLen; i++ {
+	for i := range eventsLen {
 		event := events.At(i)
 
 		// Can we find a solution without relying on more memory allocation?

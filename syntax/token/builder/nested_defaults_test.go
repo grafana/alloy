@@ -157,7 +157,7 @@ func TestPtrPropagatingDefaultWithNil(t *testing.T) {
 
 	// Now decode the Alloy produced above and make sure it's the same as the input.
 	eval := vm.New(parseBlock(t, actualAlloy))
-	vPtr := reflect.New(reflect.TypeOf(input)).Interface()
+	vPtr := reflect.New(reflect.TypeFor[PtrPropagatingDefault]()).Interface()
 	require.NoError(t, eval.Evaluate(nil, vPtr), "alloy evaluation error")
 
 	actualOut := reflect.ValueOf(vPtr).Elem().Interface()

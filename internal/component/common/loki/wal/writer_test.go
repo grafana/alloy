@@ -359,7 +359,7 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 		writer.Stop()
 	}()
 
-	for i := 0; i < lines; i++ {
+	for i := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: model.LabelSet{
 				"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),

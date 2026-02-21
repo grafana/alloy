@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"fmt"
+	maps0 "maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -164,12 +165,8 @@ func (t Target) Get(key string) (string, bool) {
 // Deprecated: this is not optimised and should be avoided if possible.
 func (t Target) LabelSet() commonlabels.LabelSet {
 	merged := make(commonlabels.LabelSet, t.Len())
-	for k, v := range t.group {
-		merged[k] = v
-	}
-	for k, v := range t.own {
-		merged[k] = v
-	}
+	maps0.Copy(merged, t.group)
+	maps0.Copy(merged, t.own)
 	return merged
 }
 

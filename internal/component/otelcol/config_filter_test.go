@@ -255,7 +255,6 @@ func TestUnmarshalSeverityLevel(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl otelcol.LogSeverityNumberMatchProperties
@@ -296,7 +295,6 @@ func TestUnmarshalSeverityLevelString(t *testing.T) {
 		"FATAL3",
 		"FATAL4",
 	} {
-		sevLevelStr := sevLevelStr
 
 		t.Run(sevLevelStr, func(t *testing.T) {
 			t.Parallel()

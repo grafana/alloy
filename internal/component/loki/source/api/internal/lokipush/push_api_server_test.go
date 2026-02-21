@@ -425,7 +425,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 	ts := time.Now()
 	body := new(bytes.Buffer)
 	client := &http.Client{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		body.WriteString("line" + strconv.Itoa(i))
 		url := fmt.Sprintf("http://%s:%d/api/v1/raw", localhost, port)
 

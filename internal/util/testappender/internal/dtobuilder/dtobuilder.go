@@ -367,7 +367,7 @@ func labelPairsEqual(a, b []*dto.LabelPair) bool {
 		return false
 	}
 
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if *a[i].Name != *b[i].Name || *a[i].Value != *b[i].Value {
 			return false
 		}

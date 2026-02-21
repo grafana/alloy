@@ -23,8 +23,8 @@ var (
 	registered = []any{}
 	upgraders  = make(map[reflect.Type]UpgradeFunc)
 
-	emptyStructType = reflect.TypeOf(struct{}{})
-	configsType     = reflect.TypeOf(Configs{})
+	emptyStructType = reflect.TypeFor[struct{}]()
+	configsType     = reflect.TypeFor[Configs]()
 )
 
 // Register dynamically registers a new integration. The Config
@@ -422,7 +422,7 @@ func getConfigTypeForIntegrations(out reflect.Type) reflect.Type {
 		configTy := reflect.TypeOf(reg)
 		fieldName := nameByType[configTy]
 
-		singletonType := reflect.PointerTo(reflect.TypeOf(util.RawYAML{}))
+		singletonType := reflect.PointerTo(reflect.TypeFor[util.RawYAML]())
 
 		fields = append(fields, reflect.StructField{
 			Name: "XXX_Config_" + fieldName,

@@ -1,6 +1,8 @@
 package build
 
 import (
+	"maps"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"
 	"github.com/grafana/alloy/internal/converter/internal/common"
@@ -25,9 +27,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 		target["auth"] = t.Auth
 		target["walk_params"] = t.WalkParams
 		target["snmp_context"] = t.SNMPContext
-		for k, v := range t.Labels {
-			target[k] = v
-		}
+		maps.Copy(target, t.Labels)
 		targets = append(targets, target)
 	}
 

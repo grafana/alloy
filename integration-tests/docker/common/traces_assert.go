@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,15 +30,16 @@ type TraceInfo struct {
 
 // TempoSearchQuery builds a Tempo search query URL for traces with given tags
 func TempoSearchQuery(tags map[string]string) string {
-	query := fmt.Sprintf("%ssearch?", tempoURL)
+	var query strings.Builder
+	query.WriteString(fmt.Sprintf("%ssearch?", tempoURL))
 	for key, value := range tags {
-		query += fmt.Sprintf("tags=%s=%s&", key, value)
+		query.WriteString(fmt.Sprintf("tags=%s=%s&", key, value))
 	}
 	// Add time range - look for traces in the last 5 minutes
 	end := time.Now().Unix()
 	start := end - 300 // 5 minutes ago
-	query += fmt.Sprintf("start=%d&end=%d", start, end)
-	return query
+	query.WriteString(fmt.Sprintf("start=%d&end=%d", start, end))
+	return query.String()
 }
 
 // TracesTest checks that traces with the given tags are stored in Tempo

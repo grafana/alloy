@@ -240,16 +240,14 @@ func TestAppRateLimitingConfig_ConcurrentAccess(t *testing.T) {
 	var mu sync.Mutex
 
 	// Launch multiple goroutines making requests concurrently
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range numGoroutines {
+		wg.Go(func() {
 
 			app := "testapp"
 			env := "production"
 
 			localAllowed := 0
-			for j := 0; j < requestsPerGoroutine; j++ {
+			for range requestsPerGoroutine {
 				if config.Allow(app, env) {
 					localAllowed++
 				}
@@ -258,7 +256,7 @@ func TestAppRateLimitingConfig_ConcurrentAccess(t *testing.T) {
 			mu.Lock()
 			allowedCount += int64(localAllowed)
 			mu.Unlock()
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -15,21 +15,21 @@ import (
 
 // Go types used throughout the package.
 var (
-	goAny             = reflect.TypeOf((*any)(nil)).Elem()
-	goString          = reflect.TypeOf(string(""))
-	goByteSlice       = reflect.TypeOf([]byte(nil))
-	goError           = reflect.TypeOf((*error)(nil)).Elem()
-	goTextMarshaler   = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
-	goTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-	goStructWrapper   = reflect.TypeOf(structWrapper{})
-	goCapsule         = reflect.TypeOf((*Capsule)(nil)).Elem()
-	goDuration        = reflect.TypeOf((time.Duration)(0))
-	goDurationPtr     = reflect.TypeOf((*time.Duration)(nil))
-	goAlloyDefaulter  = reflect.TypeOf((*Defaulter)(nil)).Elem()
-	goAlloyDecoder    = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
-	goAlloyValidator  = reflect.TypeOf((*Validator)(nil)).Elem()
-	goRawAlloyFunc    = reflect.TypeOf((RawFunction)(nil))
-	goAlloyValue      = reflect.TypeOf(Null)
+	goAny             = reflect.TypeFor[any]()
+	goString          = reflect.TypeFor[string]()
+	goByteSlice       = reflect.TypeFor[[]byte]()
+	goError           = reflect.TypeFor[error]()
+	goTextMarshaler   = reflect.TypeFor[encoding.TextMarshaler]()
+	goTextUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
+	goStructWrapper   = reflect.TypeFor[structWrapper]()
+	goCapsule         = reflect.TypeFor[Capsule]()
+	goDuration        = reflect.TypeFor[time.Duration]()
+	goDurationPtr     = reflect.TypeFor[*time.Duration]()
+	goAlloyDefaulter  = reflect.TypeFor[Defaulter]()
+	goAlloyDecoder    = reflect.TypeFor[Unmarshaler]()
+	goAlloyValidator  = reflect.TypeFor[Validator]()
+	goRawAlloyFunc    = reflect.TypeFor[RawFunction]()
+	goAlloyValue      = reflect.TypeFor[Value]()
 )
 
 // NOTE(rfratto): This package is extremely sensitive to performance, so
@@ -545,7 +545,7 @@ func convertValue(val Value, toType Type) (Value, error) {
 	case TypeCapsule:
 		// Some capsules, such as optional secrects, may be convertible to a string.
 		// Try to convert them to a string and then rerun convertValue.
-		into := reflect.New(reflect.TypeOf(string(""))).Elem()
+		into := reflect.New(reflect.TypeFor[string]()).Elem()
 		ok, err := TryCapsuleConvert(val, into, TypeString)
 		if ok && err == nil {
 			val, err := convertValue(Value{into, TypeString}, toType)

@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-var goAlloyDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
+var goAlloyDefaulter = reflect.TypeFor[value.Defaulter]()
 
 // MarshalBody marshals the provided Go value to a JSON representation of
 // Alloy. MarshalBody panics if not given a struct with alloy tags or a
@@ -318,7 +318,7 @@ func tokenizeObject(v value.Value) jsonValue {
 
 	fields := []jsonObjectField{}
 
-	for i := 0; i < len(keys); i++ {
+	for i := range keys {
 		field, _ := v.Key(keys[i])
 
 		fields = append(fields, jsonObjectField{

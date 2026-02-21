@@ -282,11 +282,9 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		c := newComponentForTesting(t, reg, logger)
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			require.NoError(t, c.iteration(t.Context(), leader, state, health))
-		}()
+		})
 
 		c.NotifyClusterChange()
 		wg.Wait()
@@ -307,11 +305,9 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		c := newComponentForTesting(t, reg, logger)
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			require.NoError(t, c.iteration(t.Context(), leader, state, health))
-		}()
+		})
 
 		c.NotifyClusterChange()
 		wg.Wait()
@@ -333,11 +329,9 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		c := newComponentForTesting(t, reg, logger)
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			require.NoError(t, c.iteration(t.Context(), leader, state, health))
-		}()
+		})
 
 		c.NotifyClusterChange()
 		wg.Wait()
@@ -358,11 +352,9 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		c := newComponentForTesting(t, reg, logger)
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			require.NoError(t, c.iteration(t.Context(), leader, state, health))
-		}()
+		})
 
 		c.NotifyClusterChange()
 		wg.Wait()
@@ -402,11 +394,9 @@ func TestIterationHandlesTick(t *testing.T) {
 	c.ticker.Reset(time.Millisecond)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, c.iteration(t.Context(), leader, state, health))
-	}()
+	})
 
 	wg.Wait()
 

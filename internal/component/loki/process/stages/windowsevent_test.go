@@ -107,7 +107,6 @@ func TestWindowsEvent(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
 		testData.extractedValues["message"] = testData.msgdata
 
 		t.Run(testName, func(t *testing.T) {
@@ -175,7 +174,6 @@ func TestWindowsEventArgs(t *testing.T) {
 		},
 	}
 	for testName, testData := range tests {
-		testData := testData
 		testData.extractedValues[testData.sourcekey] = testData.msgdata
 
 		t.Run(testName, func(t *testing.T) {
@@ -210,7 +208,6 @@ func TestWindowsEventValidate(t *testing.T) {
 		},
 	}
 	for tName, tt := range tests {
-		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			var config Configs
 			err := syntax.Unmarshal([]byte(tt.config), &config)

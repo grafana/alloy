@@ -246,21 +246,7 @@ func printPaddedNumber(w io.Writer, width int, num int) {
 }
 
 func printCh(w io.Writer, count int, ch byte) {
-	for i := 0; i < count; i++ {
+	for range count {
 		_, _ = w.Write([]byte{ch})
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

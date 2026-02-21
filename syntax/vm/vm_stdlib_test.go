@@ -208,7 +208,7 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 
 			eval := vm.New(expr)
 
-			rv := reflect.New(reflect.TypeOf([]map[string]any{}))
+			rv := reflect.New(reflect.TypeFor[[]map[string]any]())
 			err = eval.Evaluate(nil, rv.Interface())
 			require.ErrorContains(t, err, tc.expectedErr)
 		})
@@ -427,9 +427,9 @@ func BenchmarkConcat(b *testing.B) {
 	eval := vm.New(f)
 
 	valuesRef := make([]Person, 0, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		data := make(map[string]string, 20)
-		for j := 0; j < 20; j++ {
+		for range 20 {
 			var (
 				key   = fmt.Sprintf("key_%d", i+1)
 				value = fmt.Sprintf("value_%d", i+1)
@@ -588,7 +588,7 @@ func TestStdlibGroupBy_Errors(t *testing.T) {
 
 			eval := vm.New(expr)
 
-			rv := reflect.New(reflect.TypeOf([]map[string]any{}))
+			rv := reflect.New(reflect.TypeFor[[]map[string]any]())
 			err = eval.Evaluate(nil, rv.Interface())
 			require.ErrorContains(t, err, tc.expectedErr)
 		})

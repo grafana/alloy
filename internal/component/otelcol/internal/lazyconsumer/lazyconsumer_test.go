@@ -112,7 +112,7 @@ func Test_PauseResume_Multithreaded(t *testing.T) {
 	require.True(t, c.IsPaused())
 
 	// Run goroutines that constantly try to call Consume* methods
-	for i := 0; i < routines; i++ {
+	for range routines {
 		allDone.Add(1)
 		go func() {
 			for {
@@ -132,7 +132,7 @@ func Test_PauseResume_Multithreaded(t *testing.T) {
 	// Run goroutines that Pause and then Resume in parallel.
 	// In particular, this verifies we can call .Pause() and .Resume() on an already paused or already resumed consumer.
 	workChan := make(chan struct{}, routines)
-	for i := 0; i < routines; i++ {
+	for range routines {
 		allDone.Add(1)
 		go func() {
 			for {
@@ -148,7 +148,7 @@ func Test_PauseResume_Multithreaded(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < runs; i++ {
+	for range runs {
 		workChan <- struct{}{}
 	}
 	cancel()

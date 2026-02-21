@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -57,11 +58,9 @@ func TestOnDiskCache(t *testing.T) {
 
 	// Run the service.
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	// As the API response was unparseable, verify that the service has loaded
@@ -98,11 +97,9 @@ func TestGoodBadGood(t *testing.T) {
 
 	// Run the service.
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
@@ -174,11 +171,9 @@ func TestAPIResponse(t *testing.T) {
 
 	// Run the service.
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
@@ -224,11 +219,9 @@ func TestAPIResponseNotModified(t *testing.T) {
 
 	// Run the service.
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
@@ -275,11 +268,9 @@ func setupFallbackTest(t *testing.T, initialConfig string) (*testEnvironment, *m
 
 	// Run the service
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 
 	// Wait for initial registration
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
@@ -514,12 +505,7 @@ func newTestEnvironment(t *testing.T, client *mockCollectorClient) *testEnvironm
 func hasStatusInHistory(history *[]collectorv1.RemoteConfigStatuses, mutex *sync.Mutex, status collectorv1.RemoteConfigStatuses) bool {
 	mutex.Lock()
 	defer mutex.Unlock()
-	for _, s := range *history {
-		if s == status {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(*history, status)
 }
 
 // assertRemoteConfigStatus verifies the current remote config status (simple helper function)
@@ -639,11 +625,9 @@ func TestRemoteConfigStatusTransitions(t *testing.T) {
 	`))
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
@@ -703,11 +687,9 @@ func TestRemoteConfigStatusErrorMessages(t *testing.T) {
 	`))
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
@@ -752,11 +734,9 @@ func TestRemoteConfigStatusNotifications(t *testing.T) {
 	`))
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)

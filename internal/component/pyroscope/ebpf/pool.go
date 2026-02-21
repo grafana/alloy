@@ -15,7 +15,7 @@ type workerPool struct {
 func (p *workerPool) run(workers int) {
 	p.jobs = make(chan func())
 	p.workers.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer p.workers.Done()
 			for job := range p.jobs {

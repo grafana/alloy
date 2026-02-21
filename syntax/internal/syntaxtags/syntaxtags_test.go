@@ -22,7 +22,7 @@ func Test_Get(t *testing.T) {
 		Label    string     `alloy:",label"`
 	}
 
-	fs := syntaxtags.Get(reflect.TypeOf(Struct{}))
+	fs := syntaxtags.Get(reflect.TypeFor[Struct]())
 
 	expect := []syntaxtags.Field{
 		{[]string{"req_attr"}, []int{1}, syntaxtags.FlagAttr},
@@ -48,7 +48,7 @@ func TestEmbedded(t *testing.T) {
 		InnerStruct
 		Field2 string `alloy:"parent_field_2,attr"`
 	}
-	require.PanicsWithValue(t, "syntax: anonymous fields not supported syntaxtags_test.Struct.InnerStruct", func() { syntaxtags.Get(reflect.TypeOf(Struct{})) })
+	require.PanicsWithValue(t, "syntax: anonymous fields not supported syntaxtags_test.Struct.InnerStruct", func() { syntaxtags.Get(reflect.TypeFor[Struct]()) })
 }
 
 func TestSquash(t *testing.T) {
@@ -92,10 +92,10 @@ func TestSquash(t *testing.T) {
 		},
 	}
 
-	structActual := syntaxtags.Get(reflect.TypeOf(Struct{}))
+	structActual := syntaxtags.Get(reflect.TypeFor[Struct]())
 	assert.Equal(t, expect, structActual)
 
-	structPointerActual := syntaxtags.Get(reflect.TypeOf(StructWithPointer{}))
+	structPointerActual := syntaxtags.Get(reflect.TypeFor[StructWithPointer]())
 	assert.Equal(t, expect, structPointerActual)
 }
 
@@ -126,7 +126,7 @@ func TestDeepSquash(t *testing.T) {
 		},
 	}
 
-	structActual := syntaxtags.Get(reflect.TypeOf(Struct{}))
+	structActual := syntaxtags.Get(reflect.TypeFor[Struct]())
 	assert.Equal(t, expect, structActual)
 }
 

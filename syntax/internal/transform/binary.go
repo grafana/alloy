@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/internal/value"
@@ -449,12 +450,7 @@ func acceptableBinopType(val value.Value, op token.Token) bool {
 	}
 
 	actualType := val.Type()
-	for _, allowType := range allowed {
-		if allowType == actualType {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, actualType)
 }
 
 func fitNumberKinds(a, b value.NumberKind) value.NumberKind {

@@ -137,10 +137,7 @@ func (wrt *Writer) Start(maxSegmentAge time.Duration) {
 	wrt.wg.Go(func() {
 		// By cleaning every 10th of the configured threshold for considering a segment old, we are allowing a maximum slip
 		// of 10%. If the configured time is 1 hour, that'd be 6 minutes.
-		triggerEvery := maxSegmentAge / 10
-		if triggerEvery < minimumCleanSegmentsEvery {
-			triggerEvery = minimumCleanSegmentsEvery
-		}
+		triggerEvery := max(maxSegmentAge/10, minimumCleanSegmentsEvery)
 		trigger := time.NewTicker(triggerEvery)
 		for {
 			select {

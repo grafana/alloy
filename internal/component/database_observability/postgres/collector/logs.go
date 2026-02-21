@@ -213,17 +213,17 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	// Parse log line prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
-	atIdx := strings.Index(line, "@")
-	afterAt := line[atIdx+1:]
-	pidMarkerIdx := strings.Index(afterAt, ":[")
+	before, after, _ := strings.Cut(line, "@")
+	afterAt := after
+	before, _, _ := strings.Cut(afterAt, ":[")
 
-	database := strings.TrimSpace(afterAt[:pidMarkerIdx])
+	database := strings.TrimSpace(before)
 
 	if slices.Contains(l.excludeDatabases, database) {
 		return nil
 	}
 
-	beforeAt := line[:atIdx]
+	beforeAt := before
 	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
 	user := strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
 
@@ -232,8 +232,8 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
-	pidEndIdx := strings.Index(afterAt, "]")
-	afterPid := afterAt[pidEndIdx+1:]
+	_, after, _ := strings.Cut(afterAt, "]")
+	afterPid := after
 
 	parts := strings.SplitN(afterPid, ":", 4)
 	sqlstateCode := strings.TrimSpace(parts[2])

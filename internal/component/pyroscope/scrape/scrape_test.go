@@ -213,8 +213,6 @@ func TestUnmarshalConfig(t *testing.T) {
 			expectedErr: "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured",
 		},
 	} {
-		tt := tt
-		name := name
 		t.Run(name, func(t *testing.T) {
 			arg := Arguments{}
 			if tt.expectedErr != "" {
@@ -289,7 +287,7 @@ func TestUpdateWhileScraping(t *testing.T) {
 	// Send updates to the targets.
 	done := make(chan struct{})
 	go func() {
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			args.Targets = []discovery.Target{
 				discovery.NewTargetFromMap(map[string]string{
 					model.AddressLabel: address,

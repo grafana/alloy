@@ -1,7 +1,10 @@
 // Package dag defines a Directed Acyclic Graph.
 package dag
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+)
 
 // Node is an individual Vertex in the DAG.
 type Node interface {
@@ -217,9 +220,7 @@ func (g *Graph) Clone() *Graph {
 		inEdges:  make(map[Node]nodeSet, len(g.outEdges)),
 	}
 
-	for key, value := range g.nodeByID {
-		newGraph.nodeByID[key] = value
-	}
+	maps.Copy(newGraph.nodeByID, g.nodeByID)
 	for node, set := range g.outEdges {
 		newGraph.outEdges[node] = set.Clone()
 	}

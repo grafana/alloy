@@ -12,7 +12,7 @@ func BenchmarkObjectDecode(b *testing.B) {
 
 	// Create a value with 20 keys.
 	source := make(map[string]string, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		var (
 			key   = fmt.Sprintf("key_%d", i+1)
 			value = fmt.Sprintf("value_%d", i+1)
@@ -34,7 +34,7 @@ func BenchmarkObject(b *testing.B) {
 		b.StopTimer()
 
 		vals := make(map[string]value.Value)
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			vals[fmt.Sprintf("%d", i)] = value.Int(int64(i))
 		}
 
@@ -48,7 +48,7 @@ func BenchmarkObject(b *testing.B) {
 		b.StopTimer()
 
 		vals := make(map[string]value.Value)
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			vals[fmt.Sprintf("%d", i)] = value.Encapsulate(make(chan int))
 		}
 
@@ -64,7 +64,7 @@ func BenchmarkArray(b *testing.B) {
 		b.StopTimer()
 
 		var vals []value.Value
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			vals = append(vals, value.Int(int64(i)))
 		}
 
@@ -78,7 +78,7 @@ func BenchmarkArray(b *testing.B) {
 		b.StopTimer()
 
 		var vals []value.Value
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			vals = append(vals, value.Encapsulate(make(chan int)))
 		}
 

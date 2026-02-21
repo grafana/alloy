@@ -1548,8 +1548,8 @@ func (a *strictMetadataAppender) AppendHistogram(ref storage.SeriesRef, l labels
 func getMetricFamilyName(name string) string {
 	// Remove histogram suffixes
 	for _, suffix := range []string{"_bucket", "_sum", "_count", "_total"} {
-		if strings.HasSuffix(name, suffix) {
-			return strings.TrimSuffix(name, suffix)
+		if before, ok := strings.CutSuffix(name, suffix); ok {
+			return before
 		}
 	}
 	return name

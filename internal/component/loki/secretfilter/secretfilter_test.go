@@ -215,12 +215,10 @@ func runTest(t *testing.T, config string, inputLog string, shouldRedact bool) {
 	// Run it
 	ctx, cancel := context.WithCancel(t.Context())
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		err1 := tc.Run(ctx, args)
 		require.NoError(t, err1)
-		wg.Done()
-	}()
+	})
 	require.NoError(t, tc.WaitExports(time.Second))
 
 	// Get the input channel

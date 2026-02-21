@@ -3,6 +3,7 @@ package enrich
 
 import (
 	"context"
+	"maps"
 	"sync"
 
 	"github.com/go-kit/log/level"
@@ -141,9 +142,7 @@ func (c *Component) processLog(entry *push.Entry, labels model.LabelSet) error {
 	newLabels := labels.Clone()
 	if len(c.args.LabelsToCopy) == 0 {
 		// If no specific labels are requested, copy all labels
-		for k, v := range targetLabels {
-			newLabels[k] = v
-		}
+		maps.Copy(newLabels, targetLabels)
 	} else {
 		// Copy only requested labels
 		for _, label := range c.args.LabelsToCopy {

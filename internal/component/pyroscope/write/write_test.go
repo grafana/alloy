@@ -63,7 +63,7 @@ func Test_Write_FanOut(t *testing.T) {
 		return handler
 	}
 
-	for i := int32(0); i < serverCount; i++ {
+	for i := range serverCount {
 		if i == 0 {
 			servers[i] = httptest.NewServer(handlerFn(errors.New("test")))
 		} else {
@@ -400,7 +400,7 @@ func (s *AppendIngestTestSuite) TestBasicFunctionality() {
 
 func (s *AppendIngestTestSuite) TestErrorHandling() {
 	const serverCount = 3
-	for i := int32(0); i < serverCount; i++ {
+	for range int32(serverCount) {
 		s.newServer(func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("X-Server-ID") == "1" {
 				err := errors.New("I don't like your profile")

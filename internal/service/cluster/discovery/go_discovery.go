@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	stdlog "log"
+	"maps"
 	"net"
 	"strconv"
 
@@ -25,9 +26,7 @@ func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
 	}
 
 	providers := make(map[string]discover.Provider, len(discover.Providers)+1)
-	for k, v := range discover.Providers {
-		providers[k] = v
-	}
+	maps.Copy(providers, discover.Providers)
 
 	// Custom providers that aren't enabled by default
 	providers["k8s"] = &k8s.Provider{}

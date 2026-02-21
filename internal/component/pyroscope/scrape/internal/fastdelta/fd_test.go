@@ -709,7 +709,7 @@ func TestRepeatedHeapProfile(t *testing.T) {
 	}
 	for i := 0; i < iters; i++ {
 		// Create a bunch of new allocations so there's something to diff.
-		for j := 0; j < 200; j++ {
+		for range 200 {
 			left(10)
 		}
 		after := readProfile("heap")
@@ -851,7 +851,7 @@ func TestDuplicateSample(t *testing.T) {
 
 	err = dc.Delta(a, io.Discard)
 	require.NoError(t, err)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		buf := new(bytes.Buffer)
 		err = dc.Delta(a, buf)
 		require.NoError(t, err)

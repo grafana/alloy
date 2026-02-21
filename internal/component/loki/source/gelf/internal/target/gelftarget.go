@@ -87,9 +87,7 @@ func NewTarget(
 }
 
 func (t *Target) run() {
-	t.wg.Add(1)
-	go func() {
-		defer t.wg.Done()
+	t.wg.Go(func() {
 		level.Info(t.logger).Log("msg", "listening for GELF UDP messages", "listen_address", t.config.ListenAddress)
 		for {
 			select {
@@ -109,7 +107,7 @@ func (t *Target) run() {
 				}
 			}
 		}
-	}()
+	})
 }
 
 func (t *Target) handleMessage(msg *gelf.Message) {

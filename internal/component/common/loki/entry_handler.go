@@ -76,10 +76,8 @@ func NewEntryMutatorHandler(next EntryHandler, f EntryMutatorFunc) EntryHandler 
 	)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer cancel()
 
 		for e := range in {
@@ -97,7 +95,7 @@ func NewEntryMutatorHandler(next EntryHandler, f EntryMutatorFunc) EntryHandler 
 				// no-op; log entry has been queued for sending.
 			}
 		}
-	}()
+	})
 
 	var closeOnce sync.Once
 	return NewEntryHandler(in, func() {

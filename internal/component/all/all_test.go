@@ -126,7 +126,7 @@ func sharePointer(a, b reflect.Value) (string, bool) {
 		}
 
 		size := min(a.Len(), b.Len())
-		for i := 0; i < size; i++ {
+		for i := range size {
 			if path, shared := sharePointer(a.Index(i), b.Index(i)); shared {
 				return path, true
 			}

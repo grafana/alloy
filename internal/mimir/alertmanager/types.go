@@ -69,7 +69,7 @@ type GlobalConfig struct {
 
 	SMTPFrom              string          `yaml:"smtp_from,omitempty" json:"smtp_from,omitempty"`
 	SMTPHello             string          `yaml:"smtp_hello,omitempty" json:"smtp_hello,omitempty"`
-	SMTPSmarthost         config.HostPort `yaml:"smtp_smarthost,omitempty" json:"smtp_smarthost,omitempty"`
+	SMTPSmarthost         config.HostPort `yaml:"smtp_smarthost,omitempty" json:"smtp_smarthost"`
 	SMTPAuthUsername      string          `yaml:"smtp_auth_username,omitempty" json:"smtp_auth_username,omitempty"`
 	SMTPAuthPassword      string          `yaml:"smtp_auth_password,omitempty" json:"smtp_auth_password,omitempty"`
 	SMTPAuthPasswordFile  string          `yaml:"smtp_auth_password_file,omitempty" json:"smtp_auth_password_file,omitempty"`
@@ -335,7 +335,7 @@ type EmailConfig struct {
 	To               string            `yaml:"to,omitempty" json:"to,omitempty"`
 	From             string            `yaml:"from,omitempty" json:"from,omitempty"`
 	Hello            string            `yaml:"hello,omitempty" json:"hello,omitempty"`
-	Smarthost        config.HostPort   `yaml:"smarthost,omitempty" json:"smarthost,omitempty"`
+	Smarthost        config.HostPort   `yaml:"smarthost,omitempty" json:"smarthost"`
 	AuthUsername     string            `yaml:"auth_username,omitempty" json:"auth_username,omitempty"`
 	AuthPassword     string            `yaml:"auth_password,omitempty" json:"auth_password,omitempty"`
 	AuthPasswordFile string            `yaml:"auth_password_file,omitempty" json:"auth_password_file,omitempty"`
@@ -372,7 +372,7 @@ type SNSConfig struct {
 	VSendResolved *bool             `yaml:"send_resolved,omitempty" json:"send_resolved,omitempty"`
 	HTTPConfig    *HTTPClientConfig `yaml:"http_config,omitempty" json:"http_config,omitempty"`
 	APIUrl        string            `yaml:"api_url,omitempty" json:"api_url,omitempty"`
-	Sigv4         SigV4Config       `yaml:"sigv4,omitempty" json:"sigv4,omitempty"`
+	Sigv4         SigV4Config       `yaml:"sigv4,omitempty" json:"sigv4"`
 	TopicARN      string            `yaml:"topic_arn,omitempty" json:"topic_arn,omitempty"`
 	PhoneNumber   string            `yaml:"phone_number,omitempty" json:"phone_number,omitempty"`
 	TargetARN     string            `yaml:"target_arn,omitempty" json:"target_arn,omitempty"`

@@ -34,8 +34,8 @@ var knownContainerIDPrefixes = []string{"docker://", "containerd://", "cri-o://"
 // get container id from __meta_kubernetes_pod_container_id label
 func getContainerIDFromK8S(k8sContainerID string) string {
 	for _, p := range knownContainerIDPrefixes {
-		if strings.HasPrefix(k8sContainerID, p) {
-			return strings.TrimPrefix(k8sContainerID, p)
+		if after, ok := strings.CutPrefix(k8sContainerID, p); ok {
+			return after
 		}
 	}
 	return ""

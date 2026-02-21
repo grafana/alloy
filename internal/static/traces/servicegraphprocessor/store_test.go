@@ -54,7 +54,7 @@ func TestStore_upsertEdge(t *testing.T) {
 
 func TestStore_expire(t *testing.T) {
 	keys := map[string]bool{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		keys[fmt.Sprintf("key-%d", i)] = true
 	}
 

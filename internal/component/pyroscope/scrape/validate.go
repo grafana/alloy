@@ -46,10 +46,7 @@ func getFirstBytes(data []byte, n int) string {
 
 // getHexBytes returns the first n bytes as hex-encoded string for debugging binary data
 func getHexBytes(data []byte, n int) string {
-	end := n
-	if len(data) < n {
-		end = len(data)
-	}
+	end := min(len(data), n)
 	return fmt.Sprintf("%x", data[:end])
 }
 

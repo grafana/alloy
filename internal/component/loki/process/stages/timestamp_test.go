@@ -178,7 +178,6 @@ func TestTimestampValidation(t *testing.T) {
 		},
 	}
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			parser, err := validateTimestampConfig(test.config)
@@ -302,7 +301,6 @@ func TestTimestampStage_Process(t *testing.T) {
 		},
 	}
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			logger := util.TestAlloyLogger(t)
@@ -435,7 +433,6 @@ func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()

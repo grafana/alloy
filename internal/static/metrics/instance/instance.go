@@ -129,11 +129,7 @@ func (c *Config) ApplyDefaults(global GlobalConfig) error {
 			return fmt.Errorf("scrape interval greater than wal_truncate_frequency for scrape config with job name %q", sc.JobName)
 		}
 		if sc.ScrapeTimeout == 0 {
-			if c.global.Prometheus.ScrapeTimeout > sc.ScrapeInterval {
-				sc.ScrapeTimeout = sc.ScrapeInterval
-			} else {
-				sc.ScrapeTimeout = c.global.Prometheus.ScrapeTimeout
-			}
+			sc.ScrapeTimeout = min(c.global.Prometheus.ScrapeTimeout, sc.ScrapeInterval)
 		}
 		if sc.ScrapeProtocols == nil {
 			sc.ScrapeProtocols = c.global.Prometheus.ScrapeProtocols

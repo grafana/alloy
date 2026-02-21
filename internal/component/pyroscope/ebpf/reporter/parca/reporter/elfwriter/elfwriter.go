@@ -40,6 +40,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 
 	"golang.org/x/sys/unix"
 )
@@ -119,9 +120,7 @@ func newWriter(w io.WriteSeeker, fhdr *elf.FileHeader, srp sectionReaderProvider
 	}
 
 	sectionLinks := make(map[string]string)
-	for k, v := range specialSectionLinks {
-		sectionLinks[k] = v
-	}
+	maps.Copy(sectionLinks, specialSectionLinks)
 	wrt := &Writer{
 		dst:        w,
 		fhdr:       fhdr,

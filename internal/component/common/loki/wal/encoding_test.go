@@ -240,7 +240,7 @@ func Benchmark_EncodeEntries(b *testing.B) {
 	for _, withStructuredMetadata := range []bool{true, false} {
 		b.Run(fmt.Sprintf("structuredMetadata=%t", withStructuredMetadata), func(b *testing.B) {
 			var entries []push.Entry
-			for i := int64(0); i < 10000; i++ {
+			for i := range int64(10000) {
 				entry := push.Entry{
 					Timestamp: time.Unix(0, i),
 					Line:      fmt.Sprintf("long line with a lot of data like a log %d", i),
@@ -285,7 +285,7 @@ func Benchmark_DecodeWAL(b *testing.B) {
 	for _, withStructuredMetadata := range []bool{true, false} {
 		b.Run(fmt.Sprintf("structuredMetadata=%t", withStructuredMetadata), func(b *testing.B) {
 			var entries []push.Entry
-			for i := int64(0); i < 10000; i++ {
+			for i := range int64(10000) {
 				entry := push.Entry{
 					Timestamp: time.Unix(0, i),
 					Line:      fmt.Sprintf("long line with a lot of data like a log %d", i),

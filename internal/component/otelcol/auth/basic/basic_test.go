@@ -221,7 +221,7 @@ func TestServerAuth(t *testing.T) {
 			otelServerExtension, ok := serverAuthExtension.Extension.(extauth.Server)
 			require.True(t, ok, "extension did not implement server authentication")
 
-			b64EncodingAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", tt.username, tt.password)))
+			b64EncodingAuth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", tt.username, tt.password))
 			_, err = otelServerExtension.Authenticate(ctx, map[string][]string{"Authorization": {"Basic " + b64EncodingAuth}})
 			require.NoError(t, err)
 		})

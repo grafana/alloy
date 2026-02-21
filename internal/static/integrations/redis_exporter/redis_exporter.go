@@ -144,7 +144,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 
 	if c.ScriptPath != "" {
 		scripts := map[string][]byte{}
-		for _, path := range strings.Split(c.ScriptPath, ",") {
+		for path := range strings.SplitSeq(c.ScriptPath, ",") {
 			ls, err := os.ReadFile(path)
 			if err != nil {
 				return nil, fmt.Errorf("error loading script file %s: %w", c.ScriptPath, err)

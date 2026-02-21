@@ -187,7 +187,6 @@ func Test_validateConfig(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			err := validateConfig(tt.cfg)
 			if (err != nil) != tt.wantErr {

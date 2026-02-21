@@ -14,7 +14,7 @@ func TestMapShrink(t *testing.T) {
 	r := rand.New(rand.NewSource(0))
 
 	items := make([]libpf.FileID, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		items[i] = libpf.NewFileID(
 			r.Uint64(),
 			r.Uint64(),
@@ -27,7 +27,7 @@ func TestMapShrink(t *testing.T) {
 		t.Errorf("expected 100, got %d", tr.maxSizeSeen)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		tr.Remove(items[i])
 	}
 

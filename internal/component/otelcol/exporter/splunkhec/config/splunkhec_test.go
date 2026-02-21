@@ -35,7 +35,6 @@ func TestUnmarshalSplunkHecClientArguments(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl config.SplunkHecClientArguments
@@ -112,7 +111,6 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 				`,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl config.SplunkConf
@@ -229,7 +227,6 @@ func TestUnmarshalSplunkHecArguments(t *testing.T) {
 			expectErr: false,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl config.SplunkHecArguments

@@ -24,10 +24,7 @@ func newBackoffTimer(min, max time.Duration) *backoffTimer {
 }
 
 func (bt *backoffTimer) backoff() {
-	bt.curr = bt.curr * 2
-	if bt.curr > bt.max {
-		bt.curr = bt.max
-	}
+	bt.curr = min(bt.curr*2, bt.max)
 	bt.recycle()
 }
 

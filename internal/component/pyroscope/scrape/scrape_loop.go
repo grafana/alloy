@@ -185,10 +185,8 @@ func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Ap
 func (t *scrapeLoop) start() {
 	t.graceShut = make(chan struct{})
 	t.once = sync.Once{}
-	t.wg.Add(1)
 
-	go func() {
-		defer t.wg.Done()
+	t.wg.Go(func() {
 
 		select {
 		case <-time.After(t.offset(t.interval)):
@@ -206,7 +204,7 @@ func (t *scrapeLoop) start() {
 			}
 			t.scrape()
 		}
-	}()
+	})
 }
 
 func (t *scrapeLoop) scrape() {

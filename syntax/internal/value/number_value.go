@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	nativeIntBits  = reflect.TypeOf(int(0)).Bits()
-	nativeUintBits = reflect.TypeOf(uint(0)).Bits()
+	nativeIntBits  = reflect.TypeFor[int]().Bits()
+	nativeUintBits = reflect.TypeFor[uint]().Bits()
 )
 
 // NumberKind categorizes a type of Go number.

@@ -57,7 +57,6 @@ func TestLogfmt(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
@@ -106,7 +105,6 @@ func TestLogfmtConfigValidation(t *testing.T) {
 		},
 	}
 	for tName, tt := range tests {
-		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			got, err := validateLogfmtConfig(&tt.config)
 			if tt.err != nil {
@@ -233,7 +231,6 @@ func TestLogfmtParser_Parse(t *testing.T) {
 		},
 	}
 	for tName, tt := range tests {
-		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			p, err := New(logger, StageConfig{LogfmtConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)

@@ -178,10 +178,7 @@ func (c *Component) Run(ctx context.Context) error {
 			//
 			// Subtracting a duration from ts will delay when it will be considered
 			// inactive and scheduled for deletion.
-			ts := c.remoteStore.LowestSentTimestamp() - minWALTime.Milliseconds()
-			if ts < 0 {
-				ts = 0
-			}
+			ts := max(c.remoteStore.LowestSentTimestamp()-minWALTime.Milliseconds(), 0)
 
 			// Network issues can prevent the result of LowestSentTimestamp from
 			// changing. We don't want data in the WAL to grow forever, so we set a cap

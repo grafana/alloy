@@ -94,7 +94,7 @@ func TestRelabeling(t *testing.T) {
 
 	// The log entry should be received in both channels, with the relabeling
 	// rules correctly applied.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
@@ -230,7 +230,7 @@ func TestCache(t *testing.T) {
 
 	// Let's look into the cache's structure now!
 	// The cache should have stored each label set by its fingerprint.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		val, ok := c.cache.Get(lsets[i].Fingerprint())
 		require.True(t, ok)
 		cached, ok := val.([]cacheItem)
@@ -391,7 +391,7 @@ rule {
 	}
 
 	// The two entries have been modified without a race condition.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)

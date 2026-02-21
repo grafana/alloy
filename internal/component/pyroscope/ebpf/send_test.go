@@ -84,7 +84,7 @@ func TestSendProfilesConcurrently(t *testing.T) {
 					"service_name": fmt.Sprintf("service_%d", i),
 				})
 				profiles = append(profiles, reporter.PPROF{
-					Raw:    []byte(fmt.Sprintf("profile_%d", i)),
+					Raw:    fmt.Appendf(nil, "profile_%d", i),
 					Labels: target,
 					Origin: support.TraceOriginSampling,
 				})

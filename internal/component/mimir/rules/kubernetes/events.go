@@ -348,9 +348,7 @@ func (e *eventProcessor) getMimirState() kubernetes.MimirRuleGroupsByNamespace {
 	defer e.currentStateMtx.RUnlock()
 
 	out := make(kubernetes.MimirRuleGroupsByNamespace, len(e.currentState))
-	for ns, groups := range e.currentState {
-		out[ns] = groups
-	}
+	maps.Copy(out, e.currentState)
 
 	return out
 }

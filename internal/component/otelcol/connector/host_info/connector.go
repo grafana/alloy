@@ -2,6 +2,7 @@ package host_info
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -57,11 +58,8 @@ func (c *connectorImp) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 			mapping := attrs.AsRaw()
 
 			for key, val := range mapping {
-				for _, attrName := range c.config.HostIdentifiers {
-					if key == attrName {
-						c.hostMetrics.add(val.(string))
-						break
-					}
+				if slices.Contains(c.config.HostIdentifiers, key) {
+					c.hostMetrics.add(val.(string))
 				}
 			}
 		}

@@ -129,11 +129,9 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 		wg.Wait()
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ctrl.Run(ctx)
-	}()
+	})
 
 	require.Eventually(t, func() bool {
 		return ctrl.LoadComplete()

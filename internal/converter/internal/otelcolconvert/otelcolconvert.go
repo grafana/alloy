@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	_ "github.com/grafana/alloy/internal/component/all" // Register all components
@@ -347,12 +348,7 @@ func filterIDs(in []component.ID, rem []component.ID) []component.ID {
 }
 
 func isIDInList(id component.ID, list []component.ID) bool {
-	for _, c := range list {
-		if id == c {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, id)
 }
 
 // filterDuplicateReceivers filters out duplicate receivers from pipeline groups.

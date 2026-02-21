@@ -22,7 +22,7 @@ func TestTicker(t *testing.T) {
 	// Check that the time required for N ticks is within expected range.
 	ticker := NewTicker(d, j)
 	start := time.Now()
-	for i := 0; i < n; i++ {
+	for range n {
 		<-ticker.C
 	}
 
@@ -43,7 +43,7 @@ func TestTickerStop(t *testing.T) {
 	)
 
 	ticker := NewTicker(d, j)
-	for i := 0; i < before; i++ {
+	for range before {
 		<-ticker.C
 	}
 
@@ -72,12 +72,12 @@ func TestTickerReset(t *testing.T) {
 	// Check that the time required for N ticks is within expected range.
 	ticker := NewTicker(d1, j1)
 	start := time.Now()
-	for i := 0; i < n; i++ {
+	for range n {
 		<-ticker.C
 	}
 	ticker.Reset(d2)
 	ticker.ResetJitter(j2)
-	for i := 0; i < n; i++ {
+	for range n {
 		<-ticker.C
 	}
 

@@ -33,7 +33,6 @@ func TestUnmarshalDatadogHostMetadataArguments(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl datadog_config.DatadogHostMetadataArguments
@@ -70,7 +69,6 @@ func TestUnmarshalDatadogAPIConfig(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl datadog_config.DatadogAPIArguments
@@ -112,7 +110,6 @@ func TestUnmarshalDatadogTraceConfig(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl datadog_config.DatadogTracesArguments
@@ -170,7 +167,6 @@ func TestUnmarshalDatadogMetricConfig(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl datadog_config.DatadogMetricsArguments
@@ -208,7 +204,6 @@ func TestUnmarshalDatadogLogsConfig(t *testing.T) {
 			expectErr: true,
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl datadog_config.DatadogLogsArguments

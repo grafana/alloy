@@ -458,7 +458,7 @@ func TestHandler_RateLimitingGlobal(t *testing.T) {
 	successCount := 0
 
 	for _, app := range apps {
-		for i := 0; i < 2; i++ { // 2 requests per app = 4 total
+		for range 2 { // 2 requests per app = 4 total
 			payloadStr := `{
 				"traces": {"resourceSpans": []},
 				"logs": [],

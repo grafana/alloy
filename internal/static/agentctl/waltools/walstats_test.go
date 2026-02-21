@@ -71,7 +71,7 @@ func setupTestWAL(t *testing.T) string {
 			record.RefSeries{Ref: chunks.HeadSeriesRef(len(series)) + 2, Labels: labels.FromStrings(labelsNotInitial...)},
 		)
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		addSeries(fmt.Sprintf("metric_%d", i))
 	}
 	// Force in a duplicate hash
@@ -99,7 +99,7 @@ func setupTestWAL(t *testing.T) string {
 
 	// Create some samples and then make a new segment.
 	var samples []record.RefSample
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		samples = append(samples, record.RefSample{
 			Ref: chunks.HeadSeriesRef(i + 1),
 			T:   int64(i + 1),

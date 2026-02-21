@@ -244,9 +244,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
@@ -267,7 +265,7 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}
-	}()
+	})
 
 	for {
 		select {
@@ -349,7 +347,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
-	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
+	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s:%s", systemID.String, systemIP.String, systemPort.String)))
 
 	var cp *database_observability.CloudProvider
 	if c.args.CloudProvider != nil {

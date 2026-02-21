@@ -104,14 +104,12 @@ func (c *Component) Run(ctx context.Context) error {
 			wg.Wait()
 
 			innerCtx, cancel = context.WithCancel(ctx)
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				if err := manager.Run(innerCtx); err != nil {
 					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
 					errChan <- err
 				}
-				wg.Done()
-			}()
+			})
 			c.mut.Unlock()
 		}
 	}

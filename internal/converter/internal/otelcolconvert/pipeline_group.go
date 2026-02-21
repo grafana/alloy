@@ -3,6 +3,7 @@ package otelcolconvert
 import (
 	"cmp"
 	"fmt"
+	slices0 "slices"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -228,10 +229,5 @@ func toComponentInstanceIDs(kind component.Kind, ids []component.ID) []component
 }
 
 func findInComponentIds(fromID componentstatus.InstanceID, componentIDs []component.ID) bool {
-	for _, id := range componentIDs {
-		if fromID.ComponentID() == id {
-			return true
-		}
-	}
-	return false
+	return slices0.Contains(componentIDs, fromID.ComponentID())
 }

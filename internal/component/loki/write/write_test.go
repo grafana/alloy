@@ -302,7 +302,7 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	}
 
 	// The two entries have been received with their
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case <-time.After(2 * time.Second):
 			require.FailNow(t, "failed waiting for logs")

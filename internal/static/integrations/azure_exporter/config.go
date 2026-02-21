@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -140,13 +141,7 @@ func (c *Config) Validate() error {
 
 	for _, aggregation := range c.MetricAggregations {
 		lowerCaseAggregation := strings.ToLower(aggregation)
-		found := false
-		for _, validAggregation := range validAggregations {
-			if validAggregation == lowerCaseAggregation {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(validAggregations, lowerCaseAggregation)
 		if !found {
 			configErrors = append(configErrors, fmt.Sprintf("%s is an invalid value for metric_aggregations. Valid options are %s", aggregation, strings.Join(validAggregations, ",")))
 		}

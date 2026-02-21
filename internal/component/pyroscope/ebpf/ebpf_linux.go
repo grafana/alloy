@@ -152,7 +152,7 @@ func (c *Component) Run(ctx context.Context) error {
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
 	var err error
-	for i := 0; i < sessionMaxErrors; i++ {
+	for range sessionMaxErrors {
 		err = ctlr.Start(ctx)
 		if err != nil {
 			c.reportUnhealthy(err)

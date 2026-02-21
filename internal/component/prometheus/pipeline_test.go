@@ -158,7 +158,7 @@ func BenchmarkPipelines(b *testing.B) {
 				b.ResetTimer()
 
 				for b.Loop() {
-					for i := 0; i < n; i++ {
+					for i := range n {
 						sendMetric(
 							b,
 							pipeline.Appender(b.Context()),

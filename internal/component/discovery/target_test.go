@@ -770,11 +770,11 @@ func TestHashing(t *testing.T) {
 
 			var allHashes []uint64
 			// create targetsPerTestCase targets
-			for targetInd := 0; targetInd < targetsPerTestCase; targetInd++ {
+			for targetInd := range targetsPerTestCase {
 				tb := NewTargetBuilder()
 				// for each create bunch of labels using generators
 				for _, generator := range tc.labelGenerators {
-					for labelInd := 0; labelInd < labelsPerGenerator; labelInd++ {
+					for labelInd := range labelsPerGenerator {
 						l, v := generator(targetInd, labelInd)
 						tb.Set(l, v)
 					}
@@ -843,7 +843,7 @@ func TestHashLargeLabelSets(t *testing.T) {
 
 	genLabel := func(id, length int) string {
 		sb := strings.Builder{}
-		for i := 0; i < length; i++ {
+		for i := range length {
 			sb.WriteByte(chars[(i+id)%len(chars)])
 		}
 		return sb.String()
@@ -851,12 +851,12 @@ func TestHashLargeLabelSets(t *testing.T) {
 
 	genLabelSet := func(size int) model.LabelSet {
 		ls := model.LabelSet{}
-		for i := 0; i < size; i++ {
+		for i := range size {
 			name := genLabel(i, labelsLength)
 			value := genLabel(i, labelsLength)
 			ls[model.LabelName(name)] = model.LabelValue(value)
 		}
-		for i := 0; i < metaLabelsCount; i++ {
+		for i := range metaLabelsCount {
 			name := "__meta_" + genLabel(i, labelsLength)
 			value := genLabel(i, labelsLength)
 			ls[model.LabelName(name)] = model.LabelValue(value)
@@ -1035,7 +1035,7 @@ func Benchmark_Targets_TypicalPipeline(b *testing.B) {
 
 	genLabelSet := func(size int) model.LabelSet {
 		ls := model.LabelSet{}
-		for i := 0; i < size; i++ {
+		for range size {
 			name, _ := goutils.RandomAlphaNumeric(labelsLength)
 			value, _ := goutils.RandomAlphaNumeric(labelsLength)
 			ls[model.LabelName(name)] = model.LabelValue(value)
@@ -1044,7 +1044,7 @@ func Benchmark_Targets_TypicalPipeline(b *testing.B) {
 	}
 
 	var labelSets []model.LabelSet
-	for i := 0; i < targetsCount; i++ {
+	for range targetsCount {
 		labelSets = append(labelSets, genLabelSet(labelsPerTarget))
 	}
 
@@ -1056,7 +1056,7 @@ func Benchmark_Targets_TypicalPipeline(b *testing.B) {
 	}
 
 	peers := make([]peer.Peer, 0, numPeers)
-	for i := 0; i < numPeers; i++ {
+	for i := range numPeers {
 		peerName := fmt.Sprintf("peer_%d", i)
 		peers = append(peers, peer.Peer{Name: peerName, Addr: peerName, Self: i == 0, State: peer.StateParticipant})
 	}

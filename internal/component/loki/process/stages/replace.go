@@ -3,8 +3,10 @@ package stages
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
+	"strings"
 	"text/template"
 	"time"
 
@@ -15,9 +17,7 @@ import (
 )
 
 func init() {
-	for k, v := range extraFunctionMap {
-		functionMap[k] = v
-	}
+	maps.Copy(functionMap, extraFunctionMap)
 }
 
 // ReplaceConfig contains a regexStage configuration
@@ -131,7 +131,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 }
 
 func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td map[string]string, templ *template.Template) (string, map[string]string, error) {
-	var result string
+	var result strings.Builder
 	previousInputEndIndex := 0
 	capturedMap := make(map[string]string)
 	// For a simple string like `11.11.11.11 - frank 12.12.12.12 - frank`
@@ -155,13 +155,13 @@ func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td 
 			}
 			st := buf.String()
 			if previousInputEndIndex == 0 || previousInputEndIndex <= matchIndex[i] {
-				result += input[previousInputEndIndex:matchIndex[i]] + st
+				result.WriteString(input[previousInputEndIndex:matchIndex[i]] + st)
 				previousInputEndIndex = matchIndex[i+1]
 			}
 			capturedMap[capturedString] = st
 		}
 	}
-	return result + input[previousInputEndIndex:], capturedMap, nil
+	return result.String() + input[previousInputEndIndex:], capturedMap, nil
 }
 
 func (r *replaceStage) getTemplateData(extracted map[string]any) map[string]string {

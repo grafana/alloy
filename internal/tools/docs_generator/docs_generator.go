@@ -51,10 +51,10 @@ func writeBetweenMarkers(startMarker string, endMarker string, filePath string, 
 
 	replacement := append(append([]byte(startMarker), []byte(content)...), []byte(endMarker)...)
 
-	startIndex := bytes.Index(fileContents, []byte(startMarker))
+	before, _, ok := bytes.Cut(fileContents, []byte(startMarker))
 	endIndex := bytes.LastIndex(fileContents, []byte(endMarker))
 	var newFileContents []byte
-	if startIndex == -1 || endIndex == -1 {
+	if !ok || endIndex == -1 {
 		if !appendIfMissing {
 			return fmt.Errorf("required markers %q and %q do not exist in %q", startMarker, endMarker, filePath)
 		}
@@ -62,7 +62,7 @@ func writeBetweenMarkers(startMarker string, endMarker string, filePath string, 
 		newFileContents = append(fileContents, replacement...)
 	} else {
 		// Replace the section with the new content
-		newFileContents = append(newFileContents, fileContents[:startIndex]...)
+		newFileContents = append(newFileContents, before...)
 		newFileContents = append(newFileContents, replacement...)
 		newFileContents = append(newFileContents, fileContents[endIndex+len(endMarker):]...)
 	}

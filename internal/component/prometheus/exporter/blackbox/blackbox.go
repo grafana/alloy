@@ -3,6 +3,7 @@ package blackbox
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
@@ -48,9 +49,7 @@ func buildBlackboxTargets(baseTarget discovery.Target, args component.Arguments)
 	for _, tgt := range blackboxTargets {
 		target := make(map[string]string, len(tgt.Labels)+baseTarget.Len())
 		// Set extra labels first, meaning that any other labels will override
-		for k, v := range tgt.Labels {
-			target[k] = v
-		}
+		maps.Copy(target, tgt.Labels)
 		baseTarget.ForEachLabel(func(key string, value string) bool {
 			target[key] = value
 			return true

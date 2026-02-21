@@ -232,7 +232,7 @@ func Benchmark_ToAlloyTargets(b *testing.B) {
 
 	genLabelSet := func(size int) model.LabelSet {
 		ls := model.LabelSet{}
-		for i := 0; i < size; i++ {
+		for range size {
 			name, _ := goutils.RandomAlphaNumeric(labelsLength)
 			value, _ := goutils.RandomAlphaNumeric(labelsLength)
 			ls[model.LabelName(name)] = model.LabelValue(value)
@@ -241,7 +241,7 @@ func Benchmark_ToAlloyTargets(b *testing.B) {
 	}
 
 	var targets = []model.LabelSet{}
-	for i := 0; i < targetsCount; i++ {
+	for range targetsCount {
 		targets = append(targets, genLabelSet(labelsPerTarget))
 	}
 

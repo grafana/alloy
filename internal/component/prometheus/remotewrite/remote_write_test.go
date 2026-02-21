@@ -320,7 +320,7 @@ func TestMetadataResend_V2(t *testing.T) {
 	}()
 	require.NoError(t, tc.WaitRunning(5*time.Second))
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		t.Run(fmt.Sprintf("Send %d", i+1), func(t *testing.T) {
 			currentTimestamp := startTimestamp + int64(i*1000)
 			expectedResponse := strings.ReplaceAll(expectedResponseTemplate, "\"__TIMESTAMP__\"", strconv.FormatInt(currentTimestamp, 10))

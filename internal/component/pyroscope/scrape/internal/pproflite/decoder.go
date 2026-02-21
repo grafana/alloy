@@ -162,7 +162,7 @@ func (d *Decoder) applyFilter(fields ...FieldDecoder) error {
 	return nil
 }
 
-func decodeFields(val molecule.Value, fields []interface{}) error {
+func decodeFields(val molecule.Value, fields []any) error {
 	return molecule.MessageEach(codec.NewBuffer(val.Bytes), func(field int32, val molecule.Value) (bool, error) {
 		var err error
 		if int(field) >= len(fields) {

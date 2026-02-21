@@ -50,7 +50,7 @@ func (id ComponentID) Equals(other ComponentID) bool {
 	if len(id) != len(other) {
 		return false
 	}
-	for i := 0; i < len(id); i++ {
+	for i := range id {
 		if id[i] != other[i] {
 			return false
 		}
