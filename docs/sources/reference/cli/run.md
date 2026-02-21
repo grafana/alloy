@@ -66,11 +66,11 @@ The following flags are supported:
 * `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 * `--feature.component-shutdown-deadline`: Maximum duration to wait for a component to shut down before giving up and logging an error (default `"10m"`).
-* `--feature.series-ref-mapping.enabled`: Enable experimental SeriesRefMapping implementation instead of LabelStore.
+* `--feature.prometheus.direct-fanout.enabled`: Enable experimental direct fanout for metric forwarding without a global label store.
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}
-The `--feature.series-ref-mapping.enabled` flag is an [experimental][] feature.
+The `--feature.prometheus.direct-fanout.enabled` flag is an [experimental][] feature.
 Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 To enable and use an experimental feature, you must set the `stability.level` [flag](#permitted-stability-levels) to `experimental`.
 

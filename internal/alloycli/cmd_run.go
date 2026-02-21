@@ -171,7 +171,7 @@ depending on the nature of the reload error.
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
-	cmd.Flags().BoolVar(&r.enableSeriesRefMapping, "feature.series-ref-mapping.enabled", r.enableSeriesRefMapping, "Enable experimental SeriesRefMapping implementation instead of LabelStore")
+	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -186,7 +186,7 @@ type alloyRun struct {
 	enablePprof                  bool
 	disableReporting             bool
 	clusterEnabled               bool
-	enableSeriesRefMapping       bool
+	enableDirectFanout           bool
 	clusterNodeName              string
 	clusterAdvAddr               string
 	clusterJoinAddr              string
@@ -216,8 +216,8 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 		return nil
 	}
 
-	if fr.enableSeriesRefMapping {
-		return fmt.Errorf("the '--feature.series-ref-mapping.enabled' can be used only at experimental stability level")
+	if fr.enableDirectFanout {
+		return fmt.Errorf("the '--feature.prometheus.direct-fanout.enabled' can be used only at experimental stability level")
 	}
 
 	return nil
@@ -389,11 +389,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to create otel service")
 	}
 
-	if fr.enableSeriesRefMapping {
+	if fr.enableDirectFanout {
 		level.Info(l).Log("msg", "global label store is disabled")
 	}
 
-	labelService := labelstore.New(l, reg, !fr.enableSeriesRefMapping)
+	labelService := labelstore.New(l, reg, !fr.enableDirectFanout)
 	alloyseed.Init(fr.storagePath, l)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
