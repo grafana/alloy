@@ -29,7 +29,7 @@ func TestSeriesRefMappingStore_GetMappingReturnsNilForUnknownRef(t *testing.T) {
 
 func TestSeriesRefMappingStore_CreatedMappingCanBeRetrieved(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 
 	childRefs := []storage.SeriesRef{1, 2, 3}
 	lbls := labels.NewBuilder(labels.EmptyLabels()).Set("foo", "bar").Labels()
@@ -49,7 +49,7 @@ func TestSeriesRefMappingStore_CreatedMappingCanBeRetrieved(t *testing.T) {
 
 func TestSeriesRefMappingStore_EachCreatedMappingGetsUniqueRef(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 
 	type mappingAndLabels struct {
 		refs   []storage.SeriesRef
@@ -82,7 +82,7 @@ func TestSeriesRefMappingStore_EachCreatedMappingGetsUniqueRef(t *testing.T) {
 
 func TestSeriesRefMappingStore_UpdateMappingChangesReturnedValue(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 	lbls := labels.EmptyLabels()
 
 	originalRefs := []storage.SeriesRef{1, 2, 3}
@@ -132,7 +132,7 @@ func TestSeriesRefMappingStore_SliceIsEmptyAfterReturn(t *testing.T) {
 func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
-		t.Cleanup(store.Clear)
+		t.Cleanup(func() { store.Clear() })
 		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with old timestamp
@@ -158,7 +158,7 @@ func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
-		t.Cleanup(store.Clear)
+		t.Cleanup(func() { store.Clear() })
 		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with recent timestamp
@@ -181,7 +181,7 @@ func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) 
 func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
-		t.Cleanup(store.Clear)
+		t.Cleanup(func() { store.Clear() })
 		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with old timestamp
@@ -232,8 +232,10 @@ func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 		require.NotNil(t, store.GetMapping(ref, lbls))
 	}
 
-	// Clear
-	store.Clear()
+	// Clear advances the generation boundary past all previously issued refs.
+	threshold := store.Clear()
+	require.Greater(t, uint64(threshold), uint64(uniqueRefs[len(uniqueRefs)-1]),
+		"threshold must be above all previously issued refs")
 
 	// Verify all are gone
 	for _, ref := range uniqueRefs {
@@ -259,7 +261,7 @@ func TestSeriesRefMappingStore_ClearIsIdempotent(t *testing.T) {
 
 func TestSeriesRefMappingStore_CanBeReusedAfterClear(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 	lbls := labels.EmptyLabels()
 
 	// Create multiple mappings before clear
@@ -287,7 +289,7 @@ func TestSeriesRefMappingStore_CanBeReusedAfterClear(t *testing.T) {
 
 func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 	lbls := labels.EmptyLabels()
 
 	// Create a mapping
@@ -313,7 +315,7 @@ func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 
 func TestSeriesRefMappingStore_ConcurrentCreatesGetUniqueRefs(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 	lbls := labels.EmptyLabels()
 
 	var wg sync.WaitGroup
@@ -352,7 +354,7 @@ func TestSeriesRefMappingStore_ConcurrentCreatesGetUniqueRefs(t *testing.T) {
 
 func TestSeriesRefMappingStore_ConcurrentTrackingIsCorrect(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(store.Clear)
+	t.Cleanup(func() { store.Clear() })
 	lbls := labels.EmptyLabels()
 
 	// Create some mappings
@@ -435,100 +437,50 @@ func TestSeriesRefMapping_AppendUpdatesExistingMappingWhenRefsChange(t *testing.
 	require.Len(t, store.createCalls, 0)
 }
 
-func TestSeriesRefMapping_AppendFirstAppendBehavior(t *testing.T) {
-	type childRefs struct {
-		child1 storage.SeriesRef
-		child2 storage.SeriesRef
+func TestSeriesRefMapping_AppendAllChildrenZeroPassesThroughInputRef(t *testing.T) {
+	store := newMockMappingStore()
+	zeroFn := func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 0, nil
 	}
-	tests := []struct {
-		name            string
-		inputRef        storage.SeriesRef
-		children        childRefs
-		wantRef         storage.SeriesRef
-		wantCreateRefs  []storage.SeriesRef // nil means no create expected
-		wantTrackedRefs []storage.SeriesRef // nil means no tracking expected
-	}{
-		{
-			name:     "all children return zero passes through input ref",
-			inputRef: 42,
-			children: childRefs{0, 0},
-			wantRef:  42,
-		},
-		{
-			name:            "one child returns non-zero with non-zero input creates mapping",
-			inputRef:        42,
-			children:        childRefs{0, 77},
-			wantRef:         1000,
-			wantCreateRefs:  []storage.SeriesRef{0, 77},
-			wantTrackedRefs: []storage.SeriesRef{1000},
-		},
-		{
-			name:            "one child returns non-zero with zero input creates mapping",
-			inputRef:        0,
-			children:        childRefs{0, 77},
-			wantRef:         1000,
-			wantCreateRefs:  []storage.SeriesRef{0, 77},
-			wantTrackedRefs: []storage.SeriesRef{1000},
-		},
-		{
-			name:            "both children return non-zero creates mapping",
-			inputRef:        0,
-			children:        childRefs{5001, 6002},
-			wantRef:         1000,
-			wantCreateRefs:  []storage.SeriesRef{5001, 6002},
-			wantTrackedRefs: []storage.SeriesRef{1000},
-		},
-		{
-			// Models WAL + otelcol transaction: child2 always returns static ref 1.
-			// The unique store ref must not be confused with either child ref.
-			name:            "static child ref (otelcol) alongside real WAL ref creates mapping",
-			inputRef:        0,
-			children:        childRefs{5001, 1},
-			wantRef:         1000,
-			wantCreateRefs:  []storage.SeriesRef{5001, 1},
-			wantTrackedRefs: []storage.SeriesRef{1000},
-		},
-	}
+	child1 := &mockAppender{appendFn: zeroFn}
+	child2 := &mockAppender{appendFn: zeroFn}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			store := newMockMappingStore()
-			child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
-				return tc.children.child1, nil
-			}}
-			child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
-				return tc.children.child2, nil
-			}}
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_all_zero_latency", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_all_zero_forwarded", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
-			writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_first_append_latency", Help: "test"})
-			samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_first_append_forwarded", Help: "test"})
-			app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	ref, err := app.Append(42, labels.FromStrings("job", "test"), 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(42), ref)
+	require.Len(t, store.createCalls, 0)
+	require.Empty(t, store.cell.Refs)
+}
 
-			ref, err := app.Append(tc.inputRef, labels.FromStrings("job", "test"), 1, 1)
-			require.NoError(t, err)
-			require.Equal(t, tc.wantRef, ref)
+func TestSeriesRefMapping_AppendSingleNonZeroChildReturnsChildRefDirectly(t *testing.T) {
+	store := newMockMappingStore()
+	child1 := &mockAppender{}
+	child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 77, nil
+	}}
 
-			if tc.wantCreateRefs != nil {
-				require.Len(t, store.createCalls, 1)
-				require.Equal(t, tc.wantCreateRefs, store.createCalls[0].refs)
-			} else {
-				require.Len(t, store.createCalls, 0)
-			}
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_single_nonzero_latency", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_single_nonzero_forwarded", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
-			if tc.wantTrackedRefs != nil {
-				require.Equal(t, tc.wantTrackedRefs, store.cell.Refs)
-			} else {
-				require.Empty(t, store.cell.Refs)
-			}
-		})
-	}
+	// The single non-zero child ref is returned directly — no mapping created.
+	ref, err := app.Append(0, labels.FromStrings("job", "test"), 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(77), ref)
+	require.Len(t, store.createCalls, 0)
+	require.Empty(t, store.cell.Refs)
 }
 
 func TestSeriesRefMapping_AppendSecondAppendUsesChildRefsFromMapping(t *testing.T) {
 	store := newMockMappingStore()
 
+	// Both children return non-zero so a mapping is created on the first append.
 	child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
-		return 0, nil
+		return 5001, nil
 	}}
 	child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
 		return 77, nil
@@ -539,13 +491,16 @@ func TestSeriesRefMapping_AppendSecondAppendUsesChildRefsFromMapping(t *testing.
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "single")
+
+	// First append: both children return non-zero, so a mapping is created.
 	ref, err := app.Append(0, lbls, 1, 1)
 	require.NoError(t, err)
 	require.Equal(t, storage.SeriesRef(1000), ref)
 
+	// Second append: mapping is found and each child is called with its stored child ref.
 	_, err = app.Append(ref, lbls, 2, 2)
 	require.NoError(t, err)
-	require.Equal(t, []storage.SeriesRef{0, 0}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{0, 5001}, child1.appendRefs)
 	require.Equal(t, []storage.SeriesRef{0, 77}, child2.appendRefs)
 }
 

@@ -42,6 +42,10 @@ type Fanout struct {
 
 	useLabelStore         bool
 	seriesRefMappingStore *appenders.SeriesRefMappingStore
+	// deadRefThreshold is updated on every children change. Any store-issued ref
+	// below this value was issued before the last topology change and must be
+	// zeroed before forwarding to a child appender.
+	deadRefThreshold storage.SeriesRef
 }
 
 func normalizeChildren(children []storage.Appendable) []storage.Appendable {
@@ -86,16 +90,26 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 }
 
 // UpdateChildren allows changing of the children of the fanout.
+//
+// When children change, the store is cleared to start a new ref generation.
+// This guards against two ref collision hazards that arise when the appender
+// type changes between passthrough (1 child) and seriesRefMapping (N children):
+//
+// passthrough → seriesRefMapping: a cached raw child ref (e.g. WAL ref) may collide
+// numerically with a store-issued unique ref for a different series. The store guards
+// against this with a label hash check on every mapping lookup.
+//
+// seriesRefMapping → passthrough: a cached store-issued unique ref is meaningless to
+// the child and must not be forwarded. Clear returns the new generation boundary;
+// the passthrough zeros any ref below it before forwarding.
 func (f *Fanout) UpdateChildren(children []storage.Appendable) {
 	c := normalizeChildren(children)
 
 	f.mut.Lock()
 	defer f.mut.Unlock()
 
-	// If the children changed, it's safer to clear the store to avoid mismatches in refs.
-	// Even a change in ordering of the children can cause issues.
 	if !slices.Equal(f.children, c) {
-		f.seriesRefMappingStore.Clear()
+		f.deadRefThreshold = f.seriesRefMappingStore.Clear()
 	}
 	f.children = c
 }
@@ -137,14 +151,14 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 		}
 	}
 
-	return appenders.New(children, f.seriesRefMappingStore, f.writeLatency, f.samplesCounter)
+	return appenders.New(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
 }
 
 func (f *Fanout) Clear() {
 	f.mut.Lock()
 	defer f.mut.Unlock()
 
-	f.seriesRefMappingStore.Clear()
+	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
 }
 
 type appender struct {

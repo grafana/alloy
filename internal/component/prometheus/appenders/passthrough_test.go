@@ -25,7 +25,7 @@ func TestPassthrough_Append(t *testing.T) {
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
 	})
-	a := NewPassthrough(collecting, nil, samplesForwarded)
+	a := NewPassthrough(collecting, 0, nil, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric", "job", "test_job")
 	timestamp := time.Now().UnixMilli()
@@ -62,7 +62,7 @@ func TestPassthrough_AppendError(t *testing.T) {
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
 	})
-	a := NewPassthrough(failingAppender, nil, samplesForwarded)
+	a := NewPassthrough(failingAppender, 0, nil, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
 	timestamp := time.Now().UnixMilli()
@@ -83,7 +83,7 @@ func TestPassthrough_AppendError(t *testing.T) {
 func TestPassthrough_AppendHistogram(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	a := NewPassthrough(collecting, nil, nil)
+	a := NewPassthrough(collecting, 0, nil, nil)
 
 	testLabels := labels.FromStrings("histogram", "test_histogram")
 	timestamp := time.Now().UnixMilli()
@@ -115,7 +115,7 @@ func TestPassthrough_AppendHistogram(t *testing.T) {
 func TestPassthrough_UpdateMetadata(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	a := NewPassthrough(collecting, nil, nil)
+	a := NewPassthrough(collecting, 0, nil, nil)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
 	testMetadata := metadata.Metadata{
@@ -148,7 +148,7 @@ func TestPassthrough_Commit(t *testing.T) {
 		Name: "test_write_latency",
 		Help: "Test write latency",
 	})
-	a := NewPassthrough(collecting, writeLatency, samplesForwarded)
+	a := NewPassthrough(collecting, 0, writeLatency, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
 	timestamp := time.Now().UnixMilli()
@@ -174,7 +174,7 @@ func TestPassthrough_Rollback(t *testing.T) {
 		Name: "test_write_latency",
 		Help: "Test write latency",
 	})
-	a := NewPassthrough(collecting, writeLatency, samplesForwarded)
+	a := NewPassthrough(collecting, 0, writeLatency, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
 	timestamp := time.Now().UnixMilli()
@@ -192,7 +192,7 @@ func TestPassthrough_Rollback(t *testing.T) {
 func TestPassthrough_AppendExemplar(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	a := NewPassthrough(collecting, nil, nil)
+	a := NewPassthrough(collecting, 0, nil, nil)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
 	testExemplar := exemplar.Exemplar{

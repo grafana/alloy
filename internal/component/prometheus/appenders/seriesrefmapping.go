@@ -188,6 +188,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 
 	// No existing mapping, proceed with normal append to all children.
 	var nonZeroCount int
+	var firstNonZeroRef storage.SeriesRef
 	for _, child := range s.children {
 		childRef, err := af(child, ref)
 		if err != nil {
@@ -197,6 +198,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		s.childRefs = append(s.childRefs, childRef)
 		if childRef != 0 {
 			nonZeroCount++
+			firstNonZeroRef = childRef
 		}
 	}
 
@@ -207,6 +209,11 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	if nonZeroCount == 0 {
 		// All children returned ref 0, so return the input ref
 		return ref, nil
+	}
+
+	if nonZeroCount == 1 {
+		// Only one child allocated a ref; return it directly — no mapping needed.
+		return firstNonZeroRef, nil
 	}
 
 	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
@@ -333,6 +340,10 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 	}
 
 	if mapping, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
+		// Guard against numeric collisions with refs cached from a previous generation.
+		if mapping.labelHash != lbls.Hash() {
+			return nil
+		}
 		return mapping.childRefs
 	}
 	return nil
@@ -466,7 +477,8 @@ func (s *SeriesRefMappingStore) cleanupStaleRefs() {
 
 // Clear will clear all internal mappings and stop the cleaner goroutine if it is running.
 // It is safe to re-use the same instance after calling Clear.
-func (s *SeriesRefMappingStore) Clear() {
+// Returns the generation boundary; any ref below this value is stale.
+func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 	// Stop the cleanup goroutine and wait for it to be stopped so we can
 	// avoid a possible deadlock with cleanup that also holds both locks
 	if s.cleanupStarted.Load() {
@@ -513,4 +525,6 @@ func (s *SeriesRefMappingStore) Clear() {
 	s.cleanupStopped = make(chan struct{})
 	s.startRefCleanup = sync.Once{}
 	s.cleanupStarted.Store(false)
+
+	return s.firstRefOfCurrentGeneration
 }

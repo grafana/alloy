@@ -188,3 +188,129 @@ func (n noopStore) StartTime() (int64, error) {
 func (n noopStore) Close() error {
 	return nil
 }
+
+// recordingAppender records the ref passed to each Append call.
+type recordingAppender struct {
+	nextRef    storage.SeriesRef
+	appendRefs []storage.SeriesRef
+}
+
+func (r *recordingAppender) Append(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+	r.appendRefs = append(r.appendRefs, ref)
+	if ref == 0 {
+		r.nextRef++
+		return r.nextRef, nil
+	}
+	return ref, nil
+}
+func (r *recordingAppender) Commit() error {
+	return nil
+}
+
+func (r *recordingAppender) Rollback() error {
+	return nil
+}
+
+func (r *recordingAppender) SetOptions(*storage.AppendOptions) {}
+func (r *recordingAppender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, _ exemplar.Exemplar) (storage.SeriesRef, error) {
+	return ref, nil
+}
+func (r *recordingAppender) AppendHistogram(ref storage.SeriesRef, _ labels.Labels, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return ref, nil
+}
+func (r *recordingAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return ref, nil
+}
+func (r *recordingAppender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, _ metadata.Metadata) (storage.SeriesRef, error) {
+	return ref, nil
+}
+func (r *recordingAppender) AppendSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+// recordingStore is a storage.Appendable backed by a recordingAppender.
+type recordingStore struct{ appender *recordingAppender }
+
+func newRecordingStore() *recordingStore {
+	return &recordingStore{appender: &recordingAppender{nextRef: 5000}}
+}
+func (s *recordingStore) Appender(context.Context) storage.Appender { return s.appender }
+
+// TestFanout_SeriesRefMappingToPassthroughTransition verifies that when the fanout
+// transitions from seriesRefMapping (2 children) to passthrough (1 child) via
+// UpdateChildren, store-issued unique refs cached by callers are zeroed before
+// forwarding so the child allocates a fresh ref.
+func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
+	child1 := newRecordingStore()
+	child2 := newRecordingStore()
+	fanout := prometheus.NewFanout([]storage.Appendable{child1, child2}, "test", promclient.NewRegistry(), nil)
+
+	// Phase 1 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
+	app1 := fanout.Appender(t.Context())
+	lblsA := labels.FromStrings("job", "seriesA")
+	uniqueRef, err := app1.Append(0, lblsA, 1, 1.0)
+	require.NoError(t, err)
+	require.NoError(t, app1.Commit())
+	require.Equal(t, storage.SeriesRef(1), uniqueRef)
+
+	// Transition to 1 child.
+	walChild := newRecordingStore()
+	fanout.UpdateChildren([]storage.Appendable{walChild})
+
+	// Phase 2 (1 child → passthrough): caller re-sends the store-issued unique ref.
+	// The passthrough must zero it so the child allocates a fresh ref.
+	app2 := fanout.Appender(t.Context())
+	_, err = app2.Append(uniqueRef, lblsA, 2, 2.0)
+	require.NoError(t, err)
+	require.NoError(t, app2.Commit())
+
+	// The child must have been called with ref=0, not the store-issued unique ref.
+	require.Equal(t, storage.SeriesRef(0), walChild.appender.appendRefs[0],
+		"child must be called with ref=0, not the store-issued unique ref")
+}
+
+// TestFanout_PassthroughToSeriesRefMappingTransition verifies that when the fanout
+// transitions from passthrough (1 child) to seriesRefMapping (2 children) via
+// UpdateChildren, a cached raw child ref that collides numerically with a new
+// store-issued unique ref for a different series is handled correctly via label
+// hash guards.
+func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
+	walChild := newRecordingStore()
+	fanout := prometheus.NewFanout([]storage.Appendable{walChild}, "test", promclient.NewRegistry(), nil)
+
+	// Phase 1 (1 child → passthrough): child returns raw ref 5001 for lblsB.
+	app1 := fanout.Appender(t.Context())
+	lblsB := labels.FromStrings("job", "seriesB")
+	passthroughRef, err := app1.Append(0, lblsB, 1, 1.0)
+	require.NoError(t, err)
+	require.NoError(t, app1.Commit())
+	// passthrough returns the raw child ref directly.
+	require.Equal(t, storage.SeriesRef(5001), passthroughRef)
+
+	// Transition to 2 children.
+	child1 := newRecordingStore()
+	child2 := newRecordingStore()
+	fanout.UpdateChildren([]storage.Appendable{child1, child2})
+
+	// Phase 2 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
+	app2 := fanout.Appender(t.Context())
+	lblsA := labels.FromStrings("job", "seriesA")
+	_, err = app2.Append(0, lblsA, 2, 2.0)
+	require.NoError(t, err)
+
+	// Caller re-sends passthroughRef for lblsB. The label hash guard must prevent
+	// it from matching lblsA's mapping and force a fresh append for lblsB.
+	refB, err := app2.Append(passthroughRef, lblsB, 3, 3.0)
+	require.NoError(t, err)
+	require.NoError(t, app2.Commit())
+
+	// lblsB must have its own mapping distinct from lblsA's.
+	require.NotEqual(t, storage.SeriesRef(1), refB,
+		"seriesB must not reuse seriesA's store-issued unique ref")
+
+	// Both children must have been called with passthroughRef for lblsB, not seriesA's child refs.
+	require.Equal(t, passthroughRef, child1.appender.appendRefs[1],
+		"child1 must be called with passthrough ref for seriesB")
+	require.Equal(t, passthroughRef, child2.appender.appendRefs[1],
+		"child2 must be called with passthrough ref for seriesB")
+}
