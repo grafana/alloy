@@ -94,7 +94,9 @@ func (f *Fanout) UpdateChildren(children []storage.Appendable) {
 
 	// If the children changed, it's safer to clear the store to avoid mismatches in refs.
 	// Even a change in ordering of the children can cause issues.
-	f.seriesRefMappingStore.Clear()
+	if !slices.Equal(f.children, c) {
+		f.seriesRefMappingStore.Clear()
+	}
 	f.children = c
 }
 
