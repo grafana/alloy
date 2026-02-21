@@ -154,7 +154,7 @@ func (c *Config) Name() string {
 // there is not exactly one Kafka node, the user must manually provide
 // their own value for instance key in the common config.
 func (c *Config) InstanceKey(_ string) (string, error) {
-	if len(c.KafkaURIs) == 1 {
+	if c.Instance == "" && len(c.KafkaURIs) == 1 {
 		return c.KafkaURIs[0], nil
 	}
 	if c.Instance == "" && len(c.KafkaURIs) > 1 {
