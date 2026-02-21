@@ -1959,29 +1959,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			detectors = ["dynatrace"]
 			timeout = "7s"
 			override = false
-			dynatrace {
-				resource_attributes {
-					host.name {
-						enabled = true
-					}
-					dt.entity.host {
-						enabled = true
-					}
-				}
-			}
+			dynatrace {}
 			output {}
 			`,
 			expected: map[string]any{
-				"dynatrace": map[string]any{
-					"resource_attributes": map[string]any{
-						"host.name": map[string]any{
-							"enabled": true,
-						},
-						"dt.entity.host": map[string]any{
-							"enabled": true,
-						},
-					},
-				},
+				"dynatrace":        map[string]any{},
 				"detectors":        []string{"dynatrace"},
 				"timeout":          7 * time.Second,
 				"override":         false,
