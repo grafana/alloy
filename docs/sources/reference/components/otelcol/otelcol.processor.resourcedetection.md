@@ -457,9 +457,9 @@ The `eks` block adds resource attributes for Amazon EKS.
 
 The `eks` block supports the following attributes:
 
-| Attribute           | Type     | Description                                                               | Default           | Required |
-|---------------------|----------|---------------------------------------------------------------------------|-------------------|----------|
-| `node_from_env_var` | `string` | The name of an environment variable from which to retrieve the node name. | `"K8S_NODE_NAME"` | no       |
+| Attribute           | Type     | Description                                           | Default           | Required |
+|---------------------|----------|-------------------------------------------------------|-------------------|----------|
+| `node_from_env_var` | `string` | The environment variable that contains the node name. | `"K8S_NODE_NAME"` | no       |
 
 The `eks` block supports the following blocks:
 
@@ -769,11 +769,11 @@ The `kubernetes_node` block queries the Kubernetes API server to retrieve variou
 
 The `kubernetes_node` block supports the following attributes:
 
-| Attribute           | Type     | Description                                                               | Default           | Required |
-|---------------------|----------|---------------------------------------------------------------------------|-------------------|----------|
-| `auth_type`         | `string` | Configures how to authenticate to the K8s API server.                     | `"none"`          | no       |
-| `context`           | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`.   | `""`              | no       |
-| `node_from_env_var` | `string` | The name of an environment variable from which to retrieve the node name. | `"K8S_NODE_NAME"` | no       |
+| Attribute           | Type     | Description                                                             | Default           | Required |
+|---------------------|----------|-------------------------------------------------------------------------|-------------------|----------|
+| `auth_type`         | `string` | Configures how to authenticate to the K8s API server.                   | `"none"`          | no       |
+| `context`           | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`. | `""`              | no       |
+| `node_from_env_var` | `string` | The environment variable that contains the node name.                   | `"K8S_NODE_NAME"` | no       |
 
 The "get" and "list" permissions are required:
 
