@@ -79,11 +79,7 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 
 {{< /column-list >}}
 
-`env` is the only detector that's not configured through a block.
-The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
-This variable must be in the format `<key1>=<value1>,<key2>=<value2>,...`, the details of which are currently pending confirmation in the OpenTelemetry specification.
-
-If a detector other than `env` is needed, you can customize it with the relevant block.
+You can customize most detectors with the relevant block.
 For example, you can customize the `ec2` detector with the [ec2][] block.
 If you omit the [ec2][] block, the defaults specified in the [ec2][] block documentation are used.
 
@@ -97,6 +93,19 @@ The following order is recommended for AWS:
   1. [`eks`][eks]
   1. [`ecs`][ecs]
   1. [`ec2`][ec2]
+
+There are several delectors which are not configured through blocks:
+
+### `env` detector
+
+The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
+This variable must be in the format `<key1>=<value1>,<key2>=<value2>,...`, the details of which are currently pending confirmation in the OpenTelemetry specification.
+
+### `dynatrace` detector
+
+The `dynatrace` block loads resource information from the `dt_host_metadata.properties` file which is located in the `/var/lib/dynatrace/enrichment` (on Unix systems) or `%ProgramData%\dynatrace\enrichment` (on Windows) directories.
+
+The `dynatrace` detector reads the following resource attributes from the metadata file: `host.name`, `dt.entity.host`, and `dt.smartscape.host`. These attributes are not configurable.
 
 ## Blocks
 
@@ -112,7 +121,6 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                              | no       |
 | [`docker`][docker]                     | Queries the Docker daemon to retrieve various resource attributes from the host machine.                | no       |
 | [`digitalocean`][digitalocean]         | Queries the DigitalOcean instance metadata API to retrieve various resource attributes.                 | no       |
-| [`dynatrace`][dynatrace]               | Loads resource information from the `dt_host_metadata.properties` file.                                 | no       |
 | [`ec2`][ec2]                           | Reads resource information from the EC2 instance metadata API.                                          | no       |
 | [`ecs`][ecs]                           | Queries the Task Metadata Endpoint to record information about the current ECS Task.                    | no       |
 | [`eks`][eks]                           | Adds resource attributes for Amazon EKS.                                                                | no       |
@@ -152,7 +160,6 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [kubernetes_node]: #kubernetes_node
 [kubeadm]: #kubeadm
 [res-attr-cfg]: #resource-attribute-configuration
-[dynatrace]: #dynatrace
 [nova]: #nova
 [oraclecloud]: #oraclecloud
 [scaleway]: #scaleway
@@ -356,12 +363,6 @@ The `resource_attributes` block supports the following blocks:
 |-----------------------------|----------------------------------------------------------------------------------|----------|
 | [`host.name`][res-attr-cfg] | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`os.type`][res-attr-cfg]   | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.   | no       |
-
-### `dynatrace`
-
-The `dynatrace` block loads resource information from the `dt_host_metadata.properties` file which is located in the `/var/lib/dynatrace/enrichment` (on Unix systems) or `%ProgramData%\dynatrace\enrichment` (on Windows) directories.
-
-The `dynatrace` detector reads the following resource attributes from the metadata file: `host.name`, `dt.entity.host`, and `dt.smartscape.host`. These attributes are not configurable.
 
 ### `ec2`
 
