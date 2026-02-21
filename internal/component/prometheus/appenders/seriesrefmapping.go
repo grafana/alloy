@@ -186,15 +186,8 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		return ref, nil
 	}
 
-	// No existing mapping, proceed with normal append to all children
-	var firstNonZeroRef storage.SeriesRef
+	// No existing mapping, proceed with normal append to all children.
 	var nonZeroCount int
-
-	// Note: there's another optimization where we could use the returned ref if all the non zero refs
-	//  are the same value. This isn't safe as we will mix downstream refs with unique refs which could
-	//  collide. We could start at max unit64 for unique refs and go backwards lessening the chance of
-	// 	collisions but it's rather dangerous for an unlikely edge case. If two components are returning
-	// 	the same ref it's two remote_write components which should probably be merged in to one.
 	for _, child := range s.children {
 		childRef, err := af(child, ref)
 		if err != nil {
@@ -203,9 +196,6 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 
 		s.childRefs = append(s.childRefs, childRef)
 		if childRef != 0 {
-			if firstNonZeroRef == 0 {
-				firstNonZeroRef = childRef
-			}
 			nonZeroCount++
 		}
 	}
@@ -219,23 +209,6 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		return ref, nil
 	}
 
-	// Only one child returned a non-zero ref.
-	if nonZeroCount == 1 {
-		// Avoid leaking child-local refs to upstream callers.
-		//
-		// - If we already got a non-zero input ref, keep returning it.
-		// - If this is a new series (ref == 0), allocate a unique ref mapping so
-		//   future appends route the expected refs to each child.
-		if ref != 0 {
-			return ref, nil
-		}
-
-		uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
-		s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
-		return uniqueRef, nil
-	}
-
-	// We got different refs back and need to create a new mapping
 	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
 	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
 	return uniqueRef, nil
@@ -256,6 +229,9 @@ type SeriesRefMappingStore struct {
 
 	// nextUniqueRef is the next ref ID we will hand out
 	nextUniqueRef storage.SeriesRef
+	// firstRefOfCurrentGeneration is the first ref issued after the last Clear(). Any ref
+	// below this value is from a previous generation and must be treated as unmapped.
+	firstRefOfCurrentGeneration storage.SeriesRef
 
 	// timestampTrackingMu protects uniqueRefTimestamps and cellPool
 	timestampTrackingMu sync.Mutex
@@ -348,6 +324,12 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 		}
 
 		uniqueRef = gotRef
+	}
+
+	// Refs below firstRefOfCurrentGeneration were issued before the last Clear() and are
+	// no longer valid — the children they mapped to may have changed.
+	if uniqueRef < s.firstRefOfCurrentGeneration {
+		return nil
 	}
 
 	if mapping, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
@@ -520,6 +502,7 @@ func (s *SeriesRefMappingStore) Clear() {
 	// NOTE: We do NOT reset nextUniqueRef here. Resetting it would cause ref collisions
 	// with components like prometheus.scrape which will keep re-sending the same cached refs.
 	// We continue incrementing to ensure all refs remain unique across the lifetime of the process.
+	s.firstRefOfCurrentGeneration = s.nextUniqueRef
 
 	// Reset metrics
 	s.activeMappings.Set(0)
