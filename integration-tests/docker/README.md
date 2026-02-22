@@ -5,8 +5,10 @@ This document provides an outline of how to run and add new integration tests to
 The purpose of these tests is to verify pipelines in different scenarios to catch issues between Alloy and external dependencies or other end-to-end workflows.
 
 The tests are using a mix of  [testcontainers-go][] and [docker compose][].
-[docker compose][] is used to define the external dependencies, while [testcontainers-go][] is used to run Alloy as a container in the docker compose network.
-This allows for alloy to run in a privileged mode, which is required for beyla, and for clean setup/teardown of alloy.
+
+There are two main paradigms for this:
+- Use a base [docker compose][] to define the external dependencies, while [testcontainers-go][] is used to run Alloy as a container in the docker compose network. This allows for alloy to run in a privileged mode, which is required for beyla, and for clean setup/teardown of alloy.
+- Use the same base [docker compose][] to define the external dependencies, and define a test-specific compose file with one-shot services that get started, used, and cleaned up when the integration test runs.
 
 ## Running tests
 
@@ -31,6 +33,7 @@ Follow these steps to add a new integration test to the project:
 3. Within the new test directory, create a file named `config.alloy` to hold the pipeline configuration you want to test.
 4. Create a `_test.go` file within the new test directory. This file should contain the Go code necessary to run the test and verify the data processing through the pipeline. All test file should have `alloyintegrationtests` as a build tag.
 5. If a test folder contains `test.yaml` this file will be read and parsed. This file can specify different setup requirements that the test have like mount or port mapping. See [config.go](./config.go) for the structure of the test configuration.
+6. If a test folder contains `docker-compose.yaml` this file will be used instead of testcontainers to spin up services for the test.
 6. Ensure any data is written with a unique `test_name` label that matches your assertions.
    * Since the tests are run concurrently, each Alloy instance used for a test queries for data that will match the `test_name`.
    * This ensures the correct data verification during the Go testing process.
