@@ -348,12 +348,12 @@ This example forwards metrics and traces received in Datadog format to {{< param
 ```alloy
 otelcol.receiver.datadog "default" {
     output {
-        metrics = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default input]
-        traces  = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default.input]
+        metrics = [otelcol.exporter.otlphttp.default.input, otelcol.exporter.datadog.default input]
+        traces  = [otelcol.exporter.otlphttp.default.input, otelcol.exporter.datadog.default.input]
     }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
     client {
         endpoint = "database:4317"
     }

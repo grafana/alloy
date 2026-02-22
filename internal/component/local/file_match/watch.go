@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/glob"
 )
 
 // watch handles a single discovery.target for file watching.
@@ -18,19 +18,20 @@ type watch struct {
 	target          discovery.Target
 	log             log.Logger
 	ignoreOlderThan time.Duration
+	globber         glob.Globber
 }
 
 func (w *watch) getPaths() ([]discovery.Target, error) {
 	allMatchingPaths := make([]discovery.Target, 0)
 
-	matches, err := doublestar.FilepathGlob(w.getPath())
+	matches, err := w.globber.FilepathGlob(w.getPath())
 	if err != nil {
 		return nil, err
 	}
 	exclude := w.getExcludePath()
 	for _, m := range matches {
 		if exclude != "" {
-			if match, _ := doublestar.PathMatch(filepath.FromSlash(exclude), m); match {
+			if match, _ := w.globber.PathMatch(filepath.FromSlash(exclude), m); match {
 				continue
 			}
 		}

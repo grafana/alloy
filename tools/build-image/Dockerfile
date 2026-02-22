@@ -15,15 +15,15 @@ ARG GO_RUNTIME=mustoverride
 #
 
 # Dependency: docker (for building images)
-FROM alpine:3.17 as docker
+FROM alpine:3.23 as docker
 RUN apk add --no-cache docker-cli docker-cli-buildx
 
 # Dependency: helm
-FROM alpine:3.17 as helm
+FROM alpine:3.23 as helm
 RUN apk add --no-cache helm
 
 # Dependency: nsis (for building Windows installers)
-FROM alpine:3.17 as nsis
+FROM alpine:3.23 as nsis
 RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
  && unzip AccessControl.zip -d /usr/share/nsis/ \
  && mkdir -p /usr/share/nsis/Plugins/x86-unicode \

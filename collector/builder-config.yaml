@@ -2,7 +2,7 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.12.1 # x-release-please-version
+  version: v1.13.1 # x-release-please-version
   output_path: .
 
 extensions:
@@ -70,7 +70,11 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.142.0
@@ -99,8 +103,6 @@ replaces:
   - github.com/grafana/alloy/syntax => ../syntax
   - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
   # BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
-  # TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/prometheus/issues/13842
-  - go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Replace directives from Loki — Azure SDK
@@ -118,9 +120,9 @@ replaces:
   # Replace thanos-io/objstore with Grafana fork
   - github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
   # TODO - remove forks when changes are merged upstream — non-singleton cadvisor
-  - github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
-  # TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
-  - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+  - github.com/google/cadvisor => github.com/grafana/cadvisor grafana-v0.54.1-noglobals
+  # TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
+  - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf
   # TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
   - github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
   # TODO: replace node_exporter with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
@@ -130,7 +132,7 @@ replaces:
   # Replace OpenTelemetry OBI with Grafana fork
   - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
   # Replace OpenTelemetry eBPF profiler with Grafana fork
-  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260123050037-c33a6e86a2f5
+  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-241376220646
   # Update openshift/client-go to version compatible with structured-merge-diff v6
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
   # Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
@@ -141,4 +143,6 @@ replaces:
   - sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
   # Fork to grafana repo to address issue with freebsd build tags. This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
   - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
+  # TODO: Fork to update Prometheus to v0.309.1 while keeping OTel Collector at v0.142.0. Remove when OTel Collector is upgraded to v0.144.0+, which includes this change upstream.
+  - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98
   # END GENERATED REPLACES

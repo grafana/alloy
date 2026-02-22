@@ -5,7 +5,7 @@ aliases:
 description: Learn about possible deployment topologies for Grafana Alloy
 menuTitle: Deploy
 title: Deploy Grafana Alloy
-weight: 900
+weight: 400
 ---
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}}
@@ -35,21 +35,21 @@ You can also use a Kubernetes Deployment in cases where persistent storage isn't
 
 ### Pros
 
-* Straightforward scaling using [clustering][]
-* Minimizes the "noisy neighbor" effect
-* Easy to meta-monitor
+- Straightforward scaling using [clustering][]
+- Minimizes the "noisy neighbor" effect
+- Easy to meta-monitor
 
 ### Cons
 
-* Requires running on separate infrastructure
+- Requires running on separate infrastructure
 
 ### Use for
 
-* Scalable telemetry collection
+- Scalable telemetry collection
 
 ### Don't use for
 
-* Host-level metrics and logs
+- Host-level metrics and logs
 
 ## As a host daemon
 
@@ -68,24 +68,24 @@ The simplest use case of the host daemon topology is a Kubernetes DaemonSet, and
 
 ### Pros
 
-* Doesn't require running on separate infrastructure
-* Typically leads to smaller-sized collectors
-* Lower network latency to instrumented applications
+- Doesn't require running on separate infrastructure
+- Typically leads to smaller-sized collectors
+- Lower network latency to instrumented applications
 
 ### Cons
 
-* Requires planning a process for provisioning {{< param "PRODUCT_NAME" >}} on new machines, as well as keeping configuration up to date to avoid configuration drift
-* Not possible to scale independently when using Kubernetes DaemonSets
-* Scaling the topology can strain external APIs (like service discovery) and network infrastructure (like firewalls, proxy servers, and egress points)
+- Requires planning a process for provisioning {{< param "PRODUCT_NAME" >}} on new machines, as well as keeping configuration up to date to avoid configuration drift
+- Not possible to scale independently when using Kubernetes DaemonSets
+- Scaling the topology can strain external APIs (like service discovery) and network infrastructure (like firewalls, proxy servers, and egress points)
 
 ### Use for
 
-* Collecting machine-level Prometheus metrics and logs (for example, node_exporter hardware metrics, Kubernetes Pod logs)
+- Collecting machine-level Prometheus metrics and logs (for example, node_exporter hardware metrics, Kubernetes Pod logs)
 
 ### Don't use for
 
-* Scenarios where {{< param "PRODUCT_NAME" >}} grows so large it can become a noisy neighbor
-* Collecting an unpredictable amount of telemetry
+- Scenarios where {{< param "PRODUCT_NAME" >}} grows so large it can become a noisy neighbor
+- Collecting an unpredictable amount of telemetry
 
 ## As a container sidecar
 
@@ -100,25 +100,25 @@ The Pod's controller, network configuration, enabled capabilities, and available
 
 ### Pros
 
-* Doesn't require running on separate infrastructure
-* Straightforward networking with partner applications
+- Doesn't require running on separate infrastructure
+- Straightforward networking with partner applications
 
 ### Cons
 
-* Doesn't scale separately
-* Makes resource consumption harder to monitor and predict
-* Each {{< param "PRODUCT_NAME" >}} instance doesn't have a life cycle of its own, making it harder to do things like recovering from network outages
+- Doesn't scale separately
+- Makes resource consumption harder to monitor and predict
+- Each {{< param "PRODUCT_NAME" >}} instance doesn't have a life cycle of its own, making it harder to do things like recovering from network outages
 
 ### Use for
 
-* Serverless services
-* Job/batch applications that work with a push model
-* Air-gapped applications that can't be otherwise reached over the network
+- Serverless services
+- Job/batch applications that work with a push model
+- Air-gapped applications that can't be otherwise reached over the network
 
 ### Don't use for
 
-* Long-lived applications
-* Scenarios where the {{< param "PRODUCT_NAME" >}} deployment size grows so large it can become a noisy neighbor
+- Long-lived applications
+- Scenarios where the {{< param "PRODUCT_NAME" >}} deployment size grows so large it can become a noisy neighbor
 
 [clustering]: ../../configure/clustering/
 
@@ -133,8 +133,8 @@ This provides better stability due to the isolation between processes.
 For example, an overloaded {{< param "PRODUCT_NAME" >}} instance processing traces won't impact an {{< param "PRODUCT_NAME" >}} instance processing metrics.
 Different types of signal collection require different methods for scaling:
 
-* "Pull" components such as `prometheus.scrape` and `pyroscope.scrape` are scaled using hashmod sharing or clustering.
-* "Push" components such as `otelcol.receiver.otlp` are scaled by placing a load balancer in front of the components.
+- "Pull" components such as `prometheus.scrape` and `pyroscope.scrape` are scaled using hashmod sharing or clustering.
+- "Push" components such as `otelcol.receiver.otlp` are scaled by placing a load balancer in front of the components.
 
 ### Traces
 
@@ -146,9 +146,10 @@ This similarity is because most {{< param "PRODUCT_NAME" >}} components used for
 #### When to scale
 
 To decide whether scaling is necessary, check metrics such as:
-* `otelcol_receiver_refused_spans_total` from receivers such as `otelcol.receiver.otlp`.
-* `otelcol_receiver_refused_spans_total` from processors such as `otelcol.processor.batch`.
-* `otelcol_exporter_send_failed_spans_total` from exporters such as `otelcol.exporter.otlp` and `otelcol.exporter.loadbalancing`.
+
+- `otelcol_receiver_refused_spans_total` from receivers such as `otelcol.receiver.otlp`.
+- `otelcol_receiver_refused_spans_total` from processors such as `otelcol.processor.batch`.
+- `otelcol_exporter_send_failed_spans_total` from exporters such as `otelcol.exporter.otlp` and `otelcol.exporter.loadbalancing`.
 
 #### Stateful and stateless components
 
@@ -160,9 +161,9 @@ You can forward spans with `otelcol.exporter.loadbalancing`.
 
 Examples of stateful components:
 
-* `otelcol.processor.tail_sampling`
-* `otelcol.connector.spanmetrics`
-* `otelcol.connector.servicegraph`
+- `otelcol.processor.tail_sampling`
+- `otelcol.connector.spanmetrics`
+- `otelcol.connector.servicegraph`
 
 <!-- TODO: link to the otelcol.exporter.loadbalancing docs for more info -->
 
@@ -173,7 +174,8 @@ A stateless {{< param "PRODUCT_NAME" >}} instance can be scaled without using `o
 For example, you could use an off-the-shelf load balancer to do a round-robin load balancing.
 
 Examples of stateless components:
-* `otelcol.processor.probabilistic_sampler`
-* `otelcol.processor.transform`
-* `otelcol.processor.attributes`
-* `otelcol.processor.span`
+
+- `otelcol.processor.probabilistic_sampler`
+- `otelcol.processor.transform`
+- `otelcol.processor.attributes`
+- `otelcol.processor.span`

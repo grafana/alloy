@@ -201,7 +201,7 @@ func (a *echoAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m 
 	return ref, nil
 }
 
-func (a *echoAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+func (a *echoAppender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
 	a.mut.Lock()
 	defer a.mut.Unlock()
 
@@ -219,7 +219,7 @@ func (a *echoAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels
 	return ref, nil
 }
 
-func (a *echoAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (a *echoAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	a.mut.Lock()
 	defer a.mut.Unlock()
 

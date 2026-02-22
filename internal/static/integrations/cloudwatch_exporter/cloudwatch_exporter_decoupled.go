@@ -38,10 +38,12 @@ func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceMod
 	var factory cachingFactory
 	var err error
 
+	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
+
 	if useAWSSDKVersionV2 {
-		factory, err = yaceClientsV2.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
+		factory, err = yaceClientsV2.NewFactory(l, conf, fipsEnabled)
 	} else {
-		factory = yaceClientsV1.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
+		factory = yaceClientsV1.NewFactory(l, conf, fipsEnabled)
 	}
 
 	if err != nil {
@@ -50,7 +52,7 @@ func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceMod
 
 	return &asyncExporter{
 		name:                 name,
-		logger:               slog.New(logging.NewSlogGoKitHandler(logger)),
+		logger:               l,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		registry:             atomic.Pointer[prometheus.Registry]{},
