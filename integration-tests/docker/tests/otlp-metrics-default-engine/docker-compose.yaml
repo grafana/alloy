@@ -1,7 +1,6 @@
 services:
   alloy:
     image: alloy-integration-tests
-    container_name: alloy-otlp-metrics-default-engine
     command:
       [
         "run",
@@ -28,7 +27,6 @@ services:
     build:
       context: ../../../../
       dockerfile: ./integration-tests/docker/configs/otel-gen/Dockerfile
-    container_name: otelgen-otlp-metrics-default-engine
     environment:
       - OTEL_EXPORTER_ENDPOINT=alloy:4318
     depends_on:

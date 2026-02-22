@@ -11,7 +11,7 @@ receivers:
   otlp:
     protocols:
       http:
-        endpoint: 0.0.0.0:14318
+        endpoint: 0.0.0.0:14318 # unused because test uses alloyengine extension
 
 exporters:
   debug:

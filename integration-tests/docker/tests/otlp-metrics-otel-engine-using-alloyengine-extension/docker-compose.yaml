@@ -1,7 +1,6 @@
 services:
   alloy:
     image: alloy-integration-tests
-    container_name: alloy-otlp-metrics-alloyengine
     command: ["otel", "--config=/etc/alloy/config.yaml"]
     volumes:
       - ./config.yaml:/etc/alloy/config.yaml:ro
@@ -21,7 +20,6 @@ services:
     build:
       context: ../../../../
       dockerfile: ./integration-tests/docker/configs/otel-gen/Dockerfile
-    container_name: otelgen-otlp-metrics-alloyengine
     environment:
       # Send to the Alloy OTLP receiver (defined in alloy-config.alloy)
       - OTEL_EXPORTER_ENDPOINT=alloy:4318

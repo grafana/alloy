@@ -11,7 +11,7 @@ otelcol.receiver.otlp "metrics" {
 otelcol.processor.attributes "metrics" {
   action {
     key    = "test_name"
-    value  = "otel_metrics_alloyengine"
+    value  = "otel_metrics_otel_engine_using_alloyengine_extension"
     action = "insert"
   }
 
