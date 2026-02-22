@@ -77,6 +77,8 @@ RUN groupadd --gid $UID $USERNAME \
     && chown -R $USERNAME:$USERNAME /var/lib/alloy \
     && chmod -R 770 /var/lib/alloy
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/bin/alloy", "healthcheck"]
 ENTRYPOINT ["/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
