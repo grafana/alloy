@@ -327,6 +327,16 @@ func runComposeTest(ctx context.Context, testDir string, stateful bool, testTime
 	composeFile := filepath.Join(absTestDir, dockerComposeFile)
 	projectName := "test-" + dirName
 
+	// Ensure cleanup happens
+	defer func() {
+		fmt.Printf("Stopping compose services for %s...\n", dirName)
+		downCmd := exec.Command("docker", "compose", "-f", composeFile, "-p", projectName, "down")
+		downCmd.Dir = absTestDir
+		if output, err := downCmd.CombinedOutput(); err != nil {
+			fmt.Printf("Warning: failed to stop compose services for %s: %v\nOutput: %s\n", dirName, err, string(output))
+		}
+	}()
+
 	// Start test-specific services
 	fmt.Printf("Starting compose services for %s...\n", dirName)
 	upCmd := exec.Command("docker", "compose", "-f", composeFile, "-p", projectName, "up", "-d", "--build", "--wait")
@@ -340,16 +350,6 @@ func runComposeTest(ctx context.Context, testDir string, stateful bool, testTime
 		})
 		return
 	}
-
-	// Ensure cleanup happens
-	defer func() {
-		fmt.Printf("Stopping compose services for %s...\n", dirName)
-		downCmd := exec.Command("docker", "compose", "-f", composeFile, "-p", projectName, "down")
-		downCmd.Dir = absTestDir
-		if output, err := downCmd.CombinedOutput(); err != nil {
-			fmt.Printf("Warning: failed to stop compose services for %s: %v\nOutput: %s\n", dirName, err, string(output))
-		}
-	}()
 
 	// Create a context with timeout to enforce test duration limit
 	testCtx, cancel := context.WithTimeout(ctx, testTimeout)

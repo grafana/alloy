@@ -21,6 +21,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
+      - default
       - alloy-integration-tests_integration-tests
 
   otel-gen:
@@ -34,7 +35,7 @@ services:
       alloy:
         condition: service_healthy
     networks:
-      - alloy-integration-tests_integration-tests
+      - default
 
 networks:
   alloy-integration-tests_integration-tests:
