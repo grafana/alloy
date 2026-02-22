@@ -1,7 +1,7 @@
 services:
   alloy:
     image: alloy-integration-tests
-    command: ["otel", "--config=/etc/alloy/config.yaml"]
+    entrypoint: ["/bin/otelcol", "--config=/etc/alloy/config.yaml"]
     volumes:
       - ./config.yaml:/etc/alloy/config.yaml:ro
     ports:
