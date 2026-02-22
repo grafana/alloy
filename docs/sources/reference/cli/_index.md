@@ -16,6 +16,7 @@ Available commands:
 
 * [`convert`][convert]: Convert an {{< param "PRODUCT_NAME" >}} configuration file.
 * [`fmt`][fmt]: Format an {{< param "PRODUCT_NAME" >}} configuration file.
+* [`healthcheck`][healthcheck]: Check the health of a running {{< param "PRODUCT_NAME" >}} instance.
 * [`run`][run]: Start {{< param "PRODUCT_NAME" >}} with the Default Engine, given an Alloy syntax configuration file.
 * [`otel`][otel]: Start {{< param "PRODUCT_NAME" >}} with the experimental OTel Engine, given an Open Telemetry Collector YAML configuration file.
 * [`tools`][tools]: Read the WAL and provide statistical information.
@@ -23,6 +24,7 @@ Available commands:
 * `help`: Print help for supported commands.
 
 [run]: ./run/
+[healthcheck]: ./healthcheck/
 [fmt]: ./fmt/
 [convert]: ./convert/
 [otel]: ./otel/
