@@ -284,7 +284,13 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 func hasComposeFile(testDir string) bool {
 	composeFile := filepath.Join(testDir, dockerComposeFile)
 	_, err := os.Stat(composeFile)
-	return err == nil
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	panic(fmt.Sprintf("failed to stat compose file %q: %v", composeFile, err))
 }
 
 // runTest runs a single test, automatically detecting whether to use docker-compose
