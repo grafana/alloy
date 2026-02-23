@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/loki/pkg/push"
 )
@@ -31,8 +32,11 @@ type Logger struct {
 	level        *slog.LevelVar       // Current configured level.
 	format       *formatVar           // Current configured format.
 	writer       *writerVar           // Current configured multiwriter (inner + write_to).
-	handler      *handler             // Handler which handles logs.
-	deferredSlog *deferredSlogHandler // This handles deferred logging for slog.
+	handler      *handler             // Handler that writes to writer (stderr + write_to).
+	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
+
+	windowsEventLogHandler *windowsEventLogHandler // When destination is windows_event_log (Windows only).
+	eventLogOpener         eventlog.EventLogOpener // Opens the Windows event log; set in NewDeferred, overridable via SetEventLogOpener for tests.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -84,6 +88,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 			formatter: &format,
 			replacer:  replace,
 		},
+		eventLogOpener: eventlog.GetEventLogOpener(),
 	}
 	l.deferredSlog = newDeferredHandler(l)
 
@@ -109,7 +114,40 @@ func (l *Logger) Update(o Options) error {
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
 
-	l.writer.SetInnerWriter(l.inner)
+	// Handle Windows Event Log configuration
+	if o.Destination == LogDestinationWindowsEventLog {
+		// Close existing Windows Event Log handler if it exists
+		if l.windowsEventLogHandler != nil {
+			_ = l.windowsEventLogHandler.Close()
+		}
+
+		el, err := l.eventLogOpener("Alloy")
+		if err != nil {
+			return fmt.Errorf("failed to open Windows Event Log: %w", err)
+		}
+		l.windowsEventLogHandler, err = newWindowsEventLogHandler(el, l.level, replace)
+		if err != nil {
+			return fmt.Errorf("failed to create Windows Event Log handler: %w", err)
+		}
+	} else {
+		// Close Windows Event Log handler if it exists and we're not using it
+		if l.windowsEventLogHandler != nil {
+			_ = l.windowsEventLogHandler.Close()
+			l.windowsEventLogHandler = nil
+		}
+	}
+
+	// Configure the writer used by the regular handler. It always writes to both
+	// innerWriter (below) and, when set, lokiWriter (write_to). So write_to receives
+	// logs regardless of destination.
+	switch o.Destination {
+	case LogDestinationWindowsEventLog:
+		// Handler still writes to l.writer
+		// writerVar.Write() sends to both innerWriter (stderr) and lokiWriter (write_to), so only innerWriter is disabled.
+		l.writer.SetInnerWriter(io.Discard)
+	default:
+		l.writer.SetInnerWriter(l.inner)
+	}
 	if len(o.WriteTo) > 0 {
 		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
 	}
@@ -118,16 +156,18 @@ func (l *Logger) Update(o Options) error {
 	if l.deferredSlog != nil {
 		l.deferredSlog.buildHandlers(nil)
 	}
-	// Print out the buffered logs since we determined the log format already
+	// Replay buffered logs
 	for _, bufferedLogChunk := range l.buffer {
 		if len(bufferedLogChunk.kvps) > 0 {
-			// the buffered logs are currently only sent to the standard output
-			// because the components with the receivers are not running yet
+			if l.windowsEventLogHandler != nil {
+				slogadapter.GoKit(l.windowsEventLogHandler).Log(bufferedLogChunk.kvps...)
+			}
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
-			// We now can check to see if if our buffered log is at the right level.
+			if l.windowsEventLogHandler != nil && l.windowsEventLogHandler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
+				_ = l.windowsEventLogHandler.Handle(context.Background(), bufferedLogChunk.record)
+			}
 			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
-				// These will always be valid due to the build handlers call above.
 				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
 			}
 		}
@@ -163,9 +203,16 @@ func (l *Logger) Log(kvps ...any) error {
 		l.bufferMut.RUnlock()
 	}
 
-	// NOTE(rfratto): this method is a temporary shim while log/slog is still
+	// NOTE(rfratto): slogadapter is a temporary shim while log/slog is still
 	// being adopted throughout the codebase.
-	return slogadapter.GoKit(l.handler).Log(kvps...)
+	var err error
+	if l.windowsEventLogHandler != nil {
+		err = slogadapter.GoKit(l.windowsEventLogHandler).Log(kvps...)
+	}
+	if regularErr := slogadapter.GoKit(l.handler).Log(kvps...); regularErr != nil {
+		return regularErr
+	}
+	return err
 }
 
 func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {

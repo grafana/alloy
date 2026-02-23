@@ -25,13 +25,14 @@ logging {
 
 You can use the following arguments with `logging`:
 
-| Name       | Type                 | Description                                | Default    | Required |
-| ---------- | -------------------- | ------------------------------------------ | ---------- | -------- |
-| `format`   | `string`             | Format to use for writing log lines        | `"logfmt"` | no       |
-| `level`    | `string`             | Level at which log lines should be written | `"info"`   | no       |
-| `write_to` | `list(LogsReceiver)` | List of receivers to send log entries to   | `[]`       | no       |
+| Name          | Type                 | Description                                                                 | Default    | Required |
+| ------------- | -------------------- | --------------------------------------------------------------------------- | ---------- | -------- |
+| `format`      | `string`             | Format to use for writing log lines                                         | `"logfmt"` | no       |
+| `level`       | `string`             | Level at which log lines should be written                                  | `"info"`   | no       |
+| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to                                    | `[]`       | no       |
+| `destination` | `string`             | Primary log destination.                                                    | `"stderr"` | no       |
 
-### Log level
+### `level`
 
 The following strings are recognized as valid log levels:
 
@@ -40,30 +41,26 @@ The following strings are recognized as valid log levels:
 * `"info"`: Only write logs at _info_ level or above.
 * `"debug"`: Write all logs, including _debug_ level logs.
 
-### Log format
+### `format`
 
 The following strings are recognized as valid log line formats:
 
 * `"json"`: Write logs as JSON objects.
 * `"logfmt"`: Write logs as [`logfmt`][logfmt] lines.
 
-### Log receivers
+### `write_to`
 
 The `write_to` argument allows {{< param "PRODUCT_NAME" >}} to tee its log entries to one or more `loki.*` component log receivers in addition to the default [location][].
 This, for example can be the export of a `loki.write` component to send log entries directly to Loki, or a `loki.relabel` component to add a certain label first.
 
-## Log location
+### `destination`
 
-{{< param "PRODUCT_NAME" >}} writes all logs to `stderr`.
+The following strings are recognized as valid log destinations:
 
-When you run {{< param "PRODUCT_NAME" >}} as a systemd service, you can view logs written to `stderr` through `journald`.
+* `"stderr"`: Write logs to `stderr`.
+* `"windows_event_log"` (Windows only): Write logs to the Windows Event Log under the "Alloy" source.
 
-When you run {{< param "PRODUCT_NAME" >}} as a container, you can view logs written to `stderr` through `docker logs` or `kubectl logs`, depending on whether Docker or Kubernetes was used for deploying {{< param "PRODUCT_NAME" >}}.
-
-When you run {{< param "PRODUCT_NAME" >}} as a Windows service, logs are written as event logs.
-You can view the logs through Event Viewer.
-
-In other cases, redirect `stderr` of the {{< param "PRODUCT_NAME" >}} process to a file for logs to persist on disk.
+When you run {{< param "PRODUCT_NAME" >}} as a Windows service, logs are written as event logs even if `destination` is set to `"stderr"`.
 
 ## Retrieve logs
 
@@ -72,6 +69,9 @@ You can retrieve the logs in different ways depending on your platform and insta
 **Linux:**
 
 * If you're running {{< param "PRODUCT_NAME" >}} with systemd, use `journalctl -u alloy`.
+
+**Docker:**
+
 * If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
 
 **macOS:**
@@ -89,6 +89,7 @@ You can retrieve the logs in different ways depending on your platform and insta
 **All platforms:**
 
 * {{< param "PRODUCT_NAME" >}} writes logs to `stderr` if started directly without a service manager.
+  Redirect `stderr` of the {{< param "PRODUCT_NAME" >}} process to a file for logs to persist on disk.
 
 ## Example
 
