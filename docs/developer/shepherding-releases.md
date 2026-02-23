@@ -158,8 +158,10 @@ The forwardport PRs are what allow the changelog, manifest, and related files to
 on the main branch so that subsequent releases have an appropriate starting point when looking for
 changes.
 
-If this job should happen to fail when a release-please PR gets merged into a release branch, here
-are the steps you can take to do it manually:
+When a release-please PR is merged, a workflow automatically forwardports its content by pushing a
+branch, opening a draft PR (so the zizmor check runs), waiting for zizmor to pass, then pushing to
+`main` and deleting the temp branch. If that workflow fails, use the steps below to forwardport
+manually.
 
 1. `git checkout` and `git pull` both the release branch and the main branch
 2. Run `git checkout main`
