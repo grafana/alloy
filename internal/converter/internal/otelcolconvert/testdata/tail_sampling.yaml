@@ -13,6 +13,8 @@ processors:
     decision_wait: 10s
     num_traces: 100
     expected_new_traces_per_sec: 10
+    sample_on_first_match: true
+    drop_pending_traces_on_shutdown: true
     policies:
       [
           {
@@ -53,6 +55,11 @@ processors:
             name: test-policy-8,
             type: rate_limiting,
             rate_limiting: {spans_per_second: 35}
+         },
+         {
+            name: test-policy-8b,
+            type: bytes_limiting,
+            bytes_limiting: {bytes_per_second: 2048, burst_capacity: 4096}
          },
          {
             name: test-policy-9,
@@ -105,8 +112,28 @@ processors:
                     type: string_attribute,
                     string_attribute: { key: key2, values: [ value1, value2 ] }
                 },
+                {
+                    name: test-and-policy-3,
+                    type: bytes_limiting,
+                    bytes_limiting: {bytes_per_second: 1024, burst_capacity: 2048}
+                },
               ]
             }
+         },
+         {
+            name: drop-policy-1,
+            type: drop,
+            drop:
+              {
+                drop_sub_policy:
+                  [
+                    {
+                      name: test-drop-policy-1,
+                      type: string_attribute,
+                      string_attribute: {key: url.path, values: [\/health, \/metrics], enabled_regex_matching: true}
+                    }
+                  ]
+              }
          },
          {
             name: composite-policy-1,
@@ -130,6 +157,11 @@ processors:
                     {
                       name: test-composite-policy-3,
                       type: always_sample
+                    },
+                    {
+                      name: test-composite-policy-4,
+                      type: bytes_limiting,
+                      bytes_limiting: {bytes_per_second: 512, burst_capacity: 1024}
                     }
                   ],
                 rate_allocation:
