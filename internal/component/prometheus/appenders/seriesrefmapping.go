@@ -188,7 +188,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 
 	// No existing mapping, proceed with normal append to all children.
 	var nonZeroCount int
-	var firstNonZeroRef storage.SeriesRef
+	var nonZeroRef storage.SeriesRef
 	for _, child := range s.children {
 		childRef, err := af(child, ref)
 		if err != nil {
@@ -198,7 +198,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		s.childRefs = append(s.childRefs, childRef)
 		if childRef != 0 {
 			nonZeroCount++
-			firstNonZeroRef = childRef
+			nonZeroRef = childRef
 		}
 	}
 
@@ -213,7 +213,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 
 	if nonZeroCount == 1 {
 		// Only one child allocated a ref; return it directly — no mapping needed.
-		return firstNonZeroRef, nil
+		return nonZeroRef, nil
 	}
 
 	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
@@ -394,8 +394,6 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
 
-	// Ensure that label hash index is up to date to handle possible hash collisions.
-	// TODO: is this necessary?
 	newHash := lbls.Hash()
 	prev, ok := s.uniqueRefToChildRefs[uniqueRef]
 	if ok && prev.labelHash != newHash {
