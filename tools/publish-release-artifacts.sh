@@ -24,6 +24,14 @@ fi
 # Re-enable xtrace
 set -x
 
+# Verify rendered Alloy mixin dashboards archive exists.
+MIXIN_DASHBOARDS_ARCHIVE="dist/alloy-mixin-dashboards-${RELEASE_TAG}.zip"
+
+if [ ! -f "${MIXIN_DASHBOARDS_ARCHIVE}" ]; then
+  echo "Error: expected mixin dashboards archive ${MIXIN_DASHBOARDS_ARCHIVE}. Run 'RELEASE_TAG=${RELEASE_TAG} make dist-alloy-mixin-zip' first."
+  exit 1
+fi
+
 # Zip up all the binaries to reduce the download size. DEBs and RPMs
 # aren't included to be easier to work with.
 find dist/ -type f \
@@ -34,14 +42,6 @@ find dist/ -type f \
 find dist/ -type f \
   -name 'alloy-installer-windows-*.exe' \
   -exec zip -j "{}.zip" "{}" \;
-
-# Verify rendered Alloy mixin dashboards archive exists.
-MIXIN_DASHBOARDS_ARCHIVE="dist/alloy-mixin-dashboards-${RELEASE_TAG}.zip"
-
-if [ ! -f "${MIXIN_DASHBOARDS_ARCHIVE}" ]; then
-  echo "Error: expected mixin dashboards archive ${MIXIN_DASHBOARDS_ARCHIVE}. Run 'RELEASE_TAG=${RELEASE_TAG} make dist-alloy-mixin-zip' first."
-  exit 1
-fi
 
 # Generate SHA256 checksums for all release assets.
 pushd dist && sha256sum -- * > SHA256SUMS && popd
