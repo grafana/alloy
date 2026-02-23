@@ -1,0 +1,32 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    entrypoint: ["/bin/otelcol", "--config=/etc/alloy/config.yaml"]
+    volumes:
+      - ./config.yaml:/etc/alloy/config.yaml:ro
+    ports:
+      - "13133:13133"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/13133"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+      - alloy-integration-tests_integration-tests
+
+  otel-gen:
+    build:
+      context: ../../../../
+      dockerfile: ./integration-tests/docker/configs/otel-gen/Dockerfile
+    environment:
+      - OTEL_EXPORTER_ENDPOINT=alloy:4318
+    depends_on:
+      alloy:
+        condition: service_healthy
+    networks:
+      - default
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true

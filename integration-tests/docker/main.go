@@ -70,7 +70,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		if !filepath.IsAbs(specificTest) && !strings.HasPrefix(specificTest, "./tests/") {
 			specificTest = "./tests/" + specificTest
 		}
-		runSingleTest(ctx, specificTest, 12345, stateful, testTimeout)
+		runTest(ctx, specificTest, 12345, stateful, testTimeout)
 	} else {
 		runAllTests(ctx)
 	}
