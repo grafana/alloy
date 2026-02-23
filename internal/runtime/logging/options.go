@@ -12,16 +12,49 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level  Level  `alloy:"level,attr,optional"`
-	Format Format `alloy:"format,attr,optional"`
+	Level       Level          `alloy:"level,attr,optional"`
+	Format      Format         `alloy:"format,attr,optional"`
+	Destination LogDestination `alloy:"destination,attr,optional"`
 
 	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }
 
+// LogDestination is where to send the primary log output.
+type LogDestination string
+
+// TODO: Add a "none" destination to disable primary output.
+const (
+	LogDestinationStderr          LogDestination = "stderr"
+	LogDestinationWindowsEventLog LogDestination = "windows_event_log"
+)
+
+var _ syntax.Defaulter = (*LogDestination)(nil)
+var _ encoding.TextUnmarshaler = (*LogDestination)(nil)
+
+// SetToDefault implements syntax.Defaulter.
+func (d *LogDestination) SetToDefault() {
+	*d = LogDestinationStderr
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (d *LogDestination) UnmarshalText(text []byte) error {
+	switch LogDestination(text) {
+	case "":
+		*d = LogDestinationStderr
+		return nil
+	case LogDestinationStderr, LogDestinationWindowsEventLog:
+		*d = LogDestination(text)
+		return nil
+	default:
+		return fmt.Errorf("unrecognized log destination %q", string(text))
+	}
+}
+
 // DefaultOptions holds defaults for creating a Logger.
 var DefaultOptions = Options{
-	Level:  LevelDefault,
-	Format: FormatDefault,
+	Level:       LevelDefault,
+	Format:      FormatDefault,
+	Destination: LogDestinationStderr,
 }
 
 var _ syntax.Defaulter = (*Options)(nil)
