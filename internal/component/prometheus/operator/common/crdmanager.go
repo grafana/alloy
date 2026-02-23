@@ -183,6 +183,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
+	defer alloyAppendable.Clear()
 
 	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
 	scrapeOpts := &scrape.Options{

@@ -19,7 +19,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,6 +26,8 @@ import (
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
+
+	"github.com/grafana/alloy/internal/util"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
@@ -170,6 +171,7 @@ depending on the nature of the reload error.
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -184,6 +186,7 @@ type alloyRun struct {
 	enablePprof                  bool
 	disableReporting             bool
 	clusterEnabled               bool
+	enableDirectFanout           bool
 	clusterNodeName              string
 	clusterAdvAddr               string
 	clusterJoinAddr              string
@@ -208,6 +211,18 @@ type alloyRun struct {
 	taskShutdownDeadline         time.Duration
 }
 
+func (fr *alloyRun) checkExperimentalFlags() error {
+	if fr.minStability.Permits(featuregate.StabilityExperimental) {
+		return nil
+	}
+
+	if fr.enableDirectFanout {
+		return fmt.Errorf("the '--feature.prometheus.direct-fanout.enabled' can be used only at experimental stability level")
+	}
+
+	return nil
+}
+
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -217,6 +232,10 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	if configPath == "" {
 		return fmt.Errorf("path argument not provided")
+	}
+
+	if err := fr.checkExperimentalFlags(); err != nil {
+		return err
 	}
 
 	// Buffer logs until log format has been determined
@@ -370,7 +389,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to create otel service")
 	}
 
-	labelService := labelstore.New(l, reg)
+	if fr.enableDirectFanout {
+		level.Info(l).Log("msg", "global label store is disabled")
+	}
+
+	labelService := labelstore.New(l, reg, !fr.enableDirectFanout)
 	alloyseed.Init(fr.storagePath, l)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
