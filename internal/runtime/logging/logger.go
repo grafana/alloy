@@ -125,8 +125,8 @@ func (l *Logger) Update(o Options) error {
 		if err != nil {
 			return fmt.Errorf("failed to open Windows Event Log: %w", err)
 		}
-		l.windowsEventLogHandler, err = newWindowsEventLogHandler(el, l.level, replace)
-		if err != nil {
+		l.windowsEventLogHandler = newWindowsEventLogHandler(el, l.level, replace)
+		if l.windowsEventLogHandler == nil {
 			return fmt.Errorf("failed to create Windows Event Log handler: %w", err)
 		}
 	} else {

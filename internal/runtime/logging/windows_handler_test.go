@@ -13,8 +13,7 @@ import (
 func TestWindowsEventLogHandler(t *testing.T) {
 	mock := &testutil.MockEventLog{}
 	leveler := &slog.LevelVar{}
-	handler, err := newWindowsEventLogHandler(mock, leveler, replace)
-	require.NoError(t, err)
+	handler := newWindowsEventLogHandler(mock, leveler, replace)
 	require.NotNil(t, handler)
 	defer handler.Close()
 
