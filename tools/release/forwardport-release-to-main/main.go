@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	zizmorCheckName = "zizmor GitHub Actions static analysis" // Obtained from the ruleset on GH
+	zizmorCheckName = "zizmor" // Code scanning check from github-advanced-security
 	zizmorTimeout   = 5 * time.Minute
 )
 
