@@ -80,7 +80,7 @@ declare "self_collect" {
 }
 
 self_collect "selfmonitor" {
-	metrics_output = "test"
+	metrics_output = prometheus.remote_write.mimir.receiver
 }
 
 import.file "math" {

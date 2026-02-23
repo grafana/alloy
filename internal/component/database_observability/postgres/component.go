@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
@@ -109,6 +110,7 @@ type SchemaDetailsArguments struct {
 
 var DefaultArguments = Arguments{
 	ExcludeDatabases: []string{},
+	ExcludeUsers:     []string{},
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
@@ -470,6 +472,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			DB:               c.dbConnection,
 			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
 			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeUsers:     c.args.ExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
 			Logger:           c.opts.Logger,
@@ -488,6 +491,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
 			ExcludeDatabases:      c.args.ExcludeDatabases,
+			ExcludeUsers:          c.args.ExcludeUsers,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
@@ -525,6 +529,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeUsers:     c.args.ExcludeUsers,
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
@@ -556,10 +561,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:     c.logsReceiver,
-		EntryHandler: loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
-		Logger:       c.opts.Logger,
-		Registry:     c.registry,
+		Receiver:         c.logsReceiver,
+		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:           c.opts.Logger,
+		Registry:         c.registry,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
