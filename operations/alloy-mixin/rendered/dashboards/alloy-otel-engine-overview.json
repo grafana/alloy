@@ -940,7 +940,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "Distribution of batch sizes when sent. Shows how full batches are before being flushed. Requires \"normal\" telemetry level.",
+               "description": "Distribution of batch sizes when sent. Works with both batching approaches:\nthe batch processor (processor/batch) and the exporter sending_queue batch (sending_queue.batch).\nWhichever is active will populate this panel.\nRequires \"normal\" telemetry level.",
                "gridPos": {
                   "h": 10,
                   "w": 8,
@@ -976,7 +976,7 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "expr": "sum by (le) (increase(otelcol_exporter_queue_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\nor\nsum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "format": "heatmap",
                      "instant": false,
                      "legendFormat": "{{le}}",
@@ -988,7 +988,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Requires \"normal\" telemetry level.",
+               "description": "How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Only available with the batch processor; the exporter sending_queue batch does not emit trigger metrics. Requires \"normal\" telemetry level.",
                "fieldConfig": {
                   "defaults": {
                      "unit": "cps"
@@ -1021,7 +1021,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Requires \"normal\" telemetry level.",
+               "description": "Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Only available with the batch processor; the exporter sending_queue batch does not emit this metric. Requires \"normal\" telemetry level.",
                "gridPos": {
                   "h": 10,
                   "w": 8,

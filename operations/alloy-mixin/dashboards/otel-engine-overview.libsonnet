@@ -421,13 +421,20 @@ local filename = 'alloy-otel-engine-overview.json';
             // Row 2: Batching
             (
               panel.newHeatmap('Batch send size', 'short') +
-              panel.withDescription(
-                'Distribution of batch sizes when sent. Shows how full batches are before being flushed. ' + normalNote,
-              ) +
+              panel.withDescription(|||
+                Distribution of batch sizes when sent. Works with both batching approaches:
+                the batch processor (processor/batch) and the exporter sending_queue batch (sending_queue.batch).
+                Whichever is active will populate this panel.
+              ||| + normalNote) +
               panelPosition3Across(row=12, col=0) +
               panel.withQueries([
                 panel.newQuery(
+                  // Both the batch processor and the exporter sending_queue emit a batch
+                  // send size histogram. Typically only one is active, so we use "or" to
+                  // show whichever has data. If both are active, exporter wins.
                   expr=|||
+                    sum by (le) (increase(otelcol_exporter_queue_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
+                    or
                     sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
                   format='heatmap',
@@ -438,7 +445,7 @@ local filename = 'alloy-otel-engine-overview.json';
             (
               panel.new(title='Batch send triggers by ${groupby}', type='timeseries') +
               panel.withDescription(
-                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
+                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Only available with the batch processor; the exporter sending_queue batch does not emit trigger metrics. ' + normalNote,
               ) +
               panel.withUnit('cps') +
               panelPosition3Across(row=12, col=1) +
@@ -460,7 +467,7 @@ local filename = 'alloy-otel-engine-overview.json';
             (
               panel.new(title='Batch metadata cardinality by ${groupby}', type='timeseries') +
               panel.withDescription(
-                'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. ' + normalNote,
+                'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Only available with the batch processor; the exporter sending_queue batch does not emit this metric. ' + normalNote,
               ) +
               panelPosition3Across(row=12, col=2) +
               panel.withQueries([
