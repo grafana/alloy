@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -68,7 +69,7 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 // call to Synchronize.
 //
 // Synchronize is not goroutine safe and should not be called concurrently.
-func (s *Scheduler) Synchronize(rr []RunnableNode) error {
+func (s *Scheduler) Synchronize(g *dag.Graph) error {
 	select {
 	case <-s.ctx.Done():
 		return fmt.Errorf("scheduler is closed")
@@ -76,18 +77,30 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	}
 
 	var (
-		taskLen          = len(rr)
-		newRunnables     = make(map[string]RunnableNode, taskLen)
-		toStop           = make([]*task, 0, taskLen)
-		newStoppingOrder = make([]string, taskLen)
+		roots            []dag.Node
+		newRunnables     = make(map[string]RunnableNode, 0)
+		newStoppingOrder = make([]string, len(newRunnables))
 	)
 
-	for i, r := range rr {
-		id := r.NodeID()
-		newRunnables[id] = r
-		// We stop tasks in reversed order from how they are scheduled.
-		newStoppingOrder[taskLen-1-i] = id
+	_ = dag.WalkTopological(g, g.Roots(), func(n dag.Node) error {
+		roots = append(roots, n)
+		return nil
+	})
+
+	for _, r := range roots {
+		_ = dag.Walk(g, []dag.Node{r}, func(n dag.Node) error {
+			if runnable, ok := n.(RunnableNode); ok {
+				id := n.NodeID()
+				newRunnables[id] = runnable
+				newStoppingOrder = append(newStoppingOrder, id)
+			}
+			return nil
+		})
 	}
+
+	var (
+		toStop = make([]*task, 0, len(newRunnables))
+	)
 
 	s.tasksMut.Lock()
 	for _, id := range s.stoppingOrder {

@@ -287,35 +287,8 @@ func (f *Runtime) Run(ctx context.Context) {
 		case <-f.loadFinished:
 			level.Info(f.log).Log("msg", "scheduling loaded components and services")
 
-			var (
-				components = f.loader.Components()
-				services   = f.loader.Services()
-				imports    = f.loader.Imports()
-				forEachs   = f.loader.ForEachs()
-
-				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
-			)
-			for _, c := range components {
-				runnables = append(runnables, c)
-			}
-
-			for _, i := range imports {
-				runnables = append(runnables, i)
-			}
-
-			for _, fe := range forEachs {
-				runnables = append(runnables, fe)
-			}
-
-			// Only the root controller should run services, since modules share the
-			// same service instance as the root.
-			if !f.opts.IsModule {
-				for _, svc := range services {
-					runnables = append(runnables, svc)
-				}
-			}
-
-			if err := f.sched.Synchronize(runnables); err != nil {
+			// FIXME: are services in the graph in modules??
+			if err := f.sched.Synchronize(f.loader.Graph()); err != nil {
 				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
 			}
 
