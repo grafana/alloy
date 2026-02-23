@@ -69,7 +69,7 @@ jobs:
       # We don't want this file to end up in the repo directory.
       # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@ebcac324fecb38bbeb7a2e59c82da34010c14014 # login-to-gar-v0.2.2
+      uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
       with:
         registry: "us-docker.pkg.dev"
         environment: "prod"
