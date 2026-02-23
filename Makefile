@@ -39,6 +39,7 @@
 ##   dist-alloy-binaries  Produce release-ready Alloy binaries.
 ##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
+##   dist-alloy-mixin-zip Produce release-ready Alloy mixin dashboard archive.
 ##
 ## Targets for generating assets:
 ##
