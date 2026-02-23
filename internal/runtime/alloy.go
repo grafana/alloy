@@ -286,12 +286,9 @@ func (f *Runtime) Run(ctx context.Context) {
 			f.loader.EvaluateDependants(ctx, all)
 		case <-f.loadFinished:
 			level.Info(f.log).Log("msg", "scheduling loaded components and services")
-
-			// FIXME: are services in the graph in modules??
 			if err := f.sched.Synchronize(f.loader.Graph()); err != nil {
 				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
 			}
-
 			f.loadComplete.Store(true)
 		}
 	}

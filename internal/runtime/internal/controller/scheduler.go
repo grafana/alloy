@@ -26,8 +26,6 @@ type RunnableNode interface {
 
 // Scheduler runs components.
 type Scheduler struct {
-	ctx                  context.Context
-	cancel               context.CancelFunc
 	running              sync.WaitGroup
 	logger               log.Logger
 	taskShutdownDeadline time.Duration
@@ -42,10 +40,7 @@ type Scheduler struct {
 //
 // Call Close to stop the Scheduler and all running components.
 func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Scheduler {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		ctx:                  ctx,
-		cancel:               cancel,
 		logger:               logger,
 		taskShutdownDeadline: taskShutdownDeadline,
 
@@ -70,12 +65,6 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 //
 // Synchronize is not goroutine safe and should not be called concurrently.
 func (s *Scheduler) Synchronize(g *dag.Graph) error {
-	select {
-	case <-s.ctx.Done():
-		return fmt.Errorf("scheduler is closed")
-	default:
-	}
-
 	var (
 		roots            []dag.Node
 		newRunnables     = make(map[string]RunnableNode, 0)
@@ -178,8 +167,6 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 // Stop stops the Scheduler and returns after all running goroutines have
 // exited.
 func (s *Scheduler) Stop() {
-	s.cancel()
-
 	s.tasksMut.Lock()
 	toStop := make([]*task, 0, len(s.tasks))
 	for _, id := range s.stoppingOrder {
