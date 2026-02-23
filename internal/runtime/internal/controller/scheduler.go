@@ -212,6 +212,9 @@ func newTask(opts taskOptions) *task {
 
 	go func() {
 		err := opts.runnable.Run(t.ctx)
+		// NOTE: make sure we call cancel here so if the runnable
+		// exit unexpectedly we clean up resources.
+		t.cancel()
 		close(t.exited)
 		t.doneOnce.Do(func() {
 			t.opts.onDone(err)
