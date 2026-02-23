@@ -23,15 +23,15 @@ type windowsEventLogHandler struct {
 var _ slog.Handler = (*windowsEventLogHandler)(nil)
 
 // newWindowsEventLogHandler creates a new Windows Event Log handler using the given EventLog.
-func newWindowsEventLogHandler(el eventlog.EventLog, level slog.Leveler, replacer func(groups []string, a slog.Attr) slog.Attr) (*windowsEventLogHandler, error) {
+func newWindowsEventLogHandler(el eventlog.EventLog, level slog.Leveler, replacer func(groups []string, a slog.Attr) slog.Attr) *windowsEventLogHandler {
 	if el == nil {
-		return nil, nil
+		return nil
 	}
 	return &windowsEventLogHandler{
 		el:       el,
 		level:    level,
 		replacer: replacer,
-	}, nil
+	}
 }
 
 // Enabled reports whether the handler handles records at the given level.
