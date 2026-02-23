@@ -133,7 +133,7 @@ func (c *collectingAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, 
 func (c *collectingAppender) SetOptions(_ *storage.AppendOptions) {}
 
 type ConstantAppendable struct {
-	Inner CollectingAppender
+	Inner storage.Appender
 }
 
 func (c ConstantAppendable) Appender(_ context.Context) storage.Appender {
