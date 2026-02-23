@@ -18,6 +18,23 @@ clean-dist:
 # list these, but it's too easy to forget to set on so this is used to ensure
 # everything needed is always passed through.
 PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) GOEXPERIMENT=$(GOEXPERIMENT)
+RELEASE_TAG ?= $(VERSION)
+MIXIN_DASHBOARDS_DIR := operations/alloy-mixin/rendered/dashboards
+MIXIN_DASHBOARDS_ARCHIVE := dist/alloy-mixin-dashboards-$(RELEASE_TAG).zip
+
+.PHONY: dist-alloy-mixin-zip
+dist-alloy-mixin-zip:
+	@if [ ! -d "$(MIXIN_DASHBOARDS_DIR)" ]; then \
+		echo "Error: expected rendered dashboards in $(MIXIN_DASHBOARDS_DIR)"; \
+		exit 1; \
+	fi
+	@set -- $(MIXIN_DASHBOARDS_DIR)/*.json; \
+	if [ "$$1" = "$(MIXIN_DASHBOARDS_DIR)/*.json" ]; then \
+		echo "Error: no rendered dashboard JSON files found in $(MIXIN_DASHBOARDS_DIR)"; \
+		exit 1; \
+	fi
+	"mkdir" -p dist
+	cd operations/alloy-mixin/rendered && zip -r "../../../$(MIXIN_DASHBOARDS_ARCHIVE)" dashboards
 
 #
 # Alloy release binaries

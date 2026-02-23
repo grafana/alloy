@@ -35,24 +35,13 @@ find dist/ -type f \
   -name 'alloy-installer-windows-*.exe' \
   -exec zip -j "{}.zip" "{}" \;
 
-# Package rendered Alloy mixin dashboards as a release artifact.
-MIXIN_DASHBOARDS_DIR='operations/alloy-mixin/rendered/dashboards'
+# Verify rendered Alloy mixin dashboards archive exists.
 MIXIN_DASHBOARDS_ARCHIVE="dist/alloy-mixin-dashboards-${RELEASE_TAG}.zip"
 
-if [ ! -d "${MIXIN_DASHBOARDS_DIR}" ]; then
-  echo "Error: expected rendered dashboards in ${MIXIN_DASHBOARDS_DIR}"
+if [ ! -f "${MIXIN_DASHBOARDS_ARCHIVE}" ]; then
+  echo "Error: expected mixin dashboards archive ${MIXIN_DASHBOARDS_ARCHIVE}. Run 'make dist-alloy-mixin-zip RELEASE_TAG=${RELEASE_TAG}' first."
   exit 1
 fi
-
-shopt -s nullglob
-dashboard_files=("${MIXIN_DASHBOARDS_DIR}"/*.json)
-shopt -u nullglob
-if [ ${#dashboard_files[@]} -eq 0 ]; then
-  echo "Error: no rendered dashboard JSON files found in ${MIXIN_DASHBOARDS_DIR}"
-  exit 1
-fi
-
-pushd operations/alloy-mixin/rendered && zip -r "../../../${MIXIN_DASHBOARDS_ARCHIVE}" dashboards && popd
 
 # Generate SHA256 checksums for all release assets.
 pushd dist && sha256sum -- * > SHA256SUMS && popd
