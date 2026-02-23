@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.13.2](https://github.com/grafana/alloy/compare/v1.13.1...v1.13.2) (2026-02-23)
+
+
+### Bug Fixes 🐛
+
+* Expose missing `otelcol.processor.tail_sampling` options [backport] ([#5614](https://github.com/grafana/alloy/issues/5614)) ([3225ea3](https://github.com/grafana/alloy/commit/3225ea38da1cbf31f065cc5da0b1ee0645eefa15))
+* **mixin:** Add zipped dashboards as a release artifact [backport] ([#5625](https://github.com/grafana/alloy/issues/5625)) ([37ff20f](https://github.com/grafana/alloy/commit/37ff20fd3074869adc57420d7f88a6c9386898d6))
+* **profiler:** Backport Go 1.26 gopclntab textStart fix ([#5572](https://github.com/grafana/alloy/issues/5572)) ([5ca05c9](https://github.com/grafana/alloy/commit/5ca05c9d69ebb3ef3b4f9cfce5585a90e4d4432c))
+* **prometheus.exporter.postgres:** Update version of the exporter fork to fix pg_settings ([#5574](https://github.com/grafana/alloy/issues/5574)) ([62a52f8](https://github.com/grafana/alloy/commit/62a52f8537cd15c9cf1a329c4c35f32f86316740))
+* **pyroscope.ebpf:** Backport dotnet nibble map fix ([#5553](https://github.com/grafana/alloy/issues/5553)) ([6c62760](https://github.com/grafana/alloy/commit/6c62760e6121b1f2c6c75276f7ee6f7f7055bd5e))
+
 ## [1.13.1](https://github.com/grafana/alloy/compare/v1.13.0...v1.13.1) (2026-02-13)
 
 
