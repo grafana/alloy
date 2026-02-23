@@ -39,7 +39,7 @@ find dist/ -type f \
 MIXIN_DASHBOARDS_ARCHIVE="dist/alloy-mixin-dashboards-${RELEASE_TAG}.zip"
 
 if [ ! -f "${MIXIN_DASHBOARDS_ARCHIVE}" ]; then
-  echo "Error: expected mixin dashboards archive ${MIXIN_DASHBOARDS_ARCHIVE}. Run 'make dist-alloy-mixin-zip RELEASE_TAG=${RELEASE_TAG}' first."
+  echo "Error: expected mixin dashboards archive ${MIXIN_DASHBOARDS_ARCHIVE}. Run 'RELEASE_TAG=${RELEASE_TAG} make dist-alloy-mixin-zip' first."
   exit 1
 fi
 

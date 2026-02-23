@@ -257,7 +257,9 @@ jobs:
         path: dist
 
     - name: Package Alloy mixin dashboards
-      run: make dist-alloy-mixin-zip RELEASE_TAG=${{ github.event.release.tag_name }}
+      run: make dist-alloy-mixin-zip
+      env:
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
 
     - name: Publish release artifacts
       run: ./tools/publish-release-artifacts.sh
