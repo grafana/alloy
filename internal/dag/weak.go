@@ -31,7 +31,6 @@ func WeaklyConnectedComponents(g *Graph, f FilterFunc) [][]Node {
 			component = make([]Node, 0)
 		)
 
-		// BFS from n following both outgoing and incoming edges.
 		visited.Add(n)
 		for len(queue) > 0 {
 			curr := queue[0]
