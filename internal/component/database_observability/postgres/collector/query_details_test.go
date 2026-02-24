@@ -500,6 +500,7 @@ func TestQueryDetails(t *testing.T) {
 			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
 				CollectInterval: time.Second,
+				StatementsLimit: 100,
 				EntryHandler:    lokiClient,
 				TableRegistry:   tc.tableRegistry,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -507,7 +508,7 @@ func TestQueryDetails(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"queryid",
@@ -562,13 +563,14 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
+			StatementsLimit: 100,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid", // not enough columns
@@ -576,7 +578,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -625,13 +627,14 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
+			StatementsLimit: 100,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -684,15 +687,16 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
+			StatementsLimit: 100,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"queryid",
@@ -904,6 +908,7 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 	collector, err := NewQueryDetails(QueryDetailsArguments{
 		DB:               db,
 		CollectInterval:  time.Second,
+		StatementsLimit:  100,
 		ExcludeDatabases: []string{"excluded_database"},
 		EntryHandler:     lokiClient,
 		Logger:           log.NewLogfmtLogger(os.Stderr),
@@ -911,7 +916,7 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, collector)
 
-	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause([]string{"excluded_database"}), "")).WithoutArgs().RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause([]string{"excluded_database"}), "", 100)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
 			sqlmock.NewRows([]string{
 				"queryid",
@@ -959,6 +964,7 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	collector, err := NewQueryDetails(QueryDetailsArguments{
 		DB:              db,
 		CollectInterval: time.Second,
+		StatementsLimit: 100,
 		ExcludeUsers:    []string{"excluded_user"},
 		EntryHandler:    lokiClient,
 		Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -967,7 +973,7 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	require.NotNil(t, collector)
 
 	expectedExcludedUsersClause := buildExcludedUsersClause([]string{"excluded_user"}, "pg_get_userbyid(pg_stat_statements.userid)")
-	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, expectedExcludedUsersClause)).WithoutArgs().RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, expectedExcludedUsersClause, 100)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
 			sqlmock.NewRows([]string{
 				"queryid",
