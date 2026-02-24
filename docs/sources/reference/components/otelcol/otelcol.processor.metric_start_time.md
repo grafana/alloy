@@ -190,7 +190,7 @@ otelcol.exporter.otlphttp "production" {
 }
 ```
 
-### Using subtract_initial_point strategy
+### Using `subtract_initial_point` strategy
 
 This example uses the `subtract_initial_point` strategy, which preserves cumulative semantics and produces correct rates:
 
@@ -216,9 +216,9 @@ otelcol.exporter.otlphttp "production" {
 }
 ```
 
-### Using start_time_metric strategy with custom regex
+### Use a `start_time_metric` strategy with a custom regular expression
 
-This example uses the `start_time_metric` strategy with a custom regex to find the start time metric:
+This example uses the `start_time_metric` strategy with a custom regular expression to find the start time metric:
 
 ```alloy
 otelcol.receiver.prometheus "default" {
