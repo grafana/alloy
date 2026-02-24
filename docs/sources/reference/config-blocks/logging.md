@@ -26,11 +26,11 @@ logging {
 You can use the following arguments with `logging`:
 
 | Name          | Type                 | Description                                                                 | Default    | Required |
-| ------------- | -------------------- | --------------------------------------------------------------------------- | ---------- | -------- |
-| `format`      | `string`             | Format to use for writing log lines                                         | `"logfmt"` | no       |
-| `level`       | `string`             | Level at which log lines should be written                                  | `"info"`   | no       |
-| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to                                    | `[]`       | no       |
+| ------------- | -------------------- | ---------------------------------------------------------------------------- | ---------- | -------- |
 | `destination` | `string`             | Primary log destination.                                                    | `"stderr"` | no       |
+| `format`      | `string`             | Format to use for writing log lines.                                         | `"logfmt"` | no       |
+| `level`       | `string`             | Level at which log lines should be written.                                 | `"info"`   | no       |
+| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.                                    | `[]`       | no       |
 
 ### `level`
 
@@ -58,7 +58,7 @@ This, for example can be the export of a `loki.write` component to send log entr
 The following strings are recognized as valid log destinations:
 
 * `"stderr"`: Write logs to `stderr`.
-* `"windows_event_log"` (Windows only): Write logs to the Windows Event Log under the "Alloy" source.
+* `"windows_event_log"`:  Windows only. Write logs to the Windows Event Log under the "Alloy" source.
 
 When you run {{< param "PRODUCT_NAME" >}} as a Windows service, logs are written as event logs even if `destination` is set to `"stderr"`.
 
