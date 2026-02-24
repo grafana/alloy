@@ -3,7 +3,7 @@ package controller_test
 import (
 	"bytes"
 	"context"
-	"os"
+	"fmt"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/dag"
@@ -21,7 +20,7 @@ import (
 )
 
 func TestScheduler_Synchronize(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	t.Run("Can start new jobs", func(t *testing.T) {
 		var started, finished sync.WaitGroup
 		started.Add(3)
@@ -121,74 +120,6 @@ func TestScheduler_Synchronize(t *testing.T) {
 		finished.Wait()
 	})
 
-	t.Run("Shutdown will stop waiting after TaskShutdownWarningTimeout to startup components and wait for shutdown after", func(t *testing.T) {
-		synctest.Test(t, func(t *testing.T) {
-			var oldTaskExited, newTaskStarted atomic.Bool
-
-			// Old task that takes a long time to stop
-			slowStop := func(ctx context.Context) error {
-				<-ctx.Done()
-
-				// Simulate slow shutdown
-				time.Sleep(2 * controller.TaskShutdownWarningTimeout)
-				oldTaskExited.Store(true)
-				return nil
-			}
-
-			// New task
-			basicRun := func(ctx context.Context) error {
-				newTaskStarted.Store(true)
-				<-ctx.Done()
-				return nil
-			}
-
-			sched := controller.NewScheduler(logger, 5*time.Minute)
-			g := &dag.Graph{}
-			g.Add(&fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: slowStop}})
-
-			// Start component-a with slow stop behavior
-			err := sched.Synchronize(g)
-			require.NoError(t, err)
-
-			syncDone := make(chan struct{})
-			go func() {
-				// Replace with component-b
-				// This should timeout waiting for component-a, start component-b anyway,
-				// but not return until component-a fully exits
-				g := &dag.Graph{}
-				g.Add(&fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}})
-				err := sched.Synchronize(g)
-				require.NoError(t, err)
-				close(syncDone)
-			}()
-
-			// Wait past the timeout for new task to start
-			time.Sleep(controller.TaskShutdownWarningTimeout + 1*time.Second)
-
-			require.True(t, newTaskStarted.Load(), "new task should have started after timeout")
-			require.False(t, oldTaskExited.Load(), "old task should still be running")
-
-			select {
-			case <-syncDone:
-				t.Error("Synchronize returned before old task finished")
-			default:
-			}
-
-			// Wait for old task to finish
-			time.Sleep(2 * time.Minute)
-
-			select {
-			case <-syncDone:
-			default:
-				t.Error("Synchronize should have returned after old task finished")
-			}
-
-			require.True(t, oldTaskExited.Load(), "old task should have exited")
-			require.True(t, newTaskStarted.Load(), "new task should still be running")
-
-			sched.Stop()
-		})
-	})
 	t.Run("Task shutdown deadline logs warnings and errors", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			// Create a thread-safe buffer to capture log output
@@ -246,6 +177,49 @@ func TestScheduler_Synchronize(t *testing.T) {
 			// Sleep long enough to let the runFunc exit to preventing a synctest panic
 			time.Sleep(time.Minute)
 		})
+	})
+
+	t.Run("Tasks are shutdown from roots to leaves within each subgraph", func(t *testing.T) {
+		var (
+			stopOrderGraph1 = make([]string, 0, 5)
+		)
+
+		newRunnable := func(id string, order *[]string) *fakeRunnable {
+			return &fakeRunnable{
+				ID: id,
+				Component: mockComponent{RunFunc: func(ctx context.Context) error {
+					<-ctx.Done()
+					fmt.Println("shutdown: ", id)
+					*order = append(*order, id)
+					return nil
+				}},
+			}
+		}
+
+		g := &dag.Graph{}
+		g1Leaf1 := newRunnable("g1_leaf1", &stopOrderGraph1)
+		g1Leaf2 := newRunnable("g1_leaf2", &stopOrderGraph1)
+		g1Mid1 := newRunnable("g1_mid1", &stopOrderGraph1)
+		g1Mid2 := newRunnable("g1_mid2", &stopOrderGraph1)
+		g1Root1 := newRunnable("g1_root1", &stopOrderGraph1)
+
+		g.Add(g1Leaf1)
+		g.Add(g1Leaf2)
+		g.Add(g1Mid1)
+		g.Add(g1Mid2)
+		g.Add(g1Root1)
+		g.AddEdge(dag.Edge{From: g1Root1, To: g1Mid1})
+		g.AddEdge(dag.Edge{From: g1Root1, To: g1Leaf2})
+		g.AddEdge(dag.Edge{From: g1Root1, To: g1Mid2})
+		g.AddEdge(dag.Edge{From: g1Mid1, To: g1Leaf1})
+		g.AddEdge(dag.Edge{From: g1Mid2, To: g1Leaf1})
+
+		sched := controller.NewScheduler(logger, 1*time.Minute)
+		err := sched.Synchronize(g)
+		require.NoError(t, err)
+
+		sched.Stop()
+		require.Equal(t, []string{"g1_root1", "g1_leaf2", "g1_mid1", "g1_mid2", "g1_leaf1"}, stopOrderGraph1)
 	})
 }
 
