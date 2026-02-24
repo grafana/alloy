@@ -147,33 +147,6 @@ The `operator` argument should be one of the following strings:
 
 The `values` argument must not be provided when `operator` is set to `"Exists"` or `"DoesNotExist"`.
 
-### `alertmanagerconfig_matcher`
-
-The `alertmanagerconfig_matcher` block describes the strategy used by AlertmanagerConfig objects to match alerts in the routes and inhibition rules.
-
-Depending on how this block is configured, the final Alertmanager config will have different [matchers][] in its [route][] section.
-
-[matchers]: https://prometheus.io/docs/alerting/latest/configuration/#matcher
-[route]: https://prometheus.io/docs/alerting/latest/configuration/#route
-
-The following arguments are supported:
-
-| Name                     | Type     | Description                                                                                                          | Default         | Required                                                              |
-| ------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------- |
-| `strategy`               | `string` | Strategy for adding matchers to AlertmanagerConfig CRDs.                                                             | `"OnNamespace"` | no                                                                    |
-| `alertmanager_namespace` | `string` | Namespace to use when `alertmanagerconfig_matcher_strategy` is set to `"OnNamespaceExceptForAlertmanagerNamespace"`. |                 | only when `strategy` is `"OnNamespaceExceptForAlertmanagerNamespace"` |
-
-The `strategy` argument should be one of the following strings:
-
-* `"OnNamespace"`: Each AlertmanagerConfig object only matches alerts that have the `namespace` label set to the same namespace as the AlertmanagerConfig object.
-* `"OnNamespaceExceptForAlertmanagerNamespace"`: The same as `"OnNamespace"`, except for AlertmanagerConfigs in the namespace given by `alertmanager_namespace`, which apply to all alerts.
-* `"None"`: Every AlertmanagerConfig object applies to all alerts
-
-`strategy` is similar to the [AlertmanagerConfigMatcherStrategy][alertmanager-config-matcher-strategy] in Prometheus Operator, but it is configured in {{< param "PRODUCT_NAME" >}} instead of in an Alertmanager CRD.
-{{< param "PRODUCT_NAME" >}} doesn't require an Alertmanager CRD.
-
-[alertmanager-config-matcher-strategy]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.AlertmanagerConfigMatcherStrategy
-
 ### `oauth2`
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
