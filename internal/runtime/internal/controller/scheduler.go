@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -30,9 +31,8 @@ type Scheduler struct {
 	logger               log.Logger
 	taskShutdownDeadline time.Duration
 
-	tasksMut      sync.Mutex
-	tasks         map[string]*task
-	stoppingOrder []string
+	tasksMut sync.Mutex
+	tasks    map[string]*task
 }
 
 // NewScheduler creates a new Scheduler. Call Synchronize to manage the set of
@@ -65,48 +65,33 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 //
 // Synchronize is not goroutine safe and should not be called concurrently.
 func (s *Scheduler) Synchronize(g *dag.Graph) error {
-	var (
-		roots            []dag.Node
-		newRunnables     = make(map[string]RunnableNode, 0)
-		newStoppingOrder = make([]string, len(newRunnables))
-	)
+	desiredTasks := desiredTasksFromGraph(g)
 
-	_ = dag.WalkTopological(g, g.Roots(), func(n dag.Node) error {
-		roots = append(roots, n)
-		return nil
-	})
-
-	for _, r := range roots {
-		_ = dag.Walk(g, []dag.Node{r}, func(n dag.Node) error {
-			if runnable, ok := n.(RunnableNode); ok {
-				id := n.NodeID()
-				newRunnables[id] = runnable
-				newStoppingOrder = append(newStoppingOrder, id)
-			}
-			return nil
-		})
-	}
-
-	var (
-		toStop = make([]*task, 0, len(newRunnables))
-	)
-
+	toStop := make(map[int][]*task)
 	s.tasksMut.Lock()
-	for _, id := range s.stoppingOrder {
-		if _, keep := newRunnables[id]; !keep {
-			if task, ok := s.tasks[id]; ok {
-				toStop = append(toStop, task)
-			}
+	for id, t := range s.tasks {
+		if dt, keep := desiredTasks[id]; keep {
+			t.groupID = dt.groupID
+			t.rank = dt.rank
+			continue
 		}
+		toStop[t.groupID] = append(toStop[t.groupID], t)
 	}
 	s.tasksMut.Unlock()
 
+	var stopping sync.WaitGroup
+	for _, group := range toStop {
+		stopping.Go(func() {
+			for _, t := range stopOrder(group) {
+				t.Stop()
+			}
+		})
+	}
+
+	// Wrapping the waitgroup with a channel will allow us to wait with a timeout.
 	doneStopping := make(chan struct{})
 	go func() {
-		for _, t := range toStop {
-			// NOTE: we cannot hold lock when calling Stop because onDone will mutate running tasks.
-			t.Stop()
-		}
+		stopping.Wait()
 		close(doneStopping)
 	}()
 
@@ -120,39 +105,48 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 	}
 
 	s.tasksMut.Lock()
-	s.stoppingOrder = newStoppingOrder
+
+	toStart := make(map[int][]*task)
+
 	// Launch new runnables that have appeared.
-	for id, r := range newRunnables {
+	for id, t := range desiredTasks {
 		if _, exist := s.tasks[id]; exist {
 			continue
 		}
 
 		level.Debug(s.logger).Log("msg", "Starting task", "id", id)
-		var (
-			nodeID      = id
-			newRunnable = r
-		)
 
 		s.running.Add(1)
-		s.tasks[nodeID] = newTask(taskOptions{
-			runnable: newRunnable,
+		task := newTask(t.groupID, t.rank, taskOptions{
+			runnable: t.runnable,
 			onDone: func(err error) {
 				defer s.running.Done()
 				if err != nil {
-					level.Error(s.logger).Log("msg", "node exited with error", "node", nodeID, "err", err)
+					level.Error(s.logger).Log("msg", "node exited with error", "node", id, "err", err)
 				} else {
-					level.Info(s.logger).Log("msg", "node exited without error", "node", nodeID)
+					level.Info(s.logger).Log("msg", "node exited without error", "node", id)
 				}
 
 				s.tasksMut.Lock()
 				defer s.tasksMut.Unlock()
-				delete(s.tasks, nodeID)
+				delete(s.tasks, id)
 			},
-			logger:               log.With(s.logger, "taskID", nodeID),
+			logger:               log.With(s.logger, "taskID", id),
 			taskShutdownDeadline: s.taskShutdownDeadline,
 		})
+
+		s.tasks[id] = task
+		toStart[task.groupID] = append(toStart[task.groupID], task)
 	}
 	s.tasksMut.Unlock()
+
+	for _, group := range toStart {
+		go func() {
+			for _, t := range startOrder(group) {
+				t.Start()
+			}
+		}()
+	}
 
 	// If we timed out, wait for stopping tasks to fully exit before returning.
 	// Tasks shutting down cannot fully complete their shutdown until the taskMut
@@ -168,16 +162,20 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 // exited.
 func (s *Scheduler) Stop() {
 	s.tasksMut.Lock()
-	toStop := make([]*task, 0, len(s.tasks))
-	for _, id := range s.stoppingOrder {
-		if task, ok := s.tasks[id]; ok {
-			toStop = append(toStop, task)
-		}
+
+	toStop := make(map[int][]*task)
+	for _, t := range s.tasks {
+		toStop[t.groupID] = append(toStop[t.groupID], t)
 	}
 	s.tasksMut.Unlock()
 
-	for _, t := range toStop {
-		t.Stop()
+	for _, group := range toStop {
+		go func() {
+			// NOTE: we cannot hold lock when calling Stop because onDone will mutate running tasks.
+			for _, t := range stopOrder(group) {
+				t.Stop()
+			}
+		}()
 	}
 
 	s.running.Wait()
@@ -185,6 +183,9 @@ func (s *Scheduler) Stop() {
 
 // task is a scheduled runnable.
 type task struct {
+	groupID int
+	rank    int
+
 	ctx      context.Context
 	cancel   context.CancelFunc
 	exited   chan struct{}
@@ -200,18 +201,22 @@ type taskOptions struct {
 }
 
 // newTask creates and starts a new task.
-func newTask(opts taskOptions) *task {
-	ctx, cancel := context.WithCancel(context.Background())
-
+func newTask(groupID, rank int, opts taskOptions) *task {
 	t := &task{
-		ctx:    ctx,
-		cancel: cancel,
-		exited: make(chan struct{}),
-		opts:   opts,
+		groupID: groupID,
+		rank:    rank,
+		opts:    opts,
 	}
 
+	t.ctx, t.cancel = context.WithCancel(context.Background())
+	t.exited = make(chan struct{})
+
+	return t
+}
+
+func (t *task) Start() {
 	go func() {
-		err := opts.runnable.Run(t.ctx)
+		err := t.opts.runnable.Run(t.ctx)
 		// NOTE: make sure we call cancel here so if the runnable
 		// exit unexpectedly we clean up resources.
 		t.cancel()
@@ -220,7 +225,6 @@ func newTask(opts taskOptions) *task {
 			t.opts.onDone(err)
 		})
 	}()
-	return t
 }
 
 func (t *task) Stop() {
@@ -247,4 +251,48 @@ func (t *task) Stop() {
 			return // Task took too long to exit, don't wait.
 		}
 	}
+}
+
+type desiredTask struct {
+	rank     int
+	groupID  int
+	runnable RunnableNode
+}
+
+func desiredTasksFromGraph(g *dag.Graph) map[string]desiredTask {
+	var (
+		desiredTasks = make(map[string]desiredTask, g.Len())
+		components   = dag.WeaklyConnectedComponents(g, dag.FilterLeavesFunc)
+	)
+
+	for groupID, leaves := range components {
+		var rank int
+		_ = dag.WalkTopological(g, leaves, func(n dag.Node) error {
+			if runnable, ok := n.(RunnableNode); ok {
+				desiredTasks[runnable.NodeID()] = desiredTask{
+					rank:     rank,
+					groupID:  groupID,
+					runnable: runnable,
+				}
+				rank++
+			}
+			return nil
+		})
+	}
+
+	return desiredTasks
+}
+
+func startOrder(tasks []*task) []*task {
+	slices.SortFunc(tasks, func(a, b *task) int {
+		return a.rank - b.rank
+	})
+	return tasks
+}
+
+func stopOrder(tasks []*task) []*task {
+	slices.SortFunc(tasks, func(a, b *task) int {
+		return b.rank - a.rank
+	})
+	return tasks
 }
