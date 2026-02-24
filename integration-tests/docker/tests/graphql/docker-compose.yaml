@@ -1,0 +1,29 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    command:
+      [
+        "run",
+        "/etc/alloy/config.alloy",
+        "--server.http.listen-addr",
+        "0.0.0.0:12345",
+        "--stability.level",
+        "experimental",
+        "--feature.graphql.enabled"
+      ]
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "12365:12345"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/12345"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+      - alloy-integration-tests_integration-tests
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true
