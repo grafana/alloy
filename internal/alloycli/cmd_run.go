@@ -164,12 +164,15 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	if runtime.GOOS == "windows" {
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
-	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 
+	// Feature flags
+	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	cmd.Flags().BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
+	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
 	addDeprecatedFlags(cmd)
 	return cmd
 }
@@ -201,10 +204,13 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
-	enableCommunityComps         bool
 	disableSupportBundle         bool
 	windowsPriority              string
-	taskShutdownDeadline         time.Duration
+	// Feature flags
+	taskShutdownDeadline    time.Duration
+	enableCommunityComps    bool
+	enableGraphQL           bool
+	enableGraphQLPlayground bool
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -361,9 +367,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	liveDebuggingService := livedebugging.New()
 
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix:        fr.uiPrefix,
-		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
-		Logger:          log.With(l, "service", "ui"),
+		UIPrefix:                fr.uiPrefix,
+		CallbackManager:         liveDebuggingService.Data().(livedebugging.CallbackManager),
+		Logger:                  log.With(l, "service", "ui"),
+		EnableGraphQL:           fr.enableGraphQL,
+		EnableGraphQLPlayground: fr.enableGraphQLPlayground,
 	})
 
 	otelService := otel_service.New(l)
