@@ -1865,7 +1865,7 @@ The `action_on_duplicate_timestamp` field defines what to do when parsing succee
 
 The supported actions are:
 
-* fudge (default): Set the entry timestamp to the last emitted timestamp plus 1 nanosecond so that message order is preserved in Loki and Grafana.
+* fudge: Default. Set the entry timestamp to the last emitted timestamp plus 1 nanosecond so that message order is preserved in Loki and Grafana.
 * keep: Leave the parsed timestamp as-is; duplicate timestamps may appear out of order downstream.
 
 The following stage fetches the `time` value from the shared values map, parses it as a RFC3339 format, and sets it as the log entry's timestamp.
