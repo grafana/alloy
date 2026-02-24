@@ -3,7 +3,6 @@ package controller_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -96,10 +95,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 				return nil
 			}
 			defer lock.Unlock()
-
-			fmt.Println("Shared running")
 			<-ctx.Done()
-			fmt.Println("Shared done")
 			return nil
 		}
 
@@ -110,7 +106,6 @@ func TestScheduler_Synchronize(t *testing.T) {
 
 		sched.Synchronize(g)
 		started.Wait()
-		fmt.Println("First done")
 
 		started.Add(1)
 		finished.Add(1)
@@ -118,7 +113,6 @@ func TestScheduler_Synchronize(t *testing.T) {
 		g.Add(&fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}})
 		g.Add(&fakeRunnable{ID: "component-c", Component: mockComponent{RunFunc: sharedResourceRun}})
 		sched.Synchronize(g)
-		fmt.Println("Second done")
 		started.Wait()
 		finished.Wait()
 
