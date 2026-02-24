@@ -91,24 +91,9 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 		})
 	}
 
-	// Wrapping the waitgroup with a channel will allow us to wait with a timeout.
-	doneStopping := make(chan struct{})
-	go func() {
-		stopping.Wait()
-		close(doneStopping)
-	}()
-
-	stoppingTimedOut := false
-	select {
-	case <-doneStopping:
-		// All tasks stopped successfully within timeout.
-	case <-time.After(TaskShutdownWarningTimeout):
-		level.Warn(s.logger).Log("msg", "Some tasks are taking longer than expected to shutdown, proceeding with new tasks")
-		stoppingTimedOut = true
-	}
+	stopping.Wait()
 
 	s.tasksMut.Lock()
-
 	toStart := make(map[int][]*task)
 
 	// Launch new runnables that have appeared.
@@ -143,21 +128,17 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 	}
 	s.tasksMut.Unlock()
 
+	var starting sync.WaitGroup
+
 	for _, group := range toStart {
-		go func() {
+		starting.Go(func() {
 			for _, t := range startOrder(group) {
 				t.Start()
 			}
-		}()
+		})
 	}
 
-	// If we timed out, wait for stopping tasks to fully exit before returning.
-	// Tasks shutting down cannot fully complete their shutdown until the taskMut
-	// lock is released.
-	if stoppingTimedOut {
-		<-doneStopping
-	}
-
+	starting.Wait()
 	return nil
 }
 
