@@ -1,0 +1,36 @@
+name: Check generate-docs-args
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run generate-docs-args
+        run: make generate-docs-args
+
+      - name: Check for generated docs changes
+        run: |
+          if ! git diff --exit-code -- docs/sources/shared/generated; then
+            echo "docs/sources/shared/generated is out of sync. Run 'make generate-docs-args' and commit the changes." >&2
+            exit 1
+          fi
