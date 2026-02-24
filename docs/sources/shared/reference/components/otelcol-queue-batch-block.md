@@ -7,7 +7,7 @@ headless: true
 Batching is disabled by default.
 To enable it, explicitly include `batch {}` in your Alloy configuration.
 You do not need to include a `batch {}` block in your `otelcol.exporter` if you already use a `otelcol.processor.batch` component,
-although batching in the exporter is the prefered method because it is more flexible.
+although batching in the exporter is the preferred method because it is more flexible.
 
 The following arguments are supported:
 

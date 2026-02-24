@@ -4,7 +4,7 @@ title: Grafana Alloy
 description: Grafana Alloy is a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: v1.13.1 # x-release-please-version
+  ALLOY_RELEASE: v1.13.2 # x-release-please-version
   OTEL_VERSION: v0.142.0
   PROM_WIN_EXP_VERSION: v0.31.3
   SNMP_VERSION: v0.29.0
@@ -65,7 +65,7 @@ Choosing the right tools to collect, process, and export telemetry data can be a
 The broad range of telemetry you need to process and the collectors you choose can vary widely depending on your observability goals.
 In addition, you face the challenge of addressing the constantly evolving needs of your observability strategy.
 For example, you may initially only need application observability, but you then discover that you must add infrastructure observability.
-Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and potential errors in their obervability strategy.
+Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and potential errors in their observability strategy.
 
 **All signals, whether application, infrastructure, or both**
 

@@ -397,11 +397,13 @@ func (c *Client) WaitForCheckRun(ctx context.Context, ref, checkName string) err
 		}
 		if found == nil {
 			// Check not yet reported; wait and retry
+			fmt.Printf("⏳ Check %q not yet reported; waiting and retrying...\n", checkName)
 			time.Sleep(20 * time.Second)
 			continue
 		}
 		status := found.GetStatus()
 		if status != "completed" {
+			fmt.Printf("⏳ Check %q not yet completed; waiting and retrying...\n", checkName)
 			time.Sleep(20 * time.Second)
 			continue
 		}
