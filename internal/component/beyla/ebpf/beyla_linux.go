@@ -582,6 +582,110 @@ func (args Filters) Convert() filter.AttributesConfig {
 	return filters
 }
 
+func (args InjectorWebhook) Convert() beyla.WebhookConfig {
+	w := beyla.DefaultConfig().Injector.Webhook
+	w.Enable = args.Enable
+	if args.CertPath != "" {
+		w.CertPath = args.CertPath
+	}
+	if args.KeyPath != "" {
+		w.KeyPath = args.KeyPath
+	}
+	if args.Port != nil {
+		w.Port = *args.Port
+	}
+	if args.Timeout != nil {
+		w.Timeout = *args.Timeout
+	}
+
+	return w
+}
+
+func (args InjectorSDKExport) Convert() beyla.SDKExport {
+	w := beyla.DefaultConfig().Injector.Export
+	if args.Traces != nil {
+		w.Traces = args.Traces
+	}
+	if args.Metrics != nil {
+		w.Metrics = args.Metrics
+	}
+	if args.Logs != nil {
+		w.Logs = args.Logs
+	}
+
+	return w
+}
+
+func (args InjectorSDKResource) Convert() beyla.SDKResource {
+	w := beyla.DefaultConfig().Injector.Resources
+	if args.Attributes != nil {
+		w.Attributes = args.Attributes
+	}
+	if args.AddK8sUIDAttributes != nil {
+		w.AddK8sUIDAttributes = *args.AddK8sUIDAttributes
+	}
+	if args.UseLabelsForResourceAttributes != nil {
+		w.UseLabelsForResourceAttributes = *args.UseLabelsForResourceAttributes
+	}
+
+	return w
+}
+
+func (args Injector) Convert() (beyla.SDKInject, error) {
+	i := beyla.DefaultConfig().Injector
+
+	if len(args.Instrument) > 0 {
+		instrument, err := args.Instrument.ConvertGlob()
+		if err != nil {
+			return i, err
+		}
+		i.Instrument = instrument
+	}
+
+	i.Webhook = args.Webhook.Convert()
+	i.Export = args.Export.Convert()
+	i.Resources = args.Resources.Convert()
+
+	if args.DefaultSampler.Name != "" || args.DefaultSampler.Arg != "" {
+		s := args.DefaultSampler.Convert()
+		i.DefaultSampler = &s
+	}
+
+	if args.NoAutoRestart != nil {
+		i.NoAutoRestart = *args.NoAutoRestart
+	}
+
+	if args.HostMountPath != "" {
+		i.HostMountPath = args.HostMountPath
+	}
+
+	if args.HostPathVolumeDir != "" {
+		i.HostPathVolumeDir = args.HostPathVolumeDir
+	}
+
+	if args.SDKPkgVersion != "" {
+		i.SDKPkgVersion = args.SDKPkgVersion
+	}
+
+	if args.ManageSDKVersions != nil {
+		i.ManageSDKVersions = *args.ManageSDKVersions
+	}
+
+	if len(args.Propagators) > 0 {
+		i.Propagators = args.Propagators
+	}
+
+	if len(args.EnabledSDKs) > 0 {
+		i.EnabledSDKs = args.EnabledSDKs
+	}
+
+	if args.Debug != nil {
+		i.Debug = *args.Debug
+	}
+
+	return i, nil
+}
+
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:       opts,
@@ -787,6 +891,11 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 
 	cfg.Filters = a.Filters.Convert()
 	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
+
+	cfg.Injector, err = a.Injector.Convert()
+	if err != nil {
+		return nil, err
+	}
 
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging

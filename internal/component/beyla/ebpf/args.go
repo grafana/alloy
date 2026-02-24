@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	servicesextra "github.com/grafana/beyla/v3/pkg/services"
 )
 
 // Arguments configures the Beyla component.
@@ -24,6 +25,7 @@ type Arguments struct {
 	EBPF           EBPF                       `alloy:"ebpf,block,optional"`
 	Filters        Filters                    `alloy:"filters,block,optional"`
 	Output         *otelcol.ConsumerArguments `alloy:"output,block,optional"`
+	Injector       Injector                   `alloy:"injector,block,optional"`
 }
 
 type Exports struct {
@@ -160,6 +162,50 @@ type EBPF struct {
 type Filters struct {
 	Application AttributeFamilies `alloy:"application,block,optional"`
 	Network     AttributeFamilies `alloy:"network,block,optional"`
+}
+
+type Injector struct {
+	Instrument        Services                           `alloy:"instrument,block,optional"`
+	Webhook           InjectorWebhook                    `alloy:"webhook,block,optional"`
+	NoAutoRestart     *bool                              `alloy:"disable_auto_restart,block,optional"`
+	HostPathVolumeDir string                             `alloy:"host_path_volume,block,optional"`
+	SDKPkgVersion     string                             `alloy:"sdk_package_version,block,optional"`
+	HostMountPath     string                             `alloy:"host_mount_path,block,optional"`
+	ManageSDKVersions *bool                              `alloy:"manage_sdk_versions,block,optional"`
+	DefaultSampler    SamplerConfig                      `alloy:"sampler,block,optional"`
+	Propagators       []string                           `alloy:"propagators,block,optional"`
+	Export            InjectorSDKExport                  `alloy:"export,block,optional"`
+	Resources         InjectorSDKResource                `alloy:"resources,block,optional"`
+	EnabledSDKs       []servicesextra.InstrumentableType `alloy:"enabled_sdks,block,optional"`
+	Debug             *bool                              `alloy:"debug,block,optional"`
+}
+
+type InjectorWebhook struct {
+	Enable   bool           `alloy:"enable,block,optional"`
+	Port     *int           `alloy:"port,block,optional"`
+	CertPath string         `alloy:"cert_path,block,optional"`
+	KeyPath  string         `alloy:"key_path,block,optional"`
+	Timeout  *time.Duration `alloy:"timeout,block,optional"`
+}
+
+type InjectorSDKExport struct {
+	Traces  *bool `alloy:"traces,block,optional"`
+	Metrics *bool `alloy:"metrics,block,optional"`
+	Logs    *bool `alloy:"logs,block,optional"`
+}
+
+type InjectorSDKResource struct {
+	// Attributes defines attributes that are added to the resource.
+	// For example environment: dev
+	Attributes map[string]string `alloy:"attributes,block,optional"`
+	// AddK8sUIDAttributes defines whether K8s UID attributes should be collected (e.g. k8s.deployment.uid).
+	AddK8sUIDAttributes *bool `alloy:"add_k8s_attributes,block,optional"`
+	// UseLabelsForResourceAttributes defines whether to use common labels for resource attributes:
+	// Note: first entry wins:
+	//   - `app.kubernetes.io/instance` becomes `service.name`
+	//   - `app.kubernetes.io/name` becomes `service.name`
+	//   - `app.kubernetes.io/version` becomes `service.version`
+	UseLabelsForResourceAttributes *bool `alloy:"use_labels,block,optional"`
 }
 
 type AttributeFamilies []AttributeFamily
