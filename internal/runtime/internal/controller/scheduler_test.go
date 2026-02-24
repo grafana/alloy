@@ -3,7 +3,7 @@ package controller_test
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -180,46 +180,31 @@ func TestScheduler_Synchronize(t *testing.T) {
 	})
 
 	t.Run("Tasks are shutdown from roots to leaves within each subgraph", func(t *testing.T) {
-		var (
-			stopOrderGraph1 = make([]string, 0, 5)
-		)
+		var stopOrder []string
 
-		newRunnable := func(id string, order *[]string) *fakeRunnable {
-			return &fakeRunnable{
-				ID: id,
-				Component: mockComponent{RunFunc: func(ctx context.Context) error {
-					<-ctx.Done()
-					fmt.Println("shutdown: ", id)
-					*order = append(*order, id)
-					return nil
-				}},
-			}
+		edges := []edge{
+			{From: "g1_root1", To: "g1_mid1"}, {From: "g1_root1", To: "g1_leaf2"}, {From: "g1_root1", To: "g1_mid2"},
+			{From: "g1_mid1", To: "g1_leaf1"}, {From: "g1_mid2", To: "g1_leaf1"},
+			{From: "g2_root1", To: "g2_leaf1"},
 		}
 
-		g := &dag.Graph{}
-		g1Leaf1 := newRunnable("g1_leaf1", &stopOrderGraph1)
-		g1Leaf2 := newRunnable("g1_leaf2", &stopOrderGraph1)
-		g1Mid1 := newRunnable("g1_mid1", &stopOrderGraph1)
-		g1Mid2 := newRunnable("g1_mid2", &stopOrderGraph1)
-		g1Root1 := newRunnable("g1_root1", &stopOrderGraph1)
-
-		g.Add(g1Leaf1)
-		g.Add(g1Leaf2)
-		g.Add(g1Mid1)
-		g.Add(g1Mid2)
-		g.Add(g1Root1)
-		g.AddEdge(dag.Edge{From: g1Root1, To: g1Mid1})
-		g.AddEdge(dag.Edge{From: g1Root1, To: g1Leaf2})
-		g.AddEdge(dag.Edge{From: g1Root1, To: g1Mid2})
-		g.AddEdge(dag.Edge{From: g1Mid1, To: g1Leaf1})
-		g.AddEdge(dag.Edge{From: g1Mid2, To: g1Leaf1})
-
+		g := buildGraphFromEdges(edges, &stopOrder)
 		sched := controller.NewScheduler(logger, 1*time.Minute)
 		err := sched.Synchronize(g)
 		require.NoError(t, err)
-
 		sched.Stop()
-		require.Equal(t, []string{"g1_root1", "g1_leaf2", "g1_mid1", "g1_mid2", "g1_leaf1"}, stopOrderGraph1)
+
+		indexOf := func(slice []string, id string) int {
+			return slices.IndexFunc(slice, func(n string) bool {
+				return n == id
+			})
+		}
+
+		for _, e := range g.Edges() {
+			from := indexOf(stopOrder, e.From.NodeID())
+			to := indexOf(stopOrder, e.To.NodeID())
+			require.Less(t, from, to)
+		}
 	})
 }
 
@@ -262,4 +247,32 @@ func (sb *syncBuffer) String() string {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	return sb.buf.String()
+}
+
+func buildGraphFromEdges(edges []edge, stopOrder *[]string) *dag.Graph {
+	set := make(map[string]struct{})
+	for _, e := range edges {
+		set[e.From] = struct{}{}
+		set[e.To] = struct{}{}
+	}
+
+	nodes := make(map[string]*fakeRunnable, len(set))
+	for id := range set {
+		nodes[id] = &fakeRunnable{
+			ID: id,
+			Component: mockComponent{RunFunc: func(ctx context.Context) error {
+				<-ctx.Done()
+				*stopOrder = append(*stopOrder, id)
+				return nil
+			}},
+		}
+	}
+	g := &dag.Graph{}
+	for _, n := range nodes {
+		g.Add(n)
+	}
+	for _, e := range edges {
+		g.AddEdge(dag.Edge{From: nodes[e.From], To: nodes[e.To]})
+	}
+	return g
 }
