@@ -12,13 +12,15 @@ title: otelcol.auth.google
 
 # `otelcol.auth.google`
 
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 `otelcol.auth.google` exposes a `handler` that other `otelcol` components can use to authenticate requests using Google Application Default Credentials.
 
 This component only supports client authentication.
 
 The authorization tokens can be used by HTTP and gRPC based OpenTelemetry exporters.
 This component can fetch and refresh expired tokens automatically.
-Refer to the [Google Cloud Documentation](https://docs.cloud.google.com/docs/authentication/application-default-credentials) for more information about the Application Default Credentials.
+Refer to the [Google Cloud Documentation](https://docs.cloud.google.com/docs/authentication/application-default-credentials) for more information about Application Default Credentials.
 
 {{< admonition type="note" >}}
 `otelcol.auth.google` is a wrapper over the upstream OpenTelemetry Collector [`googleclientauth`][] extension.
@@ -41,14 +43,15 @@ otelcol.auth.google "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.google`:
 
-| Name                 | Type                | Description                                                                        | Default | Required |
-| -------------------- | ------------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
-| `project`            | `string`            | The project telemetry is sent to.                                                  | Project from Credentials | no      |
-| `quota_project`      | `string`            | The a project for quota and billing purposes.                                      | `project` | no       |
-| `token_type`         | `string`            | The type of token will be generated. One of `access_token`, or `id_token`          | `access_token` | no       |
-| `audience`           | `string`            | The audience claim used for generating ID token.                                   |         | no       |
-| `scopes`             | `list(string)`      | Requested permissions associated for the client.                                   | `[]`    | no       |
+| Name            | Type           | Description                                                        | Default        | Required |
+| --------------- | -------------- | ------------------------------------------------------------------ | -------------- | -------- |
+| `audience`      | `string`       | The audience claim used for generating an ID token.                |                | no       |
+| `project`       | `string`       | The project telemetry is sent to.                                  |                | no       |
+| `quota_project` | `string`       | A project for quota and billing purposes.                          |                | no       |
+| `scopes`        | `list(string)` | Requested permissions associated with the client.                  | `[]`           | no       |
+| `token_type`    | `string`       | The type of token to generate. One of `access_token` or `id_token` | `access_token` | no       |
 
+If `project` isn't set, {{< param "PRODUCT_NAME" >}} uses the project from the Application Default Credentials.
 
 ## Blocks
 
