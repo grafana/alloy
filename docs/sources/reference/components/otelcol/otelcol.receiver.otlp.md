@@ -48,7 +48,7 @@ The `otelcol.receiver.otlp` component doesn't support any arguments. You can con
 You can use the following blocks with `otelcol.receiver.otlp`:
 
 | Block                                                             | Description                                                                | Required |
-|-------------------------------------------------------------------|----------------------------------------------------------------------------|----------|
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                                | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state. | no       |
 | [`grpc`][grpc]                                                    | Configures the gRPC server to receive telemetry data.                      | no       |
@@ -56,11 +56,11 @@ You can use the following blocks with `otelcol.receiver.otlp`:
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
-| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
+| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                            | no       |
 | [`http`][http]                                                    | Configures the HTTP server to receive telemetry data.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                       | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                        | no       |
-| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
+| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                            | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` block.

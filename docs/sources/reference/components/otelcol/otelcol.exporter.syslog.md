@@ -85,7 +85,7 @@ You can use the following blocks with `otelcol.exporter.syslog`:
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]     | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`tls`][tls]                           | Configures TLS for a TCP connection.                                           | no       |
-| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS key_file.                                  | no       |
+| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS `key_file`.                                | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
