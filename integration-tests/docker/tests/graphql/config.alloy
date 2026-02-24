@@ -1,0 +1,11 @@
+logging {
+  level = "info"
+}
+
+prometheus.exporter.self "default" { }
+
+prometheus.scrape "self_metrics" {
+  targets    = prometheus.exporter.self.default.targets
+  forward_to = []
+  scrape_interval = "5s"
+}
