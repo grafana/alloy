@@ -397,6 +397,9 @@ func verifyNoGoroutineLeaks(t *testing.T) {
 		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"),
 		goleak.IgnoreTopFunction("go.opentelemetry.io/otel/sdk/trace.(*batchSpanProcessor).processQueue"),
 		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"), // related to TCP keep alive
+		// fsnotify backend goroutines can outlive test cancellation for a short time.
+		goleak.IgnoreAnyFunction("github.com/fsnotify/fsnotify.(*kqueue).readEvents"),
+		goleak.IgnoreAnyFunction("github.com/fsnotify/fsnotify.(*inotify).readEvents"),
 		// TODO - #3257: There is a small race condition where the file detector's cancel func is closed but it has
 		// not yet been scheduled to run & then terminate. The refactor to fix this is significant,
 		// and not currently worth the investment.
