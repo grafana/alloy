@@ -183,13 +183,13 @@ Example log line:
 2026-02-02 21:35:40.130 UTC:10.24.155.141(34110):app_user@books_store:[32032]:2:40001:2026-02-02 21:33:19 UTC:25/112:0:693c34cb.2398::psqlERROR:  canceling statement due to user request
 ```
 
-This is done by setting the log_line_prefix param to `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`.
+This is done by setting the `log_line_prefix` parameter to `%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a`.
 
-#### Configure the log_line_prefix
+#### Configure the `log_line_prefix`
 
 **Self hosted Postgres server**
 
-For the logs collector to work correctly, PostgreSQL must be configured with the following log_line_prefix:
+For the logs collector to work correctly, PostgreSQL must be configured with the following `log_line_prefix`:
 
 ```sql
 -- Set log format (requires superuser)
