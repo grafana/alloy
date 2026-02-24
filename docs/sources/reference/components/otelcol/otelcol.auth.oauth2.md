@@ -66,15 +66,12 @@ If both are set, `client_secret_file` also takes precedence.
 
 You can use the following blocks with `otelcol.auth.oauth2`:
 
-| Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`tls`][tls]                     | TLS settings for the token client.                                         | no       |
-| `tls` > [`tpm`][tpm]             | TPM settings for the TLS key_file.                                         | no       |
-
-[tls]: #tls
-[tpm]: #tpm
-[debug_metrics]: #debug_metrics
+{{< docs/api-tree >}}
+otelcol.connector.count
+├── [debug_metrics](#debug_metrics)  \[optional\]
+└── [tls](#tls) \[optional\]
+    └── [tpm](#tpm) \[optional\]
+{{< /docs/api-tree >}}
 
 ### `debug_metrics`
 

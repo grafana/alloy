@@ -39,32 +39,21 @@ The `otelcol.connector.count` component doesn't support any arguments. You can c
 
 You can use the following blocks with `otelcol.connector.count`:
 
-| Block                                     | Description                                                                | Required |
-| ----------------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`output`][output]                        | Configures where to send received telemetry data.                          | yes      |
-| [`datapoints`][datapoints]                | Configures custom metrics for counting data points.                        | no       |
-| `datapoints` > [`attributes`][attributes] | Groups data point counts by attribute values.                              | no       |
-| [`debug_metrics`][debug_metrics]          | Configures the metrics that this component generates to monitor its state. | no       |
-| [`logs`][logs]                            | Configures custom metrics for counting log records.                        | no       |
-| `logs` > [`attributes`][attributes]       | Groups log counts by attribute values.                                     | no       |
-| [`metrics`][metrics]                      | Configures custom metrics for counting metrics.                            | no       |
-| `metrics` > [`attributes`][attributes]    | Groups metric counts by attribute values.                                  | no       |
-| [`spanevents`][spanevents]                | Configures custom metrics for counting span events.                        | no       |
-| `spanevents` > [`attributes`][attributes] | Groups span event counts by attribute values.                              | no       |
-| [`spans`][spans]                          | Configures custom metrics for counting spans.                              | no       |
-| `spans` > [`attributes`][attributes]      | Groups span counts by attribute values.                                    | no       |
-
-The `>` symbol indicates deeper levels of nesting.
-For example, `spans` > `attributes` refers to an `attributes` block defined inside a `spans` block.
-
-[spans]: #spans
-[spanevents]: #spanevents
-[metrics]: #metrics
-[datapoints]: #datapoints
-[logs]: #logs
-[attributes]: #attributes
-[output]: #output
-[debug_metrics]: #debug_metrics
+{{< docs/api-tree >}}
+otelcol.connector.count
+├── [output](#output)  \[required\]
+├── [datapoints](#datapoints) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+├── [debug_metrics](#debug_metrics) \[optional\]
+├── [logs](#logs) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+├── [metrics](#metrics) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+├── [spanevents](#spanevents) \[optional\]
+│   └── [attributes](#attributes) \[optional\]
+└── [spans](#spans) \[optional\]
+    └── [attributes](#attributes) \[optional\]
+{{< /docs/api-tree >}}
 
 ### `spans`
 
