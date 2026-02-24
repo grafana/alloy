@@ -1784,7 +1784,7 @@ The following arguments are supported:
 | `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
 | `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
 | `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
-| `action_on_duplicate_timestamp` | `string`       | What to do when parsing duplicate timestamps                | `"fudge"` | no       |
+| `action_on_duplicate_timestamp` | `string`       | What to do when parsing duplicate timestamps.               | `"fudge"` | no       |
 | `fallback_formats`              | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
 | `location`                      | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
 
