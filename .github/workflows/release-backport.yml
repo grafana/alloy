@@ -122,5 +122,5 @@ jobs:
             echo "🍒 Processing backport for label: $label"
             go run ./release/backport \
               --pr "${PR_NUMBER}" \
-              --label "$label"
+              --label "$label" || echo "⚠️ Backport for $label failed, moving to next..."
           done
