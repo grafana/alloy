@@ -1861,7 +1861,7 @@ The supported actions are:
 * fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
 * skip: Don't change the timestamp and keep the time when the log entry was scraped.
 
-The `action_on_duplicate_timestamp` field defines what to do when parsing succeeds but the parsed timestamp is equal to (or before) the last emitted timestamp for that stream (for example, when multiple messages share the same second or millisecond).
+The `action_on_duplicate_timestamp` field defines what to do when parsing succeeds but the parsed timestamp is equal to, or before, the last emitted timestamp for that stream, for example, when multiple messages share the same second or millisecond.
 
 The supported actions are:
 
