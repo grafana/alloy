@@ -3,9 +3,7 @@ package graphql
 import (
 	"context"
 	"net/http"
-	"os"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -29,23 +27,16 @@ type AlloyGraphQLProvider struct {
 	playground http.Handler
 }
 
-func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host, logger log.Logger) {
+func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host, logger log.Logger, enablePlayground bool) {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
+
 	provider := NewAlloyGraphQLProvider(host)
 
 	r.Handle(path.Join(urlPrefix, "/graphql"), provider.srv)
 
-	// Only register the playground if explicitly enabled
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("ALLOY_ENABLE_GRAPHQL_PLAYGROUND")))
-
-	var playgroundEnabled = map[string]struct{}{
-		"1":    {},
-		"true": {},
-		"yes":  {},
-	}
-	if _, enabled := playgroundEnabled[v]; enabled {
+	if enablePlayground {
 		level.Info(logger).Log("msg", "GraphQL playground is enabled")
 		r.Handle(path.Join(urlPrefix, "/graphql/playground"), provider.playground)
 	}
