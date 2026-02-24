@@ -1,0 +1,62 @@
+// Receive SDK-injected traces from the OBI Java agent running inside the java-app container.
+otelcol.receiver.otlp "beyla_java_sdk" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces = [otelcol.processor.attributes.beyla_java.input]
+  }
+}
+
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      name = "petclinic"
+      exe_path = "*java"
+      containers_only = true
+      exports = ["traces"]
+    }
+  }
+
+  injector {
+    instrument {
+      exe_path = "*java"
+    }
+    enabled_sdks = ["java"]
+    // alloy is reachable from java-app on the shared default docker network
+    otel_endpoint = "http://alloy:4318"
+  }
+
+  output {
+    traces = [otelcol.processor.attributes.beyla_java.input]
+  }
+}
+
+otelcol.processor.attributes "beyla_java" {
+  action {
+    key = "test_name"
+    value = "beyla-java"
+    action = "insert"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.beyla_java.input]
+  }
+}
+
+otelcol.processor.batch "beyla_java" {
+  output {
+    traces = [otelcol.exporter.otlphttp.beyla_java.input]
+  }
+}
+
+otelcol.exporter.otlphttp "beyla_java" {
+  traces_endpoint = "http://tempo:4318/v1/traces"
+  client {
+    endpoint = "ignore"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}

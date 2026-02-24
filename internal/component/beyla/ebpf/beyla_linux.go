@@ -14,14 +14,15 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v9"
-	"github.com/grafana/beyla/v2/pkg/beyla"
-	"github.com/grafana/beyla/v2/pkg/components"
-	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/beyla"
+	"github.com/grafana/beyla/v3/pkg/components"
+	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/obi/pkg/appolly/services"
 	obiCfg "go.opentelemetry.io/obi/pkg/config"
+	"go.opentelemetry.io/obi/pkg/export"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
@@ -137,7 +138,7 @@ func (args SamplerConfig) Validate() error {
 
 func (args SamplerConfig) Convert() services.SamplerConfig {
 	return services.SamplerConfig{
-		Name: args.Name,
+		Name: services.SamplerName(args.Name),
 		Arg:  args.Arg,
 	}
 }
@@ -268,9 +269,10 @@ func convertExportModes(modes []string) (services.ExportModes, error) {
 func serviceConvert[Attr any](
 	s Service,
 	convertFunc func(string) (Attr, error),
-	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, services.ExportModes, error) {
+	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.IntEnum, Attr, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, services.ExportModes, error) {
 
 	var paths Attr
+	var cmdArgs Attr
 	var kubernetes map[string]*Attr
 	var podLabels map[string]*Attr
 	var podAnnotations map[string]*Attr
@@ -278,21 +280,25 @@ func serviceConvert[Attr any](
 
 	ports, err := stringToPortEnum(s.OpenPorts)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+		return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	paths, err = convertFunc(s.Path)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+		return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
+	}
+	cmdArgs, err = convertFunc(s.CmdArgs)
+	if err != nil {
+		return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	kubernetes, err = convertKubernetesFunc(s.Kubernetes)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+		return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	podLabels = map[string]*Attr{}
 	for k, v := range s.Kubernetes.PodLabels {
 		label, err := convertFunc(v)
 		if err != nil {
-			return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+			return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
 		}
 		podLabels[k] = &label
 	}
@@ -301,7 +307,7 @@ func serviceConvert[Attr any](
 	for k, v := range s.Kubernetes.PodAnnotations {
 		annotation, err := convertFunc(v)
 		if err != nil {
-			return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+			return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
 		}
 		podAnnotations[k] = &annotation
 	}
@@ -309,16 +315,16 @@ func serviceConvert[Attr any](
 	exportModes, err = convertExportModes(s.ExportModes)
 
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+		return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 
-	return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, nil
+	return ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, nil
 }
 
 func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 	var attrs services.RegexDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
+		ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
 			s,
 			stringToRegexpAttr,
 			convertKubernetes,
@@ -338,6 +344,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			Namespace:      s.Namespace,
 			OpenPorts:      ports,
 			Path:           paths,
+			CmdArgs:        cmdArgs,
 			Metadata:       kubernetes,
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
@@ -352,7 +359,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 	var attrs services.GlobDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
+		ports, paths, cmdArgs, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
 			s,
 			stringToGlobAttr,
 			convertKubernetesGlob,
@@ -372,6 +379,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			Namespace:      s.Namespace,
 			OpenPorts:      ports,
 			Path:           paths,
+			CmdArgs:        cmdArgs,
 			Metadata:       kubernetes,
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
@@ -395,8 +403,8 @@ func (args Services) Validate() error {
 			svc.Kubernetes.OwnerName != "" ||
 			len(svc.Kubernetes.PodLabels) > 0
 
-		if svc.OpenPorts == "" && svc.Path == "" && !hasKubernetes {
-			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, or kubernetes configuration", i)
+		if svc.OpenPorts == "" && svc.Path == "" && svc.CmdArgs == "" && !hasKubernetes {
+			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration", i)
 		}
 	}
 	return nil
@@ -445,10 +453,10 @@ func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAtt
 func (args Metrics) Convert() prom.PrometheusConfig {
 	p := beyla.DefaultConfig().Prometheus
 	if args.Features != nil {
-		p.Features = args.Features
+		p.DeprFeatures = export.LoadFeatures(args.Features)
 	}
 	if args.Instrumentations != nil {
-		p.Instrumentations = args.Instrumentations
+		p.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	}
 	p.AllowServiceGraphSelfReferences = args.AllowServiceGraphSelfReferences
 	if args.ExtraResourceLabels != nil {
@@ -511,7 +519,7 @@ func (args Network) Convert(enable bool) obi.NetworkConfig {
 		networks.AgentIP = args.AgentIP
 	}
 	if args.AgentIPIface != "" {
-		networks.AgentIPIface = args.AgentIPIface
+		networks.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
 	}
 	if args.AgentIPType != "" {
 		networks.AgentIPType = args.AgentIPType
@@ -552,12 +560,15 @@ func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
 	}
 	ebpf.ContextPropagation = contextPropagationMode
 
-	ebpf.WakeupLen = args.WakeupLen
+	if args.WakeupLen != 0 {
+		ebpf.WakeupLen = args.WakeupLen
+	}
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
 	ebpf.BpfDebug = args.BpfDebug
 	ebpf.ProtocolDebug = args.ProtocolDebug
+	ebpf.PayloadExtraction.HTTP.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
 	return &ebpf, nil
 }
 
@@ -579,6 +590,118 @@ func (args Filters) Convert() filter.AttributesConfig {
 		}
 	}
 	return filters
+}
+
+func (args InjectorWebhook) Convert() beyla.WebhookConfig {
+	w := beyla.DefaultConfig().Injector.Webhook
+	w.Enable = args.Enable
+	if args.CertPath != "" {
+		w.CertPath = args.CertPath
+	}
+	if args.KeyPath != "" {
+		w.KeyPath = args.KeyPath
+	}
+	if args.Port != nil {
+		w.Port = *args.Port
+	}
+	if args.Timeout != nil {
+		w.Timeout = *args.Timeout
+	}
+
+	return w
+}
+
+func (args InjectorSDKExport) Convert() beyla.SDKExport {
+	w := beyla.DefaultConfig().Injector.Export
+	if args.Traces != nil {
+		w.Traces = args.Traces
+	}
+	if args.Metrics != nil {
+		w.Metrics = args.Metrics
+	}
+	if args.Logs != nil {
+		w.Logs = args.Logs
+	}
+
+	return w
+}
+
+func (args InjectorSDKResource) Convert() beyla.SDKResource {
+	w := beyla.DefaultConfig().Injector.Resources
+	if args.Attributes != nil {
+		w.Attributes = args.Attributes
+	}
+	if args.AddK8sUIDAttributes != nil {
+		w.AddK8sUIDAttributes = *args.AddK8sUIDAttributes
+	}
+	if args.UseLabelsForResourceAttributes != nil {
+		w.UseLabelsForResourceAttributes = *args.UseLabelsForResourceAttributes
+	}
+
+	return w
+}
+
+func (args Injector) Convert() (beyla.SDKInject, error) {
+	i := beyla.DefaultConfig().Injector
+
+	if len(args.Instrument) > 0 {
+		instrument, err := args.Instrument.ConvertGlob()
+		if err != nil {
+			return i, err
+		}
+		i.Instrument = instrument
+	}
+
+	i.Webhook = args.Webhook.Convert()
+	i.Export = args.Export.Convert()
+	i.Resources = args.Resources.Convert()
+
+	if args.DefaultSampler.Name != "" || args.DefaultSampler.Arg != "" {
+		s := args.DefaultSampler.Convert()
+		i.DefaultSampler = &s
+	}
+
+	if args.NoAutoRestart != nil {
+		i.NoAutoRestart = *args.NoAutoRestart
+	}
+
+	if args.HostMountPath != "" {
+		i.HostMountPath = args.HostMountPath
+	}
+
+	if args.HostPathVolumeDir != "" {
+		i.HostPathVolumeDir = args.HostPathVolumeDir
+	}
+
+	if args.SDKPkgVersion != "" {
+		i.SDKPkgVersion = args.SDKPkgVersion
+	}
+
+	if args.ManageSDKVersions != nil {
+		i.ManageSDKVersions = *args.ManageSDKVersions
+	}
+
+	if len(args.Propagators) > 0 {
+		i.Propagators = args.Propagators
+	}
+
+	if len(args.EnabledSDKs) > 0 {
+		sdks := make([]beylaSvc.InstrumentableType, 0, len(args.EnabledSDKs))
+		for _, s := range args.EnabledSDKs {
+			var it beylaSvc.InstrumentableType
+			if err := it.UnmarshalText([]byte(s)); err != nil {
+				return i, fmt.Errorf("injector.enabled_sdks: %w", err)
+			}
+			sdks = append(sdks, it)
+		}
+		i.EnabledSDKs = sdks
+	}
+
+	if args.Debug != nil {
+		i.Debug = *args.Debug
+	}
+
+	return i, nil
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -778,6 +901,9 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 	cfg.Prometheus = a.Metrics.Convert()
+	if a.Metrics.Features != nil {
+		cfg.Metrics.Features = export.LoadFeatures(a.Metrics.Features)
+	}
 	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
 
@@ -789,6 +915,18 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 
 	cfg.Filters = a.Filters.Convert()
 	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
+
+	cfg.Injector, err = a.Injector.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	if a.Injector.OTELEndpoint != "" {
+		endpoint := a.Injector.OTELEndpoint
+		cfg.Traces.OTLPEndpointProvider = func() (string, bool) {
+			return endpoint, true
+		}
+	}
 
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
@@ -915,11 +1053,11 @@ func (args Traces) Convert(consumers []otelcol.Consumer) beyla.TracesReceiverCon
 	}
 
 	if len(args.Instrumentations) == 0 {
-		config.Instrumentations = []string{
+		config.Instrumentations = []instrumentations.Instrumentation{
 			instrumentations.InstrumentationALL,
 		}
 	} else {
-		config.Instrumentations = args.Instrumentations
+		config.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	}
 	if args.Sampler.Name != "" || args.Sampler.Arg != "" {
 		config.Sampler = args.Sampler.Convert()
@@ -964,16 +1102,24 @@ func stringToGlobAttr(s string) (services.GlobAttr, error) {
 	return globAttr, nil
 }
 
-func stringToPortEnum(s string) (services.PortEnum, error) {
+func stringToPortEnum(s string) (services.IntEnum, error) {
 	if s == "" {
-		return services.PortEnum{}, nil
+		return services.IntEnum{}, nil
 	}
-	p := services.PortEnum{}
+	p := services.IntEnum{}
 	err := p.UnmarshalText([]byte(s))
 	if err != nil {
-		return services.PortEnum{}, err
+		return services.IntEnum{}, err
 	}
 	return p, nil
+}
+
+func stringsToInstrumentations(ss []string) []instrumentations.Instrumentation {
+	result := make([]instrumentations.Instrumentation, len(ss))
+	for i, s := range ss {
+		result[i] = instrumentations.Instrumentation(s)
+	}
+	return result
 }
 
 func defaultInstance() string {

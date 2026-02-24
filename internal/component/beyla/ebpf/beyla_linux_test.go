@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/beyla/v2/pkg/beyla"
-	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/beyla"
+	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/obi/pkg/appolly/services"
+	"go.opentelemetry.io/obi/pkg/export"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
@@ -62,6 +63,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				namespace = "default"
 				open_ports = "80,443"
 				exe_path = "/usr/bin/app*"
+				cmd_args = "--config=*"
 				kubernetes {
 					namespace = "default"
 				}
@@ -85,10 +87,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			}
 			exclude_instrument {
 				exe_path = "/usr/bin/test*"
+				cmd_args = "--skip-*"
 				namespace = "default"
 			}
 			survey {
 				exe_path = "/app/microservice-*"
+				cmd_args = "--mode=survey*"
 				name = "microservice"
 				exports = ["metrics", "traces"]
 			}
@@ -122,12 +126,19 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 		ebpf {
 			wakeup_len = 10
 			track_request_headers = true
-			context_propagation = "ip"
+			context_propagation = "tcp"
 			http_request_timeout = "10s"
 			high_request_volume = true
 			heuristic_sql_detect = true
 			bpf_debug = false
 			protocol_debug_print = false
+			payload_extraction {
+				http {
+					openai {
+						enabled = true
+					}
+				}
+			}
 		}
 		filters {
 			application {
@@ -177,7 +188,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, 8000, cfg.NetworkFlows.CacheMaxFlows)
 	require.Equal(t, 10*time.Second, cfg.NetworkFlows.CacheActiveTimeout)
 	require.Equal(t, "ingress", cfg.NetworkFlows.Direction)
-	require.Equal(t, "local", cfg.NetworkFlows.AgentIPIface)
+	require.Equal(t, "local", string(cfg.NetworkFlows.AgentIPIface))
 	require.Equal(t, "ipv4", cfg.NetworkFlows.AgentIPType)
 	require.Empty(t, cfg.NetworkFlows.ExcludeInterfaces)
 
@@ -185,6 +196,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Discovery.Instrument[0].Name)
 	require.Equal(t, "default", cfg.Discovery.Instrument[0].Namespace)
 	require.True(t, cfg.Discovery.Instrument[0].Path.IsSet())
+	require.True(t, cfg.Discovery.Instrument[0].CmdArgs.IsSet())
 	require.True(t, cfg.Discovery.Instrument[0].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportMetrics())
 	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportTraces())
@@ -195,32 +207,38 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 
 	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
 	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
+	require.True(t, cfg.Discovery.ExcludeInstrument[0].CmdArgs.IsSet())
 	require.Equal(t, "default", cfg.Discovery.ExcludeInstrument[0].Namespace)
 
 	require.Len(t, cfg.Discovery.Survey, 1)
 	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
+	require.True(t, cfg.Discovery.Survey[0].CmdArgs.IsSet())
 	require.Equal(t, "microservice", cfg.Discovery.Survey[0].Name)
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportMetrics())
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
 
-	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
-	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
+	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Prometheus.DeprFeatures)
+	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Metrics.Features)
+	require.True(t, cfg.Metrics.Features.AnyAppO11yMetric())
+	require.True(t, cfg.Metrics.Features.AnyNetwork())
+	require.Equal(t, stringsToInstrumentations([]string{"redis", "sql", "gpu", "mongo"}), cfg.Prometheus.Instrumentations)
 
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
-	require.Equal(t, cfg.EBPF.ContextPropagation, obiCfg.ContextPropagationIPOptionsOnly)
+	require.Equal(t, cfg.EBPF.ContextPropagation, obiCfg.ContextPropagationTCP)
 	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
 	require.True(t, cfg.EBPF.HighRequestVolume)
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
 	require.False(t, cfg.EBPF.BpfDebug)
 	require.False(t, cfg.EBPF.ProtocolDebug)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.OpenAI.Enabled)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
 	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
 	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
-	require.Equal(t, []string{"http", "grpc", "kafka"}, cfg.TracesReceiver.Instrumentations)
+	require.Equal(t, stringsToInstrumentations([]string{"http", "grpc", "kafka"}), cfg.TracesReceiver.Instrumentations)
 	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
 	require.Len(t, cfg.TracesReceiver.Traces, 0)
 
@@ -327,7 +345,7 @@ func TestArguments_ValidationErrors(t *testing.T) {
 					features = ["application"]
 				}
 			`,
-			wantErr: `invalid port range "-8000". Must be a comma-separated list of numeric ports or port ranges (e.g. 8000-8999)`,
+			wantErr: `invalid int enum "-8000". Must be a comma-separated list of integers or ranges (e.g. 8000-8999)`,
 		},
 	}
 
@@ -726,9 +744,7 @@ func TestConvert_Attributes(t *testing.T) {
 			ResourceLabels:        beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
 			MetaCacheAddress:      "localhost:9090",
 		},
-		HostID: beyla.HostIDConfig{
-			FetchTimeout: 500 * time.Millisecond,
-		},
+		HostID: beyla.HostIDConfig{},
 		Select: attributes.Selection{
 			"sql_client_duration": {
 				Include: []string{"*"},
@@ -742,6 +758,7 @@ func TestConvert_Attributes(t *testing.T) {
 	}
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
+	expectedConfig.MetadataRetry = beyla.DefaultConfig().Attributes.MetadataRetry
 
 	config := args.Convert()
 
@@ -755,6 +772,7 @@ func TestConvert_Discovery(t *testing.T) {
 				Name:           "test",
 				Namespace:      "default",
 				OpenPorts:      "80",
+				CmdArgs:        "--serve*",
 				ContainersOnly: true,
 				ExportModes:    []string{"metrics"},
 				Sampler: SamplerConfig{
@@ -796,7 +814,8 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Len(t, config.Instrument, 3)
 	require.Equal(t, "test", config.Instrument[0].Name)
 	require.Equal(t, "default", config.Instrument[0].Namespace)
-	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
+	require.Equal(t, services.IntEnum{Ranges: []services.IntRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
+	require.True(t, config.Instrument[0].CmdArgs.IsSet())
 	require.True(t, config.Instrument[0].ContainersOnly)
 	require.True(t, config.Instrument[0].ExportModes.CanExportMetrics())
 	require.False(t, config.Instrument[0].ExportModes.CanExportTraces())
@@ -831,8 +850,8 @@ func TestConvert_Prometheus(t *testing.T) {
 	}
 
 	expectedConfig := beyla.DefaultConfig().Prometheus
-	expectedConfig.Features = args.Features
-	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.DeprFeatures = export.LoadFeatures(args.Features)
+	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	expectedConfig.AllowServiceGraphSelfReferences = true
 	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 
@@ -848,8 +867,8 @@ func TestConvert_Prometheus(t *testing.T) {
 	}
 
 	expectedConfig = beyla.DefaultConfig().Prometheus
-	expectedConfig.Features = args.Features
-	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.DeprFeatures = export.LoadFeatures(args.Features)
+	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	expectedConfig.AllowServiceGraphSelfReferences = true
 	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
 
@@ -889,9 +908,16 @@ func TestConvert_EBPF(t *testing.T) {
 		TrackRequestHeaders: true,
 		HighRequestVolume:   true,
 		HeuristicSQLDetect:  true,
-		ContextPropagation:  "headers",
+		ContextPropagation:  "tcp",
 		BpfDebug:            true,
 		ProtocolDebug:       true,
+		PayloadExtraction: PayloadExtraction{
+			HTTP: HTTPPayloadExtraction{
+				OpenAI: OpenAIPayloadExtraction{
+					Enabled: true,
+				},
+			},
+		},
 	}
 
 	expectedConfig := beyla.DefaultConfig().EBPF
@@ -899,9 +925,23 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
-	expectedConfig.ContextPropagation = obiCfg.ContextPropagationHeadersOnly
+	expectedConfig.ContextPropagation = obiCfg.ContextPropagationTCP
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
+	expectedConfig.PayloadExtraction.HTTP.OpenAI.Enabled = true
+
+	config, err := args.Convert()
+	require.NoError(t, err)
+
+	require.Equal(t, expectedConfig, *config)
+}
+
+func TestConvert_EBPF_ContextPropagationIPCompatibility(t *testing.T) {
+	args := EBPF{
+		ContextPropagation: "ip",
+	}
+
+	expectedConfig := beyla.DefaultConfig().EBPF
 
 	config, err := args.Convert()
 	require.NoError(t, err)
@@ -941,6 +981,107 @@ func TestConvert_Filters(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
+func TestConvert_InjectorWebhook(t *testing.T) {
+	port := 8443
+	timeout := 30 * time.Second
+	args := InjectorWebhook{
+		Enable:   true,
+		Port:     &port,
+		CertPath: "/etc/certs/tls.crt",
+		KeyPath:  "/etc/certs/tls.key",
+		Timeout:  &timeout,
+	}
+
+	expectedConfig := beyla.DefaultConfig().Injector.Webhook
+	expectedConfig.Enable = true
+	expectedConfig.Port = 8443
+	expectedConfig.CertPath = "/etc/certs/tls.crt"
+	expectedConfig.KeyPath = "/etc/certs/tls.key"
+	expectedConfig.Timeout = 30 * time.Second
+
+	config := args.Convert()
+	require.Equal(t, expectedConfig, config)
+}
+
+func TestConvert_InjectorSDKExport(t *testing.T) {
+	traces := true
+	metrics := false
+	logs := true
+	args := InjectorSDKExport{
+		Traces:  &traces,
+		Metrics: &metrics,
+		Logs:    &logs,
+	}
+
+	expectedConfig := beyla.DefaultConfig().Injector.Export
+	expectedConfig.Traces = &traces
+	expectedConfig.Metrics = &metrics
+	expectedConfig.Logs = &logs
+
+	config := args.Convert()
+	require.Equal(t, expectedConfig, config)
+}
+
+func TestConvert_InjectorSDKResource(t *testing.T) {
+	addK8s := true
+	useLabels := false
+	args := InjectorSDKResource{
+		Attributes:                     map[string]string{"environment": "dev"},
+		AddK8sUIDAttributes:            &addK8s,
+		UseLabelsForResourceAttributes: &useLabels,
+	}
+
+	expectedConfig := beyla.DefaultConfig().Injector.Resources
+	expectedConfig.Attributes = map[string]string{"environment": "dev"}
+	expectedConfig.AddK8sUIDAttributes = true
+	expectedConfig.UseLabelsForResourceAttributes = false
+
+	config := args.Convert()
+	require.Equal(t, expectedConfig, config)
+}
+
+func TestConvert_Injector(t *testing.T) {
+	noAutoRestart := true
+	manageSDKVersions := false
+	debug := true
+	args := Injector{
+		OTELEndpoint:      "http://otel-collector:4318",
+		NoAutoRestart:     &noAutoRestart,
+		HostPathVolumeDir: "/var/beyla",
+		SDKPkgVersion:     "1.0.0",
+		HostMountPath:     "/host",
+		ManageSDKVersions: &manageSDKVersions,
+		Propagators:       []string{"tracecontext", "baggage"},
+		EnabledSDKs:       []string{"java", "dotnet"},
+		Debug:             &debug,
+		DefaultSampler:    SamplerConfig{Name: "always_on"},
+	}
+
+	javaSDK := beylaSvc.InstrumentableType{}
+	require.NoError(t, javaSDK.UnmarshalText([]byte("java")))
+	dotnetSDK := beylaSvc.InstrumentableType{}
+	require.NoError(t, dotnetSDK.UnmarshalText([]byte("dotnet")))
+
+	expectedConfig := beyla.DefaultConfig().Injector
+	expectedConfig.Webhook = InjectorWebhook{}.Convert()
+	expectedConfig.Export = InjectorSDKExport{}.Convert()
+	expectedConfig.Resources = InjectorSDKResource{}.Convert()
+	expectedConfig.NoAutoRestart = true
+	expectedConfig.HostPathVolumeDir = "/var/beyla"
+	expectedConfig.SDKPkgVersion = "1.0.0"
+	expectedConfig.HostMountPath = "/host"
+	expectedConfig.ManageSDKVersions = false
+	expectedConfig.Propagators = []string{"tracecontext", "baggage"}
+	expectedConfig.EnabledSDKs = []beylaSvc.InstrumentableType{javaSDK, dotnetSDK}
+	expectedConfig.Debug = true
+	s := SamplerConfig{Name: "always_on"}.Convert()
+	expectedConfig.DefaultSampler = &s
+
+	config, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, expectedConfig, config)
+}
+
 func TestServices_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -960,6 +1101,14 @@ func TestServices_Validate(t *testing.T) {
 			args: Services{
 				{
 					Path: "/usr/bin/app",
+				},
+			},
+		},
+		{
+			name: "valid service with cmd_args",
+			args: Services{
+				{
+					CmdArgs: "--serve*",
 				},
 			},
 		},
@@ -990,7 +1139,7 @@ func TestServices_Validate(t *testing.T) {
 					Name: "test",
 				},
 			},
-			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, or kubernetes configuration",
+			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration",
 		},
 		{
 			name: "multiple valid services",
@@ -1138,7 +1287,22 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"application"},
 				},
 			},
-			wantErr: "must define at least one of: open_ports, exe_path, or kubernetes configuration",
+			wantErr: "must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration",
+		},
+		{
+			name: "valid cmd_args-only configuration with application feature",
+			args: Arguments{
+				Discovery: Discovery{
+					Instrument: Services{
+						{
+							CmdArgs: "--serve*",
+						},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
 		},
 		{
 			name: "invalid metrics configuration",
@@ -1294,7 +1458,7 @@ func TestTraces_Convert(t *testing.T) {
 			consumers: nil,
 			expected: beyla.TracesReceiverConfig{
 				Traces: []beyla.Consumer{},
-				Instrumentations: []string{
+				Instrumentations: []instrumentations.Instrumentation{
 					instrumentations.InstrumentationALL,
 				},
 			},
@@ -1307,7 +1471,7 @@ func TestTraces_Convert(t *testing.T) {
 			consumers: nil,
 			expected: beyla.TracesReceiverConfig{
 				Traces:           []beyla.Consumer{},
-				Instrumentations: []string{"http", "grpc"},
+				Instrumentations: []instrumentations.Instrumentation{"http", "grpc"},
 			},
 		},
 		{
@@ -1320,7 +1484,7 @@ func TestTraces_Convert(t *testing.T) {
 			},
 			expected: beyla.TracesReceiverConfig{
 				Traces:           []beyla.Consumer{},
-				Instrumentations: []string{"kafka"},
+				Instrumentations: []instrumentations.Instrumentation{"kafka"},
 			},
 		},
 	}
@@ -1510,7 +1674,7 @@ func TestServices_Convert_SamplerConfig(t *testing.T) {
 
 			if tt.expectSamplerConfig {
 				require.NotNil(t, result[0].SamplerConfig)
-				require.Equal(t, tt.expectedSamplerName, result[0].SamplerConfig.Name)
+				require.Equal(t, services.SamplerName(tt.expectedSamplerName), result[0].SamplerConfig.Name)
 			} else {
 				require.Nil(t, result[0].SamplerConfig)
 			}
