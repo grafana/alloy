@@ -48,6 +48,8 @@ For logs, edge instances push data using `loki.write` to proxy instances running
 
 #### Sticky load balancing for metrics
 
+Sticky load balancing ensures that requests with the same identifier, such as a time series or trace ID, are consistently routed to the same backend instance.
+
 For Prometheus `remote_write` traffic, you must ensure consistent routing per time series.
 When different proxy instances receive samples for the same series, you encounter out-of-order sample errors, increased ingestion load, and write-ahead log (WAL) churn.
 
@@ -74,7 +76,7 @@ Push-based aggregation using `prometheus.remote_write` provides clearer scaling 
 
 ## Configure metrics proxying
 
-Configure metrics proxying using the push pattern with `prometheus.remote_write` on edge instances and `prometheus.receive_http` on proxy instances.
+You can use the push pattern to proxy metrics between edge and proxy instances.
 
 ### Configure edge instances for metrics
 
@@ -219,7 +221,9 @@ The following table shows what patterns each signal type supports:
 
 For traces, you typically configure edge instances to send data to an OpenTelemetry-compatible receiver, such as `otelcol.receiver.otlp`, on proxy instances.
 The proxy instances then export to the backend using an appropriate exporter.
-Trace proxying doesn't require sticky routing in the same way as Prometheus `remote_write`, but capacity planning and retry behavior still apply.
+Basic trace forwarding doesn't require sticky routing, but if proxy instances run trace-derived components such as `otelcol.connector.spanmetrics` or `otelcol.connector.servicegraph`, you need consistent routing so all spans for a trace or service reach the same instance.
+You can use `otelcol.exporter.loadbalancing` on the edge instances to route by trace ID or service name.
+Alternatively, you can add a unique label per proxy instance and aggregate the resulting metrics in PromQL or Adaptive Metrics.
 
 ## High availability and replication
 
