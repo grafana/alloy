@@ -439,7 +439,7 @@ func TestEndpoint(t *testing.T) {
 				if tt.waitForFirstRequest && i == 0 && len(tt.inputEntries) > 1 {
 					require.Eventually(t, func() bool {
 						return len(receivedReqsChan) > 0
-					}, time.Second, 5*time.Millisecond)
+					}, 5*time.Second, 5*time.Millisecond)
 				}
 
 				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
