@@ -49,7 +49,9 @@ func WeaklyConnectedComponents(g *Graph, f FilterFunc) [][]Node {
 			}
 		}
 
-		components = append(components, component)
+		if len(component) > 0 {
+			components = append(components, component)
+		}
 	}
 
 	return components
