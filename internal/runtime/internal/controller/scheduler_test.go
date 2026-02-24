@@ -256,12 +256,16 @@ func buildGraphFromEdges(edges []edge, stopOrder *[]string) *dag.Graph {
 		set[e.To] = struct{}{}
 	}
 
+	var lock sync.Mutex
+
 	nodes := make(map[string]*fakeRunnable, len(set))
 	for id := range set {
 		nodes[id] = &fakeRunnable{
 			ID: id,
 			Component: mockComponent{RunFunc: func(ctx context.Context) error {
 				<-ctx.Done()
+				lock.Lock()
+				defer lock.Unlock()
 				*stopOrder = append(*stopOrder, id)
 				return nil
 			}},
