@@ -70,7 +70,7 @@ Discovery components can find targets from:
 
 ### Ingestion
 
-Ingestion components accept telemetry from external systems and convert it into internal formats.
+Ingestion components receive or collect telemetry from external systems and convert it into internal formats.
 
 They handle protocol decoding and normalization, but don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that component.
 
@@ -78,8 +78,7 @@ If an ingestion component isn't connected to another component, its telemetry go
 
 ### Transformation
 
-Transformation components operate on telemetry after ingestion and before export.
-They're the only place where telemetry changes.
+Transformation components operate on telemetry between ingestion and output.
 
 Transformation components can:
 
@@ -94,13 +93,12 @@ If you connect an ingestion component directly to an output component, telemetry
 
 Output components forward telemetry to configured destinations.
 
-An output component might send data to:
+For example, an output component might send data to:
 
 - A metrics backend, such as Grafana Mimir or any Prometheus-compatible endpoint, using `prometheus.remote_write`
 - A log backend, such as Grafana Loki or any compatible log storage, using `loki.write`
 - A tracing backend, such as Grafana Tempo or any OTLP-compatible endpoint, using `otelcol.exporter.otlp`
 - Another telemetry collector using `otelcol.exporter.otlp`
-- Another component within {{< param "PRODUCT_NAME" >}} using `forward_to` arguments
 
 ## Component names by pipeline type
 
@@ -115,7 +113,7 @@ Different component families use different naming conventions, but the underlyin
 
 This table shows common components.
 Some components don't fit neatly into these categories.
-For example, `prometheus.exporter.*` components expose local metrics as scrape targets rather than discovering external targets.
+For example, `prometheus.exporter.*` components expose metrics from local or remote systems as scrape targets rather than discovering existing targets.
 Refer to the [component reference](../reference/components/) for a complete list.
 
 ## Signal types
@@ -123,10 +121,11 @@ Refer to the [component reference](../reference/components/) for a complete list
 Metric, log, trace, and profile connections are all defined explicitly.
 If a component supports multiple signal types, each type needs its own explicit connection to the next component in its pipeline.
 
-A processing component only affects its specific signal type.
-A metric processor doesn't touch logs, and a log processor doesn't touch traces.
+Many transformation components, particularly `otelcol.processor.*` components, handle multiple signal types.
+Processing one signal type doesn't affect data from another.
 
-Each signal type typically has its own pipeline, defined independently in the configuration.
+OpenTelemetry pipelines often share components across signal types.
+Prometheus, Loki, and Pyroscope pipelines are signal-specific.
 
 ## Branch and merge patterns
 
