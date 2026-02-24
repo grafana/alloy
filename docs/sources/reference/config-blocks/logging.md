@@ -25,12 +25,12 @@ logging {
 
 You can use the following arguments with `logging`:
 
-| Name          | Type                 | Description                                                                 | Default    | Required |
-| ------------- | -------------------- | ---------------------------------------------------------------------------- | ---------- | -------- |
-| `destination` | `string`             | Primary log destination.                                                    | `"stderr"` | no       |
-| `format`      | `string`             | Format to use for writing log lines.                                         | `"logfmt"` | no       |
-| `level`       | `string`             | Level at which log lines should be written.                                 | `"info"`   | no       |
-| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.                                    | `[]`       | no       |
+| Name          | Type                 | Description                                  | Default    | Required |
+| ------------- | -------------------- | -------------------------------------------- | ---------- | -------- |
+| `destination` | `string`             | Primary log destination.                     | `"stderr"` | no       |
+| `format`      | `string`             | Format to use for writing log lines.         | `"logfmt"` | no       |
+| `level`       | `string`             | Level at which log lines should be written.  | `"info"`   | no       |
+| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.    | `[]`       | no       |
 
 ### `level`
 
