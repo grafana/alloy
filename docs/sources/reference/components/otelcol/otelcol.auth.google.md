@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.auth.google/
-aliases:
-  - ../otelcol.auth.google/ # /docs/alloy/latest/reference/components/otelcol.auth.google/
 description: Learn about otelcol.auth.google
 labels:
   stage: public-preview
