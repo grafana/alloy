@@ -1534,7 +1534,7 @@ stage.structured_metadata {
 
 ### `stage.structured_metadata_drop`
 
-The `stage.structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entires.
+The `stage.structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entries.
 
 The following arguments are supported:
 
