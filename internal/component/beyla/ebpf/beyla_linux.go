@@ -14,14 +14,15 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v9"
-	"github.com/grafana/beyla/v2/pkg/beyla"
-	"github.com/grafana/beyla/v2/pkg/components"
-	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/beyla"
+	"github.com/grafana/beyla/v3/pkg/components"
+	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/obi/pkg/appolly/services"
 	obiCfg "go.opentelemetry.io/obi/pkg/config"
+	"go.opentelemetry.io/obi/pkg/export"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
@@ -137,7 +138,7 @@ func (args SamplerConfig) Validate() error {
 
 func (args SamplerConfig) Convert() services.SamplerConfig {
 	return services.SamplerConfig{
-		Name: args.Name,
+		Name: services.SamplerName(args.Name),
 		Arg:  args.Arg,
 	}
 }
@@ -268,7 +269,7 @@ func convertExportModes(modes []string) (services.ExportModes, error) {
 func serviceConvert[Attr any](
 	s Service,
 	convertFunc func(string) (Attr, error),
-	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, services.ExportModes, error) {
+	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.IntEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, services.ExportModes, error) {
 
 	var paths Attr
 	var kubernetes map[string]*Attr
@@ -445,10 +446,10 @@ func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAtt
 func (args Metrics) Convert() prom.PrometheusConfig {
 	p := beyla.DefaultConfig().Prometheus
 	if args.Features != nil {
-		p.Features = args.Features
+		p.DeprFeatures = export.LoadFeatures(args.Features)
 	}
 	if args.Instrumentations != nil {
-		p.Instrumentations = args.Instrumentations
+		p.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	}
 	p.AllowServiceGraphSelfReferences = args.AllowServiceGraphSelfReferences
 	if args.ExtraResourceLabels != nil {
@@ -511,7 +512,7 @@ func (args Network) Convert(enable bool) obi.NetworkConfig {
 		networks.AgentIP = args.AgentIP
 	}
 	if args.AgentIPIface != "" {
-		networks.AgentIPIface = args.AgentIPIface
+		networks.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
 	}
 	if args.AgentIPType != "" {
 		networks.AgentIPType = args.AgentIPType
@@ -912,11 +913,11 @@ func (args Traces) Convert(consumers []otelcol.Consumer) beyla.TracesReceiverCon
 	}
 
 	if len(args.Instrumentations) == 0 {
-		config.Instrumentations = []string{
+		config.Instrumentations = []instrumentations.Instrumentation{
 			instrumentations.InstrumentationALL,
 		}
 	} else {
-		config.Instrumentations = args.Instrumentations
+		config.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	}
 	if args.Sampler.Name != "" || args.Sampler.Arg != "" {
 		config.Sampler = args.Sampler.Convert()
@@ -961,16 +962,24 @@ func stringToGlobAttr(s string) (services.GlobAttr, error) {
 	return globAttr, nil
 }
 
-func stringToPortEnum(s string) (services.PortEnum, error) {
+func stringToPortEnum(s string) (services.IntEnum, error) {
 	if s == "" {
-		return services.PortEnum{}, nil
+		return services.IntEnum{}, nil
 	}
-	p := services.PortEnum{}
+	p := services.IntEnum{}
 	err := p.UnmarshalText([]byte(s))
 	if err != nil {
-		return services.PortEnum{}, err
+		return services.IntEnum{}, err
 	}
 	return p, nil
+}
+
+func stringsToInstrumentations(ss []string) []instrumentations.Instrumentation {
+	result := make([]instrumentations.Instrumentation, len(ss))
+	for i, s := range ss {
+		result[i] = instrumentations.Instrumentation(s)
+	}
+	return result
 }
 
 func defaultInstance() string {

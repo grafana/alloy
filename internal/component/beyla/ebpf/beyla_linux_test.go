@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/beyla/v2/pkg/beyla"
-	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/beyla"
+	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/obi/pkg/appolly/services"
+	"go.opentelemetry.io/obi/pkg/export"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
@@ -203,13 +204,13 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportMetrics())
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
 
-	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
-	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
+	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Prometheus.DeprFeatures)
+	require.Equal(t, stringsToInstrumentations([]string{"redis", "sql", "gpu", "mongo"}), cfg.Prometheus.Instrumentations)
 
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
-	require.Equal(t, cfg.EBPF.ContextPropagation, obiCfg.ContextPropagationIPOptionsOnly)
+	require.Equal(t, cfg.EBPF.ContextPropagation, obiCfg.ContextPropagationIPOptions)
 	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
 	require.True(t, cfg.EBPF.HighRequestVolume)
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
@@ -726,9 +727,7 @@ func TestConvert_Attributes(t *testing.T) {
 			ResourceLabels:        beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
 			MetaCacheAddress:      "localhost:9090",
 		},
-		HostID: beyla.HostIDConfig{
-			FetchTimeout: 500 * time.Millisecond,
-		},
+		HostID: beyla.HostIDConfig{},
 		Select: attributes.Selection{
 			"sql_client_duration": {
 				Include: []string{"*"},
@@ -796,7 +795,7 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Len(t, config.Instrument, 3)
 	require.Equal(t, "test", config.Instrument[0].Name)
 	require.Equal(t, "default", config.Instrument[0].Namespace)
-	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
+	require.Equal(t, services.IntEnum{Ranges: []services.IntRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
 	require.True(t, config.Instrument[0].ContainersOnly)
 	require.True(t, config.Instrument[0].ExportModes.CanExportMetrics())
 	require.False(t, config.Instrument[0].ExportModes.CanExportTraces())
@@ -831,8 +830,8 @@ func TestConvert_Prometheus(t *testing.T) {
 	}
 
 	expectedConfig := beyla.DefaultConfig().Prometheus
-	expectedConfig.Features = args.Features
-	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.DeprFeatures = export.LoadFeatures(args.Features)
+	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	expectedConfig.AllowServiceGraphSelfReferences = true
 	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 
@@ -848,8 +847,8 @@ func TestConvert_Prometheus(t *testing.T) {
 	}
 
 	expectedConfig = beyla.DefaultConfig().Prometheus
-	expectedConfig.Features = args.Features
-	expectedConfig.Instrumentations = args.Instrumentations
+	expectedConfig.DeprFeatures = export.LoadFeatures(args.Features)
+	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	expectedConfig.AllowServiceGraphSelfReferences = true
 	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
 
@@ -899,7 +898,7 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
-	expectedConfig.ContextPropagation = obiCfg.ContextPropagationHeadersOnly
+	expectedConfig.ContextPropagation = obiCfg.ContextPropagationHeaders
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
 
@@ -1294,7 +1293,7 @@ func TestTraces_Convert(t *testing.T) {
 			consumers: nil,
 			expected: beyla.TracesReceiverConfig{
 				Traces: []beyla.Consumer{},
-				Instrumentations: []string{
+				Instrumentations: []instrumentations.Instrumentation{
 					instrumentations.InstrumentationALL,
 				},
 			},
@@ -1307,7 +1306,7 @@ func TestTraces_Convert(t *testing.T) {
 			consumers: nil,
 			expected: beyla.TracesReceiverConfig{
 				Traces:           []beyla.Consumer{},
-				Instrumentations: []string{"http", "grpc"},
+				Instrumentations: []instrumentations.Instrumentation{"http", "grpc"},
 			},
 		},
 		{
@@ -1320,7 +1319,7 @@ func TestTraces_Convert(t *testing.T) {
 			},
 			expected: beyla.TracesReceiverConfig{
 				Traces:           []beyla.Consumer{},
-				Instrumentations: []string{"kafka"},
+				Instrumentations: []instrumentations.Instrumentation{"kafka"},
 			},
 		},
 	}
