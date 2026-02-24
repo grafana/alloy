@@ -69,8 +69,8 @@ cyphar.com/go-pathrs v0.2.1/go.mod h1:y8f1EMG7r+hCuFf/rXsKqMJrJAUoADZGNh5/vZPKcG
 dario.cat/mergo v1.0.2 h1:85+piFYR1tMbRrLcDwR18y4UKJ3aH1Tbzi24VRW1TK8=
 dario.cat/mergo v1.0.2/go.mod h1:E/hbnu0NxMFBjpMIE34DRGLWqDy0g5FuKDhCb31ngxA=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
-filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
+filippo.io/edwards25519 v1.1.1 h1:YpjwWWlNmGIDyXOn8zLzqiD+9TyIlPhGFG96P39uBpw=
+filippo.io/edwards25519 v1.1.1/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
 github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 h1:/vQbFIOMbk2FiG/kXiLl8BRyzTWDw7gX/Hz7Dd5eDMs=
 github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4/go.mod h1:hN7oaIRCjzsZ2dE+yG5k+rsdt3qcwykqK6HVGcKwsw4=
 github.com/99designs/gqlgen v0.17.86 h1:C8N3UTa5heXX6twl+b0AJyGkTwYL6dNmFrgZNLRcU6w=
@@ -686,8 +686,8 @@ github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f h1:Y8xYupdHxryycyPlc9Y
 github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f/go.mod h1:HlzOvOjVBOfTGSRXRyY0OiCS/3J1akRGQQpRO/7zyF4=
 github.com/cockroachdb/apd v1.1.0 h1:3LFP3629v+1aKXU5Q37mxmRxX/pIu1nijXydLShEq5I=
 github.com/cockroachdb/apd v1.1.0/go.mod h1:8Sl8LxpKi29FqWXR16WEFZRNSz3SoPzUzeMeY4+DwBQ=
-github.com/containerd/containerd v1.7.18 h1:jqjZTQNfXGoEaZdW1WwPU0RqSn1Bm2Ay/KJPUuO8nao=
-github.com/containerd/containerd v1.7.18/go.mod h1:IYEk9/IO6wAPUz2bCMVUbsfXjzw5UNP5fLz4PsUygQ4=
+github.com/containerd/containerd/api v1.9.0 h1:HZ/licowTRazus+wt9fM6r/9BQO7S0vD5lMcWspGIg0=
+github.com/containerd/containerd/api v1.9.0/go.mod h1:GhghKFmTR3hNtyznBoQ0EMWr9ju5AqHjcZPsSpTKutI=
 github.com/containerd/errdefs v1.0.0 h1:tg5yIfIlQIrxYtu9ajqY42W3lpS19XqdxRQeEwYG8PI=
 github.com/containerd/errdefs v1.0.0/go.mod h1:+YBYIdtsnF4Iw6nWZhJcqGSg/dwvV7tyJ/kCkyJ2k+M=
 github.com/containerd/errdefs/pkg v0.3.0 h1:9IKJ06FvyNlexW690DXuQNx2KA2cUJXx151Xdx3ZPPE=
@@ -2007,6 +2007,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.142.0/go.mod h1:H7t0+Ji05xim37uKQY9e2irbFxO9RKy8o1K3DEQ3gXo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.142.0 h1:TYGu5Lx2M6TmJi6Js0xzjJsTKD1NJLa8DcEGE13zAa4=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.142.0/go.mod h1:F84TsYBAHua8Nh+1AhP++E1rf0ULMoJcjkuFfrYH9EU=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.142.0 h1:od6CYA2isXyyBnf4QiywVI7KyJViADDA+WQbCUI/TJY=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.142.0/go.mod h1:4SrF1HUDDje3QNuPQOvOnU+cpcqd2SXDFjMWiWbd6wM=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.142.0 h1:sYH9NfckZcc5V1UQPD5XDxj4rHhJBjyH2yFH+MOBr/k=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.142.0/go.mod h1:J14Rk1QH1MapXqNGUy7R5YdfFEXu5UfiY94+OqyW/3I=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.142.0 h1:F4cRl/vKrvwHcc/NEh8Zk7JyK1gtYf78aYC6eXPWbAA=

@@ -19,6 +19,11 @@ clean-dist:
 # everything needed is always passed through.
 PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) GOEXPERIMENT=$(GOEXPERIMENT)
 
+.PHONY: dist-alloy-mixin-zip
+dist-alloy-mixin-zip:
+	"mkdir" -p dist
+	cd operations/alloy-mixin/rendered && zip "../../../dist/alloy-mixin-dashboards-$${RELEASE_TAG:-$(VERSION)}.zip" dashboards/*.json
+
 #
 # Alloy release binaries
 #
