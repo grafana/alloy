@@ -38,7 +38,7 @@ type Scheduler struct {
 // NewScheduler creates a new Scheduler. Call Synchronize to manage the set of
 // components which are running.
 //
-// Call Close to stop the Scheduler and all running components.
+// Call Stop to stop the Scheduler and all running components.
 func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Scheduler {
 	return &Scheduler{
 		logger:               logger,
@@ -49,7 +49,7 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 }
 
 // Synchronize adjusts the set of running components based on the provided
-// RunnableNodes in the following way,
+// graph in the following way,
 //
 // 1. Nodes already managed by the scheduler will be unchanged.
 // 2. Nodes which are no longer present will be told to shutdown.
@@ -59,6 +59,9 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 // Nodes are shutdown first to ensure any shared resources, such as ports,
 // are allowed to be freed before new nodes are scheduled. As a means to avoid,
 // long stretches of downtime we give this a 1 minute timeout.
+//
+// Tasks are stopped in from roots to leaves and started in
+// from leaves to roots.
 //
 // Existing components will be restarted if they stopped since the previous
 // call to Synchronize.
@@ -253,8 +256,11 @@ func (t *task) Stop() {
 	}
 }
 
+// desiredTask describes a runnable to be scheduled.
 type desiredTask struct {
-	rank     int
+	// rank defines order, start tasks in ascending rank order, stop in descending rank order
+	rank int
+	// groupID is ephemeral and can change between Synchronize calls
 	groupID  int
 	runnable RunnableNode
 }
