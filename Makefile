@@ -285,7 +285,7 @@ endif
 
 graphql: build/.graphql.stamp
 
-build/.ui.stamp: $(UI_SOURCES) $(UI_CONFIG)
+build/.ui.stamp: $(UI_SOURCES)
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
