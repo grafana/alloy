@@ -146,8 +146,8 @@ By default, the exporter only sends host metadata for a single host, whose name 
 Valid values for `hostname_source` are:
 
 * `"first_resource"` picks the host metadata hostname from the resource attributes on the first OTLP payload that gets to the exporter. 
-  If the first payload lacks hostname-like attributes, it will fallback to 'config_or_system' behavior. **Don't use this hostname source if receiving data from multiple hosts**.
-* `"config_or_system"` picks the host metadata hostname from the 'hostname' setting, falling back to system and cloud provider APIs.
+  If the first payload lacks hostname-like attributes, it will fallback to `config_or_system` behavior. **Don't use this hostname source if receiving data from multiple hosts**.
+* `"config_or_system"` picks the host metadata hostname from the `hostname` setting, falling back to system and cloud provider APIs.
 
 ### `logs`
 

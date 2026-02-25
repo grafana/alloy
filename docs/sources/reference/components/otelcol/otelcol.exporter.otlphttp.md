@@ -52,12 +52,12 @@ If set, these arguments override the `client.endpoint` field for the correspondi
 You can use the following blocks with `otelcol.exporter.otlphttp`:
 
 | Block                                                 | Description                                                                    | Required |
-|-------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                        | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests.     | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                            | no       |
-| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                                  | no       |
+| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                      | Configures queueing and batching for the exporter.                             | no       |

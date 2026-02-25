@@ -70,7 +70,7 @@ You can use the following blocks with `otelcol.auth.oauth2`:
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | TLS settings for the token client.                                         | no       |
-| `tls` > [`tpm`][tpm]             | TPM settings for the TLS key_file.                                         | no       |
+| `tls` > [`tpm`][tpm]             | TPM settings for the TLS `key_file`.                                       | no       |
 
 [tls]: #tls
 [tpm]: #tpm
