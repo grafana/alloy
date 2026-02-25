@@ -880,6 +880,9 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 	cfg.Prometheus = a.Metrics.Convert()
+	if a.Metrics.Features != nil {
+		cfg.Metrics.Features = export.LoadFeatures(a.Metrics.Features)
+	}
 	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
 

@@ -205,6 +205,9 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
 
 	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Prometheus.DeprFeatures)
+	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Metrics.Features)
+	require.True(t, cfg.Metrics.Features.AnyAppO11yMetric())
+	require.True(t, cfg.Metrics.Features.AnyNetwork())
 	require.Equal(t, stringsToInstrumentations([]string{"redis", "sql", "gpu", "mongo"}), cfg.Prometheus.Instrumentations)
 
 	require.True(t, cfg.EnforceSysCaps)
