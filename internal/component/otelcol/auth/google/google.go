@@ -59,7 +59,15 @@ var _ auth.Arguments = Arguments{}
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	upstreamDefault := googleclientauthextension.CreateDefaultConfig().(*googleclientauthextension.Config)
-	args.Scopes = upstreamDefault.Scopes
+	// TODO: The upstream default config currently reuses a pointer to scopes.
+	// Fix this in the upstream repo and then change this to
+	// upstreamDefault.Scopes.
+	args.Scopes = []string{
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/logging.write",
+		"https://www.googleapis.com/auth/monitoring.write",
+		"https://www.googleapis.com/auth/trace.append",
+	}
 	args.TokenType = upstreamDefault.TokenType
 	args.DebugMetrics.SetToDefault()
 }
