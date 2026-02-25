@@ -101,8 +101,6 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 			continue
 		}
 
-		level.Debug(s.logger).Log("msg", "Starting task", "id", id)
-
 		s.running.Add(1)
 		task := newTask(t.groupID, t.rank, taskOptions{
 			runnable: t.runnable,
@@ -198,6 +196,8 @@ func newTask(groupID, rank int, opts taskOptions) *task {
 }
 
 func (t *task) Start() {
+	level.Debug(t.opts.logger).Log("msg", "Starting task", "id", t.opts.runnable.NodeID())
+
 	go func() {
 		err := t.opts.runnable.Run(t.ctx)
 		// NOTE: make sure we call cancel here so if the runnable
@@ -211,6 +211,7 @@ func (t *task) Start() {
 }
 
 func (t *task) Stop() {
+	level.Debug(t.opts.logger).Log("msg", "Stopping task", "id", t.opts.runnable.NodeID())
 	t.cancel()
 
 	deadlineDuration := t.opts.taskShutdownDeadline

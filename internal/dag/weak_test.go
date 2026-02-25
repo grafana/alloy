@@ -25,7 +25,6 @@ func TestWeaklyConnectedComponents(t *testing.T) {
 	})
 
 	t.Run("single graph", func(t *testing.T) {
-		// One component: a->b->c
 		var g Graph
 		a, b, c := stringNode("a"), stringNode("b"), stringNode("c")
 		g.Add(a)
@@ -40,7 +39,6 @@ func TestWeaklyConnectedComponents(t *testing.T) {
 	})
 
 	t.Run("isolated graphs", func(t *testing.T) {
-		// Three isolated nodes
 		var g Graph
 		a, b, c := stringNode("a"), stringNode("b"), stringNode("c")
 		g.Add(a)
