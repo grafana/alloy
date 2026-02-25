@@ -76,18 +76,19 @@ The > symbol indicates deeper levels of nesting.
 For example, `metrics` > `summaries` refers to a `summaries` block defined inside a `metrics` block.
 
 [api]: #api
-[traces]: #traces
-[logs]: #logs
-[metrics]: #metrics
+[batch]: #batch
+[client]: #client
+[debug_metrics]: #debug_metrics
 [exporter]: #exporter
 [histograms]: #histograms
+[host_metadata]: #host_metadata
+[logs]: #logs
+[metrics]: #metrics
+[queue]: #sending_queue
+[retry_on_failure]: #retry_on_failure
 [sums]: #sums
 [summaries]: #summaries
-[host_metadata]: #host_metadata
-[client]: #client
-[retry_on_failure]: #retry_on_failure
-[queue]: #sending_queue
-[debug_metrics]: #debug_metrics
+[traces]: #traces
 
 ### `api`
 
