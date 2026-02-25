@@ -36,6 +36,8 @@ The {{< param "OTEL_ENGINE" >}} bundle includes:
 - A curated selection of components from contributor repositories
 - The `alloyengine` extension
 
+{{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} currently bundles versions {{< param "OTEL_VERSION" >}} of upstream components.
+
 The following sections list all included components:
 
 {{< collapse title="Extensions" >}}
