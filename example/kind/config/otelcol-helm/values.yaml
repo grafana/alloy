@@ -6,12 +6,3 @@ command:
   name: "bin/otelcol"
 
 mode: deployment
-
-config:
-  receivers:
-    # Disable unsupported/default receivers from chart defaults.
-    prometheus: null
-  service:
-    pipelines:
-      metrics:
-        receivers: [otlp]
