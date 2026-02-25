@@ -69,6 +69,12 @@ You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                                     | no       |
 | [`watermark`][watermark]               | Behaviour of how the ce-time attribute is set.                                                  | no       |
 
+[debug_metrics]: #debug_metrics
+[ordering]: #ordering
+[retry_on_failure]: #retry_on_failure
+[sending_queue]: #sending_queue
+[watermark]: #watermark
+
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
