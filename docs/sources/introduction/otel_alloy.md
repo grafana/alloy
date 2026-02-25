@@ -36,7 +36,8 @@ The {{< param "OTEL_ENGINE" >}} bundle includes:
 - A curated selection of components from contributor repositories
 - The `alloyengine` extension
 
-{{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} currently bundles versions {{< param "OTEL_VERSION" >}} of upstream components.
+{{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} currently bundles versions {{< param "OTEL_VERSION" >}} of OpenTelemetry Collector components.
+You can find more information about the bundled version in both the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}) and [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}) repositories.
 
 The following sections list all included components:
 
