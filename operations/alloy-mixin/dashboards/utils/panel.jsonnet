@@ -93,16 +93,6 @@
     },
   },
 
-  withSoftMax(max):: {
-    fieldConfig+: {
-      defaults+: {
-        custom+: {
-          axisSoftMax: max,
-        },
-      },
-    },
-  },
-
   withOverrides(overrides):: {
     fieldConfig+: {
       overrides: overrides,
