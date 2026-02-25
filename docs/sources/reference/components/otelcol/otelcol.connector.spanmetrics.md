@@ -818,6 +818,197 @@ metric names and attributes will be normalized to be compliant with Prometheus n
 [merge_maps]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#merge_maps
 [prom-data-model]: https://prometheus.io/docs/concepts/data_model/
 
+## Troubleshooting span metrics high cardinality
+
+High cardinality issues in span metrics commonly manifest in APM dashboards as an excessive number of service operations with non-unique names.
+Examples include URIs with unique identifiers such as `GET /product/1YMWWN1N4O` or HTTP parameters with random values such as `GET /?_ga=GA1.2.569539246.1760114706`.
+These patterns render operation lists difficult to interpret and ineffective for monitoring purposes.
+
+This issue stems from violations of [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/), which require span names to have low {{< term "cardinality" >}}cardinality{{< /term >}} (refer to [HTTP span name specs](https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name) for example).
+Beyond degrading APM interfaces with numerous non-meaningful operation names, this problem leads to metric time series explosion, resulting in significant performance degradation and increased costs.
+
+`otelcol.connector.spanmetrics` provides an optional circuit breaker through the `aggregation_cardinality_limit` attribute (disabled by default) to mitigate cardinality explosion.
+While this feature addresses performance and cost concerns, it does not resolve the underlying issue of semantically meaningless operation names.
+
+### Fixing high cardinality span name issues
+
+The ideal long-term solution is to modify the OpenTelemetry instrumentation code to comply with semantic conventions, preventing the generation of non-compliant high cardinality span names.
+
+However, deploying updated instrumentation libraries can be time-consuming, often requiring an immediate interim solution to restore observability backend functionality.
+
+#### Addressing high cardinality span names in the ingestion pipeline
+
+An effective short-term solution is to implement a span sanitization layer within the observability ingestion pipeline.
+This can be achieved by using `otelcol.processor.transform`'s [`set_semconv_span_name()` function][set_semconv_span_name] immediately before `otelcol.connector.spanmetrics` to enforce semantic conventions on span names.
+
+{{< collapse title="Simple example configuration to prevent span metrics cardinality explosion" >}}
+
+```alloy
+otelcol.receiver.otlp "default" {
+  http {}
+  grpc {}
+
+  output {
+    traces = [otelcol.processor.transform.sanitize_spans.input]
+  }
+}
+
+otelcol.processor.transform "sanitize_spans" {
+  error_mode = "ignore"
+
+  trace_statements {
+    context = "span"
+    statements = [
+      // Sanitize all span names to prevent span metrics cardinality explosion
+      // caused by non-compliant high cardinality span names
+      `set_semconv_span_name("1.37.0")`,
+    ]
+  }
+
+  output {
+    traces = [otelcol.connector.spanmetrics.default.input]
+  }
+}
+
+otelcol.connector.spanmetrics "default" {
+  histogram {
+    explicit {}
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.observability_backend.input]
+  }
+}
+
+otelcol.exporter.otlphttp "observability_backend" {
+  client {
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
+  }
+}
+```
+
+{{< /collapse >}}
+
+Aggressive span name sanitization may be overly restrictive for instrumentations with incomplete resource attributes.
+For instance, HTTP service operations may be reduced to generic names like `GET` and `POST` when HTTP spans lack the `http.route` attribute.
+This information loss can impact the monitoring of critical business operations.
+
+To preserve operation granularity, you can manually set the `http.route` attribute when detailed operation names are required.
+The missing `http.route` value can typically be derived through pattern matching on other span attributes such as `http.target` or `url.full`.
+
+The following example configuration prevents cardinality explosion while preserving meaningful operation names on a service `webshop/frontend`:
+
+```alloy
+otelcol.receiver.otlp "default" {
+  http {}
+  grpc {}
+
+  output {
+    traces = [otelcol.processor.transform.sanitize_spans.input]
+  }
+}
+
+// Sanitize spans to prevent span metrics cardinality explosion caused by
+// non-compliant high cardinality span names:
+// 1. Fix incomplete semconv of critical operation spans to keep meaningful
+//    span metrics operation names, adding missing `http.route` and
+//    `http.request.method`.
+// 2. Sanitize all span names, note that http server spans lacking
+//    `http.route` will default to operations `GET`, `POST`, etc.
+otelcol.processor.transform "sanitize_spans" {
+  error_mode = "ignore"
+
+  // 1. Fix incomplete semconv on the critical http operations of the `frontend` service
+  trace_statements {
+    context    = "span"
+    conditions = [
+      `span.kind == SPAN_KIND_SERVER and resource.attributes["service.name"] == "frontend" and resource.attributes["service.namespace"] == "webshop" and span.attributes["http.route"] == nil`,
+    ]
+    statements = [
+      // e.g. /api/checkout
+      `set(span.attributes["http.route"], "/api/checkout") where IsMatch(span.attributes["http.target"], "\\/api\\/checkout")`,
+      // e.g. /api/products/1YMWWN1N4O
+      `set(span.attributes["http.route"], "/api/products/{productId}") where IsMatch(span.attributes["http.target"], "\\/api\\/products\\/.*")`,
+    ]
+  }
+
+  // 1. Fix incomplete semconv on the critical http operations of other services...
+
+  // 2. Sanitize all span names to prevent span metrics cardinality explosion.
+  //    Unsanitized span names, when different, are kept in the `unsanitized_span_name` attribute
+  trace_statements {
+    context = "span"
+    statements = [
+      `set_semconv_span_name("1.37.0", "unsanitized_span_name")`,
+    ]
+  }
+
+  output {
+    traces = [otelcol.connector.spanmetrics.default.input]
+  }
+}
+
+otelcol.connector.spanmetrics "default" {
+  histogram {
+    explicit {}
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.observability_backend.input]
+  }
+}
+
+otelcol.exporter.otlphttp "observability_backend" {
+  client {
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
+  }
+}
+```
+
+#### Addressing high cardinality span names in the instrumentation code
+
+The preferred long-term solution is to ensure span names and attributes comply with [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) directly in the instrumentation code.
+
+Custom web frameworks are a common source of high cardinality span names.
+While default OpenTelemetry instrumentation (for example, Java Servlet) may assign generic span names like `GET /my-web-fwk/*`, your framework has access to more specific routing information.
+By overwriting span attributes in your framework code, you can create compliant, low-cardinality span names that preserve operational granularity.
+
+**Example: Custom Web Framework in Java**
+
+Consider a custom web framework that intercepts the generic route `/my-web-fwk/*` and dispatches requests like `/my-web-fwk/product/123456ABCD` or `/my-web-fwk/user/john.doe`.
+
+The default Java Servlet instrumentation produces vague span names (`GET /my-web-fwk/*`), while directly using request URIs creates high cardinality (`GET /my-web-fwk/product/123456ABCD`).
+
+The solution is to override span attributes with templated route patterns like `/my-web-fwk/product/{productId}` or `/my-web-fwk/user/{userId}`:
+
+```java
+@WebServlet(urlPatterns = "/my-web-fwk/*")
+public class MyWebFrameworkServlet extends HttpServlet {
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Default Servlet instrumentation sets vague span names: `GET /my-web-fwk/*` (and `http.route=/my-web-fwk/*`)
+        // Using the request URI directly would cause high cardinality and violate semantic conventions
+        // Instead, use the framework's low-cardinality routing information below
+
+        // Example routing logic
+        String uri = request.getRequestURI();
+        MyWebOperation myWebOperation = getWebOperation(uri);
+
+        // Fix span details to add details while complying with semantic conventions and maintaining low cardinality
+        String httpRoute = "/my-web-fwk/" + myWebOperation.getSubHttpRoute();
+        Span.current().setAttribute(HttpAttributes.HTTP_ROUTE, httpRoute);
+        Span.current().updateName(request.getMethod() + " " + httpRoute);
+
+        // execute the web operation
+        myWebOperation.execute(request, response);
+    }
+    ...
+}
+```
+
+[set_semconv_span_name]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#set_semconv_span_name
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
