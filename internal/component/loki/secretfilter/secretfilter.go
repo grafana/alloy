@@ -253,7 +253,7 @@ func (c *Component) Run(ctx context.Context) error {
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
 			// Start processing the log entry to redact secrets
-			newEntry, dropped := c.processEntry(entry)
+			newEntry, dropped := c.processEntry(ctx, entry)
 			if dropped {
 				c.mut.RUnlock()
 				continue
@@ -286,35 +286,21 @@ func (c *Component) Run(ctx context.Context) error {
 // If processing_timeout is exceeded and drop_on_timeout is false (default),
 // the original unredacted entry is forwarded. If processing_timeout is
 // exceeded and drop_on_timeout is true, the entry is dropped.
-func (c *Component) processEntry(entry loki.Entry) (loki.Entry, bool) {
+func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.Entry, bool) {
 	start := time.Now()
 	defer func() {
 		c.metrics.processingDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	timeout := c.args.ProcessingTimeout
-	if timeout <= 0 {
-		findings := c.detector.DetectString(entry.Line)
-		if len(findings) == 0 {
-			return entry, false
-		}
-		return c.redactLine(entry, findings), false
+	if timeout := c.args.ProcessingTimeout; timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
 
-	ch := make(chan loki.Entry, 1)
-	go func() {
-		findings := c.detector.DetectString(entry.Line)
-		if len(findings) == 0 {
-			ch <- entry
-			return
-		}
-		ch <- c.redactLine(entry, findings)
-	}()
+	findings := c.detector.DetectContext(ctx, detect.Fragment{Raw: entry.Line})
 
-	select {
-	case result := <-ch:
-		return result, false
-	case <-time.After(timeout):
+	if ctx.Err() != nil {
 		c.metrics.linesTimedOutTotal.Inc()
 		if c.args.DropOnTimeout {
 			c.metrics.linesDroppedTotal.Inc()
@@ -322,6 +308,11 @@ func (c *Component) processEntry(entry loki.Entry) (loki.Entry, bool) {
 		}
 		return entry, false
 	}
+
+	if len(findings) == 0 {
+		return entry, false
+	}
+	return c.redactLine(entry, findings), false
 }
 
 // redactLine redacts each finding in the log line and records metrics.
