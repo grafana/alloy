@@ -2,14 +2,17 @@ package dag
 
 type FilterFunc func(g *Graph, n Node) bool
 
+// FilterAllFunc includes every node.
 func FilterAllFunc(_ *Graph, _ Node) bool {
 	return true
 }
 
+// FilterLeavesFunc includes only leaves.
 func FilterLeavesFunc(g *Graph, n Node) bool {
 	return len(g.outEdges[n]) == 0
 }
 
+// FilterRootsFunc includes only roots.
 func FilterRootsFunc(g *Graph, n Node) bool {
 	return len(g.inEdges[n]) == 0
 }
