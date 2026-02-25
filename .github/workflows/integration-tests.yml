@@ -1,4 +1,4 @@
-name: Integration Tests
+name: Integration Tests on Docker
 on:
   # Run tests on main just so the module and build cache can be saved and used
   # in PRs. This speeds up the time it takes to test PRs dramatically.
