@@ -202,7 +202,7 @@ The following fields are exported and can be referenced by other components:
 * `loki_write_dropped_entries_total` (counter): Number of log entries dropped because they failed to be sent to the ingester after all retries.
 * `loki_write_sent_bytes_total` (counter): Number of bytes sent.
 * `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
-* `loki_write_request_size_bytes` (histogram): Number of bytes for requests.
+* `loki_write_request_size_bytes` (histogram): Number of bytes for encoded requests.
 * `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
 
 ## Examples
