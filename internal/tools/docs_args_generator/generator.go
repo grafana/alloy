@@ -45,10 +45,7 @@ func generate(ymlPath string, outputPath string) error {
 	blocksTable.sort()
 	exportsTable.sort()
 
-	markdownTables, err := generateMarkdownTables(argumentsTables, blocksTable, exportsTable)
-	if err != nil {
-		return fmt.Errorf("failed to generate reference table: %w", err)
-	}
+	markdownTables := generateMarkdownTables(argumentsTables, blocksTable, exportsTable)
 
 	err = writeFiles(markdownTables, outputPath)
 	if err != nil {
@@ -59,7 +56,7 @@ func generate(ymlPath string, outputPath string) error {
 }
 
 // generateMarkdownTables generates a markdown table from the schema
-func generateMarkdownTables(arguments []*ArgTable, blocks *BlocksTable, exports *ExportsTable) (map[string]string, error) {
+func generateMarkdownTables(arguments []*ArgTable, blocks *BlocksTable, exports *ExportsTable) map[string]string {
 	res := make(map[string]string)
 	for _, table := range arguments {
 		res[table.Name] = table.markdown()
@@ -70,7 +67,7 @@ func generateMarkdownTables(arguments []*ArgTable, blocks *BlocksTable, exports 
 
 	res["__exports"] = exports.markdown()
 
-	return res, nil
+	return res
 }
 
 func writeFiles(markdownTables map[string]string, outputPath string) error {
