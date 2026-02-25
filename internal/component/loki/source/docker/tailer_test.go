@@ -271,7 +271,7 @@ func TestTailerConsumeLines(t *testing.T) {
 		require.Equal(t, expectedTimestamp, entry.Timestamp)
 	})
 
-	t.Run("bigger than mix size", func(t *testing.T) {
+	t.Run("bigger than max size", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
 			logger:            log.NewJSONLogger(os.Stdout),
