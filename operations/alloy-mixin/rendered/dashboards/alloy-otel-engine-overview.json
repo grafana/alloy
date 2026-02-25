@@ -46,15 +46,15 @@
          },
          "options": {
             "colorMode": "none",
-            "graphMode": "none"
+            "graphMode": "area"
          },
          "targets": [
             {
                "datasource": "${datasource}",
                "expr": "count(otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
-               "instant": true,
+               "instant": false,
                "legendFormat": "count",
-               "range": false
+               "range": true
             }
          ],
          "title": "Pods count",
@@ -63,6 +63,18 @@
       {
          "datasource": "${datasource}",
          "description": "Count of series with process uptime under 60 seconds, grouped by the selected dimension.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "drawStyle": "bars",
+                  "fillOpacity": 100,
+                  "gradientMode": "none",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               }
+            }
+         },
          "gridPos": {
             "h": 5,
             "w": 8,
@@ -1337,7 +1349,7 @@
          "type": "row"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"

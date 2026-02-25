@@ -50,7 +50,7 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Percentage of targets successfully scraped by prometheus.scrape\ncomponents.\n\nThis metric is calculated by dividing the number of targets\nsuccessfully scraped by the total number of targets scraped,\nacross all the namespaces in the selected cluster.\n\nLow success rates can indicate a problem with scrape targets,\nstale service discovery, or Alloy misconfiguration.\n",
+         "description": "Percentage of targets successfully scraped in the selected\ncluster and job.\n\nLow success rates can indicate a problem with scrape targets,\nstale service discovery, or Alloy misconfiguration.\n",
          "fieldConfig": {
             "defaults": {
                "unit": "percentunit"
@@ -71,12 +71,12 @@
                "range": true
             }
          ],
-         "title": "Scrape success rate in $cluster",
+         "title": "Scrape success rate",
          "type": "timeseries"
       },
       {
          "datasource": "${datasource}",
-         "description": "Duration of successful scrapes by prometheus.scrape components,\nacross all the namespaces in the selected cluster.\n\nThis metric should be below your configured scrape interval.\nHigh durations can indicate a problem with a scrape target or\na performance issue with Alloy.\n",
+         "description": "Duration of scrapes for the selected cluster and job,\nshown as p99, p95, and p50 quantiles.\n\nThis metric should be below your configured scrape interval.\nHigh durations can indicate a problem with a scrape target or\na performance issue with Alloy.\n",
          "fieldConfig": {
             "defaults": {
                "unit": "s"
@@ -111,7 +111,7 @@
                "range": true
             }
          ],
-         "title": "Scrape duration in $cluster",
+         "title": "Scrape duration",
          "type": "timeseries"
       },
       {
@@ -209,9 +209,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by (${groupby}) (\n  prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\"}\n  - ignoring(url, remote_name) group_right(instance)\n  prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
+               "expr": "sum by (${groupby}) (\n  (\n    prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\"}\n    - ignoring(url, remote_name) group_right(instance)\n    prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n  ) < 31536000 > 0\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -244,7 +244,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n    rate(prometheus_remote_storage_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval]) +\n    rate(prometheus_remote_storage_metadata_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -332,7 +332,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n    prometheus_remote_storage_shards{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             },
             {
@@ -379,7 +379,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  rate(prometheus_remote_storage_samples_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -412,7 +412,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  rate(prometheus_remote_storage_samples_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -445,7 +445,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  rate(prometheus_remote_storage_samples_retried_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{instance}} / {{component_path}} {{component_id}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -536,7 +536,7 @@
          "type": "timeseries"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -560,9 +560,8 @@
             "type": "datasource"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "cluster",
             "multi": true,
             "name": "cluster",
@@ -575,9 +574,8 @@
             "type": "query"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "namespace",
             "multi": true,
             "name": "namespace",

@@ -393,7 +393,7 @@
          "type": "timeseries"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -417,9 +417,8 @@
             "type": "datasource"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "cluster",
             "multi": true,
             "name": "cluster",
@@ -432,9 +431,8 @@
             "type": "query"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "namespace",
             "multi": true,
             "name": "namespace",
