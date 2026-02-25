@@ -199,6 +199,7 @@ local filename = 'alloy-otel-engine-overview.json';
       (
         panel.newSingleStat('Pods count') {
           options+: { graphMode: 'area' },
+          fieldConfig+: { defaults+: { min: 0 } },
         } +
         panel.withDescription(|||
           Current number of pods with OTel engine metrics.
