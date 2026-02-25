@@ -38,6 +38,11 @@
       {
          "datasource": "${datasource}",
          "description": "Current number of pods with OTel engine metrics.\n",
+         "fieldConfig": {
+            "defaults": {
+               "min": 0
+            }
+         },
          "gridPos": {
             "h": 5,
             "w": 8,
