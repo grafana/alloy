@@ -167,45 +167,45 @@ type Filters struct {
 type Injector struct {
 	Instrument        Services                           `alloy:"instrument,block,optional"`
 	Webhook           InjectorWebhook                    `alloy:"webhook,block,optional"`
-	NoAutoRestart     *bool                              `alloy:"disable_auto_restart,block,optional"`
-	HostPathVolumeDir string                             `alloy:"host_path_volume,block,optional"`
-	SDKPkgVersion     string                             `alloy:"sdk_package_version,block,optional"`
-	HostMountPath     string                             `alloy:"host_mount_path,block,optional"`
-	ManageSDKVersions *bool                              `alloy:"manage_sdk_versions,block,optional"`
+	NoAutoRestart     *bool                              `alloy:"disable_auto_restart,attr,optional"`
+	HostPathVolumeDir string                             `alloy:"host_path_volume,attr,optional"`
+	SDKPkgVersion     string                             `alloy:"sdk_package_version,attr,optional"`
+	HostMountPath     string                             `alloy:"host_mount_path,attr,optional"`
+	ManageSDKVersions *bool                              `alloy:"manage_sdk_versions,attr,optional"`
 	DefaultSampler    SamplerConfig                      `alloy:"sampler,block,optional"`
-	Propagators       []string                           `alloy:"propagators,block,optional"`
+	Propagators       []string                           `alloy:"propagators,attr,optional"`
 	Export            InjectorSDKExport                  `alloy:"export,block,optional"`
 	Resources         InjectorSDKResource                `alloy:"resources,block,optional"`
 	EnabledSDKs       []servicesextra.InstrumentableType `alloy:"enabled_sdks,block,optional"`
-	Debug             *bool                              `alloy:"debug,block,optional"`
+	Debug             *bool                              `alloy:"debug,attr,optional"`
 }
 
 type InjectorWebhook struct {
-	Enable   bool           `alloy:"enable,block,optional"`
-	Port     *int           `alloy:"port,block,optional"`
-	CertPath string         `alloy:"cert_path,block,optional"`
-	KeyPath  string         `alloy:"key_path,block,optional"`
-	Timeout  *time.Duration `alloy:"timeout,block,optional"`
+	Enable   bool           `alloy:"enable,attr,optional"`
+	Port     *int           `alloy:"port,attr,optional"`
+	CertPath string         `alloy:"cert_path,attr,optional"`
+	KeyPath  string         `alloy:"key_path,attr,optional"`
+	Timeout  *time.Duration `alloy:"timeout,attr,optional"`
 }
 
 type InjectorSDKExport struct {
-	Traces  *bool `alloy:"traces,block,optional"`
-	Metrics *bool `alloy:"metrics,block,optional"`
-	Logs    *bool `alloy:"logs,block,optional"`
+	Traces  *bool `alloy:"traces,attr,optional"`
+	Metrics *bool `alloy:"metrics,attr,optional"`
+	Logs    *bool `alloy:"logs,attr,optional"`
 }
 
 type InjectorSDKResource struct {
 	// Attributes defines attributes that are added to the resource.
 	// For example environment: dev
-	Attributes map[string]string `alloy:"attributes,block,optional"`
-	// AddK8sUIDAttributes defines whether K8s UID attributes should be collected (e.g. k8s.deployment.uid).
-	AddK8sUIDAttributes *bool `alloy:"add_k8s_attributes,block,optional"`
+	Attributes map[string]string `alloy:"attributes,attr,optional"`
+	// AddK8sUIDAttributes defines whether K8s UID attr should be collected (e.g. k8s.deployment.uid).
+	AddK8sUIDAttributes *bool `alloy:"add_k8s_attributes,attr,optional"`
 	// UseLabelsForResourceAttributes defines whether to use common labels for resource attributes:
 	// Note: first entry wins:
 	//   - `app.kubernetes.io/instance` becomes `service.name`
 	//   - `app.kubernetes.io/name` becomes `service.name`
 	//   - `app.kubernetes.io/version` becomes `service.version`
-	UseLabelsForResourceAttributes *bool `alloy:"use_labels,block,optional"`
+	UseLabelsForResourceAttributes *bool `alloy:"use_labels,attr,optional"`
 }
 
 type AttributeFamilies []AttributeFamily
