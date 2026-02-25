@@ -6,6 +6,14 @@ prometheus.exporter.self "default" { }
 
 prometheus.scrape "self_metrics" {
   targets    = prometheus.exporter.self.default.targets
-  forward_to = []
-  scrape_interval = "5s"
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+  external_labels = {
+    test_name = "graphql",
+  }
 }
