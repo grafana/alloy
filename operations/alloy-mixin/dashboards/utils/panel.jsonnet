@@ -93,6 +93,16 @@
     },
   },
 
+  withSoftMax(max):: {
+    fieldConfig+: {
+      defaults+: {
+        custom+: {
+          axisSoftMax: max,
+        },
+      },
+    },
+  },
+
   withOverrides(overrides):: {
     fieldConfig+: {
       overrides: overrides,
@@ -135,6 +145,16 @@
   withDescription(desc):: { description: desc },
   withOptions(options):: { options: options },
   withTransformations(transformations):: { transformations: transformations },
+
+  withDrawStyle(style):: {
+    fieldConfig+: {
+      defaults+: {
+        custom+: {
+          drawStyle: style,
+        },
+      },
+    },
+  },
 
   withStacked(opacity=20, gradientMode='hue', stackingMode='normal'):: {
     fieldConfig+: {

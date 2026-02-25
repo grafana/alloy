@@ -197,13 +197,15 @@ local filename = 'alloy-otel-engine-overview.json';
         rowPosition(0)
       ),
       (
-        panel.newSingleStat('Pods count') +
+        panel.newSingleStat('Pods count') {
+          options+: { graphMode: 'area' },
+        } +
         panel.withDescription(|||
           Current number of pods with OTel engine metrics.
         |||) +
         panel.withPosition({ x: 0, y: 0, w: 8, h: 5 }) +
         panel.withQueries([
-          panel.newInstantQuery(
+          panel.newQuery(
             expr=|||
               count(otelcol_process_uptime_seconds_total{%(groupSelector)s})
             ||| % $._config,
@@ -217,6 +219,8 @@ local filename = 'alloy-otel-engine-overview.json';
           Count of series with process uptime under 60 seconds, grouped by the selected dimension.
         |||) +
         panel.withPosition({ x: 0, y: 5, w: 8, h: 5 }) +
+        panel.withStacked(opacity=100, gradientMode='none') +
+        panel.withDrawStyle('bars') +
         panel.withQueries([
           panel.newQuery(
             expr=|||

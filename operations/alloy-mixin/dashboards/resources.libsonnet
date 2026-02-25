@@ -33,7 +33,7 @@ local stackedPanelMixin = {
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=true,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
     ) + [
       dashboard.newGroupByTemplateVariable(
         query='instance,job,namespace,cluster,pod',
