@@ -100,7 +100,9 @@ func (t *tailer) Run(ctx context.Context) {
 		case <-ticker.C:
 			res, err := t.client.ContainerInspect(ctx, t.containerID)
 			if err != nil {
-				level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+				if !errors.Is(err, context.Canceled) {
+					level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+				}
 				continue
 			}
 
@@ -124,6 +126,7 @@ func (t *tailer) Run(ctx context.Context) {
 func (t *tailer) startIfNotRunning() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerID)
 
@@ -161,6 +164,7 @@ func (t *tailer) startIfNotRunning() {
 func (t *tailer) stop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if t.running {
 		t.running = false
 		if t.cancel != nil {
@@ -240,12 +244,12 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 
 	// Start processing
 	go func() {
-		defer t.stop()
+		defer t.wg.Done()
 		t.process(rstdout, t.getStreamLabels("stdout"))
 	}()
 
 	go func() {
-		defer t.stop()
+		defer t.wg.Done()
 		t.process(rstderr, t.getStreamLabels("stderr"))
 	}()
 
