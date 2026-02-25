@@ -292,7 +292,7 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			}
 
 			if errors.Is(err, bufio.ErrTooLong) {
-				level.Error(t.logger).Log("msg", "line to big skipping")
+				level.Error(t.logger).Log("msg", "line too big, skipping")
 				err = skipUntilNewline(reader)
 			}
 
