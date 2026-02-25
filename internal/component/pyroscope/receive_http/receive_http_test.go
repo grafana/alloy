@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
+
 	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -612,6 +614,85 @@ func TestUpdateArgs(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.False(t, shutdown)
+}
+
+// TestEnsureServiceName verifies all branches of the ensureServiceName helper.
+func TestEnsureServiceName(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputLabels    labels.Labels
+		expectedLabels labels.Labels
+		expectWarn     bool
+	}{
+		{
+			name:        "no service_name: sets service_name from __name__",
+			inputLabels: labels.FromStrings(pyroscope.LabelName, "myapp"),
+			expectedLabels: labels.FromStrings(
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "myapp",
+			),
+			expectWarn: false,
+		},
+		{
+			name: "service_name set, no app_name: sets app_name from __name__",
+			inputLabels: labels.FromStrings(
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "my-service",
+			),
+			expectedLabels: labels.FromStrings(
+				"app_name", "myapp",
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "my-service",
+			),
+			expectWarn: false,
+		},
+		{
+			name: "service_name set, app_name matches __name__: no change, no warning",
+			inputLabels: labels.FromStrings(
+				"app_name", "myapp",
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "my-service",
+			),
+			expectedLabels: labels.FromStrings(
+				"app_name", "myapp",
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "my-service",
+			),
+			expectWarn: false,
+		},
+		{
+			name: "service_name set, app_name differs from __name__: no change, logs warning",
+			inputLabels: labels.FromStrings(
+				"app_name", "other-app",
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "my-service",
+			),
+			expectedLabels: labels.FromStrings(
+				"app_name", "other-app",
+				pyroscope.LabelName, "myapp",
+				pyroscope.LabelServiceName, "my-service",
+			),
+			expectWarn: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			logger := log.NewLogfmtLogger(&buf)
+
+			result := ensureServiceName(logger, tt.inputLabels)
+
+			require.Equal(t, tt.expectedLabels, result)
+
+			logOutput := buf.String()
+			if tt.expectWarn {
+				require.Contains(t, logOutput, "app_name label value differs from __name__ label")
+			} else {
+				require.NotContains(t, logOutput, "app_name label value differs from __name__ label")
+			}
+		})
+	}
 }
 
 // TestAPIToAlloySamples verifies that the ID field is properly propagated

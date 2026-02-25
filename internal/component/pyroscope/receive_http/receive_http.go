@@ -194,7 +194,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 				lb.Reset(labels.EmptyLabels())
 				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
 				// Ensure service_name label is set
-				lbls := ensureServiceName(lb.Labels())
+				lbls := ensureServiceName(l, lb.Labels())
 				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
 					pyroutil.ErrorsJoinConcurrent(
@@ -253,7 +253,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	} // todo this is a required parameter, treat absence as error
 
 	// Ensure service_name label is set
-	lbls = ensureServiceName(lbls)
+	lbls = ensureServiceName(l, lbls)
 
 	// Read the entire body into memory
 	// This matches how Append() handles profile data (as RawProfile),
@@ -315,14 +315,16 @@ func (c *Component) shutdownServer() {
 }
 
 // ensureServiceName ensures that the service_name label is set
-func ensureServiceName(lbls labels.Labels) labels.Labels {
+func ensureServiceName(logger log.Logger, lbls labels.Labels) labels.Labels {
 	builder := labels.NewBuilder(lbls)
 	originalName := lbls.Get(pyroscope.LabelName)
 
 	if !lbls.Has(pyroscope.LabelServiceName) {
 		builder.Set(pyroscope.LabelServiceName, originalName)
-	} else {
+	} else if !lbls.Has("app_name") {
 		builder.Set("app_name", originalName)
+	} else if lbls.Get("app_name") != originalName {
+		level.Warn(logger).Log("msg", "app_name label value differs from __name__ label", "app_name", lbls.Get("app_name"), "original_name", originalName)
 	}
 
 	return builder.Labels()
