@@ -340,7 +340,7 @@ func TestMultiplePatterns(t *testing.T) {
 	// Verify all expected files are matched
 	for _, expected := range expectedFiles {
 		require.True(t, testutil.ContainsPath(foundFiles, expected),
-			"%s should be matched", expected)
+			"%s should be matched; it was not found in foundFiles: %v", expected, foundFiles)
 	}
 
 	// Verify files from "other" directory are NOT matched (wrong directory)
