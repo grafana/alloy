@@ -322,7 +322,7 @@ func TestMultiplePatterns(t *testing.T) {
 
 	foundFiles := c.getWatchedFiles()
 
-	// Expected files: 3 directories × 3 extensions (filepath so separators match OS, e.g. \ on Windows)
+	// Expected files: 3 directories × 3 extensions.
 	// Use filepath.Join so that we get "/" separators on Linux and "\" on Windows.
 	expectedFiles := []string{
 		filepath.Join("nginx", "access.log"),
