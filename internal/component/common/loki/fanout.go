@@ -4,12 +4,23 @@ import (
 	"context"
 	"reflect"
 	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // NewFanout creates a new Fanout that will send log entries to the provided
 // list of LogsReceivers.
-func NewFanout(children []LogsReceiver) *Fanout {
+func NewFanout(children []LogsReceiver, register prometheus.Registerer) *Fanout {
+	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "loki_fanout_latency",
+		Help:    "Write latency for sending to components",
+		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
+	})
+	_ = register.Register(wl)
+
 	return &Fanout{
+		wl:       wl,
 		children: children,
 	}
 }
@@ -18,12 +29,16 @@ func NewFanout(children []LogsReceiver) *Fanout {
 // It is thread-safe and allows the list of receivers to be updated dynamically
 type Fanout struct {
 	mut      sync.RWMutex
+	wl       prometheus.Histogram
 	children []LogsReceiver
 }
 
 // Send forwards a log entry to all registered receivers. It returns an error
 // if the context is cancelled while sending.
 func (f *Fanout) Send(ctx context.Context, entry Entry) error {
+	start := time.Now()
+	defer func() { f.wl.Observe(float64(time.Since(start))) }()
+
 	// NOTE: It's important that we hold a read lock for the duration of Send
 	// rather than making a copy of children and releasing the lock early.
 	//
@@ -50,6 +65,9 @@ func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 // SendBatch forwards a batch of entires to all registered receivers. It returns an error
 // if the context is cancelled while sending.
 func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
+	start := time.Now()
+	defer func() { f.wl.Observe(float64(time.Since(start))) }()
+
 	// NOTE: It's important that we hold a read lock for the duration of SendBatch
 	// rather than making a copy of children and releasing the lock early.
 	//

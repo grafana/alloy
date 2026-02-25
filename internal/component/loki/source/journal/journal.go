@@ -79,7 +79,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:           o,
 		recv:           loki.NewLogsReceiver(),
 		positions:      positionsFile,
-		fanout:         loki.NewFanout(args.ForwardTo),
+		fanout:         loki.NewFanout(args.ForwardTo, o.Registerer),
 		targetsUpdated: make(chan struct{}, 1),
 		args:           args,
 	}

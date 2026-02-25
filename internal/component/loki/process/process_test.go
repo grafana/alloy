@@ -47,13 +47,12 @@ func TestComponent(t *testing.T) {
 		require.NoError(t, ctrl.WaitExports(time.Minute))
 
 		recv := ctrl.Exports().(Exports).Receiver
-		fanout := loki.NewFanout([]loki.LogsReceiver{recv})
-
 		wg.Go(func() {
 			for {
-				// We get error if context is canceled
-				if err := fanout.Send(ctx, loki.Entry{}); err != nil {
+				select {
+				case <-ctx.Done():
 					return
+				case recv.Chan() <- loki.Entry{}:
 				}
 			}
 		})
