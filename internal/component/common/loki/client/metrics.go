@@ -17,10 +17,9 @@ const (
 	reasonQueueIsFull   = "queue_is_full"
 )
 
-var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonLineTooLong}
+var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonLineTooLong, reasonQueueIsFull}
 
 type metrics struct {
-	encodedBytes                 *prometheus.CounterVec
 	sentBytes                    *prometheus.CounterVec
 	droppedBytes                 *prometheus.CounterVec
 	sentEntries                  *prometheus.CounterVec
@@ -35,10 +34,6 @@ type metrics struct {
 func newMetrics(reg prometheus.Registerer) *metrics {
 	var m metrics
 
-	m.encodedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_encoded_bytes_total",
-		Help: "Number of bytes encoded and ready to send.",
-	}, []string{labelHost, labelTenant})
 	m.sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_bytes_total",
 		Help: "Number of bytes sent.",
@@ -76,7 +71,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}, []string{labelHost, labelTenant})
 
 	m.countersWithHostTenant = []*prometheus.CounterVec{
-		m.batchRetries, m.encodedBytes, m.sentBytes, m.sentEntries,
+		m.batchRetries, m.sentBytes, m.sentEntries,
 	}
 
 	m.countersWithHostTenantReason = []*prometheus.CounterVec{
@@ -84,7 +79,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	if reg != nil {
-		m.encodedBytes = util.MustRegisterOrGet(reg, m.encodedBytes).(*prometheus.CounterVec)
 		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
 		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
 		m.sentEntries = util.MustRegisterOrGet(reg, m.sentEntries).(*prometheus.CounterVec)
