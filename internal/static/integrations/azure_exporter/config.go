@@ -42,7 +42,6 @@ var DefaultConfig = Config{
 	// Concurrency default values taken from OSS exporter
 	ConcurrencySubscription:         5,
 	ConcurrencySubscriptionResource: 10,
-	EnableCaching:                   false,
 }
 
 type Config struct {
@@ -88,7 +87,6 @@ type Config struct {
 
 	ConcurrencySubscription         int  `yaml:"concurrency_subscription"`
 	ConcurrencySubscriptionResource int  `yaml:"concurrency_subscription_resource"`
-	EnableCaching                   bool `yaml:"enable_caching"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -330,15 +328,6 @@ func MergeConfigWithQueryParams(cfg Config, params url.Values) (Config, error) {
 			return Config{}, fmt.Errorf("invalid integer value %s for concurrency_subscription_resource", concurrencySubscriptionResource)
 		}
 		cfg.ConcurrencySubscriptionResource = v
-	}
-
-	enableCaching := params.Get("enable_caching")
-	if len(enableCaching) != 0 {
-		v, err := strconv.ParseBool(enableCaching)
-		if err != nil {
-			return Config{}, fmt.Errorf("invalid boolean value %s for enable_caching", enableCaching)
-		}
-		cfg.EnableCaching = v
 	}
 
 	return cfg, nil

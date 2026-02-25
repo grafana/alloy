@@ -119,7 +119,6 @@ func TestConfig_Validate(t *testing.T) {
 		Timespan:                        "PT5M",
 		ConcurrencySubscription:         5,
 		ConcurrencySubscriptionResource: 10,
-		EnableCaching:                   false,
 	}
 
 	baseConfigValid := t.Run("Base Config is Valid", func(t *testing.T) {

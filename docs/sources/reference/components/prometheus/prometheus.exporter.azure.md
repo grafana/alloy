@@ -85,7 +85,6 @@ You can use the following arguments with `prometheus.exporter.azure`:
 | `validate_dimensions`               | `bool`         | Enable dimension validation in the azure SDK.                                                                                                            | `false`                                                                       | no       |
 | `concurrency_subscription`          | `int`          | Number of subscriptions that can concurrently send metric requests.                                                                                      | `5`                                                                           | no       |
 | `concurrency_subscription_resource` | `int`          | Number of concurrent metric requests per resource within a subscription.                                                                                 | `10`                                                                          | no       |
-| `enable_caching`                    | `bool`         | Enable internal caching to reduce redundant API calls.                                                                                                   | `false`                                                                       | no       |
 
 The list of available `resource_type` values and their corresponding `metrics` can be found in [Azure Monitor essentials][].
 
@@ -119,7 +118,6 @@ If you are having issues with missing metrics, try increasing the `timespan` to 
 The concurrency settings control how many Azure API requests can be made in parallel.
 `concurrency_subscription` limits the number of subscriptions that can concurrently send metric requests, while `concurrency_subscription_resource` limits the number of concurrent metric requests per resource within a subscription.
 You can adjust these values to tune performance based on your Azure subscription limits and available resources.
-`enable_caching` enables internal caching to reduce redundant API calls and improve performance.
 
 [Kusto query]: https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/
 [Azure Monitor essentials]: https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/metrics-supported

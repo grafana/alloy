@@ -43,7 +43,6 @@ type Arguments struct {
 	Regions                         []string `alloy:"regions,attr,optional"`
 	ConcurrencySubscription         int      `alloy:"concurrency_subscription,attr,optional"`
 	ConcurrencySubscriptionResource int      `alloy:"concurrency_subscription_resource,attr,optional"`
-	EnableCaching                   bool     `alloy:"enable_caching,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -62,7 +61,6 @@ func (a *Arguments) SetToDefault() {
 		// Concurrency default values taken from OSS exporter
 		ConcurrencySubscription:         5,
 		ConcurrencySubscriptionResource: 10,
-		EnableCaching:                   false,
 	}
 }
 
@@ -93,6 +91,5 @@ func (a *Arguments) Convert() *azure_exporter.Config {
 		Regions:                         a.Regions,
 		ConcurrencySubscription:         a.ConcurrencySubscription,
 		ConcurrencySubscriptionResource: a.ConcurrencySubscriptionResource,
-		EnableCaching:                   a.EnableCaching,
 	}
 }

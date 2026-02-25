@@ -75,7 +75,6 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 		concurrencyConfig := azure_config.Opts{}
 		concurrencyConfig.Prober.ConcurrencySubscription = mergedConfig.ConcurrencySubscription
 		concurrencyConfig.Prober.ConcurrencySubscriptionResource = mergedConfig.ConcurrencySubscriptionResource
-		concurrencyConfig.Prober.Cache = mergedConfig.EnableCaching
 
 		prober := metrics.NewMetricProber(ctx, logEntry, nil, settings, concurrencyConfig)
 		prober.SetAzureClient(client)
