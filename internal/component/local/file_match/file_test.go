@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -321,17 +322,18 @@ func TestMultiplePatterns(t *testing.T) {
 
 	foundFiles := c.getWatchedFiles()
 
-	// Expected files: 3 directories × 3 extensions
+	// Expected files: 3 directories × 3 extensions (filepath so separators match OS, e.g. \ on Windows)
+	// Use filepath.Join so that we get "/" separators on Linux and "\" on Windows.
 	expectedFiles := []string{
-		path.Join("nginx", "access.log"),
-		path.Join("nginx", "error.txt"),
-		path.Join("nginx", "config.json"),
-		path.Join("apache", "access.log"),
-		path.Join("apache", "error.txt"),
-		path.Join("apache", "config.json"),
-		path.Join("caddy", "access.log"),
-		path.Join("caddy", "error.txt"),
-		path.Join("caddy", "config.json"),
+		filepath.Join("nginx", "access.log"),
+		filepath.Join("nginx", "error.txt"),
+		filepath.Join("nginx", "config.json"),
+		filepath.Join("apache", "access.log"),
+		filepath.Join("apache", "error.txt"),
+		filepath.Join("apache", "config.json"),
+		filepath.Join("caddy", "access.log"),
+		filepath.Join("caddy", "error.txt"),
+		filepath.Join("caddy", "config.json"),
 	}
 
 	require.Len(t, foundFiles, len(expectedFiles),
@@ -344,7 +346,7 @@ func TestMultiplePatterns(t *testing.T) {
 	}
 
 	// Verify files from "other" directory are NOT matched (wrong directory)
-	require.False(t, testutil.ContainsPath(foundFiles, path.Join("other", "access.log")),
+	require.False(t, testutil.ContainsPath(foundFiles, filepath.Join("other", "access.log")),
 		"other/access.log should not be matched (wrong directory)")
 
 	// Verify excluded extensions are NOT matched
