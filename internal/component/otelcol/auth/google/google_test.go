@@ -1,7 +1,6 @@
 package google_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,10 +14,10 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/auth/google"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 	"golang.org/x/oauth2"
-	"gotest.tools/assert"
 )
 
 func init() {
@@ -66,7 +65,9 @@ func TestRoundTripper(t *testing.T) {
 
 	startedComponent, err := ctrl.GetComponent()
 	require.NoError(t, err, "no component added in controller.")
-	require.NoError(t, waitHealthy(t.Context(), startedComponent.(*auth.Auth), time.Second))
+	require.Eventually(t, func() bool {
+		return startedComponent.(*auth.Auth).CurrentHealth().Health == component.HealthTypeHealthy
+	}, time.Second, 10*time.Millisecond, "timed out waiting for component to be healthy")
 
 	// Get the authentication extension from our component and use it to make a
 	// request to our test server.
@@ -103,39 +104,4 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (fn roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return fn(r)
-}
-
-// waitHealthy waits for the component to be healthy before continuing the test.
-// this prevents the test from executing before the underlying auth extension is started.
-func waitHealthy(ctx context.Context, authComponent *auth.Auth, timeout time.Duration) error {
-	// Channel to signal whether the component is healthy or not.
-	healthChannel := make(chan bool)
-
-	// Loop continuously checking for the current health of the component.
-	go func() {
-		for {
-			healthz := authComponent.CurrentHealth().Health
-			if healthz == component.HealthTypeHealthy {
-				healthChannel <- true
-				return
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(timeout):
-				return
-			default:
-			}
-		}
-	}()
-
-	// Wait for channel to be written to or timeout to occur.
-	select {
-	case <-healthChannel:
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("context timed out")
-	case <-time.After(timeout):
-		return fmt.Errorf("timed out waiting for the component to be healthy")
-	}
 }
