@@ -419,7 +419,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	}
 
 	bufBytes := float64(len(buf))
-	s.metrics.encodedBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
+	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(bufBytes)
 
 	backoff := backoff.New(s.ctx, s.cfg.BackoffConfig)
 	var status int
