@@ -7,7 +7,8 @@ import (
 	"github.com/grafana/alloy/internal/service/graphql/client"
 )
 
-func PrintGraphQlResponse(parsedResponse *client.GraphQlResponse) {
+// PrintGraphQLResponse pretty prints a GraphQL response.
+func PrintGraphQLResponse(parsedResponse *client.GraphQLResponse) {
 	prettyBytes, err := json.MarshalIndent(parsedResponse.Data, "", "  ")
 	if err != nil {
 		fmt.Printf("Failed to pretty print response data: %v\n", err)

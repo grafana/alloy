@@ -29,18 +29,11 @@ func (r *queryResolver) Components(ctx context.Context) ([]model.Component, erro
 
 // Component is the resolver for the component field.
 func (r *queryResolver) Component(ctx context.Context, id string) (*model.Component, error) {
-	allComponents, err := utils.GetAllComponents(r.Host)
+	comp, err := utils.GetComponentByID(r.Host, id)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, comp := range allComponents {
-		if comp.ID.String() == id {
-			result := model.NewComponent(comp)
-			return &result, nil
-		}
-	}
-
-	// Component not found
-	return nil, nil
+	result := model.NewComponent(comp)
+	return &result, nil
 }

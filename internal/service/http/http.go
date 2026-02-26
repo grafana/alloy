@@ -315,6 +315,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 // IsReady returns true if Alloy is deemed ready based on the provided ReadyFunc
 func (s *Service) IsReady() bool {
+	if s.opts.ReadyFunc == nil {
+		return false
+	}
+
 	return s.opts.ReadyFunc()
 }
 
