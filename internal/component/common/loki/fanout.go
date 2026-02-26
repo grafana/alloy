@@ -15,7 +15,7 @@ func NewFanout(children []LogsReceiver, register prometheus.Registerer) *Fanout 
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "loki_fanout_latency",
 		Help:    "Write latency for sending to components",
-		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
+		Buckets: []float64{0.0002, 0.001, 0.005, 0.02, 0.1, 1.0},
 	})
 	_ = register.Register(wl)
 
