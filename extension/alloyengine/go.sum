@@ -1241,8 +1241,8 @@ github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-2413
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-241376220646/go.mod h1:tspi+K8p4WpFpjT61gNdQRgd2wuai7w/PPpUFPH8wNs=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
-github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf h1:GaBnxd6zH0+QaZuMBWra2MdjKUWTI8edIQx1dXMLau8=
-github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf/go.mod h1:4zH24t6LEqkdL3ZfBTtp0kGHOBr6komR55CrmL2AAg4=
+github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a h1:uT3vXB+E1dAMfvrgwQR6PwQbNmgLe6cyvTxHnHcmuns=
+github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a/go.mod h1:4zH24t6LEqkdL3ZfBTtp0kGHOBr6komR55CrmL2AAg4=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxROhiL4U=
