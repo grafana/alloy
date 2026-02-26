@@ -37,7 +37,7 @@ type Fanout struct {
 // if the context is cancelled while sending.
 func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 	start := time.Now()
-	defer func() { f.wl.Observe(float64(time.Since(start))) }()
+	defer func() { f.wl.Observe(float64(time.Since(start).Seconds())) }()
 
 	// NOTE: It's important that we hold a read lock for the duration of Send
 	// rather than making a copy of children and releasing the lock early.
@@ -66,7 +66,7 @@ func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 // if the context is cancelled while sending.
 func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
 	start := time.Now()
-	defer func() { f.wl.Observe(float64(time.Since(start))) }()
+	defer func() { f.wl.Observe(float64(time.Since(start).Seconds())) }()
 
 	// NOTE: It's important that we hold a read lock for the duration of SendBatch
 	// rather than making a copy of children and releasing the lock early.
