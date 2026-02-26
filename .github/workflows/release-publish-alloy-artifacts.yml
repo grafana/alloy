@@ -1,16 +1,16 @@
 name: Publish Alloy release artifacts
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
         description: 'Release tag to publish artifacts for (e.g., v1.14.0-rc.0)'
         required: true
         type: string
-
 env:
-  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
@@ -285,4 +285,4 @@ jobs:
       contents: read
       id-token: write
     with:
-      release-tag: ${{ env.RELEASE_TAG }}
+      release-tag: ${{ inputs.tag || github.event.release.tag_name }}
