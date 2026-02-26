@@ -66,7 +66,7 @@ func TestRate_ZeroBypassesAll(t *testing.T) {
 	downstream := loki.NewLogsReceiver()
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{downstream},
-		Rate:     0,
+		Rate:      0,
 	}
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
@@ -123,7 +123,7 @@ func TestRate_Half(t *testing.T) {
 			Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
 		}
 		c.receiver.Chan() <- entry
-		_ = <-downstream.Chan()
+		<-downstream.Chan()
 	}
 
 	bypassed := testutil.ToFloat64(c.metrics.entriesBypassedTotal)
