@@ -1,7 +1,3 @@
-// Package extend runs secretfilter tests using a custom gitleaks config file
-// (gitleaks.toml in this directory). It lives in a separate package so it runs
-// in a different process from the main secretfilter tests, avoiding gitleaks'
-// global viper and extendDepth state.
 package extend
 
 import (
@@ -48,6 +44,5 @@ func TestSecretFiltering_WithGitleaksConfigFile(t *testing.T) {
 		ShouldRedact: false,
 	})
 
-	// One component, one config load for the whole test.
 	secretfilter.RunTestCases(t, config, cases)
 }

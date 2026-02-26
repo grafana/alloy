@@ -2,16 +2,10 @@
 // component tests. It is used by both the secretfilter package tests and the
 // extend subpackage tests so that config-loading tests run in separate processes
 // without duplicating test data or run logic.
-// Package testhelper provides shared test data for the secretfilter component
-// tests. It is used by both the secretfilter package and the extend subpackage.
-// It must not import secretfilter to avoid an import cycle.
 package testhelper
 
 import (
 	"fmt"
-	"path/filepath"
-	"runtime"
-	"testing"
 
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
@@ -148,14 +142,4 @@ func GetServiceData(name string) (any, error) {
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
-}
-
-// GitleaksConfigPath returns the path to gitleaks.toml in the parent secretfilter directory.
-// Used by the extend package to locate the config file without duplicating path logic.
-func GitleaksConfigPath(t *testing.T) string {
-	t.Helper()
-	_, filename, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(filename)
-	// testhelper is in secretfilter/testhelper/; config is in secretfilter/
-	return filepath.Join(dir, "..", "gitleaks.toml")
 }

@@ -27,7 +27,7 @@ type TestCase struct {
 }
 
 // RunTestCases runs all cases through a single component (one config load).
-// It builds the component once and calls processEntry for each case—no controller or channels.
+// It builds the component once and calls processEntry for each case.
 func RunTestCases(t *testing.T, config string, cases []TestCase) {
 	t.Helper()
 	var args Arguments
