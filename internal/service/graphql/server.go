@@ -32,7 +32,7 @@ func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host, logger l
 		logger = log.NewNopLogger()
 	}
 
-	provider := NewAlloyGraphQLProvider(host)
+	provider := NewAlloyGraphQLProvider(urlPrefix, host, enablePlayground)
 
 	r.Handle(path.Join(urlPrefix, "/graphql"), provider.srv)
 
@@ -42,7 +42,7 @@ func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host, logger l
 	}
 }
 
-func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
+func NewAlloyGraphQLProvider(urlPrefix string, host service.Host, enablePlayground bool) *AlloyGraphQLProvider {
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
 		Host: host,
 	}}))
@@ -68,8 +68,9 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 		return next(timeoutCtx)
 	})
 
-	return &AlloyGraphQLProvider{
-		srv:        srv,
-		playground: playground.Handler("GraphQL playground", "/graphql"),
+	provider := &AlloyGraphQLProvider{srv: srv}
+	if enablePlayground {
+		provider.playground = playground.Handler("GraphQL playground", path.Join(urlPrefix, "/graphql"))
 	}
+	return provider
 }
