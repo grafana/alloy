@@ -21,6 +21,7 @@ import (
 	"github.com/zricethezav/gitleaks/v8/config"
 	"github.com/zricethezav/gitleaks/v8/detect"
 	"github.com/zricethezav/gitleaks/v8/report"
+	"github.com/zricethezav/gitleaks/v8/sources"
 )
 
 func init() {
@@ -298,7 +299,7 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 		defer cancel()
 	}
 
-	findings := c.detector.DetectContext(ctx, detect.Fragment{Raw: entry.Line})
+	findings := c.detector.DetectContext(ctx, detect.Fragment(sources.Fragment{Raw: entry.Line}))
 
 	if ctx.Err() != nil {
 		c.metrics.linesTimedOutTotal.Inc()
