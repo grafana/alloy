@@ -152,10 +152,10 @@ The `azure` block supplies the identifying information for the database being mo
 
 The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.
 
-The `logs_receiver` entry point that must be fed by log source components, for example:
+The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
 - `loki.source.file`: to read and process PostgreSQL log files from a self-hosted database instance
-- `otelcol.receiver.awscloudwatch`: to read and process CloudWatch Logs for and AWS RDS instance
+- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for and AWS RDS instance
 
 {{< admonition type="note" >}}
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
