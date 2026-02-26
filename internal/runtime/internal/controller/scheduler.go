@@ -53,12 +53,10 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 //
 // 1. Nodes already managed by the scheduler will be unchanged.
 // 2. Nodes which are no longer present will be told to shutdown.
-// 3. Nodes will be given 1 minute to shutdown before new nodes are created.
-// 4. Wait for any remaining nodes to shutdown
+// 3. Nodes that is not already managed by the scheduler will be started.
 //
 // Nodes are shutdown first to ensure any shared resources, such as ports,
-// are allowed to be freed before new nodes are scheduled. As a means to avoid,
-// long stretches of downtime we give this a 1 minute timeout.
+// are allowed to be freed before new nodes are scheduled.
 //
 // Tasks are stopped from roots to leaves and started from leaves to roots.
 //
