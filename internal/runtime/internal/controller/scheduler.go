@@ -60,7 +60,7 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 // are allowed to be freed before new nodes are scheduled. As a means to avoid,
 // long stretches of downtime we give this a 1 minute timeout.
 //
-// Tasks are stopped in from roots to leaves and started from leaves to roots.
+// Tasks are stopped from roots to leaves and started from leaves to roots.
 //
 // Existing components will be restarted if they stopped since the previous
 // call to Synchronize.
