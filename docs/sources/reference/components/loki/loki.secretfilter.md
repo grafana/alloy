@@ -51,6 +51,7 @@ You can use the following arguments with `loki.secretfilter`:
 | `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
 | `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
 | `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
+| `rate`            | `float`              | Sampling rate in `[0.0, 1.0]`: fraction of entries to process through the secret filter; the rest are forwarded unchanged. `1.0` = process all. | `1.0`   | no       |
 | `redact_with`     | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
 | `redact_percent`  | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                  | `80`    | no       |
 
@@ -72,6 +73,10 @@ For consistent behavior, use an external configuration file via `gitleaks_config
   For example, `80` shows the first 20% of the secret followed by `"..."`.
   `100` replaces the entire secret with `"REDACTED"`.
   When `redact_percent` is 0 or unset, 80% redaction is used.
+
+**Sampling:** The `rate` argument controls what fraction of log entries are processed by the secret filter.
+Entries that are not selected by the sampling rate are forwarded unchanged (no detection or redaction).
+Use a value below `1.0` (for example, `0.1` for 10%) to reduce CPU usage when processing high-volume logs; monitor `loki_secretfilter_entries_bypassed_total` to observe how many entries were skipped.
 
 **Origin metric:** The `origin_label` argument specifies which Loki label to use for the `secrets_redacted_by_origin` metric, so you can track how many secrets were redacted per source or environment.
 
@@ -99,10 +104,11 @@ The following fields are exported and can be referenced by other components:
 
 | Name                                               | Type    | Description                                                                          |
 | -------------------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `loki_secretfilter_processing_duration_seconds`    | Summary | Time taken to process and redact logs, in seconds.                                   |
-| `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                    |
+| `loki_secretfilter_entries_bypassed_total`         | Counter | Total number of entries forwarded without processing due to sampling.                |
+| `loki_secretfilter_processing_duration_seconds`   | Summary | Time taken to process and redact logs, in seconds.                                   |
+| `loki_secretfilter_secrets_redacted_total`        | Counter | Total number of secrets redacted.                                                     |
 | `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                |
-| `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set. |
+| `loki_secretfilter_secrets_redacted_by_origin`   | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set.  |
 
 ## Example
 
@@ -113,6 +119,7 @@ Alternatively, you can:
 - Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
 - Set `redact_percent` to `100` for full redaction.
 - Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
+- Set `rate` to a value below `1.0` (for example, `0.1`) to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
 
 ```alloy
 local.file_match "local_logs" {

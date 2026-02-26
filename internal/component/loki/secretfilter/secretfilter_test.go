@@ -1,6 +1,7 @@
 package secretfilter
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,92 @@ func TestGitleaksConfig_InvalidPath(t *testing.T) {
 	_, err := New(opts, args)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "read gitleaks config")
+}
+
+// TestRate_ValidateInvalid checks that rate outside [0, 1] fails validation.
+func TestRate_ValidateInvalid(t *testing.T) {
+	for _, rate := range []float64{-0.1, 1.1, 2.0} {
+		args := Arguments{Rate: rate}
+		err := args.Validate()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "between 0.0 and 1.0")
+	}
+	// Valid bounds
+	require.NoError(t, (&Arguments{Rate: 0}).Validate())
+	require.NoError(t, (&Arguments{Rate: 1}).Validate())
+	require.NoError(t, (&Arguments{Rate: 0.5}).Validate())
+}
+
+// TestRate_ZeroBypassesAll verifies that with rate=0 all entries are forwarded unchanged and bypass counter increases.
+func TestRate_ZeroBypassesAll(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	downstream := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{downstream},
+		Rate:     0,
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = c.Run(ctx) }()
+
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	line := "log with secret " + secret + " end"
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+	}
+	c.receiver.Chan() <- entry
+	received := <-downstream.Chan()
+	require.Equal(t, line, received.Line, "entry should be forwarded unchanged when rate=0")
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.entriesBypassedTotal))
+}
+
+// TestRate_Half approximates that with rate=0.5 about half of entries are processed and half bypassed.
+func TestRate_Half(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	downstream := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{downstream},
+		Rate:      0.5,
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = c.Run(ctx) }()
+
+	n := 400
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	lineWithSecret := "log " + secret + " end"
+	for i := 0; i < n; i++ {
+		entry := loki.Entry{
+			Labels: model.LabelSet{},
+			Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
+		}
+		c.receiver.Chan() <- entry
+		_ = <-downstream.Chan()
+	}
+
+	bypassed := testutil.ToFloat64(c.metrics.entriesBypassedTotal)
+	// With rate=0.5 we expect roughly half bypassed; allow 35–65% to avoid flakiness.
+	require.GreaterOrEqual(t, bypassed, float64(n)*0.35, "expected at least ~35%% of entries bypassed")
+	require.LessOrEqual(t, bypassed, float64(n)*0.65, "expected at most ~65%% of entries bypassed")
 }
 
 func TestRedactPercent_FullRedaction(t *testing.T) {
