@@ -900,6 +900,13 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 
+	if a.Injector.OTELEndpoint != "" {
+		endpoint := a.Injector.OTELEndpoint
+		cfg.Traces.OTLPEndpointProvider = func() (string, bool) {
+			return endpoint, true
+		}
+	}
+
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
 		lvl := slog.LevelVar{}

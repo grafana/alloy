@@ -167,6 +167,7 @@ type Filters struct {
 type Injector struct {
 	Instrument        Services                           `alloy:"instrument,block,optional"`
 	Webhook           InjectorWebhook                    `alloy:"webhook,block,optional"`
+	OTELEndpoint      string                             `alloy:"otel_endpoint,attr,optional"`
 	NoAutoRestart     *bool                              `alloy:"disable_auto_restart,attr,optional"`
 	HostPathVolumeDir string                             `alloy:"host_path_volume,attr,optional"`
 	SDKPkgVersion     string                             `alloy:"sdk_package_version,attr,optional"`
