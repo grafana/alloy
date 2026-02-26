@@ -23,15 +23,15 @@ otelcol.processor.attributes "otlp_metrics" {
 otelcol.processor.batch "otlp_metrics" {
   output {
     metrics = [otelcol.exporter.otlphttp.otlp_metrics.input]
-	  traces = [otelcol.exporter.otlphttp.otlp_metrics.input]
+    traces = [otelcol.exporter.otlphttp.otlp_metrics.input]
   }
 }
 
 otelcol.exporter.otlphttp "otlp_metrics" {
-	metrics_endpoint = "http://mimir:9009/otlp/v1/metrics"
-	traces_endpoint = "http://tempo:4318/v1/traces"
+  metrics_endpoint = "http://mimir:9009/otlp/v1/metrics"
+  traces_endpoint = "http://tempo:4318/v1/traces"
   client {
-	  endpoint = "ignore"
+    endpoint = "ignore"
     tls {
       insecure             = true
       insecure_skip_verify = true

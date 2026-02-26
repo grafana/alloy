@@ -7,6 +7,7 @@ package positions
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,13 +16,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
-	positionFileMode = 0600
 	cursorKeyPrefix  = "cursor-"
 	journalKeyPrefix = "journal-"
 )
@@ -287,9 +287,7 @@ func (p *positions) save() {
 	}
 	p.mtx.Lock()
 	positions := make(map[Entry]string, len(p.positions))
-	for k, v := range p.positions {
-		positions[k] = v
-	}
+	maps.Copy(positions, p.positions)
 	p.mtx.Unlock()
 
 	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
@@ -341,7 +339,7 @@ func readPositionsFile(cfg Config, logger log.Logger) (map[Entry]string, error) 
 	}
 
 	var p File
-	err = yaml.UnmarshalStrict(buf, &p)
+	err = yaml.Unmarshal(buf, &p)
 	if err != nil {
 		// return empty if cfg option enabled
 		if cfg.IgnoreInvalidYaml {
