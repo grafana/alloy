@@ -1,48 +1,68 @@
 package utils
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/web/api"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 )
 
+var defaultInfoOpts = component.InfoOptions{
+	GetHealth:    true,
+	GetArguments: true,
+	GetExports:   true,
+	GetDebugInfo: true,
+}
+
 func GetAllComponents(host service.Host) ([]*component.Info, error) {
-	localComponents, err := GetLocalComponents(host)
+	local, err := host.ListComponents("", defaultInfoOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	remoteComponents, err := GetRemoteComponents(host)
+	remoteHost, err := getRemoteHost(host)
 	if err != nil {
 		return nil, err
 	}
 
-	return append(localComponents, remoteComponents...), nil
+	remote, err := remoteHost.ListComponents("", defaultInfoOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(local, remote...), nil
 }
 
-func GetLocalComponents(host service.Host) ([]*component.Info, error) {
-	components, err := host.ListComponents("", component.InfoOptions{
-		GetHealth:    true,
-		GetArguments: true,
-		GetExports:   true,
-		GetDebugInfo: true,
-	})
+func GetComponentByID(host service.Host, id string) (*component.Info, error) {
+	parsedID := component.ParseID(id)
 
-	return components, err
-}
+	info, err := host.GetComponent(parsedID, defaultInfoOpts)
+	if err == nil {
+		return info, nil
+	}
+	if !errors.Is(err, component.ErrComponentNotFound) {
+		return nil, err
+	}
 
-func GetRemoteComponents(host service.Host) ([]*component.Info, error) {
-	remoteHost, err := api.GetRemoteCfgHost(host)
+	remoteHost, err := getRemoteHost(host)
 	if err != nil {
 		return nil, err
 	}
 
-	components, err := remoteHost.ListComponents("", component.InfoOptions{
-		GetHealth:    true,
-		GetArguments: true,
-		GetExports:   true,
-		GetDebugInfo: true,
-	})
+	return remoteHost.GetComponent(component.ID{LocalID: parsedID.LocalID}, defaultInfoOpts)
+}
 
-	return components, err
+func getRemoteHost(host service.Host) (service.Host, error) {
+	svc, found := host.GetService(remotecfg.ServiceName)
+	if !found {
+		return nil, fmt.Errorf("remote config service not available")
+	}
+
+	data := svc.Data().(remotecfg.Data)
+	if data.Host == nil {
+		return nil, fmt.Errorf("remote config service startup in progress")
+	}
+	return data.Host, nil
 }
