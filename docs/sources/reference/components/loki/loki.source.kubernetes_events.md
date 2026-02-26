@@ -145,7 +145,7 @@ The following arguments are supported:
 
 ## Debug metrics
 
-`loki.source.kubernetes_events` doesn't expose any component-specific debug metrics.
+* `loki_fanout_latency` (histogram): Write latency for sending to components.
 
 ## Component behavior
 

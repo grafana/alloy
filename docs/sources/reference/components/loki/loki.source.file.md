@@ -165,6 +165,7 @@ The glob patterns support the `{a,b,c}` syntax for matching multiple alternative
 
 ## Debug metrics
 
+* `loki_fanout_latency` (histogram): Write latency for sending to components.
 * `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
 * `loki_source_file_files_active_total` (gauge): Number of active files.
 * `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
