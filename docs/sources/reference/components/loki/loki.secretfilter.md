@@ -51,7 +51,7 @@ You can use the following arguments with `loki.secretfilter`:
 | `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
 | `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
 | `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
-| `rate`            | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Sampled entries are forwarded unchanged         | `1.0`   | no       |
+| `rate`            | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged       | `1.0`   | no       |
 | `redact_with`     | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
 | `redact_percent`  | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                  | `80`    | no       |
 
