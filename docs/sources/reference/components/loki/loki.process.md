@@ -2056,7 +2056,6 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-
 * `loki_fanout_latency` (histogram): Write latency for sending to components.
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
 * `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
