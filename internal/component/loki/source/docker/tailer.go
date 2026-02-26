@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -99,7 +100,9 @@ func (t *tailer) Run(ctx context.Context) {
 		case <-ticker.C:
 			res, err := t.client.ContainerInspect(ctx, t.containerID)
 			if err != nil {
-				level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+				if !errors.Is(err, context.Canceled) {
+					level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+				}
 				continue
 			}
 
@@ -123,6 +126,7 @@ func (t *tailer) Run(ctx context.Context) {
 func (t *tailer) startIfNotRunning() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerID)
 
@@ -160,6 +164,7 @@ func (t *tailer) startIfNotRunning() {
 func (t *tailer) stop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if t.running {
 		t.running = false
 		if t.cancel != nil {
@@ -205,6 +210,7 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	// Start transferring
 	rstdout, wstdout := io.Pipe()
 	rstderr, wstderr := io.Pipe()
+
 	go func() {
 		defer func() {
 			t.wg.Done()
@@ -212,8 +218,12 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 			wstderr.Close()
 			t.stop()
 		}()
-		var written int64
-		var err error
+
+		var (
+			err     error
+			written int64
+		)
+
 		if tty {
 			written, err = io.Copy(wstdout, reader)
 		} else {
@@ -224,6 +234,7 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 			defer wcstderr.Close()
 			written, err = stdcopy.StdCopy(wcstdout, wcstderr, reader)
 		}
+
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerID, "err", err)
 		} else {
@@ -232,8 +243,15 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	}()
 
 	// Start processing
-	go t.process(rstdout, t.getStreamLabels("stdout"))
-	go t.process(rstderr, t.getStreamLabels("stderr"))
+	go func() {
+		defer t.wg.Done()
+		t.process(rstdout, t.getStreamLabels("stdout"))
+	}()
+
+	go func() {
+		defer t.wg.Done()
+		t.process(rstderr, t.getStreamLabels("stderr"))
+	}()
 
 	// Wait until done
 	<-ctx.Done()
@@ -258,17 +276,42 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 }
 
 func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
-	defer t.wg.Done()
-
 	const maxCapacity = dockerMaxChunkSize * 64
 
-	scanner := bufio.NewScanner(r)
+	reader := bufio.NewReader(r)
+	scanner := bufio.NewScanner(reader)
 	buf := make([]byte, 0, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
-	for scanner.Scan() {
-		line := scanner.Bytes()
 
-		ts, content, err := extractTsFromBytes(line)
+	for {
+		if !scanner.Scan() {
+			err := scanner.Err()
+			// We got EOF and should stop scanning.
+			if err == nil {
+				return
+			}
+
+			if errors.Is(err, bufio.ErrTooLong) {
+				level.Error(t.logger).Log("msg", "line too big, skipping")
+				err = skipUntilNewline(reader)
+			}
+
+			if err != nil {
+				// No more to read after we skipped to newline so we should stop.
+				if errors.Is(err, io.EOF) {
+					return
+				}
+				// An unexpected error and we stop reading.
+				level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
+				t.metrics.dockerErrors.Inc()
+			}
+
+			scanner = bufio.NewScanner(reader)
+			scanner.Buffer(buf[:0], maxCapacity)
+			continue
+		}
+
+		ts, content, err := extractTsFromBytes(scanner.Bytes())
 		if err != nil {
 			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
 			t.metrics.dockerErrors.Inc()
@@ -299,10 +342,6 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 		t.since.Store(ts.Unix())
 		t.last.Store(time.Now().Unix())
 	}
-	if err := scanner.Err(); err != nil {
-		level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
-		t.metrics.dockerErrors.Inc()
-	}
 }
 
 func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
@@ -311,6 +350,7 @@ func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
+
 	lb.Set(dockerLabelLogStream, logStream)
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
@@ -323,6 +363,16 @@ func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	})
 
 	return filtered
+}
+
+func skipUntilNewline(r *bufio.Reader) error {
+	for {
+		_, err := r.ReadSlice('\n')
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue
+		}
+		return err
+	}
 }
 
 // dockerChunkWriter implements io.Writer to preprocess and reassemble Docker log frames.
