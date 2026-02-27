@@ -126,6 +126,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
 	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -173,6 +175,8 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
+		SampleMinDuration:           0 * time.Millisecond,
+		WaitEventMinDuration:        1 * time.Microsecond,
 	},
 	HealthCheckArguments: HealthCheckArguments{
 		CollectInterval: 1 * time.Hour,
@@ -544,6 +548,8 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
 			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
