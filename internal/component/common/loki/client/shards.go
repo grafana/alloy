@@ -401,7 +401,8 @@ func (s *shards) initBatchMetrics(tenantID string) {
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
-	defer batch.reportAsSentData(s.markerHandler)
+	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
+	defer batch.reportAsSentData(s.markerHandler, obs)
 
 	r, entriesCount := batch.request()
 

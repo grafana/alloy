@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -31,6 +32,8 @@ type SentDataMarkerHandler interface {
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
 	streams map[string]*push.Stream
+	// FIXME(kalleep): this is bad
+	created []time.Time
 	// createdAt is when the batch was created.
 	createdAt time.Time
 	// maxSize is the maximum batch size in bytes. At least one entry is always
@@ -68,9 +71,10 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 			return errBatchSizeReached
 		}
 
-		stream.Entries = append(stream.Entries, entry.Entry)
 		b.size += size
 		b.countForSegment(segmentNum)
+		b.created = append(b.created, entry.Created())
+		stream.Entries = append(stream.Entries, entry.Entry)
 		return nil
 	}
 
@@ -87,12 +91,13 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 		return errBatchSizeReached
 	}
 
+	b.size += size
+	b.countForSegment(segmentNum)
+	b.created = append(b.created, entry.Created())
 	b.streams[labels] = &push.Stream{
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
-	b.size += size
-	b.countForSegment(segmentNum)
 	return nil
 }
 
@@ -129,9 +134,14 @@ func (b *batch) countForSegment(segmentNum int) {
 
 // reportAsSentData will report for all segments whose data is part of this batch, the amount of that data as sent to
 // the provided SentDataMarkerHandler
-func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
+func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observer) {
 	for seg, data := range b.segmentCounter {
 		h.UpdateSentData(seg, data)
+	}
+
+	now := time.Now()
+	for _, t := range b.created {
+		obs.Observe(float64(now.Sub(t).Seconds()))
 	}
 }
 
