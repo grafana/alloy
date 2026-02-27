@@ -39,6 +39,7 @@ jobs:
       id-token: write
     with:
       img-name: alloy
+      ref: ${{ inputs.tag || github.ref_name }}
 
   build_alloy:
     name: Build Alloy
