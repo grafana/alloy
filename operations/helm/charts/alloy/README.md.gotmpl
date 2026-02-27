@@ -94,6 +94,21 @@ used. When provided, `alloy.configMap.content` must hold a valid Alloy configura
 
 [default-config]: ./config/example.alloy
 
+### alloy.secret
+
+You can use `alloy.secret` to mount configuration from a Kubernetes Secret instead of a ConfigMap.
+This provides better security for configurations containing sensitive credentials.
+
+When `alloy.secret.create` is set to `true` or `alloy.secret.name` is specified, the Secret takes
+precedence over the ConfigMap configuration. The ConfigMap will not be created in this case.
+
+`alloy.secret.content` holds the Grafana Alloy configuration to store in the Secret.
+When provided, it must hold a valid Alloy configuration file and is passed through `tpl` for templating.
+
+You can reference an existing Secret by setting `alloy.secret.create` to `false` and specifying
+the Secret name in `alloy.secret.name`. Optionally set `alloy.secret.key` if the configuration
+is stored under a different key than the default `config.alloy`.
+
 ### alloy.securityContext
 
 `alloy.securityContext` sets the securityContext passed to the Grafana
