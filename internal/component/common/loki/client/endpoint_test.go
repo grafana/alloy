@@ -66,14 +66,14 @@ func TestEndpoint(t *testing.T) {
                        `,
 		},
 		{
-			name: "batch log entries together until the batch wait time is reached",
+			name: "batch log entries separately when the batch wait time is reached",
 			endpointConfig: Config{
 				BatchSize: int(1 * units.GB),
-				BatchWait: 100 * time.Millisecond,
+				BatchWait: 50 * time.Millisecond,
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           200 * time.Millisecond,
+			inputDelay:           700 * time.Millisecond,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
