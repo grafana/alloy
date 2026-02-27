@@ -115,6 +115,7 @@ Only the `address` field is required and any omitted fields take their default v
 | Name                              | Type          | Description                                                                            | Default     | Required |
 |-----------------------------------|---------------|----------------------------------------------------------------------------------------|-------------|----------|
 | `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                            |             | yes      |
+| `allow_empty_rfc5424_msg`         | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`     | no       |
 | `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                  | `"120s"`    | no       |
 | `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                            | `false`     | no       |
 | `labels`                          | `map(string)` | The labels to associate with each received syslog record.                              | `{}`        | no       |

@@ -128,6 +128,7 @@ func TestValidateRawOnlyOpts(t *testing.T) {
 		}
 
 		mappings := map[string]*bool{
+			"allow_empty_rfc5424_msg":         &sc.AllowEmptyRFC5424Msg,
 			"use_rfc5424_message":             &sc.UseRFC5424Message,
 			"rfc3164_default_to_current_year": &sc.RFC3164DefaultToCurrentYear,
 			"use_incoming_timestamp":          &sc.UseIncomingTimestamp,
