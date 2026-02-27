@@ -3,10 +3,8 @@ package secretfilter
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -14,8 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/component/loki/secretfilter/testhelper"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
@@ -26,236 +23,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeSecret represents a fake secret to be used in the tests
-type fakeSecret struct {
-	name  string
-	value string
-}
-
-// testLog represents a log entry to be used in the tests
-type testLog struct {
-	log     string
-	secrets []fakeSecret // List of fake secrets it contains for easy redaction check
-}
-
-// List of fake secrets to use for testing
-// They are constructed so that they will match the regexes in the gitleaks configs
-// Note that some string literals are concatenated to avoid being flagged as secrets
-var fakeSecrets = map[string]fakeSecret{
-	"grafana-api-key": {
-		name:  "grafana-api-key",
-		value: "eyJr" + "IjoiT0x6NWJuNDRuZkI1NHJ6dEJrR0g3aDVuRnY0NWJuNDRuZkI1NHJ6dEJrR0g3aDVuRnY0NWJuNDRuZkI1NHJ6dEJrR0g3aDVuRnY0NWJuNDRuZkI1NHJ6dEJrR0g3aDVu",
-	},
-	"gcp-api-key": {
-		name:  "gcp-api-key",
-		value: "AIza" + "SyDaGmWKa4JsXZ-HjGw7ISLn_3namBGewQe",
-	},
-	"stripe-key": {
-		name:  "stripe-access-token",
-		value: "sk_live_" + "51HFxYz2eZvKYlo2C9kKM5nE6qO4yKn8N3bP7hXxYz2eZvKYlo2C",
-	},
-	"npm-token": {
-		name:  "npm-access-token",
-		value: "npm_" + "1A2b3C4d5E6f7G8h9I0jK1lM2nO3pQ4rS5tU",
-	},
-	"generic-api-key": {
-		name:  "generic-api-key",
-		value: "token:" + "Aa1Bb2Cc3Dd4Ee5Ff6Gg7Hh8Ii9Jj0Kk",
-	},
-}
-
-// List of fake log entries to use for testing
-var testLogs = map[string]testLog{
-	"no_secret": {
-		log: `{
-			"message": "This is a simple log message"
-		}`,
-		secrets: []fakeSecret{},
-	},
-	"grafana_api_key": {
-		log: `{
-			"message": "This is a simple log message with a secret value ` + fakeSecrets["grafana-api-key"].value + ` !
-		}`,
-		secrets: []fakeSecret{fakeSecrets["grafana-api-key"]},
-	},
-	"gcp_api_key": {
-		log: `{
-			"message": "This is a simple log message with a secret value ` + fakeSecrets["gcp-api-key"].value + ` !
-		}`,
-		secrets: []fakeSecret{fakeSecrets["gcp-api-key"]},
-	},
-	"stripe_key": {
-		log: `{
-			"message": "This is a simple log message with a secret value ` + fakeSecrets["stripe-key"].value + ` !
-		}`,
-		secrets: []fakeSecret{fakeSecrets["stripe-key"]},
-	},
-	"npm_token": {
-		log: `{
-			"message": "This is a simple log message with a secret value ` + fakeSecrets["npm-token"].value + ` !
-		}`,
-		secrets: []fakeSecret{fakeSecrets["npm-token"]},
-	},
-	"generic_api_key": {
-		log: `{
-			"message": "This is a simple log message with a secret value ` + fakeSecrets["generic-api-key"].value + ` !
-		}`,
-		secrets: []fakeSecret{fakeSecrets["generic-api-key"]},
-	},
-	"multiple_secrets": {
-		log: `{
-			"message": "This is a simple log message with a secret value ` + fakeSecrets["grafana-api-key"].value + ` and another secret value ` + fakeSecrets["gcp-api-key"].value + ` !
-		}`,
-		secrets: []fakeSecret{fakeSecrets["grafana-api-key"], fakeSecrets["gcp-api-key"]},
-	},
-}
-
-// Alloy configurations for testing
-var testConfigs = map[string]string{
-	"default": `
-		forward_to = []
-	`,
-	"with_origin": `
-		forward_to = []
-		origin_label = "job"
-	`,
-	"with_redact_percent_100": `
-		forward_to = []
-		redact_percent = 100
-	`,
-	"with_redact_percent_80": `
-		forward_to = []
-		redact_percent = 80
-	`,
-	"with_redact_with": `
-		forward_to = []
-		redact_with = "***REDACTED***"
-	`,
-}
-
-// minimalGitleaksConfig is a valid gitleaks TOML that extends the default config
-// so all default rules (including grafana-api-key, gcp-api-key, etc.) are used.
-const minimalGitleaksConfig = `title = "test"
-[extend]
-useDefault = true
-`
-
-// Test cases for the secret filter
-var tt = []struct {
-	name         string
-	config       string
-	inputLog     string
-	shouldRedact bool // Whether we expect any redaction to occur
-}{
-	{
-		"no_secret",
-		testConfigs["default"],
-		testLogs["no_secret"].log,
-		false,
-	},
-	{
-		"grafana_api_key",
-		testConfigs["default"],
-		testLogs["grafana_api_key"].log,
-		true,
-	},
-	{
-		"gcp_api_key",
-		testConfigs["default"],
-		testLogs["gcp_api_key"].log,
-		true,
-	},
-	{
-		"stripe_key",
-		testConfigs["default"],
-		testLogs["stripe_key"].log,
-		true,
-	},
-	{
-		"npm_token",
-		testConfigs["default"],
-		testLogs["npm_token"].log,
-		true,
-	},
-	{
-		"generic_api_key",
-		testConfigs["default"],
-		testLogs["generic_api_key"].log,
-		true,
-	},
-	{
-		"multiple_secrets",
-		testConfigs["default"],
-		testLogs["multiple_secrets"].log,
-		true,
-	},
-}
-
 func TestSecretFiltering(t *testing.T) {
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			runTest(t, tc.config, tc.inputLog, tc.shouldRedact)
-		})
-	}
+	// One component, one config load; all default cases run through it.
+	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
 }
 
-func runTest(t *testing.T, config string, inputLog string, shouldRedact bool) {
-	ch1 := loki.NewLogsReceiver()
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
-	args.ForwardTo = []loki.LogsReceiver{ch1}
-
-	// Making sure we're not testing with an empty log line by mistake
-	require.NotEmpty(t, inputLog)
-
-	// Create component
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.secretfilter")
-	require.NoError(t, err)
-
-	// Run it
-	ctx, cancel := context.WithCancel(t.Context())
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		err1 := tc.Run(ctx, args)
-		require.NoError(t, err1)
-		wg.Done()
-	}()
-	require.NoError(t, tc.WaitExports(time.Second))
-
-	// Get the input channel
-	input := tc.Exports().(Exports).Receiver
-
-	// Send the log to the secret filter
-	entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: inputLog}}
-	input.Chan() <- entry
-	tc.WaitRunning(time.Second * 10)
-
-	// Check the output
-	select {
-	case logEntry := <-ch1.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		if shouldRedact {
-			// Verify that the output is different from the input (something was redacted)
-			require.NotEqual(t, inputLog, logEntry.Entry.Line, "Expected log to be redacted but it was not")
-		} else {
-			// Verify that the output is the same as the input (nothing was redacted)
-			require.Equal(t, inputLog, logEntry.Entry.Line, "Expected log to remain unchanged but it was modified")
-		}
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
-
-	// Stop the component
-	cancel()
-	wg.Wait()
-}
-
+// TestGitleaksConfig_InvalidPath checks that a missing config path returns an error.
+// Valid custom config file loading (and [extend] useDefault) is tested in the
+// extend package so it runs in a separate process and avoids gitleaks global state.
 func TestGitleaksConfig_InvalidPath(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 	}
 	args := Arguments{
 		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
@@ -266,32 +46,90 @@ func TestGitleaksConfig_InvalidPath(t *testing.T) {
 	require.Contains(t, err.Error(), "read gitleaks config")
 }
 
-func TestGitleaksConfig_ValidFile(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, "gitleaks.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(minimalGitleaksConfig), 0600))
+// TestRate_ValidateInvalid checks that rate outside [0, 1] fails validation.
+func TestRate_ValidateInvalid(t *testing.T) {
+	for _, rate := range []float64{-0.1, 1.1, 2.0} {
+		args := Arguments{Rate: rate}
+		err := args.Validate()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "between 0.0 and 1.0")
+	}
+	// Valid bounds
+	require.NoError(t, (&Arguments{Rate: 0}).Validate())
+	require.NoError(t, (&Arguments{Rate: 1}).Validate())
+	require.NoError(t, (&Arguments{Rate: 0.5}).Validate())
+}
 
+// TestRate_ZeroBypassesAll verifies that with rate=0 all entries are forwarded unchanged and bypass counter increases.
+func TestRate_ZeroBypassesAll(t *testing.T) {
 	registry := prometheus.NewRegistry()
+	downstream := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{downstream},
+		Rate:      0,
+	}
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
-	}
-	args := Arguments{
-		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
-		GitleaksConfig: configPath,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = c.Run(ctx) }()
+
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	line := "log with secret " + secret + " end"
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
-		Entry:  push.Entry{Timestamp: time.Now(), Line: testLogs["grafana_api_key"].log},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	processed := c.processEntry(entry)
-	require.NotEqual(t, entry.Entry.Line, processed.Entry.Line, "expected secret to be redacted when using custom config file")
-	require.NotContains(t, processed.Entry.Line, fakeSecrets["grafana-api-key"].value)
+	c.receiver.Chan() <- entry
+	received := <-downstream.Chan()
+	require.Equal(t, line, received.Line, "entry should be forwarded unchanged when rate=0")
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.entriesBypassedTotal))
+}
+
+// TestRate_Half approximates that with rate=0.5 about half of entries are processed and half bypassed.
+func TestRate_Half(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	downstream := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{downstream},
+		Rate:      0.5,
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = c.Run(ctx) }()
+
+	n := 400
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	lineWithSecret := "log " + secret + " end"
+	for i := 0; i < n; i++ {
+		entry := loki.Entry{
+			Labels: model.LabelSet{},
+			Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
+		}
+		c.receiver.Chan() <- entry
+		<-downstream.Chan()
+	}
+
+	bypassed := testutil.ToFloat64(c.metrics.entriesBypassedTotal)
+	// With rate=0.5 we expect roughly half bypassed; allow 35–65% to avoid flakiness.
+	require.GreaterOrEqual(t, bypassed, float64(n)*0.35, "expected at least ~35%% of entries bypassed")
+	require.LessOrEqual(t, bypassed, float64(n)*0.65, "expected at most ~65%% of entries bypassed")
 }
 
 func TestRedactPercent_FullRedaction(t *testing.T) {
@@ -299,7 +137,7 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 	}
 	args := Arguments{
@@ -311,11 +149,11 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
-		Entry:  push.Entry{Timestamp: time.Now(), Line: testLogs["grafana_api_key"].log},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["grafana_api_key"].Log},
 	}
 	processed := c.processEntry(entry)
 	require.Contains(t, processed.Entry.Line, "REDACTED", "expected full redaction to produce REDACTED placeholder")
-	require.NotContains(t, processed.Entry.Line, fakeSecrets["grafana-api-key"].value)
+	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["grafana-api-key"].Value)
 }
 
 func TestRedactPercent_Partial(t *testing.T) {
@@ -323,7 +161,7 @@ func TestRedactPercent_Partial(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 	}
 	args := Arguments{
@@ -333,7 +171,7 @@ func TestRedactPercent_Partial(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	secret := fakeSecrets["grafana-api-key"].value
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "log with secret " + secret + " end"},
@@ -353,7 +191,7 @@ func TestRedactWith_CustomPlaceholder(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 	}
 	args := Arguments{
@@ -365,11 +203,11 @@ func TestRedactWith_CustomPlaceholder(t *testing.T) {
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
-		Entry:  push.Entry{Timestamp: time.Now(), Line: testLogs["gcp_api_key"].log},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["gcp_api_key"].Log},
 	}
 	processed := c.processEntry(entry)
 	require.Contains(t, processed.Entry.Line, "***REDACTED***")
-	require.NotContains(t, processed.Entry.Line, fakeSecrets["gcp-api-key"].value)
+	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["gcp-api-key"].Value)
 }
 
 // TestDefaultRedactPercent_usesEighty verifies that with no redact_with and no redact_percent,
@@ -379,7 +217,7 @@ func TestDefaultRedactPercent_usesEighty(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 	}
 	args := Arguments{
@@ -389,7 +227,7 @@ func TestDefaultRedactPercent_usesEighty(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	secret := fakeSecrets["grafana-api-key"].value
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "log " + secret + " end"},
@@ -401,17 +239,17 @@ func TestDefaultRedactPercent_usesEighty(t *testing.T) {
 
 func BenchmarkAllTypesNoSecret(b *testing.B) {
 	// Run benchmarks with no secrets in the logs, with all regexes enabled
-	runBenchmarks(b, testConfigs["default"], 0, "")
+	runBenchmarks(b, testhelper.TestConfigs["default"], 0, "")
 }
 
 func BenchmarkAllTypesWithSecret(b *testing.B) {
 	// Run benchmarks with secrets in the logs (20% of log entries), with all regexes enabled
-	runBenchmarks(b, testConfigs["default"], 20, "gcp_api_key")
+	runBenchmarks(b, testhelper.TestConfigs["default"], 20, "gcp_api_key")
 }
 
 func BenchmarkAllTypesWithLotsOfSecrets(b *testing.B) {
 	// Run benchmarks with secrets in the logs (80% of log entries), with all regexes enabled
-	runBenchmarks(b, testConfigs["default"], 80, "gcp_api_key")
+	runBenchmarks(b, testhelper.TestConfigs["default"], 80, "gcp_api_key")
 }
 
 func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretName string) {
@@ -423,7 +261,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	opts := component.Options{
 		Logger:         &noopLogger{}, // Disable logging so that it keeps a clean benchmark output
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 	}
 
 	// Create component
@@ -441,7 +279,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 
 		// Add fake secrets in some log entries
 		if secretName != "" && i < nbLogs*percentageSecrets/100 {
-			middleStr = testLogs[secretName].log
+			middleStr = testhelper.TestLogs[secretName].Log
 		}
 
 		benchInputs[i] = beginningStr + middleStr + endingStr
@@ -466,20 +304,20 @@ func FuzzProcessEntry(f *testing.F) {
 	for _, line := range sampleFuzzLogLines {
 		f.Add(line)
 	}
-	for _, testLog := range testLogs {
-		f.Add(testLog.log)
+	for _, testLog := range testhelper.TestLogs {
+		f.Add(testLog.Log)
 	}
 
 	opts := component.Options{
 		Logger:         util.TestLogger(f),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 	}
 	ch1 := loki.NewLogsReceiver()
 
 	// Create component with default config
 	var args Arguments
-	require.NoError(f, syntax.Unmarshal([]byte(testConfigs["default"]), &args))
+	require.NoError(f, syntax.Unmarshal([]byte(testhelper.TestConfigs["default"]), &args))
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 	c, err := New(opts, args)
 	require.NoError(f, err)
@@ -488,15 +326,6 @@ func FuzzProcessEntry(f *testing.F) {
 		entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: log}}
 		c.processEntry(entry)
 	})
-}
-
-func getServiceData(name string) (any, error) {
-	switch name {
-	case livedebugging.ServiceName:
-		return livedebugging.NewLiveDebugging(), nil
-	default:
-		return nil, fmt.Errorf("service not found %s", name)
-	}
 }
 
 type noopLogger struct{}
@@ -516,12 +345,12 @@ func TestMetrics(t *testing.T) {
 	}{
 		{
 			name:                  "No secrets",
-			inputLog:              testLogs["no_secret"].log,
+			inputLog:              testhelper.TestLogs["no_secret"].Log,
 			expectedRedactedTotal: 0,
 		},
 		{
 			name:                  "Single Grafana API key secret",
-			inputLog:              testLogs["grafana_api_key"].log,
+			inputLog:              testhelper.TestLogs["grafana_api_key"].Log,
 			expectedRedactedTotal: 1,
 			expectedRedactedByRule: map[string]int{
 				"grafana-api-key": 1,
@@ -529,7 +358,7 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name:                  "Multiple secrets",
-			inputLog:              testLogs["multiple_secrets"].log,
+			inputLog:              testhelper.TestLogs["multiple_secrets"].Log,
 			expectedRedactedTotal: 2,
 			expectedRedactedByRule: map[string]int{
 				"grafana-api-key": 1,
@@ -553,7 +382,7 @@ func TestMetrics(t *testing.T) {
 			opts := component.Options{
 				Logger:         util.TestLogger(t),
 				OnStateChange:  func(e component.Exports) {},
-				GetServiceData: getServiceData,
+				GetServiceData: testhelper.GetServiceData,
 				Registerer:     registry,
 			}
 
@@ -661,7 +490,7 @@ func TestMetricsRegistration(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 		ID:             "test_secretfilter",
 	}
@@ -719,7 +548,7 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 	}
 
@@ -732,28 +561,28 @@ func TestMetricsMultipleEntries(t *testing.T) {
 			Labels: model.LabelSet{"job": "test1"},
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      testLogs["grafana_api_key"].log,
+				Line:      testhelper.TestLogs["grafana_api_key"].Log,
 			},
 		},
 		{
 			Labels: model.LabelSet{"job": "test2"},
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      testLogs["gcp_api_key"].log,
+				Line:      testhelper.TestLogs["gcp_api_key"].Log,
 			},
 		},
 		{
 			Labels: model.LabelSet{"job": "test3"},
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      testLogs["no_secret"].log,
+				Line:      testhelper.TestLogs["no_secret"].Log,
 			},
 		},
 		{
 			Labels: model.LabelSet{"job": "test4"},
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      testLogs["grafana_api_key"].log,
+				Line:      testhelper.TestLogs["grafana_api_key"].Log,
 			},
 		},
 	}
@@ -808,7 +637,7 @@ func TestArgumentsUpdate(t *testing.T) {
 	opts := component.Options{
 		Logger:         util.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: testhelper.GetServiceData,
 		Registerer:     registry,
 	}
 
@@ -825,7 +654,7 @@ func TestArgumentsUpdate(t *testing.T) {
 		{
 			description: "Initial config - should redact secrets",
 			args:        initialArgs,
-			inputLog:    testLogs["grafana_api_key"].log,
+			inputLog:    testhelper.TestLogs["grafana_api_key"].Log,
 		},
 		{
 			description: "Update 1 - Add origin label tracking",
@@ -833,7 +662,7 @@ func TestArgumentsUpdate(t *testing.T) {
 				ForwardTo:   []loki.LogsReceiver{ch1},
 				OriginLabel: "job",
 			},
-			inputLog: testLogs["gcp_api_key"].log,
+			inputLog: testhelper.TestLogs["gcp_api_key"].Log,
 		},
 		{
 			description: "Update 2 - Change origin label",
@@ -841,7 +670,7 @@ func TestArgumentsUpdate(t *testing.T) {
 				ForwardTo:   []loki.LogsReceiver{ch1},
 				OriginLabel: "instance",
 			},
-			inputLog: testLogs["stripe_key"].log,
+			inputLog: testhelper.TestLogs["stripe_key"].Log,
 		},
 	}
 
