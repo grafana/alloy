@@ -147,6 +147,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | ingress.extraPaths | list | `[]` |  |
 | ingress.faroPort | int | `12347` |  |
 | ingress.hosts[0] | string | `"chart-example.local"` |  |
+| ingress.ingressClassName | string | `"nginx"` | Ingress class name; populates `spec.ingressClassName` if supported by the cluster. |
 | ingress.labels | object | `{}` |  |
 | ingress.path | string | `"/"` |  |
 | ingress.pathType | string | `"Prefix"` |  |
