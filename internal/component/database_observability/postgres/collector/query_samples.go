@@ -26,10 +26,11 @@ const (
 
 const (
 	queryTextClause     = ", s.query"
+	waitEventTypeLock   = "Lock"
 	stateActive         = "active"
 	stateIdle           = "idle"
-	stateIdleTxnAborted = "idle in transaction (aborted)"
 	stateIdleTxn        = "idle in transaction"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
 )
 
 const selectPgStatActivity = `
@@ -51,7 +52,6 @@ const selectPgStatActivity = `
 		s.state_change,
 		s.wait_event_type,
 		s.wait_event,
-		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
 		s.query_id
 		%s
@@ -69,6 +69,12 @@ const selectPgStatActivity = `
 		AND d.datname NOT IN %s
 		%s
 		%s
+`
+
+const selectBlockingPIDs = `
+    SELECT pid, pg_blocking_pids(pid) 
+    FROM pg_stat_activity 
+    WHERE wait_event_type = 'Lock' AND pid != pg_backend_pid()
 `
 
 const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
@@ -128,6 +134,9 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
+	// adaptive burst controls
+	adaptiveBurstInterval time.Duration
+	burstWindowUntil      time.Time
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -255,17 +264,41 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 			c.running.Store(false)
 		}()
 
-		ticker := time.NewTicker(c.collectInterval)
-
 		for {
-			if err := c.fetchQuerySample(c.ctx); err != nil {
+			loopStart := time.Now()
+			hasActive, err := c.fetchQuerySample(c.ctx)
+			if err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
+			}
+
+			elapsed := time.Since(loopStart)
+			interval := c.collectInterval
+			now := time.Now()
+			if hasActive {
+				s, window := computeBurstWindow(c.collectInterval, elapsed)
+				if now.Before(c.burstWindowUntil) && c.adaptiveBurstInterval > 0 {
+					// continue the current burst
+					interval = c.adaptiveBurstInterval
+					level.Debug(c.logger).Log("msg", "continuing the current burst window", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+				} else if window > s {
+					// start a new burst window
+					c.adaptiveBurstInterval = s
+					c.burstWindowUntil = now.Add(window)
+					level.Debug(c.logger).Log("msg", "starting a collection burst window while there are rows in active state", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+					interval = s
+				} else {
+					// don't start a new burst, use the observed latency as interval to avoid impacting database performance
+					c.adaptiveBurstInterval = 0
+					c.burstWindowUntil = time.Time{}
+					interval = s
+					level.Debug(c.logger).Log("msg", "using the observed latency as interval to avoid impacting database performance", "interval", s)
+				}
 			}
 
 			select {
 			case <-c.ctx.Done():
 				return
-			case <-ticker.C:
+			case <-time.After(interval):
 				// continue loop
 			}
 		}
@@ -283,7 +316,7 @@ func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, err error) {
 	queryTextField := ""
 	if c.disableQueryRedaction {
 		queryTextField = queryTextClause
@@ -299,12 +332,13 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
+		return false, fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 
 	defer rows.Close()
 
-	activeKeys := map[SampleKey]struct{}{}
+	var buffered []QuerySamplesInfo
+	hasLockWait := false
 
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
@@ -312,7 +346,47 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
+		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
+			hasLockWait = true
+		}
+		buffered = append(buffered, sample)
+	}
 
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("failed to iterate pg_stat_activity rows: %w", err)
+	}
+
+	// Enrich blocked_by_pids only when there are lock waits
+	blockedByPID := map[int]pq.Int64Array{}
+	if hasLockWait {
+		blockedRows, err := c.dbConnection.QueryContext(ctx, selectBlockingPIDs)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to query blocking pids", "err", err)
+		} else {
+			defer blockedRows.Close()
+			for blockedRows.Next() {
+				var pid int
+				var blocked pq.Int64Array
+				if err := blockedRows.Scan(&pid, &blocked); err != nil {
+					level.Error(c.logger).Log("msg", "failed to scan blocking pids row", "err", err)
+					continue
+				}
+				blockedByPID[pid] = blocked
+			}
+			if err := blockedRows.Err(); err != nil {
+				level.Error(c.logger).Log("msg", "failed to iterate blocking pids rows", "err", err)
+			}
+		}
+	}
+
+	activeKeys := map[SampleKey]struct{}{}
+
+	for _, sample := range buffered {
+		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
+			if blocked, ok := blockedByPID[sample.PID]; ok {
+				sample.BlockedByPIDs = blocked
+			}
+		}
 		key, procErr := c.processRow(sample)
 		if procErr != nil {
 			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
@@ -342,11 +416,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		continue
 	}
 
-	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
-		return err
-	}
-
 	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
 	for key, st := range c.samples {
 		if _, stillActive := activeKeys[key]; stillActive && !st.EndAt.Valid {
@@ -354,7 +423,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key)
 	}
-	return nil
+	return len(activeKeys) > 0, nil
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -377,7 +446,6 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.StateChange,
 		&sample.WaitEventType,
 		&sample.WaitEvent,
-		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
 	}
@@ -603,4 +671,40 @@ func isIdleState(state string) bool {
 		return true
 	}
 	return false
+}
+
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// computeBurstWindow returns the burst interval s and the window duration W
+// for time-boxed burst polling, given the collection interval and the last
+// observed latency. W is bounded by 20*s to limit the number of burst polls.
+//
+// Rules:
+//   - s_base = clamp(CI/30, 50ms..300ms)
+//   - s = max(s_base, observedLatency)
+//   - W = min(CI/2 - 100ms)
+//   - N ≤ 20 ⇒ for a burst interval s, the window ≤ 20*s
+func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
+	s := time.Duration(float64(collectInterval) / 30.0)
+	if s < 50*time.Millisecond {
+		s = 50 * time.Millisecond
+	} else if s > 300*time.Millisecond {
+		s = 300 * time.Millisecond
+	}
+	if observedLatency > s {
+		s = observedLatency
+	}
+	guard := 100 * time.Millisecond
+	capWindow := collectInterval/2 - guard
+	if capWindow < 0 {
+		capWindow = 0
+	}
+
+	capWindow = min(capWindow, 20*s)
+	return s, capWindow
 }
