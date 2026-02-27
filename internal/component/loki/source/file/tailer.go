@@ -219,13 +219,10 @@ func (t *tailer) readLines(pos int64, done chan struct{}) {
 		}
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		entries <- loki.Entry{
-			Labels: t.labels,
-			Entry: push.Entry{
-				Timestamp: line.Time,
-				Line:      line.Text,
-			},
-		}
+		entries <- loki.NewEntry(t.labels, push.Entry{
+			Timestamp: line.Time,
+			Line:      line.Text,
+		})
 
 		lastOffset = line.Offset
 		if time.Since(lastUpdatedPosition) >= positionInterval {
