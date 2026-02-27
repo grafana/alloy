@@ -204,6 +204,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		entries []loki.Entry
 		lastErr error
 
+		created     = time.Now()
 		tenantID, _ = tenant.TenantID(r.Context())
 	)
 	for _, stream := range req.Streams {
@@ -241,14 +242,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, entry := range stream.Entries {
-			e := loki.Entry{
-				Labels: filtered.Clone(),
-				Entry: lokipush.Entry{
-					Line:               entry.Line,
-					StructuredMetadata: entry.StructuredMetadata,
-					Parsed:             entry.Parsed,
-				},
-			}
+			e := loki.NewEntryWithCreated(filtered, created, entry)
 			if keepTimestamp {
 				e.Timestamp = entry.Timestamp
 			} else {
@@ -288,7 +282,10 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 	body := bufio.NewReader(r.Body)
 	addLabels := s.getLabels()
 
-	var entries []loki.Entry
+	var (
+		entries []loki.Entry
+		created = time.Now()
+	)
 
 	for {
 		line, err := body.ReadString('\n')
@@ -305,7 +302,10 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 
-		entries = append(entries, loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}})
+		entries = append(
+			entries,
+			loki.NewEntryWithCreated(addLabels, created, lokipush.Entry{Timestamp: time.Now(), Line: line}),
+		)
 		if err == io.EOF {
 			break
 		}
