@@ -43,6 +43,13 @@ type CreateBranchParams struct {
 	SHA    string
 }
 
+// CreateTagParams holds parameters for CreateTag.
+type CreateTagParams struct {
+	Tag     string
+	SHA     string
+	Message string
+}
+
 // CreatePRParams holds parameters for CreatePR.
 type CreatePRParams struct {
 	Title string
@@ -178,6 +185,47 @@ func (c *Client) CreateBranch(ctx context.Context, p CreateBranchParams) error {
 	_, _, err := c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
 	if err != nil {
 		return fmt.Errorf("creating branch ref: %w", err)
+	}
+
+	return nil
+}
+
+// CreateTag creates an annotated tag ref for the given SHA.
+func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
+	identity, err := c.GetAppIdentity(ctx)
+	if err != nil {
+		return fmt.Errorf("getting app identity for tagger: %w", err)
+	}
+
+	tagObj := &github.Tag{
+		Tag:     github.String(p.Tag),
+		Message: github.String(p.Message),
+		Tagger: &github.CommitAuthor{
+			Name:  github.String(identity.Name),
+			Email: github.String(identity.Email),
+			Date:  &github.Timestamp{Time: time.Now().UTC()},
+		},
+		Object: &github.GitObject{
+			SHA:  github.String(p.SHA),
+			Type: github.String("commit"),
+		},
+	}
+
+	created, _, err := c.api.Git.CreateTag(ctx, c.owner, c.repo, tagObj)
+	if err != nil {
+		return fmt.Errorf("creating tag object: %w", err)
+	}
+
+	ref := &github.Reference{
+		Ref: github.String("refs/tags/" + p.Tag),
+		Object: &github.GitObject{
+			SHA: github.String(created.GetSHA()),
+		},
+	}
+
+	_, _, err = c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
+	if err != nil {
+		return fmt.Errorf("creating tag ref: %w", err)
 	}
 
 	return nil
