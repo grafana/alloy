@@ -1,7 +1,16 @@
 name: Publish Alloy release artifacts
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish artifacts for (e.g., v1.14.0-rc.0)'
+        required: true
+        type: string
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
@@ -44,7 +53,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ env.RELEASE_TAG }}
         persist-credentials: false
 
     - name: Set ownership
@@ -63,7 +72,7 @@ jobs:
       run: |
         RELEASE_BUILD=1 make -j4 dist
       env:
-        VERSION: ${{ github.event.release.tag_name }}
+        VERSION: ${{ env.RELEASE_TAG }}
 
     - name: Publish dist
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -124,7 +133,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ env.RELEASE_TAG }}
         persist-credentials: false
 
     - name: Set ownership
@@ -150,7 +159,7 @@ jobs:
       run: |
         RELEASE_BUILD=1 makensis -V4 -DVERSION=${VERSION} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
-        VERSION: ${{ github.event.release.tag_name }}
+        VERSION: ${{ env.RELEASE_TAG }}
 
     - name: Publish unsigned Windows installer
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -226,7 +235,7 @@ jobs:
     - name: Checkout repository 🛎️
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ env.RELEASE_TAG }}
         token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
 
@@ -259,12 +268,12 @@ jobs:
     - name: Package Alloy mixin dashboards
       run: make dist-alloy-mixin-zip
       env:
-        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
     - name: Publish release artifacts
       run: ./tools/publish-release-artifacts.sh
       env:
-        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
   submit_winget_manifest:
@@ -276,4 +285,4 @@ jobs:
       contents: read
       id-token: write
     with:
-      release-tag: ${{ github.event.release.tag_name }}
+      release-tag: ${{ inputs.tag || github.event.release.tag_name }}
