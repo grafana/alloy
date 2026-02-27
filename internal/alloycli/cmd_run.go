@@ -222,8 +222,18 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 		return nil
 	}
 
+	const errMsg = "can only be used at experimental stability level. Use --stability.level=experimental to enable."
+
 	if fr.enableDirectFanout {
-		return fmt.Errorf("the '--feature.prometheus.direct-fanout.enabled' can be used only at experimental stability level")
+		return fmt.Errorf("'--feature.prometheus.direct-fanout.enabled' %s", errMsg)
+	}
+
+	if fr.enableGraphQL {
+		return fmt.Errorf("'--feature.graphql.enabled' %s", errMsg)
+	}
+
+	if fr.enableGraphQLPlayground {
+		return fmt.Errorf("'--feature.graphql-playground.enabled' %s", errMsg)
 	}
 
 	return nil
