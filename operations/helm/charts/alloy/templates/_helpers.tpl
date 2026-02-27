@@ -76,12 +76,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the service account to use
 */}}
 {{- define "alloy.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "alloy.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
+{{- if .Values.serviceAccount.create -}}
+  {{- $raw := default (include "alloy.fullname" .) .Values.serviceAccount.name -}}
+  {{- tpl $raw . -}}
+{{- else -}}
+  {{- $raw := default "default" .Values.serviceAccount.name -}}
+  {{- tpl $raw . -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Calculate name of image ID to use for "alloy.
