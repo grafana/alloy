@@ -10,42 +10,64 @@ might encounter and how to handle them.
 - [OTel dependencies](./updating-otel/README.md) should be updated every ~6 weeks.
 - Prometheus dependencies should be updated every ~6 weeks.
 
-### 1. Run the `Create Release Branch` pinned workflow on the Actions page
+### 1. Run the `Create Release Branch` workflow
 
 **_NOTE: Creating a release branch should be considered as "cutting off" the release. Past this
 point, only critical fixes should be merged into the branch until the release is final._**
 
-1. Leave everything as it is except uncheck the `Dry run` box.
-2. (This will create a new release branch, a new backport tag, and open a draft release-please PR.)
+Run the workflow using the GitHub CLI:
 
-### 2. When ready, cut an RC by running the `Create Release Candidate` pinned workflow on the Actions page
+```sh
+gh workflow run release-create-branch.yml --repo grafana/alloy --field dry_run=false
+```
 
-1.  For `Use workflow from`, select the release branch in question.
-2.  Make sure to uncheck the `Dry run` box.
-3.  (This will trigger workflows to create a draft release on GitHub, build the release artifacts,
-    and attach them to the release.)
-4.  Once everything is attached, add any relevant changelog details to the RC draft release and
-    publish it.
+Alternatively, trigger it from the Actions page by leaving everything as it is except unchecking the `Dry run` box.
 
-### 3. (Optional) Add critical fixes to the release
+This will create a new release branch, a new backport tag, and open a draft release-please PR.
 
-1. If you need to add critical fixes to the release branch after testing an RC, check out the
-   section below on backporting fixes to a release branch.
+### 2. When ready, cut an RC by running the `Create Release Candidate` workflow
 
-### 4. When ready, cut the release
+1. Run the workflow using the GitHub CLI, replacing `<VERSION>` with the release branch (e.g. `v1.14`):
+
+   ```sh
+   gh workflow run release-create-rc.yml --repo grafana/alloy --ref release/<VERSION> --field dry_run=false
+   ```
+
+   - Alternatively, trigger it from the Actions page by selecting the release branch under `Use workflow from` and unchecking the `Dry run` box.
+   - This will trigger workflows to create a draft release on GitHub, build the release artifacts, and attach them to the release.
+
+2. Once everything is attached, add any relevant changelog details to the RC draft release and publish it:
+
+   ```sh
+   gh release edit <VERSION>-rc.0 --draft=false --repo grafana/alloy
+   ```
+
+### 3. Validate the RC on internal deployments
+
+We use argo-cd to deploy release candidates to our internal clusters. This allows us to validate that the release candidate performs well and is healthy in a production-like environment before we cut the actual release. To deploy the RC to our internal clusters, do the following:
+
+1. Open the [Argo UI](https://argo-workflows.grafana.net/workflows/alloy-cd) and select **Submit New Workflow**.
+2. Choose the `alloy` template and fill in the parameters:
+   - **dockertag**: the RC tag (e.g. `v1.14.0-rc.0`)
+   - **prCommentContext**: a note for the deployment PRs (e.g. `Release candidate v1.14.0-rc.0 — do not merge prod waves without sign-off.`)
+   - **trigger-commit-author**: your GitHub username
+3. Validate performance metrics are consistent with the prior version.
+4. Validate components are healthy.
+
+### 4. (Optional) Add critical fixes to the release
+
+If you find issues during validation, check out the section below on backporting fixes to a release
+branch. Once fixes are merged, cut a new RC and repeat step 3.
+
+### 5. When ready, cut the release
 
 1. Move the release-please PR out of draft and review it.
    1. You might realize that some changelog entries don't look the way you want. To address that,
       check out the section below on modifying a PR's changelog entry after it's been merged.
 2. Merge the release-please PR.
-3. (This will trigger workflows to create a draft release on GitHub, build the release artifacts,
-   and attach them to the release.)
+3. This will trigger workflows to create a draft release on GitHub, build the release artifacts,
+   and attach them to the release.
 4. Once everything is attached, publish the release.
-
-### 5. Validate the release on internal deployments
-
-1.  Validate performance metrics are consistent with the prior version.
-2.  Validate components are healthy.
 
 ### 6. Update Helm Chart
 
