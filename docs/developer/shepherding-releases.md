@@ -21,22 +21,26 @@ Run the workflow using the GitHub CLI:
 gh workflow run release-create-branch.yml --repo grafana/alloy --field dry_run=false
 ```
 
-Alternatively, trigger it from the Actions page by leaving everything as it is except unchecking the `Dry run` box.
+Alternatively, trigger it from the Actions page on github.com by leaving everything as it is except unchecking the `Dry run` box.
 
 This will create a new release branch, a new backport tag, and open a draft release-please PR.
 
 ### 2. When ready, cut an RC by running the `Create Release Candidate` workflow
 
-1. Run the workflow using the GitHub CLI, replacing `<VERSION>` with the release branch (e.g. `v1.14`):
+1. Run the workflow using either the GitHub CLI or github.com.
+   - **From the GitHub CLI**
+      - Run the following, replacing `<VERSION>` with the release branch (e.g. `v1.14`):
 
-   ```sh
-   gh workflow run release-create-rc.yml --repo grafana/alloy --ref release/<VERSION> --field dry_run=false
-   ```
+        ```sh
+        gh workflow run release-create-rc.yml --repo grafana/alloy --ref release/<VERSION> --field dry_run=false
+        ```
+   - **From github.com**
+      - Navigate to the pinned workflow on the Actions page.
+      - Select the release branch under `Use workflow from`.
+      - Uncheck the `Dry run` box.
+   - This will trigger workflows to create a tag for the RC, draft a release on GitHub, build the release artifacts, and attach them to the release.
 
-   - Alternatively, trigger it from the Actions page by selecting the release branch under `Use workflow from` and unchecking the `Dry run` box.
-   - This will trigger workflows to create a draft release on GitHub, build the release artifacts, and attach them to the release.
-
-2. Once everything is attached, add any relevant changelog details to the RC draft release and publish it:
+2. Once everything is attached, add any relevant changelog details to the RC draft release and publish it from either the CLI or github.com. For example:
 
    ```sh
    gh release edit <VERSION>-rc.0 --draft=false --repo grafana/alloy
@@ -44,15 +48,9 @@ This will create a new release branch, a new backport tag, and open a draft rele
 
 ### 3. Validate the RC on internal deployments
 
-We use argo-cd to deploy release candidates to our internal clusters. This allows us to validate that the release candidate performs well and is healthy in a production-like environment before we cut the actual release. To deploy the RC to our internal clusters, do the following:
-
-1. Open the [Argo UI](https://argo-workflows.grafana.net/workflows/alloy-cd) and select **Submit New Workflow**.
-2. Choose the `alloy` template and fill in the parameters:
-   - **dockertag**: the RC tag (e.g. `v1.14.0-rc.0`)
-   - **prCommentContext**: a note for the deployment PRs (e.g. `Release candidate v1.14.0-rc.0 — do not merge prod waves without sign-off.`)
-   - **trigger-commit-author**: your GitHub username
-3. Validate performance metrics are consistent with the prior version.
-4. Validate components are healthy.
+1. Deploy the RC to internal clusters following the [Argo Workflows documentation](https://github.com/grafana/alloy-internal/tree/main/Argo-Workflows) in the internal repo.
+2. Validate performance metrics are consistent with the prior version.
+3. Validate components are healthy.
 
 ### 4. (Optional) Add critical fixes to the release
 
