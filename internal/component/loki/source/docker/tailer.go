@@ -323,13 +323,10 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			continue
 		}
 
-		t.recv.Chan() <- loki.Entry{
-			Labels: logStreamLset,
-			Entry: push.Entry{
-				Timestamp: ts,
-				Line:      string(content),
-			},
-		}
+		t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
+			Timestamp: ts,
+			Line:      string(content),
+		})
 		t.metrics.dockerEntries.Inc()
 
 		// NOTE(@tpaschalis) We don't save the positions entry with the
