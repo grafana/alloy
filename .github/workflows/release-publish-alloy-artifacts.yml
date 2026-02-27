@@ -80,9 +80,7 @@ jobs:
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
-    - publish_linux_container
-    - publish_linux_boringcrypto_container
-    - publish_windows_container
+    - validate
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -310,13 +308,3 @@ jobs:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
-  submit_winget_manifest:
-    name: Submit WinGet Manifest
-    needs:
-    - upload_release_artifacts
-    uses: ./.github/workflows/release-submit-winget-manifest.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      release-tag: ${{ github.ref_name }}
