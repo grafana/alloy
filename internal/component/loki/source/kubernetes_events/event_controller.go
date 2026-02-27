@@ -211,13 +211,10 @@ func (ctrl *eventController) handleEvent(ctx context.Context, event *corev1.Even
 		return err
 	}
 
-	entry := loki.Entry{
-		Entry: push.Entry{
-			Timestamp: eventTs,
-			Line:      msg,
-		},
-		Labels: lset,
-	}
+	entry := loki.NewEntry(lset, push.Entry{
+		Timestamp: eventTs,
+		Line:      msg,
+	})
 
 	select {
 	case <-ctx.Done():
