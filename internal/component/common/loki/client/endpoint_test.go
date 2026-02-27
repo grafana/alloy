@@ -29,6 +29,7 @@ func TestEndpoint(t *testing.T) {
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
+		waitForFirstRequest  bool
 		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
 	}
@@ -73,7 +74,7 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           200 * time.Millisecond,
+			waitForFirstRequest:  true,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -331,6 +332,13 @@ func TestEndpoint(t *testing.T) {
 			// Send all the input log entries
 			for i, logEntry := range tt.inputEntries {
 				c.enqueue(logEntry, 0)
+
+				// Ensure the first entry is flushed before enqueueing the next one.
+				if tt.waitForFirstRequest && i == 0 && len(tt.inputEntries) > 1 {
+					require.Eventually(t, func() bool {
+						return len(receivedReqsChan) > 0
+					}, 5*time.Second, 5*time.Millisecond)
+				}
 
 				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
 					time.Sleep(tt.inputDelay)
