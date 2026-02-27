@@ -32,6 +32,9 @@ spec:
       protocol: "TCP"
 {{- range $portMap := $values.extraPorts }}
     - name: {{ $portMap.name }}
+      {{- if eq $.Values.service.type "NodePort" }}
+      nodePort: {{ $portMap.nodePort }}
+      {{- end }}
       port: {{ $portMap.port }}
       targetPort: {{ $portMap.targetPort }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
