@@ -16,8 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check ref type
+      env:
+        REF_TYPE: ${{ github.ref_type }}
       run: |
-        if [[ "${{ github.ref_type }}" != "tag" ]]; then
+        if [[ "$REF_TYPE" != "tag" ]]; then
           echo "::error::This workflow must be run from a tag, not a branch. Change the ref to a release tag (e.g., v1.14.0)."
           exit 1
         fi
