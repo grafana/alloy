@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.21@sha256:27f9262d43452075f3c410287a2c43f5ef1bf7ec2bb06e8c9eeb1b8d453087bc
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
@@ -15,18 +15,18 @@ ARG GO_RUNTIME=mustoverride
 #
 
 # Dependency: docker (for building images)
-FROM alpine:3.23 as docker
+FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 as docker
 RUN apk add --no-cache docker-cli docker-cli-buildx
 
 # Dependency: helm
-FROM alpine:3.23 as helm
+FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 as helm
 RUN apk add --no-cache helm
 
 # Dependency: nsis (for building Windows installers)
 # TODO: Use nsis with conda so that we don't have to pull those packages from the internet.
 # https://nsis.sourceforge.io/Conda
 # TODO: Why do we use i386? Is it correct?
-FROM alpine:3.23 as nsis
+FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 as nsis
 RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
  && unzip AccessControl.zip -d /usr/share/nsis/ \
  && mkdir -p /usr/share/nsis/Plugins/x86-unicode \
@@ -55,7 +55,7 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
 
 # rfratto/viceroy contains C cross compilers can be used for our Cgo
 # dependencies.
-FROM rfratto/viceroy:v0.4.0
+FROM rfratto/viceroy:v0.4.0@sha256:7e3f328889b5b0c5c0303dda5e74a89189e6e437d33f609dde98f9a84337e0a2
 
 # Fix apt sources - restrict main bullseye to supported architectures
 RUN rm -f /etc/apt/sources.list \
