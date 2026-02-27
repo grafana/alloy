@@ -96,7 +96,7 @@ where the list of resolved endpoints changes frequently due to deployments and s
 You can use the following blocks with `otelcol.exporter.loadbalancing`:
 
 | Block                                                     | Description                                                                       | Required |
-|-----------------------------------------------------------|-----------------------------------------------------------------------------------|----------|
+| --------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
 | [`resolver`][resolver]                                    | Configures discovering the endpoints to export to.                                | yes      |
 | `resolver` > [`aws_cloud_map`][aws_cloud_map]             | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
 | `resolver` > [`dns`][dns]                                 | DNS-sourced list of endpoints to export to.                                       | no       |
@@ -107,7 +107,7 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 | `protocol` > `otlp` > [`client`][client]                  | Configures the exporter gRPC client.                                              | no       |
 | `protocol` > `otlp` > `client` > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
 | `protocol` > `otlp` > `client` > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
-| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS key_file.                                     | no       |
+| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS `key_file`.                                   | no       |
 | `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
 | `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
 | [`sending_queue`][queue]                                  | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |

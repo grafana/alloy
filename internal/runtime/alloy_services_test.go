@@ -36,7 +36,8 @@ func TestServices(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, svc)
 
-	ctrl := New(opts)
+	ctrl, err := New(opts)
+	require.NoError(t, err)
 	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
 	// Start the controller. This should cause our service to run.
@@ -87,7 +88,8 @@ func TestServices_Configurable(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, svc)
 
-	ctrl := New(opts)
+	ctrl, err := New(opts)
+	require.NoError(t, err)
 
 	require.NoError(t, ctrl.LoadSource(f, nil, ""))
 
@@ -134,7 +136,8 @@ func TestServices_Configurable_Optional(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, svc)
 
-	ctrl := New(opts)
+	ctrl, err := New(opts)
+	require.NoError(t, err)
 
 	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
@@ -168,7 +171,8 @@ func TestAlloy_GetServiceConsumers(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, svcA, svcB)
 
-	ctrl := New(opts)
+	ctrl, err := New(opts)
+	require.NoError(t, err)
 	defer cleanUpController(t.Context(), ctrl)
 	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
@@ -247,11 +251,12 @@ func TestComponents_Using_Services(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, existsSvc)
 
-	ctrl := newController(controllerOptions{
+	ctrl, err := newController(controllerOptions{
 		Options:           opts,
 		ComponentRegistry: registry,
 		ModuleRegistry:    newModuleRegistry(),
 	})
+	require.NoError(t, err)
 	require.NoError(t, ctrl.LoadSource(f, nil, ""))
 	go ctrl.Run(ctx)
 
@@ -326,11 +331,12 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, existsSvc)
 
-	ctrl := newController(controllerOptions{
+	ctrl, err := newController(controllerOptions{
 		Options:           opts,
 		ComponentRegistry: registry,
 		ModuleRegistry:    newModuleRegistry(),
 	})
+	require.NoError(t, err)
 	require.NoError(t, ctrl.LoadSource(f, nil, ""))
 	go ctrl.Run(ctx)
 
@@ -358,7 +364,8 @@ func TestNewControllerNoLeak(t *testing.T) {
 	opts := testOptions(t)
 	opts.Services = append(opts.Services, svc)
 
-	ctrl := New(opts)
+	ctrl, err := New(opts)
+	require.NoError(t, err)
 	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
 	// Start the controller. This should cause our service to run.
@@ -368,7 +375,8 @@ func TestNewControllerNoLeak(t *testing.T) {
 	// Create a new isolated controller from ctrl and run it.
 	// Returning from the test should shut down this new controller as well
 	// and avoid leaking any goroutines.
-	nctrl := ctrl.NewController("id")
+	nctrl, err := ctrl.NewController("id")
+	require.NoError(t, err)
 	go nctrl.Run(ctx)
 }
 

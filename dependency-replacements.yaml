@@ -73,9 +73,9 @@ replaces:
     dependency: github.com/google/cadvisor
     replacement: github.com/grafana/cadvisor grafana-v0.54.1-noglobals
 
-  - comment: TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
+  - comment: TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
-    replacement: github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf
+    replacement: github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
   - comment: TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
     dependency: github.com/prometheus/mysqld_exporter

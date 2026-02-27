@@ -146,10 +146,8 @@ func (a *echoAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v
 		PrintTimestamp: t > 0,
 	}
 
-	if ref == 0 {
-		ref = storage.SeriesRef(len(a.samples))
-	}
-	return ref, nil
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
 }
 
 func (a *echoAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
@@ -162,10 +160,8 @@ func (a *echoAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e 
 		Exemplar: e,
 	}
 
-	if ref == 0 {
-		ref = storage.SeriesRef(1)
-	}
-	return ref, nil
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
 }
 
 func (a *echoAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
@@ -180,10 +176,8 @@ func (a *echoAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t
 		}
 	}
 
-	if ref == 0 {
-		ref = storage.SeriesRef(len(a.histograms))
-	}
-	return ref, nil
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
 }
 
 func (a *echoAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
@@ -195,10 +189,8 @@ func (a *echoAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m 
 		a.metadata[metricName] = m
 	}
 
-	if ref == 0 {
-		ref = storage.SeriesRef(1)
-	}
-	return ref, nil
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
 }
 
 func (a *echoAppender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
@@ -213,10 +205,8 @@ func (a *echoAppender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels
 		PrintTimestamp: t > 0,
 	}
 
-	if ref == 0 {
-		ref = storage.SeriesRef(len(a.samples))
-	}
-	return ref, nil
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
 }
 
 func (a *echoAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
@@ -231,10 +221,8 @@ func (a *echoAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labe
 		}
 	}
 
-	if ref == 0 {
-		ref = storage.SeriesRef(len(a.histograms))
-	}
-	return ref, nil
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
 }
 
 func (a *echoAppender) Commit() error {

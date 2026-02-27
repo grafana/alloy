@@ -28,7 +28,7 @@ import (
 func TestUpdateReset(t *testing.T) {
 	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
+	relabeller.relabel(0, lbls)
 	require.True(t, relabeller.cache.Len() == 1)
 	_ = relabeller.Update(Arguments{
 		CacheSize:            100000,
@@ -73,7 +73,7 @@ func TestNil(t *testing.T) {
 	require.NoError(t, err)
 
 	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
+	relabeller.relabel(0, lbls)
 }
 
 func TestLRU(t *testing.T) {
@@ -81,7 +81,7 @@ func TestLRU(t *testing.T) {
 
 	for i := 0; i < 600_000; i++ {
 		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
-		relabeller.relabel(storage.SeriesRef(i), 0, lbls)
+		relabeller.relabel(0, lbls)
 	}
 	require.Equal(t, 100_000, relabeller.cache.Len())
 }
@@ -89,15 +89,16 @@ func TestLRU(t *testing.T) {
 func TestLRUNaN(t *testing.T) {
 	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
-	ref := storage.SeriesRef(1)
-	relabeller.relabel(ref, 0, lbls)
+	relabeled := relabeller.relabel(0, lbls)
 
-	_, found := relabeller.getFromCache(ref)
+	require.NotEqual(t, lbls, relabeled)
+
+	_, found := relabeller.getFromCache(lbls)
 	require.True(t, found)
 
-	relabeller.relabel(ref, math.Float64frombits(value.StaleNaN), lbls)
+	relabeller.relabel(math.Float64frombits(value.StaleNaN), lbls)
 
-	_, found = relabeller.getFromCache(ref)
+	_, found = relabeller.getFromCache(lbls)
 	require.False(t, found)
 }
 
@@ -105,7 +106,7 @@ func TestMetrics(t *testing.T) {
 	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 
-	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
+	relabeller.relabel(0, lbls)
 	m := &dto.Metric{}
 	err := relabeller.metricsProcessed.Write(m)
 	require.NoError(t, err)
@@ -118,14 +119,15 @@ func BenchmarkCache(b *testing.B) {
 		return ref, nil
 	}))
 	var entry storage.Appendable
-	_, _ = New(component.Options{
+	_, err := New(component.Options{
 		ID:     "1",
 		Logger: util.TestAlloyLogger(b),
 		OnStateChange: func(e component.Exports) {
 			newE := e.(Exports)
 			entry = newE.Receiver
 		},
-		Registerer: prom.NewRegistry(),
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
 	}, Arguments{
 		ForwardTo: []storage.Appendable{fanout},
 		MetricRelabelConfigs: []*alloy_relabel.Config{
@@ -137,7 +139,9 @@ func BenchmarkCache(b *testing.B) {
 				Action:       "replace",
 			},
 		},
+		CacheSize: 100_000,
 	})
+	require.NoError(b, err)
 
 	lbls := labels.FromStrings("__address__", "localhost")
 	app := entry.Appender(b.Context())
@@ -229,4 +233,41 @@ func getServiceData(name string) (any, error) {
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
+}
+
+// TestHashCollision demonstrates that the cache can return incorrect results when
+// two different labelsets have the same hash. This is a known limitation of using
+// hash as the cache key without collision detection.
+func TestHashCollision(t *testing.T) {
+	relabeller := generateRelabel(t)
+
+	// These two series have the same XXHash; thanks to https://github.com/pstibrany/labels_hash_collisions
+	ls1 := labels.FromStrings("__name__", "metric", "lbl", "HFnEaGl")
+	ls2 := labels.FromStrings("__name__", "metric", "lbl", "RqcXatm")
+
+	if ls1.Hash() != ls2.Hash() {
+		// These ones are the same when using -tags slicelabels
+		ls1 = labels.FromStrings("__name__", "metric", "lbl1", "value", "lbl2", "l6CQ5y")
+		ls2 = labels.FromStrings("__name__", "metric", "lbl1", "value", "lbl2", "v7uDlF")
+	}
+
+	if ls1.Hash() != ls2.Hash() {
+		t.Skip("Unable to find colliding label hashes for this labels implementation")
+	}
+
+	// Relabel the first labelset - this will cache the result
+	relabeled1 := relabeller.relabel(0, ls1)
+	require.NotEmpty(t, relabeled1)
+
+	// Relabel the second labelset - due to hash collision, this will return
+	// the cached result from ls1 instead of relabeling ls2
+	relabeled2 := relabeller.relabel(0, ls2)
+	require.NotEmpty(t, relabeled2)
+
+	// This documents an inherited deficiency
+	t.Log("Expected failure: hash collision causes cache to return wrong labels")
+	require.True(t, labels.Equal(relabeled1, relabeled2),
+		"Hash collision: different input labels produced same cached output. "+
+			"ls1=%s, ls2=%s, relabeled1=%s, relabeled2=%s",
+		ls1.String(), ls2.String(), relabeled1.String(), relabeled2.String())
 }
