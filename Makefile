@@ -200,7 +200,7 @@ integration-test-k8s: alloy-image
 .PHONY: integration-test-windows-service
 integration-test-windows-service: dist-alloy-installer-windows
 	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
-		$(GO_ENV) go test -v -timeout 5m -run TestWindowsService ./...
+		$(GO_ENV) go test -v -tags=alloyintegrationtests -timeout 5m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:

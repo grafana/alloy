@@ -192,7 +192,7 @@ Complete the following steps to create a sample task.
 
      1. Add a container to the task.
      1. Set the container name to `ecs-exporter`.
-     1. Set the image to a pinned version of the exporter, for example `quay.io/prometheuscommunity/ecs-exporter:v0.1.1`. Check the [ecs_exporter releases](https://github.com/prometheus-community/ecs_exporter/releases) for the latest stable version. You should avoid using the `latest` tag in production.
+     1. Set the image to a pinned version of the exporter, for example `quay.io/prometheuscommunity/ecs-exporter:v0.1.1`. Check the [`ecs_exporter` releases](https://github.com/prometheus-community/ecs_exporter/releases) for the latest stable version. You should avoid using the `latest` tag in production.
      1. Add `tcp/9779` as a port mapping.
 
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
