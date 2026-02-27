@@ -567,6 +567,56 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 	}
 }
 
+func TestSyslogTarget_RFC5424MessageEmptyMSG(t *testing.T) {
+	msg := `<14>1 2026-02-19T14:57:17.097Z secfw-a RT_FLOW - RT_FLOW_SESSION_DENY [junos@2636.1.1.1.2.129 application="UNKNOWN"]`
+
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(TargetParams{
+		Metrics: metrics,
+		Logger:  logger,
+		Handler: handler,
+		Relabel: []*relabel.Config{},
+		Config: &scrapeconfig.SyslogTargetConfig{
+			ListenAddress:        "127.0.0.1:0",
+			ListenProtocol:       ProtocolTCP,
+			LabelStructuredData:  true,
+			UseRFC5424Message:    true,
+			UseIncomingTimestamp: true,
+			Labels: model.LabelSet{
+				"test": "syslog_target",
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+	defer func() {
+		require.NoError(t, tgt.Stop())
+	}()
+
+	addr := tgt.ListenAddress().String()
+	c, err := net.Dial(ProtocolTCP, addr)
+	require.NoError(t, err)
+
+	err = writeMessagesToStream(c, []string{msg}, fmtNewline)
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	require.Eventuallyf(t, func() bool {
+		return len(handler.Received()) == 1
+	}, time.Second, time.Millisecond, "Expected to receive 1 message, got %d.", len(handler.Received()))
+
+	entry := handler.Received()[0]
+	require.Equal(t, msg, entry.Line, "Line should be the full RFC 5424 string when MSG part is empty")
+	require.NotZero(t, entry.Timestamp)
+	require.Equal(t, time.Date(2026, 2, 19, 14, 57, 17, 97*int(time.Millisecond), time.UTC), entry.Timestamp)
+	require.Equal(t, model.LabelSet{"test": "syslog_target"}, entry.Labels)
+}
+
 const layout = "Jan 02 15:04:05"
 
 var reCefDate = regexp.MustCompile(`(Dec \d{2} \d{2}:\d{2}:\d{2})`)
