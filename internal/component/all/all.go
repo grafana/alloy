@@ -152,6 +152,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/process"              // Import prometheus.exporter.process
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/redis"                // Import prometheus.exporter.redis
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/self"                 // Import prometheus.exporter.self
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/smartctl"             // Import prometheus.exporter.smartctl
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"                 // Import prometheus.exporter.snmp
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/snowflake"            // Import prometheus.exporter.snowflake
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/squid"                // Import prometheus.exporter.squid
