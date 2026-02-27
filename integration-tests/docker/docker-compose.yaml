@@ -131,6 +131,52 @@ services:
     networks:
       - integration-tests
 
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: testdb
+    networks:
+      - integration-tests
+
+  mysql-init:
+    image: mysql:8.0
+    depends_on:
+      - mysql
+    volumes:
+      - ./tests/database-observability-mysql/init_mysql.sh:/init_mysql.sh
+    command: sh /init_mysql.sh
+    restart: "no"
+    networks:
+      - integration-tests
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: testdb
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
+    networks:
+      - integration-tests
+
+  postgres-init:
+    image: postgres:16
+    depends_on:
+      - postgres
+    volumes:
+      - ./tests/database-observability-postgres/init_postgres.sh:/init_postgres.sh
+    command: sh /init_postgres.sh
+    restart: "no"
+    networks:
+      - integration-tests
+
 networks:
   integration-tests:
     driver: bridge
