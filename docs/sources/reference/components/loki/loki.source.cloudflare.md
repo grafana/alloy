@@ -236,6 +236,7 @@ The `loki.source.cloudflare` component doesn't support any blocks. You can confi
 
 ## Debug metrics
 
+* `loki_fanout_latency` (histogram): Write latency for sending to components.
 * `loki_source_cloudflare_target_entries_total` (counter): Total number of successful entries sent via the cloudflare target.
 * `loki_source_cloudflare_target_last_requested_end_timestamp` (gauge): The last cloudflare request end timestamp fetched, for calculating how far behind the target is.
 

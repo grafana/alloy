@@ -113,6 +113,7 @@ The `tls_config` block configures TLS settings for connecting to HTTPS Docker da
 
 ## Debug metrics
 
+* `loki_fanout_latency` (histogram): Write latency for sending to components.
 * `loki_source_docker_target_entries_total` (gauge): Total number of successful entries sent to the Docker target.
 * `loki_source_docker_target_parsing_errors_total` (gauge): Total number of parsing errors while receiving Docker messages.
 

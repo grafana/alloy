@@ -142,6 +142,7 @@ The translation of legacy position file will happens if there is no position fil
 
 ## Debug Metrics
 
+* `loki_fanout_latency` (histogram): Write latency for sending to components.
 * `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
 * `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -47,13 +49,12 @@ func TestComponent(t *testing.T) {
 		require.NoError(t, ctrl.WaitExports(time.Minute))
 
 		recv := ctrl.Exports().(Exports).Receiver
-		fanout := loki.NewFanout([]loki.LogsReceiver{recv})
-
 		wg.Go(func() {
 			for {
-				// We get error if context is canceled
-				if err := fanout.Send(ctx, loki.Entry{}); err != nil {
+				select {
+				case <-ctx.Done():
 					return
+				case recv.Chan() <- loki.Entry{}:
 				}
 			}
 		})
@@ -813,9 +814,12 @@ func TestMetricsStageRefresh(t *testing.T) {
 
 	// The component will be reconfigured so that it has a metric.
 	t.Run("config with a metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfg,
+		tester.updateAndTest(
+			numLogsToSend,
+			cfg,
 			"",
-			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend))
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
+		)
 	})
 
 	// The component will be "updated" with the same config.
@@ -825,16 +829,24 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// which reloads the collector config every X seconds.
 	// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
 	t.Run("config with the same metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfg,
+		tester.updateAndTest(
+			numLogsToSend,
+			cfg,
 			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
-			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend))
+			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend),
+		)
 	})
 
 	// Use a config which has no metrics stage.
 	// This should cause the metric to disappear.
 	cfgWithNoStages := forwardArgs
 	t.Run("config with no metrics stage", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfgWithNoStages, "", "")
+		tester.updateAndTest(
+			numLogsToSend,
+			cfgWithNoStages,
+			"",
+			"",
+		)
 	})
 
 	// Use a config which has a metric with a different name,
@@ -881,16 +893,19 @@ func TestMetricsStageRefresh(t *testing.T) {
 	`
 
 	t.Run("config with a new and old metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, updatedCfg,
+		tester.updateAndTest(
+			numLogsToSend,
+			updatedCfg,
 			"",
-			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
+			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend),
+		)
 	})
 }
 
 type tester struct {
 	t            *testing.T
 	component    *Component
-	registry     *prometheus.Registry
+	registry     *ignoringRegistry
 	cancelFunc   context.CancelFunc
 	logReceiver  loki.LogsReceiver
 	logTimestamp time.Time
@@ -900,7 +915,10 @@ type tester struct {
 
 // Create the component, so that it can process and forward logs.
 func newTester(t *testing.T) *tester {
-	reg := prometheus.NewRegistry()
+	reg := newIgnoringRegistry(
+		prometheus.NewRegistry(),
+		"loki_fanout_latency",
+	)
 
 	opts := component.Options{
 		Logger:         util.TestAlloyLogger(t),
@@ -960,10 +978,7 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 	t.component.Update(args)
 
 	// Check the component metrics.
-	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsBeforeSendingLogs)); err != nil {
-		require.NoError(t.t, err)
-	}
+	require.NoError(t.t, testutil.GatherAndCompare(t.registry, strings.NewReader(expectedMetricsBeforeSendingLogs)))
 
 	// Send logs.
 	for i := 0; i < numLogsToSend; i++ {
@@ -983,8 +998,34 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 	}
 
 	// Check the component metrics.
-	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
-		require.NoError(t.t, err)
+	require.NoError(t.t, testutil.GatherAndCompare(t.registry, strings.NewReader(expectedMetricsAfterSendingLogs)))
+}
+
+func newIgnoringRegistry(reg *prometheus.Registry, ignore ...string) *ignoringRegistry {
+	return &ignoringRegistry{
+		Registry: reg,
+		ignore:   ignore,
 	}
+}
+
+type ignoringRegistry struct {
+	*prometheus.Registry
+	ignore []string
+}
+
+func (r *ignoringRegistry) Gather() ([]*dto.MetricFamily, error) {
+	mfs, err := r.Registry.Gather()
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*dto.MetricFamily, 0, len(mfs))
+	for _, mf := range mfs {
+		if slices.Contains(r.ignore, mf.GetName()) {
+			continue
+		}
+		filtered = append(filtered, mf)
+	}
+
+	return filtered, nil
 }
