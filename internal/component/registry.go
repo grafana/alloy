@@ -3,6 +3,7 @@ package component
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 
@@ -71,6 +72,13 @@ type Options struct {
 	// Logger the component may use for logging. Logs emitted with the logger
 	// always include the component ID as a field.
 	Logger log.Logger
+
+	// Leveler reports the active minimum log level. When non-nil, logging
+	// adapters (such as the zap adapter) can consult it to short-circuit
+	// disabled log levels before encoding fields, avoiding unnecessary
+	// allocations. The value is read dynamically, so hot-reloaded level
+	// changes are reflected immediately.
+	Leveler slog.Leveler
 
 	// A path to a directory with this component may use for storage. The path is
 	// guaranteed to be unique across all running components.

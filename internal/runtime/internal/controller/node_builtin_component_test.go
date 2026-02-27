@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"io"
 	"path/filepath"
 	"testing"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,6 +38,31 @@ func TestLocalID(t *testing.T) {
 		globalID: "local.id",
 	})
 	require.Equal(t, "/data/local.id", filepath.ToSlash(mo.DataPath))
+}
+
+func TestManagedOptionsLevelerWiring(t *testing.T) {
+	// Leveler must be set to the same *logging.Logger instance as globals.Logger
+	// so that hot-reload level changes are visible to the zap adapter.
+	globalLogger, err := logging.New(io.Discard, logging.Options{
+		Level:  logging.LevelInfo,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	mo := getManagedOptions(ComponentGlobals{
+		Logger:       globalLogger,
+		DataPath:     "/data/",
+		MinStability: featuregate.StabilityPublicPreview,
+		NewModuleController: func(opts ModuleControllerOpts) ModuleController {
+			return nil
+		},
+	}, &BuiltinComponentNode{
+		nodeID:   "local.id",
+		globalID: "local.id",
+	})
+
+	require.NotNil(t, mo.Leveler, "Leveler must be set so the zap adapter can short-circuit disabled levels")
+	require.Same(t, globalLogger, mo.Leveler, "Leveler must be the same *logging.Logger instance to reflect hot-reload changes")
 }
 
 func TestSplitPath(t *testing.T) {

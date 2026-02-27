@@ -209,6 +209,172 @@ func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
 	})
 }
 
+func TestNewWithLevel(t *testing.T) {
+	t.Run("suppresses debug logs when level is info", func(t *testing.T) {
+		var buf bytes.Buffer
+		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		zapLogger := zapadapter.NewWithLevel(inner, inner)
+		zapLogger.Debug("should not appear")
+
+		require.Empty(t, strings.TrimSpace(buf.String()))
+	})
+
+	t.Run("allows debug logs when level is debug", func(t *testing.T) {
+		var buf bytes.Buffer
+		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		zapLogger := zapadapter.NewWithLevel(inner, inner)
+		zapLogger.Debug("should appear")
+
+		require.Contains(t, buf.String(), "should appear")
+	})
+
+	t.Run("child logger via With also suppresses debug when level is info", func(t *testing.T) {
+		var buf bytes.Buffer
+		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		child := zapadapter.NewWithLevel(inner, inner).With(zap.String("key", "val"))
+		child.Debug("should not appear")
+
+		require.Empty(t, strings.TrimSpace(buf.String()))
+	})
+
+	t.Run("reflects hot-reload level change from info to debug", func(t *testing.T) {
+		var buf bytes.Buffer
+		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		zapLogger := zapadapter.NewWithLevel(inner, inner)
+
+		zapLogger.Debug("should not appear before reload")
+		require.Empty(t, strings.TrimSpace(buf.String()))
+
+		err = inner.Update(logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		zapLogger.Debug("should appear after reload")
+		require.Contains(t, buf.String(), "should appear after reload")
+	})
+
+	t.Run("reflects hot-reload level change from debug to error", func(t *testing.T) {
+		// This is the primary customer scenario: debug logging was enabled, then
+		// the operator reloads to error level and expects debug work to stop.
+		var buf bytes.Buffer
+		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		zapLogger := zapadapter.NewWithLevel(inner, inner)
+
+		zapLogger.Debug("should appear before reload")
+		require.Contains(t, buf.String(), "should appear before reload")
+		buf.Reset()
+
+		err = inner.Update(logging.Options{Level: logging.LevelError, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		zapLogger.Debug("should not appear after reload")
+		require.Empty(t, strings.TrimSpace(buf.String()))
+	})
+
+	t.Run("child logger via With reflects hot-reload", func(t *testing.T) {
+		var buf bytes.Buffer
+		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		// Create the child logger before the reload.
+		child := zapadapter.NewWithLevel(inner, inner).With(zap.String("key", "val"))
+
+		child.Debug("should appear before reload")
+		require.Contains(t, buf.String(), "should appear before reload")
+		buf.Reset()
+
+		err = inner.Update(logging.Options{Level: logging.LevelError, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+
+		child.Debug("should not appear after reload")
+		require.Empty(t, strings.TrimSpace(buf.String()))
+	})
+}
+
+// TestNewWithLevelAllocations verifies that disabled log levels produce minimal
+// allocations with NewWithLevel, confirming zap's early-exit optimisation fires.
+//
+// When a level is disabled, the only unavoidable allocation is the []Field
+// slice that the Go runtime constructs for the variadic ...Field parameter
+// before calling Debug/Info/etc.
+func TestNewWithLevelAllocations(t *testing.T) {
+	makeLogger := func(level logging.Level) (*logging.Logger, *zap.Logger) {
+		inner, err := logging.New(io.Discard, logging.Options{Level: level, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+		return inner, zapadapter.NewWithLevel(inner, inner)
+	}
+
+	t.Run("zero allocs with no fields when debug is disabled", func(t *testing.T) {
+		_, lg := makeLogger(logging.LevelInfo)
+		allocs := testing.AllocsPerRun(100, func() {
+			lg.Debug("msg")
+		})
+		require.Equal(t, float64(0), allocs)
+	})
+
+	t.Run("at most one alloc with scalar fields when debug is disabled", func(t *testing.T) {
+		// The single alloc is the []Field variadic slice built by the Go runtime
+		// before Debug is called. Field encoding and Write are never reached.
+		_, lg := makeLogger(logging.LevelInfo)
+		allocs := testing.AllocsPerRun(100, func() {
+			lg.Debug("msg", zap.String("k", "v"), zap.Bool("b", true), zap.Int("n", 42))
+		})
+		require.LessOrEqual(t, allocs, float64(1))
+	})
+
+	t.Run("at most one alloc with zap.Any when debug is disabled", func(t *testing.T) {
+		// zap.Any with a struct would normally trigger json.Marshal via the
+		// fieldEncoder. With NewWithLevel that path is never reached.
+		_, lg := makeLogger(logging.LevelInfo)
+		allocs := testing.AllocsPerRun(100, func() {
+			lg.Debug("msg", zap.Any("obj", struct{ X, Y int }{1, 2}))
+		})
+		require.LessOrEqual(t, allocs, float64(1))
+	})
+
+	t.Run("more than one alloc when debug is disabled without leveler", func(t *testing.T) {
+		// Regression baseline: New always reports Enabled()=true, so Write() runs
+		// and the full encoding pipeline executes even for suppressed levels.
+		inner, err := logging.New(io.Discard, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+		lg := zapadapter.New(inner)
+		allocs := testing.AllocsPerRun(100, func() {
+			lg.Debug("msg", zap.String("k", "v"), zap.Bool("b", true), zap.Int("n", 42))
+		})
+		require.Greater(t, allocs, float64(1))
+	})
+
+	t.Run("at most one alloc after hot-reload to error", func(t *testing.T) {
+		inner, lg := makeLogger(logging.LevelDebug)
+		err := inner.Update(logging.Options{Level: logging.LevelError, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+		allocs := testing.AllocsPerRun(100, func() {
+			lg.Debug("msg", zap.String("k", "v"), zap.Bool("b", true), zap.Int("n", 42))
+		})
+		require.LessOrEqual(t, allocs, float64(1))
+	})
+
+	t.Run("at most one alloc for child logger after hot-reload to error", func(t *testing.T) {
+		inner, lg := makeLogger(logging.LevelDebug)
+		child := lg.With(zap.String("component", "filter"))
+		err := inner.Update(logging.Options{Level: logging.LevelError, Format: logging.FormatLogfmt})
+		require.NoError(t, err)
+		allocs := testing.AllocsPerRun(100, func() {
+			child.Debug("msg", zap.String("k", "v"), zap.Bool("b", true), zap.Int("n", 42))
+		})
+		require.LessOrEqual(t, allocs, float64(1))
+	})
+}
+
 type testObject struct {
 	obj map[string]any
 }
