@@ -58,12 +58,18 @@ The custom generator performs two tasks:
 
 ## Building Locally
 
-When building locally via `make alloy`, there is a pre-req on the generated otel collector files being up-to-date. Generally, no action is needed unless you are doing active development on this area. If that is the case, then locally you will need to manually trigger generation prior to running `make alloy`.
+`make alloy` runs the code generation steps described above automatically before building, so you generally don't need to do anything extra. Generation is skipped when `CI=true` or when `SKIP_CODE_GENERATION=1` is set.
 
-To manually trigger generation:
+To regenerate only (without building):
 
 ```bash
 make generate-otel-collector-distro
+```
+
+To build without regenerating:
+
+```bash
+SKIP_CODE_GENERATION=1 make alloy
 ```
 
 ## CI Considerations
