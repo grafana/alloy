@@ -1015,8 +1015,16 @@ require (
 )
 
 require (
+	github.com/agnivade/levenshtein v1.2.1 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/sosodev/duration v1.3.1 // indirect
+	github.com/urfave/cli/v3 v3.6.1 // indirect
+)
+
+require (
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go/storage v1.57.0 // indirect
+	github.com/99designs/gqlgen v0.17.86
 	github.com/BobuSumisu/aho-corasick v1.0.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/orchestrator/util v0.74.0-rc.3 // indirect
@@ -1066,7 +1074,7 @@ require (
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.31
 	github.com/wasilibs/go-re2 v1.9.0 // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect

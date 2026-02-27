@@ -11,7 +11,7 @@ weight: 300
 
 # `run`
 
-The `run` command runs the {{< param "PRODUCT_NAME" >}} Default Engine in the foreground until an interrupt is received. 
+The `run` command runs the {{< param "PRODUCT_NAME" >}} Default Engine in the foreground until an interrupt is received.
 
 ## Usage
 
@@ -67,6 +67,8 @@ The following flags are supported:
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 * `--feature.component-shutdown-deadline`: Maximum duration to wait for a component to shut down before giving up and logging an error (default `"10m"`).
 * `--feature.prometheus.direct-fanout.enabled`: Enable experimental direct fanout for metric forwarding without a global label store.
+* `--feature.graphql.enabled`: Enable the [GraphQL API][] (default `false`).
+* `--feature.graphql-playground.enabled`: Enable the [GraphQL playground][] UI at `/graphql/playground` (default `false`). Requires `--feature.graphql.enabled`.
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}
@@ -234,3 +236,5 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [UI]: ../../../troubleshoot/debug/#clustering-page
 [estimate resource usage]: ../../../introduction/estimate-resource-usage/
 [`/debug/pprof`]: http://pkg.go.dev/net/http/pprof
+[GraphQL API]: ../../http/graphql/
+[GraphQL playground]: ../../http/graphql/#graphql-playground
