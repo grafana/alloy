@@ -1,8 +1,6 @@
 package stages
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -13,8 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
@@ -237,7 +237,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Regex Matched Source(int) and Expression",
 			config: &DropConfig{
 				Source:     "key",
-				Expression: "50",
+				Expression: regexp.MustCompile("50"),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -249,7 +249,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Regex Matched Source(string) and Expression",
 			config: &DropConfig{
 				Source:     "key",
-				Expression: "50",
+				Expression: regexp.MustCompile("50"),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -261,7 +261,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Regex Matched Source and Expression with multiple sources",
 			config: &DropConfig{
 				Source:     "key1,key2",
-				Expression: `val\d{1};val\d{3}$`,
+				Expression: regexp.MustCompile(`val\d{1};val\d{3}$`),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -275,7 +275,7 @@ func Test_dropStage_Process(t *testing.T) {
 			config: &DropConfig{
 				Source:     "key1,key2",
 				Separator:  "#",
-				Expression: `val\d{1}#val\d{3}$`,
+				Expression: regexp.MustCompile(`val\d{1}#val\d{3}$`),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -288,7 +288,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Regex Did not match Source and Expression",
 			config: &DropConfig{
 				Source:     "key",
-				Expression: ".*val.*",
+				Expression: regexp.MustCompile(".*val.*"),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -300,7 +300,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Regex Did not match Source and Expression with multiple sources",
 			config: &DropConfig{
 				Source:     "key1,key2",
-				Expression: `match\d+;match\d+`,
+				Expression: regexp.MustCompile(`match\d+;match\d+`),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -314,7 +314,7 @@ func Test_dropStage_Process(t *testing.T) {
 			config: &DropConfig{
 				Source:     "key1,key2",
 				Separator:  "#",
-				Expression: `match\d;match\d`,
+				Expression: regexp.MustCompile(`match\d;match\d`),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -327,7 +327,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Regex No Matching Source",
 			config: &DropConfig{
 				Source:     "key",
-				Expression: ".*val.*",
+				Expression: regexp.MustCompile(".*val.*"),
 			},
 			labels: model.LabelSet{},
 			extracted: map[string]any{
@@ -338,7 +338,7 @@ func Test_dropStage_Process(t *testing.T) {
 		{
 			name: "Regex Did Not Match Line",
 			config: &DropConfig{
-				Expression: ".*val.*",
+				Expression: regexp.MustCompile(".*val.*"),
 			},
 			labels:     model.LabelSet{},
 			entry:      "this is a line which does not match the regex",
@@ -348,7 +348,7 @@ func Test_dropStage_Process(t *testing.T) {
 		{
 			name: "Regex Matched Line",
 			config: &DropConfig{
-				Expression: ".*val.*",
+				Expression: regexp.MustCompile(".*val.*"),
 			},
 			labels:     model.LabelSet{},
 			entry:      "this is a line with the word value in it",
@@ -398,7 +398,7 @@ func Test_dropStage_Process(t *testing.T) {
 			name: "Everything Must Match",
 			config: &DropConfig{
 				Source:     "key",
-				Expression: ".*val.*",
+				Expression: regexp.MustCompile(".*val.*"),
 				OlderThan:  oneHour,
 				LongerThan: tenBytes,
 			},
@@ -446,29 +446,43 @@ func TestDropPipeline(t *testing.T) {
 }
 
 func Test_validateDropConfig(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  *DropConfig
-		wantErr error
-	}{
+	type testCase struct {
+		name              string
+		cfg               string
+		expectSyntaxErr   bool
+		expectValidateErr bool
+	}
+
+	tests := []testCase{
 		{
-			name:    "ErrEmpty",
-			config:  &DropConfig{},
-			wantErr: errors.New(ErrDropStageEmptyConfig),
+			name:              "empty config",
+			cfg:               ``,
+			expectValidateErr: true,
 		},
 		{
-			name: "Invalid Regex",
-			config: &DropConfig{
-				Expression: "(?P<ts[0-9]+).*",
-			},
-			wantErr: fmt.Errorf(ErrDropStageInvalidRegex, "error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
+			name: "invalid regex",
+			cfg: `
+				expression = "(?P<ts[0-9]+).*"
+			`,
+			expectSyntaxErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := validateDropConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
-				t.Errorf("validateDropConfig() error = %v, wantErr = %v", err, tt.wantErr)
+			var cfg DropConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.expectSyntaxErr {
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
+
+			_, err = validateDropConfig(&cfg)
+			if tt.expectValidateErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }

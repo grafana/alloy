@@ -2,44 +2,41 @@ package stages
 
 import (
 	"reflect"
-	"regexp"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
+
+	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type StructuredMetadataConfig struct {
 	Values map[string]*string `alloy:"values,attr,optional"`
-	Regex  string             `alloy:"regex,attr,optional"`
+	Regex  *regexp.Regexp     `alloy:"regex,attr,optional"`
 }
 
-func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig) (Stage, error) {
+func newStructuredMetadataStage(logger log.Logger, cfg StructuredMetadataConfig) (Stage, error) {
 	var validatedLabelsConfig map[string]string
-	var err error
 
-	if len(configs.Values) > 0 {
-		validatedLabelsConfig, err = validateLabelsConfig(configs.Values)
+	if len(cfg.Values) > 0 {
+		var err error
+		validatedLabelsConfig, err = validateLabelsConfig(cfg.Values)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	re, err := regexp.Compile(configs.Regex)
-	if err != nil {
-		return nil, err
-	}
 	return &structuredMetadataStage{
 		labelsConfig: validatedLabelsConfig,
-		regex:        *re,
+		regex:        cfg.Regex,
 		logger:       logger,
 	}, nil
 }
 
 type structuredMetadataStage struct {
 	labelsConfig map[string]string
-	regex        regexp.Regexp
+	regex        *regexp.Regexp
 	logger       log.Logger
 }
 
@@ -55,7 +52,7 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
 		})
 		// Handle extracted values matching the regex
-		if s.regex.String() != "" {
+		if s.regex != nil {
 			for lName, lValue := range e.Extracted {
 				if s.regex.MatchString(lName) {
 					str, err := getString(lValue)
@@ -99,7 +96,7 @@ func (s *structuredMetadataStage) extractFromLabels(e Entry) Entry {
 		delete(labels, fl)
 	}
 
-	if s.regex.String() != "" {
+	if s.regex != nil {
 		// Handle remaining labels matching the regex
 		foundLabels = []model.LabelName{}
 		for lName, lValue := range labels {

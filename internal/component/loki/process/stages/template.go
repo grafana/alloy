@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"reflect"
 	"regexp"
 	"strings"
@@ -57,9 +58,7 @@ var extraFunctionMap = template.FuncMap{
 var functionMap = sprig.TxtFuncMap()
 
 func init() {
-	for k, v := range extraFunctionMap {
-		functionMap[k] = v
-	}
+	maps.Copy(functionMap, extraFunctionMap)
 }
 
 // TemplateConfig configures template value extraction.

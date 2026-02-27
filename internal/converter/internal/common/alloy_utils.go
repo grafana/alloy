@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/scanner"
 
 	"github.com/grafana/alloy/internal/component"
+	alloy_regexp "github.com/grafana/alloy/internal/component/common/regexp"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -55,6 +56,10 @@ func GetAlloyTypesOverrideHook() builder.ValueOverrideHook {
 				}
 			}
 			return secrets
+		case alloy_regexp.Regexp:
+			return value.String()
+		case alloy_regexp.NonEmptyRegexp:
+			return value.String()
 		case alloy_relabel.Regexp:
 			return value.String()
 		case []discovery.Target:
