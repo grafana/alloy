@@ -18,15 +18,9 @@ Scope is optional — use the component name in dot-notation when relevant (e.g.
 
 ### Description
 
-For `feat` and significant `fix` PRs, use the PR template sections. For `docs`, `ci`, and `chore` PRs, a freeform paragraph is the norm.
-
-To auto-close an issue on merge, use `Fixes #NNN` (not `Fixes: #NNN` or a full URL).
+For `feat` and significant `fix` PRs, use the PR template. For `docs`, `ci`, and `chore` PRs, a freeform paragraph is the norm.
 
 Include links to CI failures, upstream PRs, or screenshots when they help explain the change.
-
-### Checklist
-
-Either fill in the checklist honestly or omit it entirely. Remove items that don't apply rather than leaving them unchecked.
 
 ## Before Opening a PR
 
