@@ -386,8 +386,8 @@ func mimirNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
 // Unmanaged namespaces are left as is by the operator.
 func isManagedMimirNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)
-	namespacePart := `.+`
-	namePart := `.+`
+	namespacePart := `[^/]+`
+	namePart := `[^/]+`
 	uuidPart := `[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}`
 	managedNamespaceRegex := regexp.MustCompile(
 		fmt.Sprintf("^%s/%s/%s/%s$", prefixPart, namespacePart, namePart, uuidPart),
