@@ -307,6 +307,11 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 			c.metrics.linesDroppedTotal.Inc()
 			return loki.Entry{}, true
 		}
+
+		// Redact any partial findings before forwarding, even if the timeout was hit.
+		if len(findings) > 0 {
+			return c.redactLine(entry, findings), false
+		}
 		return entry, false
 	}
 
