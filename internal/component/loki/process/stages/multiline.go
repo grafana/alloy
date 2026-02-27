@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -13,9 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 // Configuration errors.
@@ -78,6 +75,12 @@ type multilineState struct {
 	buffer         *bytes.Buffer // The lines of the current multiline block.
 	startLineEntry Entry         // The entry of the start line of a multiline block.
 	currentLines   uint64        // The number of lines of the current multiline block.
+}
+
+func (s *multilineState) Reset() {
+	s.buffer.Reset()
+	s.currentLines = 0
+	s.startLineEntry = Entry{}
 }
 
 // newMultilineStage creates a MulitlineStage from config
@@ -169,6 +172,7 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.Wa
 			if state.buffer.Len() > 0 {
 				state.buffer.WriteRune('\n')
 			}
+
 			line := e.Line
 			if m.cfg.TrimNewlines {
 				line = strings.TrimRight(line, "\r\n")
@@ -188,26 +192,12 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		level.Debug(m.logger).Log("msg", "nothing to flush", "buffer_len", s.buffer.Len())
 		return
 	}
-	// copy extracted data.
-	extracted := make(map[string]any, len(s.startLineEntry.Extracted))
-	for k, v := range s.startLineEntry.Extracted {
-		extracted[k] = v
-	}
-	collapsed := Entry{
-		Extracted: extracted,
-		Entry: loki.Entry{
-			Labels: s.startLineEntry.Entry.Labels.Clone(),
-			Entry: push.Entry{
-				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
-				Line:               s.buffer.String(),
-				StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
-			},
-		},
-	}
-	s.buffer.Reset()
-	s.currentLines = 0
 
-	out <- collapsed
+	entry := s.startLineEntry
+	entry.Line = s.buffer.String()
+
+	s.Reset()
+	out <- entry
 }
 
 // Cleanup implements Stage.
