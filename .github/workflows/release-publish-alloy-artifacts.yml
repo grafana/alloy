@@ -308,13 +308,3 @@ jobs:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
-  submit_winget_manifest:
-    name: Submit WinGet Manifest
-    needs:
-    - upload_release_artifacts
-    uses: ./.github/workflows/release-submit-winget-manifest.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      release-tag: ${{ github.ref_name }}
