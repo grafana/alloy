@@ -19,7 +19,9 @@ import (
 const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
+	OP_QUERY_SAMPLE_V2    = "query_sample_v2"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
 	cpuTimeField              = `, statements.CPU_TIME`
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
@@ -89,6 +91,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
 	SetupConsumersCheckInterval time.Duration
+	EnableIndexedLabels         bool
+	EnableStructuredMetadata    bool
 
 	Logger log.Logger
 }
@@ -102,6 +106,8 @@ type QuerySamples struct {
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
 	setupConsumersCheckInterval time.Duration
+	enableIndexedLabels         bool
+	enableStructuredMetadata    bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -122,6 +128,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		enableIndexedLabels:         args.EnableIndexedLabels,
+		enableStructuredMetadata:    args.EnableStructuredMetadata,
 		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
@@ -384,6 +392,37 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
+
+			if c.enableIndexedLabels || c.enableStructuredMetadata {
+				baseLogMessage := fmt.Sprintf(
+					`user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+					row.User.String, row.Host.String, row.ThreadID.String,
+					row.StatementEventID.String, row.StatementEndEventID.String,
+					row.RowsExamined,
+					row.RowsSent,
+					row.RowsAffected,
+					row.Errors,
+					row.MaxControlledMemory,
+					row.MaxTotalMemory,
+					cpuTime,
+					elapsedTime,
+					elapsedTime,
+				)
+				if c.disableQueryRedaction && row.SQLText.Valid {
+					baseLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+				}
+
+				c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
+					logging.LevelInfo,
+					OP_QUERY_SAMPLE_V2,
+					baseLogMessage,
+					[]database_observability.Field{{Name: "schema", Value: row.Schema.String}},
+					[]database_observability.Field{{Name: "digest", Value: row.Digest.String}},
+					c.enableIndexedLabels,
+					c.enableStructuredMetadata,
+					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				)
+			}
 		}
 
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
@@ -414,6 +453,36 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
+
+			if c.enableIndexedLabels || c.enableStructuredMetadata {
+				waitBaseLogMessage := fmt.Sprintf(
+					`thread_id="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_object_type="%s" wait_object_name="%s" wait_time="%fms"`,
+					row.ThreadID.String,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEndEventID.String,
+					row.WaitObjectType.String,
+					row.WaitObjectName.String,
+					waitTime,
+				)
+				if c.disableQueryRedaction && row.SQLText.Valid {
+					waitBaseLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+				}
+
+				c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
+					logging.LevelInfo,
+					OP_WAIT_EVENT_V2,
+					waitBaseLogMessage,
+					[]database_observability.Field{{Name: "schema", Value: row.Schema.String}},
+					[]database_observability.Field{
+						{Name: "digest", Value: row.Digest.String},
+						{Name: "wait_event_name", Value: row.WaitEventName.String},
+					},
+					c.enableIndexedLabels,
+					c.enableStructuredMetadata,
+					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				)
+			}
 		}
 	}
 

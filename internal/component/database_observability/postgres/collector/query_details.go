@@ -20,6 +20,7 @@ import (
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
+	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -45,24 +46,28 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB               *sql.DB
-	CollectInterval  time.Duration
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	TableRegistry    *TableRegistry
+	DB                       *sql.DB
+	CollectInterval          time.Duration
+	ExcludeDatabases         []string
+	ExcludeUsers             []string
+	EntryHandler             loki.EntryHandler
+	TableRegistry            *TableRegistry
+	EnableIndexedLabels      bool
+	EnableStructuredMetadata bool
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection     *sql.DB
-	collectInterval  time.Duration
-	excludeDatabases []string
-	excludeUsers     []string
-	entryHandler     loki.EntryHandler
-	tableRegistry    *TableRegistry
-	normalizer       *sqllexer.Normalizer
+	dbConnection             *sql.DB
+	collectInterval          time.Duration
+	excludeDatabases         []string
+	excludeUsers             []string
+	entryHandler             loki.EntryHandler
+	tableRegistry            *TableRegistry
+	enableIndexedLabels      bool
+	enableStructuredMetadata bool
+	normalizer               *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -72,15 +77,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:     args.DB,
-		collectInterval:  args.CollectInterval,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		entryHandler:     args.EntryHandler,
-		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:          &atomic.Bool{},
+		dbConnection:             args.DB,
+		collectInterval:          args.CollectInterval,
+		excludeDatabases:         args.ExcludeDatabases,
+		excludeUsers:             args.ExcludeUsers,
+		entryHandler:             args.EntryHandler,
+		tableRegistry:            args.TableRegistry,
+		enableIndexedLabels:      args.EnableIndexedLabels,
+		enableStructuredMetadata: args.EnableStructuredMetadata,
+		normalizer:               sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		logger:                   log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:                  &atomic.Bool{},
 	}, nil
 }
 
@@ -160,6 +167,19 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
 		)
+
+		if c.enableIndexedLabels || c.enableStructuredMetadata {
+			c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				fmt.Sprintf(`querytext=%q`, queryText),
+				[]database_observability.Field{{Name: "datname", Value: string(databaseName)}},
+				[]database_observability.Field{{Name: "queryid", Value: queryID}},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
+				time.Now().UnixNano(),
+			)
+		}
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {

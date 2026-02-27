@@ -20,6 +20,7 @@ import (
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
+	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -36,23 +37,27 @@ const selectQueryTablesSamples = `
 	LIMIT %d`
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	StatementsLimit int
-	ExcludeSchemas  []string
-	EntryHandler    loki.EntryHandler
+	DB                       *sql.DB
+	CollectInterval          time.Duration
+	StatementsLimit          int
+	ExcludeSchemas           []string
+	EntryHandler             loki.EntryHandler
+	EnableIndexedLabels      bool
+	EnableStructuredMetadata bool
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	statementsLimit int
-	excludeSchemas  []string
-	entryHandler    loki.EntryHandler
-	sqlParser       parser.Parser
-	normalizer      *sqllexer.Normalizer
+	dbConnection             *sql.DB
+	collectInterval          time.Duration
+	statementsLimit          int
+	excludeSchemas           []string
+	entryHandler             loki.EntryHandler
+	enableIndexedLabels      bool
+	enableStructuredMetadata bool
+	sqlParser                parser.Parser
+	normalizer               *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -62,15 +67,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	c := &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		statementsLimit: args.StatementsLimit,
-		excludeSchemas:  args.ExcludeSchemas,
-		entryHandler:    args.EntryHandler,
-		sqlParser:       parser.NewTiDBSqlParser(),
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
-		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:         &atomic.Bool{},
+		dbConnection:             args.DB,
+		collectInterval:          args.CollectInterval,
+		statementsLimit:          args.StatementsLimit,
+		excludeSchemas:           args.ExcludeSchemas,
+		entryHandler:             args.EntryHandler,
+		enableIndexedLabels:      args.EnableIndexedLabels,
+		enableStructuredMetadata: args.EnableStructuredMetadata,
+		sqlParser:                parser.NewTiDBSqlParser(),
+		normalizer:               sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
+		logger:                   log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:                  &atomic.Bool{},
 	}
 
 	return c, nil
@@ -152,6 +159,19 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
 		)
+
+		if c.enableIndexedLabels || c.enableStructuredMetadata {
+			c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				fmt.Sprintf(`parseable="%t" digest_text="%s"`, parserErr == nil, digestText),
+				[]database_observability.Field{{Name: "schema", Value: schema}},
+				[]database_observability.Field{{Name: "digest", Value: digest}},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
+				time.Now().UnixNano(),
+			)
+		}
 
 		for _, table := range tables {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(

@@ -35,6 +35,8 @@ You can use the following arguments with `database_observability.mysql`:
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               |         | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
+| `enable_indexed_labels`                    | `boolean`            | Whether to use Loki indexed labels for improved performance. Experimental feature. | `false` | no       |
+| `enable_structured_metadata`               | `boolean`            | Whether to use Loki structured metadata for improved performance. Experimental feature. | `false` | no       |
 
 The following collectors are configurable:
 
