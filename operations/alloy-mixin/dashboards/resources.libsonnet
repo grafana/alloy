@@ -33,7 +33,13 @@ local stackedPanelMixin = {
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=true,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
 
   [filename]:
     dashboard.new(name='Alloy / Resources', tag=$._config.dashboardTag) +
@@ -42,7 +48,7 @@ local stackedPanelMixin = {
     dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
-      dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
+      dashboard.newLokiAnnotation('Deployments', '{cluster=~"$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
     ]) +
     dashboard.withPanelsMixin([
       // CPU usage
@@ -58,9 +64,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(alloy_resources_process_cpu_seconds_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(${groupby}) (rate(alloy_resources_process_cpu_seconds_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),
@@ -76,9 +82,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              alloy_resources_process_resident_memory_bytes{%(instanceSelector)s}
+              sum by(${groupby}) (alloy_resources_process_resident_memory_bytes{%(instanceSelector)s})
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),
@@ -98,11 +104,13 @@ local stackedPanelMixin = {
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
             expr= |||
-              rate(go_gc_duration_seconds_count{%(instanceSelector)s}[5m])
-              and on(instance)
-              alloy_build_info{%(instanceSelector)s}
+              sum by(${groupby}) (
+                rate(go_gc_duration_seconds_count{%(instanceSelector)s}[5m])
+                and on(instance)
+                alloy_build_info{%(instanceSelector)s}
+              )
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),
@@ -122,11 +130,13 @@ local stackedPanelMixin = {
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
             expr= |||
-              go_goroutines{%(instanceSelector)s}
-              and on(instance)
-              alloy_build_info{%(instanceSelector)s}
+              sum by(${groupby}) (
+                go_goroutines{%(instanceSelector)s}
+                and on(instance)
+                alloy_build_info{%(instanceSelector)s}
+              )
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),
@@ -145,11 +155,13 @@ local stackedPanelMixin = {
             // anything that doesn't also have an Alloy-specific metric
             // (i.e., alloy_build_info).
             expr= |||
-              go_memstats_heap_inuse_bytes{%(instanceSelector)s}
-              and on(instance)
-              alloy_build_info{%(instanceSelector)s}
+              sum by(${groupby}) (
+                go_memstats_heap_inuse_bytes{%(instanceSelector)s}
+                and on(instance)
+                alloy_build_info{%(instanceSelector)s}
+              )
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),
@@ -170,9 +182,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(alloy_resources_machine_rx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(${groupby}) (rate(alloy_resources_machine_rx_bytes_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),
@@ -193,9 +205,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(alloy_resources_machine_tx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(${groupby}) (rate(alloy_resources_machine_tx_bytes_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{instance}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),

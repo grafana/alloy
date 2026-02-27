@@ -4,7 +4,7 @@
          {
             "datasource": "$loki_datasource",
             "enable": true,
-            "expr": "{cluster=\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"alloy\" | name_extracted=~\"alloy.*\"",
+            "expr": "{cluster=~\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"alloy\" | name_extracted=~\"alloy.*\"",
             "iconColor": "rgba(0, 211, 255, 1)",
             "instant": false,
             "name": "Deployments",
@@ -132,9 +132,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "rate(cluster_node_gossip_received_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n",
+               "expr": "sum by(${groupby}) (rate(cluster_node_gossip_received_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "{{event}}",
+               "legendFormat": "{{${groupby}}}",
                "range": true
             }
          ],
@@ -393,7 +393,7 @@
          "type": "timeseries"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -417,8 +417,10 @@
             "type": "datasource"
          },
          {
+            "allowCustomValue": true,
             "datasource": "${datasource}",
             "label": "cluster",
+            "multi": true,
             "name": "cluster",
             "query": {
                "query": "label_values(alloy_component_controller_running_components, cluster)\n",
@@ -429,8 +431,10 @@
             "type": "query"
          },
          {
+            "allowCustomValue": true,
             "datasource": "${datasource}",
             "label": "namespace",
+            "multi": true,
             "name": "namespace",
             "query": {
                "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\"}, namespace)\n",
@@ -441,8 +445,11 @@
             "type": "query"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
+            "includeAll": true,
             "label": "job",
+            "multi": true,
             "name": "job",
             "query": {
                "query": "label_values(alloy_component_controller_running_components{cluster=~\"$cluster\", namespace=~\"$namespace\"}, job)\n",
@@ -466,6 +473,26 @@
             "refresh": 2,
             "sort": 1,
             "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "name": "filters",
+            "type": "adhoc"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "event",
+               "value": "event"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "event,state,instance,job,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

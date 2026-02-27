@@ -9,15 +9,11 @@ local filename = 'alloy-prometheus-remote-write.json';
 
     // Scrape success rate
     (
-      panel.new(title='Scrape success rate in $cluster', type='timeseries') +
+      panel.new(title='Scrape success rate', type='timeseries') +
       panel.withUnit('percentunit') +
       panel.withDescription(|||
-        Percentage of targets successfully scraped by prometheus.scrape
-        components.
-
-        This metric is calculated by dividing the number of targets
-        successfully scraped by the total number of targets scraped,
-        across all the namespaces in the selected cluster.
+        Percentage of targets successfully scraped in the selected
+        cluster and job.
 
         Low success rates can indicate a problem with scrape targets,
         stale service discovery, or Alloy misconfiguration.
@@ -37,11 +33,11 @@ local filename = 'alloy-prometheus-remote-write.json';
 
     // Scrape duration
     (
-      panel.new(title='Scrape duration in $cluster', type='timeseries') +
+      panel.new(title='Scrape duration', type='timeseries') +
       panel.withUnit('s') +
       panel.withDescription(|||
-        Duration of successful scrapes by prometheus.scrape components,
-        across all the namespaces in the selected cluster.
+        Duration of scrapes for the selected cluster and job,
+        shown as p99, p95, and p50 quantiles.
 
         This metric should be below your configured scrape interval.
         High durations can indicate a problem with a scrape target or
@@ -160,14 +156,17 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withPosition({ x: 0, y: 11 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
+          // TODO: Remove the `< 31536000 > 0` workaround once the metrics are fixed to not publish zero values.
           expr=|||
-            sum by (instance, component_path, component_id) (
-              prometheus_remote_storage_highest_timestamp_in_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component"}
-              - ignoring(url, remote_name) group_right(instance)
-              prometheus_remote_storage_queue_highest_sent_timestamp_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
+            sum by (${groupby}) (
+              (
+                prometheus_remote_storage_highest_timestamp_in_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component"}
+                - ignoring(url, remote_name) group_right(instance)
+                prometheus_remote_storage_queue_highest_sent_timestamp_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
+              ) < 31536000 > 0
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -185,12 +184,12 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance, component_path, component_id) (
+            sum by (${groupby}) (
                 rate(prometheus_remote_storage_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]) +
                 rate(prometheus_remote_storage_metadata_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -242,11 +241,11 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance, component_path, component_id) (
+            sum by (${groupby}) (
                 prometheus_remote_storage_shards{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='{{${groupby}}}',
         ),
         panel.newQuery(
           expr=|||
@@ -279,11 +278,11 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance, component_path, component_id) (
+            sum by (${groupby}) (
               rate(prometheus_remote_storage_samples_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -301,11 +300,11 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance, component_path, component_id) (
+            sum by (${groupby}) (
               rate(prometheus_remote_storage_samples_failed_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -323,11 +322,11 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance, component_path, component_id) (
+            sum by (${groupby}) (
               rate(prometheus_remote_storage_samples_retried_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -445,11 +444,11 @@ local filename = 'alloy-prometheus-remote-write.json';
   local k8sUrlQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       |||
     else
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       ||| % $._config,
 
   local componentPathQuery =
@@ -475,11 +474,11 @@ local filename = 'alloy-prometheus-remote-write.json';
   local urlQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       |||
     else
       |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"$component"}, url)
       ||| % $._config,
 
   local prometheusTemplateVariables =
@@ -527,7 +526,13 @@ local filename = 'alloy-prometheus-remote-write.json';
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
     )
-    + prometheusTemplateVariables,
+    + prometheusTemplateVariables
+    + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,component_path,component_id,url,remote_name,job,namespace,cluster,pod',
+        defaultValue='instance,component_path,component_id'
+      ),
+    ],
 
   [filename]:
     dashboard.new(name='Alloy / Prometheus Components', tag=$._config.dashboardTag) +

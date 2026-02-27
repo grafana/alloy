@@ -158,8 +158,8 @@
                   "type": "loki",
                   "uid": "${loki_datasource}"
                },
-               "expr": "sum by (level) (count_over_time({cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__auto]))\n",
-               "legendFormat": "{{ level }}"
+               "expr": "sum by (${groupby}) (count_over_time({cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__auto]))\n",
+               "legendFormat": "{{${groupby}}}"
             }
          ],
          "title": "Logs volume",
@@ -205,7 +205,7 @@
          "type": "logs"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -229,8 +229,9 @@
             "type": "datasource"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
-            "includeAll": false,
+            "includeAll": true,
             "label": "Cluster",
             "multi": true,
             "name": "cluster",
@@ -240,8 +241,9 @@
             "type": "query"
          },
          {
+            "allValue": ".*",
             "datasource": "${datasource}",
-            "includeAll": false,
+            "includeAll": true,
             "label": "Namespace",
             "multi": true,
             "name": "namespace",
@@ -303,6 +305,26 @@
             ],
             "query": "",
             "type": "textbox"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "name": "filters",
+            "type": "adhoc"
+         },
+         {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "level",
+               "value": "level"
+            },
+            "label": "Group by",
+            "name": "groupby",
+            "query": "level,job,instance,namespace,cluster,pod",
+            "type": "custom"
          }
       ]
    },

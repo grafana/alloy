@@ -9,7 +9,13 @@ local filename = 'alloy-cluster-node.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=true,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='event,state,instance,job,namespace,cluster,pod',
+        defaultValue='event'
+      ),
+    ],
 
   [filename]:
     dashboard.new(name='Alloy / Cluster Node', tag=$._config.dashboardTag) +
@@ -22,7 +28,7 @@ local filename = 'alloy-cluster-node.json';
     dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
-      dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
+      dashboard.newLokiAnnotation('Deployments', '{cluster=~"$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
     ]) +
     dashboard.withPanelsMixin([
       // Node Info row
@@ -107,9 +113,9 @@ local filename = 'alloy-cluster-node.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(cluster_node_gossip_received_events_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(${groupby}) (rate(cluster_node_gossip_received_events_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{event}}'
+            legendFormat='{{${groupby}}}'
           ),
         ])
       ),

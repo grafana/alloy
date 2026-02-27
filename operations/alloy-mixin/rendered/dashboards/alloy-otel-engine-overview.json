@@ -37,12 +37,21 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Number of instances with OTel engine metrics.\n",
+         "description": "Current number of pods with OTel engine metrics.\n",
+         "fieldConfig": {
+            "defaults": {
+               "min": 0
+            }
+         },
          "gridPos": {
-            "h": 10,
+            "h": 5,
             "w": 8,
             "x": 0,
             "y": 0
+         },
+         "options": {
+            "colorMode": "none",
+            "graphMode": "area"
          },
          "targets": [
             {
@@ -53,7 +62,40 @@
                "range": true
             }
          ],
-         "title": "Instances Count",
+         "title": "Pods count",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Count of series with process uptime under 60 seconds, grouped by the selected dimension.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "drawStyle": "bars",
+                  "fillOpacity": 100,
+                  "gradientMode": "none",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               }
+            }
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 5
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "count by(${groupby}) (otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"} < 60) or vector(0)\n",
+               "instant": false,
+               "legendFormat": "{{${groupby}}}",
+               "range": true
+            }
+         ],
+         "title": "Recently started by ${groupby}",
          "type": "timeseries"
       },
       {
@@ -1312,7 +1354,7 @@
          "type": "row"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -1381,6 +1423,12 @@
             "type": "query"
          },
          {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
             "label": "Group by",
             "name": "groupby",
             "query": "instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod",
