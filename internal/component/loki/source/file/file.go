@@ -196,6 +196,8 @@ type Component struct {
 	resolver resolver
 	// scheduler owns the lifecycle of sources.
 	scheduler *source.Scheduler[positions.Entry]
+	// lastScheduled is the time we last scheduled sources.
+	lastScheduled atomic.Time
 
 	// watcher is a background trigger that periodically invokes
 	// scheduling when file matching is enabled.
@@ -277,12 +279,29 @@ func (c *Component) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-c.watcher.C:
-				c.mut.Lock()
+				ok := c.mut.TryLock()
+				if !ok {
+					// We are currently updating with new targets so scheduleSources is already in progress.
+					continue
+				}
+
 				if !c.args.FileMatch.Enabled {
 					c.mut.Unlock()
 					continue
 				}
+
+				since := time.Since(c.lastScheduled.Load())
+				// We recently ran scheduleSources so we can skip this iteration.
+				if since < c.args.FileMatch.SyncPeriod {
+					c.watcher.Reset(c.args.FileMatch.SyncPeriod - since)
+					c.mut.Unlock()
+					continue
+				}
+
 				c.scheduleSources()
+				// It's not safe to reset the watcher in update and
+				// this will also make sure we actually wait this duration between calls.
+				c.watcher.Reset(c.args.FileMatch.SyncPeriod)
 				c.mut.Unlock()
 			}
 		}
@@ -310,12 +329,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.resolver = newStaticResolver()
 	}
 
-	if newArgs.FileMatch.SyncPeriod != c.args.FileMatch.SyncPeriod {
-		c.watcher.Reset(newArgs.FileMatch.SyncPeriod)
-	}
-
 	c.args = newArgs
-
 	c.scheduleSources()
 	return nil
 }
@@ -361,6 +375,8 @@ func (c *Component) scheduleSources() {
 			})
 		},
 	)
+
+	c.lastScheduled.Store(time.Now())
 }
 
 type debugInfo struct {
