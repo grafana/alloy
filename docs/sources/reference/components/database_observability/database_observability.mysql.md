@@ -152,6 +152,8 @@ The `azure` block supplies the identifying information for the database being mo
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
 | `auto_enable_setup_consumers`    | `boolean`  | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
+| `sample_min_duration`            | `duration` | Minimum elapsed time for a query sample to be collected. Samples below this threshold are excluded. A value of `"0s"` disables filtering. | `"0s"`  | no       |
+| `wait_event_min_duration`              | `duration` | Minimum duration for a wait event to be collected. Wait events below this threshold are excluded. A value of `"0s"` disables filtering.   | `"1us"` | no       |
 
 ### `setup_actors`
 
