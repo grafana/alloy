@@ -398,3 +398,36 @@ func (c *Component) DebugInfo() any {
 
 	return scrape.ScraperStatus{TargetStatus: res}
 }
+
+// GetTargets implements component.TargetsProvider
+func (c *Component) GetTargets() []component.TargetInfo {
+	var result []component.TargetInfo
+
+	c.mut.RLock()
+	jobName := c.args.JobName
+	if jobName == "" {
+		jobName = c.opts.ID
+	}
+	c.mut.RUnlock()
+
+	for _, st := range c.scraper.TargetsActive() {
+		if st == nil {
+			continue
+		}
+		var lastError string
+		if st.LastError() != nil {
+			lastError = st.LastError().Error()
+		}
+
+		result = append(result, component.TargetInfo{
+			JobName:            jobName,
+			Endpoint:           st.URL(),
+			State:              string(st.Health()),
+			Labels:             st.allLabels.Map(),
+			LastScrape:         st.LastScrape(),
+			LastScrapeDuration: st.LastScrapeDuration(),
+			LastError:          lastError,
+		})
+	}
+	return result
+}

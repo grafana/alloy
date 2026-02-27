@@ -23,6 +23,11 @@ function Navbar() {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/targets" className="nav-link">
+            Targets
+          </NavLink>
+        </li>
+        <li>
           <NavLink to="/remotecfg" className="nav-link">
             Remote Configuration
           </NavLink>
