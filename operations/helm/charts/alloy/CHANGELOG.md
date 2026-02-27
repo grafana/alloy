@@ -9,6 +9,9 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+
+- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
 
 1.6.0 (2026-02-05)
 ----------
