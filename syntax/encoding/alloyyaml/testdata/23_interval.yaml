@@ -1,0 +1,18 @@
+- otelcol.receiver.otlp/default:
+    - grpc:
+        - endpoint: localhost:4317
+    - http:
+        - endpoint: localhost:4318
+    - output:
+        - metrics:
+            - expr(otelcol.processor.interval.default.input)
+- otelcol.processor.interval/default:
+    - passthrough:
+        - gauge: true
+        - summary: true
+    - output:
+        - metrics:
+            - expr(otelcol.exporter.otlp.default.input)
+- otelcol.exporter.otlp/default:
+    - client:
+        - endpoint: database:4317
