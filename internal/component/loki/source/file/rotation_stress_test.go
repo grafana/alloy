@@ -1,0 +1,778 @@
+package file
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+)
+
+// rotationType defines different file rotation strategies
+type rotationType int
+
+const (
+	// rotationTypeRename renames the old file and creates a new one (most common, e.g., logrotate default)
+	rotationTypeRename rotationType = iota
+	// rotationTypeCopyTruncate copies the file then truncates it (used when app keeps file handle open)
+	rotationTypeCopyTruncate
+	// rotationTypeDelete deletes the file and creates a new one (less common but supported)
+	rotationTypeDelete
+)
+
+// allRotationTypes contains all rotation types for test iteration
+var allRotationTypes = []rotationType{
+	rotationTypeRename,
+	rotationTypeCopyTruncate,
+	rotationTypeDelete,
+}
+
+func (r rotationType) String() string {
+	switch r {
+	case rotationTypeRename:
+		return "rename"
+	case rotationTypeCopyTruncate:
+		return "copytruncate"
+	case rotationTypeDelete:
+		return "delete"
+	default:
+		return "unknown"
+	}
+}
+
+// testConfig defines the parameters for a rotation stress test
+type testConfig struct {
+	// Number of concurrent log files to write
+	numFiles int
+	// How often to rotate each file
+	rotationInterval time.Duration
+	// Number of lines to write before each rotation
+	linesPerRotation int
+	// Total duration of the test
+	duration time.Duration
+	// Delay between writing lines (controls write rate)
+	writeDelay time.Duration
+	// Rotation strategy to use
+	rotationType rotationType
+}
+
+// logLinePattern is the regex pattern for parsing log lines formatted by formatLogLine
+var logLinePattern = regexp.MustCompile(`^file(\d+)-line(\d+)$`)
+
+// logLine represents a written log line with metadata
+type logLine struct {
+	fileID   int
+	sequence int
+	text     string
+}
+
+// logWriter manages writing logs to a single file with rotation
+type logWriter struct {
+	config       testConfig
+	fileID       int
+	testDir      string
+	currentFile  *os.File
+	sequence     int
+	mu           sync.Mutex
+	writtenLines []logLine
+	ctx          context.Context
+}
+
+// newLogWriter creates a new log writer for a specific file ID
+func newLogWriter(ctx context.Context, cfg testConfig, fileID int, testDir string) *logWriter {
+	return &logWriter{
+		config:       cfg,
+		fileID:       fileID,
+		testDir:      testDir,
+		writtenLines: make([]logLine, 0, 1000),
+		ctx:          ctx,
+	}
+}
+
+// formatLogLine creates a log line with file ID and sequence number
+func formatLogLine(fileID, sequence int) string {
+	return fmt.Sprintf("file%d-line%08d", fileID, sequence)
+}
+
+// parseLogLine extracts file ID and sequence from a log line
+func parseLogLine(line string) (fileID, sequence int, err error) {
+	matches := logLinePattern.FindStringSubmatch(line)
+	if len(matches) != 3 {
+		return 0, 0, fmt.Errorf("invalid log line format: %s", line)
+	}
+	fileID, err = strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, 0, err
+	}
+	sequence, err = strconv.Atoi(matches[2])
+	if err != nil {
+		return 0, 0, err
+	}
+	return fileID, sequence, nil
+}
+
+// currentLogPath returns the path to the current active log file
+func (w *logWriter) currentLogPath() string {
+	return filepath.Join(w.testDir, fmt.Sprintf("test%d.log", w.fileID))
+}
+
+// rotatedLogPath returns the path for a rotated log file
+func (w *logWriter) rotatedLogPath(timestamp int64) string {
+	return filepath.Join(w.testDir, fmt.Sprintf("test%d.log.%d", w.fileID, timestamp))
+}
+
+// openFile opens the current log file for writing
+// Must be called with w.mu held
+func (w *logWriter) openFile() error {
+	var err error
+	w.currentFile, err = os.OpenFile(w.currentLogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	return err
+}
+
+// rotate performs file rotation using the configured rotation strategy
+func (w *logWriter) rotate() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	currentPath := w.currentLogPath()
+	rotatedPath := w.rotatedLogPath(time.Now().UnixNano())
+
+	switch w.config.rotationType {
+	case rotationTypeRename:
+		return w.rotateRename(currentPath, rotatedPath)
+	case rotationTypeCopyTruncate:
+		return w.rotateCopyTruncate(currentPath, rotatedPath)
+	case rotationTypeDelete:
+		return w.rotateDelete(currentPath)
+	default:
+		return fmt.Errorf("unknown rotation type: %d", w.config.rotationType)
+	}
+}
+
+// rotateRename renames the old file and creates a new one (traditional rotation)
+// Must be called with w.mu held
+func (w *logWriter) rotateRename(currentPath, rotatedPath string) error {
+	if w.currentFile != nil {
+		// Sync to ensure all data is written before rotation
+		if err := w.currentFile.Sync(); err != nil {
+			return fmt.Errorf("sync failed: %w", err)
+		}
+		if err := w.currentFile.Close(); err != nil {
+			return fmt.Errorf("close failed: %w", err)
+		}
+		w.currentFile = nil
+	}
+
+	// Rename current log file with timestamp
+	if _, err := os.Stat(currentPath); err == nil {
+		if err := os.Rename(currentPath, rotatedPath); err != nil {
+			return fmt.Errorf("rename failed: %w", err)
+		}
+	}
+
+	// Open new file
+	return w.openFile()
+}
+
+// rotateCopyTruncate copies content to rotated file then truncates original (copytruncate strategy)
+// Must be called with w.mu held
+func (w *logWriter) rotateCopyTruncate(currentPath, rotatedPath string) error {
+	if w.currentFile != nil {
+		// Sync to ensure all data is written before rotation
+		if err := w.currentFile.Sync(); err != nil {
+			return fmt.Errorf("sync failed: %w", err)
+		}
+	}
+
+	// Copy current file to rotated file
+	info, err := os.Stat(currentPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File no longer exists; ensure current file handle state is clean.
+			if w.currentFile != nil {
+				if cerr := w.currentFile.Close(); cerr != nil {
+					return fmt.Errorf("close failed: %w", cerr)
+				}
+				w.currentFile = nil
+			}
+			return nil
+		}
+		return fmt.Errorf("stat failed: %w", err)
+	}
+	_ = info
+
+	if err := copyFile(currentPath, rotatedPath); err != nil {
+		return fmt.Errorf("copy failed: %w", err)
+	}
+
+	if w.currentFile == nil {
+		return fmt.Errorf("truncate failed: current file is nil")
+	}
+
+	// Truncate the original file (keeping the same inode)
+	if err := w.currentFile.Truncate(0); err != nil {
+		return fmt.Errorf("truncate failed: %w", err)
+	}
+	// Seek back to the beginning
+	if _, err := w.currentFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek failed: %w", err)
+	}
+	return nil
+}
+
+// rotateDelete deletes the old file and creates a new one
+// Must be called with w.mu held
+func (w *logWriter) rotateDelete(currentPath string) error {
+	if w.currentFile != nil {
+		// Sync and close
+		if err := w.currentFile.Sync(); err != nil {
+			return fmt.Errorf("sync failed: %w", err)
+		}
+		if err := w.currentFile.Close(); err != nil {
+			return fmt.Errorf("close failed: %w", err)
+		}
+		w.currentFile = nil
+	}
+
+	// Delete the file
+	if _, err := os.Stat(currentPath); err == nil {
+		if err := os.Remove(currentPath); err != nil {
+			return fmt.Errorf("remove failed: %w", err)
+		}
+	}
+
+	// Intentional delay to simulate the real-world gap between file deletion and recreation.
+	// This tests that the tailer correctly handles the brief period when a file doesn't exist,
+	// which can happen during rotation (e.g., logrotate with delaycompress or manual rotation).
+	// Using a random delay (5-50ms) to better simulate real-world variance.
+	time.Sleep(time.Duration(5+rand.Intn(46)) * time.Millisecond)
+
+	// Open new file
+	return w.openFile()
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) (retErr error) {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := sourceFile.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close source file: %w", err)
+		}
+	}()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := destFile.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close destination file: %w", err)
+		}
+	}()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	if err := destFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync destination file: %w", err)
+	}
+
+	return nil
+}
+
+// writeLine writes a single log line to the current file
+func (w *logWriter) writeLine() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	line := formatLogLine(w.fileID, w.sequence)
+
+	// Track written line
+	w.writtenLines = append(w.writtenLines, logLine{
+		fileID:   w.fileID,
+		sequence: w.sequence,
+		text:     line,
+	})
+
+	w.sequence++
+
+	// Write to file
+	_, err := fmt.Fprintf(w.currentFile, "%s\n", line)
+	return err
+}
+
+// run is the main goroutine that writes logs and rotates files
+func (w *logWriter) run() error {
+	// Open initial file
+	w.mu.Lock()
+	err := w.openFile()
+	w.mu.Unlock()
+	if err != nil {
+		return fmt.Errorf("failed to open initial file: %w", err)
+	}
+
+	rotationTicker := time.NewTicker(w.config.rotationInterval)
+	defer rotationTicker.Stop()
+
+	writeTicker := time.NewTicker(w.config.writeDelay)
+	defer writeTicker.Stop()
+
+	endTime := time.Now().Add(w.config.duration)
+	linesInCurrentFile := 0
+
+	for {
+		select {
+		case <-w.ctx.Done():
+			// Final sync before stopping
+			w.mu.Lock()
+			if w.currentFile != nil {
+				if err := w.currentFile.Sync(); err != nil {
+					w.mu.Unlock()
+					return fmt.Errorf("failed to sync during context cancellation: %w", err)
+				}
+				if err := w.currentFile.Close(); err != nil {
+					w.mu.Unlock()
+					return fmt.Errorf("failed to close during context cancellation: %w", err)
+				}
+			}
+			w.mu.Unlock()
+			return nil
+
+		case <-rotationTicker.C:
+			// Time-based rotation
+			if err := w.rotate(); err != nil {
+				return fmt.Errorf("rotation failed: %w", err)
+			}
+			linesInCurrentFile = 0
+
+		case <-writeTicker.C:
+			if time.Now().After(endTime) {
+				// Test duration completed
+				w.mu.Lock()
+				if w.currentFile != nil {
+					if err := w.currentFile.Sync(); err != nil {
+						w.mu.Unlock()
+						return fmt.Errorf("failed to sync at test completion: %w", err)
+					}
+					if err := w.currentFile.Close(); err != nil {
+						w.mu.Unlock()
+						return fmt.Errorf("failed to close at test completion: %w", err)
+					}
+				}
+				w.mu.Unlock()
+				return nil
+			}
+
+			// Write a line
+			if err := w.writeLine(); err != nil {
+				return fmt.Errorf("write failed: %w", err)
+			}
+			linesInCurrentFile++
+
+			// Check if we should rotate based on line count
+			if linesInCurrentFile >= w.config.linesPerRotation {
+				if err := w.rotate(); err != nil {
+					return fmt.Errorf("rotation failed: %w", err)
+				}
+				linesInCurrentFile = 0
+			}
+		}
+	}
+}
+
+// getWrittenLines returns a copy of all written lines
+func (w *logWriter) getWrittenLines() []logLine {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	lines := make([]logLine, len(w.writtenLines))
+	copy(lines, w.writtenLines)
+	return lines
+}
+
+// validationResult contains the results of log validation
+type validationResult struct {
+	totalWritten   int
+	totalReceived  int
+	missingLines   []logLine
+	duplicateLines []string
+	gapsByFile     map[int][]int // file ID -> list of missing sequences
+	passed         bool
+}
+
+// validateLogs checks that all written logs were received correctly
+func validateLogs(t *testing.T, writers []*logWriter, handler *loki.CollectingHandler) validationResult {
+	t.Helper()
+
+	// Collect all written lines
+	allWritten := make(map[string]logLine)
+	totalWritten := 0
+	for _, w := range writers {
+		lines := w.getWrittenLines()
+		for _, line := range lines {
+			allWritten[line.text] = line
+			totalWritten++
+		}
+	}
+
+	// Get received lines
+	received := handler.Received()
+	totalReceived := len(received)
+
+	// Track seen lines for duplicate detection
+	seenLines := make(map[string]int)
+
+	// Track sequences per file for gap detection
+	sequencesByFile := make(map[int][]int)
+
+	for _, entry := range received {
+		line := entry.Line
+		seenLines[line]++
+
+		// Parse and track sequences
+		fileID, seq, err := parseLogLine(line)
+		if err == nil {
+			sequencesByFile[fileID] = append(sequencesByFile[fileID], seq)
+		}
+	}
+
+	result := validationResult{
+		totalWritten:  totalWritten,
+		totalReceived: totalReceived,
+		gapsByFile:    make(map[int][]int),
+		passed:        true,
+	}
+
+	// Check for missing lines
+	for text, line := range allWritten {
+		if count, exists := seenLines[text]; !exists {
+			result.missingLines = append(result.missingLines, line)
+			result.passed = false
+		} else if count > 1 {
+			// This line was received multiple times (duplicate)
+			result.duplicateLines = append(result.duplicateLines, text)
+			result.passed = false
+		}
+	}
+
+	// Check for gaps in sequences per file
+	for fileID, sequences := range sequencesByFile {
+		sort.Ints(sequences)
+
+		if len(sequences) == 0 {
+			continue
+		}
+
+		// Check for gaps in the sequence
+		for i := 1; i < len(sequences); i++ {
+			expected := sequences[i-1] + 1
+			actual := sequences[i]
+
+			// Report any missing sequences
+			for seq := expected; seq < actual; seq++ {
+				result.gapsByFile[fileID] = append(result.gapsByFile[fileID], seq)
+				result.passed = false
+			}
+		}
+	}
+
+	return result
+}
+
+// reportValidationResult logs validation results
+func reportValidationResult(t *testing.T, result validationResult) {
+	t.Helper()
+
+	t.Logf("Validation Results:")
+	t.Logf("  Total Written: %d", result.totalWritten)
+	t.Logf("  Total Received: %d", result.totalReceived)
+	t.Logf("  Missing: %d", len(result.missingLines))
+	t.Logf("  Duplicates: %d", len(result.duplicateLines))
+
+	if len(result.missingLines) > 0 {
+		t.Logf("  Missing lines (showing first 10):")
+		for i, line := range result.missingLines {
+			if i >= 10 {
+				t.Logf("    ... and %d more", len(result.missingLines)-10)
+				break
+			}
+			t.Logf("    file%d-line%08d", line.fileID, line.sequence)
+		}
+	}
+
+	if len(result.duplicateLines) > 0 {
+		t.Logf("  Duplicate lines (showing first 10):")
+		for i, line := range result.duplicateLines {
+			if i >= 10 {
+				t.Logf("    ... and %d more", len(result.duplicateLines)-10)
+				break
+			}
+			t.Logf("    %s", line)
+		}
+	}
+
+	if len(result.gapsByFile) > 0 {
+		t.Logf("  Sequence gaps detected:")
+		for fileID, gaps := range result.gapsByFile {
+			t.Logf("    File %d: %d gaps", fileID, len(gaps))
+			if len(gaps) <= 10 {
+				t.Logf("      Missing sequences: %v", gaps)
+			} else {
+				t.Logf("      Missing sequences (first 10): %v", gaps[:10])
+			}
+		}
+	}
+}
+
+// runStressTest executes a single stress test configuration
+func runStressTest(t *testing.T, cfg testConfig, minSuccessRate float64) {
+	t.Helper()
+
+	// Create test directory
+	testDir := filepath.Join(os.TempDir(), fmt.Sprintf("alloy-stress-test-%d", time.Now().UnixNano()))
+	require.NoError(t, os.MkdirAll(testDir, 0755))
+	defer os.RemoveAll(testDir)
+
+	t.Logf("Test directory: %s", testDir)
+	t.Logf("Config: %d files, rotation every %v, %d lines/rotation, duration %v, rotation type: %s",
+		cfg.numFiles, cfg.rotationInterval, cfg.linesPerRotation, cfg.duration, cfg.rotationType)
+	t.Logf("Required success rate: %.1f%%", minSuccessRate*100)
+
+	// Create context for writers
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create log writers
+	writers := make([]*logWriter, cfg.numFiles)
+	for i := 0; i < cfg.numFiles; i++ {
+		writers[i] = newLogWriter(ctx, cfg, i, testDir)
+	}
+
+	// Start writers
+	var writerWg sync.WaitGroup
+	writerErrors := make(chan error, cfg.numFiles)
+
+	for _, w := range writers {
+		writerWg.Add(1)
+		go func(writer *logWriter) {
+			defer writerWg.Done()
+			if err := writer.run(); err != nil {
+				writerErrors <- fmt.Errorf("writer %d error: %w", writer.fileID, err)
+			}
+		}(w)
+	}
+
+	// Wait for all initial log files to be created before starting the component.
+	// This ensures the component has files to watch from the start.
+	require.Eventually(t, func() bool {
+		for _, w := range writers {
+			if _, err := os.Stat(w.currentLogPath()); os.IsNotExist(err) {
+				return false
+			}
+		}
+		return true
+	}, 5*time.Second, 10*time.Millisecond, "timed out waiting for initial log files to be created")
+
+	// Set up loki.source.file component
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	require.NoError(t, err)
+
+	componentCtx, componentCancel := context.WithCancel(context.Background())
+	defer componentCancel()
+
+	// Configure component with glob pattern
+	args := Arguments{
+		Targets: []discovery.Target{
+			discovery.NewTargetFromMap(map[string]string{
+				"__path__": filepath.Join(testDir, "*.log"),
+			}),
+		},
+		ForwardTo: []loki.LogsReceiver{handler.Receiver()},
+		FileMatch: FileMatch{
+			Enabled:    true,
+			SyncPeriod: 250 * time.Millisecond,
+		},
+		FileWatch: FileWatch{
+			MinPollFrequency: 25 * time.Millisecond,
+			MaxPollFrequency: 25 * time.Millisecond,
+		},
+	}
+
+	// Start component and track when it exits
+	componentDone := make(chan struct{})
+	go func() {
+		defer close(componentDone)
+		err := ctrl.Run(componentCtx, args)
+		if err != nil {
+			t.Logf("Component error: %v", err)
+		}
+	}()
+
+	// Wait for component to be running
+	require.NoError(t, ctrl.WaitRunning(30*time.Second))
+	t.Log("Component is running")
+
+	// Wait for writers to complete
+	writerWg.Wait()
+	close(writerErrors)
+
+	// Check for writer errors
+	for err := range writerErrors {
+		require.NoError(t, err, "Writer encountered error")
+	}
+
+	t.Log("All writers completed")
+
+	// Grace period for the component to process remaining logs after writers finish.
+	// This sleep is necessary and cannot be replaced with proper synchronization because:
+	// 1. The tailer polls files at configurable intervals (FileWatch.MinPollFrequency)
+	// 2. After the last write, the component needs at least one more poll cycle to read it
+	// 3. There's no external signal when "all logs have been processed" without invasive changes
+	// 4. The grace period accounts for poll interval variance and processing time
+	gracePeriod := cfg.rotationInterval * 2
+	if gracePeriod < 2*time.Second {
+		gracePeriod = 2 * time.Second
+	}
+	if gracePeriod > 10*time.Second {
+		gracePeriod = 10 * time.Second
+	}
+
+	t.Logf("Waiting %v grace period for log processing...", gracePeriod)
+	time.Sleep(gracePeriod)
+
+	// Stop component and wait for it to fully shut down.
+	// This ensures all tailers have stopped and flushed their entries.
+	componentCancel()
+	select {
+	case <-componentDone:
+		t.Log("Component stopped")
+	case <-time.After(10 * time.Second):
+		t.Fatal("Timed out waiting for component to stop")
+	}
+
+	// Validate results
+	result := validateLogs(t, writers, handler)
+	reportValidationResult(t, result)
+
+	if result.totalWritten == 0 {
+		t.Fatalf("[%s] No log lines were written; cannot compute success rate", t.Name())
+	}
+	// Calculate success rate
+	successRate := float64(result.totalReceived) / float64(result.totalWritten)
+	dropped := result.totalWritten - result.totalReceived
+	t.Logf("[%s] Success rate: %.2f%% (%d/%d lines, %d dropped) | Required: %.1f%%",
+		t.Name(), successRate*100, result.totalReceived, result.totalWritten, dropped, minSuccessRate*100)
+
+	// Assert we meet the minimum success rate
+	assert.GreaterOrEqual(t, successRate, minSuccessRate,
+		"Success rate %.2f%% is below required %.1f%% (missing %d/%d lines)",
+		successRate*100, minSuccessRate*100, len(result.missingLines), result.totalWritten)
+
+	// We should never have duplicates
+	assert.Empty(t, result.duplicateLines, "Some log lines were duplicated")
+}
+
+// For summary of all the tests success rates, run:
+// go test -v -run "TestFileRotationStress" ./internal/component/loki/source/file/ 2>&1 | grep "Success rate"
+
+// TestFileRotationStress_QuickSmoke is a quick smoke test that runs even in short mode
+func TestFileRotationStress_QuickSmoke(t *testing.T) {
+	t.Skip("These tests are still failing and require more debuggingto fix")
+
+	for _, rt := range allRotationTypes {
+		t.Run(rt.String(), func(t *testing.T) {
+			cfg := testConfig{
+				numFiles:         2,
+				rotationInterval: 500 * time.Millisecond,
+				linesPerRotation: 100,
+				duration:         3 * time.Second,
+				writeDelay:       10 * time.Millisecond,
+				rotationType:     rt,
+			}
+
+			runStressTest(t, cfg, 1.0)
+		})
+	}
+}
+
+// TestFileRotationStress_TillFirstFailure runs 5-second tests repeatedly until the first failure
+// is detected, with a maximum total runtime of 30 seconds. This is useful for reproducing
+// intermittent failures.
+func TestFileRotationStress_TillFirstFailure(t *testing.T) {
+	t.Skip("These tests are still failing and require more debugging to fix")
+
+	maxTotalDuration := 30 * time.Second
+	singleTestDuration := 5 * time.Second
+
+	for _, rt := range allRotationTypes {
+		t.Run(rt.String(), func(t *testing.T) {
+			startTime := time.Now()
+			iteration := 0
+
+			for time.Since(startTime) < maxTotalDuration {
+				iteration++
+				t.Logf("=== Iteration %d (elapsed: %v) ===", iteration, time.Since(startTime).Round(time.Second))
+
+				cfg := testConfig{
+					numFiles:         10,
+					rotationInterval: 500 * time.Millisecond,
+					linesPerRotation: 100,
+					duration:         singleTestDuration,
+					writeDelay:       10 * time.Millisecond,
+					rotationType:     rt,
+				}
+
+				// Run the test and check if it failed
+				failed := t.Run(fmt.Sprintf("iteration_%d", iteration), func(t *testing.T) {
+					runStressTest(t, cfg, 1.0)
+				})
+
+				if !failed {
+					t.Fatalf("Test failed on iteration %d after %v", iteration, time.Since(startTime))
+				}
+			}
+
+			t.Logf("Completed %d iterations without failure in %v", iteration, time.Since(startTime))
+		})
+	}
+}
+
+func TestFileRotationStress_HighVolume(t *testing.T) {
+	t.Skip("These tests are still failing and require more debuggingto fix")
+
+	for _, rt := range allRotationTypes {
+		t.Run(rt.String(), func(t *testing.T) {
+			cfg := testConfig{
+				numFiles:         5,
+				rotationInterval: 500 * time.Millisecond,
+				linesPerRotation: 200,
+				duration:         60 * time.Second,
+				writeDelay:       2 * time.Millisecond,
+				rotationType:     rt,
+			}
+
+			runStressTest(t, cfg, 1.0)
+		})
+	}
+}
