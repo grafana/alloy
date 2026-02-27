@@ -26,21 +26,23 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 }
 
 type Arguments struct {
-	Subscriptions            []string `alloy:"subscriptions,attr"`
-	ResourceGraphQueryFilter string   `alloy:"resource_graph_query_filter,attr,optional"`
-	ResourceType             string   `alloy:"resource_type,attr"`
-	Metrics                  []string `alloy:"metrics,attr"`
-	MetricAggregations       []string `alloy:"metric_aggregations,attr,optional"`
-	Timespan                 string   `alloy:"timespan,attr,optional"`
-	Interval                 string   `alloy:"interval,attr,optional"`
-	IncludedDimensions       []string `alloy:"included_dimensions,attr,optional"`
-	IncludedResourceTags     []string `alloy:"included_resource_tags,attr,optional"`
-	MetricNamespace          string   `alloy:"metric_namespace,attr,optional"`
-	MetricNameTemplate       string   `alloy:"metric_name_template,attr,optional"`
-	MetricHelpTemplate       string   `alloy:"metric_help_template,attr,optional"`
-	AzureCloudEnvironment    string   `alloy:"azure_cloud_environment,attr,optional"`
-	ValidateDimensions       bool     `alloy:"validate_dimensions,attr,optional"`
-	Regions                  []string `alloy:"regions,attr,optional"`
+	Subscriptions                   []string `alloy:"subscriptions,attr"`
+	ResourceGraphQueryFilter        string   `alloy:"resource_graph_query_filter,attr,optional"`
+	ResourceType                    string   `alloy:"resource_type,attr"`
+	Metrics                         []string `alloy:"metrics,attr"`
+	MetricAggregations              []string `alloy:"metric_aggregations,attr,optional"`
+	Timespan                        string   `alloy:"timespan,attr,optional"`
+	Interval                        string   `alloy:"interval,attr,optional"`
+	IncludedDimensions              []string `alloy:"included_dimensions,attr,optional"`
+	IncludedResourceTags            []string `alloy:"included_resource_tags,attr,optional"`
+	MetricNamespace                 string   `alloy:"metric_namespace,attr,optional"`
+	MetricNameTemplate              string   `alloy:"metric_name_template,attr,optional"`
+	MetricHelpTemplate              string   `alloy:"metric_help_template,attr,optional"`
+	AzureCloudEnvironment           string   `alloy:"azure_cloud_environment,attr,optional"`
+	ValidateDimensions              bool     `alloy:"validate_dimensions,attr,optional"`
+	Regions                         []string `alloy:"regions,attr,optional"`
+	ConcurrencySubscription         int      `alloy:"concurrency_subscription,attr,optional"`
+	ConcurrencySubscriptionResource int      `alloy:"concurrency_subscription_resource,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -56,6 +58,9 @@ func (a *Arguments) SetToDefault() {
 		//  to fully monitor a service which is tedious. Turning off validation eliminates this complexity. The underlying
 		//  sdk will only give back the dimensions which are valid for particular metrics.
 		ValidateDimensions: false,
+		// Concurrency default values taken from OSS exporter
+		ConcurrencySubscription:         5,
+		ConcurrencySubscriptionResource: 10,
 	}
 }
 
@@ -69,20 +74,22 @@ func (a *Arguments) Validate() error {
 
 func (a *Arguments) Convert() *azure_exporter.Config {
 	return &azure_exporter.Config{
-		Subscriptions:            a.Subscriptions,
-		ResourceGraphQueryFilter: a.ResourceGraphQueryFilter,
-		ResourceType:             a.ResourceType,
-		Metrics:                  a.Metrics,
-		MetricAggregations:       a.MetricAggregations,
-		Timespan:                 a.Timespan,
-		Interval:                 a.Interval,
-		IncludedDimensions:       a.IncludedDimensions,
-		IncludedResourceTags:     a.IncludedResourceTags,
-		MetricNamespace:          a.MetricNamespace,
-		MetricNameTemplate:       a.MetricNameTemplate,
-		MetricHelpTemplate:       a.MetricHelpTemplate,
-		AzureCloudEnvironment:    a.AzureCloudEnvironment,
-		ValidateDimensions:       a.ValidateDimensions,
-		Regions:                  a.Regions,
+		Subscriptions:                   a.Subscriptions,
+		ResourceGraphQueryFilter:        a.ResourceGraphQueryFilter,
+		ResourceType:                    a.ResourceType,
+		Metrics:                         a.Metrics,
+		MetricAggregations:              a.MetricAggregations,
+		Timespan:                        a.Timespan,
+		Interval:                        a.Interval,
+		IncludedDimensions:              a.IncludedDimensions,
+		IncludedResourceTags:            a.IncludedResourceTags,
+		MetricNamespace:                 a.MetricNamespace,
+		MetricNameTemplate:              a.MetricNameTemplate,
+		MetricHelpTemplate:              a.MetricHelpTemplate,
+		AzureCloudEnvironment:           a.AzureCloudEnvironment,
+		ValidateDimensions:              a.ValidateDimensions,
+		Regions:                         a.Regions,
+		ConcurrencySubscription:         a.ConcurrencySubscription,
+		ConcurrencySubscriptionResource: a.ConcurrencySubscriptionResource,
 	}
 }
