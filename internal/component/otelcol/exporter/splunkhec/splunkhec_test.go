@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
+	splunktranslator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
@@ -87,7 +88,7 @@ func TestConfigConversion(t *testing.T) {
 		MaxEventSize:            0x500000,
 		SplunkAppName:           "Alloy",
 		SplunkAppVersion:        "",
-		HecFields:               splunkhecexporter.OtelToHecFields{SeverityText: "", SeverityNumber: ""},
+		HecFields:               splunktranslator.OtelToHecFields{SeverityText: "", SeverityNumber: ""},
 		HealthPath:              "/services/collector/health",
 		HecHealthCheckEnabled:   false,
 		ExportRaw:               false,
@@ -171,7 +172,7 @@ func TestConfigConversion(t *testing.T) {
 		MaxContentLengthTraces:  0x200000,
 		MaxEventSize:            0x500000,
 		SplunkAppName:           "Alloy",
-		HecFields:               splunkhecexporter.OtelToHecFields{SeverityText: "", SeverityNumber: ""},
+		HecFields:               splunktranslator.OtelToHecFields{SeverityText: "", SeverityNumber: ""},
 		HealthPath:              "/services/collector/health", HecHealthCheckEnabled: false,
 		ExportRaw:            false,
 		UseMultiMetricFormat: false,

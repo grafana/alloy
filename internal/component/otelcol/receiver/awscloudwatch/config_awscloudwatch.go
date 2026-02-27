@@ -66,19 +66,29 @@ func (args NamedConfigs) Convert() map[string]awscloudwatchreceiver.StreamConfig
 
 // AutodiscoverConfig is the configuration for the autodiscovery functionality of log groups
 type AutodiscoverConfig struct {
-	Prefix  string       `alloy:"prefix,attr,optional"`
-	Limit   *int         `alloy:"limit,attr,optional"`
-	Streams StreamConfig `alloy:"streams,block,optional"`
+	Prefix                string       `alloy:"prefix,attr,optional"`
+	Limit                 *int         `alloy:"limit,attr,optional"`
+	Streams               StreamConfig `alloy:"streams,block,optional"`
+	AccountIdentifiers    []string     `alloy:"account_identifiers,attr,optional"`
+	IncludeLinkedAccounts *bool        `alloy:"include_linked_accounts,attr,optional"`
 }
 
 func (args *AutodiscoverConfig) Convert() *awscloudwatchreceiver.AutodiscoverConfig {
 	if args == nil {
 		return nil
 	}
+
+	limit := defaultLogGroupLimit
+	if args.Limit != nil {
+		limit = *args.Limit
+	}
+
 	return &awscloudwatchreceiver.AutodiscoverConfig{
-		Prefix:  args.Prefix,
-		Limit:   *args.Limit,
-		Streams: args.Streams.Convert(),
+		Prefix:                args.Prefix,
+		Limit:                 limit,
+		Streams:               args.Streams.Convert(),
+		AccountIdentifiers:    args.AccountIdentifiers,
+		IncludeLinkedAccounts: args.IncludeLinkedAccounts,
 	}
 }
 
