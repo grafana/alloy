@@ -242,7 +242,8 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, entry := range stream.Entries {
-			e := loki.NewEntryWithCreated(filtered, created, entry)
+			// TODO(kalleep): pretty sure we don't have to clone here.
+			e := loki.NewEntryWithCreated(filtered.Clone(), created, entry)
 			if keepTimestamp {
 				e.Timestamp = entry.Timestamp
 			} else {
