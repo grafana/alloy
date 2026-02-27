@@ -325,6 +325,8 @@ controller:
     # -- Creates a HorizontalPodAutoscaler for controller type deployment.
     # Deprecated: Please use controller.autoscaling.horizontal instead
     enabled: false
+    # -- Set `true` if you use external autoscaler like KEDA
+    external: false
     # -- The lower limit for the number of replicas to which the autoscaler can scale down.
     minReplicas: 1
     # -- The upper limit for the number of replicas to which the autoscaler can scale up.

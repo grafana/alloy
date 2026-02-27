@@ -79,6 +79,8 @@ Unreleased
 
 - Remove readiness probe using curl when http server port is disabled. (@kalleep)
 
+- Add option to support external autoscaler like KEDA. (@kimmj)
+
 1.2.1 (2025-08-07)
 ----------
 
