@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/textparse"
 	"github.com/stretchr/testify/require"
 )
@@ -56,11 +57,27 @@ func TestNodeExporter(t *testing.T) {
 	require.NoError(t, err)
 
 	p := textparse.NewPromParser(body, nil, false)
+	foundBuildInfo := false
 	for {
-		_, err := p.Next()
+		et, err := p.Next()
 		if err == io.EOF {
 			break
 		}
 		require.NoError(t, err)
+
+		// Check for node_exporter_build_info metric
+		if et == textparse.EntrySeries {
+			series, _, _ := p.Series()
+			var lbls labels.Labels
+			p.Labels(&lbls)
+			metricName := lbls.Get("__name__")
+			if metricName == "node_exporter_build_info" {
+				foundBuildInfo = true
+				// Verify the version label contains the correct node_exporter version
+				version := lbls.Get("version")
+				require.Equal(t, nodeExporterVersion, version, "node_exporter_build_info should have correct version, series: %s", string(series))
+			}
+		}
 	}
+	require.True(t, foundBuildInfo, "node_exporter_build_info metric should be present")
 }
