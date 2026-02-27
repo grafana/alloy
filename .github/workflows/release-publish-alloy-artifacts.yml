@@ -4,6 +4,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        # When dry_run is true, the validate job will intentionally fail and all downstream jobs will be skipped.
+        description: 'Dry run (do not publish any artifacts)'
+        type: boolean
+        default: true
 env:
   RELEASE_TAG: ${{ github.ref_name }}
 
@@ -18,9 +24,25 @@ jobs:
     - name: Check ref type
       env:
         REF_TYPE: ${{ github.ref_type }}
+        REF_NAME: ${{ github.ref_name }}
+        DRY_RUN: ${{ inputs.dry_run }}
       run: |
         if [[ "$REF_TYPE" != "tag" ]]; then
           echo "::error::This workflow must be run from a tag, not a branch. Change the ref to a release tag (e.g., v1.14.0)."
+          exit 1
+        fi
+        if [[ "$REF_NAME" != v* ]]; then
+          echo "::error::Tag must start with 'v' (e.g., v1.14.0). Got: $REF_NAME"
+          exit 1
+        fi
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo "Dry run enabled for $REF_NAME. The following would run:"
+          echo "  - Publish Linux container images"
+          echo "  - Publish Windows container image"
+          echo "  - Build and sign Windows executables and installer"
+          echo "  - Upload release artifacts to GitHub"
+          echo "  - Submit WinGet manifest"
+          echo "::error::Set dry_run to false to publish."
           exit 1
         fi
 
