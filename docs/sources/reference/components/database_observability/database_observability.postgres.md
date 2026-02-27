@@ -122,6 +122,7 @@ The `azure` block supplies the identifying information for the database being mo
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+| `disable_throttling`      | `bool`     | Disable adaptive throttling of query sample emits.            | `false` | no       |
 | `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.       | `true`  | no       |
 
 ### `schema_details`
