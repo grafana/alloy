@@ -61,9 +61,15 @@ Setting `passthrough` to `true` enables the "passthrough mode" of `otelcol.proce
 * To correctly detect the Pod IPs, {{< param "PRODUCT_NAME" >}} must receive spans directly from services.
 * The `passthrough` setting is useful when configuring {{< param "PRODUCT_NAME" >}} as a Kubernetes Deployment.
 
-A {{< param "PRODUCT_NAME" >}} running as a Deployment can't detect the IP addresses of pods generating telemetry data without any of the well-known IP attributes.
-If the Deployment {{< param "PRODUCT_NAME" >}} receives telemetry from {{< param "PRODUCT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing.
-As a workaround, you can configure the DaemonSet {{< param "PRODUCT_NAME" >}}s with `passthrough` set to `true`.
+**Multi-tier deployments:** When using a two-tier architecture where DaemonSet {{< param "PRODUCT_NAME" >}} instances forward telemetry to a centralized Deployment {{< param "PRODUCT_NAME" >}}, the k8sattributes processor in the Deployment cannot determine which pod originally sent the telemetry. This happens because:  
+
+1. The k8sattributes processor identifies pods using the connection source IP, `k8s.pod.ip`, or `k8s.pod.uid` attributes  
+2. When telemetry is forwarded through a DaemonSet, the Deployment sees the DaemonSet pod's IP as the source, not the original application pod's IP  
+3. If the telemetry doesn't already contain `k8s.pod.ip` or `k8s.pod.uid` attributes, the Deployment cannot look up the pod's Kubernetes metadata  
+
+**Workaround:** Configure the DaemonSet {{< param "PRODUCT_NAME" >}} with `passthrough = true`. This ensures the DaemonSet adds Kubernetes attributes (like `k8s.namespace.name`) before forwarding, so the Deployment receives telemetry with metadata already attached. The Deployment's k8sattributes processor will then pass through the existing attributes without modification.  
+
+**Note:** If your {{< param "PRODUCT_NAME" >}} receives telemetry directly from application pods (not forwarded from another {{< param "PRODUCT_NAME" >}}), keep `passthrough = false` (the default).  
 
 By default, `otelcol.processor.k8sattributes` is ready as soon as it starts, even if no metadata has been fetched yet.
 If telemetry is sent to this processor before the metadata is synced, there will be no metadata to enrich the telemetry with.
