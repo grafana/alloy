@@ -136,11 +136,6 @@ func (t *SyslogTarget) handleMessageError(err error) {
 }
 
 func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc5424.SyslogMessage) {
-	if msg.Message == nil {
-		t.metrics.syslogEmptyMessages.Inc()
-		return
-	}
-
 	lb := labels.NewBuilder(connLabels)
 	if v := msg.SeverityLevel(); v != nil {
 		lb.Set("__syslog_message_severity", *v)
@@ -197,11 +192,23 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 		timestamp = time.Now()
 	}
 
-	m := *msg.Message
-	if t.config.UseRFC5424Message {
+	var m string
+	if msg.Message != nil {
+		m = *msg.Message
+		if t.config.UseRFC5424Message {
+			fullMsg, err := msg.String()
+			if err != nil {
+				level.Debug(t.logger).Log("msg", "failed to convert rfc5424 message to string; using message field instead", "err", err)
+			} else {
+				m = fullMsg
+			}
+		}
+	} else {
+		// No MSG part; use full RFC 5424 string (includes STRUCTURED-DATA) so metadata is not lost.
 		fullMsg, err := msg.String()
 		if err != nil {
-			level.Debug(t.logger).Log("msg", "failed to convert rfc5424 message to string; using message field instead", "err", err)
+			level.Debug(t.logger).Log("msg", "failed to convert rfc5424 message to string; using empty message", "err", err)
+			m = ""
 		} else {
 			m = fullMsg
 		}
