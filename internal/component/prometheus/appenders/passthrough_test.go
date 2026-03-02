@@ -21,10 +21,10 @@ import (
 
 func TestPassthrough_Append(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{"destination"})
 	a := NewPassthrough(collecting, 0, nil, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric", "job", "test_job")
@@ -48,7 +48,7 @@ func TestPassthrough_Append(t *testing.T) {
 	expected := `
 		# HELP test_samples_forwarded Test samples forwarded
 		# TYPE test_samples_forwarded counter
-		test_samples_forwarded 1
+		test_samples_forwarded{destination=""} 1
 	`
 	err = testutil.CollectAndCompare(samplesForwarded, strings.NewReader(expected), "test_samples_forwarded")
 	require.NoError(t, err)
@@ -58,10 +58,10 @@ func TestPassthrough_AppendError(t *testing.T) {
 	// Create a failing appender
 	failingAppender := &failingAppender{}
 
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{"destination"})
 	a := NewPassthrough(failingAppender, 0, nil, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
@@ -74,7 +74,7 @@ func TestPassthrough_AppendError(t *testing.T) {
 	expected := `
 		# HELP test_samples_forwarded Test samples forwarded
 		# TYPE test_samples_forwarded counter
-		test_samples_forwarded 0
+		test_samples_forwarded{destination=""} 0
 	`
 	err = testutil.CollectAndCompare(samplesForwarded, strings.NewReader(expected), "test_samples_forwarded")
 	require.NoError(t, err)
@@ -140,10 +140,10 @@ func TestPassthrough_UpdateMetadata(t *testing.T) {
 func TestPassthrough_Commit(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{"destination"})
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "test_write_latency",
 		Help: "Test write latency",
@@ -166,10 +166,10 @@ func TestPassthrough_Commit(t *testing.T) {
 func TestPassthrough_Rollback(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{"destination"})
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "test_write_latency",
 		Help: "Test write latency",

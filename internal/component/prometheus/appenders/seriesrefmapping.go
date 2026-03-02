@@ -33,11 +33,16 @@ type seriesRefMapping struct {
 	// have concurrent calls to Append methods.
 	childRefs        []storage.SeriesRef
 	writeLatency     prometheus.Histogram
-	samplesForwarded prometheus.Counter
+	samplesForwarded *prometheus.CounterVec
 }
 
-func NewSeriesRefMapping(children []storage.Appender, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
+func NewSeriesRefMapping(children []storage.Appender, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded *prometheus.CounterVec) storage.Appender {
 	uniqueRefCell := store.GetCellForAppendedSeries()
+
+	if samplesForwarded != nil {
+		// Initialize the counter so it appears at zero before any samples are forwarded.
+		samplesForwarded.With(prometheus.Labels{"destination": ""})
+	}
 
 	return &seriesRefMapping{
 		children:         children,
@@ -106,7 +111,7 @@ func (s *seriesRefMapping) Append(ref storage.SeriesRef, l labels.Labels, t int6
 	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
 		newRef, err := appender.Append(ref, l, t, v)
 		if err == nil {
-			s.samplesForwarded.Inc()
+			s.samplesForwarded.With(prometheus.Labels{"destination": ""}).Inc()
 		}
 		return newRef, err
 	})
