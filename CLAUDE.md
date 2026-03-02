@@ -34,7 +34,7 @@ make lint test
 
 If you changed generated files, regenerate them:
 
-- `dependency-replacements.yaml`: `make generate-module-dependencies`
+- `dependency-replacements.yaml`: run both `make generate-module-dependencies` and `make generate-otel-collector-distro`
 - `collector/`: `make generate-otel-collector-distro`
 - `operations/helm`: `make docs rebuild-tests` from `operations/helm`
 
