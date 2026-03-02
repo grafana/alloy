@@ -1,0 +1,9 @@
+controller:
+  type: deployment
+  affinity: |
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              {{- include "alloy.selectorLabels" . | nindent 10 }}
+          topologyKey: kubernetes.io/hostname
