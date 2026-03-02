@@ -15,14 +15,18 @@ type passthrough struct {
 	wrapping         storage.Appender
 	start            time.Time
 	writeLatency     prometheus.Histogram
-	samplesForwarded prometheus.Counter
+	samplesForwarded *prometheus.CounterVec
 	// deadRefThreshold marks the boundary of the current ref generation. Any incoming
 	// ref below this value is from a previous generation and meaningless to this child;
 	// it must be zeroed so the child allocates a fresh ref.
 	deadRefThreshold storage.SeriesRef
 }
 
-func NewPassthrough(wrapping storage.Appender, deadRefThreshold storage.SeriesRef, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
+func NewPassthrough(wrapping storage.Appender, deadRefThreshold storage.SeriesRef, writeLatency prometheus.Histogram, samplesForwarded *prometheus.CounterVec) storage.Appender {
+	if samplesForwarded != nil {
+		// Initialize the counter so it appears at zero before any samples are forwarded.
+		samplesForwarded.With(prometheus.Labels{"destination": ""})
+	}
 	return &passthrough{
 		wrapping:         wrapping,
 		deadRefThreshold: deadRefThreshold,
@@ -69,7 +73,7 @@ func (p *passthrough) Append(ref storage.SeriesRef, l labels.Labels, t int64, v 
 	ref, err := p.wrapping.Append(p.sanitizeRef(ref), l, t, v)
 
 	if err == nil {
-		p.samplesForwarded.Inc()
+		p.samplesForwarded.With(prometheus.Labels{"destination": ""}).Inc()
 	}
 
 	return ref, err
