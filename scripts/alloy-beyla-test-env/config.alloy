@@ -1,0 +1,67 @@
+// Alloy config for local Alloy + Beyla testing.
+// Metrics are scraped and printed to stdout via prometheus.echo (no database).
+// Edit this file on the host; it is mounted into the container.
+
+livedebugging {
+  enabled = true
+}
+
+// Beyla eBPF: auto-instrument HTTP/gRPC services and report process metrics (e.g. process.cpu.utilization).
+// Port 12345 is where Alloy listens in this environment.
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      open_ports = "12345,8080,9090,80,443"
+    }
+    default_exclude_instrument {
+      exe_path = "/nonexistent"
+    }
+  }
+  attributes {
+    kubernetes {
+      enable = false
+    }
+    instance_id{
+      dns = false
+      override_hostname = constants.hostname
+    }
+  }
+  metrics {
+    features = ["application", "application_process"]
+  }
+  output {}
+}
+
+// Unix (node) exporter: OS and hardware metrics.
+prometheus.exporter.unix "default" {}
+
+// Echo: print received metrics to stdout for debugging.
+// prometheus.echo "debug" {
+//   format = "text"
+// }
+
+prometheus.remote_write "gc" {
+  endpoint {
+    url = "https://prometheus-prod-05-gb-south-0.grafana.net/api/prom/push"
+
+    basic_auth {
+      username = "627787"
+      password = ""
+    }
+  }
+}
+
+prometheus.scrape "beyla" {
+  targets         = beyla.ebpf.default.targets
+  honor_labels    = true
+  scrape_interval = "15s"
+  scrape_timeout  = "5s"
+  forward_to      = [prometheus.remote_write.gc.receiver]
+}
+
+prometheus.scrape "unix" {
+  targets         = prometheus.exporter.unix.default.targets
+  scrape_interval = "15s"
+  scrape_timeout  = "5s"
+  forward_to      = [prometheus.remote_write.gc.receiver]
+}
