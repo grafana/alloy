@@ -1102,4 +1102,7 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/files
 // TODO: Fork to update Prometheus to v0.309.1 while keeping OTel Collector at v0.142.0. Remove when OTel Collector is upgraded to v0.144.0+, which includes this change upstream.
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98
 
+// Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
+
 // END GENERATED REPLACES
