@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -14,7 +15,7 @@ import (
 func TestConsume(t *testing.T) {
 	consumer := loki.NewLogsReceiver()
 	producer := loki.NewLogsReceiver()
-	fanout := loki.NewFanout([]loki.LogsReceiver{consumer})
+	fanout := loki.NewFanout([]loki.LogsReceiver{consumer}, prometheus.NewRegistry())
 
 	t.Run("should fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -47,7 +48,7 @@ func TestConsume(t *testing.T) {
 func TestConsumeAndProcess(t *testing.T) {
 	consumer := loki.NewLogsReceiver()
 	producer := loki.NewLogsReceiver()
-	fanout := loki.NewFanout([]loki.LogsReceiver{consumer})
+	fanout := loki.NewFanout([]loki.LogsReceiver{consumer}, prometheus.NewRegistry())
 
 	t.Run("should process and fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -88,7 +89,7 @@ func TestConsumeAndProcess(t *testing.T) {
 func TestConsumeBatch(t *testing.T) {
 	consumer := loki.NewLogsReceiver()
 	producer := loki.NewLogsBatchReceiver()
-	fanout := loki.NewFanout([]loki.LogsReceiver{consumer})
+	fanout := loki.NewFanout([]loki.LogsReceiver{consumer}, prometheus.NewRegistry())
 
 	t.Run("should fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())

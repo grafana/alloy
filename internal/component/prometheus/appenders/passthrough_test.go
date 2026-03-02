@@ -21,10 +21,10 @@ import (
 
 func TestPassthrough_Append(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{"destination"})
 	a := NewPassthrough(collecting, 0, nil, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric", "job", "test_job")
@@ -58,10 +58,10 @@ func TestPassthrough_AppendError(t *testing.T) {
 	// Create a failing appender
 	failingAppender := &failingAppender{}
 
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{})
 	a := NewPassthrough(failingAppender, 0, nil, samplesForwarded)
 
 	testLabels := labels.FromStrings("metric", "test_metric")
@@ -140,10 +140,10 @@ func TestPassthrough_UpdateMetadata(t *testing.T) {
 func TestPassthrough_Commit(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{})
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "test_write_latency",
 		Help: "Test write latency",
@@ -166,10 +166,10 @@ func TestPassthrough_Commit(t *testing.T) {
 func TestPassthrough_Rollback(t *testing.T) {
 	collecting := testappender.NewCollectingAppender()
 
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "test_samples_forwarded",
 		Help: "Test samples forwarded",
-	})
+	}, []string{})
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "test_write_latency",
 		Help: "Test write latency",

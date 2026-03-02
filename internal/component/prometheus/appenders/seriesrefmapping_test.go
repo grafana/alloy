@@ -399,7 +399,7 @@ func TestSeriesRefMapping_AppendReusesExistingMapping(t *testing.T) {
 	child2 := &mockAppender{}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_reuse", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_reuse", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_reuse", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
@@ -424,7 +424,7 @@ func TestSeriesRefMapping_AppendUpdatesExistingMappingWhenRefsChange(t *testing.
 	child2 := &mockAppender{}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_update", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_update", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_update", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
@@ -446,7 +446,7 @@ func TestSeriesRefMapping_AppendAllChildrenZeroPassesThroughInputRef(t *testing.
 	child2 := &mockAppender{appendFn: zeroFn}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_all_zero_latency", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_all_zero_forwarded", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_all_zero_forwarded", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	ref, err := app.Append(42, labels.FromStrings("job", "test"), 1, 1)
@@ -464,7 +464,7 @@ func TestSeriesRefMapping_AppendSingleNonZeroChildReturnsChildRefDirectly(t *tes
 	}}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_single_nonzero_latency", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_single_nonzero_forwarded", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_single_nonzero_forwarded", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	// The single non-zero child ref is returned directly — no mapping created.
@@ -487,7 +487,7 @@ func TestSeriesRefMapping_AppendSecondAppendUsesChildRefsFromMapping(t *testing.
 	}}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_single_no_leak", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_single_no_leak", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_single_no_leak", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "single")
@@ -516,7 +516,7 @@ func TestSeriesRefMapping_AppendErrorSkipsMappingUpdate(t *testing.T) {
 	}}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_error", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_error", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_error", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	ref, err := app.Append(88, labels.EmptyLabels(), 1, 1)
@@ -535,7 +535,7 @@ func TestSeriesRefMapping_CommitTracksRefsAndAggregatesErrors(t *testing.T) {
 	child2 := &mockAppender{commitFn: func() error { return errors.New("child2 commit failed") }}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_commit", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_commit", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_commit", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	_, err := app.Append(101, labels.EmptyLabels(), 1, 1)
@@ -559,7 +559,7 @@ func TestSeriesRefMapping_RollbackTracksRefs(t *testing.T) {
 	child2 := &mockAppender{rollbackFn: func() error { return errors.New("child2 rollback failed") }}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_rollback", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_rollback", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_rollback", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	_, err := app.Append(202, labels.EmptyLabels(), 1, 1)
@@ -586,7 +586,7 @@ func TestSeriesRefMapping_MappingReusedOnSubsequentAppends(t *testing.T) {
 	}}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_reuse_latency", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_reuse_forwarded", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_reuse_forwarded", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
@@ -625,7 +625,7 @@ func TestSeriesRefMapping_ChildRefChangeUpdatesMapping(t *testing.T) {
 	}}
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_child_change_latency", Help: "test"})
-	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_child_change_forwarded", Help: "test"})
+	samplesForwarded := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_series_ref_mapping_child_change_forwarded", Help: "test"}, []string{})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")

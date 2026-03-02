@@ -4,21 +4,50 @@ import (
 	"context"
 	"reflect"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+// componentIDGetter is satisfied by LogsReceivers that expose their component ID.
+type componentIDGetter interface {
+	ComponentID() string
+}
 
 // NewFanout creates a new Fanout that will send log entries to the provided
 // list of LogsReceivers.
-func NewFanout(children []LogsReceiver) *Fanout {
+func NewFanout(children []LogsReceiver, reg prometheus.Registerer) *Fanout {
+	s := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "loki_forwarded_entries_total",
+		Help: "Total number of log entries sent to downstream components.",
+	}, []string{"destination"})
+	_ = reg.Register(s)
+
 	return &Fanout{
-		children: children,
+		children:       children,
+		childrenIDs:    computeChildrenIDs(children),
+		entriesCounter: s,
 	}
 }
 
 // Fanout distributes log entries to multiple LogsReceivers.
 // It is thread-safe and allows the list of receivers to be updated dynamically
 type Fanout struct {
-	mut      sync.RWMutex
-	children []LogsReceiver
+	mut            sync.RWMutex
+	children       []LogsReceiver
+	childrenIDs    []string
+	entriesCounter *prometheus.CounterVec
+}
+
+func computeChildrenIDs(children []LogsReceiver) []string {
+	ids := make([]string, len(children))
+	for i, recv := range children {
+		if cid, ok := recv.(componentIDGetter); ok {
+			ids[i] = cid.ComponentID()
+		} else {
+			ids[i] = "undefined"
+		}
+	}
+	return ids
 }
 
 // Send forwards a log entry to all registered receivers. It returns an error
@@ -37,11 +66,12 @@ func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 
 	f.mut.RLock()
 	defer f.mut.RUnlock()
-	for _, recv := range f.children {
+	for idx, recv := range f.children {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case recv.Chan() <- entry:
+			f.entriesCounter.WithLabelValues(f.childrenIDs[idx]).Inc()
 		}
 	}
 	return nil
@@ -64,11 +94,12 @@ func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 	for _, e := range batch {
-		for _, recv := range f.children {
+		for idx, recv := range f.children {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			case recv.Chan() <- e:
+				f.entriesCounter.WithLabelValues(f.childrenIDs[idx]).Inc()
 			}
 		}
 	}
@@ -83,6 +114,7 @@ func (f *Fanout) UpdateChildren(children []LogsReceiver) {
 		f.mut.RUnlock()
 		f.mut.Lock()
 		f.children = children
+		f.childrenIDs = computeChildrenIDs(children)
 		f.mut.Unlock()
 	} else {
 		f.mut.RUnlock()

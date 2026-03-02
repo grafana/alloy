@@ -48,7 +48,7 @@ func TestNew_PassthroughReceivesDeadRefThreshold(t *testing.T) {
 	threshold := store.Clear()
 	require.Greater(t, uint64(threshold), uint64(0))
 
-	sf := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_forwarded", Help: "test"})
+	sf := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_forwarded", Help: "test"}, []string{})
 	child := &mockAppender{appendFn: func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
 		return ref, nil // echo back whatever ref we receive
 	}}

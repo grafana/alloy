@@ -47,7 +47,7 @@ func TestComponent(t *testing.T) {
 		require.NoError(t, ctrl.WaitExports(time.Minute))
 
 		recv := ctrl.Exports().(Exports).Receiver
-		fanout := loki.NewFanout([]loki.LogsReceiver{recv})
+		fanout := loki.NewFanout([]loki.LogsReceiver{recv}, prometheus.NewRegistry())
 
 		wg.Go(func() {
 			for {
@@ -959,10 +959,15 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 
 	t.component.Update(args)
 
-	// Check the component metrics.
-	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsBeforeSendingLogs)); err != nil {
-		require.NoError(t.t, err)
+	// Check the component metrics, filtering to only the metrics named in the expected string.
+	// Infrastructure metrics (e.g., loki_forwarded_entries_total) that accumulate across
+	// config updates are excluded this way.
+	if names := extractMetricNames(expectedMetricsBeforeSendingLogs); len(names) > 0 {
+		if err := testutil.GatherAndCompare(t.registry,
+			strings.NewReader(expectedMetricsBeforeSendingLogs),
+			names...); err != nil {
+			require.NoError(t.t, err)
+		}
 	}
 
 	// Send logs.
@@ -982,9 +987,29 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 		}
 	}
 
-	// Check the component metrics.
-	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
-		require.NoError(t.t, err)
+	// Check the component metrics, filtering to only the metrics named in the expected string.
+	if names := extractMetricNames(expectedMetricsAfterSendingLogs); len(names) > 0 {
+		if err := testutil.GatherAndCompare(t.registry,
+			strings.NewReader(expectedMetricsAfterSendingLogs),
+			names...); err != nil {
+			require.NoError(t.t, err)
+		}
 	}
+}
+
+// extractMetricNames parses metric names from # HELP lines in a prometheus text format string.
+func extractMetricNames(s string) []string {
+	var names []string
+	seen := make(map[string]bool)
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "# HELP ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 3 && !seen[parts[2]] {
+				names = append(names, parts[2])
+				seen[parts[2]] = true
+			}
+		}
+	}
+	return names
 }
