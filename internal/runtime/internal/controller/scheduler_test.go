@@ -3,7 +3,7 @@ package controller_test
 import (
 	"bytes"
 	"context"
-	"os"
+	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -11,16 +11,16 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
 func TestScheduler_Synchronize(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	t.Run("Can start new jobs", func(t *testing.T) {
 		var started, finished sync.WaitGroup
 		started.Add(3)
@@ -34,15 +34,17 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
+		g := &dag.Graph{}
+
+		g.Add(&fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}})
+		g.Add(&fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: runFunc}})
+		g.Add(&fakeRunnable{ID: "component-c", Component: mockComponent{RunFunc: runFunc}})
+
 		sched := controller.NewScheduler(logger, 1*time.Minute)
-		sched.Synchronize([]controller.RunnableNode{
-			fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},
-			fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: runFunc}},
-			fakeRunnable{ID: "component-c", Component: mockComponent{RunFunc: runFunc}},
-		})
+		sched.Synchronize(g)
 
 		started.Wait()
-		require.NoError(t, sched.Close())
+		sched.Stop()
 		finished.Wait()
 	})
 
@@ -57,17 +59,17 @@ func TestScheduler_Synchronize(t *testing.T) {
 		}
 
 		sched := controller.NewScheduler(logger, 1*time.Minute)
+		g := &dag.Graph{}
+		g.Add(&fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}})
 
 		for i := 0; i < 10; i++ {
 			// If a new runnable is created, runFunc will panic since the WaitGroup
 			// only supports 1 goroutine.
-			sched.Synchronize([]controller.RunnableNode{
-				fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},
-			})
+			sched.Synchronize(g)
 		}
 
 		started.Wait()
-		require.NoError(t, sched.Close())
+		sched.Stop()
 	})
 
 	t.Run("Runnables which no longer exist are shutdown before new ones are created", func(t *testing.T) {
@@ -97,92 +99,27 @@ func TestScheduler_Synchronize(t *testing.T) {
 		}
 
 		sched := controller.NewScheduler(logger, 1*time.Minute)
+		g := &dag.Graph{}
+		g.Add(&fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: sharedResourceRun}})
+		g.Add(&fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}})
 
-		comp1 := fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: sharedResourceRun}}
-		comp2 := fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}}
-		comp3 := fakeRunnable{ID: "component-c", Component: mockComponent{RunFunc: sharedResourceRun}}
-
-		sched.Synchronize([]controller.RunnableNode{comp1, comp2})
+		sched.Synchronize(g)
 		started.Wait()
 
 		started.Add(1)
 		finished.Add(1)
-		sched.Synchronize([]controller.RunnableNode{comp2, comp3})
+		g = &dag.Graph{}
+		g.Add(&fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}})
+		g.Add(&fakeRunnable{ID: "component-c", Component: mockComponent{RunFunc: sharedResourceRun}})
+		sched.Synchronize(g)
 		started.Wait()
 		finished.Wait()
 
 		finished.Add(2)
-		require.NoError(t, sched.Close())
+		sched.Stop()
 		finished.Wait()
 	})
 
-	t.Run("Shutdown will stop waiting after TaskShutdownWarningTimeout to startup components and wait for shutdown after", func(t *testing.T) {
-		synctest.Test(t, func(t *testing.T) {
-			var oldTaskExited, newTaskStarted atomic.Bool
-
-			// Old task that takes a long time to stop
-			slowStop := func(ctx context.Context) error {
-				<-ctx.Done()
-
-				// Simulate slow shutdown
-				time.Sleep(2 * controller.TaskShutdownWarningTimeout)
-				oldTaskExited.Store(true)
-				return nil
-			}
-
-			// New task
-			basicRun := func(ctx context.Context) error {
-				newTaskStarted.Store(true)
-				<-ctx.Done()
-				return nil
-			}
-
-			sched := controller.NewScheduler(logger, 5*time.Minute)
-
-			// Start component-a with slow stop behavior
-			comp1 := fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: slowStop}}
-			err := sched.Synchronize([]controller.RunnableNode{comp1})
-			require.NoError(t, err)
-
-			// Replace with component-b
-			// This should timeout waiting for component-a, start component-b anyway,
-			// but not return until component-a fully exits
-			comp2 := fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: basicRun}}
-
-			syncDone := make(chan struct{})
-			go func() {
-				err := sched.Synchronize([]controller.RunnableNode{comp2})
-				require.NoError(t, err)
-				close(syncDone)
-			}()
-
-			// Wait past the timeout for new task to start
-			time.Sleep(controller.TaskShutdownWarningTimeout + 1*time.Second)
-
-			require.True(t, newTaskStarted.Load(), "new task should have started after timeout")
-			require.False(t, oldTaskExited.Load(), "old task should still be running")
-
-			select {
-			case <-syncDone:
-				t.Error("Synchronize returned before old task finished")
-			default:
-			}
-
-			// Wait for old task to finish
-			time.Sleep(2 * time.Minute)
-
-			select {
-			case <-syncDone:
-			default:
-				t.Error("Synchronize should have returned after old task finished")
-			}
-
-			require.True(t, oldTaskExited.Load(), "old task should have exited")
-			require.True(t, newTaskStarted.Load(), "new task should still be running")
-
-			require.NoError(t, sched.Close())
-		})
-	})
 	t.Run("Task shutdown deadline logs warnings and errors", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			// Create a thread-safe buffer to capture log output
@@ -197,16 +134,17 @@ func TestScheduler_Synchronize(t *testing.T) {
 			}
 
 			sched := controller.NewScheduler(logger, 2*time.Minute)
+			g := &dag.Graph{}
+			g.Add(&fakeRunnable{ID: "blocking-component", Component: mockComponent{RunFunc: runFunc}})
 
 			// Start a component
-			err := sched.Synchronize([]controller.RunnableNode{
-				fakeRunnable{ID: "blocking-component", Component: mockComponent{RunFunc: runFunc}},
-			})
+			err := sched.Synchronize(g)
 			require.NoError(t, err)
 
 			syncDone := make(chan struct{})
 			go func() {
-				err := sched.Synchronize([]controller.RunnableNode{})
+				g := &dag.Graph{}
+				err := sched.Synchronize(g)
 				require.NoError(t, err)
 				close(syncDone)
 			}()
@@ -234,11 +172,39 @@ func TestScheduler_Synchronize(t *testing.T) {
 				t.Error("Synchronize should have returned after deadline")
 			}
 
-			require.NoError(t, sched.Close())
+			sched.Stop()
 
 			// Sleep long enough to let the runFunc exit to preventing a synctest panic
 			time.Sleep(time.Minute)
 		})
+	})
+
+	t.Run("Tasks are shutdown from roots to leaves within each subgraph", func(t *testing.T) {
+		var stopOrder []string
+
+		edges := []edge{
+			{From: "g1_root1", To: "g1_mid1"}, {From: "g1_root1", To: "g1_leaf2"}, {From: "g1_root1", To: "g1_mid2"},
+			{From: "g1_mid1", To: "g1_leaf1"}, {From: "g1_mid2", To: "g1_leaf1"},
+			{From: "g2_root1", To: "g2_leaf1"},
+		}
+
+		g := buildGraphFromEdges(edges, &stopOrder)
+		sched := controller.NewScheduler(logger, 1*time.Minute)
+		err := sched.Synchronize(g)
+		require.NoError(t, err)
+		sched.Stop()
+
+		indexOf := func(slice []string, id string) int {
+			return slices.IndexFunc(slice, func(n string) bool {
+				return n == id
+			})
+		}
+
+		for _, e := range g.Edges() {
+			from := indexOf(stopOrder, e.From.NodeID())
+			to := indexOf(stopOrder, e.To.NodeID())
+			require.Less(t, from, to)
+		}
 	})
 }
 
@@ -281,4 +247,36 @@ func (sb *syncBuffer) String() string {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	return sb.buf.String()
+}
+
+func buildGraphFromEdges(edges []edge, stopOrder *[]string) *dag.Graph {
+	set := make(map[string]struct{})
+	for _, e := range edges {
+		set[e.From] = struct{}{}
+		set[e.To] = struct{}{}
+	}
+
+	var lock sync.Mutex
+
+	nodes := make(map[string]*fakeRunnable, len(set))
+	for id := range set {
+		nodes[id] = &fakeRunnable{
+			ID: id,
+			Component: mockComponent{RunFunc: func(ctx context.Context) error {
+				<-ctx.Done()
+				lock.Lock()
+				defer lock.Unlock()
+				*stopOrder = append(*stopOrder, id)
+				return nil
+			}},
+		}
+	}
+	g := &dag.Graph{}
+	for _, n := range nodes {
+		g.Add(n)
+	}
+	for _, e := range edges {
+		g.AddEdge(dag.Edge{From: nodes[e.From], To: nodes[e.To]})
+	}
+	return g
 }
