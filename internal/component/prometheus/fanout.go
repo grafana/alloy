@@ -2,7 +2,6 @@ package prometheus
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -139,13 +138,21 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	}
 
 	children := make([]storage.Appender, 0, len(f.children))
-	for _, c := range f.children {
+	childrenIDs := make([]string, len(f.children))
+	for idx, c := range f.children {
 		children = append(children, c.Appender(ctx))
+		switch cid := c.(type) {
+		case *Interceptor:
+			childrenIDs[idx] = cid.componentID
+		default:
+			childrenIDs[idx] = "undefined"
+		}
 	}
 
 	if f.useLabelStore {
 		return &appender{
 			children:          children,
+			childrenIDs:       childrenIDs,
 			fanout:            f,
 			stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
 		}
@@ -163,6 +170,7 @@ func (f *Fanout) Clear() {
 
 type appender struct {
 	children          []storage.Appender
+	childrenIDs       []string
 	start             time.Time
 	stalenessTrackers []labelstore.StalenessTracker
 	fanout            *Fanout
@@ -196,7 +204,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 			multiErr = multierror.Append(multiErr, err)
 			continue
 		}
-		a.fanout.samplesCounter.With(prometheus.Labels{"destination": fmt.Sprintf("%d", idx)}).Inc()
+		a.fanout.samplesCounter.With(prometheus.Labels{"destination": a.childrenIDs[idx]}).Inc()
 	}
 	return ref, multiErr
 }
