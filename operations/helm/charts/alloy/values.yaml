@@ -545,12 +545,28 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-# -- Extra k8s manifests to deploy
-extraObjects: []
+# -- Extra k8s manifests to deploy.  Can be of type dict or list.
+# If dict, keys are ignored and only values are used.
+# Items contained within extraObjects can be defined as dict or string and are passed through tpl.
+extraObjects: null
 # - apiVersion: v1
 #   kind: Secret
+#   type: Opaque
 #   metadata:
 #     name: grafana-cloud
 #   stringData:
 #     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
 #     PROMETHEUS_USERNAME: '123456'
+#
+# can also be defined as a string, useful for templating field names
+# - |
+#   apiVersion: v1
+#   kind: Secret
+#   type: Opaque
+#   metadata:
+#     name: super-secret
+#     labels:
+#       {{- include "alloy.labels" . | nindent 4 }}
+#   data:
+#     plaintext: Zm9vYmFy
+#     templated: '{{ print "foobar" | upper | b64enc }}'
