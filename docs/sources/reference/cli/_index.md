@@ -16,7 +16,8 @@ Available commands:
 
 * [`convert`][convert]: Convert an {{< param "PRODUCT_NAME" >}} configuration file.
 * [`fmt`][fmt]: Format an {{< param "PRODUCT_NAME" >}} configuration file.
-* [`run`][run]: Start {{< param "PRODUCT_NAME" >}}, given a configuration file.
+* [`run`][run]: Start {{< param "PRODUCT_NAME" >}} with the Default Engine, given an Alloy syntax configuration file.
+* [`otel`][otel]: Start {{< param "PRODUCT_NAME" >}} with the experimental OTel Engine, given an Open Telemetry Collector YAML configuration file.
 * [`tools`][tools]: Read the WAL and provide statistical information.
 * `completion`: Generate shell completion for the `alloy` CLI.
 * `help`: Print help for supported commands.
@@ -24,4 +25,5 @@ Available commands:
 [run]: ./run/
 [fmt]: ./fmt/
 [convert]: ./convert/
+[otel]: ./otel/
 [tools]: ./tools/

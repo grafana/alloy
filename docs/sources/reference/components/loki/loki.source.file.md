@@ -48,8 +48,9 @@ You can use the following arguments with `loki.source.file`:
 | `on_positions_file_error` | `string`             | How to handle a corrupt positions file entry for a given file. | `"restart_from_beginning"` | no       |
 | `tail_from_end`           | `bool`               | Whether to tail from end if a stored position isn't found.     | `false`                    | no       |
 
-The `encoding` argument must be a valid [IANA encoding][] name.
-If not set, it defaults to UTF-8.
+The `encoding` argument must be a valid [IANA encoding][] name and if not set, it defaults to UTF-8. {{< param "PRODUCT_NAME" >}} can automatically change
+the encoding to `UTF-16` if the file includes a Byte Order Mark (BOM) for either `UTF-16BE` or `UTF-16LE`.
+The BOM will be taken into account even if {{< param "PRODUCT_NAME" >}} resumes tailing a file from the middle of the file. This can happen after {{< param "PRODUCT_NAME" >}} is restarted.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
@@ -67,8 +68,6 @@ The format of the positions file is different in Grafana Alloy, so this will con
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
 When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.
 
-If you want to read a UTF-16 file with a Byte Order Mark (BOM), set `encoding` to `UTF-16`.
-BOMs will be ignored if `encoding` is set to either `UTF-16BE` or `UTF-16LE`.
 
 ## Blocks
 

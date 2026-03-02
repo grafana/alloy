@@ -73,6 +73,7 @@ metrics:
   wal_directory: /tmp/wal
   global:
     scrape_timeout: 33s`
+	falseVal := false
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
 			ScrapeInterval:             model.Duration(1 * time.Minute),
@@ -81,6 +82,7 @@ metrics:
 			EvaluationInterval:         model.Duration(1 * time.Minute),
 			MetricNameValidationScheme: model.UTF8Validation,
 			MetricNameEscapingScheme:   model.AllowUTF8,
+			ScrapeNativeHistograms:     &falseVal,
 		},
 	}
 
@@ -98,6 +100,7 @@ metrics:
   wal_directory: /tmp/wal
   global:
     scrape_timeout: ${SCRAPE_TIMEOUT}`
+	falseVal := false
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
 			ScrapeInterval:             model.Duration(1 * time.Minute),
@@ -106,6 +109,7 @@ metrics:
 			EvaluationInterval:         model.Duration(1 * time.Minute),
 			MetricNameValidationScheme: model.UTF8Validation,
 			MetricNameEscapingScheme:   model.AllowUTF8,
+			ScrapeNativeHistograms:     &falseVal,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")

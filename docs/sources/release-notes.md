@@ -14,6 +14,17 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.12
+
+### Breaking changes due to bugfixes in Prometheus exporters
+
+The `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` components now use the component ID instead of the hostname as
+their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to [missing data when using the exporter
+with clustering](https://github.com/grafana/alloy/issues/1009).
+
+If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
+set the `instance` label to `sys.env("HOSTNAME")`.
+
 ## v1.11
 
 ### Breaking changes due to major version upgrade of Prometheus

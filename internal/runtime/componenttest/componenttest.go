@@ -24,6 +24,8 @@ import (
 
 // A Controller is a testing controller which controls a single component.
 type Controller struct {
+	PromRegistry prometheus.Registerer
+
 	reg component.Registration
 	log log.Logger
 
@@ -58,6 +60,8 @@ func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller 
 	}
 
 	return &Controller{
+		PromRegistry: prometheus.NewRegistry(),
+
 		reg: reg,
 		log: l,
 
@@ -118,7 +122,7 @@ func (c *Controller) Exports() component.Exports {
 // until ctx is canceled, the component exits, or if there was an error.
 //
 // Run may only be called once per Controller.
-func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
+func (c *Controller) Run(ctx context.Context, args component.Arguments, optsModifiers ...func(opts component.Options) component.Options) error {
 	dataPath, err := os.MkdirTemp("", "controller-*")
 	if err != nil {
 		return err
@@ -127,7 +131,7 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 		_ = os.RemoveAll(dataPath)
 	}()
 
-	run, err := c.buildComponent(dataPath, args)
+	run, err := c.buildComponent(dataPath, args, optsModifiers...)
 
 	if err != nil {
 		c.onRun.Do(func() {
@@ -157,7 +161,7 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 	return err
 }
 
-func (c *Controller) buildComponent(dataPath string, args component.Arguments) (component.Component, error) {
+func (c *Controller) buildComponent(dataPath string, args component.Arguments, optsModifiers ...func(opts component.Options) component.Options) (component.Component, error) {
 	c.innerMut.Lock()
 	defer c.innerMut.Unlock()
 
@@ -176,7 +180,7 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 		Tracer:        noop.NewTracerProvider(),
 		DataPath:      dataPath,
 		OnStateChange: c.onStateChange,
-		Registerer:    prometheus.NewRegistry(),
+		Registerer:    c.PromRegistry,
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
 			case labelstore.ServiceName:
@@ -187,6 +191,10 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 				return nil, fmt.Errorf("no service named %s defined", name)
 			}
 		},
+	}
+
+	for _, mod := range optsModifiers {
+		opts = mod(opts)
 	}
 
 	inner, err := c.reg.Build(opts, args)

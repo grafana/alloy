@@ -28,6 +28,8 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
 	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
@@ -76,6 +78,10 @@ type Component struct {
 	namespaceSelector labels.Selector
 	// Selector for "AlertmanagerConfig" k8s resources which to watch.
 	cfgSelector labels.Selector
+	// Matcher strategy for "AlertmanagerConfig" resources.
+	matcherStrategy monitoringv1.AlertmanagerConfigMatcherStrategyType
+	// Namespace that is used for OnNamespaceExceptForAlertmanagerNamespace matcher strategy
+	alertmanagerNamespace string
 	// A Prometheus Operator client via which "AlertmanagerConfigs" are retrieved from the Kubernetes API.
 	promClient promVersioned.Interface
 	// The event processor that watches for changes in the Kubernetes API and updates the Mimir Alertmanager configs.
@@ -233,8 +239,9 @@ func (c *Component) Startup(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
+	sb := assets.NewStoreBuilder(c.k8sClient.CoreV1(), c.k8sClient.CoreV1())
 
-	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg)
+	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg, sb)
 
 	go c.eventProcessor.run(ctx)
 	return nil
@@ -296,6 +303,22 @@ func (c *Component) init() error {
 		return err
 	}
 
+	c.matcherStrategy = monitoringv1.AlertmanagerConfigMatcherStrategyType(c.args.AlertmanagerConfigMatcher.Strategy)
+	switch c.matcherStrategy {
+	case monitoringv1.OnNamespaceConfigMatcherStrategyType: // Valid strategy, continue
+	case monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType: // Valid strategy, continue
+	case monitoringv1.NoneConfigMatcherStrategyType: // Valid strategy, continue
+	default:
+		return fmt.Errorf("invalid strategy in alertmanagerconfig_matcher: %s", c.args.AlertmanagerConfigMatcher.Strategy)
+	}
+
+	c.alertmanagerNamespace = c.args.AlertmanagerConfigMatcher.AlertmanagerNamespace
+	if c.matcherStrategy == monitoringv1.OnNamespaceExceptForAlertmanagerNamespaceConfigMatcherStrategyType &&
+		c.alertmanagerNamespace == "" {
+
+		return fmt.Errorf("alertmanagerconfig_matcher: when strategy is set to OnNamespaceExceptForAlertmanagerNamespace, alertmanager_namespace has to be set")
+	}
+
 	return nil
 }
 
@@ -346,25 +369,28 @@ func (c *Component) startConfigInformer(queue workqueue.TypedRateLimitingInterfa
 
 func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{},
 	namespaceLister coreListers.NamespaceLister, cfgLister promListers_v1alpha1.AlertmanagerConfigLister,
-	baseCfg alertmgr_cfg.Config) *eventProcessor {
+	baseCfg alertmgr_cfg.Config, sb *assets.StoreBuilder) *eventProcessor {
 
 	// Deep copy to make sure that a change in arguments won't immediately propagate to the event processor.
 	templateFiles := make(map[string]string, len(c.args.TemplateFiles))
 	maps.Copy(templateFiles, c.args.TemplateFiles)
 
 	return &eventProcessor{
-		queue:             queue,
-		stopChan:          stopChan,
-		health:            c,
-		mimirClient:       c.mimirClient,
-		namespaceLister:   namespaceLister,
-		cfgLister:         cfgLister,
-		baseCfg:           baseCfg,
-		namespaceSelector: c.namespaceSelector,
-		cfgSelector:       c.cfgSelector,
-		metrics:           c.metrics,
-		logger:            c.log,
-		kclient:           c.k8sClient,
-		templateFiles:     templateFiles,
+		queue:                 queue,
+		stopChan:              stopChan,
+		health:                c,
+		mimirClient:           c.mimirClient,
+		namespaceLister:       namespaceLister,
+		cfgLister:             cfgLister,
+		baseCfg:               baseCfg,
+		namespaceSelector:     c.namespaceSelector,
+		cfgSelector:           c.cfgSelector,
+		matcherStrategy:       c.matcherStrategy,
+		alertmanagerNamespace: c.alertmanagerNamespace,
+		metrics:               c.metrics,
+		logger:                c.log,
+		kclient:               c.k8sClient,
+		templateFiles:         templateFiles,
+		storeBuilder:          sb,
 	}
 }

@@ -17,7 +17,7 @@ title: loki.source.journal
 You can specify multiple `loki.source.journal` components by giving them different labels.
 
 {{< admonition type="note" >}}
-Make sure that the `grafana-alloy` user is a member of the following groups:
+Make sure that the `alloy` user is a member of the following groups:
 
 * `adm`
 * `systemd-journal`

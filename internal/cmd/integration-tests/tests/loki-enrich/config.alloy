@@ -1,21 +1,6 @@
 logging {
 	level = "debug"
 }
-// Discover device metadata from file
-discovery.file "network_devices" {
-  files = ["./devices.json"]
-}
-
-// Rename hidden labels so they don't get dropped
-discovery.relabel "network_devices" {
-  targets = discovery.file.network_devices.targets
-
-  rule {
-    action        = "replace"
-    source_labels = ["__meta_rack"]
-    target_label  = "rack"
-  }
-}
 
 // Receive logs via HTTP API
 loki.source.api "network_device" {
@@ -31,8 +16,20 @@ loki.source.api "network_device" {
 
 // Enrich logs with device metadata
 loki.enrich "enricher" {
+  targets = [{
+	"hostname" = "router1.example.com",
+	"environment" = "production",
+    "datacenter" = "us-east",
+    "role" = "core-router",
+    "rack" = "rack1",
+  }, {
+	"hostname" = "router2.example.com", 
+    "environment" = "production",
+    "datacenter" = "us-west",
+    "role" = "edge-router",
+    "rack" = "rack2",
 
-  targets = discovery.relabel.network_devices.output
+  }]
   // List of labels to copy from discovered targets to logs
   labels_to_copy = [
     "environment",

@@ -20,7 +20,7 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 		Labels:     convertPromLabels(s.cfg.CloudflareConfig.Labels),
 		Workers:    s.cfg.CloudflareConfig.Workers,
 		PullRange:  time.Duration(s.cfg.CloudflareConfig.PullRange),
-		FieldsType: s.cfg.CloudflareConfig.FieldsType,
+		FieldsType: cloudflare.FieldsType(s.cfg.CloudflareConfig.FieldsType),
 	}
 	override := func(val interface{}) interface{} {
 		switch conv := val.(type) {

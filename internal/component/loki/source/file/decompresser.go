@@ -93,7 +93,7 @@ func newDecompressor(
 		}
 	}
 
-	decoder, err := getDecoder(opts.encoding)
+	enc, err := getEncoding(opts.encoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decoder: %w", err)
 	}
@@ -107,7 +107,7 @@ func newDecompressor(
 		labels:               opts.labels,
 		running:              atomic.NewBool(false),
 		position:             position,
-		decoder:              decoder,
+		decoder:              enc.NewDecoder(),
 		cfg:                  opts.decompressionConfig,
 		onPositionsFileError: opts.onPositionsFileError,
 		componentStopping:    componentStopping,
@@ -339,8 +339,14 @@ func (d *decompressor) Key() positions.Entry {
 	return d.key
 }
 
-func (d *decompressor) IsRunning() bool {
-	return d.running.Load()
+func (d *decompressor) DebugInfo() any {
+	offset, _ := d.positions.Get(d.key.Path, d.key.Labels)
+	return sourceDebugInfo{
+		Path:       d.key.Path,
+		Labels:     d.key.Labels,
+		IsRunning:  d.running.Load(),
+		ReadOffset: offset,
+	}
 }
 
 // cleanupMetrics removes all metrics exported by this reader

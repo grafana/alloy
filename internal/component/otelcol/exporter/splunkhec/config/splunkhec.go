@@ -60,6 +60,8 @@ type SplunkHecClientArguments struct {
 	DisableKeepAlives bool `alloy:"disable_keep_alives,attr,optional"`
 	// TLSSetting for the HTTP client.
 	InsecureSkipVerify bool `alloy:"insecure_skip_verify,attr,optional"`
+	// ForceAttemptHTTP2 for the HTTP client.
+	ForceAttemptHTTP2 bool `alloy:"force_attempt_http2,attr,optional"`
 }
 type SplunkConf struct {
 	// DeprecatedBatcher is the deprecated batcher configuration.
@@ -230,6 +232,7 @@ func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
 		MaxConnsPerHost:     args.MaxConnsPerHost,
 		IdleConnTimeout:     args.IdleConnTimeout,
 		DisableKeepAlives:   args.DisableKeepAlives,
+		ForceAttemptHTTP2:   args.ForceAttemptHTTP2,
 		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},
@@ -240,6 +243,7 @@ func (args *SplunkHecClientArguments) SetToDefault() {
 	args.Timeout = 15 * time.Second
 	args.MaxIdleConns = 100
 	args.IdleConnTimeout = 90 * time.Second
+	args.ForceAttemptHTTP2 = true
 }
 
 func (args *SplunkHecClientArguments) Validate() error {

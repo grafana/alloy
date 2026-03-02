@@ -52,6 +52,7 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              confighttp.CookiesConfig{},
+			ForceAttemptHTTP2:    true,
 		},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
@@ -139,6 +140,7 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
+			ForceAttemptHTTP2:    true,
 			Cookies:              confighttp.CookiesConfig{}},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,

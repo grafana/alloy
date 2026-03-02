@@ -292,6 +292,7 @@ In those cases, exported fields are kept at their last healthy values.
 * `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
 * `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL.
 * `prometheus_remote_write_wal_out_of_order_samples_total` (counter): Total number of out of order samples ingestion failed attempts.
+* `prometheus_remote_write_wal_metadata_updates_total` (counter): Total number of metadata updates sent through the WAL.
 * `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL.
 * `prometheus_remote_write_wal_storage_active_series` (gauge): Current number of active series being tracked by the WAL.
 * `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.

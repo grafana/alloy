@@ -26,8 +26,8 @@ func TestOtlpMetadata(t *testing.T) {
 
 	// Make sure we got the expected metrics before checking metadata
 	common.MimirMetricsTest(t, metadataTestMetrics, metadataTestHistogram, testName)
-	expectedMetadata := make(map[string]common.Metadata, len(common.OtlpDefaultMetricMetadata)+len(common.PromDefaultNativeHistogramMetadata))
-	for k, v := range common.OtlpDefaultMetricMetadata {
+	expectedMetadata := make(map[string]common.Metadata, len(common.PromDefaultMetricMetadata)+len(common.PromDefaultNativeHistogramMetadata))
+	for k, v := range common.PromDefaultMetricMetadata {
 		expectedMetadata[toTestMetric(k)] = v
 	}
 	for k, v := range common.PromDefaultNativeHistogramMetadata {

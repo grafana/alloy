@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -55,6 +56,7 @@ type QueryDetails struct {
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 	tableRegistry   *TableRegistry
+	normalizer      *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -68,6 +70,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		tableRegistry:   args.TableRegistry,
+		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
 		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}, nil
@@ -129,23 +132,25 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	for rs.Next() {
 		var queryID, queryText string
 		var databaseName database
-		err := rs.Scan(
-			&queryID,
-			&queryText,
-			&databaseName,
-		)
+		err := rs.Scan(&queryID, &queryText, &databaseName)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set for pg_stat_statements", "err", err)
+			continue
+		}
+
+		queryText, err = removeComments(c.normalizer, queryText)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
 			continue
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s" engine="postgres"`, queryID, queryText, databaseName),
+			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
 		)
 
-		tables, err := c.tryTokenizeTableNames(queryText)
+		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to tokenize table names", "err", err)
 			continue
@@ -160,7 +165,7 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres" validated="%t"`, queryID, databaseName, table, validated),
+				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, table, validated),
 			)
 		}
 	}
@@ -173,12 +178,29 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	return nil
 }
 
-func (c QueryDetails) tryTokenizeTableNames(sqlText string) ([]string, error) {
+func tokenizeTableNames(normalizer *sqllexer.Normalizer, sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
-	tables, err := database_observability.ExtractTableNames(sqlText)
+	_, metadata, err := normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract table names: %w", err)
+		return nil, fmt.Errorf("failed to tokenize table names: %w", err)
 	}
 
-	return tables, nil
+	return metadata.Tables, nil
+}
+
+func removeComments(normalizer *sqllexer.Normalizer, sqlText string) (string, error) {
+	_, metadata, err := normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	if err != nil {
+		return sqlText, fmt.Errorf("failed to normalize sql text: %w", err)
+	}
+
+	if len(metadata.Comments) == 0 {
+		return sqlText, nil
+	}
+
+	for _, comment := range metadata.Comments {
+		sqlText = strings.ReplaceAll(sqlText, comment, "")
+	}
+
+	return strings.TrimSpace(sqlText), nil
 }

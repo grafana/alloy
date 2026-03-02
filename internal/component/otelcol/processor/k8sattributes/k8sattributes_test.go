@@ -26,6 +26,8 @@ func Test_Extract(t *testing.T) {
 				"k8s.job.name",
 				"k8s.node.name",
 			]
+
+			deployment_name_from_replicaset = true
 		}
 	
 		output {
@@ -44,6 +46,8 @@ func Test_Extract(t *testing.T) {
 
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
+
+	require.True(t, extract.DeploymentNameFromReplicaSet)
 }
 
 func Test_ExtractAnnotations(t *testing.T) {

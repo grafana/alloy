@@ -25,44 +25,47 @@ func LogQuery(testName string) string {
 	return query
 }
 
-// AssertLogsPresent checks that logs are present in Loki and match expected labels
-func AssertLogsPresent(t *testing.T, testName string, expectedLabels map[string]string, expectedCount int) {
-	AssertStatefulTestEnv(t)
-
-	var logResponse LogResponse
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		_, err := FetchDataFromURL(LogQuery(testName), &logResponse)
-		assert.NoError(c, err)
-		if len(logResponse.Data.Result) == 0 {
-			return
-		}
-
-		// Verify we got all logs
-		result := logResponse.Data.Result[0]
-		assert.Equal(c, expectedCount, len(result.Values), "should have %d log entries", expectedCount)
-
-		// Verify labels were enriched
-		for k, v := range expectedLabels {
-			assert.Equal(c, v, result.Stream[k], "label %s should be %s", k, v)
-		}
-	}, TestTimeoutEnv(t), DefaultRetryInterval)
+type ExpectedLogResult struct {
+	Labels     map[string]string
+	EntryCount int
 }
 
-// AssertLogsMissing checks that logs with specific labels are not present in Loki
-func AssertLogsMissing(t *testing.T, testName string, labels ...string) {
+// AssertLogsPresent checks that logs are present in Loki and match expected labels
+func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
+	t.Helper()
 	AssertStatefulTestEnv(t)
 
 	var logResponse LogResponse
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		_, err := FetchDataFromURL(LogQuery(testName), &logResponse)
-		assert.NoError(c, err)
-		if len(logResponse.Data.Result) == 0 {
-			return
+
+	require.Eventually(t, func() bool {
+		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t)), &logResponse)
+		require.NoError(t, err)
+		return len(logResponse.Data.Result) == len(expected)
+	}, TestTimeoutEnv(t), DefaultRetryInterval)
+
+	for _, e := range expected {
+		values, ok := findStream(e.Labels, logResponse.Data.Result)
+		require.True(t, ok, "no stream with labels %s", e.Labels)
+		assert.Len(t, values, e.EntryCount)
+	}
+}
+
+// findStream will try to find a stream from result contaning all label value pairs provided.
+// It will return the first match.
+func findStream(labels map[string]string, result []LogData) ([][2]string, bool) {
+	for _, r := range result {
+		toFind := len(labels)
+		for k, v := range r.Stream {
+			if rv := labels[k]; rv == v {
+				toFind -= 1
+			}
+
+			if toFind == 0 {
+				return r.Values, true
+			}
 		}
 
-		result := logResponse.Data.Result[0]
-		for _, label := range labels {
-			assert.NotContains(c, result.Stream, label, "label %s should not be present", label)
-		}
-	}, TestTimeoutEnv(t), DefaultRetryInterval)
+	}
+
+	return nil, false
 }

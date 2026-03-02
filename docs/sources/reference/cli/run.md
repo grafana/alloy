@@ -11,7 +11,7 @@ weight: 300
 
 # `run`
 
-The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an interrupt is received.
+The `run` command runs the {{< param "PRODUCT_NAME" >}} Default Engine in the foreground until an interrupt is received. 
 
 ## Usage
 
@@ -132,6 +132,7 @@ Since Windows doesn't use the interface names `eth0` or `en0`, Windows users mus
 The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to lookup (supports SRV and A/AAAA records).
 In both cases, the port number can be specified with a `:<port>` suffix. If ports aren't provided, default of the port used for the HTTP listener is used.
 If you don't provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
+Optionally, you may specify a DNS query type as a prefix for each address. See [join addresses format](#join-address-format) for more information.
 
 The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications.
 Additional arguments are required to configure the TLS client, including the CA certificate, the TLS certificate, the key, and the server name.
@@ -170,6 +171,23 @@ The `--cluster.name` flag can be used to prevent clusters from accidentally merg
 When `--cluster.name` is provided, nodes only join peers who share the same cluster name value.
 By default, the cluster name is empty, and any node that doesn't set the flag can join.
 Attempting to join a cluster with a wrong `--cluster.name` results in a "failed to join memberlist" error.
+
+### Join Address Format
+
+The `--cluster.join-addresses` flag supports DNS names with discovery mode prefix.
+You select a discovery mode by adding one of the following supported prefixes to the address:
+
+* **`dns+`**\
+The domain name after the prefix is looked up as an A/AAAA query.\
+For example: `dns+alloy.local:11211`.
+* **`dnssrv+`**\
+The domain name after the prefix is looked up as a SRV query, and then each SRV record is resolved as an A/AAAA record.\
+For example: `dnssrv+_alloy._tcp.alloy.namespace.svc.cluster.local`.
+* **`dnssrvnoa+`**\
+The domain name after the prefix is looked up as a SRV query, with no A/AAAA lookup made after that.\
+For example: `dnssrvnoa+_alloy-memberlist._tcp.service.consul`
+
+If no prefix is provided, Alloy will attempt to resolve the name using both A/AAAA and DNSSRV queries.
 
 ### Clustering states
 

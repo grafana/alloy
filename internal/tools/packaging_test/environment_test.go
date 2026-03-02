@@ -1,5 +1,4 @@
 //go:build !nonetwork && !nodocker && packaging
-// +build !nonetwork,!nodocker,packaging
 
 package packaging_test
 

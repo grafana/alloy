@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/regexp"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/util/testutil"
 )
@@ -854,6 +856,21 @@ func BenchmarkRelabel(b *testing.B) {
 				_ = ProcessBuilder(tb, tt.cfgs...)
 			}
 		})
+	}
+}
+
+func TestComponentToPromRelabelConfigs(t *testing.T) {
+	rule := `
+		action = "labeldrop"
+        regex  = "helm_sh_chart"
+	`
+
+	var cfg Config
+	require.NoError(t, syntax.Unmarshal([]byte(rule), &cfg))
+
+	converted := ComponentToPromRelabelConfigs([]*Config{&cfg})
+	for _, r := range converted {
+		require.NoError(t, r.Validate(model.LegacyValidation))
 	}
 }
 

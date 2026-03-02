@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -124,4 +125,9 @@ func TestTimeoutEnv(t *testing.T) time.Duration {
 		t.Logf("%s not set, defaulting to %s", TestTimeout, DefaultTimeout)
 	}
 	return DefaultTimeout
+}
+
+func SanitizeTestName(t *testing.T) string {
+	name := strings.TrimPrefix(t.Name(), "Test")
+	return strings.ToLower(name)
 }

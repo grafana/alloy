@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -21,7 +20,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -30,7 +28,7 @@ const (
 	logFormatFmt  = "logfmt"
 )
 
-type eventControllerTask struct {
+type eventControllerOptions struct {
 	Log          log.Logger
 	Config       *rest.Config // Config to connect to Kubernetes.
 	Namespace    string       // Namespace to watch for events in.
@@ -41,40 +39,27 @@ type eventControllerTask struct {
 	LogFormat    string
 }
 
-// Hash implements [runner.Task].
-func (t eventControllerTask) Hash() uint64 {
-	return xxhash.Sum64String(t.Namespace)
-}
-
-// Equals implements [runner.Task].
-func (t eventControllerTask) Equals(other runner.Task) bool {
-	// We can do a direct comparison since the two task types are comparable.
-	return t == other.(eventControllerTask)
-}
-
 type eventController struct {
-	log     log.Logger
-	task    eventControllerTask
+	opts    eventControllerOptions
 	handler loki.EntryHandler
 
 	positionsKey  string
 	initTimestamp time.Time
 }
 
-func newEventController(task eventControllerTask) *eventController {
+func newEventController(opts eventControllerOptions) *eventController {
 	var key string
-	if task.Namespace == "" {
+	if opts.Namespace == "" {
 		key = positions.CursorKey("events")
 	} else {
-		key = positions.CursorKey("events-" + task.Namespace)
+		key = positions.CursorKey("events-" + opts.Namespace)
 	}
 
-	lastTimestamp, _ := task.Positions.Get(key, "")
+	lastTimestamp, _ := opts.Positions.Get(key, "")
 
 	return &eventController{
-		log:           task.Log,
-		task:          task,
-		handler:       loki.NewEntryHandler(task.Receiver.Chan(), func() {}),
+		opts:          opts,
+		handler:       loki.NewEntryHandler(opts.Receiver.Chan(), func() {}),
 		positionsKey:  key,
 		initTimestamp: time.UnixMicro(lastTimestamp),
 	}
@@ -83,12 +68,16 @@ func newEventController(task eventControllerTask) *eventController {
 func (ctrl *eventController) Run(ctx context.Context) {
 	defer ctrl.handler.Stop()
 
-	level.Info(ctrl.log).Log("msg", "watching events for namespace", "namespace", ctrl.task.Namespace)
-	defer level.Info(ctrl.log).Log("msg", "stopping watcher for events", "namespace", ctrl.task.Namespace)
+	level.Info(ctrl.opts.Log).Log("msg", "watching events for namespace", "namespace", ctrl.opts.Namespace)
+	defer level.Info(ctrl.opts.Log).Log("msg", "stopping watcher for events", "namespace", ctrl.opts.Namespace)
 
 	if err := ctrl.runError(ctx); err != nil {
-		level.Error(ctrl.log).Log("msg", "event watcher exited with error", "err", err)
+		level.Error(ctrl.opts.Log).Log("msg", "event watcher exited with error", "err", err)
 	}
+}
+
+func (ctrl *eventController) Key() string {
+	return ctrl.opts.Namespace
 }
 
 func (ctrl *eventController) runError(ctx context.Context) error {
@@ -98,14 +87,14 @@ func (ctrl *eventController) runError(ctx context.Context) error {
 	}
 
 	defaultNamespaces := map[string]cache.Config{}
-	if ctrl.task.Namespace != "" {
-		defaultNamespaces[ctrl.task.Namespace] = cache.Config{}
+	if ctrl.opts.Namespace != "" {
+		defaultNamespaces[ctrl.opts.Namespace] = cache.Config{}
 	}
 	opts := cache.Options{
 		Scheme:            scheme,
 		DefaultNamespaces: defaultNamespaces,
 	}
-	informers, err := cache.New(ctrl.task.Config, opts)
+	informers, err := cache.New(ctrl.opts.Config, opts)
 	if err != nil {
 		return fmt.Errorf("creating informers cache: %w", err)
 	}
@@ -113,7 +102,7 @@ func (ctrl *eventController) runError(ctx context.Context) error {
 	go func() {
 		err := informers.Start(ctx)
 		if err != nil && ctx.Err() != nil {
-			level.Error(ctrl.log).Log("msg", "failed to start informers", "err", err)
+			level.Error(ctrl.opts.Log).Log("msg", "failed to start informers", "err", err)
 		}
 	}()
 
@@ -147,9 +136,9 @@ func (ctrl *eventController) configureInformers(ctx context.Context, informers c
 		}
 
 		_, err = informer.AddEventHandler(cachetools.ResourceEventHandlerFuncs{
-			AddFunc:    func(obj interface{}) { ctrl.onAdd(ctx, obj) },
-			UpdateFunc: func(oldObj, newObj interface{}) { ctrl.onUpdate(ctx, oldObj, newObj) },
-			DeleteFunc: func(obj interface{}) { ctrl.onDelete(ctx, obj) },
+			AddFunc:    func(obj any) { ctrl.onAdd(ctx, obj) },
+			UpdateFunc: func(oldObj, newObj any) { ctrl.onUpdate(ctx, oldObj, newObj) },
+			DeleteFunc: func(obj any) { ctrl.onDelete(ctx, obj) },
 		})
 		if err != nil {
 			return err
@@ -158,42 +147,42 @@ func (ctrl *eventController) configureInformers(ctx context.Context, informers c
 	return nil
 }
 
-func (ctrl *eventController) onAdd(ctx context.Context, obj interface{}) {
+func (ctrl *eventController) onAdd(ctx context.Context, obj any) {
 	event, ok := obj.(*corev1.Event)
 	if !ok {
-		level.Warn(ctrl.log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", obj))
+		level.Warn(ctrl.opts.Log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", obj))
 		return
 	}
 	err := ctrl.handleEvent(ctx, event)
 	if err != nil {
-		level.Error(ctrl.log).Log("msg", "error handling event", "err", err)
+		level.Error(ctrl.opts.Log).Log("msg", "error handling event", "err", err)
 	}
 }
 
-func (ctrl *eventController) onUpdate(ctx context.Context, oldObj, newObj interface{}) {
+func (ctrl *eventController) onUpdate(ctx context.Context, oldObj, newObj any) {
 	oldEvent, ok := oldObj.(*corev1.Event)
 	if !ok {
-		level.Warn(ctrl.log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", oldObj))
+		level.Warn(ctrl.opts.Log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", oldObj))
 		return
 	}
 	newEvent, ok := newObj.(*corev1.Event)
 	if !ok {
-		level.Warn(ctrl.log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", newObj))
+		level.Warn(ctrl.opts.Log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", newObj))
 		return
 	}
 
 	if oldEvent.GetResourceVersion() == newEvent.GetResourceVersion() {
-		level.Debug(ctrl.log).Log("msg", "resource version didn't change, ignoring call to onUpdate", "resource version", newEvent.GetResourceVersion())
+		level.Debug(ctrl.opts.Log).Log("msg", "resource version didn't change, ignoring call to onUpdate", "resource version", newEvent.GetResourceVersion())
 		return
 	}
 
 	err := ctrl.handleEvent(ctx, newEvent)
 	if err != nil {
-		level.Error(ctrl.log).Log("msg", "error handling event", "err", err)
+		level.Error(ctrl.opts.Log).Log("msg", "error handling event", "err", err)
 	}
 }
 
-func (ctrl *eventController) onDelete(ctx context.Context, obj interface{}) {
+func (ctrl *eventController) onDelete(ctx context.Context, obj any) {
 	// no-op: the event got deleted from Kubernetes, but there's nothing to log
 	// when this happens.
 }
@@ -236,7 +225,7 @@ func (ctrl *eventController) handleEvent(ctx context.Context, event *corev1.Even
 	case ctrl.handler.Chan() <- entry:
 		// Update position offset only after it's been sent to the next set of
 		// components.
-		ctrl.task.Positions.Put(ctrl.positionsKey, "", eventTs.UnixMicro())
+		ctrl.opts.Positions.Put(ctrl.positionsKey, "", eventTs.UnixMicro())
 		return nil
 	}
 }
@@ -255,10 +244,10 @@ func (ctrl *eventController) parseEvent(event *corev1.Event) (model.LabelSet, st
 	}
 
 	lset[model.LabelName("namespace")] = model.LabelValue(obj.Namespace)
-	lset[model.LabelName("job")] = model.LabelValue(ctrl.task.JobName)
-	lset[model.LabelName("instance")] = model.LabelValue(ctrl.task.InstanceName)
+	lset[model.LabelName("job")] = model.LabelValue(ctrl.opts.JobName)
+	lset[model.LabelName("instance")] = model.LabelValue(ctrl.opts.InstanceName)
 
-	if ctrl.task.LogFormat == logFormatJson {
+	if ctrl.opts.LogFormat == logFormatJson {
 		appender = appendJsonMsg
 	}
 
@@ -302,7 +291,7 @@ func (ctrl *eventController) parseEvent(event *corev1.Event) (model.LabelSet, st
 
 	appender(&msg, fields, "msg", event.Message, "%q")
 
-	if ctrl.task.LogFormat == logFormatJson {
+	if ctrl.opts.LogFormat == logFormatJson {
 		bb, err := json.Marshal(fields)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to marshal Event to JSON: %w", err)
@@ -336,10 +325,10 @@ func eventTimestamp(event *corev1.Event) time.Time {
 }
 
 func (ctrl *eventController) DebugInfo() controllerInfo {
-	ts, _ := ctrl.task.Positions.Get(ctrl.positionsKey, "")
+	ts, _ := ctrl.opts.Positions.Get(ctrl.positionsKey, "")
 
 	return controllerInfo{
-		Namespace:     ctrl.task.Namespace,
+		Namespace:     ctrl.opts.Namespace,
 		LastTimestamp: time.UnixMicro(ts),
 	}
 }

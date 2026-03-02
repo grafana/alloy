@@ -301,16 +301,22 @@ func TestExplainPlansOutput(t *testing.T) {
 	t.Run("invalid json", func(t *testing.T) {
 		notJsonData := []byte("not json data")
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-		_, err := newExplainPlansOutput(logger, "", "", notJsonData, "")
+		_, err := newExplainPlansOutput(logger, notJsonData)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-		explainPlanOutput, err := newExplainPlansOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
+		explainPlanOutput, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"))
 		require.NoError(t, err)
-		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
+		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
+	})
+
+	t.Run("zero rows", func(t *testing.T) {
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		_, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"message\": \"no matching row in const table\"}}"))
+		require.NoError(t, err)
 	})
 
 	currentTime := time.Now().Format(time.RFC3339)
@@ -326,10 +332,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
@@ -391,10 +398,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_join_with_aggregate_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
@@ -456,10 +464,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_query_with_multiple_conditions_and_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
@@ -564,10 +573,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_subquery_in_select_clause",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationTableScan,
@@ -588,10 +598,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "conditional_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
@@ -620,10 +631,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "correlated_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
@@ -712,10 +724,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "date_manipulation_with_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationTableScan,
@@ -735,10 +748,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "derived_table_with_aggregates",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
@@ -873,10 +887,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "distinct_with_multiple_joins",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
@@ -943,10 +958,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "group_by_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
@@ -990,10 +1006,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "join_and_order",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
@@ -1055,10 +1072,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "multiple_aggregate_functions_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
@@ -1102,10 +1120,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "multiple_joins_with_date_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
@@ -1165,10 +1184,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "nested_subqueries_with_exists",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
@@ -1225,10 +1245,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "self_join_with_date_comparison",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
@@ -1303,10 +1324,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "string_functions_with_grouping",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
@@ -1335,10 +1357,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "subquery_with_aggregate",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
@@ -1392,10 +1415,11 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "union_with_different_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:  "MySQL",
-					DatabaseVersion: "8.0.32",
-					QueryIdentifier: "1234567890",
-					GeneratedAt:     currentTime,
+					DatabaseEngine:   "MySQL",
+					DatabaseVersion:  "8.0.32",
+					QueryIdentifier:  "1234567890",
+					GeneratedAt:      currentTime,
+					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 				},
 				Plan: database_observability.ExplainPlanNode{
 					Operation: database_observability.ExplainPlanOutputOperationUnion,
@@ -1472,11 +1496,9 @@ func TestExplainPlansOutput(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
 			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-			output, err := newExplainPlansOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
+			output, err := newExplainPlansOutput(logger, jsonData)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
-			// Override the generated at time to ensure the test is deterministic
-			output.Metadata.GeneratedAt = currentTime
-			require.Equal(t, test.result, output)
+			require.Equal(t, test.result.Plan, *output)
 		})
 	}
 }
@@ -1587,11 +1609,21 @@ func TestExplainPlans(t *testing.T) {
 			err = c.fetchExplainPlans(t.Context())
 			require.NoError(t, err)
 
-			lokiEntries := lokiClient.Received()
-			require.Equal(t, 0, len(lokiEntries))
-
-			require.Contains(t, logBuffer.String(), "skipping truncated query")
+			require.Eventually(
+				t,
+				func() bool { return len(lokiClient.Received()) == 1 },
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
 			require.NotContains(t, logBuffer.String(), "error")
+			lokiEntries := lokiClient.Received()
+			require.Equal(t, 1, len(lokiEntries))
+			epo, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntries[0])
+			require.NoError(t, err)
+			require.Equal(t, database_observability.ExplainProcessingResultSkipped, epo.Metadata.ProcessingResult)
+			require.Equal(t, "query is truncated", epo.Metadata.ProcessingResultReason)
+			lokiClient.Clear()
 		})
 
 		t.Run("skips non-select queries", func(t *testing.T) {
@@ -1604,17 +1636,17 @@ func TestExplainPlans(t *testing.T) {
 				"last_seen",
 			}).AddRow(
 				"some_schema",
-				"some_digest",
+				"update_digest",
 				"update some_table set col = 1 where id = 1",
 				lastSeen,
 			).AddRow(
 				"some_schema",
-				"some_digest",
+				"delete_digest",
 				"delete from some_table",
 				lastSeen,
 			).AddRow(
 				"some_schema",
-				"some_digest",
+				"insert_digest",
 				"insert into some_table (col) values (1)",
 				lastSeen,
 			))
@@ -1622,10 +1654,57 @@ func TestExplainPlans(t *testing.T) {
 			err = c.fetchExplainPlans(t.Context())
 			require.NoError(t, err)
 
+			require.Eventually(
+				t,
+				func() bool { return len(lokiClient.Received()) == 3 },
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log messages within the timeout",
+			)
+
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 0, len(lokiEntries))
+			require.Equal(t, 3, len(lokiEntries))
+
+			for _, lokiEntry := range lokiEntries {
+				ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntry)
+				require.NoError(t, err)
+				require.Equal(t, database_observability.ExplainProcessingResultSkipped, ep.Metadata.ProcessingResult)
+				require.Equal(t, "query contains reserved word", ep.Metadata.ProcessingResultReason)
+			}
 
 			require.NotContains(t, logBuffer.String(), "error")
+			lokiClient.Clear()
+		})
+
+		t.Run("skips no row result", func(t *testing.T) {
+			logBuffer.Reset()
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_sample_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"select * from some_table where id = 1",
+				lastSeen,
+			))
+
+			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+			mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
+				"json",
+			}).AddRow(
+				[]byte(`{"query_block": {"message": "no matching row in const table"}}`),
+			))
+
+			err = c.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			lokiClient.Clear()
+
+			require.NotContains(t, logBuffer.String(), "error")
+			require.Contains(t, logBuffer.String(), "no matching row in const table")
 		})
 
 		t.Run("passes queries beginning in select", func(t *testing.T) {

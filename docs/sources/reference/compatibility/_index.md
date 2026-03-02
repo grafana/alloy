@@ -95,6 +95,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.catchpoint](../components/prometheus/prometheus.exporter.catchpoint)
 - [prometheus.exporter.cloudwatch](../components/prometheus/prometheus.exporter.cloudwatch)
 - [prometheus.exporter.consul](../components/prometheus/prometheus.exporter.consul)
+- [prometheus.exporter.databricks](../components/prometheus/prometheus.exporter.databricks)
 - [prometheus.exporter.dnsmasq](../components/prometheus/prometheus.exporter.dnsmasq)
 - [prometheus.exporter.elasticsearch](../components/prometheus/prometheus.exporter.elasticsearch)
 - [prometheus.exporter.gcp](../components/prometheus/prometheus.exporter.gcp)
@@ -187,6 +188,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.echo](../components/prometheus/prometheus.echo)
 - [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
@@ -309,6 +311,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 <!-- START GENERATED SECTION: EXPORTERS OF OpenTelemetry `otelcol.Consumer` -->
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
@@ -317,6 +320,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
+- [otelcol.exporter.file](../components/otelcol/otelcol.exporter.file)
 - [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
 - [otelcol.exporter.googlecloudpubsub](../components/otelcol/otelcol.exporter.googlecloudpubsub)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
@@ -363,6 +367,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 {{< /collapse >}}
 
 {{< collapse title="otelcol" >}}
+- [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
@@ -384,6 +389,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
 - [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
 - [otelcol.receiver.awsecscontainermetrics](../components/otelcol/otelcol.receiver.awsecscontainermetrics)
+- [otelcol.receiver.awss3](../components/otelcol/otelcol.receiver.awss3)
 - [otelcol.receiver.cloudflare](../components/otelcol/otelcol.receiver.cloudflare)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
 - [otelcol.receiver.faro](../components/otelcol/otelcol.receiver.faro)

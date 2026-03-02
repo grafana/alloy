@@ -200,7 +200,7 @@ func (c *Component) resyncTargets(targets []discovery.Target) {
 			level.Error(c.log).Log("msg", "failed to process input target", "target", lset.String(), "err", err)
 			continue
 		}
-		tailTargets = append(tailTargets, kubetail.NewTarget(lset, processed))
+		tailTargets = append(tailTargets, kubetail.NewTarget(lset, processed, false))
 	}
 
 	// This will never fail because it only fails if the context gets canceled.

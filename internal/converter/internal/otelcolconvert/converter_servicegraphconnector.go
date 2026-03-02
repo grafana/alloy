@@ -61,6 +61,12 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 		metricsFlushIntervalValue = *metricsFlushInterval
 	}
 
+	// TODO: Some default values upstream are not picked up correctly - fix this.
+	// Change the upstream code to set the default values in createDefaultConfig() in factory.go.
+	// Currently, some defaults are set in newConnector() in connector.go.
+	// For example, Alloy thinks the default for virtual_node_peer_attributes should be an empty list because that's what's in factory.go.
+	// For now the servicegraph converter tests are configured to explicitly set some values so that we don't see the wrong default value.
+
 	return &servicegraph.Arguments{
 		LatencyHistogramBuckets: cfg.LatencyHistogramBuckets,
 		Dimensions:              cfg.Dimensions,
@@ -68,10 +74,13 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 			MaxItems: cfg.Store.MaxItems,
 			TTL:      cfg.Store.TTL,
 		},
-		CacheLoop:              cfg.CacheLoop,
-		StoreExpirationLoop:    cfg.StoreExpirationLoop,
-		MetricsFlushInterval:   metricsFlushIntervalValue,
-		DatabaseNameAttributes: cfg.DatabaseNameAttributes,
+		CacheLoop:                   cfg.CacheLoop,
+		StoreExpirationLoop:         cfg.StoreExpirationLoop,
+		MetricsFlushInterval:        metricsFlushIntervalValue,
+		DatabaseNameAttributes:      cfg.DatabaseNameAttributes,
+		VirtualNodeExtraLabel:       cfg.VirtualNodeExtraLabel,
+		VirtualNodePeerAttributes:   cfg.VirtualNodePeerAttributes,
+		ExponentialHistogramMaxSize: cfg.ExponentialHistogramMaxSize,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},

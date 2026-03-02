@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -19,13 +20,14 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	types "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
-	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -50,6 +52,8 @@ const (
 	dockerLabel                = model.MetaLabelPrefix + "docker_"
 	dockerLabelContainerPrefix = dockerLabel + "container_"
 	dockerLabelContainerID     = dockerLabelContainerPrefix + "id"
+	dockerLabelLogStream       = dockerLabelContainerPrefix + "log_stream"
+	dockerMaxChunkSize         = 16384
 )
 
 // Arguments holds values which are used to configure the loki.source.docker
@@ -102,19 +106,18 @@ var (
 // Component implements the loki.source.file component.
 type Component struct {
 	opts    component.Options
-	metrics *dt.Metrics
+	metrics *metrics
+	exited  *atomic.Bool
 
-	mut           sync.RWMutex
-	args          Arguments
-	manager       *manager
-	lastOptions   *options
-	handler       loki.LogsReceiver
-	posFile       positions.Positions
-	rcs           []*relabel.Config
-	defaultLabels model.LabelSet
+	mut       sync.RWMutex
+	args      Arguments
+	scheduler *source.Scheduler[string]
+	client    client.APIClient
+	handler   loki.LogsReceiver
+	posFile   positions.Positions
+	rcs       []*relabel.Config
 
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 }
 
 // New creates a new loki.source.file component.
@@ -134,12 +137,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:    o,
-		metrics: dt.NewMetrics(o.Registerer),
-
+		opts:      o,
+		metrics:   newMetrics(o.Registerer),
+		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
-		manager:   newManager(o.Logger, nil),
-		receivers: args.ForwardTo,
+		scheduler: source.NewScheduler[string](),
+		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
 	}
 
@@ -153,32 +156,21 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	defer c.posFile.Stop()
-
 	defer func() {
-		c.mut.Lock()
-		defer c.mut.Unlock()
+		c.exited.Store(true)
+		c.posFile.Stop()
 
-		// Guard for safety, but it's not possible for Run to be called without
-		// c.tailer being initialized.
-		if c.manager != nil {
-			c.manager.stop()
-		}
+		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
+		source.Drain(c.handler, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			c.scheduler.Stop()
+		})
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-			for _, receiver := range receivers {
-				receiver.Chan() <- entry
-			}
-		}
-	}
+	// Start consume and fanout loop
+	source.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 type promTarget struct {
@@ -190,41 +182,28 @@ type promTarget struct {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update the receivers before anything else, just in case something fails.
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
-
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	managerOpts, err := c.getManagerOptions(newArgs)
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	client, err := c.getClient(newArgs)
 	if err != nil {
 		return err
 	}
 
-	if managerOpts != c.lastOptions {
-		// Options changed; pass it to the tailer.
-		// This will never fail because it only fails if the context gets canceled.
-		_ = c.manager.updateOptions(context.Background(), managerOpts)
-		c.lastOptions = managerOpts
+	if client != c.client {
+		c.client = client
+		// Stop all tailers because we need to restart them.
+		c.scheduler.Reset()
 	}
 
 	defaultLabels := make(model.LabelSet, len(newArgs.Labels))
 	for k, v := range newArgs.Labels {
 		defaultLabels[model.LabelName(k)] = model.LabelValue(v)
 	}
-	c.defaultLabels = defaultLabels
 
-	if len(newArgs.RelabelRules) > 0 {
-		c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-	} else {
-		c.rcs = []*relabel.Config{}
-	}
-
-	// Convert input targets into targets to give to tailer.
-	targets := make([]*dt.Target, 0, len(newArgs.Targets))
-	seenTargets := make(map[string]struct{}, len(newArgs.Targets))
+	c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 
 	promTargets := make([]promTarget, len(newArgs.Targets))
 	for i, target := range newArgs.Targets {
@@ -238,53 +217,47 @@ func (c *Component) Update(args component.Arguments) error {
 		return promTargets[i].fingerPrint < promTargets[j].fingerPrint
 	})
 
-	for _, markedTarget := range promTargets {
-		containerID, ok := markedTarget.labels[dockerLabelContainerID]
-		if !ok {
-			level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
-			continue
-		}
-		if _, seen := seenTargets[string(containerID)]; seen {
-			continue
-		}
-		seenTargets[string(containerID)] = struct{}{}
+	source.Reconcile(
+		c.opts.Logger,
+		c.scheduler,
+		slices.Values(promTargets),
+		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
+		func(containerID string, target promTarget) (source.Source[string], error) {
+			if containerID == "" {
+				level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
+				return nil, source.ErrSkip
+			}
 
-		tgt, err := dt.NewTarget(
-			c.metrics,
-			log.With(c.opts.Logger, "target", fmt.Sprintf("docker/%s", containerID)),
-			c.manager.opts.handler,
-			c.manager.opts.positions,
-			string(containerID),
-			markedTarget.labels.Merge(c.defaultLabels),
-			c.rcs,
-			c.manager.opts.client,
-		)
-		if err != nil {
-			return err
-		}
-		targets = append(targets, tgt)
-	}
-
-	// This will never fail because it only fails if the context gets canceled.
-	_ = c.manager.syncTargets(context.Background(), targets)
+			return newTailer(
+				c.metrics,
+				log.With(c.opts.Logger, "component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.handler,
+				c.posFile,
+				containerID,
+				target.labels.Merge(defaultLabels),
+				c.rcs,
+				client,
+				5*time.Second,
+				func() bool { return c.exited.Load() },
+			)
+		},
+	)
 
 	c.args = newArgs
 	return nil
 }
 
-// getTailerOptions gets tailer options from arguments. If args hasn't changed
-// from the last call to getTailerOptions, c.lastOptions is returned.
-// c.lastOptions must be updated by the caller.
-//
-// getTailerOptions must only be called when c.mut is held.
-func (c *Component) getManagerOptions(args Arguments) (*options, error) {
-	if reflect.DeepEqual(c.args.Host, args.Host) && c.lastOptions != nil {
-		return c.lastOptions, nil
+// getClient creates a client from args. If args hasn't changed
+// from the last call to getClient, c.client is returned.
+// getClient must only be called when c.mut is held.
+func (c *Component) getClient(args Arguments) (client.APIClient, error) {
+	if reflect.DeepEqual(c.args.Host, args.Host) && c.client != nil {
+		return c.client, nil
 	}
 
 	hostURL, err := url.Parse(args.Host)
 	if err != nil {
-		return c.lastOptions, err
+		return c.client, err
 	}
 
 	opts := []client.Opt{
@@ -298,7 +271,7 @@ func (c *Component) getManagerOptions(args Arguments) (*options, error) {
 	if hostURL.Scheme == "http" || hostURL.Scheme == "https" {
 		rt, err := config.NewRoundTripperFromConfig(*args.HTTPClientConfig.Convert(), "docker_sd")
 		if err != nil {
-			return c.lastOptions, err
+			return c.client, err
 		}
 		opts = append(opts,
 			client.WithHTTPClient(&http.Client{
@@ -315,41 +288,33 @@ func (c *Component) getManagerOptions(args Arguments) (*options, error) {
 	client, err := client.NewClientWithOpts(opts...)
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "could not create new Docker client", "err", err)
-		return c.lastOptions, fmt.Errorf("failed to build docker client: %w", err)
+		return c.client, fmt.Errorf("failed to build docker client: %w", err)
 	}
 
-	return &options{
-		client:                client,
-		handler:               loki.NewEntryHandler(c.handler.Chan(), func() {}),
-		positions:             c.posFile,
-		targetRestartInterval: 5 * time.Second,
-	}, nil
+	return client, nil
 }
 
 // DebugInfo returns information about the status of tailed targets.
 func (c *Component) DebugInfo() interface{} {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
 	var res readerDebugInfo
-	for _, tgt := range c.manager.targets() {
-		details := tgt.Details()
-		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
-			Labels:     tgt.LabelsStr(),
-			ID:         details["id"],
-			LastError:  details["error"],
-			IsRunning:  details["running"],
-			ReadOffset: details["position"],
-		})
+	for s := range c.scheduler.Sources() {
+		t := s.(*tailer)
+		res.TargetsInfo = append(res.TargetsInfo, t.DebugInfo())
 	}
 	return res
 }
 
 type readerDebugInfo struct {
-	TargetsInfo []targetInfo `alloy:"targets_info,block"`
+	TargetsInfo []sourceInfo `alloy:"targets_info,block"`
 }
 
-type targetInfo struct {
+type sourceInfo struct {
 	ID         string `alloy:"id,attr"`
 	LastError  string `alloy:"last_error,attr"`
 	Labels     string `alloy:"labels,attr"`
-	IsRunning  string `alloy:"is_running,attr"`
+	IsRunning  bool   `alloy:"is_running,attr"`
 	ReadOffset string `alloy:"read_offset,attr"`
 }

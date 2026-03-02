@@ -569,10 +569,8 @@ func testAppendable(actualSamples chan testSample) []storage.Appendable {
 		return ref, nil
 	}
 
-	ls := labelstore.New(nil, prometheus.DefaultRegisterer)
 	return []storage.Appendable{alloyprom.NewInterceptor(
 		nil,
-		ls,
 		alloyprom.WithAppendHook(
 			hookFn))}
 }

@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,7 +34,7 @@ import (
 
 const name = "database_observability.mysql"
 
-const selectServerInfo = `SELECT @@server_uuid, VERSION()`
+const selectServerInfo = `SELECT @@server_uuid, @@hostname, VERSION()`
 
 func init() {
 	component.Register(component.Registration{
@@ -64,19 +64,28 @@ type Arguments struct {
 
 	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
+	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
 	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
 	SchemaTablesArguments   SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
+	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
-	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
 	ARN string `alloy:"arn,attr"`
+}
+
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
 type QueryTablesArguments struct {
@@ -92,6 +101,11 @@ type SchemaDetailsArguments struct {
 
 type SetupConsumersArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type SetupActorsArguments struct {
+	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
+	AutoUpdateSetupActors bool          `alloy:"auto_update_setup_actors,attr,optional"`
 }
 
 type ExplainPlansArguments struct {
@@ -113,6 +127,10 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 }
 
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	AllowUpdatePerfSchemaSettings: false,
 
@@ -131,6 +149,11 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Hour,
 	},
 
+	SetupActorsArguments: SetupActorsArguments{
+		CollectInterval:       1 * time.Hour,
+		AutoUpdateSetupActors: false,
+	},
+
 	ExplainPlansArguments: ExplainPlansArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
@@ -147,6 +170,9 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
+	},
+	HealthCheckArguments: HealthCheckArguments{
+		CollectInterval: 1 * time.Hour,
 	},
 }
 
@@ -314,11 +340,14 @@ func (c *Component) Update(args component.Arguments) error {
 		return nil
 	}
 
-	var serverUUID, engineVersion string
-	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
+	var serverUUID, hostname, engineVersion string
+	if err := rs.Scan(&serverUUID, &hostname, &engineVersion); err != nil {
 		c.reportError("failed to scan engine version", err)
 		return nil
 	}
+
+	// Generate server_id hash from server_uuid and hostname, similar to Postgres collector
+	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverUUID, hostname))))
 
 	var parsedEngineVersion semver.Version
 	matches := versionRegex.FindStringSubmatch(engineVersion)
@@ -330,11 +359,28 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
+	var cp *database_observability.CloudProvider
+	if c.args.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+		if err != nil {
+			c.reportError("failed to collect cloud provider information from config", err)
+			return nil
+		}
+		cp = cloudProvider
+	} else {
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		if err != nil {
+			c.reportError("failed to collect cloud provider information from DSN", err)
+			return nil
+		}
+		cp = cloudProvider
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -348,7 +394,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(serverUUID, engineVersion, parsedEngineVersion); err != nil {
+	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion, cp); err != nil {
 		c.reportError("failed to start collectors", err)
 		return nil
 	}
@@ -363,6 +409,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryDetailsCollector:   true,
 		collector.SchemaDetailsCollector:  true,
 		collector.SetupConsumersCollector: true,
+		collector.SetupActorsCollector:    true,
 		collector.QuerySamplesCollector:   true,
 		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
@@ -383,7 +430,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version) error {
+func (c *Component) startCollectors(serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -391,21 +438,7 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 		level.Error(c.opts.Logger).Log("msg", errorString)
 		startErrors = append(startErrors, errorString)
 	}
-
-	var cloudProviderInfo *database_observability.CloudProvider
-	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
-		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
-		}
-		cloudProviderInfo = &database_observability.CloudProvider{
-			AWS: &database_observability.AWSCloudProviderInfo{
-				ARN: arn,
-			},
-		}
-	}
-
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverUUID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverID)
 
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -447,6 +480,10 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
+			level.Warn(c.opts.Logger).Log("msg", "auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
+		}
+
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
 			EngineVersion:               parsedEngineVersion,
@@ -481,6 +518,27 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 				logStartError(collector.SetupConsumersCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, scCollector)
+		}
+	}
+
+	if collectors[collector.SetupActorsCollector] {
+		if c.args.SetupActorsArguments.AutoUpdateSetupActors && !c.args.AllowUpdatePerfSchemaSettings {
+			level.Warn(c.opts.Logger).Log("msg", "auto_update_setup_actors is true but allow_update_performance_schema_settings is false, setup_actors will not be updated")
+		}
+
+		saCollector, err := collector.NewSetupActors(collector.SetupActorsArguments{
+			DB:                    c.dbConnection,
+			Logger:                c.opts.Logger,
+			CollectInterval:       c.args.SetupActorsArguments.CollectInterval,
+			AutoUpdateSetupActors: c.args.AllowUpdatePerfSchemaSettings && c.args.SetupActorsArguments.AutoUpdateSetupActors,
+		})
+		if err != nil {
+			logStartError(collector.SetupActorsCollector, "create", err)
+		} else {
+			if err := saCollector.Start(context.Background()); err != nil {
+				logStartError(collector.SetupActorsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, saCollector)
 		}
 	}
 
@@ -536,6 +594,22 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
 		c.collectors = append(c.collectors, ciCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:              c.dbConnection,
+		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(context.Background()); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {
@@ -616,11 +690,11 @@ func formatDSN(dsn string, params ...string) string {
 	return dsn + strings.Join(params, "&")
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverUUID string) loki.EntryHandler {
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string) loki.EntryHandler {
 	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
-		"server_id": model.LabelValue(serverUUID),
+		"server_id": model.LabelValue(serverID),
 	}).Wrap(entryHandler)
 
 	return entryHandler

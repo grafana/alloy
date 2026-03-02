@@ -103,7 +103,7 @@ You can specify the `filter` block multiple times to provide more than one filte
 
 Refer to [List containers][List containers] from the Docker Engine API documentation for the list of supported filters and their meaning.
 
-[List containers]: https://docs.docker.com/engine/api/v1.41/#tag/Container/operation/ContainerList
+[List containers]: https://docs.docker.com/reference/api/engine/latest/#tag/Container/operation/ContainerList
 
 ### `oauth2`
 

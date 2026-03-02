@@ -68,6 +68,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/headers"                     // Import otelcol.auth.headers
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/oauth2"                      // Import otelcol.auth.oauth2
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/sigv4"                       // Import otelcol.auth.sigv4
+	_ "github.com/grafana/alloy/internal/component/otelcol/connector/count"                  // Import otelcol.connector.count
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/host_info"              // Import otelcol.connector.host_info
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"           // Import otelcol.connector.servicegraph
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanlogs"               // Import otelcol.connector.spanlogs
@@ -76,6 +77,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"                 // Import otelcol.exporter.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/faro"                    // Import otelcol.exporter.faro
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/file"                    // Import otelcol.exporter.file
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud"             // Import otelcol.exporter.googlecloud
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloudpubsub"       // Import otelcol.exporter.googlecloudpubsub
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"                   // Import otelcol.exporter.kafka
@@ -104,6 +106,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awscloudwatch"           // Import otelcol.receiver.awscloudwatch
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awsecscontainermetrics"  // Import otelcol.receiver.awsecscontainermetrics
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awss3"                   // Import otelcol.receiver.awss3
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/cloudflare"              // Import otelcol.receiver.cloudflare
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/faro"                    // Import otelcol.receiver.faro
@@ -125,6 +128,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"                 // Import otelcol.receiver.vcenter
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/zipkin"                  // Import otelcol.receiver.zipkin
 	_ "github.com/grafana/alloy/internal/component/otelcol/storage/file"                     // Import otelcol.storage.file
+	_ "github.com/grafana/alloy/internal/component/prometheus/echo"                          // Import prometheus.echo
 	_ "github.com/grafana/alloy/internal/component/prometheus/enrich"                        // Import prometheus.enrich
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/apache"               // Import prometheus.exporter.apache
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/azure"                // Import prometheus.exporter.azure
@@ -133,6 +137,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"           // Import prometheus.exporter.catchpoint
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"           // Import prometheus.exporter.cloudwatch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/consul"               // Import prometheus.exporter.consul
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"           // Import prometheus.exporter.databricks
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"              // Import prometheus.exporter.dnsmasq
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"        // Import prometheus.exporter.elasticsearch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/gcp"                  // Import prometheus.exporter.gcp

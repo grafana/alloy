@@ -60,8 +60,27 @@ func TestConnectionInfo(t *testing.T) {
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "some-account-123", "aws", "us-east-1"),
 		},
 		{
+			name:          "Azure with cloud provider info supplied",
+			dsn:           "postgres://user:pass@products-db.postgres.database.azure.com:5432/mydb",
+			engineVersion: "15.4",
+			cloudProvider: &database_observability.CloudProvider{
+				Azure: &database_observability.AzureCloudProviderInfo{
+					ServerName:     "products-db",
+					SubscriptionID: "sub-12345-abcde",
+					ResourceGroup:  "my-resource-group",
+				},
+			},
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "sub-12345-abcde", "azure", "my-resource-group"),
+		},
+		{
 			name:            "Azure flexibleservers dsn",
 			dsn:             "postgres://user:pass@products-db.postgres.database.azure.com:5432/mydb",
+			engineVersion:   "15.4",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "unknown", "azure", "unknown"),
+		},
+		{
+			name:            "Azure privatelink dsn",
+			dsn:             "postgres://user:pass@products-db.privatelink.postgres.database.azure.com:5432/mydb",
 			engineVersion:   "15.4",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "unknown", "azure", "unknown"),
 		},

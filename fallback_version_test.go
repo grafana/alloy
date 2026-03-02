@@ -1,20 +1,30 @@
-package main
+package alloy
 
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/build"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_fallbackVersionFromText(t *testing.T) {
-	in := `# This is a comment 
-# This is another comment 
-
-v1.2.3
-
-This line is ignored!`
+func Test_fallbackVersionFromJSON(t *testing.T) {
+	in := `{".": "1.2.3"}`
 	expect := "v1.2.3-devel"
 
-	actual := fallbackVersionFromText([]byte(in))
+	actual := fallbackVersionFromJSON([]byte(in))
 	require.Equal(t, expect, actual)
+}
+
+func Test_fallbackVersionFromJSON_InvalidJSON(t *testing.T) {
+	in := `not valid json`
+	// Should return build.Version when JSON is invalid
+	actual := fallbackVersionFromJSON([]byte(in))
+	require.Equal(t, build.Version, actual)
+}
+
+func Test_fallbackVersionFromJSON_MissingKey(t *testing.T) {
+	in := `{"other": "1.2.3"}`
+	// Should return build.Version when key is missing
+	actual := fallbackVersionFromJSON([]byte(in))
+	require.Equal(t, build.Version, actual)
 }

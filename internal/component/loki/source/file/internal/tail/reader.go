@@ -1,0 +1,147 @@
+package tail
+
+import (
+	"bufio"
+	"bytes"
+	"os"
+	"unsafe"
+
+	"golang.org/x/text/encoding"
+)
+
+const defaultBufSize = 4096
+
+func newReader(f *os.File, offset int64, enc encoding.Encoding) (*reader, error) {
+	var bomBytes []byte
+	offset, bomBytes = skipBOM(f, offset)
+	enc = resolveEncodingFromBOM(bomBytes, enc)
+
+	var (
+		decoder = enc.NewDecoder()
+		encoder = enc.NewEncoder()
+	)
+
+	nl, err := encodedNewline(encoder)
+	if err != nil {
+		return nil, err
+	}
+
+	cr, err := encodedCarriageReturn(encoder)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := &reader{
+		pos:     offset,
+		br:      bufio.NewReader(f),
+		decoder: decoder,
+		enc:     enc, // Store the encoding (after BOM detection) for use in reset
+		nl:      nl,
+		lastNl:  nl[len(nl)-1],
+		cr:      cr,
+		pending: make([]byte, 0, defaultBufSize),
+	}
+
+	return reader, nil
+}
+
+type reader struct {
+	pos     int64
+	br      *bufio.Reader
+	decoder *encoding.Decoder
+	enc     encoding.Encoding
+
+	nl      []byte
+	lastNl  byte
+	cr      []byte
+	pending []byte
+}
+
+func (r *reader) next() (string, error) {
+	// First we check if we already have a full line buffered.
+	if line, ok := r.consumeLine(); ok {
+		return r.decode(line)
+	}
+
+	for {
+
+		// Read more data up until the last byte of nl.
+		chunk, err := r.br.ReadBytes(r.lastNl)
+		if len(chunk) > 0 {
+			r.pending = append(r.pending, chunk...)
+
+			if line, ok := r.consumeLine(); ok {
+				return r.decode(line)
+			}
+		}
+
+		// If we did not get an error and did not find a full line we
+		// need to read more data.
+		if err == nil {
+			continue
+		}
+
+		return "", err
+	}
+}
+
+func (r *reader) decode(line []byte) (string, error) {
+	// Decode the line we have consumed.
+	converted, err := r.decoder.Bytes(bytes.TrimSuffix(line, r.cr))
+	if err != nil {
+		return "", err
+	}
+
+	// It is safe to convert this into a string here because converter will always copy
+	// the bytes given to it, even Nop decoder will do that.
+	return unsafe.String(unsafe.SliceData(converted), len(converted)), nil
+}
+
+// consumeLine checks pending for the delimiter; if found, it splits
+// pending into line and remainder.
+func (r *reader) consumeLine() ([]byte, bool) {
+	// Check if pending contains a full line.
+	i := bytes.Index(r.pending, r.nl)
+	if i < 0 {
+		return nil, false
+	}
+
+	// Extract everything up until newline.
+	line := r.pending[:i]
+	// Keep everything except the line we extraxted and newline.
+	rem := r.pending[i+len(r.nl):]
+	r.pending = append(make([]byte, 0, defaultBufSize), rem...)
+
+	// Advance the position on bytes we have consumed as a full line.
+	r.pos += int64(len(line) + len(r.nl))
+	return line, true
+}
+
+// position returns the byte offset for completed lines,
+// not necessarily all bytes consumed from the file.
+func (r *reader) position() int64 {
+	return r.pos
+}
+
+// reset prepares the reader for a new file handle, assuming the same encoding.
+// It skips the BOM, resets the buffered reader and decoder, and clears pending data.
+func (r *reader) reset(f *os.File) {
+	// Skip BOM if needed, we asume that the rotated file have the same encoding.
+	offset, _ := skipBOM(f, 0)
+	r.pos = offset
+	r.br.Reset(f)
+	r.decoder.Reset()
+	r.pending = make([]byte, 0, defaultBufSize)
+}
+
+func encodedNewline(e *encoding.Encoder) ([]byte, error) {
+	out := make([]byte, 10)
+	nDst, _, err := e.Transform(out, []byte{'\n'}, true)
+	return out[:nDst], err
+}
+
+func encodedCarriageReturn(e *encoding.Encoder) ([]byte, error) {
+	out := make([]byte, 10)
+	nDst, _, err := e.Transform(out, []byte{'\r'}, true)
+	return out[:nDst], err
+}

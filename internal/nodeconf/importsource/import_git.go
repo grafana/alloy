@@ -213,6 +213,9 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {
 				level.Error(im.log).Log("msg", "failed to update repository", "err", err)
+				if im.repo == nil && r == nil {
+					return err
+				}
 				im.updateHealth(err)
 			} else {
 				return err
@@ -222,7 +225,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 		im.repoOpts = repoOpts
 	}
 
-	if err := im.pollFile(context.Background(), newArgs); err != nil {
+	if err = im.pollFile(context.Background(), newArgs); err != nil {
 		if errors.As(err, &vcs.UpdateFailedError{}) {
 			level.Error(im.log).Log("msg", "failed to poll file from repository", "err", err)
 			// We don't update the health here because it will be updated via the defer call.

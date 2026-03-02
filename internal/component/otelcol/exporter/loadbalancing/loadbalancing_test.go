@@ -699,6 +699,184 @@ func TestConfigConversion(t *testing.T) {
 	}
 }
 
+func TestQueueBatchConfig(t *testing.T) {
+	tests := []struct {
+		testName string
+		alloyCfg string
+		expected otelcol.QueueArguments
+	}{
+		{
+			testName: "default",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			sending_queue {
+				batch {}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+				},
+			},
+		},
+		{
+			testName: "explicit_batch",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			sending_queue {
+				batch {
+					flush_timeout = "100ms"
+					min_size      = 4096
+					max_size      = 16384
+					sizer         = "bytes"
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 100 * time.Millisecond,
+					MinSize:      4096,
+					MaxSize:      16384,
+					Sizer:        "bytes",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			_, err := args.Convert()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expected.Enabled, args.Queue.Enabled)
+			require.Equal(t, tc.expected.NumConsumers, args.Queue.NumConsumers)
+			require.Equal(t, tc.expected.QueueSize, args.Queue.QueueSize)
+			require.Equal(t, tc.expected.Sizer, args.Queue.Sizer)
+			require.Equal(t, tc.expected.Batch, args.Queue.Batch)
+		})
+	}
+}
+
+func TestProtocolQueueBatchConfig(t *testing.T) {
+	tests := []struct {
+		testName string
+		alloyCfg string
+		expected otelcol.QueueArguments
+	}{
+		{
+			testName: "default",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+					queue {
+						batch {}
+					}
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+				},
+			},
+		},
+		{
+			testName: "explicit_batch",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+					queue {
+						batch {
+							flush_timeout = "100ms"
+							min_size      = 4096
+							max_size      = 16384
+							sizer         = "bytes"
+						}
+					}
+				}
+			}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 100 * time.Millisecond,
+					MinSize:      4096,
+					MaxSize:      16384,
+					Sizer:        "bytes",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			_, err := args.Convert()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expected.Enabled, args.Protocol.OTLP.Queue.Enabled)
+			require.Equal(t, tc.expected.NumConsumers, args.Protocol.OTLP.Queue.NumConsumers)
+			require.Equal(t, tc.expected.QueueSize, args.Protocol.OTLP.Queue.QueueSize)
+			require.Equal(t, tc.expected.Sizer, args.Protocol.OTLP.Queue.Sizer)
+			require.Equal(t, tc.expected.Batch, args.Protocol.OTLP.Queue.Batch)
+		})
+	}
+}
+
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string

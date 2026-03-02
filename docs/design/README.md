@@ -75,10 +75,6 @@ Proposals may initially be brief, with just enough detail to explain what is
 being proposed, why it is being proposed, and any relevant details that may
 guide the public discussion towards consensus.
 
-Proposal authors may skip straight to creating a design document for their
-proposal if they know one will be needed. If in doubt, it's better to create a
-proposal issue first.
-
 Any existing issue can be turned into a proposal by adding a `proposal` label.
 
 ### Compatibility
@@ -91,37 +87,34 @@ avoids approved proposals from becoming obsolete before they are implemented.
 
 ### Design documents
 
-Proposals that require more careful consideration and explanation require a
-design document.
+Proposals with multiple viable options require a design document.
 
 * Design documents should be checked into the Alloy repository as
   `docs/design/NNNN-name.md`, where `NNNN` is the GitHub issue number of the
-  proposal and `name` is a short descriptive name deliminated by hyphens.
+  proposal and `name` is a short descriptive name delimited by hyphens.
 
 * Design documents should follow the template in `docs/design/template.md`.
 
 * Design documents should address any specific concerns raised during the
   initial discussion.
 
-* Design documents should acknowledge and address alternative solutions, if
-  known, to the problem statement.
+* Design documents should include at least 2 options, with sufficient detail
+  to evaluate all options.
 
 Once a design document is created, the proposal author should:
 
-* Close the original proposal issue and link to the design document PR.
 * Update the proposal issue description with a link to the design document.
-
-Closing the original proposal issue in favor of the design document PR prevents
-fragmenting discussions as contributors work towards consensus on a proposal.
+* Ensure all further conversation is directed to the design document PR.
 
 The state of the design document PR is used to denote whether the proposal is
-accepted or declined and is treated as the source of truth. The design document
-content should not include any indication of the current status of the
-proposal.
+accepted or declined. The design document content should not include any 
+indication of the current status of the proposal.
 
-The PR for design documents are merged once the associated proposal becomes
-_Accepted_. If the proposal becomes _Declined_, the PR for the design document
-is closed.
+If the proposal is _Accepted_, the design document PR will be merged and the proposal 
+issue will be used for work tracking.
+
+If the proposal is _Declined_ the design document PR and the proposal issue will be
+closed.
 
 ### Design document template
 
@@ -208,15 +201,6 @@ Proposals are in one of the following states:
 
   Reconsidering a previously declined proposal with the same approach may be
   considered when there is significant new information.
-
-* **Declined as Infeasible**: If a proposal directly contradicts the core
-  design of Alloy, or if a proposal is impossible to implement efficiently or
-  at all, the proposal review group may decline the proposal as infeasible
-  without progressing through other stages.
-
-  If it seems like there is still general interest from others, or that
-  discussion may lead to a feasible proposal, the proposal may be kept open and
-  the discussion continued.
 
 * **Declined as Retracted**: If a proposal is closed or retracted in a comment
   by the original author, the proposal review group may decline the proposal as
