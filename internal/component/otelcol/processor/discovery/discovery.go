@@ -108,7 +108,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	nextTraces := c.Output.Traces
-	fanout := fanoutconsumer.Traces(nextTraces)
+	fanout := fanoutconsumer.Traces(nextTraces, o.Registerer)
 	tracesInterceptor := interceptconsumer.Traces(fanout,
 		func(ctx context.Context, td ptrace.Traces) error {
 			livedebuggingpublisher.PublishTracesIfActive(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID, td, otelcol.GetComponentMetadata(nextTraces))
@@ -175,7 +175,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		hostLabels[host] = promsdconsumer.NewTargetsWithNonInternalLabels(labels)
 	}
 	nextTraces := c.args.Output.Traces
-	fanout := fanoutconsumer.Traces(nextTraces)
+	fanout := fanoutconsumer.Traces(nextTraces, c.opts.Registerer)
 
 	tracesInterceptor := interceptconsumer.Traces(fanout,
 		func(ctx context.Context, td ptrace.Traces) error {

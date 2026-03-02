@@ -187,7 +187,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var tracesProcessor otelprocessor.Traces
 	if len(next.Traces) > 0 {
-		fanout := fanoutconsumer.Traces(next.Traces)
+		fanout := fanoutconsumer.Traces(next.Traces, reg)
 		tracesInterceptor := interceptconsumer.Traces(fanout,
 			func(ctx context.Context, td ptrace.Traces) error {
 				livedebuggingpublisher.PublishTracesIfActive(p.debugDataPublisher, p.opts.ID, td, otelcol.GetComponentMetadata(next.Traces))
@@ -204,7 +204,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var metricsProcessor otelprocessor.Metrics
 	if len(next.Metrics) > 0 {
-		fanout := fanoutconsumer.Metrics(next.Metrics)
+		fanout := fanoutconsumer.Metrics(next.Metrics, reg)
 		metricsInterceptor := interceptconsumer.Metrics(fanout,
 			func(ctx context.Context, md pmetric.Metrics) error {
 				livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
@@ -221,7 +221,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var logsProcessor otelprocessor.Logs
 	if len(next.Logs) > 0 {
-		fanout := fanoutconsumer.Logs(next.Logs)
+		fanout := fanoutconsumer.Logs(next.Logs, reg)
 		logsInterceptor := interceptconsumer.Logs(fanout,
 			func(ctx context.Context, ld plog.Logs) error {
 				livedebuggingpublisher.PublishLogsIfActive(p.debugDataPublisher, p.opts.ID, ld, otelcol.GetComponentMetadata(next.Logs))

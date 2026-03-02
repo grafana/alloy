@@ -107,7 +107,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	nextLogs := fanoutconsumer.Logs(c.Output.Logs)
+	nextLogs := fanoutconsumer.Logs(c.Output.Logs, o.Registerer)
 	consumer, err := NewConsumer(c, nextLogs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a traces consumer due to error: %w", err)
@@ -149,7 +149,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	nextLogs := c.args.Output.Logs
 
-	fanout := fanoutconsumer.Logs(nextLogs)
+	fanout := fanoutconsumer.Logs(nextLogs, c.opts.Registerer)
 	logsInterceptor := interceptconsumer.Logs(fanout,
 		func(ctx context.Context, ld plog.Logs) error {
 			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, otelcol.GetComponentMetadata(nextLogs))
