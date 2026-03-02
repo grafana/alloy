@@ -73,7 +73,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:            loki.NewLogsBatchReceiver(),
 		uncheckedCollector: util.NewUncheckedCollector(nil),
 
-		fanout: loki.NewFanout(args.ForwardTo),
+		fanout: loki.NewFanout(args.ForwardTo, opts.Registerer),
 	}
 	opts.Registerer.MustRegister(c.uncheckedCollector)
 	err := c.Update(args)

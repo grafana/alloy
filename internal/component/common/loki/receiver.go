@@ -30,6 +30,10 @@ func (l *logsReceiver) Chan() chan Entry {
 	return l.entries
 }
 
+func (l *logsReceiver) ComponentID() string {
+	return l.componentID
+}
+
 func (l *logsReceiver) String() string {
 	return l.componentID + ".receiver"
 }
