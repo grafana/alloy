@@ -166,7 +166,7 @@ func (p *Connector) Update(args component.Arguments) error {
 	settings := otelconnector.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         zapadapter.NewWithLevel(p.opts.Logger, p.opts.Leveler),
+			Logger:         zapadapter.New(p.opts.Logger, p.opts.Leveler),
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
 		},

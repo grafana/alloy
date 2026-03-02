@@ -149,7 +149,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	settings := otelreceiver.Settings{
 		ID: otelcomponent.NewIDWithName(r.factory.Type(), r.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         zapadapter.NewWithLevel(r.opts.Logger, r.opts.Leveler),
+			Logger:         zapadapter.New(r.opts.Logger, r.opts.Leveler),
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  mp,
 		},

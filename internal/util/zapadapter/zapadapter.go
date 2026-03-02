@@ -16,23 +16,13 @@ import (
 )
 
 // New returns a new zap.Logger instance which will forward logs to the
-// provided log.Logger. The github.com/go-kit/log/level package will be used
-// for specifying log levels.
-//
-// Because log.Logger has no way to report its minimum level, all levels are
-// reported as enabled. Use NewWithLevel to avoid unnecessary work when a level
-// is disabled.
-func New(l log.Logger) *zap.Logger {
-	return zap.New(&loggerCore{inner: l})
-}
-
-// NewWithLevel returns a new zap.Logger instance which will forward logs to
-// the provided log.Logger. leveler is consulted on every log call so that
+// provided log.Logger. leveler is consulted on every log call so that
 // zap's early-exit optimisation fires correctly when a level is disabled,
 // preventing unnecessary field encoding and allocation. Because leveler is
 // read on every call (not snapshotted), dynamic level changes — such as
-// Alloy's hot-reload — are reflected immediately.
-func NewWithLevel(l log.Logger, leveler slog.Leveler) *zap.Logger {
+// Alloy's hot-reload — are reflected immediately. leveler may be nil, in
+// which case all levels are reported as enabled.
+func New(l log.Logger, leveler slog.Leveler) *zap.Logger {
 	return zap.New(&loggerCore{inner: l, leveler: leveler})
 }
 
@@ -166,34 +156,32 @@ func (fe *fieldEncoder) Close() error {
 }
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newArrayFieldEncoder()
-		err := marshaler.MarshalLogArray(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newArrayFieldEncoder()
+	if err := marshaler.MarshalLogArray(enc); err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newObjectFieldEncoder()
-		err := marshaler.MarshalLogObject(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newObjectFieldEncoder()
+	if err := marshaler.MarshalLogObject(enc); err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
@@ -527,10 +515,3 @@ func (fe *arrayFieldEncoder) AppendReflected(value any) error {
 	return nil
 }
 
-type lazyStringer struct {
-	f func() string
-}
-
-func (l lazyStringer) String() string {
-	return l.f()
-}

@@ -114,7 +114,7 @@ func Test(t *testing.T) {
 
 			inner := log.NewLogfmtLogger(log.NewSyncWriter(&buf))
 
-			zapLogger := zapadapter.New(inner)
+			zapLogger := zapadapter.New(inner, nil)
 			zapLogger.Info("Hello, world!", tc.field...)
 
 			require.Equal(t, tc.expect, strings.TrimSpace(buf.String()))
@@ -122,39 +122,6 @@ func Test(t *testing.T) {
 	}
 }
 
-/*
-	As of 2025-06-04:
-
-goos: darwin
-goarch: arm64
-pkg: github.com/grafana/alloy/internal/util/zapadapter
-cpu: Apple M2
-Benchmark
-Benchmark/No_fields_enabled-8         	 1352374	       864.7 ns/op
-Benchmark/No_fields_disabled-8        	 6223372	       193.1 ns/op
-Benchmark/Any_enabled-8               	 1000000	      1332 ns/op
-Benchmark/Any_disabled-8              	 4654744	       240.5 ns/op
-Benchmark/Bool_enabled-8              	 1000000	      1015 ns/op
-Benchmark/Bool_disabled-8             	 5353936	       253.2 ns/op
-Benchmark/Duration_enabled-8          	 1000000	      1062 ns/op
-Benchmark/Duration_disabled-8         	 5175646	       238.0 ns/op
-Benchmark/Error_enabled-8             	 1000000	      1105 ns/op
-Benchmark/Error_disabled-8            	 4905226	       267.0 ns/op
-Benchmark/Float32_enabled-8           	 1000000	      1203 ns/op
-Benchmark/Float32_disabled-8          	 4813323	       233.6 ns/op
-Benchmark/Float64_enabled-8           	 1000000	      1037 ns/op
-Benchmark/Float64_disabled-8          	 5130016	       232.8 ns/op
-Benchmark/Int_enabled-8               	 1000000	      1065 ns/op
-Benchmark/Int_disabled-8              	 5154585	       241.0 ns/op
-Benchmark/String_enabled-8            	 1000000	      1025 ns/op
-Benchmark/String_disabled-8           	 5105998	       233.3 ns/op
-Benchmark/Time_enabled-8              	 1000000	      1143 ns/op
-Benchmark/Time_disabled-8             	 4857289	       248.3 ns/op
-Benchmark/Array_enabled-8             	  327018	      3529 ns/op
-Benchmark/Array_disabled-8            	 4889307	       252.8 ns/op
-Benchmark/Object_enabled-8            	  285597	      4187 ns/op
-Benchmark/Object_disabled-8           	 4864752	       245.3 ns/op
-*/
 func Benchmark(b *testing.B) {
 	// Benchmark various fields that may be commonly printed.
 
@@ -195,7 +162,7 @@ func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
 	err = innerLogger.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
 	require.NoError(b, err)
 
-	zapLogger := zapadapter.New(innerLogger)
+	zapLogger := zapadapter.New(innerLogger, innerLogger)
 
 	b.Run(name+" enabled", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -209,13 +176,13 @@ func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
 	})
 }
 
-func TestNewWithLevel(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Run("suppresses debug logs when level is info", func(t *testing.T) {
 		var buf bytes.Buffer
 		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
 		require.NoError(t, err)
 
-		zapLogger := zapadapter.NewWithLevel(inner, inner)
+		zapLogger := zapadapter.New(inner, inner)
 		zapLogger.Debug("should not appear")
 
 		require.Empty(t, strings.TrimSpace(buf.String()))
@@ -226,7 +193,7 @@ func TestNewWithLevel(t *testing.T) {
 		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
 		require.NoError(t, err)
 
-		zapLogger := zapadapter.NewWithLevel(inner, inner)
+		zapLogger := zapadapter.New(inner, inner)
 		zapLogger.Debug("should appear")
 
 		require.Contains(t, buf.String(), "should appear")
@@ -237,7 +204,7 @@ func TestNewWithLevel(t *testing.T) {
 		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
 		require.NoError(t, err)
 
-		child := zapadapter.NewWithLevel(inner, inner).With(zap.String("key", "val"))
+		child := zapadapter.New(inner, inner).With(zap.String("key", "val"))
 		child.Debug("should not appear")
 
 		require.Empty(t, strings.TrimSpace(buf.String()))
@@ -248,7 +215,7 @@ func TestNewWithLevel(t *testing.T) {
 		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
 		require.NoError(t, err)
 
-		zapLogger := zapadapter.NewWithLevel(inner, inner)
+		zapLogger := zapadapter.New(inner, inner)
 
 		zapLogger.Debug("should not appear before reload")
 		require.Empty(t, strings.TrimSpace(buf.String()))
@@ -267,7 +234,7 @@ func TestNewWithLevel(t *testing.T) {
 		inner, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
 		require.NoError(t, err)
 
-		zapLogger := zapadapter.NewWithLevel(inner, inner)
+		zapLogger := zapadapter.New(inner, inner)
 
 		zapLogger.Debug("should appear before reload")
 		require.Contains(t, buf.String(), "should appear before reload")
@@ -286,7 +253,7 @@ func TestNewWithLevel(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create the child logger before the reload.
-		child := zapadapter.NewWithLevel(inner, inner).With(zap.String("key", "val"))
+		child := zapadapter.New(inner, inner).With(zap.String("key", "val"))
 
 		child.Debug("should appear before reload")
 		require.Contains(t, buf.String(), "should appear before reload")
@@ -300,17 +267,17 @@ func TestNewWithLevel(t *testing.T) {
 	})
 }
 
-// TestNewWithLevelAllocations verifies that disabled log levels produce minimal
-// allocations with NewWithLevel, confirming zap's early-exit optimisation fires.
+// TestNewAllocations verifies that disabled log levels produce minimal
+// allocations with New, confirming zap's early-exit optimisation fires.
 //
 // When a level is disabled, the only unavoidable allocation is the []Field
 // slice that the Go runtime constructs for the variadic ...Field parameter
 // before calling Debug/Info/etc.
-func TestNewWithLevelAllocations(t *testing.T) {
+func TestNewAllocations(t *testing.T) {
 	makeLogger := func(level logging.Level) (*logging.Logger, *zap.Logger) {
 		inner, err := logging.New(io.Discard, logging.Options{Level: level, Format: logging.FormatLogfmt})
 		require.NoError(t, err)
-		return inner, zapadapter.NewWithLevel(inner, inner)
+		return inner, zapadapter.New(inner, inner)
 	}
 
 	t.Run("zero allocs with no fields when debug is disabled", func(t *testing.T) {
@@ -333,24 +300,12 @@ func TestNewWithLevelAllocations(t *testing.T) {
 
 	t.Run("at most one alloc with zap.Any when debug is disabled", func(t *testing.T) {
 		// zap.Any with a struct would normally trigger json.Marshal via the
-		// fieldEncoder. With NewWithLevel that path is never reached.
+		// fieldEncoder. With New that path is never reached.
 		_, lg := makeLogger(logging.LevelInfo)
 		allocs := testing.AllocsPerRun(100, func() {
 			lg.Debug("msg", zap.Any("obj", struct{ X, Y int }{1, 2}))
 		})
 		require.LessOrEqual(t, allocs, float64(1))
-	})
-
-	t.Run("more than one alloc when debug is disabled without leveler", func(t *testing.T) {
-		// Regression baseline: New always reports Enabled()=true, so Write() runs
-		// and the full encoding pipeline executes even for suppressed levels.
-		inner, err := logging.New(io.Discard, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
-		require.NoError(t, err)
-		lg := zapadapter.New(inner)
-		allocs := testing.AllocsPerRun(100, func() {
-			lg.Debug("msg", zap.String("k", "v"), zap.Bool("b", true), zap.Int("n", 42))
-		})
-		require.Greater(t, allocs, float64(1))
 	})
 
 	t.Run("at most one alloc after hot-reload to error", func(t *testing.T) {

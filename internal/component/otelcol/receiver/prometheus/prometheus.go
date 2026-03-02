@@ -133,7 +133,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	settings := otelreceiver.Settings{
 		ID: otelcomponent.NewIDWithName(otelcomponent.MustNewType("prometheus"), c.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.NewWithLevel(c.opts.Logger, c.opts.Leveler),
+			Logger: zapadapter.New(c.opts.Logger, c.opts.Leveler),
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  mp,
