@@ -184,12 +184,12 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 		nextRef: atomic.NewUint64(0),
 	}
 
-	storage.bufPool.New = func() interface{} {
+	storage.bufPool.New = func() any {
 		b := make([]byte, 0, 1024)
 		return b
 	}
 
-	storage.appenderPool.New = func() interface{} {
+	storage.appenderPool.New = func() any {
 		return &appender{
 			w:                      storage,
 			pendingSeries:          make([]record.RefSeries, 0, 100),
@@ -296,25 +296,25 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 		dec     = record.NewDecoder(nil, slog.New(logging.NewSlogGoKitHandler(w.logger)))
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
-		decoded    = make(chan interface{}, 10)
+		decoded    = make(chan any, 10)
 		errCh      = make(chan error, 1)
 		seriesPool = sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return []record.RefSeries{}
 			},
 		}
 		samplesPool = sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return []record.RefSample{}
 			},
 		}
 		histogramsPool = sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return []record.RefHistogramSample{}
 			},
 		}
 		floatHistogramsPool = sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return []record.RefFloatHistogramSample{}
 			},
 		}
@@ -843,7 +843,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	return storage.SeriesRef(series.ref), nil
 }
 
-func (a *appender) AppendCTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ int64, _ int64) (storage.SeriesRef, error) {
+func (a *appender) AppendSTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ int64, _ int64) (storage.SeriesRef, error) {
 	// TODO(ptodev): implement this later
 	return 0, nil
 }
@@ -887,7 +887,7 @@ func (a *appender) SetOptions(_ *storage.AppendOptions) {
 	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
 }
 
-func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (a *appender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	// TODO: implement this later
 	return 0, nil
 }

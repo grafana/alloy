@@ -66,9 +66,8 @@ var testMatchLogLineApp2 = `
 
 func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	plName := "test_match_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +84,7 @@ func TestMatchStage(t *testing.T) {
 
 	// Process the second log line which should extract the output from the `msg` field
 	e.Line = testMatchLogLineApp2
-	e.Extracted = map[string]interface{}{}
+	e.Extracted = map[string]any{}
 	in <- e
 	e = <-out
 	assert.Equal(t, "app2 log line", e.Line)
@@ -163,13 +162,13 @@ func TestMatcher(t *testing.T) {
 				"",
 			}
 			logger := util.TestAlloyLogger(t)
-			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			s, err := newMatcherStage(logger, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if s != nil {
-				out := processEntries(s, newEntry(map[string]interface{}{
+				out := processEntries(s, newEntry(map[string]any{
 					"test_label": "unimportant value",
 				}, toLabelSet(tt.labels), "foo", time.Now()))
 

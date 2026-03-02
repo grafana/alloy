@@ -57,7 +57,9 @@ SELECT
 	waits.event_name as WAIT_EVENT_NAME,
 	waits.object_name as WAIT_OBJECT_NAME,
 	waits.object_type as WAIT_OBJECT_TYPE,
-	waits.timer_wait as WAIT_TIMER_WAIT
+	waits.timer_wait as WAIT_TIMER_WAIT,
+	threads.PROCESSLIST_USER as QUERY_USER,
+	threads.PROCESSLIST_HOST as QUERY_HOST
 	%s
 FROM
 	performance_schema.events_statements_history AS statements
@@ -65,10 +67,13 @@ LEFT JOIN
 	performance_schema.events_waits_history waits
 	ON statements.thread_id = waits.thread_id
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+LEFT JOIN
+	performance_schema.threads threads
+	ON statements.THREAD_ID = threads.THREAD_ID
 WHERE
 	statements.DIGEST IS NOT NULL
-	AND statements.CURRENT_SCHEMA NOT IN ` + EXCLUDED_SCHEMAS +
-	` %s %s`
+	AND statements.CURRENT_SCHEMA NOT IN %s
+	%s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -79,6 +84,7 @@ type QuerySamplesArguments struct {
 	DB                          *sql.DB
 	EngineVersion               semver.Version
 	CollectInterval             time.Duration
+	ExcludeSchemas              []string
 	EntryHandler                loki.EntryHandler
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
@@ -91,6 +97,7 @@ type QuerySamples struct {
 	dbConnection                *sql.DB
 	engineVersion               semver.Version
 	collectInterval             time.Duration
+	excludeSchemas              []string
 	entryHandler                loki.EntryHandler
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
@@ -110,6 +117,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		dbConnection:                args.DB,
 		engineVersion:               args.EngineVersion,
 		collectInterval:             args.CollectInterval,
+		excludeSchemas:              args.ExcludeSchemas,
 		entryHandler:                args.EntryHandler,
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
@@ -232,15 +240,17 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		textNotNullClause = digestTextNotNullClause
 	}
 
+	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
+
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, textField, excludedSchemasClause, textNotNullClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
 		additionalFields := cpuTimeField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
@@ -289,9 +299,13 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			WaitObjectName sql.NullString
 			WaitObjectType sql.NullString
 			WaitTime       sql.NullFloat64
+
+			// user and host who issued the query
+			User sql.NullString
+			Host sql.NullString
 		}{}
 
-		scanArgs := []interface{}{
+		scanArgs := []any{
 			&row.Schema,
 			&row.ThreadID,
 			&row.StatementEventID,
@@ -309,6 +323,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			&row.WaitObjectName,
 			&row.WaitObjectType,
 			&row.WaitTime,
+			&row.User,
+			&row.Host,
 		}
 
 		if semver.MustParseRange(">=8.0.28")(c.engineVersion) {
@@ -340,8 +356,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-			row.Schema.String, row.ThreadID.String,
+			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
 			row.RowsExamined,
@@ -370,11 +386,13 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			)
 		}
 
-		if row.WaitEventID.Valid {
+		if row.WaitEventID.Valid && row.WaitTime.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
-				`schema="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+				`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
+				row.User.String,
+				row.Host.String,
 				row.ThreadID.String,
 				row.Digest.String,
 				row.StatementEventID.String,

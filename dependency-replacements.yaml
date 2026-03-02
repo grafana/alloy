@@ -37,12 +37,6 @@ modules:
     file_type: ocb
 
 replaces:
-  - comment: >
-      TODO: remove this replace directive once the upstream issue is fixed:
-      https://github.com/prometheus/prometheus/issues/13842
-    dependency: go.opentelemetry.io/collector/featuregate
-    replacement: github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
-
   - comment: Replace yaml.v2 with fork
     dependency: gopkg.in/yaml.v2
     replacement: github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
@@ -77,11 +71,11 @@ replaces:
 
   - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
     dependency: github.com/google/cadvisor
-    replacement: github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+    replacement: github.com/grafana/cadvisor grafana-v0.54.1-noglobals
 
-  - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
+  - comment: TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
-    replacement: github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+    replacement: github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
   - comment: TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
     dependency: github.com/prometheus/mysqld_exporter
@@ -99,11 +93,11 @@ replaces:
 
   - comment: Replace OpenTelemetry OBI with Grafana fork
     dependency: go.opentelemetry.io/obi
-    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13
+    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
 
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler
-    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202550-0.20251216083346-f910fc4db23e
+    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-241376220646
 
   - comment: Update openshift/client-go to version compatible with structured-merge-diff v6
     dependency: github.com/openshift/client-go
@@ -124,7 +118,13 @@ replaces:
     replacement: sigs.k8s.io/controller-runtime v0.20.4
 
   - comment: >
-      Point to fork that uses prometheus v0.308.0, changes here are mostly related to type name updates.
-      This can be removed once the upstream dependency points to prometheus v0.308.0 and above
-    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter
-    replacement: github.com/grafana/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.0.0-20260108134526-9817e6c361c9
+      Fork to grafana repo to address issue with freebsd build tags.
+      This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
+    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
+    replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
+
+  - comment: >
+      TODO: Fork to update Prometheus to v0.309.1 while keeping OTel Collector at v0.142.0.
+      Remove when OTel Collector is upgraded to v0.144.0+, which includes this change upstream.
+    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver
+    replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98

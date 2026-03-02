@@ -1,0 +1,19 @@
+---
+# Source: alloy/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy
+  namespace: default
+  labels:
+    helm.sh/chart: alloy
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/version: "vX.Y.Z"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: config
+data:
+  config.alloy: |-
+    logging {
+      level = "debug"
+    }

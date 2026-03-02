@@ -234,6 +234,10 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 
 <!-- START GENERATED SECTION: EXPORTERS OF Loki `LogsReceiver` -->
 
+{{< collapse title="database_observability" >}}
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
+{{< /collapse >}}
+
 {{< collapse title="loki" >}}
 - [loki.echo](../components/loki/loki.echo)
 - [loki.enrich](../components/loki/loki.enrich)
@@ -341,6 +345,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
+- [otelcol.processor.metric_start_time](../components/otelcol/otelcol.processor.metric_start_time)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
 - [otelcol.processor.resourcedetection](../components/otelcol/otelcol.processor.resourcedetection)
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
@@ -382,6 +387,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
+- [otelcol.processor.metric_start_time](../components/otelcol/otelcol.processor.metric_start_time)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
 - [otelcol.processor.resourcedetection](../components/otelcol/otelcol.processor.resourcedetection)
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
@@ -401,7 +407,6 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)
 - [otelcol.receiver.loki](../components/otelcol/otelcol.receiver.loki)
-- [otelcol.receiver.opencensus](../components/otelcol/otelcol.receiver.opencensus)
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
 - [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)

@@ -190,8 +190,9 @@ func TestWALEndpoint(t *testing.T) {
 			batchSize: 10,
 			batchWait: time.Millisecond * 50,
 			queueConfig: QueueConfig{
-				Capacity:     100,
-				DrainTimeout: time.Second,
+				Capacity:        100,
+				DrainTimeout:    time.Second,
+				BlockOnOverflow: true,
 			},
 		},
 		"many lines and series, immediate delivery": {
@@ -200,8 +201,9 @@ func TestWALEndpoint(t *testing.T) {
 			batchSize: 10,
 			batchWait: time.Millisecond * 50,
 			queueConfig: QueueConfig{
-				Capacity:     100,
-				DrainTimeout: time.Second,
+				Capacity:        100,
+				DrainTimeout:    time.Second,
+				BlockOnOverflow: true,
 			},
 		},
 		"many lines and series, delivery because of batch age": {
@@ -210,8 +212,9 @@ func TestWALEndpoint(t *testing.T) {
 			batchSize: int(1 * units.MiB), // make batch size big enough so that all batches should be delivered because of batch age
 			batchWait: time.Millisecond * 50,
 			queueConfig: QueueConfig{
-				Capacity:     int(100 * units.MiB), // keep buffered channel size on 100
-				DrainTimeout: 10 * time.Second,
+				Capacity:        int(100 * units.MiB), // keep buffered channel size on 100
+				DrainTimeout:    10 * time.Second,
+				BlockOnOverflow: true,
 			},
 			expectedRWReqsCount: 1, // expect all entries to be sent in a single batch (100 * < 10B per line) < 1MiB
 		},

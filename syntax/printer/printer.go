@@ -165,7 +165,7 @@ func (p *printer) SetComments(comments []ast.CommentGroup) {
 // the provided Pos. Writing token.Pos values can help make sure the printer's
 // AST-space position is accurate, as AST-space position is otherwise an
 // estimation based on written data.
-func (p *printer) Write(args ...interface{}) {
+func (p *printer) Write(args ...any) {
 	for _, arg := range args {
 		var (
 			data  string

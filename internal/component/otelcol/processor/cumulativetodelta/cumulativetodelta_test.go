@@ -14,14 +14,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			testName: "Defaults",
 			cfg: `
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"max_staleness": 0,
 				"initial_value": 0,
 			},
@@ -31,7 +31,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 				output {}
 			`,
-			expected: map[string]interface{}{},
+			expected: map[string]any{},
 		},
 		{
 			testName: "Initial Value Auto",
@@ -39,7 +39,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				initial_value = "auto"
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"initial_value": 0,
 			},
 		},
@@ -49,7 +49,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				initial_value = "keep"
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"initial_value": 1,
 			},
 		},
@@ -59,7 +59,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				initial_value = "drop"
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"initial_value": 2,
 			},
 		},
@@ -80,15 +80,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				}
 				output {}
 			`,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"max_staleness": 86400000000000,
 				"initial_value": 2,
-				"include": map[string]interface{}{
+				"include": map[string]any{
 					"metrics":      []string{"metric1", "metric2"},
 					"match_type":   "strict",
 					"metric_types": []string{"histogram"},
 				},
-				"exclude": map[string]interface{}{
+				"exclude": map[string]any{
 					"metrics":      []string{".*metric.*"},
 					"match_type":   "regexp",
 					"metric_types": []string{"sum"},

@@ -45,7 +45,7 @@ var testOutputLogLineWithMissingKey = `
 
 func TestPipeline_Output(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testOutputLogLine, time.Now()))[0]
@@ -56,7 +56,7 @@ func TestPipelineWithMissingKey_Output(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testOutputLogLineWithMissingKey, time.Now()))
@@ -76,7 +76,7 @@ func TestOutputStage_Process(t *testing.T) {
 	cfg := OutputConfig{
 		Source: "out",
 	}
-	extractedValues := map[string]interface{}{
+	extractedValues := map[string]any{
 		"something": "notimportant",
 		"out":       "outmessage",
 	}

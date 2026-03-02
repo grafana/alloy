@@ -131,13 +131,20 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.handler.Update(newArgs.Server)
 
-	c.lazySourceMaps.SetInner(newSourceMapsStore(
+	// Stop old store's cleanup if there is one
+	c.lazySourceMaps.Stop()
+
+	innerStore := newSourceMapsStore(
 		log.With(c.log, "subcomponent", "handler"),
 		newArgs.SourceMaps,
 		c.sourceMapsMetrics,
 		nil, // Use default HTTP client.
 		nil, // Use default FS implementation.
-	))
+	)
+	c.lazySourceMaps.SetInner(innerStore)
+
+	// Start cleanup for new store
+	c.lazySourceMaps.Start()
 
 	c.logs.SetReceivers(newArgs.Output.Logs)
 	c.traces.SetConsumers(newArgs.Output.Traces)
@@ -242,4 +249,22 @@ func (vs *varSourceMapsStore) SetInner(inner sourceMapsStore) {
 	defer vs.mut.Unlock()
 
 	vs.inner = inner
+}
+
+func (vs *varSourceMapsStore) Start() {
+	vs.mut.RLock()
+	defer vs.mut.RUnlock()
+
+	if vs.inner != nil {
+		vs.inner.Start()
+	}
+}
+
+func (vs *varSourceMapsStore) Stop() {
+	vs.mut.RLock()
+	defer vs.mut.RUnlock()
+
+	if vs.inner != nil {
+		vs.inner.Stop()
+	}
 }

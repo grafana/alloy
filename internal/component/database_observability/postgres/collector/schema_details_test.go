@@ -50,7 +50,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -157,7 +157,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -372,7 +372,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		initialConnectionMock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		initialConnectionMock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{"datname"}).
 					AddRow("db1").
@@ -462,7 +462,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -575,7 +575,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -631,7 +631,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -742,7 +742,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -848,7 +848,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -955,7 +955,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1063,7 +1063,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// first run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1127,7 +1127,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// second run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1192,7 +1192,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// declare mocks for two runs
 		for i := 0; i < 2; i++ {
-			mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"datname",
@@ -1277,7 +1277,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectAllDatabases).
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).
 			WillReturnRows(
 				sqlmock.NewRows([]string{"datname"}).
 					AddRow("testdb").
@@ -1535,8 +1535,13 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "orders"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "users"))
-		assert.True(t, tr.IsValid("mydb", "orders"))
+		resolvedTable, valid := tr.IsValid("mydb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "orders")
+		assert.True(t, valid)
+		assert.Equal(t, "orders", resolvedTable)
 	})
 
 	t.Run("returns false when table does not exist in registry", func(t *testing.T) {
@@ -1545,7 +1550,9 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "users"},
 		})
 
-		assert.False(t, tr.IsValid("mydb", "nonexistent"))
+		resolvedTable, valid := tr.IsValid("mydb", "nonexistent")
+		assert.False(t, valid)
+		assert.Equal(t, "nonexistent", resolvedTable)
 	})
 
 	t.Run("returns false given nonexistent database", func(t *testing.T) {
@@ -1554,13 +1561,17 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "public", tableName: "users"},
 		})
 
-		assert.False(t, tr.IsValid("otherdb", "users"))
+		resolvedTable, valid := tr.IsValid("otherdb", "users")
+		assert.False(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("returns false for empty registry", func(t *testing.T) {
 		tr := NewTableRegistry()
 
-		assert.False(t, tr.IsValid("mydb", "users"))
+		resolvedTable, valid := tr.IsValid("mydb", "users")
+		assert.False(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("returns true when table exists in multiple schemas", func(t *testing.T) {
@@ -1570,7 +1581,9 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "private", tableName: "users"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "users"))
+		resolvedTable, valid := tr.IsValid("mydb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
 	})
 
 	t.Run("returns true when schema-qualified table exists", func(t *testing.T) {
@@ -1579,8 +1592,238 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 			{database: "mydb", schema: "private", tableName: "users"},
 		})
 
-		assert.True(t, tr.IsValid("mydb", "private.users"))
+		resolvedTable, valid := tr.IsValid("mydb", "private.users")
+		assert.True(t, valid)
+		assert.Equal(t, "private.users", resolvedTable)
 	})
+
+	t.Run("unquoted table name matches lowercase registry entry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		// Unquoted identifier is folded to lowercase by postgres
+		resolvedTable, valid := tr.IsValid("mydb", "USERS")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "Users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolvedTable)
+	})
+
+	t.Run("unquoted table name matches mixed case registry entry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "MyTable"},
+		})
+
+		resolvedTable, valid := tr.IsValid("mydb", "MyTable")
+		assert.True(t, valid)
+		assert.Equal(t, "MyTable", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "mytable")
+		assert.False(t, valid)
+		assert.Equal(t, "mytable", resolvedTable)
+	})
+
+	t.Run("schema-qualified unquoted table name matches lowercase registry entry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		resolvedTable, valid := tr.IsValid("mydb", "PUBLIC.USERS")
+		assert.True(t, valid)
+		assert.Equal(t, "public.users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "Public.Users")
+		assert.True(t, valid)
+		assert.Equal(t, "public.users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "public.users")
+		assert.True(t, valid)
+		assert.Equal(t, "public.users", resolvedTable)
+	})
+
+	t.Run("schema-qualified quoted table match exact case", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "MyTable"},
+		})
+
+		resolvedTable, valid := tr.IsValid("mydb", `public."MyTable"`)
+		assert.True(t, valid)
+		assert.Equal(t, "public.MyTable", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "public.mytable")
+		assert.False(t, valid)
+		assert.Equal(t, "public.mytable", resolvedTable)
+	})
+
+	t.Run("schema-qualified with quoted schema match exact case", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "MySchema", tableName: "users"},
+		})
+
+		resolvedTable, valid := tr.IsValid("mydb", `"MySchema".users`)
+		assert.True(t, valid)
+		assert.Equal(t, "MySchema.users", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "myschema.users")
+		assert.False(t, valid)
+		assert.Equal(t, "myschema.users", resolvedTable)
+	})
+
+	t.Run("both schema and table quoted match exact case", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "MySchema", tableName: "MyTable"},
+		})
+
+		resolvedTable, valid := tr.IsValid("mydb", `"MySchema"."MyTable"`)
+		assert.True(t, valid)
+		assert.Equal(t, "MySchema.MyTable", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("mydb", "myschema.mytable")
+		assert.False(t, valid)
+		assert.Equal(t, "myschema.mytable", resolvedTable)
+	})
+}
+
+func Test_formatPostgresIdentifier(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "unquoted lowercase stays lowercase",
+			input:    "users",
+			expected: "users",
+		},
+		{
+			name:     "unquoted uppercase becomes lowercase",
+			input:    "USERS",
+			expected: "users",
+		},
+		{
+			name:     "unquoted mixed case becomes lowercase",
+			input:    "MyTable",
+			expected: "mytable",
+		},
+		{
+			name:     "quoted lowercase preserves case",
+			input:    `"users"`,
+			expected: "users",
+		},
+		{
+			name:     "quoted uppercase preserves case",
+			input:    `"USERS"`,
+			expected: "USERS",
+		},
+		{
+			name:     "quoted mixed case preserves case",
+			input:    `"MyTable"`,
+			expected: "MyTable",
+		},
+		{
+			name:     "single quote is not identifier quote",
+			input:    "'users'",
+			expected: "'users'",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := formatPostgresIdentifier(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func Test_parseSchemaQualifiedIfAny(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		expectedSchema schema
+		expectedTable  table
+	}{
+		{
+			name:           "simple table name",
+			input:          "users",
+			expectedSchema: "",
+			expectedTable:  "users",
+		},
+		{
+			name:           "uppercase table name",
+			input:          "USERS",
+			expectedSchema: "",
+			expectedTable:  "USERS",
+		},
+		{
+			name:           "schema-qualified lowercase",
+			input:          "public.users",
+			expectedSchema: "public",
+			expectedTable:  "users",
+		},
+		{
+			name:           "schema-qualified uppercase",
+			input:          "PUBLIC.USERS",
+			expectedSchema: "public",
+			expectedTable:  "users",
+		},
+		{
+			name:           "schema-qualified mixed case",
+			input:          "Public.Users",
+			expectedSchema: "public",
+			expectedTable:  "users",
+		},
+		{
+			name:           "quoted table in schema-qualified name",
+			input:          `public."MyTable"`,
+			expectedSchema: "public",
+			expectedTable:  "MyTable",
+		},
+		{
+			name:           "quoted schema in schema-qualified name",
+			input:          `"MySchema".users`,
+			expectedSchema: "MySchema",
+			expectedTable:  "users",
+		},
+		{
+			name:           "both quoted in schema-qualified name",
+			input:          `"MySchema"."MyTable"`,
+			expectedSchema: "MySchema",
+			expectedTable:  "MyTable",
+		},
+		{
+			name:           "quoted schema uppercase table",
+			input:          `"MySchema".USERS`,
+			expectedSchema: "MySchema",
+			expectedTable:  "users",
+		},
+		{
+			name:           "uppercase schema quoted table",
+			input:          `PUBLIC."MyTable"`,
+			expectedSchema: "public",
+			expectedTable:  "MyTable",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotSchema, gotTable := parseSchemaQualifiedIfAny(tc.input)
+			assert.Equal(t, tc.expectedSchema, gotSchema)
+			assert.Equal(t, tc.expectedTable, gotTable)
+		})
+	}
 }
 
 func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
@@ -1609,7 +1852,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1707,11 +1950,37 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 	})
 }
 
-func Test_Postgres_SchemaDetails_query_excludes_databases(t *testing.T) {
-	assert.Equal(t, `
-		SELECT datname
-		FROM pg_database
-		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')
-			AND datname NOT IN ('azure_maintenance')`, selectAllDatabases)
+func Test_Postgres_SchemaDetails_ExcludeDatabases(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	collector, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:               db,
+		DSN:              "postgres://user:pass@localhost:5432/testdb",
+		CollectInterval:  time.Millisecond,
+		ExcludeDatabases: []string{"excluded_database"},
+		EntryHandler:     lokiClient,
+		CacheEnabled:     false,
+		Logger:           log.NewLogfmtLogger(os.Stderr),
+		dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+			return db, nil
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	// Verify the query uses the custom exclusion clause that includes both default and user-provided exclusions
+	expectedQuery := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause([]string{"excluded_database"}))
+	mock.ExpectQuery(expectedQuery).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"datname"}))
+
+	_, err = collector.getAllDatabases(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }

@@ -1,0 +1,29 @@
+loki.source.file "test" {
+  targets    = [
+    {__path__ = "/etc/alloy/mount/*.log"},
+  ]
+
+  file_match {
+	enabled = true
+  }
+
+  forward_to = [loki.process.test.receiver]
+}
+
+loki.process "test" {
+  stage.logfmt {
+  	mapping = { "test_name" = "" }
+  }
+
+  stage.labels {
+  	values = { "test_name" = "" }
+  }
+
+  forward_to = [loki.write.test.receiver]
+}
+
+loki.write "test" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

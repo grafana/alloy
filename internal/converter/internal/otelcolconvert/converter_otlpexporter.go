@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -37,13 +38,14 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		switch val.(type) {
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*otlpexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
+			queue := cfg.(*otlpexporter.Config).QueueConfig.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return val
@@ -74,23 +76,33 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	}
 }
 
-func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArguments {
-	sizer, err := cfg.Sizer.MarshalText()
+func toQueueArguments(cfg configoptional.Optional[exporterhelper.QueueBatchConfig]) otelcol.QueueArguments {
+	// Use GetOrInsertDefault() instead of Get(), because upstream OTel sets QueueConfig to a "default" flavor.
+	// For a "default" flavour HasValue() returns false, even though it technically has a value.
+	queueCfg := cfg.GetOrInsertDefault()
+
+	if queueCfg == nil {
+		return otelcol.QueueArguments{
+			Enabled: false,
+		}
+	}
+
+	sizer, err := queueCfg.Sizer.MarshalText()
 	if err != nil {
 		panic(fmt.Errorf("failed to marshal sizer: %w", err))
 	}
 
 	q := otelcol.QueueArguments{
-		Enabled:         cfg.Enabled,
-		NumConsumers:    cfg.NumConsumers,
-		QueueSize:       cfg.QueueSize,
-		BlockOnOverflow: cfg.BlockOnOverflow,
+		Enabled:         true, // Having a value in configoptional means the queue is enabled
+		NumConsumers:    queueCfg.NumConsumers,
+		QueueSize:       queueCfg.QueueSize,
+		BlockOnOverflow: queueCfg.BlockOnOverflow,
 		Sizer:           string(sizer),
 	}
 
-	if cfg.StorageID != nil {
+	if queueCfg.StorageID != nil {
 		q.Storage = &extension.ExtensionHandler{
-			ID: *cfg.StorageID,
+			ID: *queueCfg.StorageID,
 		}
 	}
 	return q

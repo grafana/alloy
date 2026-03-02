@@ -13,14 +13,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -29,6 +25,10 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 func init() {
@@ -61,6 +61,7 @@ type Component struct {
 	serverConfig       *fnet.HTTPConfig
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
+	grpcServer         *grpc.Server
 	mut                sync.Mutex
 	logger             log.Logger
 	tracer             trace.Tracer
@@ -105,6 +106,11 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) update(args component.Arguments) (bool, error) {
 	shutdown := false
 	newArgs := args.(Arguments)
+	// required for debug info upload over grpc over http2 over http server port
+	if newArgs.Server.HTTP.HTTP2 == nil {
+		newArgs.Server.HTTP.HTTP2 = &fnet.HTTP2Config{}
+	}
+	newArgs.Server.HTTP.HTTP2.Enabled = true
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -298,6 +304,10 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Component) shutdownServer() {
+	if c.grpcServer != nil {
+		c.grpcServer.GracefulStop()
+		c.grpcServer = nil
+	}
 	if c.server != nil {
 		c.server.StopAndShutdown()
 		c.server = nil

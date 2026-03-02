@@ -32,8 +32,8 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
@@ -50,8 +50,8 @@ type ResourceAttributesConfig struct {
 	ServiceVersion                 rac.ResourceAttributeConfig `alloy:"service.version,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.provider":                    r.CloudProvider.Convert(),
 		"heroku.app.id":                     r.HerokuAppID.Convert(),
 		"heroku.dyno.id":                    r.HerokuDynoID.Convert(),

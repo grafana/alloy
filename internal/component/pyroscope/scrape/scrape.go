@@ -375,7 +375,7 @@ func (c *Component) NotifyClusterChange() {
 }
 
 // DebugInfo implements component.DebugComponent.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var res []scrape.TargetStatus
 
 	for _, st := range c.scraper.TargetsActive() {

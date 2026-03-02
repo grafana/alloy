@@ -85,7 +85,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	result.QueueSettings = *q
+	result.QueueSettings = q
 
 	return &result, nil
 }

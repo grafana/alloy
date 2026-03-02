@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -22,6 +24,8 @@ const (
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
 
 type Appendable interface {
+	debuginfo.Appender
+
 	Appender() Appender
 }
 
@@ -55,6 +59,25 @@ type Fanout struct {
 	// ComponentID is what component this belongs to.
 	componentID  string
 	writeLatency prometheus.Histogram
+}
+
+func (f *Fanout) Client() debuginfogrpc.DebuginfoServiceClient {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	for _, c := range f.children {
+		if client := c.Client(); client != nil {
+			return client
+		}
+	}
+	return nil
+}
+
+func (f *Fanout) Upload(j debuginfo.UploadJob) {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	for _, c := range f.children {
+		c.Upload(j)
+	}
 }
 
 // NewFanout creates a fanout appendable.
@@ -154,35 +177,4 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 		}
 	}
 	return multiErr
-}
-
-type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-
-func (f AppendableFunc) Appender() Appender {
-	return f
-}
-
-func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
-	return f(ctx, labels, samples)
-}
-
-func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
-	// This is a no-op implementation
-	return nil
-}
-
-// For testing AppendIngest operations
-type AppendableIngestFunc func(ctx context.Context, profile *IncomingProfile) error
-
-func (f AppendableIngestFunc) Appender() Appender {
-	return f
-}
-
-func (f AppendableIngestFunc) AppendIngest(ctx context.Context, p *IncomingProfile) error {
-	return f(ctx, p)
-}
-
-func (f AppendableIngestFunc) Append(_ context.Context, _ labels.Labels, _ []*RawSample) error {
-	// This is a no-op implementation
-	return nil
 }

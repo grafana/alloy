@@ -2,6 +2,7 @@ package vm_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -18,26 +19,26 @@ func TestVM_Stdlib(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		// deprecated tests
 		{"env", `env("TEST_VAR")`, string("Hello!")},
-		{"concat", `concat([true, "foo"], [], [false, 1])`, []interface{}{true, "foo", false, 1}},
-		{"json_decode object", `json_decode("{\"foo\": \"bar\"}")`, map[string]interface{}{"foo": "bar"}},
-		{"yaml_decode object", "yaml_decode(`foo: bar`)", map[string]interface{}{"foo": "bar"}},
+		{"concat", `concat([true, "foo"], [], [false, 1])`, []any{true, "foo", false, 1}},
+		{"json_decode object", `json_decode("{\"foo\": \"bar\"}")`, map[string]any{"foo": "bar"}},
+		{"yaml_decode object", "yaml_decode(`foo: bar`)", map[string]any{"foo": "bar"}},
 		{"base64_decode", `base64_decode("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
 
 		{"sys.env", `sys.env("TEST_VAR")`, string("Hello!")},
-		{"array.concat", `array.concat([true, "foo"], [], [false, 1])`, []interface{}{true, "foo", false, 1}},
-		{"encoding.from_json object", `encoding.from_json("{\"foo\": \"bar\"}")`, map[string]interface{}{"foo": "bar"}},
-		{"encoding.from_json array", `encoding.from_json("[0, 1, 2]")`, []interface{}{float64(0), float64(1), float64(2)}},
-		{"encoding.from_json nil field", `encoding.from_json("{\"foo\": null}")`, map[string]interface{}{"foo": nil}},
-		{"encoding.from_json nil array element", `encoding.from_json("[0, null]")`, []interface{}{float64(0), nil}},
-		{"encoding.from_yaml object", "encoding.from_yaml(`foo: bar`)", map[string]interface{}{"foo": "bar"}},
-		{"encoding.from_yaml array", "encoding.from_yaml(`[0, 1, 2]`)", []interface{}{0, 1, 2}},
-		{"encoding.from_yaml array float", "encoding.from_yaml(`[0.0, 1.0, 2.0]`)", []interface{}{float64(0), float64(1), float64(2)}},
-		{"encoding.from_yaml nil field", "encoding.from_yaml(`foo: null`)", map[string]interface{}{"foo": nil}},
-		{"encoding.from_yaml nil array element", `encoding.from_yaml("[0, null]")`, []interface{}{0, nil}},
+		{"array.concat", `array.concat([true, "foo"], [], [false, 1])`, []any{true, "foo", false, 1}},
+		{"encoding.from_json object", `encoding.from_json("{\"foo\": \"bar\"}")`, map[string]any{"foo": "bar"}},
+		{"encoding.from_json array", `encoding.from_json("[0, 1, 2]")`, []any{float64(0), float64(1), float64(2)}},
+		{"encoding.from_json nil field", `encoding.from_json("{\"foo\": null}")`, map[string]any{"foo": nil}},
+		{"encoding.from_json nil array element", `encoding.from_json("[0, null]")`, []any{float64(0), nil}},
+		{"encoding.from_yaml object", "encoding.from_yaml(`foo: bar`)", map[string]any{"foo": "bar"}},
+		{"encoding.from_yaml array", "encoding.from_yaml(`[0, 1, 2]`)", []any{0, 1, 2}},
+		{"encoding.from_yaml array float", "encoding.from_yaml(`[0.0, 1.0, 2.0]`)", []any{float64(0), float64(1), float64(2)}},
+		{"encoding.from_yaml nil field", "encoding.from_yaml(`foo: null`)", map[string]any{"foo": nil}},
+		{"encoding.from_yaml nil array element", `encoding.from_yaml("[0, null]")`, []any{0, nil}},
 		{"encoding.from_base64", `encoding.from_base64("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
 		{"encoding.from_URLbase64", `encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")`, string(`string123!?$*&()'-=@~`)},
 		{"encoding.to_base64", `encoding.to_base64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB+`)},
@@ -54,100 +55,100 @@ func TestVM_Stdlib(t *testing.T) {
 			// Basic case. No conflicting key/val pairs.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
-			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}},
+			[]map[string]any{{"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
 			// The first array has 2 maps, each with the same key/val pairs.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
-			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
+			[]map[string]any{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
 			// Non-unique merge criteria.
 			"array.combine_maps",
 			`array.combine_maps([{"pod" = "a", "lbl" = "q"}, {"pod" = "b", "lbl" = "q"}], [{"pod" = "c", "lbl" = "q"}, {"pod" = "d", "lbl" = "q"}], ["lbl"])`,
-			[]map[string]interface{}{{"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}, {"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}},
+			[]map[string]any{{"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}, {"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}},
 		},
 		{
 			// Basic case. Integer and string values.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
-			[]map[string]interface{}{{"a": 1, "b": 2.2, "c": "c1"}},
+			[]map[string]any{{"a": 1, "b": 2.2, "c": "c1"}},
 		},
 		{
 			// The second map will override a value from the first.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = 1, "b" = "3.3"}], ["a"])`,
-			[]map[string]interface{}{{"a": 1, "b": "3.3"}},
+			[]map[string]any{{"a": 1, "b": "3.3"}},
 		},
 		{
 			// Not enough matches for a join.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = 2, "b" = "3.3"}], ["a"])`,
-			[]map[string]interface{}{},
+			[]map[string]any{},
 		},
 		{
 			// Not enough matches for a join, but all elements from the first array are passed through.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 4.2, "c" = 5}, {"d" = "asdf"}], [{"a" = 2, "b" = "5.3"}], ["a"], true)`,
-			[]map[string]interface{}{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}},
+			[]map[string]any{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}},
 		},
 		{
 			// Only one element from the first array matches, but all elements from the first array are passed through.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 4.2, "c" = 5}, {"d" = "asdf"}, {"a" = 2, "b" = "1", "z" = "z1"}], [{"a" = 2, "b" = "5.3"}], ["a"], true)`,
-			[]map[string]interface{}{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}, {"a": 2, "z": "z1", "b": "5.3"}},
+			[]map[string]any{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}, {"a": 2, "z": "z1", "b": "5.3"}},
 		},
 		{
 			// Not enough matches for a join.
 			// The "a" value has differing types.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = "1", "b" = "3.3"}], ["a"])`,
-			[]map[string]interface{}{},
+			[]map[string]any{},
 		},
 		{
 			// Basic case. Some values are arrays and maps.
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = [1,2,3]}], [{"a" = 1, "c" = {"d" = {"e" = 10}}}], ["a"])`,
-			[]map[string]interface{}{{"a": 1, "b": []interface{}{1, 2, 3}, "c": map[string]interface{}{"d": map[string]interface{}{"e": 10}}}},
+			[]map[string]any{{"a": 1, "b": []any{1, 2, 3}, "c": map[string]any{"d": map[string]any{"e": 10}}}},
 		},
 		{
 			// Join key not present in ARG2
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "n" = 1.1}], [{"a" = 1, "n" = 2.1}, {"n" = 2.2}], ["a"])`,
-			[]map[string]interface{}{{"a": 1, "n": 2.1}},
+			[]map[string]any{{"a": 1, "n": 2.1}},
 		},
 		{
 			// Join key not present in ARG1
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"n" = 1.2}], [{"a" = 1, "n" = 2.1}], ["a"])`,
-			[]map[string]interface{}{{"a": 1, "n": 2.1}},
+			[]map[string]any{{"a": 1, "n": 2.1}},
 		},
 		{
 			// Join with multiple keys
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "b" = 3, "n" = 1.1}], [{"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b"])`,
-			[]map[string]interface{}{{"a": 1, "b": 3, "n": 2.1}},
+			[]map[string]any{{"a": 1, "b": 3, "n": 2.1}},
 		},
 		{
 			// Join with multiple keys
 			// Some maps don't match all keys
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "b" = 3, "n" = 1.1}, {"b" = 3, "n" = 1.1}], [{"a" = 1, "n" = 2.3}, {"b" = 1, "n" = 2.3}, {"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b"])`,
-			[]map[string]interface{}{{"a": 1, "b": 3, "n": 2.1}},
+			[]map[string]any{{"a": 1, "b": 3, "n": 2.1}},
 		},
 		{
 			// Join with multiple keys
 			// No match because one key is missing
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "b" = 3, "n" = 1.1}, {"b" = 3, "n" = 1.1}], [{"a" = 1, "n" = 2.3}, {"b" = 1, "n" = 2.3}, {"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b", "c"])`,
-			[]map[string]interface{}{},
+			[]map[string]any{},
 		},
 		{
 			// Multi match ends up with len(ARG1) * len(ARG2) maps
 			"array.combine_maps",
 			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "n" = 1.2}, {"a" = 1, "n" = 1.3}], [{"a" = 1, "n" = 2.1}, {"a" = 1, "n" = 2.2}, {"a" = 1, "n" = 2.3}], ["a"])`,
-			[]map[string]interface{}{
+			[]map[string]any{
 				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
 				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
 				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
@@ -207,7 +208,7 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 
 			eval := vm.New(expr)
 
-			rv := reflect.New(reflect.TypeOf([]map[string]interface{}{}))
+			rv := reflect.New(reflect.TypeOf([]map[string]any{}))
 			err = eval.Evaluate(nil, rv.Interface())
 			require.ErrorContains(t, err, tc.expectedErr)
 		})
@@ -225,7 +226,7 @@ func TestStdlibCoalesce(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		{"coalesce()", `coalesce()`, value.Null},
 		{"coalesce(string)", `coalesce("Hello!")`, string("Hello!")},
@@ -264,7 +265,7 @@ func TestStdlibJsonPath(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		{"json_path with simple json", `json_path("{\"a\": \"b\"}", ".a")`, []string{"b"}},
 		{"json_path with simple json without results", `json_path("{\"a\": \"b\"}", ".nonexists")`, []string{}},
@@ -295,7 +296,7 @@ func TestStdlib_Nonsensitive(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		// deprecated tests
 		{"deprecated secret to string", `nonsensitive(secret)`, string("foo")},
@@ -318,12 +319,12 @@ func TestStdlib_Nonsensitive(t *testing.T) {
 	}
 }
 func TestStdlib_StringFunc(t *testing.T) {
-	scope := vm.NewScope(make(map[string]interface{}))
+	scope := vm.NewScope(make(map[string]any))
 
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		// deprecated tests
 		{"to_lower", `to_lower("String")`, "string"},
@@ -383,9 +384,9 @@ func TestStdlibFileFunc(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
-		{"file.path_join", `file.path_join("this/is", "a/path")`, "this/is/a/path"},
+		{"file.path_join", `file.path_join("this/is", "a/path")`, filepath.Join("this", "is", "a", "path")},
 		{"file.path_join empty", `file.path_join()`, ""},
 	}
 
@@ -440,7 +441,7 @@ func BenchmarkConcat(b *testing.B) {
 			Attrs: data,
 		})
 	}
-	scope := vm.NewScope(map[string]interface{}{
+	scope := vm.NewScope(map[string]any{
 		"values_ref": valuesRef,
 	})
 
@@ -457,60 +458,60 @@ func TestStdlibGroupBy(t *testing.T) {
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		{
 			"basic grouping",
 			`array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}], "type", false)`,
-			[]map[string]interface{}{
-				{"type": "fruit", "items": []interface{}{
-					map[string]interface{}{"type": "fruit", "name": "apple"},
-					map[string]interface{}{"type": "fruit", "name": "banana"},
+			[]map[string]any{
+				{"type": "fruit", "items": []any{
+					map[string]any{"type": "fruit", "name": "apple"},
+					map[string]any{"type": "fruit", "name": "banana"},
 				}},
-				{"type": "vegetable", "items": []interface{}{
-					map[string]interface{}{"type": "vegetable", "name": "carrot"},
+				{"type": "vegetable", "items": []any{
+					map[string]any{"type": "vegetable", "name": "carrot"},
 				}},
 			},
 		},
 		{
 			"drop missing keys",
 			`array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob"}, {"name" = "charlie", "age" = "30"}], "age", true)`,
-			[]map[string]interface{}{
-				{"age": "20", "items": []interface{}{
-					map[string]interface{}{"name": "alice", "age": "20"},
+			[]map[string]any{
+				{"age": "20", "items": []any{
+					map[string]any{"name": "alice", "age": "20"},
 				}},
-				{"age": "30", "items": []interface{}{
-					map[string]interface{}{"name": "charlie", "age": "30"},
+				{"age": "30", "items": []any{
+					map[string]any{"name": "charlie", "age": "30"},
 				}},
 			},
 		},
 		{
 			"keep missing keys",
 			`array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob"}, {"name" = "charlie", "age" = "30"}], "age", false)`,
-			[]map[string]interface{}{
-				{"age": "20", "items": []interface{}{
-					map[string]interface{}{"name": "alice", "age": "20"},
+			[]map[string]any{
+				{"age": "20", "items": []any{
+					map[string]any{"name": "alice", "age": "20"},
 				}},
-				{"age": "30", "items": []interface{}{
-					map[string]interface{}{"name": "charlie", "age": "30"},
+				{"age": "30", "items": []any{
+					map[string]any{"name": "charlie", "age": "30"},
 				}},
-				{"age": "", "items": []interface{}{
-					map[string]interface{}{"name": "bob"},
+				{"age": "", "items": []any{
+					map[string]any{"name": "bob"},
 				}},
 			},
 		},
 		{
 			"empty array",
 			`array.group_by([], "age", false)`,
-			[]map[string]interface{}{},
+			[]map[string]any{},
 		},
 		{
 			"all items missing key",
 			`array.group_by([{"name" = "alice"}, {"name" = "bob"}], "age", false)`,
-			[]map[string]interface{}{
-				{"age": "", "items": []interface{}{
-					map[string]interface{}{"name": "alice"},
-					map[string]interface{}{"name": "bob"},
+			[]map[string]any{
+				{"age": "", "items": []any{
+					map[string]any{"name": "alice"},
+					map[string]any{"name": "bob"},
 				}},
 			},
 		},
@@ -518,9 +519,9 @@ func TestStdlibGroupBy(t *testing.T) {
 			"key refers to a nested object",
 			`array.group_by([{"name" = "alice", "age" = 20, "address" = {"city" = "New York", "state" = "NY"}}], "address.city", false)`,
 			// The key should be present at the top level of the object. In this case, the group_by assumes that the key is missing.
-			[]map[string]interface{}{
-				{"address.city": "", "items": []interface{}{
-					map[string]interface{}{"name": "alice", "age": 20, "address": map[string]interface{}{"city": "New York", "state": "NY"}},
+			[]map[string]any{
+				{"address.city": "", "items": []any{
+					map[string]any{"name": "alice", "age": 20, "address": map[string]any{"city": "New York", "state": "NY"}},
 				}},
 			},
 		},
@@ -535,8 +536,8 @@ func TestStdlibGroupBy(t *testing.T) {
 
 			rv := reflect.New(reflect.TypeOf(tc.expect))
 			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
-			result := rv.Elem().Interface().([]map[string]interface{})
-			expected := tc.expect.([]map[string]interface{})
+			result := rv.Elem().Interface().([]map[string]any)
+			expected := tc.expect.([]map[string]any)
 			require.ElementsMatch(t, expected, result, "groups should match without order")
 		})
 	}
@@ -587,7 +588,7 @@ func TestStdlibGroupBy_Errors(t *testing.T) {
 
 			eval := vm.New(expr)
 
-			rv := reflect.New(reflect.TypeOf([]map[string]interface{}{}))
+			rv := reflect.New(reflect.TypeOf([]map[string]any{}))
 			err = eval.Evaluate(nil, rv.Interface())
 			require.ErrorContains(t, err, tc.expectedErr)
 		})

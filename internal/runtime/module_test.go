@@ -54,7 +54,7 @@ func TestModule(t *testing.T) {
 	tt := []struct {
 		name                  string
 		argumentModuleContent string
-		args                  map[string]interface{}
+		args                  map[string]any
 		exportModuleContent   string
 		expectedExports       []string
 		expectedErrorContains string
@@ -89,7 +89,7 @@ func TestModule(t *testing.T) {
 			name:                  "Argument not defined in module source",
 			argumentModuleContent: `argument "different_argument" {}`,
 			exportModuleContent:   exportStringConfig,
-			args:                  map[string]interface{}{"different_argument": "test", "username": "bad"},
+			args:                  map[string]any{"different_argument": "test", "username": "bad"},
 			expectedErrorContains: "Provided argument \"username\" is not defined in the module",
 		},
 
@@ -153,7 +153,8 @@ func TestModule(t *testing.T) {
 
 func TestArgsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	f := New(testOptions(t))
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
 	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("argument \"arg\"{}"))
 	require.NoError(t, err)
@@ -163,7 +164,8 @@ func TestArgsNotInModules(t *testing.T) {
 
 func TestExportsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	f := New(testOptions(t))
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
 	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("export \"arg\"{ value = 1}"))
 	require.NoError(t, err)
@@ -173,7 +175,8 @@ func TestExportsNotInModules(t *testing.T) {
 
 func TestExportsWhenNotUsed(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	f := New(testOptions(t))
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
 	content := " export \\\"username\\\"  { value  = 1 } \\n export \\\"dummy\\\" { value = 2 } "
 	fullContent := "test.module \"t1\" { content = \"" + content + "\" }"
 	fl, err := ParseSource("test", []byte(fullContent))
@@ -243,10 +246,8 @@ func TestDuplicateIDList(t *testing.T) {
 		return len(nc.ModuleIDs()) == 1
 	}, 5*time.Second, 100*time.Millisecond)
 
-	// This should panic with duplicate registration.
-	require.PanicsWithError(t, "duplicate metrics collector registration attempted", func() {
-		_, _ = nc.NewModule("t1", nil)
-	})
+	_, err = nc.NewModule("t1", nil)
+	require.Error(t, err)
 }
 
 func testModuleControllerOptions(t *testing.T) *moduleControllerOptions {
@@ -293,13 +294,13 @@ type TestArguments struct {
 }
 
 type TestExports struct {
-	Exports map[string]interface{} `alloy:"exports,attr"`
+	Exports map[string]any `alloy:"exports,attr"`
 }
 
 type testModule struct {
 	content string
-	args    map[string]interface{}
-	exports map[string]interface{}
+	args    map[string]any
+	exports map[string]any
 	opts    component.Options
 }
 

@@ -3,6 +3,7 @@ package receiver
 import (
 	"encoding"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -76,6 +77,7 @@ type SourceMapsArguments struct {
 	Download            bool                `alloy:"download,attr,optional"`
 	DownloadFromOrigins []string            `alloy:"download_from_origins,attr,optional"`
 	DownloadTimeout     time.Duration       `alloy:"download_timeout,attr,optional"`
+	Cache               *CacheArguments     `alloy:"cache,block,optional"`
 	Locations           []LocationArguments `alloy:"location,block,optional"`
 }
 
@@ -84,6 +86,23 @@ func (s *SourceMapsArguments) SetToDefault() {
 		Download:            true,
 		DownloadFromOrigins: []string{"*"},
 		DownloadTimeout:     time.Second,
+		Cache:               &CacheArguments{},
+	}
+	s.Cache.SetToDefault()
+}
+
+// CacheArguments configures sourcemap caching behavior.
+type CacheArguments struct {
+	TTL                  time.Duration `alloy:"ttl,attr,optional"`
+	ErrorCleanupInterval time.Duration `alloy:"error_cleanup_interval,attr,optional"`
+	CleanupCheckInterval time.Duration `alloy:"cleanup_check_interval,attr,optional"`
+}
+
+func (c *CacheArguments) SetToDefault() {
+	*c = CacheArguments{
+		TTL:                  time.Duration(math.MaxInt64),
+		ErrorCleanupInterval: time.Hour,
+		CleanupCheckInterval: time.Second * 30,
 	}
 }
 

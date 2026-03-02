@@ -17,6 +17,8 @@ var (
 	ErrEmptyUserAgentStageSource = errors.New("empty source")
 )
 
+const StageTypeUserAgent = "useragent"
+
 // UserAgentConfig configures a processing stage that uses uap-core to
 // parse user-agent strings and extract browser, OS, and device information.
 type UserAgentConfig struct {

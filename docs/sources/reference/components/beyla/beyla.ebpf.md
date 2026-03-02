@@ -648,13 +648,14 @@ You can set `direction` to `ingress`, `egress`, or `both` (default).
 
 The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
-| Name               | Type           | Description                                                                              | Default       | Required |
-|--------------------|----------------|------------------------------------------------------------------------------------------|---------------|----------|
-| `ignore_mode`      | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
-| `ignored_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
-| `patterns`         | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
-| `unmatched`        | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
-| `wildcard_char`    | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
+| Name                           | Type           | Description                                                                              | Default       | Required |
+|--------------------------------|----------------|------------------------------------------------------------------------------------------|---------------|----------|
+| `ignore_mode`                  | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
+| `ignored_patterns`             | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
+| `patterns`                     | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
+| `unmatched`                    | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
+| `wildcard_char`                | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
+| `max_path_segment_cardinality` | `number`       | Maximum allowed path segment cardinality (per service) for the heuristic matcher.        | `10`          | no       |
 
 `ignore_mode` properties are:
 
@@ -804,11 +805,11 @@ beyla.ebpf "default" {
 
 otelcol.processor.batch "default" {
   output {
-    traces  = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }

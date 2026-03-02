@@ -19,7 +19,6 @@ import (
 )
 
 type Arguments struct {
-
 	// Client settings to connect to Kubernetes.
 	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 
@@ -50,14 +49,24 @@ type ScrapeOptions struct {
 	// DefaultScrapeTimeout is the default timeout to scrape targets.
 	DefaultScrapeTimeout time.Duration `alloy:"default_scrape_timeout,attr,optional"`
 
+	// DefaultSampleLimit is the default sample limit per scrape.
+	DefaultSampleLimit uint `alloy:"default_sample_limit,attr,optional"`
+
 	// ScrapeNativeHistograms enables scraping of Prometheus native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+
+	// HonorMetadata controls whether metric metadata should be passed to downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
+
+	// EnableTypeAndUnitLabels controls whether the metric's type and unit should be added as labels.
+	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
 	cfg := promconfig.DefaultGlobalConfig
 	cfg.ScrapeInterval = model.Duration(s.DefaultScrapeInterval)
 	cfg.ScrapeTimeout = model.Duration(s.DefaultScrapeTimeout)
+	cfg.SampleLimit = s.DefaultSampleLimit
 	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
 	cfg.MetricNameValidationScheme = model.LegacyValidation
 	cfg.MetricNameEscapingScheme = model.EscapeUnderscores

@@ -1,0 +1,25 @@
+---
+# Source: alloy/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy
+  namespace: default
+  labels:
+    helm.sh/chart: alloy
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/version: "vX.Y.Z"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: networking
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+  internalTrafficPolicy: Cluster
+  ports:
+    - name: http-metrics
+      port: 24680
+      targetPort: 24680
+      protocol: "TCP"

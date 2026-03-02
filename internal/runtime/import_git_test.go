@@ -75,7 +75,7 @@ testImport.add "cc" {
 
 	// Check for initial condition
 	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
+		export := getExport[map[string]any](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 2
 	}, 5*time.Second, 100*time.Millisecond)
 
@@ -88,7 +88,7 @@ testImport.add "cc" {
 
 	// Check for final condition.
 	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
+		export := getExport[map[string]any](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 3
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -142,7 +142,7 @@ testImport.add "cc" {
 
 	// Check for initial condition
 	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
+		export := getExport[map[string]any](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 2
 	}, 5*time.Second, 100*time.Millisecond)
 
@@ -155,7 +155,7 @@ testImport.add "cc" {
 
 	// Check for final condition.
 	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
+		export := getExport[map[string]any](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 3
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -225,7 +225,7 @@ testImport.add "cc" {
 
 	// Check for final condition.
 	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
+		export := getExport[map[string]any](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 2
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -289,7 +289,7 @@ testImport.add "cc" {
 
 	// Check for final condition.
 	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
+		export := getExport[map[string]any](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 2
 	}, 5*time.Second, 100*time.Millisecond)
 }

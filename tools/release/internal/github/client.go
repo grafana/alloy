@@ -2,13 +2,16 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/oauth2"
@@ -40,12 +43,20 @@ type CreateBranchParams struct {
 	SHA    string
 }
 
+// CreateTagParams holds parameters for CreateTag.
+type CreateTagParams struct {
+	Tag     string
+	SHA     string
+	Message string
+}
+
 // CreatePRParams holds parameters for CreatePR.
 type CreatePRParams struct {
 	Title string
 	Head  string
 	Base  string
 	Body  string
+	Draft bool
 }
 
 // FindCommitParams holds parameters for FindCommitWithPattern and CommitExistsWithPattern.
@@ -150,9 +161,13 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	}
 
 	// Try as a commit SHA
-	commit, _, err := c.api.Git.GetCommit(ctx, c.owner, c.repo, ref)
+	commit, err := c.GetCommit(ctx, ref)
 	if err == nil {
-		return commit.GetSHA(), nil
+		sha := commit.GetSHA()
+		if sha == "" {
+			return "", fmt.Errorf("commit SHA is empty for ref: %s", ref)
+		}
+		return sha, nil
 	}
 
 	return "", fmt.Errorf("could not resolve ref: %s", ref)
@@ -170,6 +185,47 @@ func (c *Client) CreateBranch(ctx context.Context, p CreateBranchParams) error {
 	_, _, err := c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
 	if err != nil {
 		return fmt.Errorf("creating branch ref: %w", err)
+	}
+
+	return nil
+}
+
+// CreateTag creates an annotated tag ref for the given SHA.
+func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
+	identity, err := c.GetAppIdentity(ctx)
+	if err != nil {
+		return fmt.Errorf("getting app identity for tagger: %w", err)
+	}
+
+	tagObj := &github.Tag{
+		Tag:     github.String(p.Tag),
+		Message: github.String(p.Message),
+		Tagger: &github.CommitAuthor{
+			Name:  github.String(identity.Name),
+			Email: github.String(identity.Email),
+			Date:  &github.Timestamp{Time: time.Now().UTC()},
+		},
+		Object: &github.GitObject{
+			SHA:  github.String(p.SHA),
+			Type: github.String("commit"),
+		},
+	}
+
+	created, _, err := c.api.Git.CreateTag(ctx, c.owner, c.repo, tagObj)
+	if err != nil {
+		return fmt.Errorf("creating tag object: %w", err)
+	}
+
+	ref := &github.Reference{
+		Ref: github.String("refs/tags/" + p.Tag),
+		Object: &github.GitObject{
+			SHA: github.String(created.GetSHA()),
+		},
+	}
+
+	_, _, err = c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
+	if err != nil {
+		return fmt.Errorf("creating tag ref: %w", err)
 	}
 
 	return nil
@@ -255,6 +311,7 @@ func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRe
 		Head:  github.String(p.Head),
 		Base:  github.String(p.Base),
 		Body:  github.String(p.Body),
+		Draft: github.Bool(p.Draft),
 	}
 
 	pr, _, err := c.api.PullRequests.Create(ctx, c.owner, c.repo, newPR)
@@ -360,6 +417,62 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 	return nil
 }
 
+// WaitForCheckRun polls until the named check run has completed successfully on the given ref,
+// or until the context is done (e.g. timeout). Ref can be a branch name or commit SHA.
+func (c *Client) WaitForCheckRun(ctx context.Context, ref, checkName string) error {
+	opts := &github.ListCheckRunsOptions{
+		Filter: github.String("latest"),
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("waiting for check %q: %w", checkName, ctx.Err())
+		default:
+		}
+		result, _, err := c.api.Checks.ListCheckRunsForRef(ctx, c.owner, c.repo, ref, opts)
+		if err != nil {
+			return fmt.Errorf("listing check runs for ref %s: %w", ref, err)
+		}
+		var found *github.CheckRun
+		for _, run := range result.CheckRuns {
+			if run.GetName() == checkName {
+				found = run
+				break
+			}
+		}
+		if found == nil {
+			// Check not yet reported; wait and retry
+			fmt.Printf("⏳ Check %q not yet reported; waiting and retrying...\n", checkName)
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		status := found.GetStatus()
+		if status != "completed" {
+			fmt.Printf("⏳ Check %q not yet completed; waiting and retrying...\n", checkName)
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		conclusion := found.GetConclusion()
+		if conclusion != "success" {
+			return fmt.Errorf("check %q completed with conclusion %q (expected success)", checkName, conclusion)
+		}
+		return nil
+	}
+}
+
+// DeleteBranch deletes the branch ref on the remote.
+func (c *Client) DeleteBranch(ctx context.Context, branch string) error {
+	ref := "refs/heads/" + branch
+	_, err := c.api.Git.DeleteRef(ctx, c.owner, c.repo, ref)
+	if err != nil {
+		return fmt.Errorf("deleting branch %s: %w", branch, err)
+	}
+	return nil
+}
+
 // CreateIssueComment adds a comment to an issue or pull request.
 func (c *Client) CreateIssueComment(ctx context.Context, issueNumber int, body string) error {
 	comment := &github.IssueComment{
@@ -381,22 +494,46 @@ func (c *Client) GetCommit(ctx context.Context, sha string) (*github.RepositoryC
 	return commit, nil
 }
 
+// GraphQL executes a GraphQL query against the GitHub API.
+// The result parameter should be a pointer to a struct that will be decoded from the response.
+func (c *Client) GraphQL(ctx context.Context, query string, variables map[string]any, result any) error {
+	reqBody := map[string]any{
+		"query":     query,
+		"variables": variables,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("marshaling graphql request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("creating graphql request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Get the HTTP client from the underlying go-github client (has auth configured)
+	httpClient := c.api.Client()
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("executing graphql request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("graphql request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("decoding graphql response: %w", err)
+	}
+
+	return nil
+}
+
 // IsBot checks if a username appears to be a bot account.
 func IsBot(username string) bool {
 	return strings.HasSuffix(username, "[bot]") || strings.HasSuffix(username, "-bot") || username == "Copilot"
-}
-
-// ParseUsernameFromEmail extracts a GitHub username from a noreply email.
-// Handles formats: "user@users.noreply.github.com" and "12345+user@users.noreply.github.com"
-func ParseUsernameFromEmail(email string) string {
-	const suffix = "@users.noreply.github.com"
-	if !strings.HasSuffix(email, suffix) {
-		return ""
-	}
-	local := strings.TrimSuffix(email, suffix)
-	// Handle "12345+username" format
-	if _, after, ok := strings.Cut(local, "+"); ok {
-		return after
-	}
-	return local
 }

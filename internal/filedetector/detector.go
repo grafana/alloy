@@ -88,7 +88,7 @@ type FSNotifyOptions struct {
 func NewFSNotify(opts FSNotifyOptions) (*FSNotify, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		kvs := []interface{}{"msg", "failed to create fsnotify watcher", "err", err}
+		kvs := []any{"msg", "failed to create fsnotify watcher", "err", err}
 
 		if diags := inotifyinfo.DiagnosticsJson(opts.Logger); diags != "" {
 			kvs = append(kvs, "diagnostics", diags)

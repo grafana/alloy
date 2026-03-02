@@ -17,6 +17,8 @@ import (
 	"reflect"
 	"sync"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -301,4 +303,12 @@ func toLabelsLabels(ls model.LabelSet) labels.Labels {
 	// Labels need to be sorted
 	result.Sort()
 	return result.Labels()
+}
+
+func (c *Component) Upload(j debuginfo.UploadJob) {
+	c.fanout.Upload(j)
+}
+
+func (c *Component) Client() debuginfogrpc.DebuginfoServiceClient {
+	return c.fanout.Client()
 }

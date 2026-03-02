@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/common/config"
+	"golang.org/x/net/http2"
 )
 
 const (
@@ -47,6 +48,7 @@ type HTTPConfig struct {
 	ServerWriteTimeout time.Duration `alloy:"server_write_timeout,attr,optional"`
 	ServerIdleTimeout  time.Duration `alloy:"server_idle_timeout,attr,optional"`
 	TLSConfig          *TLSConfig    `alloy:"tls,block,optional"`
+	HTTP2              *HTTP2Config  `alloy:"http2,block,optional"`
 }
 
 // Into applies the configs from HTTPConfig into a dskit.Into.
@@ -93,6 +95,42 @@ type TLSConfig struct {
 	ClientCA     string            `alloy:"client_ca,attr,optional"`
 	CipherSuites string            `alloy:"cipher_suites,attr,optional"`
 	MinVersion   string            `alloy:"min_version,attr,optional"`
+}
+
+type HTTP2Config struct {
+	Enabled                      bool          `alloy:"enabled,attr,optional"`
+	MaxHandlers                  int           `alloy:"max_handlers,attr,optional"`
+	MaxConcurrentStreams         uint32        `alloy:"max_concurrent_streams,attr,optional"`
+	MaxDecoderHeaderTableSize    uint32        `alloy:"max_decoder_header_table_size,attr,optional"`
+	MaxEncoderHeaderTableSize    uint32        `alloy:"max_encoder_header_table_size,attr,optional"`
+	MaxReadFrameSize             uint32        `alloy:"max_read_frame_size,attr,optional"`
+	PermitProhibitedCipherSuites bool          `alloy:"permit_prohibited_ciphers,attr,optional"`
+	IdleTimeout                  time.Duration `alloy:"idle_timeout,attr,optional"`
+	ReadIdleTimeout              time.Duration `alloy:"read_idle_timeout,attr,optional"`
+	PingTimeout                  time.Duration `alloy:"ping_timeout,attr,optional"`
+	WriteByteTimeout             time.Duration `alloy:"write_byte_timeout,attr,optional"`
+	MaxUploadBufferPerConnection int32         `alloy:"max_upload_buffer_per_connection,attr,optional"`
+	MaxUploadBufferPerStream     int32         `alloy:"max_upload_buffer_per_stream,attr,optional"`
+}
+
+func (c *HTTP2Config) Server() *http2.Server {
+	if c == nil || !c.Enabled {
+		return nil
+	}
+	return &http2.Server{
+		MaxHandlers:                  c.MaxHandlers,
+		MaxConcurrentStreams:         c.MaxConcurrentStreams,
+		MaxDecoderHeaderTableSize:    c.MaxDecoderHeaderTableSize,
+		MaxEncoderHeaderTableSize:    c.MaxEncoderHeaderTableSize,
+		MaxReadFrameSize:             c.MaxReadFrameSize,
+		PermitProhibitedCipherSuites: c.PermitProhibitedCipherSuites,
+		IdleTimeout:                  c.IdleTimeout,
+		ReadIdleTimeout:              c.ReadIdleTimeout,
+		PingTimeout:                  c.PingTimeout,
+		WriteByteTimeout:             c.WriteByteTimeout,
+		MaxUploadBufferPerConnection: c.MaxUploadBufferPerConnection,
+		MaxUploadBufferPerStream:     c.MaxUploadBufferPerStream,
+	}
 }
 
 // Into applies the configs from GRPCConfig into a dskit.Into.
@@ -169,6 +207,21 @@ func DefaultServerConfig() *ServerConfig {
 			ServerReadTimeout:  30 * time.Second,
 			ServerWriteTimeout: 30 * time.Second,
 			ServerIdleTimeout:  120 * time.Second,
+			HTTP2: &HTTP2Config{
+				Enabled:                      false,
+				MaxHandlers:                  0,
+				MaxConcurrentStreams:         100,
+				MaxDecoderHeaderTableSize:    4096,
+				MaxEncoderHeaderTableSize:    4096,
+				MaxReadFrameSize:             0,
+				PermitProhibitedCipherSuites: false,
+				IdleTimeout:                  0,
+				ReadIdleTimeout:              0,
+				PingTimeout:                  15 * time.Second,
+				WriteByteTimeout:             0,
+				MaxUploadBufferPerConnection: 0,
+				MaxUploadBufferPerStream:     0,
+			},
 		},
 		GRPC: &GRPCConfig{
 			ListenAddress:              "",

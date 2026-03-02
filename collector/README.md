@@ -12,6 +12,7 @@ The Alloy Collector Distro is built using the [OpenTelemetry Collector Builder (
 collector/
 ├── builder-config.yaml        # OCB configuration file (source)
 ├── generate.go                # Entry point for code generation (source)
+├── version.go                 # Exposes the current version of the collector distro (source)
 ├── generator/                 # Custom templating and generation code (source)
 │   ├── generator.go          # Generator tool that post-processes OCB output
 │   └── main_alloy.tpl        # Template for main_alloy.go
@@ -57,7 +58,7 @@ The custom generator performs two tasks:
 
 ## Building Locally
 
-When building locally via `make alloy`, the entire chain of replacement and collector generation runs automatically. This ensures a smooth development experience where you don't need to manually run generation commands before building.
+When building locally via `make alloy`, there is a pre-req on the generated otel collector files being up-to-date. Generally, no action is needed unless you are doing active development on this area. If that is the case, then locally you will need to manually trigger generation prior to running `make alloy`.
 
 To manually trigger generation:
 
@@ -67,8 +68,8 @@ make generate-otel-collector-distro
 
 ## CI Considerations
 
-If your work involves anything that would modify the generated files, please commit them with your changes before pushing to github. We have a github workflow that will check that the output of the collector generation matches what has been checked in, and this will fail if you do not include changes to these files. 
+If your work involves anything that would modify the generated files, please commit them with your changes before pushing to github. We have a github workflow that will check that the output of the collector generation matches what has been checked in, and this will fail if you do not include changes to these files.
 
 ## A Note On Replace Directives
 
-The `replaces` section in `builder-config.yaml` must be kept in sync with the replace directives in the root `go.mod` file as well as the `go.mod` file in the alloy engine extension. The Alloy project uses the `dependency-replacements.yaml` file found in the root of the project to generate replace directives. If you modify a replacement, please run `make generate-module-dependencies` to sync things up. There is also a github workflow that will check against this. 
+The `replaces` section in `builder-config.yaml` must be kept in sync with the replace directives in the root `go.mod` file as well as the `go.mod` file in the alloy engine extension. The Alloy project uses the `dependency-replacements.yaml` file found in the root of the project to generate replace directives. If you modify a replacement, please run `make generate-module-dependencies` to sync things up. There is also a github workflow that will check against this.

@@ -87,7 +87,7 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Blocks
 
-The `pyroscope.ebpf` component doesn't support any blocks. You can configure this component with arguments.
+`pyroscope.ebpf` doesn't support any blocks.
 
 ## Exported fields
 

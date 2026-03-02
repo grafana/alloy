@@ -31,7 +31,7 @@ type ProfilingConfig struct {
 	Quiet      bool          `alloy:"quiet,attr,optional"`
 }
 
-func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
+func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
 	*rc = DefaultArguments()
 	type config Arguments
 	return f((*config)(rc))

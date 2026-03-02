@@ -75,9 +75,10 @@ func TestHealthCheck(t *testing.T) {
 			failingCheckName string
 			customSetup      func(mock sqlmock.Sqlmock)
 			expectedResult   string
+			expectedValue    string
 		}{
 			{
-				name:             "missing grants",
+				name:             "missing PROCESS and REPLICATION CLIENT grants",
 				failingCheckName: "RequiredGrantsPresent",
 				customSetup: func(mock sqlmock.Sqlmock) {
 					mock.ExpectQuery(`SHOW GRANTS`).
@@ -87,6 +88,35 @@ func TestHealthCheck(t *testing.T) {
 						)
 				},
 				expectedResult: `result="false"`,
+				expectedValue:  `value="missing grants: PROCESS, REPLICATION CLIENT"`,
+			},
+			{
+				name:             "missing SELECT on performance_schema",
+				failingCheckName: "RequiredGrantsPresent",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(`SHOW GRANTS`).
+						WillReturnRows(
+							sqlmock.NewRows([]string{"Grants"}).
+								AddRow("GRANT PROCESS, REPLICATION CLIENT, SHOW VIEW ON *.* TO 'user'@'host'").
+								AddRow("GRANT SELECT ON cars.* TO 'user'@'host'"),
+						)
+				},
+				expectedResult: `result="false"`,
+				expectedValue:  `value="missing grants: SELECT on performance_schema.*"`,
+			},
+			{
+				name:             "missing SELECT and SHOW VIEW grants",
+				failingCheckName: "RequiredGrantsPresent",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(`SHOW GRANTS`).
+						WillReturnRows(
+							sqlmock.NewRows([]string{"Grants"}).
+								AddRow("GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'user'@'host'").
+								AddRow("GRANT SELECT ON cars.* TO 'user'@'host'"),
+						)
+				},
+				expectedResult: `result="false"`,
+				expectedValue:  `value="missing grants: SELECT on performance_schema.*, SHOW VIEW"`,
 			},
 			{
 				name:             "no rows in events statements digest",
@@ -99,6 +129,7 @@ func TestHealthCheck(t *testing.T) {
 						)
 				},
 				expectedResult: `result="false"`,
+				expectedValue:  "",
 			},
 		}
 
@@ -150,6 +181,9 @@ func TestHealthCheck(t *testing.T) {
 					if strings.Contains(entry.Line, tc.failingCheckName) {
 						require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
 						require.Contains(t, entry.Line, tc.expectedResult)
+						if tc.expectedValue != "" {
+							require.Contains(t, entry.Line, tc.expectedValue)
+						}
 						found = true
 						break
 					}

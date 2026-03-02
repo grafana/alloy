@@ -406,50 +406,6 @@ prometheus.scrape "integrations_memcached_exporter" {
 	}
 }
 
-prometheus.exporter.mongodb "integrations_mongodb_exporter" {
-	mongodb_uri      = "mongodb://mongodb-a:27017"
-	direct_connect   = true
-	discovering_mode = true
-}
-
-discovery.relabel "integrations_mongodb_exporter" {
-	targets = prometheus.exporter.mongodb.integrations_mongodb_exporter.targets
-
-	rule {
-		source_labels = ["__address__"]
-		target_label  = "service_name"
-		replacement   = "replicaset1-node1"
-	}
-
-	rule {
-		source_labels = ["__address__"]
-		target_label  = "mongodb_cluster"
-		replacement   = "prod-cluster"
-	}
-
-	rule {
-		target_label = "instance"
-		replacement  = "instance-key-value"
-	}
-
-	rule {
-		target_label = "job"
-		replacement  = "integrations/mongodb_exporter"
-	}
-}
-
-prometheus.scrape "integrations_mongodb_exporter" {
-	targets    = discovery.relabel.integrations_mongodb_exporter.output
-	forward_to = [prometheus.remote_write.integrations.receiver]
-	job_name   = "integrations/mongodb_exporter"
-
-	tls_config {
-		ca_file   = "/something7.cert"
-		cert_file = "/something8.cert"
-		key_file  = "/something9.cert"
-	}
-}
-
 prometheus.exporter.mssql "integrations_mssql" {
 	connection_string = "sqlserver://<USERNAME>:<PASSWORD>@<HOST>:<PORT>"
 }
@@ -776,6 +732,50 @@ prometheus.scrape "integrations_gcp_exporter" {
 	targets    = discovery.relabel.integrations_gcp_exporter.output
 	forward_to = [prometheus.remote_write.integrations.receiver]
 	job_name   = "integrations/gcp_exporter"
+
+	tls_config {
+		ca_file   = "/something7.cert"
+		cert_file = "/something8.cert"
+		key_file  = "/something9.cert"
+	}
+}
+
+prometheus.exporter.mongodb "integrations_mongodb_exporter" {
+	mongodb_uri      = "mongodb://mongodb-a:27017"
+	direct_connect   = true
+	discovering_mode = true
+}
+
+discovery.relabel "integrations_mongodb_exporter" {
+	targets = prometheus.exporter.mongodb.integrations_mongodb_exporter.targets
+
+	rule {
+		source_labels = ["__address__"]
+		target_label  = "service_name"
+		replacement   = "replicaset1-node1"
+	}
+
+	rule {
+		source_labels = ["__address__"]
+		target_label  = "mongodb_cluster"
+		replacement   = "prod-cluster"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = "instance-key-value"
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/mongodb_exporter"
+	}
+}
+
+prometheus.scrape "integrations_mongodb_exporter" {
+	targets    = discovery.relabel.integrations_mongodb_exporter.output
+	forward_to = [prometheus.remote_write.integrations.receiver]
+	job_name   = "integrations/mongodb_exporter"
 
 	tls_config {
 		ca_file   = "/something7.cert"

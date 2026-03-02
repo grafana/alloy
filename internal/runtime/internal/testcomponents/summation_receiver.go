@@ -79,7 +79,7 @@ func (s *SummationReceiver) Run(ctx context.Context) error {
 }
 
 // Return the sum as debug info instead of export to avoid evaluation loop.
-func (s *SummationReceiver) DebugInfo() interface{} {
+func (s *SummationReceiver) DebugInfo() any {
 	return int(s.sum.Load())
 }
 

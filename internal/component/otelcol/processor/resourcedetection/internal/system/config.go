@@ -59,8 +59,8 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"hostname_sources":    args.HostnameSources,
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
@@ -87,8 +87,8 @@ type ResourceAttributesConfig struct {
 	OsVersion          rac.ResourceAttributeConfig `alloy:"os.version,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"host.arch":              r.HostArch.Convert(),
 		"host.cpu.cache.l2.size": r.HostCPUCacheL2Size.Convert(),
 		"host.cpu.family":        r.HostCPUFamily.Convert(),

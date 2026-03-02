@@ -39,6 +39,7 @@
 ##   dist-alloy-binaries  Produce release-ready Alloy binaries.
 ##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
+##   dist-alloy-mixin-zip Produce release-ready Alloy mixin dashboard archive.
 ##
 ## Targets for generating assets:
 ##
@@ -58,6 +59,8 @@
 ##   clean                  Clean caches and built binaries
 ##   help                   Displays this message
 ##   info                   Print Makefile-specific environment variables
+##   update-go-version-pr-1 Update Go version in build images (use VERSION=1.25.8)
+##   update-go-version-pr-2 Update Go version in go.mod and Dockerfiles (use VERSION=1.25.8)
 ##
 ## Environment variables:
 ##
@@ -76,6 +79,7 @@
 ##   GO_TAGS              Extra tags to use when building.
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
+##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 
 include tools/make/*.mk
 
@@ -84,6 +88,8 @@ ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
 SERVICE_BINARY       		?= build/alloy-service
 ALLOYLINT_BINARY     		?= build/alloylint
+BUILDER_USER         		?= $(shell whoami)
+BUILDER_HOST         		?= $(shell hostname)
 BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
@@ -126,12 +132,15 @@ GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 VPREFIX      := github.com/grafana/alloy/internal/build
 VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
+ifdef SOURCE_DATE_EPOCH
+    DATE_STAMP = -d@$(SOURCE_DATE_EPOCH)
+endif
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
-                -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
-                -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+                -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
+                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ")
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
 DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
@@ -163,9 +172,11 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v -E '/integration-tests/|/integration-tests-k8s/')
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
-	$(GO_ENV) cd ./syntax && go test -race ./...
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		if echo "$$dir" | grep -qv testdata; then \
+			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
+		fi;\
+	done
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
@@ -175,20 +186,27 @@ else
 	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
-.PHONY: integration-test
-integration-test:
-	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+.PHONY: integration-test-docker
+integration-test-docker:
+	cd integration-tests/docker && $(GO_ENV) go run .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
+	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 30m ./...
+
+# Windows service integration test. Runs only on Windows with Administrator privileges.
+# Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
+.PHONY: integration-test-windows-service
+integration-test-windows-service: dist-alloy-installer-windows
+	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
+		$(GO_ENV) go test -v -tags=alloyintegrationtests -timeout 5m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
 	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
 		$(GO_ENV) go build .
-
-.PHONY: integration-test-k8s
-integration-test-k8s: alloy-image
-	cd ./internal/cmd/integration-tests-k8s/ && \
-		$(GO_ENV) go test -timeout 10m ./...
 
 #
 # Targets for building binaries
@@ -197,7 +215,7 @@ integration-test-k8s: alloy-image
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-otel-collector-distro
+alloy: generate-ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -252,7 +270,7 @@ generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd operations/helm/charts/alloy && helm-docs
+	cd ./operations/helm/charts/alloy && helm-docs
 endif
 
 generate-helm-tests:
@@ -283,6 +301,8 @@ endif
 generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_UI_BUILD),1)
+	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
 	cd ./internal/web/ui && npm install && npm run build
 endif
@@ -340,9 +360,9 @@ ifeq ($(USE_CONTAINER),1)
 else
 # Fetch snmp.yml file of the same version as the snmp_exporter go module, use sed to update the file we need to fetch in common.go:
 	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
-	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
+	sed -i '' "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
 	go generate ./internal/static/integrations/snmp_exporter/common; \
-	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+	sed -i '' "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
 endif
 
 generate-gh-issue-templates:
@@ -358,6 +378,16 @@ endif
 #
 # build-container-cache and clean-build-container-cache are defined in
 # Makefile.build-container.
+
+.PHONY: update-go-version-pr-1
+update-go-version-pr-1:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version pr-1 $(VERSION)
+
+.PHONY: update-go-version-pr-2
+update-go-version-pr-2:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version pr-2 $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

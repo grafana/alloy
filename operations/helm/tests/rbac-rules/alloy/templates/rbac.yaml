@@ -44,7 +44,21 @@ rules:
     - ""
     resources:
     - nodes
-    - nodes/proxy
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/pods
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
     - nodes/metrics
     verbs:
     - get

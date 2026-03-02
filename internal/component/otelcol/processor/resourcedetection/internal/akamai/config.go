@@ -8,8 +8,7 @@ import (
 const Name = "akamai"
 
 type Config struct {
-	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
-	ResourceAttributes    ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -29,10 +28,9 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"fail_on_missing_metadata": args.FailOnMissingMetadata,
-		"resource_attributes":      args.ResourceAttributes.Convert(),
+func (args Config) Convert() map[string]any {
+	return map[string]any{
+		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
 }
 
@@ -44,8 +42,8 @@ type ResourceAttributesConfig struct {
 	HostName      rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.provider": r.CloudProvider.Convert(),
 		"cloud.region":   r.CloudRegion.Convert(),
 		"host.id":        r.HostID.Convert(),

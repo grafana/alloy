@@ -5,12 +5,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/prometheus/prometheus/model/labels"
-
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/prometheus/prometheus/model/labels"
 )
 
 func init() {
@@ -199,4 +200,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) Exports() component.Exports {
 	return &c.exports
+}
+
+func (e *enrichAppendable) Upload(j debuginfo.UploadJob) {
+	e.component.fanout.Upload(j)
+}
+
+func (e *enrichAppendable) Client() debuginfogrpc.DebuginfoServiceClient {
+	return e.component.fanout.Client()
 }

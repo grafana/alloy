@@ -23,7 +23,7 @@ type Global struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (g *Global) UnmarshalYAML(f func(interface{}) error) error {
+func (g *Global) UnmarshalYAML(f func(any) error) error {
 	*g = DefaultGlobal
 	type global Global
 	return f((*global)(g))

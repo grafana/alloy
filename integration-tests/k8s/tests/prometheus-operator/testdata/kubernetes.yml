@@ -1,0 +1,429 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: testing
+  labels:
+    alloy: "yes"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-alloy
+  namespace: testing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-alloy
+rules:
+# For prometheus.operator.servicemonitors, podmonitors, probes, and scrapeconfigs to discover CRDs
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors", "podmonitors", "probes", "scrapeconfigs"]
+  verbs: ["get", "list", "watch"]
+# For discovering targets
+- apiGroups: [""]
+  resources: ["namespaces", "pods", "services", "endpoints", "nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get", "list", "watch"]
+# For prometheus.operator.probes with ingress targets
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+# For reading secrets referenced in monitors
+- apiGroups: [""]
+  resources: ["secrets", "configmaps"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-alloy
+subjects:
+- kind: ServiceAccount
+  name: grafana-alloy
+  namespace: testing
+roleRef:
+  kind: ClusterRole
+  name: grafana-alloy
+  apiGroup: rbac.authorization.k8s.io
+---
+# A simple metrics generator deployment using the prom-gen image
+# This is built from integration-tests/docker/configs/prom-gen/
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: testing
+  name: prom-gen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prom-gen
+  template:
+    metadata:
+      labels:
+        app: prom-gen
+    spec:
+      containers:
+      - name: prom-gen
+        image: prom-gen:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 9001
+          name: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prom-gen
+  namespace: testing
+  labels:
+    app: prom-gen
+spec:
+  selector:
+    app: prom-gen
+  ports:
+  - port: 9001
+    targetPort: 9001
+    name: metrics
+---
+# Blackbox exporter deployment for probing targets
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: testing
+  name: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+    spec:
+      containers:
+      - name: blackbox-exporter
+        image: prom/blackbox-exporter:v0.25.0
+        ports:
+        - containerPort: 9115
+          name: http
+        args:
+        - --config.file=/config/blackbox.yml
+        volumeMounts:
+        - name: config
+          mountPath: /config
+      volumes:
+      - name: config
+        configMap:
+          name: blackbox-exporter-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter-config
+  namespace: testing
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200]
+          method: GET
+          follow_redirects: true
+          preferred_ip_protocol: "ip4"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: testing
+  labels:
+    app: blackbox-exporter
+spec:
+  selector:
+    app: blackbox-exporter
+  ports:
+  - port: 9115
+    targetPort: 9115
+    name: http
+---
+# ServiceMonitor CRD that targets the prom-gen service
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prom-gen-service-monitor
+  namespace: testing
+  labels:
+    alloy: "yes"
+spec:
+  selector:
+    matchLabels:
+      app: prom-gen
+  namespaceSelector:
+    matchNames:
+    - testing
+  endpoints:
+  - port: metrics
+    interval: 5s
+    scrapeTimeout: 3s
+---
+# PodMonitor CRD that targets the prom-gen pod directly
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: prom-gen-pod-monitor
+  namespace: testing
+  labels:
+    alloy: "yes"
+spec:
+  selector:
+    matchLabels:
+      app: prom-gen
+  namespaceSelector:
+    matchNames:
+    - testing
+  podMetricsEndpoints:
+  - port: metrics
+    interval: 5s
+    scrapeTimeout: 3s
+---
+# Probe CRD that uses the blackbox exporter to probe the prom-gen service
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: http-probe
+  namespace: testing
+  labels:
+    alloy: "yes"
+spec:
+  interval: 5s
+  scrapeTimeout: 3s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.testing.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+      - http://prom-gen.testing.svc:9001/metrics
+---
+# ScrapeConfig CRD that uses static targets to scrape the prom-gen service
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: prom-gen-scrape-config
+  namespace: testing
+  labels:
+    alloy: "yes"
+spec:
+  staticConfigs:
+  - targets:
+    - "prom-gen.testing.svc:9001"
+    labels:
+      job: "prom-gen-static"
+  metricsPath: /metrics
+  scrapeInterval: 5s
+  scrapeTimeout: 3s
+---
+# Alloy Service (for potential self-scraping in future tests)
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-alloy
+  namespace: testing
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana-alloy
+  ports:
+  - port: 12345
+    targetPort: 12345
+    name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: testing
+  name: grafana-alloy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      serviceAccount: grafana-alloy
+      containers:
+      - name: alloy
+        image: grafana/alloy:latest
+        imagePullPolicy: Never
+        args:
+        - run
+        - /etc/config/config.alloy
+        - --stability.level=experimental
+        ports:
+        - containerPort: 12345
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alloy-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: testing
+data:
+  config.alloy: |
+    logging {
+      level = "debug"
+    }
+
+    livedebugging {
+      enabled = true
+    }
+
+    // Test prometheus.operator.servicemonitors
+    prometheus.operator.servicemonitors "default" {
+      forward_to = [prometheus.relabel.servicemonitors.receiver]
+      namespaces = ["testing"]
+      scrape {
+        honor_metadata = true
+      }
+      selector {
+        match_labels = {
+          alloy = "yes",
+        }
+      }
+    }
+
+    prometheus.relabel "servicemonitors" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
+      rule {
+        action       = "replace"
+        target_label = "alloy_int_test"
+        replacement  = "servicemonitor"
+      }
+      // Rename all metrics to test_servicemonitors_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_servicemonitors_$1"
+      }
+    }
+
+    // Test prometheus.operator.podmonitors
+    prometheus.operator.podmonitors "default" {
+      forward_to = [prometheus.relabel.podmonitors.receiver]
+      namespaces = ["testing"]
+      scrape {
+        honor_metadata = true
+      }
+      selector {
+        match_labels = {
+          alloy = "yes",
+        }
+      }
+    }
+
+    prometheus.relabel "podmonitors" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
+      rule {
+        action       = "replace"
+        target_label = "alloy_int_test"
+        replacement  = "podmonitor"
+      }
+      // Rename all metrics to test_podmonitors_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_podmonitors_$1"
+      }
+    }
+
+    // Test prometheus.operator.probes
+    prometheus.operator.probes "default" {
+      forward_to = [prometheus.relabel.probes.receiver]
+      namespaces = ["testing"]
+      scrape {
+        honor_metadata = true
+      }
+      selector {
+        match_labels = {
+          alloy = "yes",
+        }
+      }
+    }
+
+    prometheus.relabel "probes" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
+      rule {
+        action       = "replace"
+        target_label = "alloy_int_test"
+        replacement  = "probe"
+      }
+      // Rename all metrics to test_probes_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_probes_$1"
+      }
+    }
+
+    // Test prometheus.operator.scrapeconfigs
+    prometheus.operator.scrapeconfigs "default" {
+      forward_to = [prometheus.relabel.scrapeconfigs.receiver]
+      namespaces = ["testing"]
+      scrape {
+        honor_metadata = true
+      }
+      selector {
+        match_labels = {
+          alloy = "yes",
+        }
+      }
+    }
+
+    prometheus.relabel "scrapeconfigs" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
+      rule {
+        action       = "replace"
+        target_label = "alloy_int_test"
+        replacement  = "scrapeconfig"
+      }
+      // Rename all metrics to test_scrapeconfigs_* to ensure unique metadata per component
+      rule {
+        action        = "replace"
+        source_labels = ["__name__"]
+        regex         = "(.*)"
+        target_label  = "__name__"
+        replacement   = "test_scrapeconfigs_$1"
+      }
+    }
+
+    prometheus.remote_write "mimir" {
+      endpoint {
+        url = "http://mimir-nginx.mimir-test.svc:80/api/v1/push"
+        protobuf_message = "io.prometheus.write.v2.Request"
+        send_native_histograms = true
+      }
+    }

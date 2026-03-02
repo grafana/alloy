@@ -8,12 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"gopkg.in/yaml.v3"
 )
 
 type Component struct {
@@ -123,6 +125,11 @@ func (c *Component) Update(args component.Arguments) error {
 	cfg := args.(operator.Arguments)
 	c.config = &cfg
 	c.mut.Unlock()
+
+	if cfg.Scrape.EnableTypeAndUnitLabels && !c.opts.MinStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	select {
 	case c.onUpdate <- struct{}{}:
 	default:
@@ -145,7 +152,7 @@ func (c *Component) NotifyClusterChange() {
 }
 
 // DebugInfo returns debug information for this component.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	return c.manager.DebugInfo()
 }
 

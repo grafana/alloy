@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf"
 	"github.com/grafana/alloy/internal/component/pyroscope/java"
 	"github.com/grafana/alloy/internal/component/pyroscope/testutil"
+	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -39,13 +40,13 @@ func parseConfig() *config {
 	return c
 }
 
-func newWrite() pyroscope.Appendable {
-	receiver, err := testutil.CreateWriteComponent(l, reg, "http://localhost:4040")
+func newWrite() (pyroscope.Appendable, *write.Component) {
+	receiver, c, err := testutil.CreateWriteComponent(l, reg, "http://localhost:4040")
 	if err != nil {
 		_ = l.Log("msg", "error creating write component", "err", err)
 		os.Exit(1)
 	}
-	return receiver
+	return receiver, c
 }
 
 func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component {
@@ -55,6 +56,7 @@ func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component
 	args.ReporterUnsymbolizedStubs = true
 	args.Demangle = "full"
 	args.UProbeLinks = uprobeLinks
+	// args.DebugInfoOptions.UploadEnabled = true
 	e, err := ebpf.New(
 		log.With(l, "component", "ebpf"),
 		reg,
@@ -77,7 +79,10 @@ func main() {
 	}
 
 	cfg := parseConfig()
-	w := newWrite()
+	w, wc := newWrite()
+	g.Add(func() error {
+		return wc.Run(ctx)
+	}, cancel2)
 
 	if cfg.ebpfEnabled {
 		e := newEbpf(w, cfg.uprobeLinks)

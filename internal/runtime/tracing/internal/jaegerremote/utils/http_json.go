@@ -25,7 +25,7 @@ import (
 )
 
 // GetJSON makes an HTTP call to the specified URL and parses the returned JSON into `out`.
-func GetJSON(url string, out interface{}) error {
+func GetJSON(url string, out any) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -34,7 +34,7 @@ func GetJSON(url string, out interface{}) error {
 }
 
 // ReadJSON reads JSON from http.Response and parses it into `out`.
-func ReadJSON(resp *http.Response, out interface{}) error {
+func ReadJSON(resp *http.Response, out any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {

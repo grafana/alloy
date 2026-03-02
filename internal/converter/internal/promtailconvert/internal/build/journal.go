@@ -32,12 +32,12 @@ func (s *ScrapeConfigBuilder) AppendJournalConfig() {
 		FormatAsJson: jc.JSON,
 		MaxAge:       maxAge,
 		Path:         jc.Path,
-		Receivers:    s.getOrNewProcessStageReceivers(),
+		ForwardTo:    s.getOrNewProcessStageReceivers(),
 		Labels:       convertPromLabels(jc.Labels),
 		RelabelRules: alloyrelabel.Rules{},
 	}
 	relabelRulesExpr := s.getOrNewDiscoveryRelabelRules()
-	hook := func(val interface{}) interface{} {
+	hook := func(val any) any {
 		if _, ok := val.(alloyrelabel.Rules); ok {
 			return common.CustomTokenizer{Expr: relabelRulesExpr}
 		}

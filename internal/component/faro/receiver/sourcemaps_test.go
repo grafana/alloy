@@ -9,12 +9,23 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	alloyutil "github.com/grafana/alloy/internal/util"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
+
+// mockTimeSource is a test helper for controlling time.
+type mockTimeSource struct {
+	now time.Time
+}
+
+func (m *mockTimeSource) Now() time.Time {
+	return m.now
+}
 
 func Test_traceContextKeptWhenStacktraceDefined(t *testing.T) {
 	input := &payload.Exception{
@@ -629,6 +640,150 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 	require.Equal(t, input, actual)
 	require.Equal(t, []string{filepath.FromSlash("/foo/bar/baz/qux/folder/file.js.map")}, fileService.stats)
 	require.Empty(t, fileService.reads, "should not read file when stat fails")
+}
+
+func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
+	tt := []struct {
+		name              string
+		cache             map[string]*cachedSourceMap
+		expectedCacheSize int
+	}{
+		{
+			name: "should remove cached error",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": nil,
+			},
+			expectedCacheSize: 0,
+		},
+		{
+			name: "should not remove from map if no errors",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldNotRemoveFromCache.com__v2": {},
+			},
+			expectedCacheSize: 1,
+		},
+		{
+			name: "should not remove from map if no errors",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldNotRemoveFromCache.com__v1": {},
+				"http://shouldNotRemoveFromCache.com__v2": {},
+			},
+			expectedCacheSize: 2,
+		},
+		{
+			name: "should remove only cached errors",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldNotRemoveFromCache.com__v1": nil,
+				"http://shouldNotRemoveFromCache.com__v2": {},
+			},
+			expectedCacheSize: 1,
+		},
+	}
+
+	logger := util.TestLogger(t)
+
+	for _, tc := range tt {
+		reg := prometheus.NewRegistry()
+		metrics := newSourceMapMetrics(reg)
+
+		store := &sourceMapsStoreImpl{
+			log:        logger,
+			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: 5 * time.Minute}},
+			metrics:    metrics,
+			cli:        &mockHTTPClient{},
+			fs:         newTestFileService(),
+			cache:      tc.cache,
+			timeSource: &mockTimeSource{now: time.Now()},
+		}
+
+		t.Run(tc.name, func(t *testing.T) {
+			store.CleanCachedErrors()
+			require.Equal(t, tc.expectedCacheSize, len(store.cache))
+		})
+	}
+}
+
+func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
+	now := time.Now()
+
+	tt := []struct {
+		name              string
+		cache             map[string]*cachedSourceMap
+		timeSource        *mockTimeSource
+		cacheTimeout      time.Duration
+		expectedCacheSize int
+	}{
+		{
+			name: "should clear entry from cache if too old",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+			},
+			timeSource:        &mockTimeSource{now: now.Add(6 * time.Minute)},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 0,
+		},
+		{
+			name: "should not clear entry from cache if not too old",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+			},
+			timeSource:        &mockTimeSource{now: now.Add(3 * time.Minute)},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 1,
+		},
+		{
+			name: "should clear only old entries from cache",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-6 * time.Minute)},
+			},
+			timeSource:        &mockTimeSource{now: now},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 1,
+		},
+		{
+			name: "should not clear multiple entries",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(3 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(4 * time.Minute)},
+			},
+			timeSource:        &mockTimeSource{now: now},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 2,
+		},
+		{
+			name: "should clear multiple old entries from cache",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(-10 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-7 * time.Minute)},
+			},
+			timeSource:        &mockTimeSource{now: now},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 0,
+		},
+	}
+
+	logger := util.TestLogger(t)
+
+	for _, tc := range tt {
+		reg := prometheus.NewRegistry()
+		metrics := newSourceMapMetrics(reg)
+
+		store := &sourceMapsStoreImpl{
+			log:        logger,
+			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: tc.cacheTimeout}},
+			metrics:    metrics,
+			cli:        &mockHTTPClient{},
+			fs:         newTestFileService(),
+			cache:      tc.cache,
+			timeSource: tc.timeSource,
+		}
+
+		t.Run(tc.name, func(t *testing.T) {
+			store.CleanOldCacheEntries()
+			require.Equal(t, tc.expectedCacheSize, len(store.cache))
+		})
+	}
 }
 
 type mockHTTPClient struct {

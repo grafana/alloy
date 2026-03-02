@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/golang/snappy"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/config"
 	"go.uber.org/atomic"
@@ -69,8 +70,9 @@ type queue struct {
 }
 
 // append adds a log entry to the queue for the given tenant.
-// It returns true if the entry was successfully queued, false if the queue
-// is full and backpressure should be applied.
+// It returns true if the caller should not apply backpressure,
+// entry was queued or it was dropped due to max streams reached.
+// It returns false if the queue is full and backpressure should be applied.
 func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -78,37 +80,38 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	batch, ok := q.batches[tenantID]
 	if !ok {
 		// Create a new batch for this tenant.
-		batch := newBatch(q.cfg.MaxStreams)
+		batch := newBatch(q.cfg.MaxStreams, q.cfg.BatchSize)
 		_ = batch.add(entry, segmentNum)
 		q.batches[tenantID] = batch
 		return true
 	}
 
-	// If adding this entry would exceed the batch size limit, enqueue the
-	// current batch and start a new one.
-	if batch.sizeBytesAfter(entry.Entry) > q.cfg.BatchSize {
-		select {
-		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
-			// Successfully enqueued the batch.
-		default:
-			// Channel is full, signal backpressure.
-			return false
+	if err := batch.add(entry, segmentNum); err != nil {
+		// If adding this entry would exceed the batch size limit, enqueue the
+		// current batch and start a new one.
+		if errors.Is(err, errBatchSizeReached) {
+			select {
+			case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
+				// Successfully enqueued the batch.
+			default:
+				// Channel is full, signal backpressure.
+				return false
+			}
+
+			batch := newBatch(q.cfg.MaxStreams, q.cfg.BatchSize)
+			_ = batch.add(entry, segmentNum)
+			q.batches[tenantID] = batch
+			return true
 		}
 
-		batch := newBatch(q.cfg.MaxStreams)
-		_ = batch.add(entry, segmentNum)
-		q.batches[tenantID] = batch
-		return true
-	}
-
-	// Add entry to existing batch. If we cannot add entry to batch we will drop it.
-	if err := batch.add(entry, segmentNum); err != nil {
+		// If we could not add entry to batch that means that the configured maxStreams was reached and
+		// we should drop the entry.
 		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := reasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = reasonStreamLimited
 		}
-		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(len(entry.Line)))
+		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(entry.Size()))
 		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Inc()
 	}
 
@@ -333,6 +336,11 @@ func (s *shards) runShard(q *queue) {
 		}
 	}()
 
+	var (
+		protoBuffer  = make([]byte, s.cfg.BatchSize)
+		snappyBuffer = make([]byte, snappy.MaxEncodedLen(s.cfg.BatchSize))
+	)
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -343,11 +351,12 @@ func (s *shards) runShard(q *queue) {
 				// Channel is closed, when a graceful shutdown is successful.
 				return
 			}
-			s.sendBatch(b.TenantID, b.Batch)
+
+			s.sendBatch(b.TenantID, b.Batch, &protoBuffer, &snappyBuffer)
 		case <-maxWaitCheck.C:
 			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
-				s.sendBatch(b.TenantID, b.Batch)
+				s.sendBatch(b.TenantID, b.Batch, &protoBuffer, &snappyBuffer)
 			}
 		}
 	}
@@ -356,11 +365,10 @@ func (s *shards) runShard(q *queue) {
 // enqueue routes a log entry to the appropriate shard based on its label fingerprint.
 // Returns false if we could not enqueue the entry, either because the shard is shutting down or the queue is full.
 // It is up to the caller to retry or drop the entry.
-func (s *shards) enqueue(entry loki.Entry, segmentNum int) bool {
+func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	entry, tenantID := s.processEntry(entry)
 	if _, ok := s.tenants[tenantID]; !ok {
 		s.tenants[tenantID] = struct{}{}
 		s.initBatchMetrics(tenantID)
@@ -391,34 +399,34 @@ func (s *shards) initBatchMetrics(tenantID string) {
 	}
 }
 
-func (s *shards) processEntry(e loki.Entry) (loki.Entry, string) {
-	// Check if it has been overridden while processing the pipeline stages
-	if value, ok := e.Labels[ReservedLabelTenantID]; ok {
-		return e, string(value)
+// sendBatch encodes a batch and sends it to Loki with retry logic.
+func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
+	defer batch.reportAsSentData(s.markerHandler)
+
+	r, entriesCount := batch.request()
+
+	size := r.Size()
+	// We adjust the reusable buffers size after the biggest batch we've seen.
+	if size > len(*protoBuf) {
+		*protoBuf = make([]byte, size)
+		*snappyBuf = make([]byte, snappy.MaxEncodedLen(size))
 	}
 
-	return e, s.cfg.TenantID
-}
-
-// sendBatch encodes a batch and sends it to Loki with retry logic.
-func (s *shards) sendBatch(tenantID string, batch *batch) {
-	defer batch.reportAsSentData(s.markerHandler)
-	buf, entriesCount, err := batch.encode()
-
+	buf, err := encode(r, size, *protoBuf, *snappyBuf)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
 		return
 	}
 
 	bufBytes := float64(len(buf))
-	s.metrics.encodedBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
+	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(bufBytes)
 
 	backoff := backoff.New(s.ctx, s.cfg.BackoffConfig)
 	var status int
 	for {
 		start := time.Now()
-		// send uses `timeout` internally, so `context.Background` is good enough.
-		status, err = s.send(context.Background(), tenantID, buf)
+		// We pass s.ctx so that all inflight requests are canceled when we are doing a hard shutdown.
+		status, err = s.send(s.ctx, tenantID, buf)
 
 		s.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), s.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
 
@@ -464,6 +472,11 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 
 var userAgent = useragent.Get()
 
+const (
+	contentType     = "application/x-protobuf"
+	contentEncoding = "snappy"
+)
+
 // send performs the HTTP POST request to send a batch to Loki.
 func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Timeout)
@@ -473,9 +486,9 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 		return -1, err
 	}
 
-	const contentType = "application/x-protobuf"
-	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Encoding", contentEncoding)
 
 	// If the tenant ID is not empty alloy is running in multi-tenant mode, so
 	// we should send it to Loki

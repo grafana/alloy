@@ -8,6 +8,7 @@ import (
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -21,6 +22,7 @@ type TargetServer struct {
 	config           *dskit.Config
 	metricsNamespace string
 	server           *dskit.Server
+	http2            *HTTP2Config
 }
 
 // NewTargetServer creates a new TargetServer, applying some defaults to the server configuration.
@@ -39,6 +41,9 @@ func NewTargetServer(logger log.Logger, metricsNamespace string, reg prometheus.
 
 	if config == nil {
 		config = DefaultServerConfig()
+	}
+	if config.HTTP != nil {
+		ts.http2 = config.HTTP.HTTP2
 	}
 
 	// convert from Alloy into the dskit config
@@ -72,6 +77,10 @@ func (ts *TargetServer) MountAndRun(mountRoute func(router *mux.Router)) error {
 	}
 
 	ts.server = srv
+
+	if http2Server := ts.http2.Server(); http2Server != nil {
+		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server)
+	}
 	mountRoute(ts.server.HTTP)
 
 	go func() {
@@ -98,4 +107,8 @@ func (ts *TargetServer) GRPCListenAddr() string {
 func (ts *TargetServer) StopAndShutdown() {
 	ts.server.Stop()
 	ts.server.Shutdown()
+}
+
+func (ts *TargetServer) Config() dskit.Config {
+	return *ts.config
 }

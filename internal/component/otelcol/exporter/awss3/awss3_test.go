@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -220,7 +221,7 @@ func TestConfig(t *testing.T) {
 					RetryMaxBackoff:   20 * time.Second,
 				},
 				MarshalerName: "otlp_json",
-				QueueSettings: exporterhelper.NewDefaultQueueConfig(),
+				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
 			},
 		},
 		{
@@ -274,7 +275,7 @@ func TestConfig(t *testing.T) {
 					S3Bucket: "resource_bucket",
 				},
 				MarshalerName: "otlp_json",
-				QueueSettings: exporterhelper.NewDefaultQueueConfig(),
+				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
 			},
 		},
 	}

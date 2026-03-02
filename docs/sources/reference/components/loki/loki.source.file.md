@@ -142,6 +142,11 @@ Benefits of using `file_match` over `local.file_match`:
 When `enabled` is set to `true`, you can use glob patterns, for example, `/tmp/*.log` or `/var/log/**/*.log`, directly in the `targets` argument's `__path__` label.
 The component periodically scans the filesystem based on `sync_period` and automatically discovers new files, removes deleted files, and ignores files older than `ignore_older_than` if specified.
 
+The glob patterns support the `{a,b,c}` syntax for matching multiple alternatives:
+
+* `/tmp/*.{log,txt,json}` matches files with `.log`, `.txt`, or `.json` extensions.
+* `/var/log/{nginx,apache}/*.log` matches `.log` files in either the `nginx` or `apache` subdirectories.
+
 ## Exported fields
 
 `loki.source.file` doesn't export any fields.
@@ -160,7 +165,6 @@ The component periodically scans the filesystem based on `sync_period` and autom
 
 ## Debug metrics
 
-* `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
 * `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
 * `loki_source_file_files_active_total` (gauge): Number of active files.
 * `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
@@ -254,6 +258,34 @@ local.file_match "logs" {
 loki.source.file "tmpfiles" {
   targets    = local.file_match.logs.targets
   forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "loki:3100/api/v1/push"
+  }
+}
+```
+
+### Match multiple patterns
+
+This example shows how to use the `{a,b,c}` pattern syntax to match multiple file extensions, multiple directories, and exclude multiple file types in a single configuration.
+
+```alloy
+loki.source.file "logs" {
+  targets    = [
+    // Match .log, .txt, and .json files from nginx, apache, or caddy directories
+    // Exclude compressed and backup files
+    {
+      __path__         = "/var/log/{nginx,apache,caddy}/*.{log,txt,json}",
+      __path_exclude__ = "/var/log/{nginx,apache,caddy}/*.{gz,zip,bak,old}",
+      "job"            = "webserver",
+    },
+  ]
+  forward_to = [loki.write.local.receiver]
+  file_match {
+    enabled = true
+  }
 }
 
 loki.write "local" {

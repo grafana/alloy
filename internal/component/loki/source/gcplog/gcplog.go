@@ -165,7 +165,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 // DebugInfo returns information about the status of targets.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	return targetDebugInfo{Details: c.target.Details()}

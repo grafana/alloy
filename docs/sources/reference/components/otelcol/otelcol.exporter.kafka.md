@@ -73,7 +73,7 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 You can use the following blocks with `otelcol.exporter.kafka`:
 
 | Block                                                   | Description                                                                    | Required |
-|---------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
 | `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                             | no       |
 | `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                            | no       |
@@ -92,7 +92,7 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                            | no       |
-| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS key_file.                                  | no       |
+| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                                | no       |
 
 The > symbol indicates deeper levels of nesting.

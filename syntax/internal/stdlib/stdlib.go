@@ -27,7 +27,7 @@ var ExperimentalIdentifiers = map[string]bool{
 }
 
 // DeprecatedIdentifiers are deprecated in favour of the namespaced ones.
-var DeprecatedIdentifiers = map[string]interface{}{
+var DeprecatedIdentifiers = map[string]any{
 	"env":           os.Getenv,
 	"nonsensitive":  nonSensitive,
 	"concat":        concat,
@@ -52,7 +52,7 @@ var DeprecatedIdentifiers = map[string]interface{}{
 // Function identifiers are Go functions with exactly one non-error return
 // value, with an optionally supported error return value as the second return
 // value.
-var Identifiers = map[string]interface{}{
+var Identifiers = map[string]any{
 	"constants": constants,
 	"coalesce":  coalesce,
 	"json_path": jsonPath,
@@ -71,11 +71,11 @@ func init() {
 	maps.Copy(Identifiers, DeprecatedIdentifiers)
 }
 
-var file = map[string]interface{}{
+var file = map[string]any{
 	"path_join": filepath.Join,
 }
 
-var encoding = map[string]interface{}{
+var encoding = map[string]any{
 	"from_json":      jsonDecode,
 	"from_yaml":      yamlDecode,
 	"from_base64":    base64Decode,
@@ -87,7 +87,7 @@ var encoding = map[string]interface{}{
 	"url_decode":     urlDecode,
 }
 
-var str = map[string]interface{}{
+var str = map[string]any{
 	"format":      fmt.Sprintf,
 	"join":        strings.Join,
 	"replace":     strings.ReplaceAll,
@@ -205,17 +205,17 @@ var groupBy = value.RawFunction(func(funcValue value.Value, args ...value.Value)
 	return value.Array(result...), nil
 })
 
-var array = map[string]interface{}{
+var array = map[string]any{
 	"concat":       concat,
 	"combine_maps": combineMaps,
 	"group_by":     groupBy,
 }
 
-var convert = map[string]interface{}{
+var convert = map[string]any{
 	"nonsensitive": nonSensitive,
 }
 
-var sys = map[string]interface{}{
+var sys = map[string]any{
 	"env": os.Getenv,
 }
 
@@ -431,8 +431,8 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	return value.Array(res...), nil
 })
 
-func jsonDecode(in string) (interface{}, error) {
-	var res interface{}
+func jsonDecode(in string) (any, error) {
+	var res any
 	err := json.Unmarshal([]byte(in), &res)
 	if err != nil {
 		return nil, err
@@ -440,8 +440,8 @@ func jsonDecode(in string) (interface{}, error) {
 	return res, nil
 }
 
-func yamlDecode(in string) (interface{}, error) {
-	var res interface{}
+func yamlDecode(in string) (any, error) {
+	var res any
 	err := yaml.Unmarshal([]byte(in), &res)
 	if err != nil {
 		return nil, err
@@ -483,8 +483,8 @@ func urlDecode(in string) (string, error) {
 	return url.QueryUnescape(in)
 }
 
-func jsonEncode(in interface{}) (string, error) {
-	v, ok := in.(map[string]interface{})
+func jsonEncode(in any) (string, error) {
+	v, ok := in.(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("jsonEncode only supports map")
 	}
@@ -495,7 +495,7 @@ func jsonEncode(in interface{}) (string, error) {
 	return string(res), nil
 }
 
-func jsonPath(jsonString string, path string) ([]interface{}, error) {
+func jsonPath(jsonString string, path string) ([]any, error) {
 	jsonPathExpr, err := jp.ParseString(path)
 	if err != nil {
 		return nil, err

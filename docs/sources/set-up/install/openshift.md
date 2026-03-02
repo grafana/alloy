@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/set-up/install/openshift/
 description: Learn how to deploy Grafana Alloy on OpenShift
 menuTitle: OpenShift
 title: Deploy Grafana Alloy on OpenShift
-weight: 530
+weight: 650
 ---
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}} on OpenShift
@@ -59,7 +59,7 @@ You can adapt the SCCs to meet your local requirements and needs.
 The following example shows a DaemonSet configuration that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
 
 ```yaml
-apiVersion: aapps/v1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: alloy-logs
@@ -68,26 +68,26 @@ spec:
   selector:
     matchLabels:
       app: alloy-logs
-   template:
-     metadata:
-       labels:
-         app: alloy-logs
-      spec:
-        containers:
-        - name: alloy-logs
-          image: grafana/alloy:<ALLOY_VERSION>
-          ports:
-          - containerPort: 12345
-          # The security context configuration
-          securityContext:
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-            runAsUser: 473
-            runAsGroup: 473
-            fsGroup: 1000
-         volumes:
-         - name: log-volume
-           emptyDir: {}
+  template:
+    metadata:
+      labels:
+        app: alloy-logs
+    spec:
+      securityContext:
+        runAsUser: 473
+        runAsGroup: 473
+        fsGroup: 1000
+      containers:
+      - name: alloy-logs
+        image: grafana/alloy:<ALLOY_VERSION>
+        ports:
+        - containerPort: 12345
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+      volumes:
+      - name: log-volume
+        emptyDir: {}
 ```
 
 Replace the following:

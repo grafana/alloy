@@ -111,12 +111,12 @@ type MatcherConfig struct {
 
 // MetricConfig is a single metrics configuration.
 type MetricConfig struct {
-	MetricType   string      `mapstructure:"type"`
-	Description  string      `mapstructure:"description"`
-	Source       *string     `mapstructure:"source"`
-	Prefix       string      `mapstructure:"prefix"`
-	IdleDuration *string     `mapstructure:"max_idle_duration"`
-	Config       interface{} `mapstructure:"config"`
+	MetricType   string  `mapstructure:"type"`
+	Description  string  `mapstructure:"description"`
+	Source       *string `mapstructure:"source"`
+	Prefix       string  `mapstructure:"prefix"`
+	IdleDuration *string `mapstructure:"max_idle_duration"`
+	Config       any     `mapstructure:"config"`
 }
 
 const (

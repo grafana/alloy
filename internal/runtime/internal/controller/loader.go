@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 	astutil "github.com/grafana/alloy/internal/util/ast"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -77,7 +78,7 @@ type LoaderOptions struct {
 
 // NewLoader creates a new Loader. Components built by the Loader will be built
 // with co for their options.
-func NewLoader(opts LoaderOptions) *Loader {
+func NewLoader(opts LoaderOptions) (*Loader, error) {
 	var (
 		globals  = opts.ComponentGlobals
 		services = opts.Services
@@ -91,8 +92,9 @@ func NewLoader(opts LoaderOptions) *Loader {
 		reg = component.NewDefaultRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
 	}
 
+	logger := log.With(globals.Logger, "controller_path", parent, "controller_id", id)
 	l := &Loader{
-		log:        log.With(globals.Logger, "controller_path", parent, "controller_id", id),
+		log:        logger,
 		tracer:     tracing.WrapTracerForLoader(globals.TraceProvider, globals.ControllerID),
 		globals:    globals,
 		services:   services,
@@ -116,11 +118,21 @@ func NewLoader(opts LoaderOptions) *Loader {
 	l.cc = newControllerCollector(l, parent, id)
 
 	if globals.Registerer != nil {
-		globals.Registerer.MustRegister(l.cc)
-		globals.Registerer.MustRegister(l.cm)
+		// These metrics already being registered indicates there's already a loader which exists for this controller.
+		// Creating duplicate loaders should only happen in error states where we should not proceed further. One know
+		// case of this is when remotecfg loads an invalid config and attempts to reload the prior config.
+		existing := util.MustRegisterOrReturnExisting(globals.Registerer, l.cc)
+		if existing != nil {
+			return nil, fmt.Errorf("a loader exists already exists for %q", globals.ControllerID)
+		}
+
+		existing = util.MustRegisterOrReturnExisting(globals.Registerer, l.cm)
+		if existing != nil {
+			return nil, fmt.Errorf("a loader exists already exists for %q", globals.ControllerID)
+		}
 	}
 
-	return l
+	return l, nil
 }
 
 // ApplyOptions are options that can be provided when loading a new Alloy config.
@@ -689,7 +701,7 @@ func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
 
 // Variables returns the Variables the Loader exposes for other components to
 // reference.
-func (l *Loader) Variables() map[string]interface{} {
+func (l *Loader) Variables() map[string]any {
 	return l.cache.GetContext().Variables
 }
 

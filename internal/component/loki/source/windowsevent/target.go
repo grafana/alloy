@@ -32,10 +32,9 @@ type Target struct {
 	bm      *bookMark // bookmark to save positions.
 	fetcher *win_eventlog.EventFetcher
 
-	ready bool
-	done  chan struct{}
-	wg    sync.WaitGroup
-	err   error
+	done chan struct{}
+	wg   sync.WaitGroup
+	err  error
 }
 
 // NewTarget create a new windows targets, that will fetch windows event logs and send them to Loki.
@@ -86,24 +85,18 @@ func NewTarget(
 	if t.cfg.PollInterval == 0 {
 		t.cfg.PollInterval = 3 * time.Second
 	}
-	go t.loop()
-	go t.updateBookmark(bookmarkSyncPeriod)
+
+	t.wg.Go(t.loop)
+	t.wg.Go(func() { t.updateBookmark(bookmarkSyncPeriod) })
 	return t, nil
 }
 
 // loop fetches new events and send them to via the Loki client.
 func (t *Target) loop() {
-	t.ready = true
-	t.wg.Add(1)
 	interval := time.NewTicker(t.cfg.PollInterval)
-	defer func() {
-		t.ready = false
-		t.wg.Done()
-		interval.Stop()
-	}()
+	defer interval.Stop()
 
 	for {
-
 	loop:
 		for {
 			// fetch events until there's no more.
@@ -139,13 +132,8 @@ func (t *Target) loop() {
 }
 
 func (t *Target) updateBookmark(bookmarkSyncPeriod time.Duration) {
-	t.wg.Add(1)
-
 	bookmarkTick := time.NewTicker(bookmarkSyncPeriod)
-	defer func() {
-		bookmarkTick.Stop()
-		t.wg.Done()
-	}()
+	defer bookmarkTick.Stop()
 
 	for {
 		select {

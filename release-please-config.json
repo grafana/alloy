@@ -15,6 +15,7 @@
     { "type": "revert", "section": "Reverts", "hidden": true }
   ],
   "always-update": true,
+  "draft": true,
   "draft-pull-request": true,
   "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
   "packages": {
@@ -30,6 +31,10 @@
         {
           "type": "generic",
           "path": "collector/builder-config.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "collector/VERSION"
         }
       ]
     }

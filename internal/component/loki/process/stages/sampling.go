@@ -95,11 +95,6 @@ func (m *samplingStage) randomNumber() uint64 {
 	return uint64(m.source.Int63())
 }
 
-// Name implements Stage
-func (m *samplingStage) Name() string {
-	return StageTypeSampling
-}
-
 // Cleanup implements Stage.
 func (*samplingStage) Cleanup() {
 	// no-op

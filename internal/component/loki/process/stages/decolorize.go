@@ -31,11 +31,6 @@ func (m *decolorizeStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// Name implements Stage
-func (m *decolorizeStage) Name() string {
-	return StageTypeDecolorize
-}
-
 // Cleanup implements Stage.
 func (*decolorizeStage) Cleanup() {
 	// no-op

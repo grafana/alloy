@@ -17,7 +17,7 @@ var (
 
 // UnmarshalYAML unmarshals a string to a Mode. Fails if the string is
 // unrecognized.
-func (m *Mode) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (m *Mode) UnmarshalYAML(unmarshal func(any) error) error {
 	*m = DefaultMode
 
 	var plain string

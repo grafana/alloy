@@ -39,14 +39,14 @@ const (
 // so we need to convert it to a map and then back to the internal type.
 // ConvertMetricUnit matches the Unit type in this internal package:
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.96.0/connector/spanmetricsconnector/internal/metrics/unit.go
-func ConvertMetricUnit(unit string) (map[string]interface{}, error) {
+func ConvertMetricUnit(unit string) (map[string]any, error) {
 	switch unit {
 	case MetricsUnitMilliseconds:
-		return map[string]interface{}{
+		return map[string]any{
 			"unit": 0,
 		}, nil
 	case MetricsUnitSeconds:
-		return map[string]interface{}{
+		return map[string]any{
 			"unit": 1,
 		}, nil
 	default:

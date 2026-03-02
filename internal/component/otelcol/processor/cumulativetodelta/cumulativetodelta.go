@@ -165,7 +165,7 @@ type MatchArgs struct {
 func (matchArgs MatchArgs) Convert() (*cumulativetodeltaprocessor.MatchMetrics, error) {
 	var result cumulativetodeltaprocessor.MatchMetrics
 
-	var raw = make(map[string]interface{})
+	var raw = make(map[string]any)
 
 	if len(matchArgs.Metrics) > 0 {
 		raw["metrics"] = matchArgs.Metrics
@@ -190,18 +190,18 @@ const (
 	InitialValueDrop string = "drop"
 )
 
-func ConvertInitialValue(initialValue string) (map[string]interface{}, error) {
+func ConvertInitialValue(initialValue string) (map[string]any, error) {
 	switch initialValue {
 	case InitialValueAuto:
-		return map[string]interface{}{
+		return map[string]any{
 			"initial_value": 0,
 		}, nil
 	case InitialValueKeep:
-		return map[string]interface{}{
+		return map[string]any{
 			"initial_value": 1,
 		}, nil
 	case InitialValueDrop:
-		return map[string]interface{}{
+		return map[string]any{
 			"initial_value": 2,
 		}, nil
 	default:

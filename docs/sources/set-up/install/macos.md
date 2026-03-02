@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on macOS
 menuTitle: macOS
 title: Install Grafana Alloy on macOS
-weight: 400
+weight: 250
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on macOS

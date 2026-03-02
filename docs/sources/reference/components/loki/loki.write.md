@@ -134,11 +134,12 @@ The optional `queue_config` block configures how the endpoint queues batches of 
 
 The following arguments are supported:
 
-| Name            | Type       | Description                                                                                                                                                                   | Default | Required |
-| --------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB` | no       |
-| `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
-| `min_shards`    | `number`   | Minimum number of concurrent shards sending samples to the endpoint.                                                                                                          | `1`      | no       |
+| Name                 | Type       | Description                                                                                                                                                                   | Default | Required |
+| -------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `block_on_overflow`  | `bool`     | If `true`, block until there is space in the queue; if `false`, drop entries when queue is full.                                                                              | `true`  | no       |
+| `capacity`           | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB` | no       |
+| `drain_timeout`      | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
+| `min_shards`         | `number`   | Minimum number of concurrent shards sending samples to the endpoint.                                                                                                          | `1`     | no       |
 
 Each endpoint is divided into a number of concurrent _shards_ which are responsible for sending a fraction of batches. The number of shards is controlled with `min_shards` argument.
 Each shard has a queue of batches it keeps in memory, controlled with the `capacity` argument.
@@ -198,11 +199,10 @@ The following fields are exported and can be referenced by other components:
 * `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
 * `loki_write_dropped_bytes_total` (counter): Number of bytes dropped because failed to be sent to the ingester after all retries.
 * `loki_write_dropped_entries_total` (counter): Number of log entries dropped because they failed to be sent to the ingester after all retries.
-* `loki_write_encoded_bytes_total` (counter): Number of bytes encoded and ready to send.
-* `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
 * `loki_write_sent_bytes_total` (counter): Number of bytes sent.
 * `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
-* `loki_write_stream_lag_seconds` (gauge): Difference between current time and last batch timestamp for successful sends.
+* `loki_write_request_size_bytes` (histogram): Number of bytes for encoded requests.
+* `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
 
 ## Examples
 

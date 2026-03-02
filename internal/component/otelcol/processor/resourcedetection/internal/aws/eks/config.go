@@ -9,6 +9,7 @@ const Name = "eks"
 
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	NodeFromEnvVar     string                   `alloy:"node_from_env_var,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -19,6 +20,7 @@ var DefaultArguments = Config{
 		CloudProvider:  rac.ResourceAttributeConfig{Enabled: true},
 		K8sClusterName: rac.ResourceAttributeConfig{Enabled: false},
 	},
+	NodeFromEnvVar: "K8S_NODE_NAME",
 }
 
 var _ syntax.Defaulter = (*Config)(nil)
@@ -28,9 +30,10 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
+		"node_from_env_var":   args.NodeFromEnvVar,
 	}
 }
 
@@ -42,8 +45,8 @@ type ResourceAttributesConfig struct {
 	K8sClusterName rac.ResourceAttributeConfig `alloy:"k8s.cluster.name,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.account.id": r.CloudAccountID.Convert(),
 		"cloud.platform":   r.CloudPlatform.Convert(),
 		"cloud.provider":   r.CloudProvider.Convert(),

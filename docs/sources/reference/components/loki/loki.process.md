@@ -145,7 +145,7 @@ Given the following log line, the subsequent key-value pairs are created in the 
 
 content: message
 stream: stdout
-timestamp: 2019-04-30T02:12:41.8443515
+time: 2019-04-30T02:12:41.8443515
 ```
 
 ### `stage.decolorize`
@@ -1490,7 +1490,7 @@ stage.sampling {
 
 ### `stage.static_labels`
 
-The `stage.static_labels` inner block configures a static_labels processing stage that adds a static set of labels to incoming log entries.
+The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
 
 For labels that are dynamic, refer to [`stage.labels`][stage.labels]
 
@@ -1536,7 +1536,7 @@ stage.structured_metadata {
 
 ### `stage.structured_metadata_drop`
 
-The `stage.structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entires.
+The `stage.structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entries.
 
 The following arguments are supported:
 
@@ -1896,26 +1896,26 @@ The following block is supported inside the definition of `stage.truncate`:
 
 #### `rule`
 
-Defines a truncation rule that will apply to the log line, labels, structured_metadata, or extracted map.
+Defines a truncation rule that will apply to the log line, labels, structured metadata, or extracted map.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                                  | Default  | Required |
-|---------------|----------|--------------------------------------------------------------|----------|----------|
-| `limit`       | `string` | Maximum length before truncating.                            | `""`     | yes      |
-| `source`      | `string` | Source of the data to truncate. If empty, will truncate all. | `""`     | no       |
-| `source_type` | `string` | Source location of the data to truncate.                     | `"line"` | no       |
-| `suffix`      | `string` | Suffix to append to truncated values.                        | ``       | no       |
+| Name          | Type           | Description                                                   | Default  | Required |
+|---------------|----------------|---------------------------------------------------------------|----------|----------|
+| `limit`       | `string`       | Maximum length before truncating.                             | `""`     | yes      |
+| `sources`     | `list(string)` | Sources of the data to truncate. If empty, will truncate all. | `""`     | no       |
+| `source_type` | `string`       | Source location of the data to truncate.                      | `"line"` | no       |
+| `suffix`      | `string`       | Suffix to append to truncated values.                         | ``       | no       |
 
 The `limit` attribute should be expressed in logical units, for example `"1KiB"`.
 The stage checks the byte length of the log line, label values, or structured metadata values against the configured limit and truncates if it exceeds the limit.
 If you provide a `suffix`, the limit is reduced by the length of the `suffix`, and the `suffix` is appended to the truncated value.
 
 The `source_type` attribute must be one of `"line"`, `"label"`, `"structured_metadata"`, or `"extracted"`.
-If the `source` attribute is specified, the stage will only truncate a label, structured_metadata, or extracted field of the same name.
-If `source` is empty, all labels, structured_metadata, or extracted fields will be truncated if they exceed the limit.
+If the `source` attribute is specified, the stage will only truncate a label, structured metadata, or extracted field of the same name.
+If `source` is empty, all labels, structured metadata, or extracted fields will be truncated if they exceed the limit.
 
-Whenever a line, label, extracted field, or structured_metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
+Whenever a line, label, extracted field, or structured metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
 The `field` label will either be `line`, `label`, `extracted`, or `structured_metadata`.
 
 If anything has been truncated, the extracted map for the entry contains a `"truncated"` field with a comma delimited list of field types that have been truncated.
@@ -2134,7 +2134,9 @@ The following fields are exported and can be referenced by other components:
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
 * `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
-* `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured_metadata values truncated as part of a `truncate` stage.
+* `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured metadata values truncated as part of a `truncate` stage.
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
+* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri][].
 
 ## Example
 

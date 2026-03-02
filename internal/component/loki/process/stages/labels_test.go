@@ -40,7 +40,7 @@ var testLabelsLogLineWithMissingKey = `
 `
 
 func TestLabelsPipeline_Labels(t *testing.T) {
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestLabelStage_Process(t *testing.T) {
 	sourceName := "diff_source"
 	tests := map[string]struct {
 		config         LabelsConfig
-		extractedData  map[string]interface{}
+		extractedData  map[string]any
 		inputLabels    model.LabelSet
 		expectedLabels model.LabelSet
 	}{
@@ -142,7 +142,7 @@ func TestLabelStage_Process(t *testing.T) {
 			LabelsConfig{Values: map[string]*string{
 				"testLabel": nil,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				"testLabel": "testValue",
 			},
 			model.LabelSet{},
@@ -154,7 +154,7 @@ func TestLabelStage_Process(t *testing.T) {
 			LabelsConfig{Values: map[string]*string{
 				"testLabel": &sourceName,
 			}},
-			map[string]interface{}{
+			map[string]any{
 				sourceName: "testValue",
 			},
 			model.LabelSet{},
@@ -166,7 +166,7 @@ func TestLabelStage_Process(t *testing.T) {
 			LabelsConfig{Values: map[string]*string{
 				"testLabel": &sourceName,
 			}},
-			map[string]interface{}{},
+			map[string]any{},
 			model.LabelSet{},
 			model.LabelSet{},
 		},

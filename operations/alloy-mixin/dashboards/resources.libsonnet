@@ -133,7 +133,7 @@ local stackedPanelMixin = {
 
       // Memory (Go heap inuse)
       (
-        panel.new(title='Memory (heap inuse)', type='timeseries') +
+        panel.new(title='Memory (heap in use)', type='timeseries') +
         panel.withUnit('decbytes') +
         panel.withDescription(|||
           Heap memory currently in use by the Alloy process.

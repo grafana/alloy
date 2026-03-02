@@ -47,7 +47,7 @@ var (
 // - Non-empty NAME values must be valid Alloy identifiers.
 // - Attributes may not have a NAME with a `.` in it.
 
-func run(p *analysis.Pass) (interface{}, error) {
+func run(p *analysis.Pass) (any, error) {
 	structs := getStructs(p.TypesInfo)
 	for _, sInfo := range structs {
 		sNode := sInfo.Node

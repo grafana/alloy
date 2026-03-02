@@ -7,13 +7,14 @@ import (
 	"sync"
 	"testing"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
@@ -456,6 +457,14 @@ func NewTestAppender() *TestAppender {
 // Appender implements pyroscope.Appendable
 func (t *TestAppender) Appender() pyroscope.Appender {
 	return t
+}
+
+func (t *TestAppender) Upload(j debuginfo.UploadJob) {
+
+}
+
+func (t *TestAppender) Client() debuginfogrpc.DebuginfoServiceClient {
+	return nil
 }
 
 // Append implements pyroscope.Appender
