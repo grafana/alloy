@@ -178,7 +178,17 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}
 	}()
 
-	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
+	var netLis net.Listener
+	var err error
+
+	if strings.HasPrefix(s.opts.HTTPListenAddr, "unix:") {
+		listenAddr := strings.TrimPrefix(strings.TrimLeft(s.opts.HTTPListenAddr, "unix:"), "//")
+		level.Error(s.log).Log("msg", listenAddr)
+		netLis, err = net.Listen("unix", listenAddr)
+	} else {
+		netLis, err = net.Listen("tcp", s.opts.HTTPListenAddr)
+	}
+
 	if err != nil {
 		// There is no recovering from failing to listen on the port.
 		level.Error(s.log).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
