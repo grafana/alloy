@@ -10,11 +10,13 @@
 
 ### Title
 
-Use Conventional Commits format: `type(scope): description`
+Use Conventional Commits format: `type(scope): Description`
 
 Common types: `feat`, `fix`, `chore`, `ci`, `docs`
 
 Scope is optional — use the component name in dot-notation when relevant (e.g. `loki.write`, `otelcol.processor.tail_sampling`).
+
+Description must start with a capitol letter.
 
 ### Description
 
