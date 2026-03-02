@@ -22,6 +22,9 @@ spec:
   {{- if semverCompare ">=1.26-0" .Capabilities.KubeVersion.Version }}
   internalTrafficPolicy: {{.Values.service.internalTrafficPolicy}}
   {{- end }}
+  {{- if and (semverCompare ">= 1.32-0" .Capabilities.KubeVersion.Version) (.Values.service.trafficDistribution) }}
+  trafficDistribution: {{.Values.service.trafficDistribution}}
+  {{- end }}
   ports:
     - name: http-metrics
       {{- if eq .Values.service.type "NodePort" }}
