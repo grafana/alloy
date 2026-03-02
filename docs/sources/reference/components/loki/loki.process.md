@@ -1779,13 +1779,14 @@ When no timestamp stage is set, the log entry timestamp defaults to the time whe
 
 The following arguments are supported:
 
-| Name                | Type           | Description                                                 | Default   | Required |
-| ------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
-| `format`            | `string`       | Determines how to parse the source string.                  |           | yes      |
-| `source`            | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
-| `action_on_failure` | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
-| `fallback_formats`  | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
-| `location`          | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
+| Name                            | Type           | Description                                                 | Default   | Required |
+| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
+| `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
+| `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
+| `action_on_duplicate_timestamp` | `string`       | What to do when parsing duplicate timestamps.               | `"fudge"` | no       |
+| `fallback_formats`              | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
+| `location`                      | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
 
 {{< admonition type="note" >}}
 Be careful with further stages which may also override the timestamp.
@@ -1859,6 +1860,13 @@ The supported actions are:
 
 * fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
 * skip: Don't change the timestamp and keep the time when the log entry was scraped.
+
+The `action_on_duplicate_timestamp` field defines what to do when parsing succeeds but the parsed timestamp is equal to, or before, the last emitted timestamp for that stream, for example, when multiple messages share the same second or millisecond.
+
+The supported actions are:
+
+* fudge: Default. Set the entry timestamp to the last emitted timestamp plus 1 nanosecond so that message order is preserved in Loki and Grafana.
+* keep: Leave the parsed timestamp as-is; duplicate timestamps may appear out of order downstream.
 
 The following stage fetches the `time` value from the shared values map, parses it as a RFC3339 format, and sets it as the log entry's timestamp.
 

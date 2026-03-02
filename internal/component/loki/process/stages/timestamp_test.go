@@ -116,9 +116,23 @@ func TestTimestampValidation(t *testing.T) {
 			},
 			err: nil,
 			expectedConfig: &TimestampConfig{
-				Source:          "source1",
-				Format:          time.RFC3339,
-				ActionOnFailure: "fudge",
+				Source:                     "source1",
+				Format:                     time.RFC3339,
+				ActionOnFailure:            "fudge",
+				ActionOnDuplicateTimestamp: "fudge",
+			},
+		},
+		"sets default action on duplicate timestamp": {
+			config: &TimestampConfig{
+				Source: "source1",
+				Format: time.RFC3339,
+			},
+			err: nil,
+			expectedConfig: &TimestampConfig{
+				Source:                     "source1",
+				Format:                     time.RFC3339,
+				ActionOnFailure:            "fudge",
+				ActionOnDuplicateTimestamp: "fudge",
 			},
 		},
 		"custom format with year": {
@@ -165,6 +179,14 @@ func TestTimestampValidation(t *testing.T) {
 				ActionOnFailure: "foo",
 			},
 			err: fmt.Errorf(ErrInvalidActionOnFailure.Error(), TimestampActionOnFailureOptions),
+		},
+		"should fail on invalid action on duplicate timestamp": {
+			config: &TimestampConfig{
+				Source:                     "source1",
+				Format:                     time.RFC3339,
+				ActionOnDuplicateTimestamp: "invalid",
+			},
+			err: fmt.Errorf(ErrInvalidActionOnDuplicateTimestamp.Error(), TimestampActionOnDuplicateTimestampOptions),
 		},
 		"fallback formats contains the format": {
 			config: &TimestampConfig{
@@ -342,6 +364,42 @@ func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
 			expectedTimestamps: []time.Time{
 				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
 				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.500000000Z"),
+			},
+		},
+		"should add nanoseconds to identical parsed timestamps to preserve message order": {
+			config: TimestampConfig{
+				Source:                     "time",
+				Format:                     time.RFC3339Nano,
+				ActionOnFailure:            TimestampActionOnFailureFudge,
+				ActionOnDuplicateTimestamp: TimestampActionOnDuplicateTimestampFudge,
+			},
+			inputEntries: []inputEntry{
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+			},
+			expectedTimestamps: []time.Time{
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z"),
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z"),
+			},
+		},
+		"action_on_duplicate_timestamp=keep leaves identical timestamps unchanged": {
+			config: TimestampConfig{
+				Source:                     "time",
+				Format:                     time.RFC3339Nano,
+				ActionOnFailure:            TimestampActionOnFailureFudge,
+				ActionOnDuplicateTimestamp: TimestampActionOnDuplicateTimestampKeep,
+			},
+			inputEntries: []inputEntry{
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
+			},
+			expectedTimestamps: []time.Time{
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
+				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
 			},
 		},
 		"should fudge the timestamp based on the last known value on timestamp parsing failure": {

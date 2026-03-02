@@ -21,8 +21,9 @@ var (
 	ErrTimestampSourceRequired   = errors.New("timestamp source value is required if timestamp is specified")
 	ErrTimestampFormatRequired   = errors.New("timestamp format is required")
 	ErrInvalidLocation           = errors.New("invalid location specified: %v")
-	ErrInvalidActionOnFailure    = errors.New("invalid action on failure (supported values are %v)")
-	ErrTimestampSourceMissing    = errors.New("extracted data did not contain a timestamp")
+	ErrInvalidActionOnFailure            = errors.New("invalid action on failure (supported values are %v)")
+	ErrInvalidActionOnDuplicateTimestamp = errors.New("invalid action on duplicate timestamp (supported values are %v)")
+	ErrTimestampSourceMissing            = errors.New("extracted data did not contain a timestamp")
 	ErrTimestampConversionFailed = errors.New("failed to convert extracted time to string")
 	ErrTimestampParsingFailed    = errors.New("failed to parse time")
 
@@ -31,9 +32,13 @@ var (
 	UnixUs = "UnixUs"
 	UnixNs = "UnixNs"
 
-	TimestampActionOnFailureSkip    = "skip"
-	TimestampActionOnFailureFudge   = "fudge"
-	TimestampActionOnFailureDefault = TimestampActionOnFailureFudge
+	TimestampActionOnFailureSkip     = "skip"
+	TimestampActionOnFailureFudge    = "fudge"
+	TimestampActionOnFailureDefault  = TimestampActionOnFailureFudge
+
+	TimestampActionOnDuplicateTimestampKeep   = "keep"
+	TimestampActionOnDuplicateTimestampFudge  = "fudge"
+	TimestampActionOnDuplicateTimestampDefault = TimestampActionOnDuplicateTimestampFudge
 
 	// Maximum number of "streams" for which we keep the last known timestamp
 	maxLastKnownTimestampsCacheSize = 10000
@@ -43,13 +48,18 @@ var (
 // `action_on_failure` field.
 var TimestampActionOnFailureOptions = []string{TimestampActionOnFailureSkip, TimestampActionOnFailureFudge}
 
+// TimestampActionOnDuplicateTimestampOptions defines the available options for the
+// `action_on_duplicate_timestamp` field.
+var TimestampActionOnDuplicateTimestampOptions = []string{TimestampActionOnDuplicateTimestampKeep, TimestampActionOnDuplicateTimestampFudge}
+
 // TimestampConfig configures a processing stage for timestamp extraction.
 type TimestampConfig struct {
-	Source          string   `alloy:"source,attr"`
-	Format          string   `alloy:"format,attr"`
-	FallbackFormats []string `alloy:"fallback_formats,attr,optional"`
-	Location        *string  `alloy:"location,attr,optional"`
-	ActionOnFailure string   `alloy:"action_on_failure,attr,optional"`
+	Source                     string   `alloy:"source,attr"`
+	Format                     string   `alloy:"format,attr"`
+	FallbackFormats            []string `alloy:"fallback_formats,attr,optional"`
+	Location                   *string  `alloy:"location,attr,optional"`
+	ActionOnFailure            string   `alloy:"action_on_failure,attr,optional"`
+	ActionOnDuplicateTimestamp string   `alloy:"action_on_duplicate_timestamp,attr,optional"`
 }
 
 type parser func(string) (time.Time, error)
@@ -76,6 +86,15 @@ func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
 	} else {
 		if !slices.Contains(TimestampActionOnFailureOptions, cfg.ActionOnFailure) {
 			return nil, fmt.Errorf(ErrInvalidActionOnFailure.Error(), TimestampActionOnFailureOptions)
+		}
+	}
+
+	// Validate the action on duplicate timestamp and enforce the default
+	if cfg.ActionOnDuplicateTimestamp == "" {
+		cfg.ActionOnDuplicateTimestamp = TimestampActionOnDuplicateTimestampDefault
+	} else {
+		if !slices.Contains(TimestampActionOnDuplicateTimestampOptions, cfg.ActionOnDuplicateTimestamp) {
+			return nil, fmt.Errorf(ErrInvalidActionOnDuplicateTimestamp.Error(), TimestampActionOnDuplicateTimestampOptions)
 		}
 	}
 
@@ -106,7 +125,7 @@ func newTimestampStage(logger log.Logger, config TimestampConfig) (Stage, error)
 	}
 
 	var lastKnownTimestamps *lru.Cache
-	if config.ActionOnFailure == TimestampActionOnFailureFudge {
+	if config.ActionOnFailure == TimestampActionOnFailureFudge || config.ActionOnDuplicateTimestamp == TimestampActionOnDuplicateTimestampFudge {
 		lastKnownTimestamps, err = lru.New(maxLastKnownTimestampsCacheSize)
 		if err != nil {
 			return nil, err
@@ -146,10 +165,20 @@ func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]an
 	// Update the log entry timestamp with the parsed one
 	*t = *parsedTs
 
-	// The timestamp has been correctly parsed, so we should store it in the map
-	// containing the last known timestamp used by the "fudge" action on failure.
-	if ts.config.ActionOnFailure == TimestampActionOnFailureFudge {
-		ts.lastKnownTimestamps.Add(labels.String(), *t)
+	// When action_on_duplicate_timestamp is fudge, ensure multiple messages with the
+	// exact same parsed timestamp get distinct timestamps (lastKnown+1ns each) so
+	// message order is preserved in Loki and Grafana.
+	labelsStr := labels.String()
+	if ts.config.ActionOnDuplicateTimestamp == TimestampActionOnDuplicateTimestampFudge && ts.lastKnownTimestamps != nil {
+		if lastTimestamp, ok := ts.lastKnownTimestamps.Get(labelsStr); ok {
+			lastKnown := lastTimestamp.(time.Time)
+			if !parsedTs.After(lastKnown) {
+				*t = lastKnown.Add(1 * time.Nanosecond)
+			}
+		}
+	}
+	if (ts.config.ActionOnFailure == TimestampActionOnFailureFudge || ts.config.ActionOnDuplicateTimestamp == TimestampActionOnDuplicateTimestampFudge) && ts.lastKnownTimestamps != nil {
+		ts.lastKnownTimestamps.Add(labelsStr, *t)
 	}
 }
 
