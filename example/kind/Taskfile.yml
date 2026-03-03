@@ -82,6 +82,28 @@ tasks:
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
 
+  build:shop:
+    desc: Build the shop application Docker image and load it into kind
+    deps: [cluster:create]
+    cmds:
+      - docker build -t shop:latest {{.TASK_DIR}}/shop
+      - kind load docker-image shop:latest --name {{.CLUSTERNAME}}
+
+  deploy:shop:
+    desc: Deploy the shop application to the kind cluster
+    deps: [build:shop]
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f config/shop/manifests.yaml
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n shop-db rollout status deployment/shop-db --timeout=60s
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n shop-catalog rollout status deployment/shop-catalog --timeout=60s
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n shop-api rollout status deployment/shop-api --timeout=60s
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n shop-loadgen rollout status deployment/shop-loadgen --timeout=60s
+
+  remove:shop:
+    desc: Remove the shop application from the kind cluster
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} delete namespace shop-db shop-catalog shop-api shop-loadgen --ignore-not-found
+
   expose:
     desc: Expose all services on localhost via port-forward
     deps: [deploy:cloud-onboarding:local]

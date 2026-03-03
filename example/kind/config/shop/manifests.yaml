@@ -1,0 +1,245 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-db
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-catalog
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-api
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-loadgen
+---
+# --- shop-db: mock data store ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-db
+  namespace: shop-db
+  labels:
+    app: shop-db
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shop-db
+  template:
+    metadata:
+      labels:
+        app: shop-db
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: shop-db
+          image: shop:latest
+          imagePullPolicy: Never
+          args: ["--mode=db", "--log-level=debug"]
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-db
+  namespace: shop-db
+  labels:
+    app: shop-db
+spec:
+  selector:
+    app: shop-db
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+---
+# --- shop-catalog: business logic ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-catalog
+  namespace: shop-catalog
+  labels:
+    app: shop-catalog
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shop-catalog
+  template:
+    metadata:
+      labels:
+        app: shop-catalog
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: shop-catalog
+          image: shop:latest
+          imagePullPolicy: Never
+          args: ["--mode=catalog", "--db-addr=http://shop-db.shop-db:8080", "--log-level=debug"]
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-catalog
+  namespace: shop-catalog
+  labels:
+    app: shop-catalog
+spec:
+  selector:
+    app: shop-catalog
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+---
+# --- shop-api: public-facing gateway ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-api
+  namespace: shop-api
+  labels:
+    app: shop-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: shop-api
+  template:
+    metadata:
+      labels:
+        app: shop-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: shop-api
+          image: shop:latest
+          imagePullPolicy: Never
+          args: ["--mode=api", "--catalog-addr=http://shop-catalog.shop-catalog:8080", "--log-level=debug"]
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-api
+  namespace: shop-api
+  labels:
+    app: shop-api
+spec:
+  selector:
+    app: shop-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+---
+# --- shop-loadgen: traffic generator ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-loadgen
+  namespace: shop-loadgen
+  labels:
+    app: shop-loadgen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-loadgen
+  template:
+    metadata:
+      labels:
+        app: shop-loadgen
+    spec:
+      containers:
+        - name: shop-loadgen
+          image: shop:latest
+          imagePullPolicy: Never
+          args: ["--mode=loadgen", "--api-addr=http://shop-api.shop-api:8080", "--log-level=info"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
