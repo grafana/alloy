@@ -132,8 +132,7 @@ func (b *batch) countForSegment(segmentNum int) {
 	b.segmentCounter[segmentNum] = 1
 }
 
-// reportAsSentData will report for all segments whose data is part of this batch, the amount of that data as sent to
-// the provided SentDataMarkerHandler
+// reportAsSentData reports sent data counts per segment and observes per-entry propagation latency.
 func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observer) {
 	for seg, data := range b.segmentCounter {
 		h.UpdateSentData(seg, data)
