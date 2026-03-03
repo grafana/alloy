@@ -61,9 +61,9 @@ None.
 - **`branch`:** The git branch from which this build was created.
 - **`buildDate`:** The timestamp of when this build was created.
 - **`buildUser`:** The user account that initiated this build.
-- **`isReady`:** Whether the Alloy instance is up and running.
+- **`isReady`:** Whether the {{< param "PRODUCT_NAME" >}} instance is up and running.
 - **`revision`:** The git commit hash from which this build was created.
-- **`version`:** The semantic version of this Alloy build.
+- **`version`:** The semantic version of this {{< param "PRODUCT_NAME" >}} build.
 
 ### `components`
 
