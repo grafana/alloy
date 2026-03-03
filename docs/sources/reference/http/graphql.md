@@ -67,7 +67,7 @@ None.
 
 ### `components`
 
-All components running in Alloy.
+All components running in {{< param "PRODUCT_NAME" >}}.
 
 #### Arguments
 
