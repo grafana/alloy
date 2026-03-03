@@ -24,7 +24,7 @@ func NewEntryWithCreated(lset model.LabelSet, created time.Time, e push.Entry) E
 }
 
 // Entry is a push.Entry with labels.
-// It should be created using either NewEntry or NewEntryWithTimestamp.
+// It should be created using either NewEntry or NewEntryWithCreated.
 type Entry struct {
 	Labels model.LabelSet
 	push.Entry
