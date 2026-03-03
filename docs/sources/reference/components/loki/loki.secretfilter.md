@@ -54,7 +54,7 @@ You can use the following arguments with `loki.secretfilter`:
 | `origin_label`       | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
 | `processing_timeout` | `duration`           | Maximum time allowed to process a single log entry. `0` disables the timeout.                                        | `0`     | no       |
 | `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                 | `80`    | no       |
-| `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
+| `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`, for example, `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
 
 The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config].
 The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config).
