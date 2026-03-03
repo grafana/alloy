@@ -14,8 +14,7 @@ import (
 
 func Test_Encoding_Series(t *testing.T) {
 	record := &Record{
-		entryIndexMap: make(map[uint64]int),
-		UserID:        "123",
+		UserID: "123",
 		Series: []record.RefSeries{
 			{
 				Ref: 456,
@@ -57,8 +56,7 @@ func Test_Encoding_Entries(t *testing.T) {
 		{
 			desc: "v1",
 			rec: &Record{
-				entryIndexMap: make(map[uint64]int),
-				UserID:        "123",
+				UserID: "123",
 				RefEntries: []RefEntries{
 					{
 						Ref: 456,
@@ -109,8 +107,7 @@ func Test_Encoding_Entries(t *testing.T) {
 		{
 			desc: "v2",
 			rec: &Record{
-				entryIndexMap: make(map[uint64]int),
-				UserID:        "123",
+				UserID: "123",
 				RefEntries: []RefEntries{
 					{
 						Ref:     456,
@@ -163,8 +160,7 @@ func Test_Encoding_Entries(t *testing.T) {
 		{
 			desc: "v3",
 			rec: &Record{
-				entryIndexMap: make(map[uint64]int),
-				UserID:        "123",
+				UserID: "123",
 				RefEntries: []RefEntries{
 					{
 						Ref:     456,
@@ -256,8 +252,7 @@ func Benchmark_EncodeEntries(b *testing.B) {
 				entries = append(entries, entry)
 			}
 			record := &Record{
-				entryIndexMap: make(map[uint64]int),
-				UserID:        "123",
+				UserID: "123",
 				RefEntries: []RefEntries{
 					{
 						Ref:     456,
@@ -301,8 +296,7 @@ func Benchmark_DecodeWAL(b *testing.B) {
 				entries = append(entries, entry)
 			}
 			record := &Record{
-				entryIndexMap: make(map[uint64]int),
-				UserID:        "123",
+				UserID: "123",
 				RefEntries: []RefEntries{
 					{
 						Ref:     456,

@@ -34,14 +34,9 @@ const CurrentEntriesRec = WALRecordEntriesV3
 
 // Record is a struct combining the series and samples record.
 type Record struct {
-	UserID string
-	Series []record.RefSeries
-
-	// entryIndexMap coordinates the RefEntries index associated with a particular fingerprint.
-	// This is helpful for constant time lookups during ingestion and is ignored when restoring
-	// from the WAL.
-	entryIndexMap map[uint64]int
-	RefEntries    []RefEntries
+	UserID     string
+	Series     []record.RefSeries
+	RefEntries []RefEntries
 }
 
 func (r *Record) IsEmpty() bool {
@@ -55,22 +50,6 @@ func (r *Record) Reset() {
 	}
 
 	r.RefEntries = r.RefEntries[:0]
-	r.entryIndexMap = make(map[uint64]int)
-}
-
-func (r *Record) AddEntries(fp uint64, counter int64, entries ...push.Entry) {
-	if idx, ok := r.entryIndexMap[fp]; ok {
-		r.RefEntries[idx].Entries = append(r.RefEntries[idx].Entries, entries...)
-		r.RefEntries[idx].Counter = counter
-		return
-	}
-
-	r.entryIndexMap[fp] = len(r.RefEntries)
-	r.RefEntries = append(r.RefEntries, RefEntries{
-		Counter: counter,
-		Ref:     chunks.HeadSeriesRef(fp),
-		Entries: entries,
-	})
 }
 
 type RefEntries struct {
