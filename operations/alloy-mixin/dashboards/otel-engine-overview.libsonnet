@@ -225,7 +225,7 @@ local filename = 'alloy-otel-engine-overview.json';
         panel.withQueries([
           panel.newQuery(
             expr=|||
-              count by(${groupby}) (otelcol_process_uptime_seconds_total{%(groupSelector)s} < 60) or vector(0)
+              count by(${groupby}) (otelcol_process_uptime_seconds_total{%(groupSelector)s} < 60)
             ||| % $._config,
             legendFormat='{{${groupby}}}',
           ),

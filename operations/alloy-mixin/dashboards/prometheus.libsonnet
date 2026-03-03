@@ -166,7 +166,6 @@ local filename = 'alloy-prometheus-remote-write.json';
               ) < 31536000 > 0
             )
           ||| % $._config,
-          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -189,7 +188,6 @@ local filename = 'alloy-prometheus-remote-write.json';
                 rate(prometheus_remote_storage_metadata_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -245,7 +243,6 @@ local filename = 'alloy-prometheus-remote-write.json';
                 prometheus_remote_storage_shards{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
             )
           ||| % $._config,
-          legendFormat='{{${groupby}}}',
         ),
         panel.newQuery(
           expr=|||
@@ -282,7 +279,6 @@ local filename = 'alloy-prometheus-remote-write.json';
               rate(prometheus_remote_storage_samples_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -304,7 +300,6 @@ local filename = 'alloy-prometheus-remote-write.json';
               rate(prometheus_remote_storage_samples_failed_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{${groupby}}}',
         ),
       ])
     ),
@@ -326,7 +321,6 @@ local filename = 'alloy-prometheus-remote-write.json';
               rate(prometheus_remote_storage_samples_retried_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
-          legendFormat='{{${groupby}}}',
         ),
       ])
     ),

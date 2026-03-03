@@ -3,20 +3,6 @@ local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-logs.json';
 
 {
-  local filtersTemplateVariable = {
-    name: 'filters',
-    type: 'adhoc',
-    datasource: {
-      type: 'prometheus',
-      uid: '${datasource}',
-    },
-  },
-
-  local groupByTemplateVariable = dashboard.newGroupByTemplateVariable(
-    query='level,job,instance,namespace,cluster,pod',
-    defaultValue='level'
-  ),
-
   // Build the Loki label selector based on config
   local baseLabels = if $._config.enableK8sCluster then
     'cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", level=~"$level"'
@@ -40,8 +26,7 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: true,
-        allValue: '.*',
+        allowCustomValue: true,
       },
       {
         name: 'namespace',
@@ -52,8 +37,7 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: true,
-        allValue: '.*',
+        allowCustomValue: true,
       },
       {
         name: 'job',
@@ -109,7 +93,7 @@ local filename = 'alloy-logs.json';
           },
         ],
       },
-    ] + [filtersTemplateVariable, groupByTemplateVariable])
+    ])
   else ([
     {
       name: 'job',
@@ -165,7 +149,7 @@ local filename = 'alloy-logs.json';
         },
       ],
     },
-  ] + [filtersTemplateVariable, groupByTemplateVariable]),
+  ]),
 
   grafanaDashboards+::
     if $._config.enableLokiLogs then {
@@ -192,8 +176,8 @@ local filename = 'alloy-logs.json';
                   type: 'loki',
                   uid: '${loki_datasource}',
                 },
-                expr: 'sum by (${groupby}) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
-                legendFormat: '{{${groupby}}}',
+                expr: 'sum by (level) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
+                legendFormat: '{{level}}',
               },
             ]) +
             {
