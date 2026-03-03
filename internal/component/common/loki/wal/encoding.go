@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // RecordType represents the type of the WAL/Checkpoint record.
@@ -26,14 +29,41 @@ const (
 	WALRecordEntriesV2
 	// WALRecordEntriesV3 is the type for the WAL record for samples with structured metadata.
 	WALRecordEntriesV3
+	// WALRecordEntriesV4 are entries with included created time.
+	WALRecordEntriesV4
 )
 
-// The current type of Entries that this distribution writes.
-// Loki can read in a backwards compatible manner, but will write the newest variant.
-const CurrentEntriesRec = WALRecordEntriesV3
+// The current type of Entries that WAL writes.
+const CurrentEntriesRec = WALRecordEntriesV4
+
+type RefEntries struct {
+	// Counter is unused.
+	Counter int64
+	// Ref identifies the series these entries belong to.
+	Ref chunks.HeadSeriesRef
+	// Entries are log entries belonging to the same series.
+	Entries []push.Entry
+	// Created stores entry creation timestamps in Unix nanoseconds, aligned by index with Entries.
+	Created []int64
+}
+
+// EntryAt returns the entry at i with the provided label set.
+// i must be a valid index into Entries and Created.
+func (r RefEntries) EntryAt(lset model.LabelSet, i int) loki.Entry {
+	var (
+		createdns = r.Created[i]
+		created   time.Time
+	)
+
+	if createdns != 0 {
+		created = time.Unix(0, createdns)
+	}
+	return loki.NewEntryWithCreated(lset, created, r.Entries[i])
+}
 
 // Record is a struct combining the series and samples record.
 type Record struct {
+	// UserID is unused.
 	UserID     string
 	Series     []record.RefSeries
 	RefEntries []RefEntries
@@ -50,12 +80,6 @@ func (r *Record) Reset() {
 	}
 
 	r.RefEntries = r.RefEntries[:0]
-}
-
-type RefEntries struct {
-	Counter int64
-	Ref     chunks.HeadSeriesRef
-	Entries []push.Entry
 }
 
 func (r *Record) EncodeSeries(b []byte) []byte {
@@ -96,21 +120,25 @@ outer:
 		if len(ref.Entries) < 1 {
 			continue
 		}
-		buf.PutBE64(uint64(ref.Ref)) // write fingerprint
+
+		// Write fingerprint.
+		buf.PutBE64(uint64(ref.Ref))
 
 		if version >= WALRecordEntriesV2 {
-			buf.PutBE64int64(ref.Counter) // write highest counter value
+			// Write highest counter value.
+			buf.PutBE64int64(ref.Counter)
 		}
 
-		buf.PutUvarint(len(ref.Entries)) // write number of entries
+		// Write number of entries.
+		buf.PutUvarint(len(ref.Entries))
 
-		for _, s := range ref.Entries {
+		for i, s := range ref.Entries {
 			buf.PutVarint64(s.Timestamp.UnixNano() - first)
 			buf.PutUvarint(len(s.Line))
 			buf.PutString(s.Line)
 
 			if version >= WALRecordEntriesV3 {
-				// structured metadata
+				// Write structured metadata.
 				buf.PutUvarint(len(s.StructuredMetadata))
 				for _, l := range s.StructuredMetadata {
 					buf.PutUvarint(len(l.Name))
@@ -118,6 +146,11 @@ outer:
 					buf.PutUvarint(len(l.Value))
 					buf.PutString(l.Value)
 				}
+			}
+
+			if version >= WALRecordEntriesV4 {
+				// V4 has has one timestamp per entry.
+				buf.PutBE64int64(ref.Created[i])
 			}
 		}
 	}
@@ -130,6 +163,7 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 	}
 
 	dec := decWith(b)
+
 	baseTime := dec.Be64int64()
 
 	for len(dec.B) > 0 && dec.Err() == nil {
@@ -141,9 +175,10 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 			refEntries.Counter = dec.Be64int64()
 		}
 
-		nEntries := dec.Uvarint()
-		refEntries.Entries = make([]push.Entry, 0, nEntries)
-		rem := nEntries
+		n := dec.Uvarint()
+		refEntries.Entries = make([]push.Entry, 0, n)
+		rem := n
+
 		for ; dec.Err() == nil && rem > 0; rem-- {
 			timeOffset := dec.Varint64()
 			lineLength := dec.Uvarint()
@@ -167,15 +202,21 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 				}
 			}
 
+			var created int64
+			if version >= WALRecordEntriesV4 {
+				created = dec.Be64int64()
+			}
+
 			refEntries.Entries = append(refEntries.Entries, push.Entry{
 				Timestamp:          time.Unix(0, baseTime+timeOffset),
 				Line:               string(line),
 				StructuredMetadata: structuredMetadata,
 			})
+			refEntries.Created = append(refEntries.Created, created)
 		}
 
 		if dec.Err() != nil {
-			return fmt.Errorf("entry decode error after %d RefEntries: %w", nEntries-rem, dec.Err())
+			return fmt.Errorf("entry decode error after %d RefEntries: %w", n-rem, dec.Err())
 		}
 
 		rec.RefEntries = append(rec.RefEntries, refEntries)
@@ -188,6 +229,7 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 	if len(dec.B) > 0 {
 		return fmt.Errorf("unexpected %d bytes left in entry", len(dec.B))
 	}
+
 	return nil
 }
 
@@ -205,7 +247,7 @@ func DecodeRecord(b []byte, walRec *Record) (err error) {
 	case WALRecordSeries:
 		userID = decbuf.UvarintStr()
 		rSeries, err = dec.Series(decbuf.B, walRec.Series)
-	case WALRecordEntriesV1, WALRecordEntriesV2, WALRecordEntriesV3:
+	case WALRecordEntriesV1, WALRecordEntriesV2, WALRecordEntriesV3, WALRecordEntriesV4:
 		userID = decbuf.UvarintStr()
 		err = DecodeEntries(decbuf.B, t, walRec)
 	default:

@@ -141,7 +141,11 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 
 	now := time.Now()
 	for _, t := range b.created {
-		obs.Observe(float64(now.Sub(t).Seconds()))
+		// NOTE: Because we potentially have entries from WAL without created
+		// we ignore 0 time.
+		if !t.IsZero() {
+			obs.Observe(float64(now.Sub(t).Seconds()))
+		}
 	}
 }
 

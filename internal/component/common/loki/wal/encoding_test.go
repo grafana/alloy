@@ -59,7 +59,8 @@ func Test_Encoding_Entries(t *testing.T) {
 				UserID: "123",
 				RefEntries: []RefEntries{
 					{
-						Ref: 456,
+						Ref:     456,
+						Created: []int64{0, 0},
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -80,7 +81,8 @@ func Test_Encoding_Entries(t *testing.T) {
 						},
 					},
 					{
-						Ref: 789,
+						Ref:     789,
+						Created: []int64{0, 0},
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -112,6 +114,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
+						Created: []int64{0, 0},
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -134,6 +137,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
+						Created: []int64{0, 0},
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -165,6 +169,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
+						Created: []int64{0, 0},
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -187,6 +192,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
+						Created: []int64{0, 0},
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -210,6 +216,61 @@ func Test_Encoding_Entries(t *testing.T) {
 			},
 			version: WALRecordEntriesV3,
 		},
+		{
+			desc: "v4",
+			rec: &Record{
+				UserID: "123",
+				RefEntries: []RefEntries{
+					{
+						Ref:     456,
+						Counter: 1, // v2 uses counter for WAL replay
+						Created: []int64{time.Now().UnixNano(), time.Now().UnixNano()},
+						Entries: []push.Entry{
+							{
+								Timestamp: time.Unix(1000, 0),
+								Line:      "first",
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "a"},
+								},
+							},
+							{
+								Timestamp: time.Unix(2000, 0),
+								Line:      "second",
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "456"},
+									{Name: "userID", Value: "b"},
+								},
+							},
+						},
+					},
+					{
+						Ref:     789,
+						Counter: 2, // v2 uses counter for WAL replay
+						Created: []int64{time.Now().UnixNano(), time.Now().UnixNano()},
+						Entries: []push.Entry{
+							{
+								Timestamp: time.Unix(3000, 0),
+								Line:      "third",
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "789"},
+									{Name: "userID", Value: "c"},
+								},
+							},
+							{
+								Timestamp: time.Unix(4000, 0),
+								Line:      "fourth",
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "d"},
+								},
+							},
+						},
+					},
+				},
+			},
+			version: WALRecordEntriesV4,
+		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			decoded := recordPool.GetRecord()
@@ -217,7 +278,6 @@ func Test_Encoding_Entries(t *testing.T) {
 			err := DecodeRecord(buf, decoded)
 			require.Nil(t, err)
 
-			// If the version is less than v3, we need to remove the structured metadata.
 			expectedRecords := tc.rec
 			if tc.version < WALRecordEntriesV3 {
 				for i := range expectedRecords.RefEntries {
@@ -227,7 +287,27 @@ func Test_Encoding_Entries(t *testing.T) {
 				}
 			}
 
-			require.Equal(t, expectedRecords, decoded)
+			require.Equal(t, expectedRecords.UserID, decoded.UserID)
+			require.Equal(t, expectedRecords.Series, decoded.Series)
+
+			require.Len(t, decoded.RefEntries, len(expectedRecords.RefEntries))
+			for i := range expectedRecords.RefEntries {
+				require.Equal(t, expectedRecords.RefEntries[i].Ref, decoded.RefEntries[i].Ref)
+				require.Equal(t, expectedRecords.RefEntries[i].Counter, decoded.RefEntries[i].Counter)
+
+				for j := range expectedRecords.RefEntries[i].Entries {
+					require.Equal(t, expectedRecords.RefEntries[i].Entries[j].Line, decoded.RefEntries[i].Entries[j].Line)
+					require.Equal(t, expectedRecords.RefEntries[i].Entries[j].Timestamp, decoded.RefEntries[i].Entries[j].Timestamp)
+					// If the version is less than v3 we don't have structured metadata.
+					if tc.version < WALRecordEntriesV3 {
+						require.Nil(t, decoded.RefEntries[i].Entries[j].StructuredMetadata)
+					} else {
+						require.Equal(t, expectedRecords.RefEntries[i].Entries[j].StructuredMetadata, decoded.RefEntries[i].Entries[j].StructuredMetadata)
+					}
+
+					require.Equal(t, expectedRecords.RefEntries[i].Created[j], decoded.RefEntries[i].Created[j])
+				}
+			}
 		})
 	}
 }
