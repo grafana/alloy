@@ -59,7 +59,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 
 	m.entryLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "loki_write_entry_propagation_latency",
-		Help:    "Write latency for for entries",
+		Help:    "Write latency for entries",
 		Buckets: []float64{0.0002, 0.001, 0.005, 0.02, 0.1, 1.0},
 	}, []string{labelHost, labelTenant})
 	m.requestSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
