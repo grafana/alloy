@@ -32,7 +32,7 @@ type SentDataMarkerHandler interface {
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
 	streams map[string]*push.Stream
-	// FIXME(kalleep): this is bad
+	// created stores per-entry creation timestamps for latency observation.
 	created []time.Time
 	// createdAt is when the batch was created.
 	createdAt time.Time
