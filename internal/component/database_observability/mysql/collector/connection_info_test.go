@@ -14,6 +14,57 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
+func TestConnectionInfo_Unregister(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	reg := prometheus.NewRegistry()
+	c, err := NewConnectionInfo(ConnectionInfoArguments{
+		DSN:           "user:pass@tcp(localhost:3306)/schema",
+		Registry:      reg,
+		EngineVersion: "8.0.32",
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(t.Context()))
+
+	mfs, err := reg.Gather()
+	require.NoError(t, err)
+	require.Len(t, mfs, 1, "metric should be present before Unregister")
+
+	c.Unregister()
+
+	mfs, err = reg.Gather()
+	require.NoError(t, err)
+	require.Empty(t, mfs, "metric should be absent after Unregister")
+	require.False(t, c.IsRegistered())
+}
+
+func TestConnectionInfo_Reregister(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	reg := prometheus.NewRegistry()
+	c, err := NewConnectionInfo(ConnectionInfoArguments{
+		DSN:           "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/schema",
+		Registry:      reg,
+		EngineVersion: "8.0.32",
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(t.Context()))
+
+	c.Unregister()
+	require.False(t, c.IsRegistered())
+
+	c.Reregister()
+	require.True(t, c.IsRegistered())
+
+	const expected = `
+	# HELP database_observability_connection_info Information about the connection
+	# TYPE database_observability_connection_info gauge
+	database_observability_connection_info{db_instance_identifier="products-db",engine="mysql",engine_version="8.0.32",provider_account="unknown",provider_name="aws",provider_region="us-east-1"} 1
+`
+	err = testutil.GatherAndCompare(reg, strings.NewReader(expected))
+	require.NoError(t, err, "metric should be restored with original label values after Reregister")
+}
+
 func TestConnectionInfo(t *testing.T) {
 	defer goleak.VerifyNone(t)
 

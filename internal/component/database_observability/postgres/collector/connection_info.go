@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,7 +29,10 @@ type ConnectionInfo struct {
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
 
-	running *atomic.Bool
+	mu               sync.Mutex
+	metricRegistered bool
+	labelValues      []string
+	running          *atomic.Bool
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -41,12 +45,13 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 	args.Registry.MustRegister(infoMetric)
 
 	return &ConnectionInfo{
-		DSN:           args.DSN,
-		Registry:      args.Registry,
-		EngineVersion: args.EngineVersion,
-		InfoMetric:    infoMetric,
-		CloudProvider: args.CloudProvider,
-		running:       &atomic.Bool{},
+		DSN:              args.DSN,
+		Registry:         args.Registry,
+		EngineVersion:    args.EngineVersion,
+		InfoMetric:       infoMetric,
+		CloudProvider:    args.CloudProvider,
+		metricRegistered: true,
+		running:          &atomic.Bool{},
 	}, nil
 }
 
@@ -109,10 +114,46 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		engineVersion = matches[1]
 	}
 
+	c.labelValues = []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, engineVersion}
+	c.InfoMetric.WithLabelValues(c.labelValues...).Set(1)
 	c.running.Store(true)
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, engineVersion).Set(1)
 	return nil
+}
+
+// IsRegistered reports whether the connection_info metric is currently registered
+// in the Prometheus registry.
+func (c *ConnectionInfo) IsRegistered() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.metricRegistered
+}
+
+// Unregister removes the connection_info metric from the Prometheus registry.
+// Called by the component when consecutive DB ping failures indicate the
+// instance is unreachable.
+func (c *ConnectionInfo) Unregister() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.metricRegistered {
+		c.Registry.Unregister(c.InfoMetric)
+		c.metricRegistered = false
+	}
+}
+
+// Reregister adds the connection_info metric back to the Prometheus registry
+// and restores its value with the label values captured during Start.
+// Called by the component when the DB becomes reachable again.
+func (c *ConnectionInfo) Reregister() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.metricRegistered {
+		c.Registry.MustRegister(c.InfoMetric)
+		if len(c.labelValues) > 0 {
+			c.InfoMetric.WithLabelValues(c.labelValues...).Set(1)
+		}
+		c.metricRegistered = true
+	}
 }
 
 func (c *ConnectionInfo) Stopped() bool {
@@ -120,6 +161,11 @@ func (c *ConnectionInfo) Stopped() bool {
 }
 
 func (c *ConnectionInfo) Stop() {
-	c.Registry.Unregister(c.InfoMetric)
+	c.mu.Lock()
+	if c.metricRegistered {
+		c.Registry.Unregister(c.InfoMetric)
+		c.metricRegistered = false
+	}
+	c.mu.Unlock()
 	c.running.Store(false)
 }

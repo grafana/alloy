@@ -173,6 +173,19 @@ type Collector interface {
 	Stop()
 }
 
+// connectionInfoPingThreshold is the number of consecutive ping failures before
+// the connection_info metric is unregistered, and the number of consecutive
+// ping successes before it is re-registered.
+const connectionInfoPingThreshold = 3
+
+// ciPingState tracks consecutive ping results for the connection_info metric toggle.
+// It is goroutine-local to the Run() ticker and requires no locking.
+type ciPingState struct {
+	failures  int
+	successes int
+	lastCI    *collector.ConnectionInfo
+}
+
 type Component struct {
 	opts         component.Options
 	args         Arguments
@@ -184,6 +197,7 @@ type Component struct {
 	collectors   []Collector
 	instanceKey  string
 	dbConnection *sql.DB
+	ciCollector  *collector.ConnectionInfo
 	healthErr    *atomic.String
 	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 	logsReceiver loki.LogsReceiver
@@ -250,6 +264,7 @@ func (c *Component) Run(ctx context.Context) error {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
+		var ciState ciPingState
 		for {
 			select {
 			case <-ctx.Done():
@@ -260,10 +275,13 @@ func (c *Component) Run(ctx context.Context) error {
 				c.mut.RUnlock()
 
 				if !hasCollectors {
+					ciState = ciPingState{}
 					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
 					if err := c.tryReconnect(ctx); err != nil {
 						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
 					}
+				} else {
+					c.pingConnectionInfo(ctx, &ciState)
 				}
 			}
 		}
@@ -303,6 +321,46 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 func (c *Component) reportError(errorMsg string, err error) {
 	level.Error(c.opts.Logger).Log("msg", fmt.Sprintf("%s: %+v", errorMsg, err))
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
+}
+
+// pingConnectionInfo pings the DB and toggles the connection_info metric based
+// on consecutive failures or successes. state is owned by the Run() goroutine
+// and requires no locking.
+func (c *Component) pingConnectionInfo(ctx context.Context, state *ciPingState) {
+	c.mut.RLock()
+	db := c.dbConnection
+	ci := c.ciCollector
+	c.mut.RUnlock()
+
+	if ci != state.lastCI {
+		state.failures = 0
+		state.successes = 0
+		state.lastCI = ci
+	}
+
+	if db == nil || ci == nil {
+		return
+	}
+
+	if err := db.PingContext(ctx); err != nil {
+		state.successes = 0
+		if ci.IsRegistered() {
+			state.failures++
+			if state.failures >= connectionInfoPingThreshold {
+				ci.Unregister()
+				state.failures = 0
+			}
+		}
+	} else {
+		state.failures = 0
+		if !ci.IsRegistered() {
+			state.successes++
+			if state.successes >= connectionInfoPingThreshold {
+				ci.Reregister()
+				state.successes = 0
+			}
+		}
+	}
 }
 
 func (c *Component) tryReconnect(ctx context.Context) error {
@@ -519,7 +577,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	if err := ciCollector.Start(context.Background()); err != nil {
 		logStartError(collector.ConnectionInfoName, "start", err)
 	}
-
+	c.ciCollector = ciCollector
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
