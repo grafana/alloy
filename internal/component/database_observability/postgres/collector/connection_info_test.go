@@ -94,6 +94,7 @@ func TestConnectionInfo(t *testing.T) {
 			Registry:      reg,
 			EngineVersion: tc.engineVersion,
 			CloudProvider: tc.cloudProvider,
+			DB:            nil, // no DB in tests: goroutine not started, metric stays set
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)

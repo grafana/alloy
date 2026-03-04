@@ -512,6 +512,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
+		DB:            c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
