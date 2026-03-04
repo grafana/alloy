@@ -97,7 +97,9 @@ func (b *gcomAwsAuth) authorizationValue(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to get JWT from AWS STS: %w", err)
 	}
 
-	return *output.WebIdentityToken, nil
+	token := *output.WebIdentityToken
+
+	return defaultScheme + " " + token, nil
 }
 
 // RoundTripper is not implemented by BearerTokenAuth
@@ -110,7 +112,6 @@ func (b *gcomAwsAuth) RoundTripper(base http.RoundTripper) (http.RoundTripper, e
 
 // BearerAuthRoundTripper intercepts and adds Bearer token Authorization headers to each http request.
 type gcomAwsAuthRoundTripper struct {
-	header        string
 	baseTransport http.RoundTripper
 	auth          *gcomAwsAuth
 }
@@ -125,7 +126,7 @@ func (interceptor *gcomAwsAuthRoundTripper) RoundTrip(req *http.Request) (*http.
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve authorization value: %w", err)
 	}
-	req2.Header.Set(interceptor.header, authVal)
+	req2.Header.Set(defaultHeader, authVal)
 	return interceptor.baseTransport.RoundTrip(req2)
 }
 
