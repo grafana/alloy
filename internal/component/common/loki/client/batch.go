@@ -138,11 +138,12 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 		h.UpdateSentData(seg, data)
 	}
 
-	now := time.Now()
+	now := time.Now().UnixMicro()
 	for _, created := range b.created {
 		// NOTE: Because we potentially have entries from WAL without created timestamp we ignore 0.
 		if created != 0 {
-			obs.Observe(float64(now.Sub(time.UnixMicro(created)).Seconds()))
+			// Track entry propagation latency in seconds.
+			obs.Observe(float64(now-created) / 1e6)
 		}
 	}
 }
