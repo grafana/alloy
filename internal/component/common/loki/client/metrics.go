@@ -1,6 +1,8 @@
 package client
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -58,9 +60,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	)
 
 	m.entryLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "loki_write_entry_propagation_latency",
-		Help:    "Write latency for entries",
-		Buckets: []float64{0.0002, 0.001, 0.005, 0.02, 0.1, 1.0},
+		Name:                            "loki_write_entry_propagation_latency_seconds",
+		Help:                            "Write latency for entries",
+		Buckets:                         []float64{0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600},
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
 	}, []string{labelHost, labelTenant})
 	m.requestSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "loki_write_request_size_bytes",
