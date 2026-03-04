@@ -49,7 +49,7 @@ type RefEntries struct {
 }
 
 // EntryAt returns the entry at i with the provided label set.
-// i must be a valid index into Entries and Created.
+// i must be a valid index into Entries.
 func (r RefEntries) EntryAt(lset model.LabelSet, i int) loki.Entry {
 	return loki.NewEntryWithCreatedUnixMicro(lset, r.Created, r.Entries[i])
 }
