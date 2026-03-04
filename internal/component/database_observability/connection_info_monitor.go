@@ -18,7 +18,7 @@ const ConnectionChecksThreshold = 3
 // ConnectionInfoMonitorConfig optionally overrides the default check interval and threshold.
 // Used by tests to run the monitor with shorter intervals. If nil, defaults are used.
 type ConnectionInfoMonitorConfig struct {
-	CheckInterval time.Duration
+	CheckInterval   time.Duration
 	ChecksThreshold int
 }
 
