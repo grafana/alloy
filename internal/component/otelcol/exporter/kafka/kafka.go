@@ -161,8 +161,8 @@ type Producer struct {
 	CompressionParams CompressionParams `alloy:"compression_params,block,optional"`
 
 	// The maximum number of messages the producer will send in a single
-	// broker request. Defaults to 0 for unlimited. Similar to
-	// `queue.buffering.max.messages` in the JVM producer.
+	// broker request. Defaults to 10000. Set to 0 for unlimited.
+	// Similar to `queue.buffering.max.messages` in the JVM producer.
 	FlushMaxMessages int `alloy:"flush_max_messages,attr,optional"`
 
 	// Whether or not to allow automatic topic creation.
@@ -218,7 +218,7 @@ func (args *Arguments) SetToDefault() {
 			CompressionParams: CompressionParams{
 				Level: 0, // Default compression level
 			},
-			FlushMaxMessages:       0,
+			FlushMaxMessages:       10000,
 			AllowAutoTopicCreation: true,
 		},
 	}

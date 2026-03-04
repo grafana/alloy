@@ -107,10 +107,12 @@ The `autodiscover` block configures automatic discovery of log groups.
 
 The following arguments are supported:
 
-| Name     | Type     | Description                               | Default | Required |
-|----------|----------|-------------------------------------------|---------|----------|
-| `limit`  | `int`    | Maximum number of log groups to discover. | `50`    | no       |
-| `prefix` | `string` | Prefix to filter log groups by.           |         | no       |
+| Name                      | Type           | Description                                           | Default | Required |
+|---------------------------|----------------|-------------------------------------------------------|---------|----------|
+| `limit`                   | `int`          | Maximum number of log groups to discover.             | `50`    | no       |
+| `prefix`                  | `string`       | Prefix to filter log groups by.                       |         | no       |
+| `account_identifiers`     | `list(string)` | Filter log groups by AWS account IDs.                 |         | no       |
+| `include_linked_accounts` | `bool`         | Include log groups from linked accounts in discovery. |         | no       |
 
 The `autodiscover` block supports the following blocks:
 
