@@ -11,7 +11,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "otelcol.auth.bearer",
+		Name:      "otelcol.auth.gcom",
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
