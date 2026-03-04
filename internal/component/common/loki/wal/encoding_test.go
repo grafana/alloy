@@ -60,7 +60,7 @@ func Test_Encoding_Entries(t *testing.T) {
 				RefEntries: []RefEntries{
 					{
 						Ref:     456,
-						Created: []int64{0, 0},
+						Created: 0,
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -82,7 +82,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					},
 					{
 						Ref:     789,
-						Created: []int64{0, 0},
+						Created: 0,
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -114,7 +114,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
-						Created: []int64{0, 0},
+						Created: 0,
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -137,7 +137,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
-						Created: []int64{0, 0},
+						Created: 0,
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -169,7 +169,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
-						Created: []int64{0, 0},
+						Created: 0,
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -192,7 +192,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
-						Created: []int64{0, 0},
+						Created: 0,
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -224,7 +224,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
-						Created: []int64{time.Now().UnixNano(), time.Now().UnixNano()},
+						Created: time.Now().UnixMicro(),
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
@@ -247,7 +247,7 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
-						Created: []int64{time.Now().UnixNano(), time.Now().UnixNano()},
+						Created: time.Now().UnixMicro(),
 						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
@@ -291,9 +291,11 @@ func Test_Encoding_Entries(t *testing.T) {
 			require.Equal(t, expectedRecords.Series, decoded.Series)
 
 			require.Len(t, decoded.RefEntries, len(expectedRecords.RefEntries))
+
 			for i := range expectedRecords.RefEntries {
 				require.Equal(t, expectedRecords.RefEntries[i].Ref, decoded.RefEntries[i].Ref)
 				require.Equal(t, expectedRecords.RefEntries[i].Counter, decoded.RefEntries[i].Counter)
+				require.Equal(t, expectedRecords.RefEntries[i].Created, decoded.RefEntries[i].Created)
 
 				for j := range expectedRecords.RefEntries[i].Entries {
 					require.Equal(t, expectedRecords.RefEntries[i].Entries[j].Line, decoded.RefEntries[i].Entries[j].Line)
@@ -304,8 +306,6 @@ func Test_Encoding_Entries(t *testing.T) {
 					} else {
 						require.Equal(t, expectedRecords.RefEntries[i].Entries[j].StructuredMetadata, decoded.RefEntries[i].Entries[j].StructuredMetadata)
 					}
-
-					require.Equal(t, expectedRecords.RefEntries[i].Created[j], decoded.RefEntries[i].Created[j])
 				}
 			}
 		})

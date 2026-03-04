@@ -39,26 +39,19 @@ const CurrentEntriesRec = WALRecordEntriesV4
 type RefEntries struct {
 	// Counter is unused.
 	Counter int64
+	// Created is a unix timestamp in micro seconds that represent
+	// the time entries was ingested.
+	Created int64
 	// Ref identifies the series these entries belong to.
 	Ref chunks.HeadSeriesRef
 	// Entries are log entries belonging to the same series.
 	Entries []push.Entry
-	// Created stores entry creation timestamps in Unix nanoseconds, aligned by index with Entries.
-	Created []int64
 }
 
 // EntryAt returns the entry at i with the provided label set.
 // i must be a valid index into Entries and Created.
 func (r RefEntries) EntryAt(lset model.LabelSet, i int) loki.Entry {
-	var (
-		createdns = r.Created[i]
-		created   time.Time
-	)
-
-	if createdns != 0 {
-		created = time.Unix(0, createdns)
-	}
-	return loki.NewEntryWithCreated(lset, created, r.Entries[i])
+	return loki.NewEntryWithCreatedUnixMicro(lset, r.Created, r.Entries[i])
 }
 
 // Record is a struct combining the series and samples record.
@@ -129,10 +122,15 @@ outer:
 			buf.PutBE64int64(ref.Counter)
 		}
 
+		if version >= WALRecordEntriesV4 {
+			// V4 has has one timestamp per entry.
+			buf.PutBE64int64(ref.Created)
+		}
+
 		// Write number of entries.
 		buf.PutUvarint(len(ref.Entries))
 
-		for i, s := range ref.Entries {
+		for _, s := range ref.Entries {
 			buf.PutVarint64(s.Timestamp.UnixNano() - first)
 			buf.PutUvarint(len(s.Line))
 			buf.PutString(s.Line)
@@ -146,11 +144,6 @@ outer:
 					buf.PutUvarint(len(l.Value))
 					buf.PutString(l.Value)
 				}
-			}
-
-			if version >= WALRecordEntriesV4 {
-				// V4 has has one timestamp per entry.
-				buf.PutBE64int64(ref.Created[i])
 			}
 		}
 	}
@@ -173,6 +166,10 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 
 		if version >= WALRecordEntriesV2 {
 			refEntries.Counter = dec.Be64int64()
+		}
+
+		if version >= WALRecordEntriesV4 {
+			refEntries.Created = dec.Be64int64()
 		}
 
 		n := dec.Uvarint()
@@ -202,17 +199,11 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 				}
 			}
 
-			var created int64
-			if version >= WALRecordEntriesV4 {
-				created = dec.Be64int64()
-			}
-
 			refEntries.Entries = append(refEntries.Entries, push.Entry{
 				Timestamp:          time.Unix(0, baseTime+timeOffset),
 				Line:               string(line),
 				StructuredMetadata: structuredMetadata,
 			})
-			refEntries.Created = append(refEntries.Created, created)
 		}
 
 		if dec.Err() != nil {

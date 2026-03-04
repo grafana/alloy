@@ -32,8 +32,8 @@ type SentDataMarkerHandler interface {
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
 	streams map[string]*push.Stream
-	// created stores per-entry creation timestamps for latency observation.
-	created []time.Time
+	// created stores per-entry creation timestamps in unix micro seconds for latency observation.
+	created []int64
 	// createdAt is when the batch was created.
 	createdAt time.Time
 	// maxSize is the maximum batch size in bytes. At least one entry is always
@@ -139,11 +139,10 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 	}
 
 	now := time.Now()
-	for _, t := range b.created {
-		// NOTE: Because we potentially have entries from WAL without created
-		// we ignore 0 time.
-		if !t.IsZero() {
-			obs.Observe(float64(now.Sub(t).Seconds()))
+	for _, created := range b.created {
+		// NOTE: Because we potentially have entries from WAL without created timestamp we ignore 0.
+		if created != 0 {
+			obs.Observe(float64(now.Sub(time.UnixMicro(created)).Seconds()))
 		}
 	}
 }

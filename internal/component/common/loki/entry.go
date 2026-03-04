@@ -11,11 +11,19 @@ func NewEntry(lset model.LabelSet, e push.Entry) Entry {
 	return Entry{
 		Labels:  lset,
 		Entry:   e,
-		created: time.Now(),
+		created: time.Now().UnixMicro(),
 	}
 }
 
 func NewEntryWithCreated(lset model.LabelSet, created time.Time, e push.Entry) Entry {
+	return Entry{
+		Labels:  lset,
+		Entry:   e,
+		created: created.UnixMicro(),
+	}
+}
+
+func NewEntryWithCreatedUnixMicro(lset model.LabelSet, created int64, e push.Entry) Entry {
 	return Entry{
 		Labels:  lset,
 		Entry:   e,
@@ -29,8 +37,10 @@ type Entry struct {
 	Labels model.LabelSet
 	push.Entry
 
-	// FIXME check if we should use unix nano instead..
-	created time.Time
+	// Created is a unix timestamp in micro seconds.
+	// FIXME(kalleep): Currently we store created for
+	// for each entry. When moving to batching we can store it per batch.
+	created int64
 }
 
 // Clone returns a copy of the entry so that it can be safely fanned out.
@@ -54,6 +64,6 @@ func (e *Entry) Size() int {
 	return size
 }
 
-func (e *Entry) Created() time.Time {
+func (e *Entry) Created() int64 {
 	return e.created
 }

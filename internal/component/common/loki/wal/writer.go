@@ -269,9 +269,7 @@ func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error 
 		Entries: []push.Entry{
 			entry.Entry,
 		},
-		Created: []int64{
-			entry.Created().UnixNano(),
-		},
+		Created: entry.Created(),
 	})
 	ew.reusableWALRecord.Series = append(ew.reusableWALRecord.Series, record.RefSeries{
 		Ref:    ref,

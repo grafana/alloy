@@ -288,7 +288,7 @@ func TestWALEndpoint(t *testing.T) {
 
 				_ = adapter.AppendEntries(wal.RefEntries{
 					Ref:     chunks.HeadSeriesRef(mod),
-					Created: []int64{time.Now().UnixNano()},
+					Created: time.Now().UnixMicro(),
 					Entries: []push.Entry{{
 						Timestamp: time.Now(),
 						Line:      l,
@@ -435,7 +435,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 			_ = adapter.AppendEntries(wal.RefEntries{
 				Ref:     chunks.HeadSeriesRef(seriesId),
-				Created: []int64{time.Now().UnixNano()},
+				Created: time.Now().UnixMicro(),
 				Entries: []push.Entry{{
 					Timestamp: time.Now(),
 					Line:      l,
