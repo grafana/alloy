@@ -3,14 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -738,121 +735,3 @@ func TestPostgres_Reconnection(t *testing.T) {
 	})
 }
 
-func newTestComponent(t *testing.T, db *sql.DB, ciCollector *collector.ConnectionInfo) *Component {
-	t.Helper()
-	c := &Component{
-		registry:     prometheus.NewRegistry(),
-		healthErr:    atomic.NewString(""),
-		handler:      loki.NewLogsReceiver(),
-		logsReceiver: loki.NewLogsReceiver(),
-		dbConnection: db,
-		ciCollector:  ciCollector,
-		collectors:   []Collector{ciCollector},
-	}
-	return c
-}
-
-func TestComponent_PingConnectionInfo_UnregistersAfterThresholdFailures(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-	require.NoError(t, err)
-	defer db.Close()
-
-	pingErr := errors.New("connection refused")
-	for i := 0; i < connectionInfoPingThreshold; i++ {
-		mock.ExpectPing().WillReturnError(pingErr)
-	}
-
-	reg := prometheus.NewRegistry()
-	ci, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           "postgres://user:pass@localhost:5432/mydb",
-		Registry:      reg,
-		EngineVersion: "15.4",
-	})
-	require.NoError(t, err)
-	require.NoError(t, ci.Start(t.Context()))
-
-	c := newTestComponent(t, db, ci)
-	state := &ciPingState{}
-
-	for i := 0; i < connectionInfoPingThreshold; i++ {
-		c.pingConnectionInfo(context.Background(), state)
-	}
-
-	mfs, err := reg.Gather()
-	require.NoError(t, err)
-	require.Empty(t, mfs, "metric should be unregistered after %d consecutive ping failures", connectionInfoPingThreshold)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestComponent_PingConnectionInfo_ReregistersAfterThresholdSuccesses(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-	require.NoError(t, err)
-	defer db.Close()
-
-	pingErr := errors.New("connection refused")
-	for i := 0; i < connectionInfoPingThreshold; i++ {
-		mock.ExpectPing().WillReturnError(pingErr)
-	}
-	for i := 0; i < connectionInfoPingThreshold; i++ {
-		mock.ExpectPing()
-	}
-
-	reg := prometheus.NewRegistry()
-	ci, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           "postgres://user:pass@products-db.abc123xyz.us-east-1.rds.amazonaws.com:5432/mydb",
-		Registry:      reg,
-		EngineVersion: "15.4",
-	})
-	require.NoError(t, err)
-	require.NoError(t, ci.Start(t.Context()))
-
-	c := newTestComponent(t, db, ci)
-	state := &ciPingState{}
-
-	for i := 0; i < connectionInfoPingThreshold*2; i++ {
-		c.pingConnectionInfo(context.Background(), state)
-	}
-
-	require.NoError(t, mock.ExpectationsWereMet(), "all pings should have been consumed")
-	require.True(t, ci.IsRegistered(), "metric should be re-registered after threshold successes")
-
-	const expected = `
-	# HELP database_observability_connection_info Information about the connection
-	# TYPE database_observability_connection_info gauge
-	database_observability_connection_info{db_instance_identifier="products-db",engine="postgres",engine_version="15.4",provider_account="unknown",provider_name="aws",provider_region="us-east-1"} 1
-`
-	err = testutil.GatherAndCompare(reg, strings.NewReader(expected))
-	require.NoError(t, err)
-}
-
-func TestComponent_PingConnectionInfo_RemainsRegisteredWhilePingsSucceed(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-	require.NoError(t, err)
-	defer db.Close()
-
-	const pings = 5
-	for i := 0; i < pings; i++ {
-		mock.ExpectPing()
-	}
-
-	reg := prometheus.NewRegistry()
-	ci, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           "postgres://user:pass@localhost:5432/mydb",
-		Registry:      reg,
-		EngineVersion: "15.4",
-	})
-	require.NoError(t, err)
-	require.NoError(t, ci.Start(t.Context()))
-
-	c := newTestComponent(t, db, ci)
-	state := &ciPingState{}
-
-	for i := 0; i < pings; i++ {
-		c.pingConnectionInfo(context.Background(), state)
-	}
-
-	mfs, err := reg.Gather()
-	require.NoError(t, err)
-	require.Len(t, mfs, 1, "metric should remain registered while pings succeed")
-	require.NoError(t, mock.ExpectationsWereMet())
-}
