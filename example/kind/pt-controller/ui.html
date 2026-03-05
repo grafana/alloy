@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preemptive Telemetry - Grafana</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Inter, Helvetica, Arial, sans-serif;
+    background: #111217;
+    color: #ccccdc;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Top nav */
+  .nav {
+    background: #181b1f;
+    border-bottom: 1px solid #34363b;
+    padding: 0 16px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .nav-logo { width: 28px; height: 28px; }
+  .nav-logo svg { fill: #ff5733; width: 28px; height: 28px; }
+  .nav-breadcrumb { color: #8e8ea0; font-size: 13px; }
+  .nav-breadcrumb a { color: #6e9fff; text-decoration: none; }
+
+  /* Main content */
+  .main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  h1 { font-size: 22px; font-weight: 500; color: #fff; margin-bottom: 24px; }
+
+  /* Sections */
+  .section {
+    background: #181b1f;
+    border: 1px solid #2c2f36;
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 16px;
+  }
+  .section-subtitle {
+    font-size: 12px;
+    color: #8e8ea0;
+    margin-bottom: 12px;
+  }
+
+  /* Form fields */
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #8e8ea0;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field select, .field input {
+    width: 100%;
+    padding: 8px 12px;
+    background: #0b0c0e;
+    border: 1px solid #2c2f36;
+    border-radius: 4px;
+    color: #ccccdc;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field select:focus, .field input:focus {
+    border-color: #3871dc;
+  }
+  .field select option { background: #181b1f; color: #ccccdc; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-primary { background: #3871dc; color: #fff; }
+  .btn-primary:hover { background: #4a82ed; }
+  .btn-danger { background: #e02f44; color: #fff; }
+  .btn-danger:hover { background: #f0405a; }
+  .btn-secondary { background: #2c2f36; color: #ccccdc; }
+  .btn-secondary:hover { background: #3a3d45; }
+  .actions { display: flex; gap: 12px; margin-top: 20px; }
+
+  /* Status panel */
+  .status-panel {
+    background: #181b1f;
+    border: 1px solid #2c2f36;
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #2c2f36;
+  }
+  .status-row:last-child { border-bottom: none; }
+  .status-label { color: #8e8ea0; }
+  .status-value { color: #fff; font-family: 'Roboto Mono', monospace; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-watching { background: #1a3a2a; color: #6ccf59; }
+  .badge-activated { background: #3a2a1a; color: #ff9830; }
+  .badge-cooldown { background: #2a2a3a; color: #7c7cf0; }
+  .badge-normal { background: #1a3a2a; color: #6ccf59; }
+  .badge-pending { background: #3a3a1a; color: #f0c040; }
+  .badge-firing { background: #3a1a1a; color: #e02f44; }
+
+  .error-text { color: #e02f44; font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="nav">
+    <div class="nav-logo">
+      <svg viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.5 0C10.1 0 0 10.1 0 22.5S10.1 45 22.5 45 45 34.9 45 22.5 34.9 0 22.5 0zm0 40.5c-9.9 0-18-8.1-18-18s8.1-18 18-18 18 8.1 18 18-8.1 18-18 18z" fill="#F46800"/>
+      </svg>
+    </div>
+    <div class="nav-breadcrumb">
+      <a href="#">Connections</a> &rsaquo; <a href="#">Fleet Management</a> &rsaquo; Preemptive Telemetry
+    </div>
+  </div>
+
+  <div class="main">
+    <h1>Preemptive Telemetry</h1>
+    <p style="color: #8e8ea0; margin-bottom: 24px;">
+      Automatically increase telemetry detail when an alert transitions to a configured state.
+      Debug telemetry will be enabled for the configured scope and reverted after the TTL expires.
+    </p>
+
+    <!-- Section 1: Select Alert -->
+    <div class="section">
+      <div class="section-title">1. Select alert</div>
+      <div class="section-subtitle">Choose which alert triggers preemptive telemetry</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Alert rule</label>
+          <select id="alertSelect">
+            <option value="">Loading alerts...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Trigger condition</label>
+          <select id="condition">
+            <option value="pending">Pending</option>
+            <option value="firing">Firing</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Scope -->
+    <div class="section">
+      <div class="section-title">2. Scope</div>
+      <div class="section-subtitle">Filter by namespace and cluster to target specific workloads</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Namespace</label>
+          <select id="namespace">
+            <option value="shop-db">shop-db</option>
+            <option value="shop-catalog">shop-catalog</option>
+            <option value="shop-api">shop-api</option>
+            <option value="shop-loadgen">shop-loadgen</option>
+            <option value="monitoring">monitoring</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Cluster</label>
+          <input type="text" id="cluster" value="example-kind-cluster" readonly>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Telemetry Level -->
+    <div class="section">
+      <div class="section-title">3. Telemetry level</div>
+      <div class="section-subtitle">Level to switch to when the alert condition is met</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Level</label>
+          <select id="level">
+            <option value="debug">Debug — all logs, 15s scrape interval</option>
+            <option value="normal">Normal — info/warn/error logs, 30s scrape</option>
+            <option value="minimal">Minimal — same as normal</option>
+            <option value="off">Off — stop collection</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>TTL (auto-revert after)</label>
+          <select id="ttl">
+            <option value="5m">5 minutes</option>
+            <option value="10m">10 minutes</option>
+            <option value="15m" selected>15 minutes</option>
+            <option value="30m">30 minutes</option>
+            <option value="1h">1 hour</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveRule()">Save rule</button>
+      <button class="btn btn-secondary" onclick="activateNow()">Activate now</button>
+      <button class="btn btn-danger" onclick="deactivate()">Deactivate</button>
+    </div>
+
+    <!-- Status panel -->
+    <div class="status-panel">
+      <div class="section-title">Controller status</div>
+      <div id="statusContent">
+        <div class="status-row">
+          <span class="status-label">Phase</span>
+          <span class="status-value" id="st-phase"><span class="badge badge-watching">watching</span></span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Alert state</span>
+          <span class="status-value" id="st-alert-state">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Last poll</span>
+          <span class="status-value" id="st-last-poll">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Active rule</span>
+          <span class="status-value" id="st-active-rule">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">TTL remaining</span>
+          <span class="status-value" id="st-ttl">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Error</span>
+          <span class="status-value error-text" id="st-error">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+async function loadAlerts() {
+  try {
+    const resp = await fetch('/api/alerts');
+    const alerts = await resp.json();
+    const sel = document.getElementById('alertSelect');
+    sel.innerHTML = '<option value="">— Select an alert —</option>';
+    if (alerts && alerts.length) {
+      alerts.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.uid;
+        opt.textContent = a.title;
+        opt.dataset.title = a.title;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    console.error('Failed to load alerts:', e);
+  }
+}
+
+async function saveRule() {
+  const sel = document.getElementById('alertSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const rule = {
+    alert_uid:  sel.value,
+    alert_name: opt.dataset.title || opt.textContent,
+    namespace:  document.getElementById('namespace').value,
+    condition:  document.getElementById('condition').value,
+    level:      document.getElementById('level').value,
+    ttl:        document.getElementById('ttl').value,
+  };
+
+  if (!rule.alert_uid) { alert('Select an alert first'); return; }
+
+  const resp = await fetch('/api/rules', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(rule),
+  });
+  const result = await resp.json();
+  if (result.status === 'saved') {
+    showNotification('Rule saved — controller is now watching');
+  }
+}
+
+async function activateNow() {
+  const ns = document.getElementById('namespace').value;
+  const resp = await fetch('/api/activate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({namespace: ns}),
+  });
+  const result = await resp.json();
+  if (result.error) {
+    showNotification('Error: ' + result.error, true);
+  } else {
+    showNotification('Debug telemetry activated for ' + ns);
+  }
+}
+
+async function deactivate() {
+  const resp = await fetch('/api/deactivate', {method: 'POST'});
+  const result = await resp.json();
+  if (result.error) {
+    showNotification('Error: ' + result.error, true);
+  } else {
+    showNotification('Telemetry reverted to normal');
+  }
+}
+
+function showNotification(msg, isError) {
+  const div = document.createElement('div');
+  div.style.cssText = `position:fixed;top:60px;right:20px;padding:12px 20px;border-radius:4px;font-size:13px;z-index:1000;
+    background:${isError ? '#3a1a1a' : '#1a3a2a'};color:${isError ? '#e02f44' : '#6ccf59'};border:1px solid ${isError ? '#e02f44' : '#6ccf59'}`;
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 4000);
+}
+
+async function pollStatus() {
+  try {
+    const resp = await fetch('/api/status');
+    const s = await resp.json();
+
+    const phaseEl = document.getElementById('st-phase');
+    phaseEl.innerHTML = `<span class="badge badge-${s.phase}">${s.phase}</span>`;
+
+    const alertBadge = s.last_alert_state ?
+      `<span class="badge badge-${s.last_alert_state}">${s.last_alert_state}</span>` : '—';
+    document.getElementById('st-alert-state').innerHTML = alertBadge;
+
+    document.getElementById('st-last-poll').textContent =
+      s.last_poll_time ? new Date(s.last_poll_time).toLocaleTimeString() : '—';
+
+    document.getElementById('st-active-rule').textContent =
+      s.active_rule ? `${s.active_rule.alert_name} → ${s.active_rule.namespace}` : '—';
+
+    if (s.phase === 'activated' && s.deactivates_at) {
+      const remaining = Math.max(0, (new Date(s.deactivates_at) - new Date()) / 1000);
+      const min = Math.floor(remaining / 60);
+      const sec = Math.floor(remaining % 60);
+      document.getElementById('st-ttl').textContent = `${min}m ${sec}s`;
+    } else {
+      document.getElementById('st-ttl').textContent = '—';
+    }
+
+    document.getElementById('st-error').textContent = s.last_error || '—';
+  } catch (e) {
+    document.getElementById('st-error').textContent = 'polling failed: ' + e.message;
+  }
+}
+
+loadAlerts();
+setInterval(pollStatus, 3000);
+pollStatus();
+</script>
+</body>
+</html>

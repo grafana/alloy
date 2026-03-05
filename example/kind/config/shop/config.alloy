@@ -1,0 +1,404 @@
+// ============================================================================
+// PREEMPTIVE TELEMETRY CONTROL
+// PT controller updates the regex below to route namespaces to debug telemetry.
+// "^$" = all namespaces get normal telemetry
+// "shop-db" = shop-db gets debug telemetry, rest stays normal
+// "shop-db|shop-catalog" = multiple namespaces in debug mode
+// ============================================================================
+
+// ============================================================================
+// Shared discovery: find all pods on this node
+// ============================================================================
+
+discovery.kubernetes "pods" {
+	role = "pod"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + sys.env("HOSTNAME")
+	}
+}
+
+discovery.relabel "all_pods" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_phase"]
+		regex         = "Succeeded|Failed|Completed"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		regex         = "shop-api|shop-catalog|shop-db|shop-loadgen|monitoring"
+		action        = "keep"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		target_label  = "job"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_app"]
+		regex         = "(.+)"
+		target_label  = "service_name"
+	}
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_kubernetes_pod_container_id"]
+		regex         = "^(\\S+):\\/\\/.+$"
+		replacement   = "$1"
+		target_label  = "tmp_container_runtime"
+	}
+}
+
+// ============================================================================
+// Split: debug vs normal namespace routing
+// ============================================================================
+
+discovery.relabel "debug_pods" {
+	targets = discovery.relabel.all_pods.output
+
+	rule {
+		source_labels = ["namespace"]
+		regex         = "^$" // <-- PT
+		action        = "keep"
+	}
+}
+
+discovery.relabel "normal_pods" {
+	targets = discovery.relabel.all_pods.output
+
+	rule {
+		source_labels = ["namespace"]
+		regex         = "^$" // <-- PT
+		action        = "drop"
+	}
+}
+
+// ============================================================================
+// NORMAL logs pipeline: drop DEBUG-level lines
+// ============================================================================
+
+discovery.relabel "normal_pods_with_paths" {
+	targets = discovery.relabel.normal_pods.output
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		action        = "replace"
+		replacement   = "/var/log/pods/*$1/*.log"
+		target_label  = "__path__"
+	}
+}
+
+local.file_match "normal_pod_logs" {
+	path_targets = discovery.relabel.normal_pods_with_paths.output
+}
+
+loki.source.file "normal_pod_logs" {
+	targets    = local.file_match.normal_pod_logs.targets
+	forward_to = [loki.process.normal_pod_logs.receiver]
+}
+
+loki.process "normal_pod_logs" {
+	stage.match {
+		selector = "{tmp_container_runtime=~\"containerd|cri-o\"}"
+
+		stage.cri {}
+
+		stage.labels {
+			values = {
+				flags  = "",
+				stream = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{tmp_container_runtime=\"docker\"}"
+
+		stage.docker {}
+
+		stage.labels {
+			values = {
+				stream = "",
+			}
+		}
+	}
+
+	// Drop DEBUG-level log lines in normal mode
+	stage.match {
+		selector = "{namespace=~\"shop-.*\"}"
+
+		stage.json {
+			expressions = { "extracted_level" = "level" }
+		}
+
+		stage.drop {
+			source = "extracted_level"
+			expression = "(?i)debug"
+		}
+	}
+
+	stage.label_drop {
+		values = ["filename", "tmp_container_runtime", "extracted_level"]
+	}
+
+	stage.static_labels {
+		values = {
+			cluster         = sys.env("CLUSTER_NAME"),
+			telemetry_level = "normal",
+		}
+	}
+
+	forward_to = [loki.write.grafana_cloud_loki.receiver]
+}
+
+// ============================================================================
+// DEBUG logs pipeline: keep ALL log lines including DEBUG
+// ============================================================================
+
+discovery.relabel "debug_pods_with_paths" {
+	targets = discovery.relabel.debug_pods.output
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		action        = "replace"
+		replacement   = "/var/log/pods/*$1/*.log"
+		target_label  = "__path__"
+	}
+}
+
+local.file_match "debug_pod_logs" {
+	path_targets = discovery.relabel.debug_pods_with_paths.output
+}
+
+loki.source.file "debug_pod_logs" {
+	targets    = local.file_match.debug_pod_logs.targets
+	forward_to = [loki.process.debug_pod_logs.receiver]
+}
+
+loki.process "debug_pod_logs" {
+	stage.match {
+		selector = "{tmp_container_runtime=~\"containerd|cri-o\"}"
+
+		stage.cri {}
+
+		stage.labels {
+			values = {
+				flags  = "",
+				stream = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{tmp_container_runtime=\"docker\"}"
+
+		stage.docker {}
+
+		stage.labels {
+			values = {
+				stream = "",
+			}
+		}
+	}
+
+	stage.label_drop {
+		values = ["filename", "tmp_container_runtime"]
+	}
+
+	stage.static_labels {
+		values = {
+			cluster         = sys.env("CLUSTER_NAME"),
+			telemetry_level = "debug",
+		}
+	}
+
+	forward_to = [loki.write.grafana_cloud_loki.receiver]
+}
+
+// ============================================================================
+// Shared Loki write
+// ============================================================================
+
+loki.write "grafana_cloud_loki" {
+	endpoint {
+		url = "https://logs-prod-008.grafana.net/loki/api/v1/push"
+
+		basic_auth {
+			username = "473661"
+			password = sys.env("GCLOUD_RW_API_KEY")
+		}
+	}
+}
+
+// ============================================================================
+// Shared endpoint discovery for metrics
+// ============================================================================
+
+discovery.kubernetes "endpoints" {
+	role = "endpoints"
+}
+
+discovery.relabel "all_endpoints" {
+	targets = discovery.kubernetes.endpoints.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		regex         = "shop-api|shop-catalog|shop-db|monitoring"
+		action        = "keep"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_endpoint_port_name"]
+		regex         = "http|http-metrics|metrics"
+		action        = "keep"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+		separator     = ":"
+		regex         = "grafana-cloud-alloy-operator:http|grafana-cloud-alloy-daemon-cluster:http"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		target_label  = "job"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		regex         = "alloy"
+		target_label  = "job"
+		replacement   = "integrations/alloy"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_app"]
+		regex         = "(.+)"
+		target_label  = "service_name"
+	}
+}
+
+// ============================================================================
+// Split metrics: debug endpoints (5s scrape) vs normal (15s scrape)
+// ============================================================================
+
+discovery.relabel "debug_endpoints" {
+	targets = discovery.relabel.all_endpoints.output
+
+	rule {
+		source_labels = ["namespace"]
+		regex         = "^$" // <-- PT
+		action        = "keep"
+	}
+}
+
+discovery.relabel "normal_endpoints" {
+	targets = discovery.relabel.all_endpoints.output
+
+	rule {
+		source_labels = ["namespace"]
+		regex         = "^$" // <-- PT
+		action        = "drop"
+	}
+}
+
+prometheus.scrape "normal_metrics" {
+	targets         = discovery.relabel.normal_endpoints.output
+	scrape_interval = "30s"
+	forward_to      = [prometheus.relabel.metrics.receiver]
+
+	clustering {
+		enabled = true
+	}
+}
+
+prometheus.scrape "debug_metrics" {
+	targets         = discovery.relabel.debug_endpoints.output
+	scrape_interval = "15s"
+	forward_to      = [prometheus.relabel.metrics.receiver]
+
+	clustering {
+		enabled = true
+	}
+}
+
+// ============================================================================
+// Shared metrics relabeling and remote write
+// ============================================================================
+
+prometheus.relabel "metrics" {
+	forward_to = [prometheus.remote_write.grafana_cloud_metrics.receiver]
+
+	rule {
+		source_labels = ["exported_pod"]
+		regex         = "(.+)"
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["exported_namespace"]
+		regex         = "(.+)"
+		target_label  = "namespace"
+	}
+
+	rule {
+		action = "labeldrop"
+		regex  = "exported_(pod|namespace|container|instance)"
+	}
+}
+
+prometheus.remote_write "grafana_cloud_metrics" {
+	endpoint {
+		url = "https://prometheus-prod-05-gb-south-0.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = "949385"
+			password = sys.env("GCLOUD_RW_API_KEY")
+		}
+
+		write_relabel_config {
+			target_label = "cluster"
+			replacement  = sys.env("CLUSTER_NAME")
+		}
+	}
+}

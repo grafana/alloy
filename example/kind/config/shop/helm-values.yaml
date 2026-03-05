@@ -1,0 +1,6 @@
+collectors:
+  alloy-daemon:
+    alloy:
+      extraEnv:
+        - name: GCLOUD_RW_API_KEY
+          value: PLACEHOLDER

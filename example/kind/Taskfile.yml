@@ -50,7 +50,7 @@ tasks:
         --wait
 
   deploy:cloud-onboarding:local:
-    desc: Deploy Grafana Cloud Onboarding helm chart
+    desc: Deploy Grafana Cloud Onboarding helm chart with shop Alloy config
     deps: [cluster:create, update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
@@ -60,7 +60,27 @@ tasks:
         --set "grafanaCloud.fleetManagement.auth.password={{.GRAFANA_CLOUD_API_KEY}}"
         --set "grafanaCloud.fleetManagement.auth.username={{.REMOTE_CFG_USERNAME}}"
         --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
+        --set "collectors.alloy-daemon.alloy.extraEnv[0].name=GCLOUD_RW_API_KEY"
+        --set "collectors.alloy-daemon.alloy.extraEnv[0].value={{.GRAFANA_CLOUD_API_KEY}}"
+        -f config/shop/helm-values.yaml
         --wait
+      - task: deploy:alloy-config
+
+  deploy:alloy-config:
+    desc: Create/update the Alloy shop ConfigMap from config.alloy and restart pods
+    vars:
+      ALLOY_CONFIG: config/shop/config.alloy
+    preconditions:
+      - test -f {{.ALLOY_CONFIG}}
+    cmds:
+      - |
+        cat {{.ALLOY_CONFIG}} <(printf '\nlogging {\n\tlevel = "info"\n}\n\nlivedebugging {\n\tenabled = true\n}\n') > /tmp/alloy-shop-config.alloy
+        HOSTNAME=dummy CLUSTER_NAME=dummy GCLOUD_RW_API_KEY=dummy NAMESPACE=monitoring POD_NAME=dummy alloy validate /tmp/alloy-shop-config.alloy
+        echo "Config validated OK"
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring create configmap alloy-shop-config
+        --from-file=config.alloy=/tmp/alloy-shop-config.alloy
+        --dry-run=client -o yaml | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring delete pods -l app.kubernetes.io/name=alloy-daemon
 
   deploy:otelcol:
     desc: Deploy OpenTelemetry Collector helm chart using Alloy OTel Engine
@@ -103,6 +123,40 @@ tasks:
     desc: Remove the shop application from the kind cluster
     cmds:
       - kubectl --kubeconfig {{.KUBECONFIG}} delete namespace shop-db shop-catalog shop-api shop-loadgen --ignore-not-found
+
+  fault:oom:
+    desc: Trigger a memory leak on one shop-db pod (OOM in ~5 minutes)
+    cmds:
+      - |
+        POD=$(kubectl --kubeconfig {{.KUBECONFIG}} -n shop-db get pod -l app=shop-db -o jsonpath='{.items[0].metadata.name}')
+        echo "Triggering OOM fault on $POD..."
+        kubectl --kubeconfig {{.KUBECONFIG}} -n shop-db exec "$POD" -- wget -qO- --post-data '' http://localhost:8080/fault/oom
+        echo ""
+        echo "Memory leak started. Watch with: kubectl --kubeconfig {{.KUBECONFIG}} -n shop-db top pod"
+
+  fault:deadlock:
+    desc: Trigger a deadlock on one shop-catalog pod (stops responding)
+    cmds:
+      - |
+        POD=$(kubectl --kubeconfig {{.KUBECONFIG}} -n shop-catalog get pod -l app=shop-catalog -o jsonpath='{.items[0].metadata.name}')
+        echo "Triggering deadlock fault on $POD..."
+        kubectl --kubeconfig {{.KUBECONFIG}} -n shop-catalog exec "$POD" -- wget -qO- --post-data '' http://localhost:8080/fault/deadlock
+        echo ""
+        echo "Deadlock active. Pod will stop responding to business requests (healthz/metrics still work)."
+
+  run:pt-controller:
+    desc: Run the Preemptive Telemetry controller locally
+    cmds:
+      - cd pt-controller && go run .
+
+  alloy:ui:
+    desc: Port-forward to Alloy and open its UI in the browser
+    cmds:
+      - |
+        kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring port-forward daemonset/grafana-cloud-alloy-daemon 12345:12345 &
+        sleep 2
+        open http://localhost:12345
+        wait
 
   expose:
     desc: Expose all services on localhost via port-forward

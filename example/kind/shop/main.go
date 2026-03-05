@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -67,6 +68,96 @@ type Order struct {
 	Total float64    `json:"total"`
 }
 
+// --- Fault injection ---
+
+// OOM: simulates an unbounded query result cache. When enabled, every request
+// caches its result and never evicts. The first request seeds a large initial
+// cache (~23MiB) to simulate loading historical data, then each subsequent
+// request leaks ~11KB. At ~2 req/s this produces ~22KB/s of growth.
+var oomEnabled atomic.Bool
+
+type queryCache struct {
+	mu      sync.Mutex
+	entries [][]byte
+	bytes   int
+}
+
+var cache = &queryCache{}
+
+func (c *queryCache) seed(size int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	buf := make([]byte, size)
+	for i := 0; i < len(buf); i += 4096 {
+		buf[i] = 0xFF
+	}
+	c.entries = append(c.entries, buf)
+	c.bytes += size
+}
+
+func (c *queryCache) add(data []byte, padTo int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	buf := make([]byte, padTo)
+	copy(buf, data)
+	for i := 0; i < len(buf); i += 4096 {
+		buf[i] = 0xFF
+	}
+	c.entries = append(c.entries, buf)
+	c.bytes += padTo
+}
+
+func (c *queryCache) stats() (int, int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.entries), c.bytes
+}
+
+func faultOOM(logger *slog.Logger) http.HandlerFunc {
+	var seeded atomic.Bool
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if !oomEnabled.Load() {
+			oomEnabled.Store(true)
+			logger.Warn("FAULT INJECTED: query result cache enabled, memory will grow with traffic")
+		}
+		if !seeded.Load() {
+			seeded.Store(true)
+			cache.seed(23 * 1024 * 1024)
+			logger.Warn("cache seeded with historical data", "seed_bytes", 23*1024*1024)
+		}
+		writeJSON(w, map[string]string{"fault": "oom", "status": "triggered"})
+	}
+}
+
+func maybeCacheResult(logger *slog.Logger, data []byte) {
+	if !oomEnabled.Load() {
+		return
+	}
+	cache.add(data, 48*1024)
+	entries, bytes := cache.stats()
+	logger.Debug("query result cached", "cache_entries", entries, "cache_bytes", bytes)
+}
+
+// Deadlock: once triggered, all subsequent non-health/metrics requests hang forever.
+var deadlocked atomic.Bool
+
+func faultDeadlock(logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		logger.Warn("FAULT INJECTED: deadlock activated, all requests will hang")
+		deadlocked.Store(true)
+		writeJSON(w, map[string]string{"fault": "deadlock", "status": "triggered"})
+	}
+}
+
+func deadlockMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if deadlocked.Load() && r.URL.Path != "/metrics" && r.URL.Path != "/healthz" && r.URL.Path != "/fault/deadlock" {
+			select {} // block forever
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // --- DB mode: in-memory data store ---
 
 var products = []Product{
@@ -80,18 +171,41 @@ var products = []Product{
 func dbHandler(logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("POST /fault/oom", faultOOM(logger))
+
+	maybeError := func(w http.ResponseWriter, logger *slog.Logger) bool {
+		if rand.IntN(200) == 0 { // 0.5%
+			logger.Warn("transient database error")
+			http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+			return true
+		}
+		return false
+	}
+
 	mux.HandleFunc("GET /products", func(w http.ResponseWriter, r *http.Request) {
+		if maybeError(w, logger) {
+			return
+		}
 		logger.Debug("fetching all products", "count", len(products))
 		time.Sleep(time.Duration(rand.IntN(10)) * time.Millisecond)
-		writeJSON(w, products)
+		data, _ := json.Marshal(products)
+		maybeCacheResult(logger, data)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
 	})
 
 	mux.HandleFunc("GET /products/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
+		if maybeError(w, logger) {
+			return
+		}
 		logger.Debug("fetching product", "id", id)
 		for _, p := range products {
 			if p.ID == id {
-				writeJSON(w, p)
+				data, _ := json.Marshal(p)
+				maybeCacheResult(logger, data)
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(data)
 				return
 			}
 		}
@@ -112,6 +226,8 @@ func dbHandler(logger *slog.Logger) http.Handler {
 func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 	mux := http.NewServeMux()
 	client := &http.Client{Timeout: 5 * time.Second}
+
+	mux.HandleFunc("POST /fault/deadlock", faultDeadlock(logger))
 
 	var (
 		mu    sync.Mutex
@@ -193,8 +309,8 @@ func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 		mu.Unlock()
 
 		if len(items) == 0 {
-			logger.Warn("checkout with empty cart", "session", sessionID)
-			http.Error(w, `{"error":"cart is empty"}`, http.StatusBadRequest)
+			logger.Debug("checkout with empty cart", "session", sessionID)
+			writeJSON(w, map[string]any{"status": "no_items", "order_id": nil})
 			return
 		}
 
@@ -452,7 +568,7 @@ func main() {
 	case "api":
 		handler = apiHandler(logger, *catalogAddr)
 	case "catalog":
-		handler = catalogHandler(logger, *dbAddr)
+		handler = deadlockMiddleware(catalogHandler(logger, *dbAddr))
 	case "db":
 		handler = dbHandler(logger)
 	default:
