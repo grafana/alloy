@@ -39,11 +39,7 @@ func TestPullTarget(t *testing.T) {
 		defer collector.Stop()
 
 		tc := testPullTarget(t, collector.Receiver())
-
-		runErr := make(chan error)
-		go func() {
-			runErr <- tc.target.Run()
-		}()
+		require.NoError(t, tc.target.Run())
 
 		tc.sub.errors <- errors.New("something bad")
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
@@ -81,6 +77,7 @@ func TestPullTarget(t *testing.T) {
 	t.Run("stops when blocked on send", func(t *testing.T) {
 		tc := testPullTarget(t, newBlockingReciver())
 		require.NoError(t, tc.target.Run())
+		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 		tc.target.Stop()
 	})
 }
