@@ -397,7 +397,7 @@ type blockingReceiver struct {
 	ch chan loki.Entry
 }
 
-func newBlockingReciver() *blockingReceiver {
+func newBlockingReceiver() *blockingReceiver {
 	filledChannel := make(chan loki.Entry)
 	return &blockingReceiver{ch: filledChannel}
 }
@@ -408,7 +408,7 @@ func (t *blockingReceiver) Chan() chan loki.Entry {
 
 func TestPushTargetBlocked(t *testing.T) {
 	t.Run("configured request timeout", func(t *testing.T) {
-		eh := newBlockingReciver()
+		eh := newBlockingReceiver()
 
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
@@ -437,7 +437,7 @@ func TestPushTargetBlocked(t *testing.T) {
 	})
 
 	t.Run("force shutdown", func(t *testing.T) {
-		eh := newBlockingReciver()
+		eh := newBlockingReceiver()
 
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
