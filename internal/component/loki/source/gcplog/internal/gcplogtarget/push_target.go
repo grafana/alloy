@@ -85,7 +85,7 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 	}
 
-	pushMessage := PushMessageBody{}
+	pushMessage := pushMessageBody{}
 
 	if err := json.NewDecoder(r.Body).Decode(&pushMessage); err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("read_error").Inc()
@@ -101,7 +101,12 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, err := translate(pushMessage, p.labels(), p.config.UseIncomingTimestamp, p.config.UseFullLine, p.relabelConfigs, r.Header.Get("X-Scope-OrgID"))
+	entry, err := parsePushMessage(pushMessage, p.relabelConfigs, r.Header.Get("X-Scope-OrgID"), parseOptions{
+		fixedLabels:          p.labels(),
+		useFullLine:          p.config.UseFullLine,
+		useIncomingTimestamp: p.config.UseIncomingTimestamp,
+	})
+
 	if err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("translation").Inc()
 		level.Warn(p.logger).Log("msg", "failed to translate gcp push request", "err", err.Error())

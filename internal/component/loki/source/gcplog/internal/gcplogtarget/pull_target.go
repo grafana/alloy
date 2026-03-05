@@ -94,7 +94,11 @@ func (t *PullTarget) Run() error {
 
 		for t.backoff.Ongoing() {
 			err := t.sub.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
-				entry, err := parseGCPLogsEntry(m.Data, lbls, labels.EmptyLabels(), t.config.UseIncomingTimestamp, t.config.UseFullLine, t.relabelConfig)
+				entry, err := parseLogEntry(m.Data, labels.NewBuilder(labels.EmptyLabels()), t.relabelConfig, parseOptions{
+					fixedLabels:          lbls,
+					useFullLine:          t.config.UseFullLine,
+					useIncomingTimestamp: t.config.UseIncomingTimestamp,
+				})
 				if err != nil {
 					level.Error(t.logger).Log("event", "cloud not parse log entry", "error", err)
 					t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()

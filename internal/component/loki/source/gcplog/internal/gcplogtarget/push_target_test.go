@@ -325,7 +325,7 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	// Make sure we didn't time out
 	require.Equal(t, 1, len(eh.Received()))
 
-	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels[ReservedLabelTenantID])
+	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels[reservedLabelTenantID])
 	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels["tenant_id"])
 }
 
