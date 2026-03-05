@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	pg_collector "github.com/prometheus-community/postgres_exporter/collector"
+	pg_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -23,7 +26,9 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
@@ -73,7 +78,8 @@ type Arguments struct {
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
+	HealthCheckArguments   HealthCheckArguments       `alloy:"health_check,block,optional"`
+	PostgresExporter       *PostgresExporterArguments `alloy:"postgres_exporter,block,optional"`
 }
 
 type CloudProvider struct {
@@ -143,6 +149,26 @@ type HealthCheckArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+// PostgresExporterArguments configures the embedded postgres_exporter scrapers.
+// When this block is present, postgres_exporter metrics are served alongside the
+// component's own metrics at the same /metrics endpoint.
+//
+// It is a distinct type (not an embedded struct) because the Alloy syntax
+// system does not support anonymous/embedded fields.
+// Note: data_source_names is ignored; the component's data_source_name is always used.
+type PostgresExporterArguments exporter_postgres.Arguments
+
+func (a *PostgresExporterArguments) SetToDefault() {
+	*a = PostgresExporterArguments(exporter_postgres.DefaultArguments)
+}
+
+// Validate delegates to the underlying Arguments validation, which checks
+// DisableDefaultMetrics constraints. DSN validation is skipped (no DSN field).
+func (a *PostgresExporterArguments) Validate() error {
+	args := exporter_postgres.Arguments(*a)
+	return args.Validate()
+}
+
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
@@ -185,8 +211,9 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
-	logsReceiver loki.LogsReceiver
+	openSQL            func(driverName, dataSourceName string) (*sql.DB, error)
+	logsReceiver       loki.LogsReceiver
+	exporterCollectors []prometheus.Collector
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -364,6 +391,60 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
+	}
+
+	for _, col := range c.exporterCollectors {
+		c.registry.Unregister(col)
+	}
+	c.exporterCollectors = nil
+
+	if c.args.PostgresExporter != nil {
+		exporterArgs := exporter_postgres.Arguments(*c.args.PostgresExporter)
+		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
+		dsn := string(c.args.DataSourceName)
+
+		e := pg_exporter.NewExporter(
+			[]string{dsn},
+			slogLogger,
+			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
+			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
+			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
+			pg_exporter.AutoDiscoverDatabases(exporterArgs.AutoDiscovery.Enabled),
+			pg_exporter.ExcludeDatabases(exporterArgs.AutoDiscovery.DatabaseDenylist),
+			pg_exporter.IncludeDatabases(strings.Join(exporterArgs.AutoDiscovery.DatabaseAllowlist, ",")),
+			pg_exporter.WithMetricPrefix("pg"),
+		)
+		if err := c.registry.Register(e); err != nil {
+			return fmt.Errorf("failed to register postgres exporter: %w", err)
+		}
+		c.exporterCollectors = append(c.exporterCollectors, e)
+
+		if !exporterArgs.DisableDefaultMetrics {
+			collectorOpts := []pg_collector.Option{pg_collector.WithCollectionTimeout("10s")}
+			if exporterArgs.StatStatementFlags != nil {
+				collectorOpts = append(collectorOpts, pg_collector.WithStatStatementsConfig(pg_collector.StatStatementsConfig{
+					IncludeQuery:     exporterArgs.StatStatementFlags.IncludeQuery,
+					QueryLength:      exporterArgs.StatStatementFlags.QueryLength,
+					Limit:            exporterArgs.StatStatementFlags.Limit,
+					ExcludeDatabases: exporterArgs.StatStatementFlags.ExcludeDatabases,
+					ExcludeUsers:     exporterArgs.StatStatementFlags.ExcludeUsers,
+				}))
+			}
+			col, err := pg_collector.NewPostgresCollector(
+				slogLogger,
+				exporterArgs.AutoDiscovery.DatabaseDenylist,
+				dsn,
+				exporterArgs.EnabledCollectors,
+				collectorOpts...,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create postgres collector: %w", err)
+			}
+			if err := c.registry.Register(col); err != nil {
+				return fmt.Errorf("failed to register postgres collector: %w", err)
+			}
+			c.exporterCollectors = append(c.exporterCollectors, col)
+		}
 	}
 
 	allTargets := append([]discovery.Target{c.baseTarget}, c.args.Targets...)
