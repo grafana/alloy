@@ -95,7 +95,9 @@ func (c *Component) Run(ctx context.Context) error {
 
 		c.mut.Lock()
 		defer c.mut.Unlock()
-		c.target.Stop()
+		if c.target != nil {
+			c.target.Stop()
+		}
 	}()
 
 	source.Consume(ctx, c.handler, c.fanout)
