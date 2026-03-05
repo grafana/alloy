@@ -73,11 +73,11 @@ type Arguments struct {
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
-	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
-	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
-	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
+	CloudProvider          *CloudProvider             `alloy:"cloud_provider,block,optional"`
+	QuerySampleArguments   QuerySampleArguments       `alloy:"query_samples,block,optional"`
+	QueryTablesArguments   QueryTablesArguments       `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments SchemaDetailsArguments     `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments      `alloy:"explain_plans,block,optional"`
 	HealthCheckArguments   HealthCheckArguments       `alloy:"health_check,block,optional"`
 	PostgresExporter       *PostgresExporterArguments `alloy:"postgres_exporter,block,optional"`
 }
@@ -162,8 +162,6 @@ func (a *PostgresExporterArguments) SetToDefault() {
 	*a = PostgresExporterArguments(exporter_postgres.DefaultArguments)
 }
 
-// Validate delegates to the underlying Arguments validation, which checks
-// DisableDefaultMetrics constraints. DSN validation is skipped (no DSN field).
 func (a *PostgresExporterArguments) Validate() error {
 	args := exporter_postgres.Arguments(*a)
 	return args.Validate()
@@ -200,17 +198,17 @@ type Collector interface {
 }
 
 type Component struct {
-	opts         component.Options
-	args         Arguments
-	mut          sync.RWMutex
-	receivers    []loki.LogsReceiver
-	handler      loki.LogsReceiver
-	registry     *prometheus.Registry
-	baseTarget   discovery.Target
-	collectors   []Collector
-	instanceKey  string
-	dbConnection *sql.DB
-	healthErr    *atomic.String
+	opts               component.Options
+	args               Arguments
+	mut                sync.RWMutex
+	receivers          []loki.LogsReceiver
+	handler            loki.LogsReceiver
+	registry           *prometheus.Registry
+	baseTarget         discovery.Target
+	collectors         []Collector
+	instanceKey        string
+	dbConnection       *sql.DB
+	healthErr          *atomic.String
 	openSQL            func(driverName, dataSourceName string) (*sql.DB, error)
 	logsReceiver       loki.LogsReceiver
 	exporterCollectors []prometheus.Collector
@@ -409,9 +407,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
 			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
-			pg_exporter.AutoDiscoverDatabases(exporterArgs.AutoDiscovery.Enabled),
-			pg_exporter.ExcludeDatabases(exporterArgs.AutoDiscovery.DatabaseDenylist),
-			pg_exporter.IncludeDatabases(strings.Join(exporterArgs.AutoDiscovery.DatabaseAllowlist, ",")),
+			pg_exporter.AutoDiscoverDatabases(true),
+			pg_exporter.ExcludeDatabases(c.args.ExcludeDatabases),
 			pg_exporter.WithMetricPrefix("pg"),
 		)
 		if err := c.registry.Register(e); err != nil {
@@ -432,7 +429,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			}
 			col, err := pg_collector.NewPostgresCollector(
 				slogLogger,
-				exporterArgs.AutoDiscovery.DatabaseDenylist,
+				c.args.ExcludeDatabases,
 				dsn,
 				exporterArgs.EnabledCollectors,
 				collectorOpts...,
