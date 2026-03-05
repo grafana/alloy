@@ -90,10 +90,7 @@ func NewPullTarget(
 
 func (t *PullTarget) Run() error {
 	t.wg.Go(func() {
-		lbls := make(model.LabelSet, len(t.config.Labels))
-		for k, v := range t.config.Labels {
-			lbls[model.LabelName(k)] = model.LabelValue(v)
-		}
+		lbls := t.labels()
 
 		for t.backoff.Ongoing() {
 			err := t.sub.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
@@ -138,15 +135,18 @@ func (t *PullTarget) Stop() {
 	t.ps.Close()
 }
 
-// Details returns some debug information about the target.
-func (t *PullTarget) Details() map[string]string {
+func (t *PullTarget) labels() model.LabelSet {
 	lbls := make(model.LabelSet, len(t.config.Labels))
 	for k, v := range t.config.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
+	return lbls
+}
 
+// Details returns some debug information about the target.
+func (t *PullTarget) Details() map[string]string {
 	return map[string]string{
 		"strategy": "pull",
-		"labels":   lbls.String(),
+		"labels":   t.labels().String(),
 	}
 }

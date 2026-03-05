@@ -9,8 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
@@ -27,13 +27,16 @@ import (
 // PushTarget defines a server for receiving messages from a GCP PubSub push
 // subscription.
 type PushTarget struct {
-	logger         log.Logger
-	jobName        string
-	metrics        *Metrics
-	config         *gcptypes.PushConfig
-	recv           loki.LogsReceiver
-	relabelConfigs []*relabel.Config
+	logger  log.Logger
+	metrics *Metrics
+	recv    loki.LogsReceiver
+
+	once          sync.Once
+	forceShutdown chan struct{}
+
 	server         *fnet.TargetServer
+	config         *gcptypes.PushConfig
+	relabelConfigs []*relabel.Config
 }
 
 // NewPushTarget constructs a PushTarget.
@@ -51,16 +54,16 @@ func NewPushTarget(
 
 	srv, err := fnet.NewTargetServer(logger, jobName+"_push_target", reg, config.Server)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create loki http server: %w", err)
+		return nil, fmt.Errorf("failed to create gcp push server: %w", err)
 	}
 
 	return &PushTarget{
-		server:         srv,
 		logger:         logger,
-		jobName:        jobName,
 		metrics:        metrics,
-		config:         config,
 		recv:           recv,
+		forceShutdown:  make(chan struct{}),
+		server:         srv,
+		config:         config,
 		relabelConfigs: relabel,
 	}, nil
 }
@@ -76,35 +79,29 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 
 	// Create no-op context.WithTimeout returns to simplify logic
 	ctx := r.Context()
-	cancel := context.CancelFunc(func() {})
 	if p.config.PushTimeout != 0 {
+		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(r.Context(), p.config.PushTimeout)
+		defer cancel()
 	}
-	defer cancel()
 
 	pushMessage := PushMessageBody{}
-	bs, err := io.ReadAll(r.Body)
-	if err != nil {
+
+	if err := json.NewDecoder(r.Body).Decode(&pushMessage); err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("read_error").Inc()
 		level.Warn(p.logger).Log("msg", "failed to read incoming gcp push request", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = json.Unmarshal(bs, &pushMessage)
-	if err != nil {
-		p.metrics.gcpPushErrors.WithLabelValues("format").Inc()
-		level.Warn(p.logger).Log("msg", "failed to unmarshall gcp push request", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err = pushMessage.Validate(); err != nil {
+
+	if err := pushMessage.Validate(); err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("invalid_message").Inc()
 		level.Warn(p.logger).Log("msg", "invalid gcp push request", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	entry, err := translate(pushMessage, p.Labels(), p.config.UseIncomingTimestamp, p.config.UseFullLine, p.relabelConfigs, r.Header.Get("X-Scope-OrgID"))
+	entry, err := translate(pushMessage, p.labels(), p.config.UseIncomingTimestamp, p.config.UseFullLine, p.relabelConfigs, r.Header.Get("X-Scope-OrgID"))
 	if err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("translation").Inc()
 		level.Warn(p.logger).Log("msg", "failed to translate gcp push request", "err", err.Error())
@@ -114,31 +111,23 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 
 	level.Debug(p.logger).Log("msg", fmt.Sprintf("Received line: %s", entry.Line))
 
-	// FIXME(kalleep): request timed out or server is shuttin down
-	if err := p.doSendEntry(ctx, entry); err != nil {
-		// NOTE: timeout errors can be tracked with from the metrics exposed by the dskit server.
-		// loki_source_gcplog_componentid_push_target_request_duration_seconds_count{status_code="503"}
-		level.Warn(p.logger).Log("msg", "error sending log entry", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+	select {
+	case <-ctx.Done():
+		// Request timeout from client or by configured timeout.
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	case <-p.forceShutdown:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	case p.recv.Chan() <- entry:
+		p.metrics.gcpPushEntries.WithLabelValues().Inc()
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-
-	p.metrics.gcpPushEntries.WithLabelValues().Inc()
-	w.WriteHeader(http.StatusNoContent)
 }
 
-func (p *PushTarget) doSendEntry(ctx context.Context, entry loki.Entry) error {
-	select {
-	// Timeout the loki.Entry channel send operation, which is the only blocking operation in the handler
-	case <-ctx.Done():
-		return fmt.Errorf("timeout exceeded: %w", ctx.Err())
-	case p.recv.Chan() <- entry:
-		return nil
-	}
-}
-
-// Labels return the model.LabelSet that the target applies to log entries.
-func (p *PushTarget) Labels() model.LabelSet {
+// labels return the model.LabelSet that the target applies to log entries.
+func (p *PushTarget) labels() model.LabelSet {
 	lbls := make(model.LabelSet, len(p.config.Labels))
 	for k, v := range p.config.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
@@ -150,13 +139,23 @@ func (p *PushTarget) Labels() model.LabelSet {
 func (p *PushTarget) Details() map[string]string {
 	return map[string]string{
 		"strategy":       "push",
-		"labels":         p.Labels().String(),
+		"labels":         p.labels().String(),
 		"server_address": p.server.HTTPListenAddr(),
 	}
 }
 
 // Stop shuts down the push target.
 func (p *PushTarget) Stop() {
-	level.Info(p.logger).Log("msg", "stopping gcp push target", "job", p.jobName)
+	level.Info(p.logger).Log("msg", "stopping gcp push target")
+	// StopAndShutdown tries to gracefully shutdown.
+	// It will stop idle and incoming connections
+	// and try to wait for all in-flight connections
+	// to finish. If configured timeout `ServerGracefulShutdownTimeout`
+	// expired this call will be unblocked.
 	p.server.StopAndShutdown()
+
+	// After we have tried a graceful shutdown we force all remaining in-flight
+	// requests to exit.
+	p.once.Do(func() { close(p.forceShutdown) })
+
 }
