@@ -144,9 +144,9 @@ func (p *PushTarget) Details() map[string]string {
 	}
 }
 
-// Stop shuts down the push target.
+// Stop shuts down the push server.
 func (p *PushTarget) Stop() {
-	level.Info(p.logger).Log("msg", "stopping gcp push target")
+	level.Info(p.logger).Log("msg", "stopping gcp push server")
 	// StopAndShutdown tries to gracefully shutdown.
 	// It will stop idle and incoming connections
 	// and try to wait for all in-flight connections

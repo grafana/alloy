@@ -391,66 +391,87 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 	}
 }
 
-// blockingEntryHandler implements an loki.EntryHandler that has no space in
+// blockingReceiver implements an loki.LogsReceiver that has no space in
 // it's receive channel, blocking when an loki.Entry is sent down the pipe.
-type blockingEntryHandler struct {
-	ch   chan loki.Entry
-	once sync.Once
+type blockingReceiver struct {
+	ch chan loki.Entry
 }
 
-func newBlockingEntryHandler() *blockingEntryHandler {
+func newBlockingEntryHandler() *blockingReceiver {
 	filledChannel := make(chan loki.Entry)
-	return &blockingEntryHandler{ch: filledChannel}
+	return &blockingReceiver{ch: filledChannel}
 }
 
-func (t *blockingEntryHandler) Chan() chan loki.Entry {
+func (t *blockingReceiver) Chan() chan loki.Entry {
 	return t.ch
 }
 
-func TestPushTarget_UsePushTimeout(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+func TestPushTargetBlocked(t *testing.T) {
+	t.Run("configured request timeout", func(t *testing.T) {
+		eh := newBlockingEntryHandler()
 
-	eh := newBlockingEntryHandler()
-
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	config := &gcptypes.PushConfig{
-		Labels:               nil,
-		UseIncomingTimestamp: true,
-		PushTimeout:          time.Second,
-		Server: &fnet.ServerConfig{
-			HTTP: &fnet.HTTPConfig{
-				ListenAddress: "localhost",
-				ListenPort:    port,
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		config := &gcptypes.PushConfig{
+			PushTimeout: time.Second,
+			Server: &fnet.ServerConfig{
+				HTTP: &fnet.HTTPConfig{
+					ListenAddress: "localhost",
+					ListenPort:    port,
+				},
+				// assign random grpc port
+				GRPC: &fnet.GRPCConfig{ListenPort: 0},
 			},
-			// assign random grpc port
-			GRPC: &fnet.GRPCConfig{ListenPort: 0},
-		},
-	}
+		}
 
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	tenantIDRelabelConfig := []*relabel.Config{
-		{
-			SourceLabels:         model.LabelNames{"__tenant_id__"},
-			Regex:                relabel.MustNewRegexp("(.*)"),
-			Replacement:          "$1",
-			TargetLabel:          "tenant_id",
-			Action:               relabel.Replace,
-			NameValidationScheme: model.LegacyValidation,
-		},
-	}
-	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
-	require.NoError(t, err)
-	defer pt.Stop()
-	require.NoError(t, pt.Run())
+		pt, err := NewPushTarget(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), eh, t.Name()+"_test_job", config, nil, nil)
+		require.NoError(t, err)
+		defer pt.Stop()
+		require.NoError(t, pt.Run())
 
-	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
-	require.NoError(t, err, "expected request to be created successfully")
-	res, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, res.StatusCode, "expected timeout response")
+		req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+		require.NoError(t, err, "expected request to be created successfully")
+		res, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusServiceUnavailable, res.StatusCode, "expected timeout response")
+	})
+
+	t.Run("force shutdown", func(t *testing.T) {
+		eh := newBlockingEntryHandler()
+
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		config := &gcptypes.PushConfig{
+			Server: &fnet.ServerConfig{
+				GracefulShutdownTimeout: 2 * time.Second,
+				HTTP: &fnet.HTTPConfig{
+					ListenAddress: "localhost",
+					ListenPort:    port,
+				},
+				// assign random grpc port
+				GRPC: &fnet.GRPCConfig{ListenPort: 0},
+			},
+		}
+
+		pt, err := NewPushTarget(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), eh, t.Name()+"_test_job", config, nil, nil)
+		require.NoError(t, err)
+		require.NoError(t, pt.Run())
+
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			time.Sleep(1 * time.Second)
+			// We stop the server and after 2 seconds server should stop all in-flight request.
+			pt.Stop()
+		})
+
+		req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+		require.NoError(t, err, "expected request to be created successfully")
+		res, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+		wg.Wait()
+	})
 }
 
 func waitForMessages(eh *loki.CollectingHandler) {
