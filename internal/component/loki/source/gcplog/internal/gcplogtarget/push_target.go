@@ -109,8 +109,6 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	level.Debug(p.logger).Log("msg", fmt.Sprintf("Received line: %s", entry.Line))
-
 	select {
 	case <-ctx.Done():
 		// Request timeout from client or by configured timeout.
