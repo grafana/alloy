@@ -97,7 +97,7 @@ func NewController(cfg Config, logger *slog.Logger) *Controller {
 	return &Controller{
 		cfg:    cfg,
 		logger: logger,
-		state:  ControllerState{Phase: "watching"},
+		state:  ControllerState{Phase: "no_rule"},
 		client: &http.Client{Timeout: 15 * time.Second},
 	}
 }
@@ -311,6 +311,10 @@ func (c *Controller) updatePipeline(namespace string) error {
 		return fmt.Errorf("no PT control markers found in config (expected regex with // <-- PT comment)")
 	}
 
+	if c.cfg.FMPipelineID == "" {
+		return fmt.Errorf("FM_PIPELINE_ID is not set")
+	}
+
 	c.logger.Info("updating FM pipeline", "namespace", namespace, "pipeline_id", c.cfg.FMPipelineID)
 
 	payload := map[string]any{
@@ -318,6 +322,7 @@ func (c *Controller) updatePipeline(namespace string) error {
 			"id":       c.cfg.FMPipelineID,
 			"name":     "pt_pipeline",
 			"contents": newConfig,
+			"matchers": []string{`workloadName="alloy-daemon"`},
 			"enabled":  true,
 		},
 	}
@@ -385,7 +390,9 @@ func (c *Controller) handleSaveRule(w http.ResponseWriter, r *http.Request) {
 
 	c.mu.Lock()
 	c.rules = []PTRule{rule}
-	c.state.Phase = "watching"
+	if c.state.Phase == "no_rule" {
+		c.state.Phase = "watching"
+	}
 	c.mu.Unlock()
 
 	c.logger.Info("PT rule saved", "alert", rule.AlertName, "namespace", rule.Namespace, "condition", rule.Condition, "level", rule.Level, "ttl", rule.TTL)
@@ -417,6 +424,7 @@ func (c *Controller) handleActivate(w http.ResponseWriter, r *http.Request) {
 	defer c.mu.Unlock()
 
 	if err := c.updatePipeline(req.Namespace); err != nil {
+		c.logger.Error("manual activation failed", "namespace", req.Namespace, "error", err)
 		writeJSONError(w, err.Error(), 500)
 		return
 	}
@@ -432,6 +440,7 @@ func (c *Controller) handleDeactivate(w http.ResponseWriter, _ *http.Request) {
 	defer c.mu.Unlock()
 
 	if err := c.updatePipeline("^$"); err != nil {
+		c.logger.Error("deactivation failed", "error", err)
 		writeJSONError(w, err.Error(), 500)
 		return
 	}
@@ -600,6 +609,14 @@ func main() {
 			}()
 		}
 	}()
+
+	// Reset pipeline to normal state on startup
+	logger.Info("resetting FM pipeline to normal state on startup")
+	if err := ctrl.updatePipeline("^$"); err != nil {
+		logger.Error("failed to reset pipeline on startup", "error", err)
+	} else {
+		logger.Info("FM pipeline reset to normal state")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", ctrl.handleUI)

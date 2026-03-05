@@ -47,7 +47,7 @@ spec:
           args: ["--mode=db", "--log-level=debug"]
           ports:
             - containerPort: 8080
-              name: http
+              name: metrics
           readinessProbe:
             httpGet:
               path: /healthz
@@ -81,7 +81,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      name: http
+      name: metrics
 ---
 # --- shop-catalog: business logic ---
 apiVersion: apps/v1
@@ -112,7 +112,7 @@ spec:
           args: ["--mode=catalog", "--db-addr=http://shop-db.shop-db:8080", "--log-level=debug"]
           ports:
             - containerPort: 8080
-              name: http
+              name: metrics
           readinessProbe:
             httpGet:
               path: /healthz
@@ -146,7 +146,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      name: http
+      name: metrics
 ---
 # --- shop-api: public-facing gateway ---
 apiVersion: apps/v1
@@ -177,7 +177,7 @@ spec:
           args: ["--mode=api", "--catalog-addr=http://shop-catalog.shop-catalog:8080", "--log-level=debug"]
           ports:
             - containerPort: 8080
-              name: http
+              name: metrics
           readinessProbe:
             httpGet:
               path: /healthz
@@ -211,7 +211,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      name: http
+      name: metrics
 ---
 # --- shop-loadgen: traffic generator ---
 apiVersion: apps/v1

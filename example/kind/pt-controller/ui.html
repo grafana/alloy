@@ -133,6 +133,7 @@
     font-weight: 600;
     text-transform: uppercase;
   }
+  .badge-no_rule { background: #2a2a2a; color: #8e8ea0; }
   .badge-watching { background: #1a3a2a; color: #6ccf59; }
   .badge-activated { background: #3a2a1a; color: #ff9830; }
   .badge-cooldown { background: #2a2a3a; color: #7c7cf0; }
@@ -213,10 +214,10 @@
         <div class="field">
           <label>Level</label>
           <select id="level">
-            <option value="debug">Debug — all logs, 15s scrape interval</option>
-            <option value="normal">Normal — info/warn/error logs, 30s scrape</option>
-            <option value="minimal">Minimal — same as normal</option>
-            <option value="off">Off — stop collection</option>
+            <option value="debug">Debug</option>
+            <option value="normal">Normal</option>
+            <option value="minimal">Minimal</option>
+            <option value="off">Off</option>
           </select>
         </div>
         <div class="field">
@@ -244,7 +245,7 @@
       <div id="statusContent">
         <div class="status-row">
           <span class="status-label">Phase</span>
-          <span class="status-value" id="st-phase"><span class="badge badge-watching">watching</span></span>
+          <span class="status-value" id="st-phase"><span class="badge badge-no_rule">NO RULE</span></span>
         </div>
         <div class="status-row">
           <span class="status-label">Alert state</span>
@@ -278,6 +279,11 @@ async function loadAlerts() {
     const sel = document.getElementById('alertSelect');
     sel.innerHTML = '<option value="">— Select an alert —</option>';
     if (alerts && alerts.length) {
+      alerts.sort((a, b) => {
+        if (a.title === 'ShopDBMemoryHigh') return -1;
+        if (b.title === 'ShopDBMemoryHigh') return 1;
+        return a.title.localeCompare(b.title);
+      });
       alerts.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a.uid;
@@ -356,7 +362,8 @@ async function pollStatus() {
     const s = await resp.json();
 
     const phaseEl = document.getElementById('st-phase');
-    phaseEl.innerHTML = `<span class="badge badge-${s.phase}">${s.phase}</span>`;
+    const phaseLabel = s.phase === 'no_rule' ? 'NO RULE' : s.phase.toUpperCase();
+    phaseEl.innerHTML = `<span class="badge badge-${s.phase}">${phaseLabel}</span>`;
 
     const alertBadge = s.last_alert_state ?
       `<span class="badge badge-${s.last_alert_state}">${s.last_alert_state}</span>` : '—';

@@ -1,16 +1,18 @@
 // ============================================================================
-// PREEMPTIVE TELEMETRY CONTROL
-// PT controller updates the regex below to route namespaces to debug telemetry.
-// "^$" = all namespaces get normal telemetry
-// "shop-db" = shop-db gets debug telemetry, rest stays normal
-// "shop-db|shop-catalog" = multiple namespaces in debug mode
+// PREEMPTIVE TELEMETRY CONFIG
+//
+// Structure:
+//   1. Shared discovery (pods + endpoints)
+//   2. Declared pipeline templates (debug_pipeline, normal_pipeline)
+//   3. Pipeline instantiation (PT controller changes the namespace_regex here)
+//   4. Shared sinks (Loki write, Prometheus remote write)
 // ============================================================================
 
 // ============================================================================
-// Shared discovery: find all pods on this node
+// 1. Shared discovery: find all pods and endpoints on this node
 // ============================================================================
 
-discovery.kubernetes "pods" {
+discovery.kubernetes "local_node_pods" {
 	role = "pod"
 
 	selectors {
@@ -20,7 +22,7 @@ discovery.kubernetes "pods" {
 }
 
 discovery.relabel "all_pods" {
-	targets = discovery.kubernetes.pods.targets
+	targets = discovery.kubernetes.local_node_pods.targets
 
 	rule {
 		source_labels = ["__meta_kubernetes_pod_phase"]
@@ -70,193 +72,6 @@ discovery.relabel "all_pods" {
 	}
 }
 
-// ============================================================================
-// Split: debug vs normal namespace routing
-// ============================================================================
-
-discovery.relabel "debug_pods" {
-	targets = discovery.relabel.all_pods.output
-
-	rule {
-		source_labels = ["namespace"]
-		regex         = "^$" // <-- PT
-		action        = "keep"
-	}
-}
-
-discovery.relabel "normal_pods" {
-	targets = discovery.relabel.all_pods.output
-
-	rule {
-		source_labels = ["namespace"]
-		regex         = "^$" // <-- PT
-		action        = "drop"
-	}
-}
-
-// ============================================================================
-// NORMAL logs pipeline: drop DEBUG-level lines
-// ============================================================================
-
-discovery.relabel "normal_pods_with_paths" {
-	targets = discovery.relabel.normal_pods.output
-
-	rule {
-		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
-		separator     = "/"
-		action        = "replace"
-		replacement   = "/var/log/pods/*$1/*.log"
-		target_label  = "__path__"
-	}
-}
-
-local.file_match "normal_pod_logs" {
-	path_targets = discovery.relabel.normal_pods_with_paths.output
-}
-
-loki.source.file "normal_pod_logs" {
-	targets    = local.file_match.normal_pod_logs.targets
-	forward_to = [loki.process.normal_pod_logs.receiver]
-}
-
-loki.process "normal_pod_logs" {
-	stage.match {
-		selector = "{tmp_container_runtime=~\"containerd|cri-o\"}"
-
-		stage.cri {}
-
-		stage.labels {
-			values = {
-				flags  = "",
-				stream = "",
-			}
-		}
-	}
-
-	stage.match {
-		selector = "{tmp_container_runtime=\"docker\"}"
-
-		stage.docker {}
-
-		stage.labels {
-			values = {
-				stream = "",
-			}
-		}
-	}
-
-	// Drop DEBUG-level log lines in normal mode
-	stage.match {
-		selector = "{namespace=~\"shop-.*\"}"
-
-		stage.json {
-			expressions = { "extracted_level" = "level" }
-		}
-
-		stage.drop {
-			source = "extracted_level"
-			expression = "(?i)debug"
-		}
-	}
-
-	stage.label_drop {
-		values = ["filename", "tmp_container_runtime", "extracted_level"]
-	}
-
-	stage.static_labels {
-		values = {
-			cluster         = sys.env("CLUSTER_NAME"),
-			telemetry_level = "normal",
-		}
-	}
-
-	forward_to = [loki.write.grafana_cloud_loki.receiver]
-}
-
-// ============================================================================
-// DEBUG logs pipeline: keep ALL log lines including DEBUG
-// ============================================================================
-
-discovery.relabel "debug_pods_with_paths" {
-	targets = discovery.relabel.debug_pods.output
-
-	rule {
-		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
-		separator     = "/"
-		action        = "replace"
-		replacement   = "/var/log/pods/*$1/*.log"
-		target_label  = "__path__"
-	}
-}
-
-local.file_match "debug_pod_logs" {
-	path_targets = discovery.relabel.debug_pods_with_paths.output
-}
-
-loki.source.file "debug_pod_logs" {
-	targets    = local.file_match.debug_pod_logs.targets
-	forward_to = [loki.process.debug_pod_logs.receiver]
-}
-
-loki.process "debug_pod_logs" {
-	stage.match {
-		selector = "{tmp_container_runtime=~\"containerd|cri-o\"}"
-
-		stage.cri {}
-
-		stage.labels {
-			values = {
-				flags  = "",
-				stream = "",
-			}
-		}
-	}
-
-	stage.match {
-		selector = "{tmp_container_runtime=\"docker\"}"
-
-		stage.docker {}
-
-		stage.labels {
-			values = {
-				stream = "",
-			}
-		}
-	}
-
-	stage.label_drop {
-		values = ["filename", "tmp_container_runtime"]
-	}
-
-	stage.static_labels {
-		values = {
-			cluster         = sys.env("CLUSTER_NAME"),
-			telemetry_level = "debug",
-		}
-	}
-
-	forward_to = [loki.write.grafana_cloud_loki.receiver]
-}
-
-// ============================================================================
-// Shared Loki write
-// ============================================================================
-
-loki.write "grafana_cloud_loki" {
-	endpoint {
-		url = "https://logs-prod-008.grafana.net/loki/api/v1/push"
-
-		basic_auth {
-			username = "473661"
-			password = sys.env("GCLOUD_RW_API_KEY")
-		}
-	}
-}
-
-// ============================================================================
-// Shared endpoint discovery for metrics
-// ============================================================================
-
 discovery.kubernetes "endpoints" {
 	role = "endpoints"
 }
@@ -276,6 +91,7 @@ discovery.relabel "all_endpoints" {
 		action        = "keep"
 	}
 
+	// Drop non-metrics "http" ports (operator health on 8081, cluster gossip).
 	rule {
 		source_labels = ["__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
 		separator     = ":"
@@ -319,52 +135,247 @@ discovery.relabel "all_endpoints" {
 }
 
 // ============================================================================
-// Split metrics: debug endpoints (5s scrape) vs normal (15s scrape)
+// 2. Pipeline templates
 // ============================================================================
 
-discovery.relabel "debug_endpoints" {
-	targets = discovery.relabel.all_endpoints.output
+// debug_pipeline: keeps ALL logs (including DEBUG), scrapes metrics at 15s,
+// labels logs with telemetry_level="debug".
+declare "debug_pipeline" {
+	argument "pod_targets" {}
+	argument "endpoint_targets" {}
+	argument "namespace_regex" {}
+	argument "loki_receiver" {}
+	argument "prometheus_receiver" {}
 
-	rule {
-		source_labels = ["namespace"]
-		regex         = "^$" // <-- PT
-		action        = "keep"
+	// --- Logs: keep pods matching namespace_regex ---
+
+	discovery.relabel "pods" {
+		targets = argument.pod_targets.value
+
+		rule {
+			source_labels = ["namespace"]
+			regex         = argument.namespace_regex.value
+			action        = "keep"
+		}
+	}
+
+	discovery.relabel "pods_with_paths" {
+		targets = discovery.relabel.pods.output
+
+		rule {
+			source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+			separator     = "/"
+			action        = "replace"
+			replacement   = "/var/log/pods/*$1/*.log"
+			target_label  = "__path__"
+		}
+	}
+
+	local.file_match "logs" {
+		path_targets = discovery.relabel.pods_with_paths.output
+	}
+
+	loki.source.file "logs" {
+		targets    = local.file_match.logs.targets
+		forward_to = [loki.process.logs.receiver]
+	}
+
+	loki.process "logs" {
+		stage.match {
+			selector = "{tmp_container_runtime=~\"containerd|cri-o\"}"
+			stage.cri {}
+			stage.labels {
+				values = { flags = "", stream = "" }
+			}
+		}
+
+		stage.match {
+			selector = "{tmp_container_runtime=\"docker\"}"
+			stage.docker {}
+			stage.labels {
+				values = { stream = "" }
+			}
+		}
+
+		// No drop stage: ALL logs pass through, including DEBUG.
+
+		stage.label_drop {
+			values = ["filename", "tmp_container_runtime"]
+		}
+
+		stage.static_labels {
+			values = {
+				cluster         = sys.env("CLUSTER_NAME"),
+				telemetry_level = "debug",
+			}
+		}
+
+		forward_to = argument.loki_receiver.value
+	}
+
+	// --- Metrics: scrape endpoints matching namespace_regex at 15s ---
+
+	discovery.relabel "endpoints" {
+		targets = argument.endpoint_targets.value
+
+		rule {
+			source_labels = ["namespace"]
+			regex         = argument.namespace_regex.value
+			action        = "keep"
+		}
+	}
+
+	prometheus.scrape "metrics" {
+		targets         = discovery.relabel.endpoints.output
+		scrape_interval = "15s"
+		forward_to      = argument.prometheus_receiver.value
+
+		clustering {
+			enabled = true
+		}
 	}
 }
 
-discovery.relabel "normal_endpoints" {
-	targets = discovery.relabel.all_endpoints.output
+// normal_pipeline: drops DEBUG-level log lines, scrapes metrics at 30s,
+// labels logs with telemetry_level="normal".
+declare "normal_pipeline" {
+	argument "pod_targets" {}
+	argument "endpoint_targets" {}
+	argument "namespace_regex" {}
+	argument "loki_receiver" {}
+	argument "prometheus_receiver" {}
 
-	rule {
-		source_labels = ["namespace"]
-		regex         = "^$" // <-- PT
-		action        = "drop"
+	// --- Logs: drop pods matching namespace_regex, keep the rest ---
+
+	discovery.relabel "pods" {
+		targets = argument.pod_targets.value
+
+		rule {
+			source_labels = ["namespace"]
+			regex         = argument.namespace_regex.value
+			action        = "drop"
+		}
 	}
-}
 
-prometheus.scrape "normal_metrics" {
-	targets         = discovery.relabel.normal_endpoints.output
-	scrape_interval = "30s"
-	forward_to      = [prometheus.relabel.metrics.receiver]
+	discovery.relabel "pods_with_paths" {
+		targets = discovery.relabel.pods.output
 
-	clustering {
-		enabled = true
+		rule {
+			source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+			separator     = "/"
+			action        = "replace"
+			replacement   = "/var/log/pods/*$1/*.log"
+			target_label  = "__path__"
+		}
 	}
-}
 
-prometheus.scrape "debug_metrics" {
-	targets         = discovery.relabel.debug_endpoints.output
-	scrape_interval = "15s"
-	forward_to      = [prometheus.relabel.metrics.receiver]
+	local.file_match "logs" {
+		path_targets = discovery.relabel.pods_with_paths.output
+	}
 
-	clustering {
-		enabled = true
+	loki.source.file "logs" {
+		targets    = local.file_match.logs.targets
+		forward_to = [loki.process.logs.receiver]
+	}
+
+	loki.process "logs" {
+		stage.match {
+			selector = "{tmp_container_runtime=~\"containerd|cri-o\"}"
+			stage.cri {}
+			stage.labels {
+				values = { flags = "", stream = "" }
+			}
+		}
+
+		stage.match {
+			selector = "{tmp_container_runtime=\"docker\"}"
+			stage.docker {}
+			stage.labels {
+				values = { stream = "" }
+			}
+		}
+
+		// Drop DEBUG-level log lines in normal mode.
+		stage.match {
+			selector        = "{namespace=~\"shop-.*\"} |~ \"\\\\\"level\\\\\":\\\\\"DEBUG\\\\\"\""
+			action          = "drop"
+			drop_counter_reason = "debug_filtered"
+		}
+
+		stage.label_drop {
+			values = ["filename", "tmp_container_runtime"]
+		}
+
+		stage.static_labels {
+			values = {
+				cluster         = sys.env("CLUSTER_NAME"),
+				telemetry_level = "normal",
+			}
+		}
+
+		forward_to = argument.loki_receiver.value
+	}
+
+	// --- Metrics: drop endpoints matching namespace_regex, scrape the rest at 30s ---
+
+	discovery.relabel "endpoints" {
+		targets = argument.endpoint_targets.value
+
+		rule {
+			source_labels = ["namespace"]
+			regex         = argument.namespace_regex.value
+			action        = "drop"
+		}
+	}
+
+	prometheus.scrape "metrics" {
+		targets         = discovery.relabel.endpoints.output
+		scrape_interval = "30s"
+		forward_to      = argument.prometheus_receiver.value
+
+		clustering {
+			enabled = true
+		}
 	}
 }
 
 // ============================================================================
-// Shared metrics relabeling and remote write
+// 3. Pipeline instantiation — PT controller changes the namespace_regex
 // ============================================================================
+// "^$" = no debug namespaces (all traffic goes through normal_pipeline)
+// "shop-db" = shop-db gets debug telemetry, everything else stays normal
+// "shop-db|shop-catalog" = multiple namespaces in debug mode
+
+debug_pipeline "default" {
+	pod_targets      = discovery.relabel.all_pods.output
+	endpoint_targets = discovery.relabel.all_endpoints.output
+	namespace_regex  = "^$" // <-- PT
+	loki_receiver    = [loki.write.grafana_cloud_loki.receiver]
+	prometheus_receiver = [prometheus.relabel.metrics.receiver]
+}
+
+normal_pipeline "default" {
+	pod_targets      = discovery.relabel.all_pods.output
+	endpoint_targets = discovery.relabel.all_endpoints.output
+	namespace_regex  = "^$" // <-- PT
+	loki_receiver    = [loki.write.grafana_cloud_loki.receiver]
+	prometheus_receiver = [prometheus.relabel.metrics.receiver]
+}
+
+// ============================================================================
+// 4. Shared sinks
+// ============================================================================
+
+loki.write "grafana_cloud_loki" {
+	endpoint {
+		url = "https://logs-prod-008.grafana.net/loki/api/v1/push"
+
+		basic_auth {
+			username = "473661"
+			password = sys.env("GCLOUD_RW_API_KEY")
+		}
+	}
+}
 
 prometheus.relabel "metrics" {
 	forward_to = [prometheus.remote_write.grafana_cloud_metrics.receiver]
