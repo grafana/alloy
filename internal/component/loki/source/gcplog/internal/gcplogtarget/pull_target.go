@@ -94,15 +94,10 @@ func (t *PullTarget) Run() error {
 
 		for t.backoff.Ongoing() {
 			err := t.sub.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
-				select {
-				case <-ctx.Done():
-					m.Nack()
-				default:
-				}
-
 				entry, err := parseGCPLogsEntry(m.Data, lbls, labels.EmptyLabels(), t.config.UseIncomingTimestamp, t.config.UseFullLine, t.relabelConfig)
 				if err != nil {
-					level.Error(t.logger).Log("event", "error formating log entry", "cause", err)
+					level.Error(t.logger).Log("event", "cloud not parse log entry", "error", err)
+					// NOTE: We want to call Ack here since we cannot process the message.
 					m.Ack()
 					return
 				}
