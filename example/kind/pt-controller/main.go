@@ -63,12 +63,16 @@ func mustEnv(key string) string {
 // --- PT Rule ---
 
 type PTRule struct {
-	AlertUID   string `json:"alert_uid"`
-	AlertName  string `json:"alert_name"`
-	Namespace  string `json:"namespace"`
-	Condition  string `json:"condition"` // "pending" or "firing"
-	Level      string `json:"level"`     // "debug", "normal", "minimal", "off"
-	TTL        string `json:"ttl"`
+	AlertUID   string   `json:"alert_uid"`
+	AlertName  string   `json:"alert_name"`
+	Namespaces []string `json:"namespaces"`
+	Condition  string   `json:"condition"` // "pending" or "firing"
+	Level      string   `json:"level"`     // "debug", "normal", "minimal", "off"
+	TTL        string   `json:"ttl"`
+}
+
+func (r PTRule) NamespaceRegex() string {
+	return strings.Join(r.Namespaces, "|")
 }
 
 type ControllerState struct {
@@ -162,9 +166,9 @@ func (c *Controller) tick() {
 			}
 
 			c.logger.Info("alert matches condition, activating debug telemetry",
-				"alert", rule.AlertName, "state", alertState, "namespace", rule.Namespace, "ttl", ttl)
+				"alert", rule.AlertName, "state", alertState, "namespaces", rule.Namespaces, "ttl", ttl)
 
-			if err := c.updatePipeline(rule.Namespace); err != nil {
+			if err := c.updatePipeline(rule.NamespaceRegex()); err != nil {
 				c.state.LastError = fmt.Sprintf("activation failed: %v", err)
 				c.logger.Error("failed to activate pipeline", "error", err)
 				continue
@@ -395,7 +399,7 @@ func (c *Controller) handleSaveRule(w http.ResponseWriter, r *http.Request) {
 	}
 	c.mu.Unlock()
 
-	c.logger.Info("PT rule saved", "alert", rule.AlertName, "namespace", rule.Namespace, "condition", rule.Condition, "level", rule.Level, "ttl", rule.TTL)
+	c.logger.Info("PT rule saved", "alert", rule.AlertName, "namespaces", rule.Namespaces, "condition", rule.Condition, "level", rule.Level, "ttl", rule.TTL)
 	writeJSON(w, map[string]string{"status": "saved"})
 }
 
@@ -413,18 +417,28 @@ func (c *Controller) handleStatus(w http.ResponseWriter, _ *http.Request) {
 
 func (c *Controller) handleActivate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Namespace string `json:"namespace"`
+		Namespace  string   `json:"namespace"`
+		Namespaces []string `json:"namespaces"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Namespace == "" {
-		writeJSONError(w, "namespace required", 400)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, "invalid request body", 400)
 		return
 	}
+	ns := req.Namespaces
+	if len(ns) == 0 && req.Namespace != "" {
+		ns = []string{req.Namespace}
+	}
+	if len(ns) == 0 {
+		writeJSONError(w, "namespace(s) required", 400)
+		return
+	}
+	regex := strings.Join(ns, "|")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if err := c.updatePipeline(req.Namespace); err != nil {
-		c.logger.Error("manual activation failed", "namespace", req.Namespace, "error", err)
+	if err := c.updatePipeline(regex); err != nil {
+		c.logger.Error("manual activation failed", "namespaces", ns, "error", err)
 		writeJSONError(w, err.Error(), 500)
 		return
 	}
@@ -432,7 +446,7 @@ func (c *Controller) handleActivate(w http.ResponseWriter, r *http.Request) {
 	c.state.Phase = "activated"
 	c.state.ActivatedAt = time.Now()
 	c.state.DeactivatesAt = time.Now().Add(15 * time.Minute)
-	writeJSON(w, map[string]string{"status": "activated", "namespace": req.Namespace})
+	writeJSON(w, map[string]any{"status": "activated", "namespaces": ns})
 }
 
 func (c *Controller) handleDeactivate(w http.ResponseWriter, _ *http.Request) {
@@ -593,10 +607,10 @@ func main() {
 					if ttl == 0 {
 						ttl = 15 * time.Minute
 					}
-					logger.Info("alert matches condition, activating",
-						"alert", rule.AlertName, "state", state, "namespace", rule.Namespace, "ttl", ttl)
+				logger.Info("alert matches condition, activating",
+					"alert", rule.AlertName, "state", state, "namespaces", rule.Namespaces, "ttl", ttl)
 
-					if err := ctrl.updatePipeline(rule.Namespace); err != nil {
+				if err := ctrl.updatePipeline(rule.NamespaceRegex()); err != nil {
 						ctrl.state.LastError = fmt.Sprintf("activate: %v", err)
 						return
 					}

@@ -238,7 +238,8 @@ declare "debug_pipeline" {
 	// --- Profiles: scrape Go pprof endpoints for debug namespaces ---
 
 	pyroscope.scrape "profiles" {
-		targets = discovery.relabel.pods.output
+		targets         = discovery.relabel.pods.output
+		scrape_interval = "30s"
 
 		profiling_config {
 			profile.memory {
@@ -372,10 +373,20 @@ declare "normal_pipeline" {
 	prometheus.scrape "metrics" {
 		targets         = discovery.relabel.endpoints.output
 		scrape_interval = "30s"
-		forward_to      = argument.prometheus_receiver.value
+		forward_to      = [prometheus.relabel.drop_debug_metrics.receiver]
 
 		clustering {
 			enabled = true
+		}
+	}
+
+	prometheus.relabel "drop_debug_metrics" {
+		forward_to = argument.prometheus_receiver.value
+
+		rule {
+			source_labels = ["__name__"]
+			regex         = "downstream_request_duration_seconds.*|query_cache_size_bytes|query_cache_entries_total"
+			action        = "drop"
 		}
 	}
 }

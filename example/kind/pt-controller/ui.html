@@ -142,6 +142,32 @@
   .badge-firing { background: #3a1a1a; color: #e02f44; }
 
   .error-text { color: #e02f44; font-size: 12px; margin-top: 4px; }
+
+  .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 8px 12px;
+    background: #0b0c0e;
+    border: 1px solid #2c2f36;
+    border-radius: 4px;
+  }
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 400;
+    color: #ccccdc;
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 0;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .checkbox-group input[type="checkbox"] {
+    accent-color: #3871dc;
+  }
 </style>
 </head>
 <body>
@@ -190,14 +216,14 @@
       <div class="section-subtitle">Filter by namespace and cluster to target specific workloads</div>
       <div class="field-row">
         <div class="field">
-          <label>Namespace</label>
-          <select id="namespace">
-            <option value="shop-db">shop-db</option>
-            <option value="shop-catalog">shop-catalog</option>
-            <option value="shop-api">shop-api</option>
-            <option value="shop-loadgen">shop-loadgen</option>
-            <option value="monitoring">monitoring</option>
-          </select>
+          <label>Namespaces</label>
+          <div id="namespace-checkboxes" class="checkbox-group">
+            <label><input type="checkbox" value="shop-db"> shop-db</label>
+            <label><input type="checkbox" value="shop-catalog"> shop-catalog</label>
+            <label><input type="checkbox" value="shop-api"> shop-api</label>
+            <label><input type="checkbox" value="shop-loadgen"> shop-loadgen</label>
+            <label><input type="checkbox" value="monitoring"> monitoring</label>
+          </div>
         </div>
         <div class="field">
           <label>Cluster</label>
@@ -301,19 +327,25 @@ async function loadAlerts() {
   }
 }
 
+function getSelectedNamespaces() {
+  return Array.from(document.querySelectorAll('#namespace-checkboxes input:checked')).map(cb => cb.value);
+}
+
 async function saveRule() {
   const sel = document.getElementById('alertSelect');
   const opt = sel.options[sel.selectedIndex];
+  const namespaces = getSelectedNamespaces();
   const rule = {
     alert_uid:  sel.value,
     alert_name: opt.dataset.title || opt.textContent,
-    namespace:  document.getElementById('namespace').value,
+    namespaces: namespaces,
     condition:  document.getElementById('condition').value,
     level:      document.getElementById('level').value,
     ttl:        document.getElementById('ttl').value,
   };
 
   if (!rule.alert_uid) { alert('Select an alert first'); return; }
+  if (namespaces.length === 0) { alert('Select at least one namespace'); return; }
 
   const resp = await fetch('/api/rules', {
     method: 'POST',
@@ -327,17 +359,18 @@ async function saveRule() {
 }
 
 async function activateNow() {
-  const ns = document.getElementById('namespace').value;
+  const namespaces = getSelectedNamespaces();
+  if (namespaces.length === 0) { alert('Select at least one namespace'); return; }
   const resp = await fetch('/api/activate', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({namespace: ns}),
+    body: JSON.stringify({namespaces: namespaces}),
   });
   const result = await resp.json();
   if (result.error) {
     showNotification('Error: ' + result.error, true);
   } else {
-    showNotification('Debug telemetry activated for ' + ns);
+    showNotification('Debug telemetry activated for ' + namespaces.join(', '));
   }
 }
 
@@ -377,7 +410,7 @@ async function pollStatus() {
       s.last_poll_time ? new Date(s.last_poll_time).toLocaleTimeString() : '—';
 
     document.getElementById('st-active-rule').textContent =
-      s.active_rule ? `${s.active_rule.alert_name} → ${s.active_rule.namespace}` : '—';
+      s.active_rule ? `${s.active_rule.alert_name} → ${(s.active_rule.namespaces || []).join(', ')}` : '—';
 
     if (s.phase === 'activated' && s.deactivates_at) {
       const remaining = Math.max(0, (new Date(s.deactivates_at) - new Date()) / 1000);
@@ -400,8 +433,15 @@ pollStatus();
 
 document.getElementById('alertSelect').onchange = function() {
   const title = this.options[this.selectedIndex].textContent;
-  if (title.includes('Latency')) document.getElementById('namespace').value = 'shop-catalog';
-  if (title.includes('Memory')) document.getElementById('namespace').value = 'shop-db';
+  const boxes = document.querySelectorAll('#namespace-checkboxes input');
+  boxes.forEach(cb => cb.checked = false);
+  if (title.includes('Latency')) {
+    document.querySelector('#namespace-checkboxes input[value="shop-catalog"]').checked = true;
+    document.querySelector('#namespace-checkboxes input[value="shop-api"]').checked = true;
+  }
+  if (title.includes('Memory')) {
+    document.querySelector('#namespace-checkboxes input[value="shop-db"]').checked = true;
+  }
 };
 </script>
 </body>

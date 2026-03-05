@@ -134,15 +134,15 @@ tasks:
         echo ""
         echo "Memory leak started. Watch with: kubectl --kubeconfig {{.KUBECONFIG}} -n shop-db top pod"
 
-  fault:deadlock:
-    desc: Trigger a deadlock on one shop-catalog pod (stops responding)
+  fault:slowness:
+    desc: Trigger slowness on one shop-catalog pod (8s delay on all requests)
     cmds:
       - |
         POD=$(kubectl --kubeconfig {{.KUBECONFIG}} -n shop-catalog get pod -l app=shop-catalog -o jsonpath='{.items[0].metadata.name}')
-        echo "Triggering deadlock fault on $POD..."
-        kubectl --kubeconfig {{.KUBECONFIG}} -n shop-catalog exec "$POD" -- wget -qO- --post-data '' http://localhost:8080/fault/deadlock
+        echo "Triggering slowness fault on $POD..."
+        kubectl --kubeconfig {{.KUBECONFIG}} -n shop-catalog exec "$POD" -- wget -qO- --post-data '' http://localhost:8080/fault/slowness
         echo ""
-        echo "Deadlock active. Pod will stop responding to business requests (healthz/metrics still work)."
+        echo "Slowness active. Pod will respond with 8s delay on business requests (healthz/metrics still fast)."
 
   run:pt-controller:
     desc: Run the Preemptive Telemetry controller locally

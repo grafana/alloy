@@ -12,6 +12,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -21,6 +22,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+func init() {
+	runtime.SetBlockProfileRate(1)
+	runtime.SetMutexProfileFraction(1)
+}
 
 var (
 	requestsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -133,6 +139,21 @@ func (c *queryCache) add(data []byte, padTo int) {
 	}
 }
 
+// purge evicts a random fraction of entries, simulating TTL expiry.
+func (c *queryCache) purge() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.entries) == 0 || oomEnabled.Load() {
+		return
+	}
+	// Drop 30-60% of entries.
+	drop := len(c.entries) * (30 + rand.IntN(31)) / 100
+	for i := 0; i < drop && len(c.entries) > 0; i++ {
+		c.bytes -= len(c.entries[0])
+		c.entries = c.entries[1:]
+	}
+}
+
 func (c *queryCache) stats() (int, int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -166,21 +187,30 @@ func maybeCacheResult(logger *slog.Logger, data []byte) {
 	logger.Debug("query result cached", "cache_entries", entries, "cache_bytes", bytes)
 }
 
-// Deadlock: once triggered, all subsequent non-health/metrics requests hang forever.
-var deadlocked atomic.Bool
+var slownessEnabled atomic.Bool
 
-func faultDeadlock(logger *slog.Logger) http.HandlerFunc {
+const slownessDuration = 10 * time.Minute
+
+func faultSlowness(logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		logger.Warn("FAULT INJECTED: deadlock activated, all requests will hang")
-		deadlocked.Store(true)
-		writeJSON(w, map[string]string{"fault": "deadlock", "status": "triggered"})
+		logger.Warn("FAULT INJECTED: slowness activated, all requests will be delayed 8s", "auto_recover_in", slownessDuration)
+		slownessEnabled.Store(true)
+		go func() {
+			time.Sleep(slownessDuration)
+			if slownessEnabled.CompareAndSwap(true, false) {
+				logger.Warn("slowness fault auto-recovered after TTL")
+			}
+		}()
+		writeJSON(w, map[string]string{"fault": "slowness", "status": "triggered", "duration": slownessDuration.String()})
 	}
 }
 
-func deadlockMiddleware(next http.Handler) http.Handler {
+func slownessMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if deadlocked.Load() && r.URL.Path != "/metrics" && r.URL.Path != "/healthz" && r.URL.Path != "/fault/deadlock" {
-			select {} // block forever
+		if slownessEnabled.Load() && r.URL.Path != "/metrics" && r.URL.Path != "/healthz" && r.URL.Path != "/fault/slowness" {
+			time.Sleep(8 * time.Second)
+			http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -197,6 +227,18 @@ var products = []Product{
 }
 
 func dbHandler(logger *slog.Logger) http.Handler {
+	// Periodic cache purge to create natural oscillation in cache metrics.
+	go func() {
+		for {
+			time.Sleep(time.Duration(15+rand.IntN(20)) * time.Second)
+			cache.purge()
+			entries, bytes := cache.stats()
+			queryCacheSize.Set(float64(bytes))
+			queryCacheEntries.Set(float64(entries))
+			logger.Debug("cache purge cycle", "entries", entries, "bytes", bytes)
+		}
+	}()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /fault/oom", faultOOM(logger))
@@ -262,7 +304,7 @@ func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 		return resp, err
 	}
 
-	mux.HandleFunc("POST /fault/deadlock", faultDeadlock(logger))
+	mux.HandleFunc("POST /fault/slowness", faultSlowness(logger))
 
 	var (
 		mu    sync.Mutex
@@ -608,7 +650,7 @@ func main() {
 	case "api":
 		handler = apiHandler(logger, *catalogAddr)
 	case "catalog":
-		handler = deadlockMiddleware(catalogHandler(logger, *dbAddr))
+		handler = slownessMiddleware(catalogHandler(logger, *dbAddr))
 	case "db":
 		handler = dbHandler(logger)
 	default:
