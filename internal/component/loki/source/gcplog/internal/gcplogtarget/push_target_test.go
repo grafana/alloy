@@ -392,7 +392,7 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 }
 
 // blockingReceiver implements an loki.LogsReceiver that has no space in
-// it's receive channel, blocking when an loki.Entry is sent down the pipe.
+// its receive channel, blocking when an loki.Entry is sent down the pipe.
 type blockingReceiver struct {
 	ch chan loki.Entry
 }
