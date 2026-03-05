@@ -31,38 +31,44 @@ type PushTarget struct {
 	jobName        string
 	metrics        *Metrics
 	config         *gcptypes.PushConfig
-	entries        chan<- loki.Entry
-	handler        loki.EntryHandler
+	recv           loki.LogsReceiver
 	relabelConfigs []*relabel.Config
 	server         *fnet.TargetServer
 }
 
 // NewPushTarget constructs a PushTarget.
-func NewPushTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, jobName string, config *gcptypes.PushConfig, relabel []*relabel.Config, reg prometheus.Registerer) (*PushTarget, error) {
-	wrappedLogger := log.With(logger, "component", "gcp_push")
-	srv, err := fnet.NewTargetServer(wrappedLogger, jobName+"_push_target", reg, config.Server)
+func NewPushTarget(
+	metrics *Metrics,
+	logger log.Logger,
+	recv loki.LogsReceiver,
+	jobName string,
+	config *gcptypes.PushConfig,
+	relabel []*relabel.Config,
+	reg prometheus.Registerer,
+) (*PushTarget, error) {
+
+	logger = log.With(logger, "component", "gcp_push")
+
+	srv, err := fnet.NewTargetServer(logger, jobName+"_push_target", reg, config.Server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create loki http server: %w", err)
 	}
-	pt := &PushTarget{
+
+	return &PushTarget{
 		server:         srv,
-		logger:         wrappedLogger,
+		logger:         logger,
 		jobName:        jobName,
 		metrics:        metrics,
 		config:         config,
-		entries:        handler.Chan(),
-		handler:        handler,
+		recv:           recv,
 		relabelConfigs: relabel,
-	}
+	}, nil
+}
 
-	err = pt.server.MountAndRun(func(router *mux.Router) {
-		router.Path("/gcp/api/v1/push").Methods("POST").Handler(http.HandlerFunc(pt.push))
+func (p *PushTarget) Run() error {
+	return p.server.MountAndRun(func(router *mux.Router) {
+		router.Path("/gcp/api/v1/push").Methods("POST").Handler(http.HandlerFunc(p.push))
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return pt, nil
 }
 
 func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
@@ -108,10 +114,10 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 
 	level.Debug(p.logger).Log("msg", fmt.Sprintf("Received line: %s", entry.Line))
 
+	// FIXME(kalleep): request timed out or server is shuttin down
 	if err := p.doSendEntry(ctx, entry); err != nil {
-		// NOTE: timeout errors can be tracked with from the metrics exposed by
-		// the spun dskit server.
-		// loki.source.gcplog.componentid_push_target_request_duration_seconds_count{status_code="503"}
+		// NOTE: timeout errors can be tracked with from the metrics exposed by the dskit server.
+		// loki_source_gcplog_componentid_push_target_request_duration_seconds_count{status_code="503"}
 		level.Warn(p.logger).Log("msg", "error sending log entry", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
@@ -126,7 +132,7 @@ func (p *PushTarget) doSendEntry(ctx context.Context, entry loki.Entry) error {
 	// Timeout the loki.Entry channel send operation, which is the only blocking operation in the handler
 	case <-ctx.Done():
 		return fmt.Errorf("timeout exceeded: %w", ctx.Err())
-	case p.entries <- entry:
+	case p.recv.Chan() <- entry:
 		return nil
 	}
 }
@@ -150,9 +156,7 @@ func (p *PushTarget) Details() map[string]string {
 }
 
 // Stop shuts down the push target.
-func (p *PushTarget) Stop() error {
+func (p *PushTarget) Stop() {
 	level.Info(p.logger).Log("msg", "stopping gcp push target", "job", p.jobName)
 	p.server.StopAndShutdown()
-	p.handler.Stop()
-	return nil
 }

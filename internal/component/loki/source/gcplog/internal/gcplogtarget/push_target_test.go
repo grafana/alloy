@@ -183,11 +183,10 @@ func TestPushTarget(t *testing.T) {
 
 			prometheus.DefaultRegisterer = prometheus.NewRegistry()
 			metrics := NewMetrics(prometheus.DefaultRegisterer)
-			pt, err := NewPushTarget(metrics, logger, eh, outerName+"_test_job", config, tc.args.RelabelConfigs, nil)
+			pt, err := NewPushTarget(metrics, logger, eh.Receiver(), outerName+"_test_job", config, tc.args.RelabelConfigs, nil)
 			require.NoError(t, err)
-			defer func() {
-				_ = pt.Stop()
-			}()
+			defer pt.Stop()
+			require.NoError(t, pt.Run())
 
 			// Clear received lines after test case is ran
 			defer eh.Clear()
@@ -251,11 +250,10 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, nil, nil)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), t.Name()+"_test_job", config, nil, nil)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
 
 	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
 	require.NoError(t, err, "expected request to be created successfully")
@@ -307,11 +305,10 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 			NameValidationScheme: model.LegacyValidation,
 		},
 	}
-	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
 
 	// Clear received lines after test case is ran
 	defer eh.Clear()
@@ -355,11 +352,10 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, nil, nil)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), t.Name()+"_test_job", config, nil, nil)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
 
 	for caseName, testPayload := range map[string]string{
 		"invalid JSON": "{",
@@ -407,12 +403,8 @@ func newBlockingEntryHandler() *blockingEntryHandler {
 	return &blockingEntryHandler{ch: filledChannel}
 }
 
-func (t *blockingEntryHandler) Chan() chan<- loki.Entry {
+func (t *blockingEntryHandler) Chan() chan loki.Entry {
 	return t.ch
-}
-
-func (t *blockingEntryHandler) Stop() {
-	t.once.Do(func() { close(t.ch) })
 }
 
 func TestPushTarget_UsePushTimeout(t *testing.T) {
@@ -420,7 +412,6 @@ func TestPushTarget_UsePushTimeout(t *testing.T) {
 	logger := log.NewLogfmtLogger(w)
 
 	eh := newBlockingEntryHandler()
-	defer eh.Stop()
 
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
@@ -452,9 +443,8 @@ func TestPushTarget_UsePushTimeout(t *testing.T) {
 	}
 	pt, err := NewPushTarget(metrics, logger, eh, t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
 
 	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
 	require.NoError(t, err, "expected request to be created successfully")

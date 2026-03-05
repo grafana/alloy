@@ -12,7 +12,7 @@ import (
 	"time"
 
 	//nolint:staticcheck // TODO: upgrade to v2
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/backoff"
@@ -30,10 +30,9 @@ import (
 type PullTarget struct {
 	metrics       *Metrics
 	logger        log.Logger
-	handler       loki.EntryHandler
+	recv          loki.LogsReceiver
 	config        *gcptypes.PullConfig
 	relabelConfig []*relabel.Config
-	jobName       string
 
 	// lifecycle management
 	ctx     context.Context
@@ -42,9 +41,8 @@ type PullTarget struct {
 	backoff *backoff.Backoff
 
 	// pubsub
-	ps   io.Closer
-	sub  pubsubSubscription
-	msgs chan *pubsub.Message
+	ps  io.Closer
+	sub pubsubSubscription
 }
 
 // TODO(@tpaschalis) Expose this as Alloy configuration in the future.
@@ -60,7 +58,15 @@ type pubsubSubscription interface {
 }
 
 // NewPullTarget returns the new instance of PullTarget.
-func NewPullTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, jobName string, config *gcptypes.PullConfig, relabel []*relabel.Config, clientOptions ...option.ClientOption) (*PullTarget, error) {
+func NewPullTarget(
+	metrics *Metrics,
+	logger log.Logger,
+	recv loki.LogsReceiver,
+	config *gcptypes.PullConfig,
+	relabel []*relabel.Config,
+	clientOptions ...option.ClientOption,
+) (*PullTarget, error) {
+
 	ctx, cancel := context.WithCancel(context.Background())
 	ps, err := pubsub.NewClient(ctx, config.ProjectID, clientOptions...)
 	if err != nil {
@@ -68,101 +74,79 @@ func NewPullTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandle
 		return nil, err
 	}
 
-	target := &PullTarget{
+	return &PullTarget{
 		metrics:       metrics,
 		logger:        logger,
-		handler:       handler,
+		recv:          recv,
 		relabelConfig: relabel,
 		config:        config,
-		jobName:       jobName,
 		ctx:           ctx,
 		cancel:        cancel,
 		ps:            ps,
-		sub:           ps.SubscriptionInProject(config.Subscription, config.ProjectID),
+		sub:           ps.Subscriber(config.Subscription),
 		backoff:       backoff.New(ctx, defaultBackoff),
-		msgs:          make(chan *pubsub.Message),
-	}
-
-	go func() {
-		err := target.run()
-		if err != nil {
-			_ = level.Error(logger).Log("msg", "loki.source.gcplog pull target shutdown with error", "err", err)
-		}
-	}()
-
-	return target, nil
+	}, nil
 }
 
-func (t *PullTarget) run() error {
-	t.wg.Add(1)
-	defer t.wg.Done()
+func (t *PullTarget) Run() error {
+	t.wg.Go(func() {
+		lbls := make(model.LabelSet, len(t.config.Labels))
+		for k, v := range t.config.Labels {
+			lbls[model.LabelName(k)] = model.LabelValue(v)
+		}
 
-	go t.consumeSubscription()
+		for t.backoff.Ongoing() {
+			err := t.sub.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
+				select {
+				case <-ctx.Done():
+					m.Nack()
+				default:
+				}
 
-	lbls := make(model.LabelSet, len(t.config.Labels))
-	for k, v := range t.config.Labels {
-		lbls[model.LabelName(k)] = model.LabelValue(v)
-	}
+				entry, err := parseGCPLogsEntry(m.Data, lbls, labels.EmptyLabels(), t.config.UseIncomingTimestamp, t.config.UseFullLine, t.relabelConfig)
+				if err != nil {
+					level.Error(t.logger).Log("event", "error formating log entry", "cause", err)
+					m.Ack()
+					return
+				}
 
-	for {
-		select {
-		case <-t.ctx.Done():
-			return t.ctx.Err()
-		case m := <-t.msgs:
-			entry, err := parseGCPLogsEntry(m.Data, lbls, labels.EmptyLabels(), t.config.UseIncomingTimestamp, t.config.UseFullLine, t.relabelConfig)
+				select {
+				case t.recv.Chan() <- entry:
+					m.Ack()
+					t.metrics.gcplogEntries.WithLabelValues(t.config.ProjectID).Inc()
+				case <-ctx.Done():
+					m.Nack()
+				}
+
+				t.backoff.Reset()
+			})
+
 			if err != nil {
-				level.Error(t.logger).Log("event", "error formating log entry", "cause", err)
-				m.Ack()
-				break
+				level.Error(t.logger).Log("msg", "failed to receive pubsub messages", "error", err)
+				t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()
+				t.metrics.gcplogTargetLastSuccessScrape.WithLabelValues(t.config.ProjectID, t.config.Subscription).SetToCurrentTime()
+				t.backoff.Wait()
 			}
-			t.handler.Chan() <- entry
-			m.Ack() // Ack only after log is sent.
-			t.metrics.gcplogEntries.WithLabelValues(t.config.ProjectID).Inc()
 		}
-	}
+	})
+	return nil
 }
 
-func (t *PullTarget) consumeSubscription() {
-	// NOTE(kavi): `cancel` the context as exiting from this goroutine should stop main `run` loop
-	// It makesense as no more messages will be received.
-	defer t.cancel()
-
-	for t.backoff.Ongoing() {
-		err := t.sub.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
-			t.msgs <- m
-			t.backoff.Reset()
-		})
-		if err != nil {
-			level.Error(t.logger).Log("msg", "failed to receive pubsub messages", "error", err)
-			t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()
-			t.metrics.gcplogTargetLastSuccessScrape.WithLabelValues(t.config.ProjectID, t.config.Subscription).SetToCurrentTime()
-			t.backoff.Wait()
-		}
-	}
-}
-
-// Labels return the model.LabelSet that the target applies to log entries.
-func (t *PullTarget) Labels() model.LabelSet {
-	lbls := make(model.LabelSet, len(t.config.Labels))
-	for k, v := range t.config.Labels {
-		lbls[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lbls
+func (t *PullTarget) Stop() {
+	t.cancel()
+	t.wg.Wait()
+	t.ps.Close()
 }
 
 // Details returns some debug information about the target.
 func (t *PullTarget) Details() map[string]string {
+	lbls := make(model.LabelSet, len(t.config.Labels))
+	for k, v := range t.config.Labels {
+		lbls[model.LabelName(k)] = model.LabelValue(v)
+	}
+
 	return map[string]string{
 		"strategy": "pull",
-		"labels":   t.Labels().String(),
+		"labels":   lbls.String(),
 	}
-}
-
-// Stop shuts the target down.
-func (t *PullTarget) Stop() error {
-	t.cancel()
-	t.wg.Wait()
-	t.handler.Stop()
-	t.ps.Close()
-	return nil
 }
