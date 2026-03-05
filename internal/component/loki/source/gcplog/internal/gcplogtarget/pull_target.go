@@ -97,6 +97,7 @@ func (t *PullTarget) Run() error {
 				entry, err := parseGCPLogsEntry(m.Data, lbls, labels.EmptyLabels(), t.config.UseIncomingTimestamp, t.config.UseFullLine, t.relabelConfig)
 				if err != nil {
 					level.Error(t.logger).Log("event", "cloud not parse log entry", "error", err)
+					t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()
 					// NOTE: We want to call Ack here since we cannot process the message.
 					m.Ack()
 					return
