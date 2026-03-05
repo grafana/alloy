@@ -279,9 +279,13 @@ async function loadAlerts() {
     const sel = document.getElementById('alertSelect');
     sel.innerHTML = '<option value="">— Select an alert —</option>';
     if (alerts && alerts.length) {
+      const priority = ['ShopDBMemoryHigh', 'HTTPLatencyHigh'];
       alerts.sort((a, b) => {
-        if (a.title === 'ShopDBMemoryHigh') return -1;
-        if (b.title === 'ShopDBMemoryHigh') return 1;
+        const ai = priority.indexOf(a.title);
+        const bi = priority.indexOf(b.title);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
         return a.title.localeCompare(b.title);
       });
       alerts.forEach(a => {
@@ -393,6 +397,12 @@ async function pollStatus() {
 loadAlerts();
 setInterval(pollStatus, 3000);
 pollStatus();
+
+document.getElementById('alertSelect').onchange = function() {
+  const title = this.options[this.selectedIndex].textContent;
+  if (title.includes('Latency')) document.getElementById('namespace').value = 'shop-catalog';
+  if (title.includes('Memory')) document.getElementById('namespace').value = 'shop-db';
+};
 </script>
 </body>
 </html>

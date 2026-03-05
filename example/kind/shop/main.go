@@ -38,11 +38,27 @@ var (
 		Name: "http_requests_in_flight",
 		Help: "Number of HTTP requests currently being processed.",
 	})
+
+	queryCacheSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "query_cache_size_bytes",
+		Help: "Current size of the query result cache in bytes.",
+	})
+
+	queryCacheEntries = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "query_cache_entries_total",
+		Help: "Current number of entries in the query result cache.",
+	})
+
+	downstreamDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "downstream_request_duration_seconds",
+		Help:    "Duration of requests to downstream services, labeled by target pod.",
+		Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5, 10},
+	}, []string{"target"})
 )
 
 func init() {
 	// Go and process collectors are registered by the default registry automatically.
-	prometheus.MustRegister(requestsTotal, requestDuration, requestsInFlight)
+	prometheus.MustRegister(requestsTotal, requestDuration, requestsInFlight, queryCacheSize, queryCacheEntries, downstreamDuration)
 }
 
 // --- Data types ---
@@ -71,11 +87,12 @@ type Order struct {
 
 // --- Fault injection ---
 
-// OOM: simulates an unbounded query result cache. When enabled, every request
-// caches its result and never evicts. The first request seeds a large initial
-// cache (~23MiB) to simulate loading historical data, then each subsequent
-// request leaks ~11KB. At ~2 req/s this produces ~22KB/s of growth.
+// Query result cache. Under normal operation it behaves as a bounded LRU
+// (max 100 entries, old entries evicted). When the OOM fault is injected,
+// eviction is disabled and the cache grows unbounded until OOM.
 var oomEnabled atomic.Bool
+
+const cacheMaxEntries = 100
 
 type queryCache struct {
 	mu      sync.Mutex
@@ -106,6 +123,14 @@ func (c *queryCache) add(data []byte, padTo int) {
 	}
 	c.entries = append(c.entries, buf)
 	c.bytes += padTo
+
+	// Evict oldest entries when cache is full -- unless OOM fault is active.
+	if !oomEnabled.Load() {
+		for len(c.entries) > cacheMaxEntries {
+			c.bytes -= len(c.entries[0])
+			c.entries = c.entries[1:]
+		}
+	}
 }
 
 func (c *queryCache) stats() (int, int) {
@@ -124,6 +149,9 @@ func faultOOM(logger *slog.Logger) http.HandlerFunc {
 		if !seeded.Load() {
 			seeded.Store(true)
 			cache.seed(23 * 1024 * 1024)
+			entries, bytes := cache.stats()
+			queryCacheSize.Set(float64(bytes))
+			queryCacheEntries.Set(float64(entries))
 			logger.Warn("cache seeded with historical data", "seed_bytes", 23*1024*1024)
 		}
 		writeJSON(w, map[string]string{"fault": "oom", "status": "triggered"})
@@ -131,11 +159,10 @@ func faultOOM(logger *slog.Logger) http.HandlerFunc {
 }
 
 func maybeCacheResult(logger *slog.Logger, data []byte) {
-	if !oomEnabled.Load() {
-		return
-	}
 	cache.add(data, 48*1024)
 	entries, bytes := cache.stats()
+	queryCacheSize.Set(float64(bytes))
+	queryCacheEntries.Set(float64(entries))
 	logger.Debug("query result cached", "cache_entries", entries, "cache_bytes", bytes)
 }
 
@@ -228,6 +255,13 @@ func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 	mux := http.NewServeMux()
 	client := &http.Client{Timeout: 5 * time.Second}
 
+	dbGet := func(path string) (*http.Response, error) {
+		start := time.Now()
+		resp, err := client.Get(dbAddr + path)
+		downstreamDuration.WithLabelValues(dbAddr).Observe(time.Since(start).Seconds())
+		return resp, err
+	}
+
 	mux.HandleFunc("POST /fault/deadlock", faultDeadlock(logger))
 
 	var (
@@ -237,7 +271,7 @@ func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 
 	mux.HandleFunc("GET /products", func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("listing products")
-		resp, err := client.Get(dbAddr + "/products")
+		resp, err := dbGet("/products")
 		if err != nil {
 			logger.Warn("db call failed", "error", err)
 			http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
@@ -254,7 +288,7 @@ func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 	mux.HandleFunc("GET /products/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		logger.Info("viewing product", "id", id)
-		resp, err := client.Get(dbAddr + "/products/" + id)
+		resp, err := dbGet("/products/" + id)
 		if err != nil {
 			logger.Warn("db call failed", "error", err)
 			http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
@@ -281,7 +315,7 @@ func catalogHandler(logger *slog.Logger, dbAddr string) http.Handler {
 		logger.Info("adding to cart", "session", sessionID, "product_id", req.ProductID, "quantity", req.Quantity)
 
 		// Verify product exists via DB
-		resp, err := client.Get(dbAddr + "/products/" + req.ProductID)
+		resp, err := dbGet("/products/" + req.ProductID)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			logger.Warn("product lookup failed", "product_id", req.ProductID)
 			http.Error(w, `{"error":"product not found"}`, http.StatusNotFound)
@@ -366,14 +400,19 @@ func apiHandler(logger *slog.Logger, catalogAddr string) http.Handler {
 		start := time.Now()
 		resp, err := client.Do(req)
 		elapsed := time.Since(start)
+		target := catalogAddr
+		if resp != nil && resp.Request != nil && resp.Request.URL != nil {
+			target = resp.Request.URL.Host
+		}
+		downstreamDuration.WithLabelValues(target).Observe(elapsed.Seconds())
 		if err != nil {
-			logger.Warn("catalog call failed", "path", path, "error", err)
+			logger.Warn("catalog call failed", "path", path, "error", err, "duration_ms", elapsed.Milliseconds())
 			http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
 			return
 		}
 		defer resp.Body.Close()
 
-		logger.Debug("catalog response", "path", path, "status", resp.StatusCode, "duration_ms", elapsed.Milliseconds())
+		logger.Debug("catalog response", "path", path, "status", resp.StatusCode, "duration_ms", elapsed.Milliseconds(), "target", target)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(resp.StatusCode)
 		var buf bytes.Buffer
