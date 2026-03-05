@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -576,7 +577,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	srv := &http.Server{Addr: *addr, Handler: instrument(handler)}
+	// Register pprof endpoints for profiling.
+	mux := http.NewServeMux()
+	mux.Handle("/", instrument(handler))
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	srv := &http.Server{Addr: *addr, Handler: mux}
 
 	go func() {
 		<-ctx.Done()

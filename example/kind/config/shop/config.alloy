@@ -234,6 +234,47 @@ declare "debug_pipeline" {
 			enabled = true
 		}
 	}
+
+	// --- Profiles: scrape Go pprof endpoints for debug namespaces ---
+
+	pyroscope.scrape "profiles" {
+		targets = discovery.relabel.pods.output
+
+		profiling_config {
+			profile.memory {
+				enabled = true
+			}
+			profile.process_cpu {
+				enabled = true
+			}
+			profile.goroutine {
+				enabled = true
+			}
+			profile.block {
+				enabled = true
+			}
+			profile.mutex {
+				enabled = true
+			}
+		}
+
+		forward_to = [pyroscope.write.grafana_cloud.receiver]
+	}
+
+	pyroscope.write "grafana_cloud" {
+		endpoint {
+			url = "https://profiles-prod-014.grafana.net"
+
+			basic_auth {
+				username = "624262"
+				password = sys.env("GCLOUD_RW_API_KEY")
+			}
+		}
+
+		external_labels = {
+			"cluster" = sys.env("CLUSTER_NAME"),
+		}
+	}
 }
 
 // normal_pipeline: drops DEBUG-level log lines, scrapes metrics at 30s,
@@ -297,7 +338,7 @@ declare "normal_pipeline" {
 
 		// Drop DEBUG-level log lines in normal mode.
 		stage.match {
-			selector        = "{namespace=~\"shop-.*\"} |~ \"\\\\\"level\\\\\":\\\\\"DEBUG\\\\\"\""
+			selector        = `{namespace=~"shop-.*"} |~ "\"level\":\"DEBUG\""`
 			action          = "drop"
 			drop_counter_reason = "debug_filtered"
 		}
