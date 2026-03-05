@@ -75,7 +75,7 @@ func TestPullTarget(t *testing.T) {
 	})
 
 	t.Run("stops when blocked on send", func(t *testing.T) {
-		tc := testPullTarget(t, newBlockingReciver())
+		tc := testPullTarget(t, newBlockingReceiver())
 		require.NoError(t, tc.target.Run())
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 		tc.target.Stop()
