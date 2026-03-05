@@ -1,5 +1,0 @@
-# Test case for empty RBAC rules arrays
-rbac:
-  create: true
-  rules: []
-  clusterRules: []
