@@ -19,20 +19,26 @@ import (
 
 func TestPullTarget(t *testing.T) {
 	t.Run("it sends messages to recv and stops when Stop() is called", func(t *testing.T) {
-		tc := testPullTarget(t)
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		tc := testPullTarget(t, collector.Receiver())
 
 		require.NoError(t, tc.target.Run())
 
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 
 		require.Eventually(t, func() bool {
-			return len(tc.handler.Received()) > 0
+			return len(collector.Received()) > 0
 		}, time.Second, 50*time.Millisecond)
 		tc.target.Stop()
 	})
 
 	t.Run("it retries when there is an error", func(t *testing.T) {
-		tc := testPullTarget(t)
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		tc := testPullTarget(t, collector.Receiver())
 
 		runErr := make(chan error)
 		go func() {
@@ -43,14 +49,17 @@ func TestPullTarget(t *testing.T) {
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 
 		require.Eventually(t, func() bool {
-			return len(tc.handler.Received()) > 0
+			return len(collector.Received()) > 0
 		}, time.Second, 50*time.Millisecond)
 
 		tc.target.Stop()
 	})
 
 	t.Run("a successful message resets retries", func(t *testing.T) {
-		tc := testPullTarget(t)
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		tc := testPullTarget(t, collector.Receiver())
 		require.NoError(t, tc.target.Run())
 
 		tc.sub.errors <- errors.New("something bad")
@@ -63,42 +72,44 @@ func TestPullTarget(t *testing.T) {
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 
 		require.Eventually(t, func() bool {
-			return len(tc.handler.Received()) > 1
+			return len(collector.Received()) > 1
 		}, time.Second, 50*time.Millisecond)
 
+		tc.target.Stop()
+	})
+
+	t.Run("stops when blocked on send", func(t *testing.T) {
+		tc := testPullTarget(t, newBlockingReciver())
+		require.NoError(t, tc.target.Run())
 		tc.target.Stop()
 	})
 }
 
 type testContext struct {
-	target  *PullTarget
-	handler *loki.CollectingHandler
-	sub     *fakeSubscription
+	target *PullTarget
+	sub    *fakeSubscription
 }
 
-func testPullTarget(t *testing.T) *testContext {
+func testPullTarget(t *testing.T, recv loki.LogsReceiver) *testContext {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	sub := newFakeSubscription()
-	handler := loki.NewCollectingHandler()
 	target := &PullTarget{
-		metrics:       NewMetrics(prometheus.NewRegistry()),
-		logger:        log.NewNopLogger(),
-		recv:          handler.Receiver(),
-		relabelConfig: nil,
-		ctx:           ctx,
-		cancel:        cancel,
-		config:        testConfig,
-		ps:            io.NopCloser(nil),
-		sub:           sub,
-		backoff:       backoff.New(ctx, testBackoff),
+		metrics: NewMetrics(prometheus.NewRegistry()),
+		logger:  log.NewNopLogger(),
+		recv:    recv,
+		ctx:     ctx,
+		cancel:  cancel,
+		config:  testConfig,
+		ps:      io.NopCloser(nil),
+		sub:     sub,
+		backoff: backoff.New(ctx, testBackoff),
 	}
 
 	return &testContext{
-		target:  target,
-		handler: handler,
-		sub:     sub,
+		target: target,
+		sub:    sub,
 	}
 }
 
