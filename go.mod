@@ -297,7 +297,7 @@ require (
 	golang.org/x/crypto v0.48.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20260211191109-2735e65f0518
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
@@ -529,7 +529,7 @@ require (
 	github.com/channelmeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
 	github.com/cilium/ebpf v0.20.0 // indirect
-	github.com/cloudflare/circl v1.6.1 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
@@ -1144,5 +1144,8 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/files
 
 // TODO: Fork to update Prometheus to v0.309.1 while keeping OTel Collector at v0.142.0. Remove when OTel Collector is upgraded to v0.144.0+, which includes this change upstream.
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98
+
+// Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
 
 // END GENERATED REPLACES
