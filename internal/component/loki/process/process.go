@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -48,17 +49,14 @@ var (
 // Component implements the loki.process component.
 type Component struct {
 	opts       component.Options
+	processOut loki.LogsReceiver
+	processIn  loki.LogsReceiver
 	receiver   loki.LogsReceiver
-	processOut chan loki.Entry
+	fanout     *loki.Fanout
 
-	mut          sync.RWMutex
-	processIn    chan<- loki.Entry
+	mut          sync.Mutex
 	entryHandler loki.EntryHandler
 	stages       []stages.StageConfig
-
-	// FIXME: use fanout
-	fanoutMut sync.RWMutex
-	fanout    []loki.LogsReceiver
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -72,13 +70,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               o,
+		processOut:         loki.NewLogsReceiver(),
+		processIn:          loki.NewLogsReceiver(),
+		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
+		fanout:             loki.NewFanout(args.ForwardTo),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
-	// Create and immediately export the receiver which remains the same for
-	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
-	c.processOut = make(chan loki.Entry)
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -91,26 +89,48 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	handleOutShutdown := make(chan struct{})
-	wgOut := &sync.WaitGroup{}
 	defer func() {
-		c.mut.RLock()
-		if c.entryHandler != nil {
-			c.entryHandler.Stop()
-			// Stop handleOut only after the entryHandler has stopped.
-			// If handleOut stops first, entryHandler might get stuck on a channel send.
-			close(handleOutShutdown)
-			wgOut.Wait()
-		}
-		c.mut.RUnlock()
+		source.Drain(c.processOut, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			if c.entryHandler != nil {
+				c.entryHandler.Stop()
+			}
+		})
 	}()
-	wgIn := &sync.WaitGroup{}
-	wgIn.Add(1)
-	go c.handleIn(ctx, wgIn)
-	wgOut.Add(1)
-	go c.handleOut(handleOutShutdown, wgOut)
 
-	wgIn.Wait()
+	var wg sync.WaitGroup
+	wg.Go(func() { c.handleIn(ctx) })
+
+	wg.Go(func() {
+		source.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) loki.Entry {
+			// The log entry is the same for every fanout,
+			// so we can publish it only once.
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				livedebugging.ComponentID(c.opts.ID),
+				livedebugging.LokiLog,
+				1,
+				func() string {
+					structured_metadata, err := e.StructuredMetadata.MarshalJSON()
+					if err != nil {
+						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+						structured_metadata = []byte("{}")
+					}
+					return fmt.Sprintf(
+						"[OUT]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s",
+						e.Timestamp.Format(time.RFC3339Nano),
+						e.Line,
+						e.Labels.String(),
+						string(structured_metadata),
+					)
+				},
+			))
+
+			return e
+		})
+	})
+
+	wg.Wait()
 	return nil
 }
 
@@ -118,10 +138,8 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update c.fanout first in case anything else fails.
-	c.fanoutMut.Lock()
-	c.fanout = newArgs.ForwardTo
-	c.fanoutMut.Unlock()
+	// Update fanout first in case anything else fails.
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// Then update the pipeline itself.
 	c.mut.Lock()
@@ -131,7 +149,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// first load. This will allow a component with no stages to function
 	// properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}
@@ -141,25 +159,21 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		c.entryHandler = pipeline.Start(c.processOut)
-		c.processIn = c.entryHandler.Chan()
 		c.stages = newArgs.Stages
+		c.entryHandler = pipeline.Start(c.processIn.Chan(), c.processOut.Chan())
 	}
 
 	return nil
 }
 
-func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
-	componentID := livedebugging.ComponentID(c.opts.ID)
+func (c *Component) handleIn(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case entry := <-c.receiver.Chan():
-			c.mut.RLock()
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
+				livedebugging.ComponentID(c.opts.ID),
 				livedebugging.LokiLog,
 				0, // does not count because we count only the data that exists
 				func() string {
@@ -171,54 +185,15 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
 				},
 			))
+
 			select {
 			case <-ctx.Done():
 				return
-			case c.processIn <- entry.Clone():
+			case c.processIn.Chan() <- entry.Clone():
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
 				// approach instead, so that the copy only gets made on the
 				// first stage that needs to modify the entry's labels.
-			}
-			c.mut.RUnlock()
-		}
-	}
-}
-
-func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
-	defer wg.Done()
-	componentID := livedebugging.ComponentID(c.opts.ID)
-	for {
-		select {
-		case <-shutdownCh:
-			return
-		case entry := <-c.processOut:
-			c.fanoutMut.RLock()
-			fanout := c.fanout
-			c.fanoutMut.RUnlock()
-
-			// The log entry is the same for every fanout,
-			// so we can publish it only once.
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.LokiLog,
-				1,
-				func() string {
-					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
-					if err != nil {
-						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
-						structured_metadata = []byte("{}")
-					}
-					return fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
-				},
-			))
-
-			for _, f := range fanout {
-				select {
-				case <-shutdownCh:
-					return
-				case f.Chan() <- entry:
-				}
 			}
 		}
 	}

@@ -131,11 +131,6 @@ type timestampStage struct {
 	lastKnownTimestamps *lru.Cache
 }
 
-// Name implements Stage.
-func (ts *timestampStage) Name() string {
-	return StageTypeTimestamp
-}
-
 // Process implements Stage.
 func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	if ts.config == nil {

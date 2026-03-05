@@ -110,6 +110,8 @@ func TestBigConfig(t *testing.T) {
     decision_wait               = "10s"
     num_traces                  = 100
     expected_new_traces_per_sec = 10
+    sample_on_first_match = true
+    drop_pending_traces_on_shutdown = true
     policy {
       name = "test-policy-1"
       type = "always_sample"
@@ -167,6 +169,14 @@ func TestBigConfig(t *testing.T) {
       type = "rate_limiting"
       rate_limiting {
         spans_per_second = 35
+      }
+    }
+    policy {
+      name = "test-policy-bytes-limiting"
+      type = "bytes_limiting"
+      bytes_limiting {
+        bytes_per_second = 2048
+        burst_capacity = 4096
       }
     }
     policy {
@@ -284,6 +294,29 @@ func TestBigConfig(t *testing.T) {
             ]
           }
         }
+        and_sub_policy {
+          name = "test-and-policy-5"
+          type = "bytes_limiting"
+          bytes_limiting {
+            bytes_per_second = 1024
+            burst_capacity = 2048
+          }
+        }
+      }
+    }
+    policy {
+      name = "drop-policy-1"
+      type = "drop"
+      drop {
+        drop_sub_policy {
+          name = "test-drop-policy-1"
+          type = "string_attribute"
+          string_attribute {
+            key = "http.route"
+            values = ["/health", "/metrics"]
+            enabled_regex_matching = true
+          }
+        }
       }
     }
     policy{
@@ -334,6 +367,14 @@ func TestBigConfig(t *testing.T) {
               "name != \"test_span_event_name\"",
               "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\"",
             ]
+          }
+        }
+        composite_sub_policy {
+          name = "test-composite-policy-6"
+          type = "bytes_limiting"
+          bytes_limiting {
+            bytes_per_second = 512
+            burst_capacity = 1024
           }
         }
         rate_allocation {

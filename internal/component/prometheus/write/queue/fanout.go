@@ -74,9 +74,9 @@ func (f fanout) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadat
 	return ref, nil
 }
 
-func (f fanout) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+func (f fanout) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
 	for _, child := range f.children {
-		_, err := child.AppendCTZeroSample(ref, l, t, ct)
+		_, err := child.AppendSTZeroSample(ref, l, t, st)
 		if err != nil {
 			return ref, err
 		}
@@ -84,9 +84,9 @@ func (f fanout) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct
 	return ref, nil
 }
 
-func (f fanout) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (f fanout) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	for _, child := range f.children {
-		_, err := child.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
+		_, err := child.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
 		if err != nil {
 			return ref, err
 		}

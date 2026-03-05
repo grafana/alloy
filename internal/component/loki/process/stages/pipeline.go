@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -51,15 +52,14 @@ type StageConfig struct {
 type Pipeline struct {
 	logger    log.Logger
 	stages    []Stage
-	jobName   *string
 	dropCount *prometheus.CounterVec
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
+func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, jobName, stage, registerer, minStability)
+		newStage, err := New(logger, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
@@ -68,15 +68,14 @@ func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, regis
 	return &Pipeline{
 		logger:    log.With(logger, "component", "pipeline"),
 		stages:    st,
-		jobName:   jobName,
 		dropCount: getDropCountMetric(registerer),
 	}, nil
 }
 
 // Start will start the pipeline and forward entries to next.
 // The returned EntryHandler should be used to pass entries through the pipeline.
-func (p *Pipeline) Start(next chan<- loki.Entry) loki.EntryHandler {
-	handlerIn := make(chan loki.Entry)
+func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHandler {
+	ctx, cancel := context.WithCancel(context.Background())
 
 	pipelineIn := make(chan Entry)
 	pipelineOut := p.Run(pipelineIn)
@@ -85,24 +84,32 @@ func (p *Pipeline) Start(next chan<- loki.Entry) loki.EntryHandler {
 		wg   sync.WaitGroup
 		once sync.Once
 	)
+
 	wg.Go(func() {
 		for e := range pipelineOut {
-			next <- e.Entry
+			out <- e.Entry
 		}
 	})
 
 	wg.Go((func() {
 		defer close(pipelineIn)
-		for e := range handlerIn {
-			pipelineIn <- Entry{
-				Extracted: map[string]any{},
-				Entry:     e,
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case e := <-in:
+				pipelineIn <- Entry{
+					// NOTE: When entires pass through the pipeline
+					// we always add all labels as extracted data.
+					Extracted: make(map[string]any, len(e.Labels)),
+					Entry:     e,
+				}
 			}
 		}
 	}))
 
-	return loki.NewEntryHandler(handlerIn, func() {
-		once.Do(func() { close(handlerIn) })
+	return loki.NewEntryHandler(in, func() {
+		once.Do(func() { cancel() })
 		wg.Wait()
 		p.Cleanup()
 	})
@@ -123,11 +130,6 @@ func (p *Pipeline) Run(in chan Entry) chan Entry {
 		in = m.Run(in)
 	}
 	return in
-}
-
-// Name implements Stage
-func (p *Pipeline) Name() string {
-	return StageTypePipeline
 }
 
 // Cleanup implements Stage.

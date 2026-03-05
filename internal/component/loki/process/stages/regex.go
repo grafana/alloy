@@ -154,8 +154,3 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 		level.Debug(r.logger).Log("msg", "extracted data debug in regex stage", "extracted data", fmt.Sprintf("%v", extracted))
 	}
 }
-
-// Name implements Stage
-func (r *regexStage) Name() string {
-	return StageTypeRegex
-}

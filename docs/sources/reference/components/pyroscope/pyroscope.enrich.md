@@ -5,15 +5,10 @@ labels:
   stage: experimental
   products:
     - oss
-  tags:
-    - text: Community
-      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: pyroscope.enrich
 ---
 
 # `pyroscope.enrich`
-
-{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}  
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -34,13 +29,13 @@ pyroscope.enrich "<LABEL>" {
 
 You can use the following arguments with `pyroscope.enrich`:
 
-| Name                   | Type                     | Description                                                                                   | Default | Required |
-| ---------------------- | ------------------------ | --------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`           | `list(ProfilesReceiver)` | List of receivers to send enriched profiles to.                                               |         | yes      |
-| `target_match_label`   | `string`                 | The label from discovered targets to match against.                                           |         | yes      |
-| `targets`              | `list(Target)`           | List of targets from a discovery component.                                                   |         | yes      |
-| `labels_to_copy`       | `list(string)`           | List of labels to copy from discovered targets to profiles. If empty, all labels are copied.  |         | no       |
-| `profiles_match_label` | `string`                 | The label from incoming profiles to match against discovered targets.                         |         | no       |
+| Name                   | Type                     | Description                                                                                  | Default | Required |
+| ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`           | `list(ProfilesReceiver)` | List of receivers to send enriched profiles to.                                              |         | yes      |
+| `target_match_label`   | `string`                 | The label from discovered targets to match against.                                          |         | yes      |
+| `targets`              | `list(Target)`           | List of targets from a discovery component.                                                  |         | yes      |
+| `labels_to_copy`       | `list(string)`           | List of labels to copy from discovered targets to profiles. If empty, all labels are copied. |         | no       |
+| `profiles_match_label` | `string`                 | The label from incoming profiles to match against discovered targets.                        |         | no       |
 
 If `profiles_match_label` isn't provided, the component uses `target_match_label` for matching profile labels.
 
@@ -53,9 +48,9 @@ Configure this component with arguments.
 
 The following fields are exported and can be referenced by other components:
 
-| Name       | Type                 | Description                         |
-| ---------- | -------------------- | ----------------------------------- |
-| `receiver` | `ProfilesReceiver`   | The receiver for profiles.          |
+| Name       | Type               | Description                |
+| ---------- | ------------------ | -------------------------- |
+| `receiver` | `ProfilesReceiver` | The receiver for profiles. |
 
 ## Component health
 
@@ -82,27 +77,27 @@ discovery.kubernetes "pods" {
 // Add custom labels from Kubernetes metadata
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
-  
+
   rule {
     source_labels = ["__meta_kubernetes_namespace"]
     target_label  = "namespace"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_node_name"]
     target_label  = "node"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     target_label  = "app"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_label_environment"]
     target_label  = "environment"
   }
-  
+
   rule {
     source_labels = ["__meta_kubernetes_pod_ip"]
     target_label  = "pod_ip"
