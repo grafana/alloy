@@ -17,27 +17,27 @@ import (
 
 // Config errors.
 var (
-	ErrEmptyTimestampStageConfig = errors.New("timestamp stage config cannot be empty")
-	ErrTimestampSourceRequired   = errors.New("timestamp source value is required if timestamp is specified")
-	ErrTimestampFormatRequired   = errors.New("timestamp format is required")
-	ErrInvalidLocation           = errors.New("invalid location specified: %v")
+	ErrEmptyTimestampStageConfig         = errors.New("timestamp stage config cannot be empty")
+	ErrTimestampSourceRequired           = errors.New("timestamp source value is required if timestamp is specified")
+	ErrTimestampFormatRequired           = errors.New("timestamp format is required")
+	ErrInvalidLocation                   = errors.New("invalid location specified: %v")
 	ErrInvalidActionOnFailure            = errors.New("invalid action on failure (supported values are %v)")
 	ErrInvalidActionOnDuplicateTimestamp = errors.New("invalid action on duplicate timestamp (supported values are %v)")
 	ErrTimestampSourceMissing            = errors.New("extracted data did not contain a timestamp")
-	ErrTimestampConversionFailed = errors.New("failed to convert extracted time to string")
-	ErrTimestampParsingFailed    = errors.New("failed to parse time")
+	ErrTimestampConversionFailed         = errors.New("failed to convert extracted time to string")
+	ErrTimestampParsingFailed            = errors.New("failed to parse time")
 
 	Unix   = "Unix"
 	UnixMs = "UnixMs"
 	UnixUs = "UnixUs"
 	UnixNs = "UnixNs"
 
-	TimestampActionOnFailureSkip     = "skip"
-	TimestampActionOnFailureFudge    = "fudge"
-	TimestampActionOnFailureDefault  = TimestampActionOnFailureFudge
+	TimestampActionOnFailureSkip    = "skip"
+	TimestampActionOnFailureFudge   = "fudge"
+	TimestampActionOnFailureDefault = TimestampActionOnFailureFudge
 
-	TimestampActionOnDuplicateTimestampKeep   = "keep"
-	TimestampActionOnDuplicateTimestampFudge  = "fudge"
+	TimestampActionOnDuplicateTimestampKeep    = "keep"
+	TimestampActionOnDuplicateTimestampFudge   = "fudge"
 	TimestampActionOnDuplicateTimestampDefault = TimestampActionOnDuplicateTimestampFudge
 
 	// Maximum number of "streams" for which we keep the last known timestamp
