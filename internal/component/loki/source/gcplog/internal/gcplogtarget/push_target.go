@@ -157,5 +157,4 @@ func (p *PushTarget) Stop() {
 	// After we have tried a graceful shutdown we force all remaining in-flight
 	// requests to exit.
 	p.once.Do(func() { close(p.forceShutdown) })
-
 }
