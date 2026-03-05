@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -555,5 +556,52 @@ func TestMySQL_Reconnection(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("Run did not exit after context cancellation")
 		}
+	})
+}
+
+func Test_MySQLExporterBlock(t *testing.T) {
+	t.Run("absent when not specified", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			targets = []
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		assert.Nil(t, args.MySQLExporter)
+	})
+
+	t.Run("present with defaults when empty block", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			targets = []
+			mysql_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.MySQLExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.MySQLExporter)
+		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
+	})
+
+	t.Run("present with defaults when empty block", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			targets = []
+			mysql_exporter {
+			  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.MySQLExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.MySQLExporter)
+		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
+		assert.Equal(t, []string{"perf_schema.eventsstatements", "perf_schema.eventswaits"}, args.MySQLExporter.EnableCollectors)
 	})
 }
