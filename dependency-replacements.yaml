@@ -28,8 +28,12 @@ modules:
     path: go.mod
     file_type: mod
 
-  - name: extension
+  - name: alloyengine-extension
     path: extension/alloyengine/go.mod
+    file_type: mod
+  
+  - name: opamp-extension
+    path: extension/opampextension/go.mod
     file_type: mod
 
   - name: collector
