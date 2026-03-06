@@ -215,7 +215,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: generate-ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
