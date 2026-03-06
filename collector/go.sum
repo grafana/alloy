@@ -1826,6 +1826,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokena
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.151.0/go.mod h1:sbEBDxHUYJQXSi5lF9qR9kTpTvj78EjRZuu3qrEYhgY=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.151.0 h1:FLXTfvYK+xHJOh6SnKBPKRSWoHrHiuwhgfQMNKdYIJg=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.151.0/go.mod h1:Cl8N982myPvflJ83QSCL5sV06OnYM26Nufnaj1qbUPw=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/awscloudwatchmetricstreamsencodingextension v0.151.0 h1:n65Fk/+BWC4lhopc/xjjKDPP9v3MLmti7xaeYgC+u4s=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/awscloudwatchmetricstreamsencodingextension v0.151.0/go.mod h1:Hf694jjkI/8ThGvVEJ2xVF7V/E/t/xTiaI+Wnk4At84=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.151.0 h1:YNx93HYS5N8NcnGBDVx8ZORE0ydYRPimI6QXJ3iX1aw=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.151.0/go.mod h1:lXh4gADj7ehRSv3zoeelVjtKrUnmi41IwZkCQ+u/TSM=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.151.0 h1:xuK4kJRGG6pcLsJRDl17Q1MWAzYqs3w1ATYrc2Q33Hw=
@@ -1936,6 +1938,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.151.0/go.mod h1:ZFmh3+9rgIfdarU+jnWnsPDhpfR/kbC7B5Mmg9aFzNg=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.151.0 h1:CXRtuNomQvEnvurJt21tii+2C6tP54j4CGiKq7fEUOI=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.151.0/go.mod h1:9TXqXV9mlgFnXSFV9rl7e7ufnQ51+WlfZMWQtT14J/I=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.151.0 h1:/aOZNvak6f9+V+mU7i08WnfXUUvdTipJUeTqEFX7j0I=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.151.0/go.mod h1:7qwTMOLYoj0OmQgorUzfo0j9IgU3Oo8/0hbdjQZ7y+E=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.151.0 h1:7pAo7CebNiz6CpFkVi/e+UfC1Rxi0ptq7PwxKMtDaj4=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.151.0/go.mod h1:KlxjuG7YKJmLjUOzeWdB1Ba+aPFGDQpXXCVYxOi0ZTQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.151.0 h1:calNsVIWKX5CJD9XQ0IrYVYi2IGi5W5H5/TBNcF1u54=
@@ -1968,6 +1972,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatch
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.151.0/go.mod h1:j8x1p7RoG7O9Ft1qv8IGNWDYj3qGX5Ee4MsRYKYC350=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.151.0 h1:s5M9J5fYHUiMwYow2l+a1qkHqxIxbQEuFuIKmT7VSLg=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.151.0/go.mod h1:jV7GDoplubgVr8Yt71nFf84A6xm/wZaAxHpUjWTNQ4E=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsfirehosereceiver v0.151.0 h1:MhRTwdx+RnPAghQOoMAlTBwTjBpM4VNR6T+mR231bDI=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsfirehosereceiver v0.151.0/go.mod h1:hAa1/w1UK7pS7sc5tQqL7+mELWs5l13A6G8Eeh7td5s=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.151.0 h1:0uPHgMYJbcfv4jYqRHxoxnwaqMcGcx2ZlhnM1bhgcRE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.151.0/go.mod h1:4saUJXLlOxLTvKZj2BqUhfsgKHAZ8MHOGxbCgF5LJi4=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.151.0 h1:O/yL9kgRKzzKaObthbwxHNZg4x+/mhYnCVu/kacNvOU=
