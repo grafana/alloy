@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -22,7 +24,8 @@ const (
 )
 
 type Config struct {
-	Tenant string
+	Tenant  string
+	RoleARN string
 }
 
 // NewFactory creates a factory for the static bearer token Authenticator extension.
@@ -64,12 +67,18 @@ func newGcomAwsAuth(ctx context.Context, cfg *Config, logger *zap.Logger) (*gcom
 		return nil, err
 	}
 
-	// TODO: support assume role in-between
-
 	client := sts.NewFromConfig(awsCfg)
+	if cfg.RoleARN != "" {
+		stsSvc := sts.NewFromConfig(awsCfg)
+		creds := stscreds.NewAssumeRoleProvider(stsSvc, cfg.RoleARN)
+
+		awsCfg.Credentials = aws.NewCredentialsCache(creds)
+		client = sts.NewFromConfig(awsCfg)
+	}
 
 	return &gcomAwsAuth{
 		tenant: cfg.Tenant,
+
 		logger: logger,
 		aws:    client,
 	}, nil
