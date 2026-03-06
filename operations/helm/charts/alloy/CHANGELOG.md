@@ -31,6 +31,10 @@ Unreleased
 
 - Remove `nodes/proxy` RBAC rule and replace with `nodes/pods`. (@petewall)
 
+### Enhancements
+
+- Add `dnsConfig` support (@vdbe)
+
 1.5.2 (2026-01-12)
 ----------
 

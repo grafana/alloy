@@ -1,0 +1,13 @@
+# Test rendering of the chart with custom DNS configuration.
+controller:
+  dnsPolicy: "None"
+  dnsConfig:
+    nameservers:
+      - 192.0.2.1
+    searches:
+      - ns1.svc.cluster-domain.example
+      - my.dns.search.suffix
+    options:
+      - name: ndots
+        value: "2"
+      - name: edns0

@@ -50,6 +50,10 @@ spec:
   hostPID: {{ .Values.controller.hostPID }}
   {{- end }}
   dnsPolicy: {{ .Values.controller.dnsPolicy }}
+  {{- with .Values.controller.dnsConfig }}
+  dnsConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with .Values.controller.affinity }}
   affinity:
     {{- toYaml . | nindent 4 }}
