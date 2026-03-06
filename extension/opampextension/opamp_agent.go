@@ -451,7 +451,19 @@ func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 	}
 }
 
-func (o *opampAgent) onMessage(_ context.Context, msg *types.MessageData) {
+func (o *opampAgent) onMessage(ctx context.Context, msg *types.MessageData) {
+	if msg.RemoteConfig != nil {
+		o.logger.Info("Config received from OpAMP server", zap.ByteString("config_hash", msg.RemoteConfig.ConfigHash))
+		if o.capabilities.ReportsRemoteConfig && o.opampClient != nil {
+			if err := o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+				LastRemoteConfigHash: msg.RemoteConfig.ConfigHash,
+				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+			}); err != nil {
+				o.logger.Error("Failed to set remote config status", zap.Error(err))
+			}
+		}
+	}
+
 	if msg.AgentIdentification != nil {
 		instanceID, err := uuid.FromBytes(msg.AgentIdentification.NewInstanceUid)
 		if err != nil {
