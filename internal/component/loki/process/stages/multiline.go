@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/push"
 )
 
 // Configuration errors.
@@ -26,10 +26,10 @@ var (
 
 // MultilineConfig contains the configuration for a Multiline stage.
 type MultilineConfig struct {
-	Expression   string        `alloy:"firstline,attr"`
-	MaxLines     uint64        `alloy:"max_lines,attr,optional"`
-	MaxWaitTime  time.Duration `alloy:"max_wait_time,attr,optional"`
-	TrimNewlines bool          `alloy:"trim_newlines,attr,optional"`
+	Expression   *regexp.NonEmptyRegexp `alloy:"firstline,attr"`
+	MaxLines     uint64                 `alloy:"max_lines,attr,optional"`
+	MaxWaitTime  time.Duration          `alloy:"max_wait_time,attr,optional"`
+	TrimNewlines bool                   `alloy:"trim_newlines,attr,optional"`
 }
 
 // DefaultMultilineConfig applies the default values on
@@ -49,28 +49,13 @@ func (args *MultilineConfig) Validate() error {
 	if args.MaxWaitTime <= 0 {
 		return fmt.Errorf("max_wait_time must be greater than 0")
 	}
-
 	return nil
-}
-
-func validateMultilineConfig(cfg MultilineConfig) (*regexp.Regexp, error) {
-	if cfg.Expression == "" {
-		return nil, ErrMultilineStageEmptyConfig
-	}
-
-	expr, err := regexp.Compile(cfg.Expression)
-	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrMultilineStageInvalidRegex, err)
-	}
-
-	return expr, nil
 }
 
 // multilineStage matches lines to determine whether the following lines belong to a block and should be collapsed
 type multilineStage struct {
 	logger log.Logger
 	cfg    MultilineConfig
-	regex  *regexp.Regexp
 }
 
 // multilineState captures the internal state of a running multiline stage.
@@ -81,17 +66,11 @@ type multilineState struct {
 }
 
 // newMultilineStage creates a MulitlineStage from config
-func newMultilineStage(logger log.Logger, config MultilineConfig) (Stage, error) {
-	regex, err := validateMultilineConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func newMultilineStage(logger log.Logger, config MultilineConfig) Stage {
 	return &multilineStage{
 		logger: log.With(logger, "component", "stage", "type", "multiline"),
 		cfg:    config,
-		regex:  regex,
-	}, nil
+	}
 }
 
 func (m *multilineStage) Run(in chan Entry) chan Entry {
@@ -107,7 +86,7 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 			s, ok := streams[key]
 			if !ok {
 				// Pass through entries until we hit first start line.
-				if !m.regex.MatchString(e.Line) {
+				if !m.cfg.Expression.MatchString(e.Line) {
 					level.Debug(m.logger).Log("msg", "pass through entry", "stream", key)
 					out <- e
 					continue
@@ -117,8 +96,9 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 				s = make(chan Entry)
 				streams[key] = s
 
-				wg.Add(1)
-				go m.runMultiline(s, out, wg)
+				wg.Go(func() {
+					m.runMultiline(s, out)
+				})
 			}
 			level.Debug(m.logger).Log("msg", "pass entry", "stream", key, "line", e.Line)
 			s <- e
@@ -133,9 +113,7 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (m *multilineStage) runMultiline(in chan Entry, out chan Entry) {
 	state := &multilineState{
 		buffer:       new(bytes.Buffer),
 		currentLines: 0,
@@ -155,7 +133,7 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.Wa
 				return
 			}
 
-			isFirstLine := m.regex.MatchString(e.Line)
+			isFirstLine := m.cfg.Expression.MatchString(e.Line)
 			if isFirstLine {
 				level.Debug(m.logger).Log("msg", "flush multiline block because new start line", "block", state.buffer.String(), "stream", e.Labels.FastFingerprint())
 				m.flush(out, state)

@@ -99,10 +99,7 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(logger, *cfg.RegexConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newRegexStage(logger, *cfg.RegexConfig)
 	case cfg.TimestampConfig != nil:
 		s, err = newTimestampStage(logger, *cfg.TimestampConfig)
 		if err != nil {
@@ -129,10 +126,7 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(logger, *cfg.ReplaceConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newReplaceStage(logger, *cfg.ReplaceConfig)
 	case cfg.LimitConfig != nil:
 		s, err = newLimitStage(logger, *cfg.LimitConfig, registerer)
 		if err != nil {
@@ -144,10 +138,7 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(logger, *cfg.MultilineConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newMultilineStage(logger, *cfg.MultilineConfig)
 	case cfg.PackConfig != nil:
 		s = newPackStage(logger, *cfg.PackConfig, registerer)
 	case cfg.LabelAllowConfig != nil:
