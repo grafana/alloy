@@ -163,6 +163,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.142.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsfirehosereceiver v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.142.0
@@ -1053,6 +1054,7 @@ require (
 	github.com/minio/minlz v1.0.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/nwaples/rardecode/v2 v2.1.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/awscloudwatchmetricstreamsencodingextension v0.142.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/rs/xid v1.6.0 // indirect
