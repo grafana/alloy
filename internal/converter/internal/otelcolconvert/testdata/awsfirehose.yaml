@@ -1,0 +1,24 @@
+receivers:
+  awsfirehose/metrics:
+    endpoint: 0.0.0.0:4433
+    encoding: cwmetrics
+    access_key: mysecretkey
+  awsfirehose/logs:
+    endpoint: 0.0.0.0:4434
+    encoding: cwlogs
+    access_key: mysecretkey
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [awsfirehose/metrics]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [awsfirehose/logs]
+      processors: []
+      exporters: [otlp]
