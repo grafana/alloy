@@ -26,7 +26,7 @@ func init() {
 // Arguments configures the otelcol.auth.bearer component.
 type Arguments struct {
 	Tenant  string `alloy:"tenant,attr"`
-	RoleARN string `alloy:"tenant,attr,optional"`
+	RoleARN string `alloy:"role_arn,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
