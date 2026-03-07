@@ -104,6 +104,8 @@ otelcol.receiver.filelog "default" {
 
 You can use the following blocks with `otelcol.receiver.filelog`:
 
+{{< docs/alloy-config >}}
+
 | Block                                      | Description                                                                                     | Required |
 |--------------------------------------------|-------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                         | Configures where to send received telemetry data.                                               | yes      |
@@ -114,9 +116,6 @@ You can use the following blocks with `otelcol.receiver.filelog`:
 | `ordering_criteria` > [`sort_by`][sort_by] | Configures the fields to sort by within the ordering criteria.                                  | yes      |
 | [`retry_on_failure`][retry_on_failure]     | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined inside a `ordering_criteria` block.
-
 [output]: #output
 [debug_metrics]: #debug_metrics
 [header]: #header
@@ -124,6 +123,8 @@ For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined
 [ordering_criteria]: #ordering_criteria
 [sort_by]: #sort_by
 [retry_on_failure]: #retry_on_failure
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

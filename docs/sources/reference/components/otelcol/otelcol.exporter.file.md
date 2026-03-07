@@ -54,17 +54,21 @@ Use `format` instead.
 
 You can use the following blocks with `otelcol.exporter.file`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                          | Required |
 | -------------------------------- | -------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures internal metrics for this component.                      | no       |
 | [`group_by`][group_by]           | Writes to separate files based on a resource attribute value.        | no       |
 | [`rotation`][rotation]           | Configures file rotation. Ignored when `group_by.enabled` is `true`. | no       |
 
-You can't enable `append` and `rotation` together.
-
 [debug_metrics]: #debug_metrics
 [group_by]: #group_by
 [rotation]: #rotation
+
+{{< /docs/alloy-config >}}
+
+You can't enable `append` and `rotation` together.
 
 ### `debug_metrics`
 

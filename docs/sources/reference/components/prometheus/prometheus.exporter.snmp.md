@@ -81,6 +81,8 @@ Any other labels defined are added to the scraped metrics.
 
 You can use the following blocks with `prometheus.exporter.snmp`:
 
+{{< docs/alloy-config >}}
+
 | Name                       | Description                                                 | Required |
 | -------------------------- | ----------------------------------------------------------- | -------- |
 | [`target`][target]         | Configures an SNMP target.                                  | no       |
@@ -88,6 +90,8 @@ You can use the following blocks with `prometheus.exporter.snmp`:
 
 [target]: #target
 [walk_param]: #walk_param
+
+{{< /docs/alloy-config >}}
 
 ### `target`
 

@@ -69,11 +69,15 @@ Some providers allow you to specify a `project_name` instead of the `project_id`
 
 You can use the following block with `discovery.openstack`:
 
+{{< docs/alloy-config >}}
+
 | Block                      | Description                                          | Required |
 | -------------------------- | ---------------------------------------------------- | -------- |
 | [`tls_config`][tls_config] | TLS configuration for requests to the OpenStack API. | no       |
 
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `tls_config`
 

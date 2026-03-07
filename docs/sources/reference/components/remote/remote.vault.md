@@ -57,6 +57,8 @@ Setting `reread_frequency` to `"0s"` (the default) disables this behavior.
 
 You can use the following blocks with `remote.vault`:
 
+{{< docs/alloy-config >}}
+
 | Block                                | Description                                          | Required |
 | ------------------------------------ | ---------------------------------------------------- | -------- |
 | [`auth.approle`][auth.approle]       | Authenticate to Vault using AppRole.                 | no       |
@@ -70,8 +72,6 @@ You can use the following blocks with `remote.vault`:
 | [`auth.userpass`][auth.userpass]     | Authenticate to Vault using a username and password. | no       |
 | [`client_options`][client_options]   | Options for the Vault client.                        | no       |
 
-Exactly one `auth.*` block **must** be provided, otherwise the component will fail to load.
-
 [auth.approle]: #authapprole
 [auth.aws]: #authaws
 [auth.azure]: #authazure
@@ -82,6 +82,10 @@ Exactly one `auth.*` block **must** be provided, otherwise the component will fa
 [auth.token]: #authtoken
 [auth.userpass]: #authuserpass
 [client_options]: #client_options
+
+{{< /docs/alloy-config >}}
+
+Exactly one `auth.*` block **must** be provided, otherwise the component will fail to load.
 
 ### `auth.approle`
 

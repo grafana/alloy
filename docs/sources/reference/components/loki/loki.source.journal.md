@@ -121,11 +121,15 @@ Only logical AND filtering is available by specifying multiple space-separated m
 
 You can use the following blocks with `loki.source.journal`:
 
+{{< docs/alloy-config >}}
+
 | Name                                 | Description                                      | Required |
 | ------------------------------------ | ------------------------------------------------ | -------- |
 | [`legacy_position`][legacy_position] | Configure conversion from legacy positions file. | no       |
 
 [legacy_position]: #legacy_position
+
+{{< /docs/alloy-config >}}
 
 ### `legacy_position`
 

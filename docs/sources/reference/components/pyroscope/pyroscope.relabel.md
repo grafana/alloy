@@ -50,11 +50,15 @@ You can use the following arguments with `pyroscope.relabel`:
 
 You can use the following block with `pyroscope.relabel`:
 
+{{< docs/alloy-config >}}
+
 |      Name      |                      Description                       | Required |
 | -------------- | ------------------------------------------------------ | -------- |
 | [`rule`][rule] | Relabeling rules to apply to received profile entries. | no       |
 
 [rule]: #rule
+
+{{< /docs/alloy-config >}}
 
 ### `rule`
 

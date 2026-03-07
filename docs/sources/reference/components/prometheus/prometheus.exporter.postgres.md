@@ -106,11 +106,15 @@ Due to a limitation of the upstream exporter, when multiple `data_source_names` 
 
 You can use the following block with `prometheus.exporter.postgres`:
 
+{{< docs/alloy-config >}}
+
 | Name                             | Description                  | Required |
 | -------------------------------- | ---------------------------- | -------- |
 | [`autodiscovery`][autodiscovery] | Database discovery settings. | no       |
 
 [autodiscovery]: #autodiscovery
+
+{{< /docs/alloy-config >}}
 
 ### `autodiscovery`
 

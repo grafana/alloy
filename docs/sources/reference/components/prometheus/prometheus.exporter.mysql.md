@@ -48,6 +48,8 @@ For more information, refer to the `lock_wait_timeout` [in the MySQL documentati
 
 You can use the following blocks with `prometheus.exporter.mysql`:
 
+{{< docs/alloy-config >}}
+
 | Name                                                           | Description                                              | Required |
 | -------------------------------------------------------------- | -------------------------------------------------------- | -------- |
 | [`heartbeat`][heartbeat]                                       | Configures the `heartbeat` collector.                    | no       |
@@ -65,6 +67,8 @@ You can use the following blocks with `prometheus.exporter.mysql`:
 [perf_schema.memory_events]: #perf_schemamemory_events
 [heartbeat]: #heartbeat
 [mysql.user]: #mysqluser
+
+{{< /docs/alloy-config >}}
 
 ### `heartbeat`
 

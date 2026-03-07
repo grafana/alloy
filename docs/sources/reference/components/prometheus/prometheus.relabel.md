@@ -57,11 +57,15 @@ You can use the following arguments with `prometheus.relabel`:
 
 You can use the following block with `prometheus.relabel`:
 
+{{< docs/alloy-config >}}
+
 | Name           | Description                                    | Required |
 | -------------- | ---------------------------------------------- | -------- |
 | [`rule`][rule] | Relabeling rules to apply to received metrics. | no       |
 
 [rule]: #rule
+
+{{< /docs/alloy-config >}}
 
 ### `rule`
 

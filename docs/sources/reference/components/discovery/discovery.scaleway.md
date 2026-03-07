@@ -68,11 +68,15 @@ The `name_filter` and `tags_filter` arguments can be used to filter the set of d
 
 You can use the following blocks with `discovery.scaleway`:
 
+{{< docs/alloy-config >}}
+
 | Block                      | Description                                            | Required |
 | -------------------------- | ------------------------------------------------------ | -------- |
 | [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no       |
 
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `tls_config`
 

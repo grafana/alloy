@@ -41,6 +41,8 @@ You can use the following arguments with `otelcol.connector.host_info`:
 
 You can use the following blocks with `otelcol.connector.host_info`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -48,6 +50,8 @@ You can use the following blocks with `otelcol.connector.host_info`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

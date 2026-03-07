@@ -57,6 +57,8 @@ This will vary depending on the path specified by the [command line flag][run] `
 
 You can use the following blocks with `otelcol.storage.file`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`compaction`][compaction]       | Configures file storage compaction.                                        | no       |
@@ -64,6 +66,8 @@ You can use the following blocks with `otelcol.storage.file`:
 
 [compaction]: #compaction
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `compaction`
 

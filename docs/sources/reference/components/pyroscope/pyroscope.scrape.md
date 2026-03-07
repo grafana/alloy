@@ -160,6 +160,8 @@ For example, consider this situation:
 
 You can use the following blocks with `pyroscope.scrape`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                           | Description                                                                                 | Required |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`authorization`][authorization]                                                | Configure generic authorization to targets.                                                 | no       |
@@ -179,12 +181,6 @@ You can use the following blocks with `pyroscope.scrape`:
 | `profiling_config` > [`profile.mutex`][profile.mutex]                           | Collect mutex profiles.                                                                     | no       |
 | `profiling_config` > [`profile.process_cpu`][profile.process_cpu]               | Collect CPU profiles.                                                                       | no       |
 | [`tls_config`][tls_config]                                                      | Configure TLS settings for connecting to targets.                                           | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
-Any omitted blocks take on their default values.
-For example, if `profile.mutex` isn't specified in the configuration, the defaults documented in [profile.mutex][] are used.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -208,6 +204,11 @@ For example, if `profile.mutex` isn't specified in the configuration, the defaul
 [godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
 
 [delta argument]: #delta-argument
+
+{{< /docs/alloy-config >}}
+
+Any omitted blocks take on their default values.
+For example, if `profile.mutex` isn't specified in the configuration, the defaults documented in [profile.mutex][] are used.
 
 ### `authorization`
 

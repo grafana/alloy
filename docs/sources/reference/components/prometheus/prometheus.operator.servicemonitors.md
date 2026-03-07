@@ -48,6 +48,8 @@ You can use the following arguments with `prometheus.operator.servicemonitors`:
 
 You can use the following blocks with `prometheus.operator.servicemonitors`:
 
+{{< docs/alloy-config >}}
+
 | Name                                                | Description                                                                                 | Required |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                                  | Configures Kubernetes client used to find ServiceMonitors.                                  | no       |
@@ -62,9 +64,6 @@ You can use the following blocks with `prometheus.operator.servicemonitors`:
 | [`selector`][selector]                              | Label selector for which ServiceMonitors to discover.                                       | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which ServiceMonitors to discover.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [client]: #client
 [basic_auth]: #basic_auth
 [authorization]: #authorization
@@ -75,6 +74,8 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [rule]: #rule
 [scrape]: #scrape
 [clustering]: #clustering
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

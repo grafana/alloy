@@ -56,6 +56,8 @@ If there are conflicts, it takes precedence over `enable_collectors`.
 
 You can use the following blocks with `prometheus.exporter.unix`:
 
+{{< docs/alloy-config >}}
+
 | Name                         | Description                             | Required |
 | ---------------------------- | --------------------------------------- | -------- |
 | [`arp`][arp]                 | Configures the `arp` collector.         | no       |
@@ -101,6 +103,8 @@ You can use the following blocks with `prometheus.exporter.unix`:
 [tapestats]: #tapestats
 [textfile]: #textfile
 [vmstat]: #vmstat
+
+{{< /docs/alloy-config >}}
 
 ### `arp`
 

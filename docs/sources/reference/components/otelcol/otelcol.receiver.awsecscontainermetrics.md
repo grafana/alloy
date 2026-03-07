@@ -49,6 +49,8 @@ You can use the following arguments with `otelcol.receiver.awsecscontainermetric
 
 You can use the following blocks with `otelcol.receiver.awsecscontainermetrics`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -56,6 +58,8 @@ You can use the following blocks with `otelcol.receiver.awsecscontainermetrics`:
 
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

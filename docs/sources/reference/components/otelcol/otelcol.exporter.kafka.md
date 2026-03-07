@@ -72,6 +72,8 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                   | Description                                                                    | Required |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
@@ -95,9 +97,6 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                                | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
-
 [logs]: #logs
 [metrics]: #metrics
 [traces]: #traces
@@ -116,6 +115,8 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [producer]: #producer
 [compression_params]: #compression_params
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `logs`
 	

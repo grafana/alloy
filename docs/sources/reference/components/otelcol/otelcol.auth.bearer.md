@@ -54,11 +54,15 @@ If you use a file to store the token, you can use [`local.file`][local.file] to 
 
 You can use the following block with `otelcol.auth.bearer`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

@@ -52,6 +52,8 @@ You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 You can use the following blocks with `otelcol.exporter.googlecloud`:
 
+{{< docs/alloy-config >}}
+
 | Block                                             | Description                                                                    | Required |
 |---------------------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state.     | no       |
@@ -63,9 +65,6 @@ You can use the following blocks with `otelcol.exporter.googlecloud`:
 | `sending_queue` > [`batch`][batch]                | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`trace`][trace]                                  | Configuration for sending traces to Cloud Trace.                               | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `metric` > `experimental_wal` refers to a `experimental_wal` block defined inside a `metric` block.
-
 [debug_metrics]: #debug_metrics
 [impersonate]: #impersonate
 [log]: #log
@@ -74,6 +73,8 @@ For example, `metric` > `experimental_wal` refers to a `experimental_wal` block 
 [sending_queue]: #sending_queue
 [batch]: #batch
 [trace]: #trace
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

@@ -45,6 +45,8 @@ You can use the following argument with `loki.process`:
 
 You can use the following blocks with `loki.process`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                              | Description                                                    | Required |
 |--------------------------------------------------------------------|----------------------------------------------------------------|----------|
 | [`stage.cri`][stage.cri]                                           | Configures a pre-defined CRI-format pipeline.                  | no       |
@@ -78,8 +80,6 @@ You can use the following blocks with `loki.process`:
 | [`stage.truncate`][stage.truncate]                                 | Configures a `truncate` processing stage.                      | no       |
 | [`stage.windowsevent`][stage.windowsevent]                         | Configures a `windowsevent` processing stage.                  | no       |
 
-You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
-
 [stage.cri]: #stagecri
 [stage.decolorize]: #stagedecolorize
 [stage.docker]: #stagedocker
@@ -110,6 +110,10 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.truncate]: #stagetruncate
 [stage.timestamp]: #stagetimestamp
 [stage.windowsevent]: #stagewindowsevent
+
+{{< /docs/alloy-config >}}
+
+You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
 
 ### `stage.cri`
 

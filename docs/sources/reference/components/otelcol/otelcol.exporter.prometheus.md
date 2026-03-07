@@ -82,11 +82,15 @@ Refer to [Create Prometheus labels from OTLP resource attributes][] for an examp
 
 You can use the following blocks with `otelcol.exporter.prometheus`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

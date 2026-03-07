@@ -60,6 +60,8 @@ You can use the following arguments with `otelcol.receiver.googlecloudpubsub`:
 
 You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -67,6 +69,8 @@ You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

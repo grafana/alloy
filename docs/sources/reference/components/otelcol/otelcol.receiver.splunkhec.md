@@ -62,6 +62,8 @@ If logs or metrics are exported with `otelcol.exporter.splunkhec` it will check 
 
 You can use the following blocks with `otelcol.receiver.splunkhec`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                      | Description                                                                | Required |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                         | Configures where to send received telemetry data.                          | yes      |
@@ -71,15 +73,14 @@ You can use the following blocks with `otelcol.receiver.splunkhec`:
 | [`tls`][tls]                                               | Configures TLS for the HTTP server.                                        | no       |
 | `tls` > [`tpm`][tpm]                                       | Configures TPM settings for the TLS `key_file`.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
-
 [tls]: #tls
 [tpm]: #tpm
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
 [hec_metadata_to_otel_attrs]: #hec_metadata_to_otel_attrs
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

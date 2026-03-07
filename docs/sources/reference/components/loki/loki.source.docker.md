@@ -45,6 +45,8 @@ You can use the following arguments with `loki.source.docker`:
 
 You can use the following blocks with `loki.source.docker`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                        | Description                                                | Required |
 | ------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`http_client_config`][http_client_config]                   | HTTP client settings when connecting to the endpoint.      | no       |
@@ -54,16 +56,15 @@ You can use the following blocks with `loki.source.docker`:
 | `http_client_config` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `http_client_config` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `http_client_config` > `basic_auth` refers to an `basic_auth` block defined inside a `http_client_config` block.
-
-These blocks are only applicable when connecting to a Docker daemon over HTTP or HTTPS and has no effect when connecting via a `unix:///` socket
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [http_client_config]: #http_client_config
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
+
+These blocks are only applicable when connecting to a Docker daemon over HTTP or HTTPS and has no effect when connecting via a `unix:///` socket
 
 ### `http_client_config`
 

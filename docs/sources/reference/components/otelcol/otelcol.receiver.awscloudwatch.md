@@ -52,6 +52,8 @@ If `imds_endpoint` isn't specified, and the environment variable `AWS_EC2_METADA
 
 You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -61,6 +63,8 @@ You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 [logs]: #logs
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

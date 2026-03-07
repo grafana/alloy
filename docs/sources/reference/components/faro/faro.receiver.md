@@ -55,6 +55,8 @@ The following strings are valid log line formats:
 
 You can use the following blocks with `faro.receiver`:
 
+{{< docs/alloy-config >}}
+
 | Block                                        | Description                                          | Required |
 |----------------------------------------------|------------------------------------------------------|----------|
 | [`output`][output]                           | Configures where to send collected telemetry data.   | yes      |
@@ -64,15 +66,14 @@ You can use the following blocks with `faro.receiver`:
 | `sourcemaps` > [`cache`][cache]              | Configures sourcemap caching behavior.               | no       |
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
-
 [cache]: #cache
 [location]: #location
 [output]: #output
 [rate_limiting]: #rate_limiting
 [server]: #server
 [sourcemaps]: #sourcemaps
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

@@ -56,6 +56,8 @@ The `otelcol.receiver.prometheus` component doesn't support any arguments. You c
 
 You can use the following blocks with `otelcol.receiver.prometheus`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -63,6 +65,8 @@ You can use the following blocks with `otelcol.receiver.prometheus`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

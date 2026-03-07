@@ -56,6 +56,8 @@ If the limit of tracked streams is reached, new incoming streams are dropped.
 
 You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -63,6 +65,8 @@ You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

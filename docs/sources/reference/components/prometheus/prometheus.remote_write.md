@@ -45,6 +45,8 @@ You can use the following argument with `prometheus.remote_write`:
 
 You can use the following blocks with `prometheus.remote_write`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                           | Description                                                                | Required |
 |-----------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`endpoint`][endpoint]                                          | Location to send metrics to.                                               | no       |
@@ -63,9 +65,6 @@ You can use the following blocks with `prometheus.remote_write`:
 | `endpoint` > [`write_relabel_config`][write_relabel_config]     | Configuration for `write_relabel_config`.                                  | no       |
 | [`wal`][wal]                                                    | Configuration for the component's WAL.                                     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
-
 [endpoint]: #endpoint
 [authorization]: #authorization
 [azuread]: #azuread
@@ -80,6 +79,8 @@ For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined in
 [tls_config]: #tls_config
 [wal]: #wal
 [write_relabel_config]: #write_relabel_config
+
+{{< /docs/alloy-config >}}
 
 ### `endpoint`
 
