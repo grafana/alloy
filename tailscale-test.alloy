@@ -1,0 +1,19 @@
+prometheus.exporter.tailscale "default" {
+  tailnet  = "smithe2413@gmail.com"
+  auth_key = env("TS_AUTHKEY")
+  api_key  = env("TS_API_KEY")
+  peer_scrape_timeout = "1s"
+}
+
+prometheus.scrape "tailscale" {
+  targets         = prometheus.exporter.tailscale.default.targets
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.local.receiver]
+}
+
+// Sink — write to a local Prometheus or just log
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://localhost:9090/api/v1/remote_write"
+  }
+}
