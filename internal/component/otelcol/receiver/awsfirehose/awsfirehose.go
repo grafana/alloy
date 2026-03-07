@@ -52,7 +52,8 @@ var _ receiver.Arguments = Arguments{}
 var DefaultArguments = Arguments{
 	Encoding: "cwmetrics",
 	HTTPServer: otelcol.HTTPServerArguments{
-		Endpoint: "0.0.0.0:4433",
+		Endpoint:              "0.0.0.0:4433",
+		CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 	},
 }
 
