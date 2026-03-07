@@ -1,5 +1,5 @@
 prometheus.exporter.tailscale "default" {
-  tailnet  = "smithe2413@gmail.com"
+  tailnet  = "-"
   auth_key = env("TS_AUTHKEY")
   api_key  = env("TS_API_KEY")
   peer_scrape_timeout = "1s"
