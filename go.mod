@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.25.7
+go 1.26.1
 
 // This local replace is required for local development and testing of the syntax submodule.
 // It is intentionally kept outside the generated block to avoid being overwritten by dependency management tools.
@@ -264,9 +264,9 @@ require (
 	go.opentelemetry.io/collector/extension/extensionauth v1.48.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.142.0
 	go.opentelemetry.io/collector/extension/xextension v0.142.0
-	go.opentelemetry.io/collector/featuregate v1.51.0
+	go.opentelemetry.io/collector/featuregate v1.53.0
 	go.opentelemetry.io/collector/otelcol v0.142.0
-	go.opentelemetry.io/collector/pdata v1.51.0
+	go.opentelemetry.io/collector/pdata v1.53.0
 	go.opentelemetry.io/collector/pipeline v1.51.0
 	go.opentelemetry.io/collector/processor v1.48.0
 	go.opentelemetry.io/collector/processor/batchprocessor v0.142.0
@@ -305,7 +305,7 @@ require (
 	golang.org/x/time v0.14.0
 	golang.org/x/tools v0.42.0
 	google.golang.org/api v0.257.0
-	google.golang.org/grpc v1.78.0
+	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -531,7 +531,7 @@ require (
 	github.com/cilium/ebpf v0.20.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
-	github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f // indirect
+	github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
@@ -814,7 +814,7 @@ require (
 	github.com/opentracing-contrib/go-stdlib v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
-	github.com/oracle/oci-go-sdk/v65 v65.89.3 // indirect
+	github.com/oracle/oci-go-sdk/v65 v65.109.0 // indirect
 	github.com/outcaste-io/ristretto v0.2.3 // indirect
 	github.com/ovh/go-ovh v1.9.0 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
@@ -947,7 +947,7 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.0.0 // indirect
 	go.opentelemetry.io/contrib/detectors/aws/eks v1.38.0 // indirect
 	go.opentelemetry.io/contrib/detectors/azure/azurevm v0.10.0 // indirect
-	go.opentelemetry.io/contrib/detectors/gcp v1.38.0 // indirect
+	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
 	go.opentelemetry.io/contrib/exporters/autoexport v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.64.0 // indirect
@@ -1010,12 +1010,13 @@ require (
 require (
 	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1
 	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1
+	github.com/grafana/oci-exporter v0.0.0-20260306181028-f0f4645df3fe
 	github.com/spf13/viper v1.19.0
 	github.com/zricethezav/gitleaks/v8 v8.30.0
 )
 
 require (
-	cel.dev/expr v0.24.0 // indirect
+	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go/storage v1.57.0 // indirect
 	github.com/BobuSumisu/aho-corasick v1.0.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
@@ -1147,5 +1148,8 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 
 // Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
+
+// Local development replace for OCI exporter
+replace github.com/grafana/oci-exporter => /home/tristan/dev/code/oci-exporter
 
 // END GENERATED REPLACES

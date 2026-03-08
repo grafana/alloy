@@ -147,6 +147,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/mongodb"              // Import prometheus.exporter.mongodb
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/mssql"                // Import prometheus.exporter.mssql
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"                // Import prometheus.exporter.mysql
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/oci"                  // Import prometheus.exporter.oci
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/oracledb"             // Import prometheus.exporter.oracledb
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"             // Import prometheus.exporter.postgres
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/process"              // Import prometheus.exporter.process
