@@ -78,6 +78,7 @@ require (
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf
 	github.com/grafana/loki/v3 v3.6.2
+	github.com/grafana/oci-exporter v0.0.0-20260306181028-f0f4645df3fe
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
@@ -1010,7 +1011,6 @@ require (
 require (
 	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1
 	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1
-	github.com/grafana/oci-exporter v0.0.0-20260306181028-f0f4645df3fe
 	github.com/spf13/viper v1.19.0
 	github.com/zricethezav/gitleaks/v8 v8.30.0
 )
@@ -1150,6 +1150,6 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
 
 // Local development replace for OCI exporter
-replace github.com/grafana/oci-exporter => /home/tristan/dev/code/oci-exporter
+replace github.com/grafana/oci-exporter => ./.oci-exporter
 
 // END GENERATED REPLACES

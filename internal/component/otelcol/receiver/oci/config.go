@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	ociconfig "github.com/grafana/oci-exporter/pkg/config"
 )
 
@@ -15,13 +17,18 @@ var DefaultArguments = Arguments{
 	ScrapeDelay:       3 * time.Minute,
 }
 
-// Arguments configures the prometheus.exporter.oci component.
+// Arguments configures the otelcol.receiver.oci component.
 type Arguments struct {
 	Debug             bool           `alloy:"debug,attr,optional"`
 	Jobs              []JobArguments `alloy:"job,block"`
 	ScrapeInterval    time.Duration  `alloy:"scrape_interval,attr,optional"`
 	DiscoveryInterval time.Duration  `alloy:"discovery_interval,attr,optional"`
 	ScrapeDelay       time.Duration  `alloy:"scrape_delay,attr,optional"`
+
+	// Output configures where to send received data. Required.
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 // JobArguments configures a single OCI scrape job.
@@ -48,6 +55,7 @@ type CompartmentArguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
+	a.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.

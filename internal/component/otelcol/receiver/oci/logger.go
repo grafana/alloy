@@ -1,4 +1,4 @@
-package oci_exporter
+package oci
 
 import (
 	"context"
@@ -7,9 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-// slogHandler is wrapping our internal logging adapter with support for cloudwatch debug field.
-// cloudwatch exporter will inspect check for debug logging level and pass that to aws sdk that perform
-// it's own logging without going through the logger we pass.
+// slogHandler wraps the internal logging adapter with support for debug field toggling.
 type slogHandler struct {
 	debug bool
 	*logging.SlogGoKitHandler

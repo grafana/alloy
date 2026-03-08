@@ -1122,4 +1122,5 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
 
-replace github.com/grafana/oci-exporter => /home/tristan/dev/code/oci-exporter
+// Local development replace for OCI exporter
+replace github.com/grafana/oci-exporter => ../.oci-exporter
