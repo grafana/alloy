@@ -1,0 +1,28 @@
+// Configure node exporter
+prometheus.exporter.unix "demo" { }
+
+// Configure a prometheus.scrape component to collect unix metrics.
+prometheus.scrape "demo" {
+  targets    = prometheus.exporter.unix.demo.targets
+  forward_to = [otelcol.receiver.prometheus.default.receiver]
+}
+
+// Convert Prometheus metrics to OTel
+otelcol.receiver.prometheus "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    // endpoint = "http://localhost:1080/otlp"
+    endpoint = "https://hackathon-16-oidc.grafana-dev.net/otlp"
+    auth     = otelcol.auth.gcom.creds.handler
+  }
+}
+
+otelcol.auth.gcom "creds" {
+  tenant   = "13757"
+  role_arn = "arn:aws:iam::366620023056:role/AlloyClient"
+}
