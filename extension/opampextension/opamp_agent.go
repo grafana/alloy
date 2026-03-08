@@ -64,6 +64,8 @@ type opampAgent struct {
 	eclk            sync.RWMutex
 	effectiveConfig *confmap.Conf
 
+	remoteConfigMap map[string]*protobufs.AgentConfigFile
+
 	// lifetimeCtx is canceled on Stop of the component
 	lifetimeCtx       context.Context
 	lifetimeCtxCancel context.CancelFunc
@@ -424,6 +426,45 @@ func (o *opampAgent) updateAgentIdentity(instanceID uuid.UUID) {
 	o.instanceID = instanceID
 }
 
+func (o *opampAgent) applyRemoteConfig(config *protobufs.AgentRemoteConfig) (map[string]*protobufs.AgentConfigFile, error) {
+	if !o.capabilities.AcceptsRemoteConfig {
+		return nil, errors.New("opamp agent does not accept remote configuration")
+	}
+
+	if config.Config == nil || config.Config.ConfigMap == nil {
+		return nil, errors.New("remote config has no config map")
+	}
+
+	parsed := make(map[string]*protobufs.AgentConfigFile, len(config.Config.ConfigMap))
+
+	for name, f := range config.Config.ConfigMap {
+		if f == nil || len(f.Body) == 0 {
+			continue
+		}
+
+		var raw map[string]interface{}
+		if err := yaml.Unmarshal(f.Body, &raw); err != nil {
+			return nil, fmt.Errorf("cannot parse config %q: %w", name, err)
+		}
+
+		normalized, err := yaml.Marshal(raw)
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal config %q: %w", name, err)
+		}
+
+		parsed[name] = &protobufs.AgentConfigFile{
+			Body:        normalized,
+			ContentType: "text/yaml",
+		}
+	}
+
+	o.eclk.Lock()
+	o.remoteConfigMap = parsed
+	o.eclk.Unlock()
+
+	return parsed, nil
+}
+
 func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 	o.eclk.RLock()
 	defer o.eclk.RUnlock()
@@ -454,11 +495,26 @@ func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 func (o *opampAgent) onMessage(ctx context.Context, msg *types.MessageData) {
 	if msg.RemoteConfig != nil {
 		o.logger.Info("Config received from OpAMP server", zap.ByteString("config_hash", msg.RemoteConfig.ConfigHash))
+
+		var status protobufs.RemoteConfigStatuses
+		var applyErr error
+		if _, err := o.applyRemoteConfig(msg.RemoteConfig); err != nil {
+			o.logger.Error("Failed to apply remote config", zap.Error(err))
+			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED
+			applyErr = err
+		} else {
+			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED
+		}
+
 		if o.capabilities.ReportsRemoteConfig && o.opampClient != nil {
-			if err := o.opampClient.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+			rcs := &protobufs.RemoteConfigStatus{
 				LastRemoteConfigHash: msg.RemoteConfig.ConfigHash,
-				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
-			}); err != nil {
+				Status:               status,
+			}
+			if applyErr != nil {
+				rcs.ErrorMessage = applyErr.Error()
+			}
+			if err := o.opampClient.SetRemoteConfigStatus(rcs); err != nil {
 				o.logger.Error("Failed to set remote config status", zap.Error(err))
 			}
 		}

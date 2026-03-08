@@ -739,6 +739,91 @@ func TestParseInstanceIDString(t *testing.T) {
 	}
 }
 
+func TestApplyRemoteConfig(t *testing.T) {
+	validYAML := []byte("receivers:\n  otlp:\n    protocols:\n      grpc: {}\n")
+	invalidYAML := []byte("receivers:\n  otlp:\n    protocols:\n      grpc: [broken\n")
+
+	t.Run("rejects when AcceptsRemoteConfig is false", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		cfg.Capabilities.AcceptsRemoteConfig = false
+		cfg.RemoteConfigurationDirectory = ""
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, o.Shutdown(t.Context())) }()
+
+		remoteConfig := &protobufs.AgentRemoteConfig{
+			ConfigHash: []byte("test"),
+			Config: &protobufs.AgentConfigMap{
+				ConfigMap: map[string]*protobufs.AgentConfigFile{
+					"config.yaml": {Body: validYAML},
+				},
+			},
+		}
+
+		_, err = o.applyRemoteConfig(remoteConfig)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "does not accept remote configuration")
+	})
+
+	t.Run("parses valid YAML successfully", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, o.Shutdown(t.Context())) }()
+
+		remoteConfig := &protobufs.AgentRemoteConfig{
+			ConfigHash: []byte("test"),
+			Config: &protobufs.AgentConfigMap{
+				ConfigMap: map[string]*protobufs.AgentConfigFile{
+					"config.yaml": {Body: validYAML},
+				},
+			},
+		}
+
+		parsed, err := o.applyRemoteConfig(remoteConfig)
+		require.NoError(t, err)
+		require.Len(t, parsed, 1)
+		assert.Contains(t, parsed, "config.yaml")
+		assert.NotEmpty(t, parsed["config.yaml"].Body)
+		assert.Equal(t, "text/yaml", parsed["config.yaml"].ContentType)
+	})
+
+	t.Run("returns error for invalid YAML", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, o.Shutdown(t.Context())) }()
+
+		remoteConfig := &protobufs.AgentRemoteConfig{
+			ConfigHash: []byte("test"),
+			Config: &protobufs.AgentConfigMap{
+				ConfigMap: map[string]*protobufs.AgentConfigFile{
+					"config.yaml": {Body: invalidYAML},
+				},
+			},
+		}
+
+		_, err = o.applyRemoteConfig(remoteConfig)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot parse config")
+	})
+
+	t.Run("returns error for nil config map", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, o.Shutdown(t.Context())) }()
+
+		_, err = o.applyRemoteConfig(&protobufs.AgentRemoteConfig{ConfigHash: []byte("test")})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no config map")
+	})
+}
+
 func TestOpAMPAgent_Dependencies(t *testing.T) {
 	t.Run("No server specified", func(t *testing.T) {
 		o := opampAgent{

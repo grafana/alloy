@@ -32,6 +32,10 @@ type Config struct {
 	// representation. Auto-generated on start if missing.
 	InstanceUID string `mapstructure:"instance_uid"`
 
+	// RemoteConfigurationDirectory is the directory where remote configuration
+	// received from the OpAMP server is stored.
+	RemoteConfigurationDirectory string `mapstructure:"remote_configuration_directory"`
+
 	// Capabilities contains options to enable a particular OpAMP capability
 	Capabilities Capabilities `mapstructure:"capabilities"`
 
@@ -232,6 +236,10 @@ func (cfg *Config) Validate() error {
 		if err != nil {
 			return errors.New("opamp instance_uid is invalid")
 		}
+	}
+
+	if cfg.Capabilities.AcceptsRemoteConfig && cfg.RemoteConfigurationDirectory == "" {
+		return errors.New("remote_configuration_directory is required when accepts_remote_config capability is enabled")
 	}
 
 	return nil

@@ -32,7 +32,8 @@ func createDefaultConfig() component.Config {
 			AcceptsRemoteConfig:        true,
 			ReportsRemoteConfig:        true,
 		},
-		PPIDPollInterval: 5 * time.Second,
+		RemoteConfigurationDirectory: "remote_config",
+		PPIDPollInterval:             5 * time.Second,
 	}
 }
 

@@ -37,11 +37,14 @@ func TestUnmarshalConfig(t *testing.T) {
 					Endpoint: "wss://127.0.0.1:4320/v1/opamp",
 				},
 			},
-			InstanceUID: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+			InstanceUID:                 "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+			RemoteConfigurationDirectory: "remote_config",
 			Capabilities: Capabilities{
 				ReportsEffectiveConfig:     true,
 				ReportsHealth:              true,
 				ReportsAvailableComponents: true,
+				AcceptsRemoteConfig:        true,
+				ReportsRemoteConfig:        true,
 			},
 			PPIDPollInterval: 5 * time.Second,
 		}, cfg)
@@ -63,11 +66,14 @@ func TestUnmarshalHttpConfig(t *testing.T) {
 					PollingInterval: 1 * time.Minute,
 				},
 			},
-			InstanceUID: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+			InstanceUID:                 "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+			RemoteConfigurationDirectory: "remote_config",
 			Capabilities: Capabilities{
 				ReportsEffectiveConfig:     true,
 				ReportsHealth:              true,
 				ReportsAvailableComponents: true,
+				AcceptsRemoteConfig:        true,
+				ReportsRemoteConfig:        true,
 			},
 			PPIDPollInterval: 5 * time.Second,
 		}, cfg)
@@ -214,9 +220,10 @@ func TestOpAMPServer_GetTLSConfig(t *testing.T) {
 
 func TestConfig_Validate(t *testing.T) {
 	type fields struct {
-		Server       *OpAMPServer
-		InstanceUID  string
-		Capabilities Capabilities
+		Server                      *OpAMPServer
+		InstanceUID                 string
+		Capabilities                Capabilities
+		RemoteConfigurationDirectory string
 	}
 	tests := []struct {
 		name    string
@@ -339,13 +346,45 @@ func TestConfig_Validate(t *testing.T) {
 				return assert.Equal(t, "opamp server must have only ws or http set", err.Error())
 			},
 		},
+		{
+			name: "AcceptsRemoteConfig requires RemoteConfigurationDirectory",
+			fields: fields{
+				Server: &OpAMPServer{
+					WS: &commonFields{
+						Endpoint: "wss://127.0.0.1:4320/v1/opamp",
+					},
+				},
+				Capabilities: Capabilities{
+					AcceptsRemoteConfig: true,
+				},
+			},
+			wantErr: func(t assert.TestingT, err error, _ ...any) bool {
+				return assert.Equal(t, "remote_configuration_directory is required when accepts_remote_config capability is enabled", err.Error())
+			},
+		},
+		{
+			name: "AcceptsRemoteConfig with RemoteConfigurationDirectory set",
+			fields: fields{
+				Server: &OpAMPServer{
+					WS: &commonFields{
+						Endpoint: "wss://127.0.0.1:4320/v1/opamp",
+					},
+				},
+				Capabilities: Capabilities{
+					AcceptsRemoteConfig: true,
+				},
+				RemoteConfigurationDirectory: "/var/lib/opamp/remote_config",
+			},
+			wantErr: assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Config{
-				Server:       tt.fields.Server,
-				InstanceUID:  tt.fields.InstanceUID,
-				Capabilities: tt.fields.Capabilities,
+				Server:                      tt.fields.Server,
+				InstanceUID:                 tt.fields.InstanceUID,
+				Capabilities:                tt.fields.Capabilities,
+				RemoteConfigurationDirectory: tt.fields.RemoteConfigurationDirectory,
 			}
 			tt.wantErr(t, cfg.Validate())
 		})
