@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/stretchr/testify/require"
 )
 
 type testCase struct {
@@ -331,7 +332,8 @@ func TestDeclare(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			ctrl := runtime.New(testOptions(t))
+			ctrl, err := runtime.New(testOptions(t))
+			require.NoError(t, err)
 			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
 			require.NoError(t, err)
 			require.NotNil(t, f)
@@ -377,7 +379,8 @@ func TestDeclareModulePath(t *testing.T) {
 			input = mod.myModule.output
 		}
 	`
-	ctrl := runtime.New(testOptions(t))
+	ctrl, err := runtime.New(testOptions(t))
+	require.NoError(t, err)
 	f, err := runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)
@@ -497,13 +500,14 @@ func TestDeclareError(t *testing.T) {
 			defer verifyNoGoroutineLeaks(t)
 			s, err := logging.New(os.Stderr, logging.DefaultOptions)
 			require.NoError(t, err)
-			ctrl := runtime.New(runtime.Options{
+			ctrl, err := runtime.New(runtime.Options{
 				Logger:       s,
 				DataPath:     t.TempDir(),
 				MinStability: featuregate.StabilityPublicPreview,
 				Reg:          nil,
 				Services:     []service.Service{},
 			})
+			require.NoError(t, err)
 			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
 			require.NoError(t, err)
 			require.NotNil(t, f)
@@ -588,7 +592,8 @@ func TestDeclareUpdateConfig(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			defer verifyNoGoroutineLeaks(t)
-			ctrl := runtime.New(testOptions(t))
+			ctrl, err := runtime.New(testOptions(t))
+			require.NoError(t, err)
 			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
 			require.NoError(t, err)
 			require.NotNil(t, f)

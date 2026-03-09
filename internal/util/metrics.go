@@ -14,3 +14,16 @@ func MustRegisterOrGet(reg prometheus.Registerer, c prometheus.Collector) promet
 	}
 	return c
 }
+
+// MustRegisterOrReturnExisting will attempt to register the supplied collector into the register. If it's already
+// registered, it will return that one otherwise nil.
+// In case that the register procedure fails with something other than already registered, this will panic.
+func MustRegisterOrReturnExisting(reg prometheus.Registerer, c prometheus.Collector) prometheus.Collector {
+	if err := reg.Register(c); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			return are.ExistingCollector
+		}
+		panic(err)
+	}
+	return nil
+}

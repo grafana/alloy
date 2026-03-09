@@ -152,7 +152,7 @@ The `values` argument must not be provided when `operator` is set to `"Exists"` 
 
 The `alertmanagerconfig_matcher` block describes the strategy used by AlertmanagerConfig objects to match alerts in the routes and inhibition rules.
 
-Depending on how this block is configured, the final Alertmanger config will have different [matchers][] in its [route][] section.
+Depending on how this block is configured, the final Alertmanager config will have different [matchers][] in its [route][] section.
 
 [matchers]: https://prometheus.io/docs/alerting/latest/configuration/#matcher
 [route]: https://prometheus.io/docs/alerting/latest/configuration/#route
