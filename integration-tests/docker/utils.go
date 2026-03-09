@@ -224,6 +224,8 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 	// Start Tetragon before Alloy so its eBPF probes are armed before
 	// Alloy's first syscall.
 	var tetragonContainer testcontainers.Container
+	var tetragonGRPCAddr string
+	var stopCapCollection func() string // non-nil when Tetragon is running
 	if cfg.Tetragon.Image != "" {
 		c, err := common.StartTetragonContainer(ctx, cfg.Tetragon.Image)
 		if err != nil {
@@ -235,10 +237,24 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 			return
 		}
 		tetragonContainer = c
+
+		addr, err := common.TetragonGRPCAddr(ctx, c)
+		if err != nil {
+			addLog(TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to get Tetragon gRPC address: %v", err),
+				IsError:  true,
+			})
+			return
+		}
+		tetragonGRPCAddr = addr
 	}
 
 	if tetragonContainer != nil {
+		// Wait for Tetragon's eBPF probes and gRPC server to fully initialize
+		// before starting the capability collector or Alloy.
 		time.Sleep(common.TetragonProbeInitDelay)
+		stopCapCollection = common.StartCapabilityCollection(tetragonGRPCAddr)
 	}
 
 	defer func() {
@@ -266,7 +282,14 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 	var testOutput []byte
 	var errTest error
 	defer func() {
-		testLogs := TestLog{TestDir: dirName}
+		// Stop the background Tetragon capability collector first so the report
+		// covers the full test run (including any failed subtests).
+		var tetragonLog string
+		if stopCapCollection != nil {
+			tetragonLog = stopCapCollection()
+		}
+
+		testLogs := TestLog{TestDir: dirName, TetragonLog: tetragonLog}
 
 		if errStart != nil {
 			testLogs.AlloyLog = fmt.Sprintf("failed to start Alloy container: %v", errStart)
@@ -279,14 +302,6 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 			if errTest != nil {
 				testLogs.IsError = true
 			}
-		}
-
-		if tetragonContainer != nil && alloyContainer != nil {
-			tetragonLog, err := common.FormatTetragonLogs(ctx, tetragonContainer, alloyContainer)
-			if err != nil {
-				tetragonLog = fmt.Sprintf("failed to collect tetragon logs: %v", err)
-			}
-			testLogs.TetragonLog = tetragonLog
 		}
 
 		addLog(testLogs)
@@ -321,9 +336,10 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
 			fmt.Sprintf("%s=true", common.TestStatefulEnv))
 	}
-	if tetragonContainer != nil {
+	if tetragonGRPCAddr != "" {
 		testCmd.Env = append(testCmd.Environ(),
-			fmt.Sprintf("%s=%s", common.TetragonContainerIDEnv, tetragonContainer.GetContainerID()))
+			fmt.Sprintf("%s=%s", common.TetragonGRPCAddrEnv, tetragonGRPCAddr),
+			fmt.Sprintf("%s=%s", common.AlloyContainerIDEnv, alloyContainer.GetContainerID()))
 	}
 	testOutput, errTest = testCmd.CombinedOutput()
 }
@@ -466,8 +482,10 @@ func reportResults(alwaysPrintLogs bool) int {
 		fmt.Println(log.TestOutput)
 		fmt.Println("\n--- Container logs ---")
 		fmt.Println(log.AlloyLog)
-		fmt.Println("\n--- Tetragon capability events ---")
-		fmt.Println(log.TetragonLog)
+		if log.TetragonLog != "" {
+			fmt.Println("\n--- Tetragon capability events ---")
+			fmt.Println(log.TetragonLog)
+		}
 	}
 
 	return len(dirsWithFailure)

@@ -1,45 +1,26 @@
 package common
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
-	"debug/elf"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	tetragonpb "github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/docker/docker/api/types/container"
-	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
-	"github.com/moby/sys/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // TetragonProbeInitDelay is how long Tetragon runs alone before Alloy starts,
 // giving its eBPF probes time to arm before the first Alloy syscall.
 const TetragonProbeInitDelay = 10 * time.Second
-
-// TetragonContainerIDEnv is the environment variable used to pass the Tetragon
-// container ID from the test runner to the test process so that TestCapabilities
-// can read the container logs directly.
-const TetragonContainerIDEnv = "TETRAGON_CONTAINER_ID"
-
-// AlloyContainerIDEnv is the environment variable used to pass the Alloy
-// container ID from the test runner to the test process. AssertTetragonCapabilities
-// uses it to filter Tetragon events to only those originating from the specific
-// Alloy container under test, preventing cross-contamination from concurrently
-// running tests whose alloy containers may have different capability sets.
-const AlloyContainerIDEnv = "ALLOY_CONTAINER_ID"
 
 // capabilitiesPolicy is a Tetragon TracingPolicy that records every cap_capable()
 // call made by the alloy binary, capturing the user-space call stack and the
@@ -78,29 +59,16 @@ spec:
           userStackTrace: true
 `
 
-// capabilityName returns the CAP_* name for a Linux capability number.
-// Falls back to "CAP_<n>" for unknown values.
+// capabilityName returns the CAP_* name for a Linux capability number using
+// the Tetragon proto's own CapabilitiesType enum, e.g. "CAP_SYS_PTRACE".
+// Unknown values fall back to the proto default, e.g. "CapabilitiesType(41)".
 func capabilityName(n int) string {
-	name := capability.Cap(n).String()
-	name = fmt.Sprintf("CAP_%s", strings.ToUpper(name))
-	return name
-}
-
-// TetragonCapabilityEvent records one capability usage event from Tetragon.
-type TetragonCapabilityEvent struct {
-	Comm                 string   // binary basename (e.g. "alloy")
-	ContainerID          string   // Docker container ID of the process (full 64-char hex string)
-	Capability           string   // e.g. "CAP_SYS_ADMIN"
-	Granted              bool     // true when cap_capable returned 0 (capability was granted)
-	KernelStackTrace     []string // kernel symbols, innermost first (empty when unavailable)
-	UserStackTrace       []string // user-space symbols, innermost first (empty when unavailable)
-	UserOffsets          []int64  // raw decimal offsets for addr2line, index-aligned with UserStackTrace
-	moduleFromFirstFrame string   // full container path from the first user stack frame module field
+	return tetragonpb.CapabilitiesType(n).String()
 }
 
 // ExpectedCapabilityEvent describes a Linux capability usage that a test
-// explicitly allows. It matches actual Tetragon events by capability name and,
-// optionally, by requiring that certain substrings appear somewhere in the
+// explicitly expects. It matches live Tetragon gRPC events by capability name
+// and, optionally, by requiring that certain substrings appear somewhere in the
 // combined user stack trace.
 type ExpectedCapabilityEvent struct {
 	// Capability is the exact capability name, e.g. "CAP_FOWNER".
@@ -112,16 +80,21 @@ type ExpectedCapabilityEvent struct {
 }
 
 // StartTetragonContainer starts a Tetragon container configured to record
-// capability usage and expose Prometheus metrics on port 2112.
+// capability usage and expose:
+//   - Prometheus metrics on port 2112
+//   - A gRPC event stream on a random host port (retrieve with TetragonGRPCAddr)
+//
 // The capabilities TracingPolicy is injected directly into the container.
 // The caller is responsible for terminating it.
 //
 // Set TETRAGON_LOG_LEVEL=debug or TETRAGON_LOG_LEVEL=trace in the environment
-// to enable verbose Tetragon logging, which includes messages about
-// /proc/<pid>/maps access and symbolization failures.
+// to enable verbose Tetragon logging.
 func StartTetragonContainer(ctx context.Context, image string) (testcontainers.Container, error) {
 	args := []string{
 		"/usr/bin/tetragon",
+		// Bind the gRPC server on all interfaces so the host test process can
+		// connect via the mapped port. Default is localhost-only.
+		"--server-address=0.0.0.0:54321",
 		"--export-filename=/dev/stdout",
 		"--metrics-server=:2112",
 		"--tracing-policy-dir=/etc/tetragon/tetragon.tp.d",
@@ -137,9 +110,10 @@ func StartTetragonContainer(ctx context.Context, image string) (testcontainers.C
 		Image:           image,
 		AlwaysPullImage: false,
 		Entrypoint:      args,
-		// Bind container port 2112 to the same host port so metrics are always
-		// reachable at http://localhost:2112/metrics during the test run.
-		ExposedPorts: []string{"2112/tcp"},
+		// Port 2112 is bound to the same host port for Prometheus metrics.
+		// Port 54321 (gRPC) is mapped to a random host port to avoid conflicts
+		// when tests run in parallel; use TetragonGRPCAddr to discover it.
+		ExposedPorts: []string{"2112/tcp", "54321/tcp"},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
 			hc.PidMode = container.PidMode("host")
@@ -149,6 +123,7 @@ func StartTetragonContainer(ctx context.Context, image string) (testcontainers.C
 				"2112/tcp": []nat.PortBinding{
 					{HostIP: "127.0.0.1", HostPort: "2112"},
 				},
+				// 54321 is left unbound so the OS picks a free port.
 			}
 		},
 		Files: []testcontainers.ContainerFile{
@@ -165,428 +140,247 @@ func StartTetragonContainer(ctx context.Context, image string) (testcontainers.C
 	})
 }
 
-// FormatTetragonLogs reads the Tetragon container's NDJSON log output and
-// returns a human-readable summary of all capability events. It runs
-// "tetra getevents -o compact" inside the Tetragon container for native
-// formatting, then falls back to our own formatter with go tool addr2line
-// for stack-frame resolution.
-func FormatTetragonLogs(ctx context.Context, tetragonContainer testcontainers.Container, alloyContainer testcontainers.Container) (string, error) {
-	logs, err := tetragonContainer.Logs(ctx)
+// TetragonGRPCAddr returns the host address (host:port) of the Tetragon gRPC
+// server for c. The port is the randomly assigned host port mapped from
+// container port 54321.
+func TetragonGRPCAddr(ctx context.Context, c testcontainers.Container) (string, error) {
+	port, err := c.MappedPort(ctx, "54321/tcp")
 	if err != nil {
-		return "", fmt.Errorf("reading tetragon logs: %w", err)
+		return "", fmt.Errorf("getting Tetragon gRPC mapped port: %w", err)
 	}
-	defer logs.Close()
+	return fmt.Sprintf("localhost:%s", port.Port()), nil
+}
 
-	// testcontainers' Logs() already demultiplexes the Docker stream internally.
-	logBytes, err := io.ReadAll(logs)
-	if err != nil {
-		return "", fmt.Errorf("reading tetragon logs: %w", err)
-	}
-	logText := string(logBytes)
+// StartCapabilityCollection connects to the Tetragon gRPC server at grpcAddr
+// and starts streaming all cap_capable events for the alloy binary in the
+// background. It returns a stop function: call it to cancel the stream and
+// receive a formatted report of every capability event observed, suitable for
+// inclusion in the test failure output.
+//
+// The report format mirrors the old NDJSON-based output:
+//
+//	[CAP_SYS_PTRACE DENIED] alloy
+//	   User stack:
+//	      github.com/grafana/alloy/…discover (alloy+0x…)
+//	      …
+//
+// A return value of 0 from cap_capable means the capability was granted;
+// anything else means it was denied.
+func StartCapabilityCollection(grpcAddr string) func() string {
+	ctx, cancel := context.WithCancel(context.Background())
+	resultCh := make(chan string, 1)
 
-	events := ParseTetragonCapabilityLogs(logText, "")
-	if len(events) == 0 {
-		return "(no capability events recorded)", nil
-	}
-
-	var sb strings.Builder
-	var resolved map[int64]string
-	var resolveNote string
-	if alloyContainer != nil {
-		// Use the module path from the first stack frame as the authoritative
-		// binary location (Tetragon reads it from /proc/<pid>/maps).
-		binaryInContainer := "/bin/alloy"
-		for _, ev := range events {
-			if len(ev.moduleFromFirstFrame) > 0 {
-				binaryInContainer = ev.moduleFromFirstFrame
-				break
-			}
-		}
-		binaryPath, err := extractContainerFile(ctx, alloyContainer, binaryInContainer)
+	go func() {
+		conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			resolveNote = fmt.Sprintf("(could not extract %s for addr2line: %v)", binaryInContainer, err)
-		} else {
-			defer os.Remove(binaryPath)
-			seen := map[int64]struct{}{}
-			var offsets []int64
-			for _, ev := range events {
-				for _, off := range ev.UserOffsets {
-					if _, ok := seen[off]; !ok {
-						seen[off] = struct{}{}
-						offsets = append(offsets, off)
-					}
+			resultCh <- fmt.Sprintf("(failed to connect to Tetragon gRPC at %s: %v)", grpcAddr, err)
+			return
+		}
+		defer conn.Close()
+
+		client := tetragonpb.NewFineGuidanceSensorsClient(conn)
+		stream, err := client.GetEvents(ctx, &tetragonpb.GetEventsRequest{})
+		if err != nil {
+			resultCh <- fmt.Sprintf("(failed to open Tetragon event stream: %v)", err)
+			return
+		}
+
+		// seen deduplicates events by (capName, status, stack) so that
+		// capabilities checked thousands of times (e.g. CAP_SYS_PTRACE by
+		// discovery.process on every /proc scan) only appear once.
+		seen := make(map[string]struct{})
+		var sb strings.Builder
+		for {
+			resp, err := stream.Recv()
+			if err != nil {
+				break // context cancelled or server gone — normal shutdown
+			}
+
+			kp := resp.GetProcessKprobe()
+			if kp == nil || kp.GetFunctionName() != "cap_capable" {
+				continue
+			}
+			proc := kp.GetProcess()
+			if proc == nil {
+				continue
+			}
+			args := kp.GetArgs()
+			if len(args) == 0 {
+				continue
+			}
+
+			capName := capabilityName(int(args[0].GetIntArg()))
+
+			granted := true
+			if ret := kp.GetReturn(); ret != nil {
+				granted = ret.GetIntArg() == 0
+			}
+			status := "GRANTED"
+			if !granted {
+				status = "DENIED"
+			}
+
+			var stackParts []string
+			for _, frame := range kp.GetUserStackTrace() {
+				if sym := frame.GetSymbol(); sym != "" {
+					stackParts = append(stackParts, sym)
 				}
 			}
-			var resolveErr error
-			resolved, resolveErr = resolveOffsetsWithAddr2line(binaryPath, offsets)
-			if resolveErr != nil {
-				resolveNote = fmt.Sprintf("(addr2line error: %v)", resolveErr)
-			}
-		}
-	}
 
-	if resolveNote != "" {
-		fmt.Fprintln(&sb, resolveNote)
-	}
-	for _, ev := range events {
-		status := "GRANTED"
-		if !ev.Granted {
-			status = "DENIED"
-		}
-		fmt.Fprintf(&sb, "\n[%s %s] %s\n", ev.Capability, status, ev.Comm)
-		if len(ev.UserOffsets) > 0 {
-			fmt.Fprintf(&sb, "   User stack:\n")
-			for i, off := range ev.UserOffsets {
-				if name, ok := resolved[off]; ok {
-					fmt.Fprintf(&sb, "      %s\n", name)
-				} else {
-					fmt.Fprintf(&sb, "      %s\n", ev.UserStackTrace[i])
+			// Skip duplicates: same capability and same outcome, regardless of
+			// call site. Each (capName, status) pair is printed at most once.
+			dedupKey := capName + "|" + status
+			if _, dup := seen[dedupKey]; dup {
+				continue
+			}
+			seen[dedupKey] = struct{}{}
+
+			fmt.Fprintf(&sb, "[%s %s] %s\n", capName, status, filepath.Base(proc.GetBinary()))
+			if len(stackParts) > 0 {
+				sb.WriteString("   User stack:\n")
+				for _, sym := range stackParts {
+					fmt.Fprintf(&sb, "      %s\n", sym)
 				}
 			}
+			sb.WriteString("\n")
 		}
-	}
-	return sb.String(), nil
-}
 
-// extractContainerFile copies a single file from inside a container to a
-// temporary file on the host and returns its path. The caller must remove it.
-func extractContainerFile(ctx context.Context, c testcontainers.Container, containerPath string) (string, error) {
-	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", err
-	}
-	defer cli.Close()
-
-	rc, _, err := cli.CopyFromContainer(ctx, c.GetContainerID(), containerPath)
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-
-	tmp, err := os.CreateTemp("", "alloy-binary-*")
-	if err != nil {
-		return "", err
-	}
-
-	tr := tar.NewReader(rc)
-	if _, err := tr.Next(); err != nil {
-		tmp.Close()
-		os.Remove(tmp.Name())
-		return "", err
-	}
-	if _, err := io.Copy(tmp, tr); err != nil {
-		tmp.Close()
-		os.Remove(tmp.Name())
-		return "", err
-	}
-	tmp.Close()
-	return tmp.Name(), nil
-}
-
-// elfLoadBase returns the virtual address of the first PT_LOAD segment in the
-// ELF binary at binaryPath. Tetragon reports stack offsets relative to the
-// mapping start address (from /proc/pid/maps), which equals this value for
-// non-PIE binaries (e.g. 0x400000). go tool addr2line expects the full virtual
-// address, so we add this base to each Tetragon offset before calling it.
-// For PIE binaries the first PT_LOAD VirtAddr is 0, so the adjustment is a no-op.
-func elfLoadBase(binaryPath string) int64 {
-	f, err := elf.Open(binaryPath)
-	if err != nil {
-		return 0
-	}
-	defer f.Close()
-	for _, prog := range f.Progs {
-		if prog.Type == elf.PT_LOAD {
-			return int64(prog.Vaddr)
+		if sb.Len() == 0 {
+			resultCh <- "(no capability events observed)"
+			return
 		}
+		resultCh <- sb.String()
+	}()
+
+	return func() string {
+		cancel()
+		return <-resultCh
 	}
-	return 0
 }
 
-// resolveOffsetsWithAddr2line runs go tool addr2line against binaryPath for the
-// given offsets and returns a map from offset to "funcName (file:line)".
-// Offsets that cannot be resolved are omitted from the result.
+// AssertTetragonCapabilities streams live capability events from the Tetragon
+// gRPC server and asserts that every entry in required is observed at least
+// once for the given process. The function exits as soon as all required events
+// are satisfied or the 2-minute deadline is reached.
 //
-// go tool addr2line (Go 1.18+) takes the binary as a positional argument and
-// reads hex addresses from stdin, emitting two lines per address:
+// Because discovery.process scans /proc periodically, capability events for
+// "alloy" keep arriving throughout the test run, so the 2-minute window is
+// always sufficient even when the test calls this function at the end.
 //
-//	function name
-//	file:line
-func resolveOffsetsWithAddr2line(binaryPath string, offsets []int64) (map[int64]string, error) {
-	if len(offsets) == 0 {
-		return nil, nil
-	}
-
-	// Tetragon offsets are relative to the binary's mapping base; addr2line
-	// needs the ELF virtual address, so we add the load base.
-	loadBase := elfLoadBase(binaryPath)
-
-	cmd := exec.Command("go", "tool", "addr2line", binaryPath)
-
-	// Write all hex addresses to stdin.
-	var stdinBuf strings.Builder
-	for _, off := range offsets {
-		fmt.Fprintf(&stdinBuf, "0x%x\n", off+loadBase)
-	}
-	cmd.Stdin = strings.NewReader(stdinBuf.String())
-
-	out, err := cmd.Output()
-	if err != nil {
-		stderr := ""
-		if ee, ok := err.(*exec.ExitError); ok {
-			stderr = string(ee.Stderr)
-		}
-		return nil, fmt.Errorf("go tool addr2line: %w\n%s", err, stderr)
-	}
-
-	// addr2line emits two lines per address: function name then file:line.
-	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
-	result := make(map[int64]string, len(offsets))
-	for i, off := range offsets {
-		fn := ""
-		loc := ""
-		if i*2 < len(lines) {
-			fn = lines[i*2]
-		}
-		if i*2+1 < len(lines) {
-			loc = lines[i*2+1]
-		}
-		if fn == "?" || fn == "" {
-			continue
-		}
-		if loc != "" && loc != "?:0" {
-			result[off] = fmt.Sprintf("%s  (%s)", fn, loc)
-		} else {
-			result[off] = fn
-		}
-	}
-	return result, nil
-}
-
-// CollectTetragonCapabilityEvents reads Tetragon container logs and returns all
-// unique capability events for processes whose binary basename matches comm.
-// Pass an empty comm to collect events for all processes.
-func CollectTetragonCapabilityEvents(ctx context.Context, c testcontainers.Container, comm string) ([]TetragonCapabilityEvent, error) {
-	logs, err := c.Logs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer logs.Close()
-
-	logBytes, err := io.ReadAll(logs)
-	if err != nil {
-		return nil, err
-	}
-	return ParseTetragonCapabilityLogs(string(logBytes), comm), nil
-}
-
-// CollectTetragonCapabilityEventsFromID reads Tetragon logs from an already-running
-// container identified by containerID and returns all unique capability events.
-// Use this when the container was started by the test runner (e.g. in TestCapabilities).
-func CollectTetragonCapabilityEventsFromID(ctx context.Context, containerID string, comm string) ([]TetragonCapabilityEvent, error) {
-	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-	defer cli.Close()
-
-	reader, err := cli.ContainerLogs(ctx, containerID, container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-
-	// ContainerLogs returns a Docker-multiplexed stream: each chunk is prefixed
-	// with an 8-byte header encoding the stream type and payload length.
-	// stdcopy.StdCopy strips those headers, yielding plain text that can be
-	// parsed as NDJSON.
-	var buf bytes.Buffer
-	if _, err := stdcopy.StdCopy(&buf, &buf, reader); err != nil {
-		return nil, fmt.Errorf("demultiplexing tetragon logs: %w", err)
-	}
-	return ParseTetragonCapabilityLogs(buf.String(), comm), nil
-}
-
-// tetragonEvent is a minimal representation of the Tetragon NDJSON export format
-// for process_kprobe events on cap_capable.
-type tetragonEvent struct {
-	ProcessKprobe *struct {
-		Process struct {
-			Binary string `json:"binary"`
-			Docker string `json:"docker"` // full container ID of the process
-		} `json:"process"`
-		FunctionName string `json:"function_name"`
-		Args         []struct {
-			IntArg *int `json:"int_arg"`
-		} `json:"args"`
-		// Return holds the return value of cap_capable (0 = granted, non-zero = denied).
-		// It is populated when the TracingPolicy has return: true + returnArg.
-		Return *struct {
-			IntArg *int `json:"int_arg"`
-		} `json:"return"`
-		KernelStackTrace []struct {
-			Symbol string `json:"symbol"`
-			Offset string `json:"offset"`
-		} `json:"kernel_stack_trace"`
-		UserStackTrace []struct {
-			Symbol string `json:"symbol"`
-			Offset string `json:"offset"` // decimal file offset within Module
-			Module string `json:"module"` // absolute path of the binary
-		} `json:"user_stack_trace"`
-	} `json:"process_kprobe"`
-}
-
-// ParseTetragonCapabilityLogs extracts unique TetragonCapabilityEvents from
-// Tetragon's NDJSON log output, filtered by binary basename matching comm.
-// Events are deduplicated by (comm, capability) since PIDs vary between runs.
-func ParseTetragonCapabilityLogs(logs string, comm string) []TetragonCapabilityEvent {
-	seen := make(map[string]struct{})
-	var out []TetragonCapabilityEvent
-
-	for _, line := range strings.Split(logs, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || !strings.Contains(line, "cap_capable") {
-			continue
-		}
-		var ev tetragonEvent
-		if err := json.Unmarshal([]byte(line), &ev); err != nil || ev.ProcessKprobe == nil {
-			continue
-		}
-		kp := ev.ProcessKprobe
-		if kp.FunctionName != "cap_capable" {
-			continue
-		}
-		binary := filepath.Base(kp.Process.Binary)
-		if comm != "" && binary != comm {
-			continue
-		}
-		if len(kp.Args) == 0 || kp.Args[0].IntArg == nil {
-			continue
-		}
-		capNum := *kp.Args[0].IntArg
-		capName := capabilityName(capNum)
-
-		// Determine whether the capability was granted (return value 0) or
-		// denied (any non-zero return). When no return value is present in the
-		// event (older Tetragon or policy without returnArg), default to true so
-		// existing behaviour is preserved.
-		granted := true
-		if kp.Return != nil && kp.Return.IntArg != nil {
-			granted = *kp.Return.IntArg == 0
-		}
-
-		key := binary + "\x00" + capName
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-
-		var kernelStack, userStack []string
-		var userOffsets []int64
-		var firstModule string
-		for _, frame := range kp.KernelStackTrace {
-			if frame.Symbol != "" {
-				kernelStack = append(kernelStack, fmt.Sprintf("%s+0x%s", frame.Symbol, frame.Offset))
-			}
-		}
-		for _, frame := range kp.UserStackTrace {
-			off, _ := strconv.ParseInt(frame.Offset, 10, 64)
-			// Prefer the module whose basename matches the process binary name
-			// (e.g. "alloy") over runtime linker modules like ld-linux.
-			if firstModule == "" && frame.Module != "" {
-				firstModule = frame.Module
-			}
-			if frame.Module != "" && filepath.Base(frame.Module) == binary {
-				firstModule = frame.Module
-			}
-			if frame.Symbol != "" {
-				userStack = append(userStack, fmt.Sprintf("%s (%s+0x%x)", frame.Symbol, filepath.Base(frame.Module), off))
-			} else {
-				userStack = append(userStack, fmt.Sprintf("0x%x (%s)", off, filepath.Base(frame.Module)))
-			}
-			userOffsets = append(userOffsets, off)
-		}
-
-		out = append(out, TetragonCapabilityEvent{
-			Comm:                 binary,
-			ContainerID:          kp.Process.Docker,
-			Capability:           capName,
-			Granted:              granted,
-			KernelStackTrace:     kernelStack,
-			UserStackTrace:       userStack,
-			UserOffsets:          userOffsets,
-			moduleFromFirstFrame: firstModule,
-		})
-	}
-	return out
-}
-
-// capabilityEventMatchesExpected returns true when actual satisfies exp:
-// the capability name is identical and every string in exp.StackContains
-// appears somewhere across the full user stack trace of actual.
-func capabilityEventMatchesExpected(actual TetragonCapabilityEvent, exp ExpectedCapabilityEvent) bool {
-	if actual.Capability != exp.Capability {
-		return false
-	}
-	fullStack := strings.Join(actual.UserStackTrace, "\n")
-	for _, s := range exp.StackContains {
-		if !strings.Contains(fullStack, s) {
-			return false
-		}
-	}
-	return true
-}
-
-// AssertTetragonCapabilities checks that every entry in required was observed
-// at least once in the Tetragon capability events for the given process. The
-// test fails if a required capability is never seen, catching regressions where
-// a needed capability check is removed (e.g. after a refactor).
-//
-// Observed events that do not match any required entry are silently ignored —
-// the function makes no assertions about unexpected capabilities.
+// The test is skipped automatically when TETRAGON_GRPC_ADDR is not set (i.e.
+// tetragon_container.image is not configured in test.yaml).
 //
 // When ALLOY_CONTAINER_ID is set in the environment, only events whose Docker
-// container ID matches it are considered. This is essential when tests run in
-// parallel: Tetragon uses host PID mode and therefore observes every alloy
-// process on the host, including those from concurrently running tests with
-// different capability sets.
-//
-// The test is skipped automatically when no Tetragon container is configured
-// (i.e. tetragon_container.image is not set in test.yaml).
+// container ID matches it are considered. This prevents cross-contamination
+// from concurrently running tests whose alloy containers may have different
+// capability sets.
 func AssertTetragonCapabilities(t *testing.T, comm string, required []ExpectedCapabilityEvent) {
 	t.Helper()
 
-	tetragonContainerID := os.Getenv(TetragonContainerIDEnv)
-	if tetragonContainerID == "" {
+	grpcAddr := os.Getenv(TetragonGRPCAddrEnv)
+	if grpcAddr == "" {
 		t.Skip("Tetragon container not configured (tetragon_container.image not set in test.yaml)")
 	}
 
-	events, err := CollectTetragonCapabilityEventsFromID(context.Background(), tetragonContainerID, comm)
-	require.NoError(t, err)
+	conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err, "connecting to Tetragon gRPC at %s", grpcAddr)
+	defer conn.Close()
 
-	// Filter to events from the specific Alloy container under test so that
-	// parallel runs of other tests cannot pollute this test's results.
+	client := tetragonpb.NewFineGuidanceSensorsClient(conn)
+
+	// Use a generous timeout: discovery.process scans /proc periodically so
+	// capability events will keep arriving throughout the test run.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	stream, err := client.GetEvents(ctx, &tetragonpb.GetEventsRequest{})
+	require.NoError(t, err, "opening Tetragon event stream")
+
 	alloyContainerID := os.Getenv(AlloyContainerIDEnv)
-	var relevant []TetragonCapabilityEvent
-	for _, ev := range events {
-		if alloyContainerID != "" && ev.ContainerID != alloyContainerID {
+	satisfied := make(map[int]bool, len(required))
+
+	// observedEvents accumulates every capability event that passed the
+	// binary/container filters. Logged via t.Log on failure (or -v) so
+	// developers can see what was actually observed vs. what was required.
+	var observedEvents []string
+
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			if ctx.Err() != nil {
+				break // deadline reached — fall through to failure reporting
+			}
+			t.Fatalf("Tetragon gRPC stream error: %v", err)
+		}
+
+		kp := resp.GetProcessKprobe()
+		if kp == nil || kp.GetFunctionName() != "cap_capable" {
 			continue
 		}
-		relevant = append(relevant, ev)
-	}
 
-	for _, req := range required {
-		found := false
-		for _, ev := range relevant {
-			if capabilityEventMatchesExpected(ev, req) {
-				found = true
-				break
+		proc := kp.GetProcess()
+		if proc == nil {
+			continue
+		}
+
+		// Filter by binary name.
+		if comm != "" && filepath.Base(proc.GetBinary()) != comm {
+			continue
+		}
+
+		// Filter by container: Tetragon may truncate the container ID, so
+		// accept events where either string is a prefix of the other.
+		if alloyContainerID != "" {
+			docker := proc.GetDocker()
+			if !strings.HasPrefix(alloyContainerID, docker) && !strings.HasPrefix(docker, alloyContainerID) {
+				continue
 			}
 		}
-		if !found {
+
+		args := kp.GetArgs()
+		if len(args) == 0 {
+			continue
+		}
+		capName := capabilityName(int(args[0].GetIntArg()))
+
+		// Build a single string of all user-stack symbols so StackContains can
+		// be checked with a simple strings.Contains.
+		var stackParts []string
+		for _, frame := range kp.GetUserStackTrace() {
+			if sym := frame.GetSymbol(); sym != "" {
+				stackParts = append(stackParts, sym)
+			}
+		}
+		fullStack := strings.Join(stackParts, "\n")
+
+		observedEvents = append(observedEvents, fmt.Sprintf("%s\n%s", capName, fullStack))
+
+		for i, req := range required {
+			if satisfied[i] || req.Capability != capName {
+				continue
+			}
+			allContain := true
+			for _, sub := range req.StackContains {
+				if !strings.Contains(fullStack, sub) {
+					allContain = false
+					break
+				}
+			}
+			if allContain {
+				satisfied[i] = true
+			}
+		}
+
+		if len(satisfied) == len(required) {
+			break // all required events observed — exit early
+		}
+	}
+
+	t.Logf("Tetragon observed %d capability events for %q:\n%s",
+		len(observedEvents), comm, strings.Join(observedEvents, "\n---\n"))
+
+	for i, req := range required {
+		if !satisfied[i] {
 			t.Errorf("required capability %q (stack must contain %v) was never observed — "+
 				"was the code path removed or is the StackContains filter too specific?",
 				req.Capability, req.StackContains)
