@@ -123,7 +123,7 @@ outer:
 		}
 
 		if version >= WALRecordEntriesV4 {
-			// V4 has has one timestamp per entry.
+			// V4 has one created timestamp per RefEntries.
 			buf.PutBE64int64(ref.Created)
 		}
 

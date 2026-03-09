@@ -38,8 +38,8 @@ type Entry struct {
 	push.Entry
 
 	// Created is a unix timestamp in micro seconds.
-	// FIXME(kalleep): Currently we store created for
-	// for each entry. When moving to batching we can store it per batch.
+	// FIXME(kalleep): Currently we store created for each entry.
+	// When moving to batching we can store it per batch.
 	created int64
 }
 
