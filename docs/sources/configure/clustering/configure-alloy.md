@@ -38,11 +38,12 @@ To configure clustering:
 1. Upgrade your installation to use the new `values.yaml` file:
 
    ```bash
-   helm upgrade <RELEASE_NAME> -f values.yaml
+   helm upgrade --namespace <NAMESPACE> <RELEASE_NAME> grafana/alloy -f values.yaml
    ```
 
    Replace the following:
 
+   - _`<NAMESPACE>`_: The Kubernetes namespace where you installed the Helm chart.
    - _`<RELEASE_NAME>`_: The name of the installation you chose when you installed the Helm chart.
 
 1. Use the {{< param "PRODUCT_NAME" >}} [UI][] to verify the cluster status:
