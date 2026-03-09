@@ -180,7 +180,7 @@ func faultOOM(logger *slog.Logger) http.HandlerFunc {
 }
 
 func maybeCacheResult(logger *slog.Logger, data []byte) {
-	cache.add(data, 48*1024)
+	cache.add(data, 24*1024)
 	entries, bytes := cache.stats()
 	queryCacheSize.Set(float64(bytes))
 	queryCacheEntries.Set(float64(entries))
