@@ -289,6 +289,7 @@ func (f *File) reopen(truncated bool) error {
 
 	for backoff.Ongoing() {
 		file, err := fileext.OpenFile(f.cfg.Filename)
+		fmt.Println("open err: ", err)
 		if err != nil {
 			if os.IsNotExist(err) {
 				fmt.Println("Don't exists yet")
