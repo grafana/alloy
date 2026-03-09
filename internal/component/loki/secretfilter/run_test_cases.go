@@ -5,6 +5,7 @@
 package secretfilter
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func RunTestCases(t *testing.T, config string, cases []TestCase) {
 		t.Run(tc.Name, func(t *testing.T) {
 			require.NotEmpty(t, tc.InputLog)
 			entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: tc.InputLog}}
-			got := c.processEntry(entry)
+			got, _ := c.processEntry(context.Background(), entry)
 			if tc.ShouldRedact {
 				require.NotEqual(t, tc.InputLog, got.Line, "Expected log to be redacted but it was not")
 			} else {

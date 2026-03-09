@@ -1,0 +1,17 @@
+name: Submit WinGet manifest on release publish
+
+on:
+  release:
+    types: [released]
+
+permissions: {}
+
+jobs:
+  submit_winget_manifest:
+    name: Submit WinGet Manifest
+    uses: ./.github/workflows/release-submit-winget-manifest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      release-tag: ${{ github.event.release.tag_name }}

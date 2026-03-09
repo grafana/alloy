@@ -151,7 +151,7 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["grafana_api_key"].Log},
 	}
-	processed := c.processEntry(entry)
+	processed, _ := c.processEntry(context.Background(), entry)
 	require.Contains(t, processed.Entry.Line, "REDACTED", "expected full redaction to produce REDACTED placeholder")
 	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["grafana-api-key"].Value)
 }
@@ -176,7 +176,7 @@ func TestRedactPercent_Partial(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "log with secret " + secret + " end"},
 	}
-	processed := c.processEntry(entry)
+	processed, _ := c.processEntry(context.Background(), entry)
 	require.Contains(t, processed.Entry.Line, "...", "expected partial redaction to append ...")
 	require.NotContains(t, processed.Entry.Line, secret, "original secret should not appear in full")
 	// First 20% of secret should be present (gitleaks Redact(80) keeps leading 20% + "...")
@@ -205,7 +205,7 @@ func TestRedactWith_CustomPlaceholder(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["gcp_api_key"].Log},
 	}
-	processed := c.processEntry(entry)
+	processed, _ := c.processEntry(context.Background(), entry)
 	require.Contains(t, processed.Entry.Line, "***REDACTED***")
 	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["gcp-api-key"].Value)
 }
@@ -232,7 +232,7 @@ func TestDefaultRedactPercent_usesEighty(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "log " + secret + " end"},
 	}
-	processed := c.processEntry(entry)
+	processed, _ := c.processEntry(context.Background(), entry)
 	require.Contains(t, processed.Entry.Line, "...", "default 80%% redaction should append ...")
 	require.NotContains(t, processed.Entry.Line, secret, "original secret should not appear in full")
 }
@@ -289,7 +289,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	for i := 0; i < b.N; i++ {
 		for _, input := range benchInputs {
 			entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: input}}
-			c.processEntry(entry)
+			c.processEntry(context.Background(), entry)
 		}
 	}
 }
@@ -324,7 +324,7 @@ func FuzzProcessEntry(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, log string) {
 		entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: log}}
-		c.processEntry(entry)
+		c.processEntry(context.Background(), entry)
 	})
 }
 
@@ -404,7 +404,7 @@ func TestMetrics(t *testing.T) {
 			}
 
 			// Process the entry
-			c.processEntry(entry)
+			c.processEntry(context.Background(), entry)
 
 			// Verify the metrics
 
@@ -588,7 +588,7 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	}
 
 	for _, entry := range entries {
-		c.processEntry(entry)
+		c.processEntry(context.Background(), entry)
 	}
 
 	// Verify the metrics
@@ -694,10 +694,94 @@ func TestArgumentsUpdate(t *testing.T) {
 			}
 
 			// Process the entry
-			processedEntry := c.processEntry(entry)
+			processedEntry, _ := c.processEntry(context.Background(), entry)
 
 			// Verify that redaction occurred
 			require.NotEqual(t, entry.Line, processedEntry.Line, "Expected redaction to occur")
 		})
 	}
+}
+
+func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	line := "log line with secret " + secret + " end"
+	c, err := New(opts, Arguments{
+		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+	})
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+	}
+	processed, dropped := c.processEntry(context.Background(), entry)
+
+	require.False(t, dropped, "entry should not be dropped when drop_on_timeout is false")
+	require.Equal(t, line, processed.Entry.Line, "original unredacted line should be forwarded on timeout")
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
+	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
+}
+
+func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	line := "log line with secret " + secret + " end"
+	c, err := New(opts, Arguments{
+		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		DropOnTimeout:     true,
+	})
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+	}
+	_, dropped := c.processEntry(context.Background(), entry)
+
+	require.True(t, dropped, "entry should be dropped when drop_on_timeout is true")
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesDroppedTotal))
+}
+
+func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	line := "log line with secret " + secret + " end"
+	c, err := New(opts, Arguments{
+		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		// ProcessingTimeout left at zero: disabled
+	})
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+	}
+	processed, dropped := c.processEntry(context.Background(), entry)
+
+	require.False(t, dropped)
+	require.NotEqual(t, line, processed.Entry.Line, "secret should be redacted when no timeout is set")
+	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
+	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }

@@ -41,12 +41,14 @@ func init() {
 
 // Arguments holds values which are used to configure the secretfilter component.
 type Arguments struct {
-	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
-	OriginLabel    string              `alloy:"origin_label,attr,optional"`    // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
-	RedactWith     string              `alloy:"redact_with,attr,optional"`     // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
-	RedactPercent  uint                `alloy:"redact_percent,attr,optional"`  // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
-	GitleaksConfig string              `alloy:"gitleaks_config,attr,optional"` // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
-	Rate           float64             `alloy:"rate,attr,optional"`            // Sampling rate in [0.0, 1.0]: fraction of entries to process through the secret filter; rest are forwarded unchanged. 1.0 = process all (default).
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	OriginLabel       string              `alloy:"origin_label,attr,optional"`       // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
+	RedactWith        string              `alloy:"redact_with,attr,optional"`        // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
+	RedactPercent     uint                `alloy:"redact_percent,attr,optional"`     // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
+	GitleaksConfig    string              `alloy:"gitleaks_config,attr,optional"`    // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
+	Rate              float64             `alloy:"rate,attr,optional"`               // Sampling rate in [0.0, 1.0]: fraction of entries to process through the secret filter; rest are forwarded unchanged. 1.0 = process all (default).
+	ProcessingTimeout time.Duration       `alloy:"processing_timeout,attr,optional"` // Maximum time allowed to process a single log entry. 0 (default) disables the timeout.
+	DropOnTimeout     bool                `alloy:"drop_on_timeout,attr,optional"`    // When true, entries that exceed processing_timeout are dropped instead of forwarded unredacted. Requires processing_timeout to be set.
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -120,6 +122,9 @@ type Component struct {
 //   - loki_secretfilter_secrets_redacted_by_origin: Number of secrets redacted, partitioned by origin label value (only registered when origin_label is set).
 //   - loki_secretfilter_processing_duration_seconds: Summary of time taken to process and redact log entries.
 //   - loki_secretfilter_entries_bypassed_total: Total number of entries forwarded without processing due to sampling.
+//   - loki_secretfilter_lines_timed_out_total: Total number of log lines that exceeded the processing timeout (regardless of whether they were dropped or forwarded).
+//   - loki_secretfilter_lines_dropped_total: Total number of log lines dropped due to processing timeout (subset of lines_timed_out_total, only when drop_on_timeout is true).
+
 type metrics struct {
 	// Total number of secrets redacted
 	secretsRedactedTotal prometheus.Counter
@@ -135,6 +140,12 @@ type metrics struct {
 
 	// Total number of entries bypassed by sampling (forwarded unchanged)
 	entriesBypassedTotal prometheus.Counter
+
+	// Total number of log lines that exceeded the processing timeout, regardless of whether they were dropped or forwarded unredacted
+	linesTimedOutTotal prometheus.Counter
+
+	// Total number of log lines dropped due to processing timeout
+	linesDroppedTotal prometheus.Counter
 }
 
 // newMetrics creates a new set of metrics for the secretfilter component.
@@ -177,6 +188,17 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		Name:      "entries_bypassed_total",
 		Help:      "Total number of entries forwarded without processing due to sampling.",
 	})
+	m.linesTimedOutTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "lines_timed_out_total",
+		Help:      "Total number of log lines that exceeded the processing timeout, regardless of whether they were dropped or forwarded unredacted.",
+	})
+
+	m.linesDroppedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "lines_dropped_total",
+		Help:      "Total number of log lines dropped due to processing timeout.",
+	})
 
 	if reg != nil {
 		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
@@ -186,6 +208,8 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		}
 		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
 		m.entriesBypassedTotal = util.MustRegisterOrGet(reg, m.entriesBypassedTotal).(prometheus.Counter)
+		m.linesTimedOutTotal = util.MustRegisterOrGet(reg, m.linesTimedOutTotal).(prometheus.Counter)
+		m.linesDroppedTotal = util.MustRegisterOrGet(reg, m.linesDroppedTotal).(prometheus.Counter)
 	}
 
 	return &m
@@ -269,9 +293,14 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
+
 			var newEntry loki.Entry
 			if c.shouldProcessEntry() {
-				newEntry = c.processEntry(entry)
+				newEntry, dropped := c.processEntry(ctx, entry)
+				if dropped {
+					c.mut.RUnlock()
+					continue
+				}
 				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					componentID,
 					livedebugging.LokiLog,
@@ -323,21 +352,44 @@ func (c *Component) samplingRandomID() uint64 {
 	return val
 }
 
-func (c *Component) processEntry(entry loki.Entry) loki.Entry {
+// processEntry scans the log entry for secrets and redacts them. Returns the
+// processed entry and a boolean indicating whether the entry should be dropped.
+// If processing_timeout is exceeded and drop_on_timeout is false (default),
+// the original unredacted entry is forwarded. If processing_timeout is
+// exceeded and drop_on_timeout is true, the entry is dropped.
+func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.Entry, bool) {
 	start := time.Now()
 	defer func() {
 		c.metrics.processingDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	// Scan the log line for secrets
-	findings := c.detector.DetectString(entry.Line)
-
-	// If no secrets found, return the original entry
-	if len(findings) == 0 {
-		return entry
+	if timeout := c.args.ProcessingTimeout; timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
 
-	return c.redactLine(entry, findings)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in v8
+	findings := c.detector.DetectContext(ctx, detect.Fragment{Raw: entry.Line})
+
+	if ctx.Err() != nil {
+		c.metrics.linesTimedOutTotal.Inc()
+		if c.args.DropOnTimeout {
+			c.metrics.linesDroppedTotal.Inc()
+			return loki.Entry{}, true
+		}
+
+		// Redact any partial findings before forwarding, even if the timeout was hit.
+		if len(findings) > 0 {
+			return c.redactLine(entry, findings), false
+		}
+		return entry, false
+	}
+
+	if len(findings) == 0 {
+		return entry, false
+	}
+	return c.redactLine(entry, findings), false
 }
 
 // redactLine redacts each finding in the log line and records metrics.
