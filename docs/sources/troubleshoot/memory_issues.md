@@ -42,13 +42,14 @@ Validate resource configuration.
    In most environments, this means at least two to four times steady-state usage.
    Refer to [Estimate resource usage][estimate-resource-usage] for baseline guidance.
 
-1. Configure `GOMEMLIMIT`.
+1. Understand `GOMEMLIMIT` behavior.
 
-   Set `GOMEMLIMIT` to approximately 90% of your container memory limit.
-   For example, with a 2GiB limit, use `GOMEMLIMIT=1800MiB`.
+   {{< param "PRODUCT_NAME" >}} uses [automemlimit][] to automatically set `GOMEMLIMIT` to 90% of the container memory limit.
+   `GOMEMLIMIT` is a soft limit.
+   When memory approaches this threshold, the Go runtime runs garbage collection to try to stay under it.
+   Memory use can still exceed this limit if needed.
 
-   Without `GOMEMLIMIT`, the Go runtime may expand memory until Kubernetes terminates the container.
-
+   To override the default, set `GOMEMLIMIT` manually.
    Refer to [Environment variables][env-vars] for more information.
 
 1. Check whether WAL replay triggers the spike.
@@ -209,6 +210,7 @@ Redact any sensitive information before attaching files.
 
 [estimate-resource-usage]: ../../set-up/estimate-resource-usage/
 [env-vars]: ../../reference/cli/environment-variables/#gomemlimit
+[automemlimit]: https://github.com/KimMachineGun/automemlimit
 [wal-config]: ../../reference/components/prometheus/prometheus.remote_write/#wal
 [profile]: ../profile/
 [support-bundle]: ../support_bundle/
