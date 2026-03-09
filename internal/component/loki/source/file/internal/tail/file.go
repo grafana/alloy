@@ -278,6 +278,8 @@ func (f *File) reopen(truncated bool) error {
 		level.Debug(f.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 	}
 
+	pending, err := fileext.IsDeletePending(f.file)
+	fmt.Println("Pending: ", pending, err)
 	// Don't close file for now
 	//f.file.Close()
 
@@ -289,6 +291,7 @@ func (f *File) reopen(truncated bool) error {
 
 	for backoff.Ongoing() {
 		file, err := fileext.OpenFile(f.cfg.Filename)
+
 		fmt.Println("open err: ", err)
 		if err != nil {
 			if os.IsNotExist(err) {
