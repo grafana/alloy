@@ -1,6 +1,11 @@
 package google
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"sync"
+
 	"github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
@@ -8,7 +13,10 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	collectorgoogleauth "github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/extension/extensionauth"
 	"go.opentelemetry.io/collector/pipeline"
+	"google.golang.org/grpc/credentials"
 )
 
 func init() {
@@ -19,10 +27,109 @@ func init() {
 		Exports:   auth.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			// Wrap the factory to intercept the created OpenTelemetry extension.
 			fact := collectorgoogleauth.NewFactory()
-			return auth.New(opts, fact, args.(Arguments))
+			wrappedFact := &factoryWrapper{Factory: fact}
+
+			// Intercept OnStateChange to capture the auth.Handler. This is required
+			// to access the underlying extension so we can manually invoke Start().
+			var handler *auth.Handler
+			originalOnStateChange := opts.OnStateChange
+			opts.OnStateChange = func(e component.Exports) {
+				if exports, ok := e.(auth.Exports); ok {
+					handler = exports.Handler
+				}
+				originalOnStateChange(e)
+			}
+
+			authComp, err := auth.New(opts, wrappedFact, args.(Arguments))
+			if err != nil {
+				return nil, err
+			}
+
+			// Return our wrapper component to ensure synchronous initialization.
+			ga := &googleAuth{
+				Auth: authComp,
+				getHandler: func() *auth.Handler {
+					return handler
+				},
+			}
+			ga.syncStart()
+
+			return ga, nil
 		},
 	})
+}
+
+// factoryWrapper proxies the OpenTelemetry Factory to return our extWrapper,
+// allowing us to intercept the created extension and control its lifecycle.
+type factoryWrapper struct {
+	otelextension.Factory
+}
+
+func (f *factoryWrapper) Create(ctx context.Context, set otelextension.Settings, cfg otelcomponent.Config) (otelextension.Extension, error) {
+	ext, err := f.Factory.Create(ctx, set, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &extWrapper{Extension: ext}, nil
+}
+
+// extWrapper wraps the OpenTelemetry Extension to ensure Start() is only called once.
+// This prevents duplicate executions when invoked synchronously during Update() and
+// asynchronously by the Alloy scheduler. It also proxies HTTP/gRPC authenticator interfaces.
+type extWrapper struct {
+	otelextension.Extension
+	startOnce sync.Once
+	err       error
+}
+
+func (e *extWrapper) Start(ctx context.Context, host otelcomponent.Host) error {
+	e.startOnce.Do(func() {
+		e.err = e.Extension.Start(ctx, host)
+	})
+	return e.err
+}
+
+func (e *extWrapper) RoundTripper(base http.RoundTripper) (http.RoundTripper, error) {
+	if client, ok := e.Extension.(extensionauth.HTTPClient); ok {
+		return client.RoundTripper(base)
+	}
+	return nil, errors.New("not a HTTP client authenticator")
+}
+
+func (e *extWrapper) PerRPCCredentials() (credentials.PerRPCCredentials, error) {
+	if client, ok := e.Extension.(extensionauth.GRPCClient); ok {
+		return client.PerRPCCredentials()
+	}
+	return nil, errors.New("not a gRPC client authenticator")
+}
+
+// googleAuth wraps the Alloy auth.Auth component to allow synchronously invoking
+// Start() during Update(). This guarantees the auth extension is fully initialized
+// before dependent exporters attempt to use its credentials.
+type googleAuth struct {
+	*auth.Auth
+	getHandler func() *auth.Handler
+}
+
+func (g *googleAuth) syncStart() {
+	h := g.getHandler()
+	if h != nil {
+		ext, err := h.GetExtension(auth.Client)
+		if err == nil && ext != nil && ext.Extension != nil {
+			_ = ext.Extension.Start(context.Background(), nil)
+		}
+	}
+}
+
+func (g *googleAuth) Update(args component.Arguments) error {
+	err := g.Auth.Update(args)
+	if err != nil {
+		return err
+	}
+	g.syncStart()
+	return nil
 }
 
 // Arguments configures the otelcol.auth.google component.
