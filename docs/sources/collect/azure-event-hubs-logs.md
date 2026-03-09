@@ -1,26 +1,41 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/collect/azure-event-hubs-logs/
-description: Learn how to deploy Grafana Alloy in an Azure Kubernetes Service cluster to collect logs from Azure Event Hubs and send them to Grafana Cloud
+description: Learn how to collect Azure Event Hubs logs and forward them to Loki
 menuTitle: Collect Azure Event Hubs logs
-title: Deploy Grafana Alloy in an Azure Kubernetes Service and collect Azure Event Hubs logs
+title: Collect Azure Event Hubs logs and forward them to Loki
 weight: 300
 ---
 
-# Deploy {{% param "FULL_PRODUCT_NAME" %}} in an Azure Kubernetes Service and collect Azure Event Hubs logs
+# Collect Azure Event Hubs logs and forward them to Loki
 
-Deploy {{< param "FULL_PRODUCT_NAME" >}} in an Azure Kubernetes Service (AKS) cluster to collect logs from Azure Event Hubs and send them to Grafana Cloud.
+You can configure {{< param "PRODUCT_NAME" >}} to collect logs from Azure Event Hubs and forward them to Loki.
+For more information about monitoring Azure resources in Grafana Cloud, refer to [Monitor Microsoft Azure][].
 
-{{< param "PRODUCT_NAME" >}} authenticates with Azure Event Hubs using Azure Workload Identity, which eliminates the need for secrets or connection strings.
-Logs flow from your Azure resources to Azure Event Hubs, where {{< param "PRODUCT_NAME" >}} consumes them and forwards them to Grafana Cloud Loki.
+This topic describes how to:
+
+* Prepare your Azure environment with Workload Identity authentication.
+* Configure Azure Event Hubs and install {{< param "PRODUCT_NAME" >}}.
+* Optionally extract labels from Azure resource logs.
+
+## Components used in this topic
+
+* [`loki.source.azure_event_hubs`][loki.source.azure_event_hubs]
+* [`loki.process`][loki.process]
+* [`loki.write`][loki.write]
+
+[loki.source.azure_event_hubs]: ../../reference/components/loki/loki.source.azure_event_hubs/
+[loki.process]: ../../reference/components/loki/loki.process/
+[loki.write]: ../../reference/components/loki/loki.write/
+[Monitor Microsoft Azure]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/monitor-cloud-provider/azure/
 
 ## Before you begin
 
 Ensure you have the following:
 
-- Azure administrator access with `Microsoft.Authorization/roleAssignments/write` permissions, such as [Role Based Access Control Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#role-based-access-control-administrator) or [User Access Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#user-access-administrator)
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed and authenticated
-- [`kubectl`](https://kubernetes.io/docs/tasks/tools/) installed and configured to access your AKS cluster
-- [Helm](https://helm.sh/docs/intro/install/) installed
+* Azure administrator access with `Microsoft.Authorization/roleAssignments/write` permissions, such as [Role Based Access Control Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#role-based-access-control-administrator) or [User Access Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#user-access-administrator)
+* [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed and authenticated
+* [`kubectl`](https://kubernetes.io/docs/tasks/tools/) installed and configured to access your AKS cluster
+* [Helm](https://helm.sh/docs/intro/install/) installed
 
 ## Prepare your Azure environment
 
@@ -51,8 +66,8 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<RESOURCE_GROUP>`_: Your Azure resource group
-   - _`<AKS_CLUSTER_NAME>`_: The name of your AKS cluster
+   * _`<RESOURCE_GROUP>`_: Your Azure resource group
+   * _`<AKS_CLUSTER_NAME>`_: The name of your AKS cluster
 
 1. Retrieve the OIDC issuer URL for your cluster.
    You need this value when creating the federated credential.
@@ -67,8 +82,8 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<RESOURCE_GROUP>`_: Your Azure resource group
-   - _`<AKS_CLUSTER_NAME>`_: The name of your AKS cluster
+   * _`<RESOURCE_GROUP>`_: Your Azure resource group
+   * _`<AKS_CLUSTER_NAME>`_: The name of your AKS cluster
 
 1. Create a [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities?pivots=identity-mi-methods-azp#create-a-user-assigned-managed-identity).
 
@@ -80,8 +95,8 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<RESOURCE_GROUP>`_: Your Azure resource group
-   - _`<MANAGED_IDENTITY_NAME>`_: A name for your managed identity
+   * _`<RESOURCE_GROUP>`_: Your Azure resource group
+   * _`<MANAGED_IDENTITY_NAME>`_: A name for your managed identity
 
 1. Retrieve the client ID for your managed identity.
    You need this value for the ServiceAccount annotation and {{< param "PRODUCT_NAME" >}} configuration.
@@ -96,8 +111,8 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<RESOURCE_GROUP>`_: Your Azure resource group
-   - _`<MANAGED_IDENTITY_NAME>`_: The name of your managed identity
+   * _`<RESOURCE_GROUP>`_: Your Azure resource group
+   * _`<MANAGED_IDENTITY_NAME>`_: The name of your managed identity
 
 1. Create a Kubernetes namespace for {{< param "PRODUCT_NAME" >}}.
 
@@ -121,7 +136,7 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<CLIENT_ID>`_: The client ID from the previous step
+   * _`<CLIENT_ID>`_: The client ID from the previous step
 
    {{< collapse title="How Azure Workload Identity authentication works" >}}
 
@@ -140,10 +155,10 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    If authentication fails, verify:
 
-   - The OIDC issuer URL matches your cluster
-   - The `--subject` value matches `system:serviceaccount:<namespace>:<serviceaccount>`
-   - The managed identity `clientId` matches the ServiceAccount annotation
-   - The `--audiences` value is `api://AzureADTokenExchange`
+   * The OIDC issuer URL matches your cluster
+   * The `--subject` value matches `system:serviceaccount:<namespace>:<serviceaccount>`
+   * The managed identity `clientId` matches the ServiceAccount annotation
+   * The `--audiences` value is `api://AzureADTokenExchange`
 
    {{< /collapse >}}
 
@@ -161,9 +176,9 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<RESOURCE_GROUP>`_: Your Azure resource group
-   - _`<MANAGED_IDENTITY_NAME>`_: The name of your managed identity
-   - _`<OIDC_ISSUER_URL>`_: The OIDC issuer URL
+   * _`<RESOURCE_GROUP>`_: Your Azure resource group
+   * _`<MANAGED_IDENTITY_NAME>`_: The name of your managed identity
+   * _`<OIDC_ISSUER_URL>`_: The OIDC issuer URL
 
 <!-- vale Grafana.Headings = NO -->
 ## Configure Azure Event Hubs
@@ -194,10 +209,10 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<MANAGED_IDENTITY_NAME>`_: The name of your managed identity
-   - _`<RESOURCE_GROUP>`_: Your Azure resource group
-   - _`<SUBSCRIPTION_ID>`_: Your Azure subscription ID
-   - _`<EVENTHUB_NAMESPACE>`_: The name of your Event Hub namespace
+   * _`<MANAGED_IDENTITY_NAME>`_: The name of your managed identity
+   * _`<RESOURCE_GROUP>`_: Your Azure resource group
+   * _`<SUBSCRIPTION_ID>`_: Your Azure subscription ID
+   * _`<EVENTHUB_NAMESPACE>`_: The name of your Event Hub namespace
 
    {{< collapse title="Role assignment scope options" >}}
 
@@ -301,13 +316,13 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    Replace the following:
 
-   - _`<CLIENT_ID>`_: Your managed identity client ID
-   - _`<TENANT_ID>`_: Your Azure tenant ID
-   - _`<EVENTHUB_NAMESPACE>`_: Your Event Hub namespace name
-   - _`<EVENTHUB_NAME>`_: Your Event Hub name
-   - _`<GRAFANA_CLOUD_LOKI_URL>`_: Your Grafana Cloud Loki endpoint, such as `https://logs-prod-us-central1.grafana.net/loki/api/v1/push`
-   - _`<GRAFANA_CLOUD_LOKI_USERNAME>`_: Your Grafana Cloud Loki username
-   - _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key
+   * _`<CLIENT_ID>`_: Your managed identity client ID
+   * _`<TENANT_ID>`_: Your Azure tenant ID
+   * _`<EVENTHUB_NAMESPACE>`_: Your Event Hub namespace name
+   * _`<EVENTHUB_NAME>`_: Your Event Hub name
+   * _`<GRAFANA_CLOUD_LOKI_URL>`_: Your Grafana Cloud Loki endpoint, such as `https://logs-prod-us-central1.grafana.net/loki/api/v1/push`
+   * _`<GRAFANA_CLOUD_LOKI_USERNAME>`_: Your Grafana Cloud Loki username
+   * _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key
 
 1. Install {{< param "PRODUCT_NAME" >}} using Helm.
 
@@ -340,15 +355,15 @@ The `loki.source.azure_event_hubs` component uses the Kafka protocol, so the exa
 
    {{< collapse title="Quick validation tips" >}}
 
-   - Verify authentication and connection:
+   * Verify authentication and connection:
 
      ```shell
      kubectl logs -n alloy -l app.kubernetes.io/name=alloy | grep -E -i "authenticated|connected|sasl"
      ```
 
-   - Push a test event to the Event Hub and confirm a matching log appears in Grafana Explore within approximately one minute.
+   * Push a test event to the Event Hub and confirm a matching log appears in Grafana Explore within approximately one minute.
 
-   - If errors occur, verify the role assignment:
+   * If errors occur, verify the role assignment:
 
      ```shell
      az role assignment list --assignee <PRINCIPAL_ID> --scope <SCOPE>
@@ -433,11 +448,11 @@ alloy:
 
 Replace the following:
 
-- _`<EVENTHUB_NAMESPACE>`_: Your Event Hub namespace name
-- _`<EVENTHUB_NAME>`_: Your Event Hub name
-- _`<GRAFANA_CLOUD_LOKI_URL>`_: Your Grafana Cloud Loki endpoint, such as `https://logs-prod-us-central1.grafana.net/loki/api/v1/push`
-- _`<GRAFANA_CLOUD_LOKI_USERNAME>`_: Your Grafana Cloud Loki username
-- _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key
+* _`<EVENTHUB_NAMESPACE>`_: Your Event Hub namespace name
+* _`<EVENTHUB_NAME>`_: Your Event Hub name
+* _`<GRAFANA_CLOUD_LOKI_URL>`_: Your Grafana Cloud Loki endpoint, such as `https://logs-prod-us-central1.grafana.net/loki/api/v1/push`
+* _`<GRAFANA_CLOUD_LOKI_USERNAME>`_: Your Grafana Cloud Loki username
+* _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key
 
 After updating the configuration, upgrade the Helm release:
 
@@ -446,23 +461,3 @@ helm upgrade alloy grafana/alloy \
     --namespace alloy \
     -f values.yaml
 ```
-
-## Next steps
-
-- [Query logs in Grafana Explore](https://grafana.com/docs/grafana-cloud/visualizations/explore/) to analyze your Azure Event Hubs data
-- [Create dashboards](https://grafana.com/docs/grafana-cloud/visualizations/dashboards/) to visualize your Azure logs
-- [Set up alerts](https://grafana.com/docs/grafana-cloud/alerting/) to get notified about important events in your Azure resources
-
-## Related documentation
-
-For more information about the {{< param "PRODUCT_NAME" >}} components, refer to:
-
-- [`loki.source.azure_event_hubs`](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.azure_event_hubs/): Receives logs from Azure Event Hubs
-- [`loki.process`](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/): Processes and transforms log entries using configurable stages
-- [`loki.write`](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.write/): Sends logs to Loki or Grafana Cloud Logs
-
-For more information about Azure monitoring in Grafana Cloud, refer to:
-
-- [Monitor Microsoft Azure](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/monitor-cloud-provider/azure/): Overview of Azure monitoring options
-- [Troubleshoot Azure integrations](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/monitor-cloud-provider/azure/troubleshoot/): Common issues and solutions
-- [Collect Azure metrics](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/monitor-cloud-provider/azure/config-azure-metrics/): Configure Azure metrics collection
