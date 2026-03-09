@@ -17,14 +17,16 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      TAG_NAME: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag }}
+      EVENT_NAME: ${{ github.event_name }}
     steps:
       - name: Set short SHA
         id: short-sha
         run: |
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
+          if [ "$EVENT_NAME" = "release" ]; then
             SHORT_SHA="${GITHUB_SHA::7}"
           else
-          # use tag-based suffix for uniqueness, so we can run multiple workflows off the same commit manually
             SHORT_SHA="manual-${GITHUB_RUN_ID}"
           fi
           echo "sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
@@ -32,13 +34,11 @@ jobs:
       - name: Extract tag name
         id: tag
         run: |
-          TAG_NAME="${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag }}"
           echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "Detected tag: ${TAG_NAME}"
 
       - name: Verify tag format
         run: |
-          TAG_NAME="${{ steps.tag.outputs.tag }}"
           if ! echo "${TAG_NAME}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Invalid tag format: ${TAG_NAME}. Expected tag in format vX.Y.Z (no additional prefix/suffix)."
             exit 1
