@@ -278,7 +278,8 @@ func (f *File) reopen(truncated bool) error {
 		level.Debug(f.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 	}
 
-	f.file.Close()
+	// Don't close file for now
+	//f.file.Close()
 
 	backoff := backoff.New(f.ctx, backoff.Config{
 		MinBackoff: f.cfg.WatcherConfig.MinPollFrequency,
