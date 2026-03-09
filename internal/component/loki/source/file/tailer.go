@@ -268,7 +268,6 @@ func (t *tailer) stop(done chan struct{}) {
 	if !t.shouldKeepPosition() {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
-
 }
 
 func (t *tailer) Key() positions.Entry {
