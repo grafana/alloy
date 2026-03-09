@@ -46,7 +46,7 @@ Validate resource configuration.
 
    {{< param "PRODUCT_NAME" >}} uses [automemlimit][] to automatically set `GOMEMLIMIT` to 90% of the container memory limit.
    `GOMEMLIMIT` is a soft limit.
-   When memory approaches this threshold, the Go runtime runs garbage collection to try to stay under it.
+   When memory approaches this threshold, the Go runtime runs garbage collection more aggressively to try to stay under it.
    Memory use can still exceed this limit if needed.
 
    To override the default, set `GOMEMLIMIT` manually.
