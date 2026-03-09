@@ -13,7 +13,7 @@ weight: 200
 
 After you [enable clustering in {{< param "PRODUCT_NAME" >}}][configure-alloy], you can configure individual components to distribute their workload across the cluster.
 
-Clustering with target auto-distribution allows a fleet of {{< param "PRODUCT_NAME" >}} instances to dynamically distribute workload and provides high-availability and horizontal scalability.
+Clustering with target auto-distribution allows a fleet of {{< param "PRODUCT_NAME" >}} instances to dynamically distribute workload and provides high availability and horizontal scalability.
 
 ## Before you begin
 
