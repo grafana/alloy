@@ -289,6 +289,7 @@ func (f *File) reopen(truncated bool) error {
 		file, err := fileext.OpenFile(f.cfg.Filename)
 		if err != nil {
 			if os.IsNotExist(err) {
+				fmt.Println("Don't exists yet")
 				level.Debug(f.logger).Log("msg", fmt.Sprintf("waiting for %s to appear...", f.cfg.Filename))
 				if err := blockUntilExists(f.ctx, f.cfg); err != nil {
 					return fmt.Errorf("failed to detect creation of %s: %w", f.cfg.Filename, err)
