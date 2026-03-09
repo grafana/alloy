@@ -265,8 +265,6 @@ func (t *tailer) stop(done chan struct{}) {
 	// We need to cleanup created metrics
 	t.cleanupMetrics()
 
-	// If the component is not stopping, then it means that the target for this component is gone and that
-	// we should clear the entry from the positions file.
 	if !t.shouldKeepPosition() {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
