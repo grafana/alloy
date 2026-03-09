@@ -51,6 +51,13 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	fmt.Printf("Running integration tests (stateful=%v, skip-build=%v, specific-test=%s)\n", stateful, skipBuild, specificTest)
 
 	ctx := cmd.Context()
+
+	if stateful {
+		// Disable the Ryuk reaper so testcontainers-go does not stop containers when this process exits.
+		// https://java.testcontainers.org/features/configuration/#disabling-ryuk
+		os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+	}
+
 	if !skipBuild {
 		buildAlloy()
 	}
@@ -72,7 +79,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		}
 		runTest(ctx, specificTest, 12345, stateful, testTimeout)
 	} else {
-		runAllTests(ctx)
+		runAllTests(ctx, testTimeout)
 	}
 	failedTests := reportResults(alwaysPrintLogs)
 	if failedTests > 0 {

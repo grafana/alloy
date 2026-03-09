@@ -1051,6 +1051,7 @@ require (
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/minio-go/v7 v7.0.95 // indirect
 	github.com/minio/minlz v1.0.0 // indirect
+	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/nwaples/rardecode/v2 v2.1.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect

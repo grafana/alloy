@@ -16,21 +16,20 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
+	"github.com/grafana/alloy/integration-tests/docker/common"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"gopkg.in/yaml.v3"
-
-	"github.com/grafana/alloy/integration-tests/docker/common"
 )
 
 const alloyImageName = "alloy-integration-tests"
 const dockerComposeFile = "docker-compose.yaml"
 
 type TestLog struct {
-	TestDir    string
-	IsError    bool
-	AlloyLog   string
-	TestOutput string
+	TestDir     string
+	IsError     bool
+	AlloyLog    string
+	TestOutput  string
+	TetragonLog string
 }
 
 type fileInfo struct {
@@ -80,7 +79,7 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 		containerFiles = append(containerFiles, testcontainers.ContainerFile{
 			Reader:            f,
 			ContainerFilePath: filepath.Join("/etc/alloy", fileToAdd.relPath),
-			FileMode:          0o700,
+			FileMode:          0o444, // world-readable so non-root users can read config files
 		})
 	}
 
@@ -126,17 +125,27 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		})
 	}
 
-	cmd := []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
-
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImageName,
 		ExposedPorts: exposedPorts,
 		WaitingFor:   wait.ForListeningPort(natPort),
-		Cmd:          cmd,
+		Entrypoint: []string{
+			"/bin/alloy", "run", "/etc/alloy/config.alloy",
+			fmt.Sprintf("--server.http.listen-addr=0.0.0.0:%d", port),
+			"--stability.level=experimental",
+			// TODO: Enable "--storage.path=/var/lib/alloy/data" only for non-root user IDs?
+			// The Dockerfile pre-creates /var/lib/alloy/data owned by the alloy
+			// user (UID 473), so it is writable for both root and non-root runs.
+			// "--storage.path=/var/lib/alloy/data",
+		},
+		ConfigModifier: func(c *container.Config) {
+			c.User = cfg.Container.User
+		},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.PortBindings = portBindings
 			hc.Mounts = append(hc.Mounts, mounts...)
 			hc.Privileged = cfg.Container.Privileged
+			hc.CapDrop = cfg.Container.CapDrop
 			hc.CapAdd = cfg.Container.CapAdd
 			hc.SecurityOpt = cfg.Container.SecurityOpt
 			hc.PidMode = container.PidMode(cfg.Container.PIDMode)
@@ -148,7 +157,6 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		NetworkAliases: map[string][]string{
 			networkName: {"alloy-" + dirName},
 		},
-		Privileged: true,
 	}
 
 	return req
@@ -184,17 +192,9 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		panic(fmt.Sprintf("failed to get absolute path of testDir: %v", err))
 	}
 
-	var cfg TestConfig
-	if _, err := os.Stat(filepath.Join(absTestDir, "test.yaml")); err == nil {
-		file, err := os.Open(filepath.Join(absTestDir, "test.yaml"))
-		if err != nil {
-			panic(fmt.Sprintf("failed to read test.yaml: %v", err))
-		}
-
-		if err := yaml.NewDecoder(file).Decode(&cfg); err != nil {
-			fmt.Println(testDir)
-			panic(fmt.Sprintf("failed to descode test.yaml: %v", err))
-		}
+	cfg, err := LoadTestConfig(filepath.Join(absTestDir, "test.yaml"))
+	if err != nil {
+		panic(fmt.Sprintf("failed to load test.yaml for %s: %v", dirName, err))
 	}
 
 	// Prepare container files
@@ -221,36 +221,95 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 	// Create container request
 	req := createContainerRequest(dirName, testDir, port, "alloy-integration-tests_integration-tests", containerFiles, cfg)
 
-	// Start container
+	// Start Tetragon before Alloy so its eBPF probes are armed before
+	// Alloy's first syscall.
+	var tetragonContainer testcontainers.Container
+	if cfg.Tetragon.Image != "" {
+		c, err := common.StartTetragonContainer(ctx, cfg.Tetragon.Image)
+		if err != nil {
+			addLog(TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to start Tetragon container: %v", err),
+				IsError:  true,
+			})
+			return
+		}
+		tetragonContainer = c
+	}
+
+	if tetragonContainer != nil {
+		time.Sleep(common.TetragonProbeInitDelay)
+	}
+
+	defer func() {
+		if !stateful && tetragonContainer != nil {
+			if err := tetragonContainer.Terminate(ctx); err != nil {
+				addLog(TestLog{
+					TestDir:  dirName,
+					AlloyLog: fmt.Sprintf("failed to terminate Tetragon container: %v", err),
+					IsError:  true,
+				})
+			}
+		}
+	}()
+
+	// Start Alloy container
 	containerStartTime := time.Now()
-	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	alloyContainer, errStart := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 		Logger:           log.Default(),
 	})
-	if err != nil {
-		addLog(TestLog{
-			TestDir:  dirName,
-			AlloyLog: fmt.Sprintf("failed to start Alloy container: %v", err),
-			IsError:  true,
-		})
+
+	// Collect all logs in a defer so they are always emitted, even when Alloy
+	// fails to start (e.g. crashes immediately at startup).
+	var testOutput []byte
+	var errTest error
+	defer func() {
+		testLogs := TestLog{TestDir: dirName}
+
+		if errStart != nil {
+			testLogs.AlloyLog = fmt.Sprintf("failed to start Alloy container: %v", errStart)
+			testLogs.IsError = true
+		} else {
+			alloyLogs, _ := alloyContainer.Logs(ctx)
+			alloyLog, _ := io.ReadAll(alloyLogs)
+			testLogs.AlloyLog = string(alloyLog)
+			testLogs.TestOutput = string(testOutput)
+			if errTest != nil {
+				testLogs.IsError = true
+			}
+		}
+
+		if tetragonContainer != nil && alloyContainer != nil {
+			tetragonLog, err := common.FormatTetragonLogs(ctx, tetragonContainer, alloyContainer)
+			if err != nil {
+				tetragonLog = fmt.Sprintf("failed to collect tetragon logs: %v", err)
+			}
+			testLogs.TetragonLog = tetragonLog
+		}
+
+		addLog(testLogs)
+	}()
+
+	if errStart != nil {
 		return
 	}
 
 	defer func() {
-		if err := alloyContainer.Terminate(ctx); err != nil {
-			addLog(TestLog{
-				TestDir:  dirName,
-				AlloyLog: fmt.Sprintf("failed to terminate Alloy container: %v", err),
-				IsError:  true,
-			})
-		}
-
-		if cfg.Container.UseMount {
-			// Cleanup mount directory
-			mountDir := filepath.Join(absTestDir, "mount")
-			if err := os.RemoveAll(mountDir); err != nil {
-				panic(fmt.Sprintf("failed to remove mount directory: %v\n", err))
+		if !stateful {
+			if err := alloyContainer.Terminate(ctx); err != nil {
+				addLog(TestLog{
+					TestDir:  dirName,
+					AlloyLog: fmt.Sprintf("failed to terminate container: %v", err),
+					IsError:  true,
+				})
+			}
+			if cfg.Container.UseMount {
+				mountDir := filepath.Join(absTestDir, "mount")
+				if err := os.RemoveAll(mountDir); err != nil {
+					panic(fmt.Sprintf("failed to remove mount directory: %v\n", err))
+				}
 			}
 		}
 	}()
@@ -262,22 +321,11 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
 			fmt.Sprintf("%s=true", common.TestStatefulEnv))
 	}
-
-	testOutput, errTest := testCmd.CombinedOutput()
-
-	// Collect and report logs
-	alloyLogs, _ := alloyContainer.Logs(ctx)
-	alloyLog, _ := io.ReadAll(alloyLogs)
-	testLogs := TestLog{
-		TestDir:    dirName,
-		AlloyLog:   string(alloyLog),
-		TestOutput: string(testOutput),
+	if tetragonContainer != nil {
+		testCmd.Env = append(testCmd.Environ(),
+			fmt.Sprintf("%s=%s", common.TetragonContainerIDEnv, tetragonContainer.GetContainerID()))
 	}
-
-	if errTest != nil {
-		testLogs.IsError = true
-	}
-	addLog(testLogs)
+	testOutput, errTest = testCmd.CombinedOutput()
 }
 
 // hasComposeFile returns true if the test directory contains a docker-compose.yaml file.
@@ -303,7 +351,7 @@ func runTest(ctx context.Context, testDir string, port int, stateful bool, testT
 	}
 }
 
-func runAllTests(ctx context.Context) {
+func runAllTests(ctx context.Context, testTimeout time.Duration) {
 	testDirs, err := filepath.Glob("./tests/*")
 	if err != nil {
 		panic(err)
@@ -407,15 +455,19 @@ func reportResults(alwaysPrintLogs bool) int {
 			continue
 		}
 		if log.IsError {
-			fmt.Printf("Failure detected in %s:\n", log.TestDir)
+			fmt.Printf("\n=== Failure detected in %s ===\n", log.TestDir)
 			dirsWithFailure[log.TestDir] = struct{}{}
 		} else if alwaysPrintLogs {
 			fmt.Printf("Tests in %s were successful:\n", log.TestDir)
 		} else {
 			continue
 		}
-		fmt.Println("Test output:", log.TestOutput)
-		fmt.Println("Alloy logs:", log.AlloyLog)
+		fmt.Println("\n--- Test output ---")
+		fmt.Println(log.TestOutput)
+		fmt.Println("\n--- Container logs ---")
+		fmt.Println(log.AlloyLog)
+		fmt.Println("\n--- Tetragon capability events ---")
+		fmt.Println(log.TetragonLog)
 	}
 
 	return len(dirsWithFailure)

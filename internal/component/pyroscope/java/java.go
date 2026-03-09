@@ -5,7 +5,6 @@ package java
 import (
 	"context"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"sync"
@@ -38,9 +37,11 @@ func init() {
 }
 
 func New(logger log.Logger, reg prometheus.Registerer, id string, a Arguments) (*Component, error) {
-	if os.Getuid() != 0 {
-		return nil, fmt.Errorf("java profiler: must be run as root")
-	}
+	// TODO: Remove this? Even if the user ID is 0, profiling can still fail if the user doesn't have enough capabilities.
+	//       It can also be possible for a non-0 user to have enough capabilities to do profiling.
+	// if os.Getuid() != 0 {
+	// 	return nil, fmt.Errorf("java profiler: must be run as root")
+	// }
 	var (
 		dist asprof.Distribution
 		err  error

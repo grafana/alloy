@@ -1,0 +1,46 @@
+logging {
+  level  = "debug"
+  format = "logfmt"
+}
+
+discovery.process "all" {}
+
+discovery.relabel "java" {
+  targets = discovery.process.all.targets
+  rule {
+    source_labels = ["__meta_process_exe"]
+    action        = "keep"
+    regex         = ".*/java$"
+  }
+  rule {
+    source_labels = ["__meta_process_commandline"]
+    regex         = "java FastSlow"
+    action        = "keep"
+  }
+  rule {
+    action       = "replace"
+    target_label = "service_name"
+    replacement  = "java-fast-slow-fibonacci"
+  }
+}
+
+pyroscope.java "java" {
+  profiling_config {
+    interval    = "15s"
+    alloc       = "512k"
+    cpu         = true
+    lock        = "10ms"
+    sample_rate = 100
+  }
+  forward_to = [pyroscope.write.default.receiver]
+  targets    = discovery.relabel.java.output
+}
+
+pyroscope.write "default" {
+  endpoint {
+    url = "http://pyroscope:4040"
+  }
+  external_labels = {
+    "env" = "integration-test",
+  }
+}

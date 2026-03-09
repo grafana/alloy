@@ -1,12 +1,7 @@
 alloy_container:
-  privileged: true
-  cap_add:
-    - "SYS_ADMIN"
-    - "SYS_PTRACE"
-    - "SYS_RESOURCE"
-  security_opt:
-    - "apparmor:unconfined"
   pid_mode: "host"
+  cap_drop: [ALL]
+  cap_add: [CAP_SYS_PTRACE]
 tetragon_container:
   # TODO: When the fix is upstreamed, use an official image instead:
   # image: quay.io/cilium/tetragon:v1.6.0

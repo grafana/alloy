@@ -89,25 +89,17 @@ services:
     networks:
       - integration-tests
 
-  prom-gen:
-    build:
-      dockerfile: ./integration-tests/docker/configs/prom-gen/Dockerfile
-      context: ../../
+  pyroscope:
+    image: grafana/pyroscope:latest
     ports:
-      - "9001:9001"
+      - "4040:4040"
     networks:
       - integration-tests
 
-  redis:
-    image: redis:6.0.9-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-      start_period: 30s
+  java-fastslow:
+    build:
+      context: ./configs/java-fastslow
+      dockerfile: java.Dockerfile
     networks:
       - integration-tests
 

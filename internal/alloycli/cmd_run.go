@@ -373,6 +373,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		Metrics:     reg,
 	})
 	if err != nil {
+		// TODO: Add a way to disable the remotecfg service?
+		// It's trying to run even if it's unused.
+		// On an environment without enough permissions, it can even crash Alloy on startup.
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)
 	}
 
