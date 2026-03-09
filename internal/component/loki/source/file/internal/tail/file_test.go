@@ -262,6 +262,33 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, &Line{Text: "4", Offset: 8}, nil)
 	})
 
+	t.Run("deleted and re-created", func(t *testing.T) {
+		name := createFile(t, "re-created", "1\n2\n")
+		defer removeFile(t, name)
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Offset:   0,
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+
+		verifyResult(t, file, &Line{Text: "1", Offset: 2}, nil)
+		verifyResult(t, file, &Line{Text: "2", Offset: 4}, nil)
+
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			removeFile(t, name)
+			time.Sleep(200 * time.Second)
+			createFileWithName(t, name, "3\n4\n")
+		}()
+
+		verifyResult(t, file, &Line{Text: "3", Offset: 2}, nil)
+		verifyResult(t, file, &Line{Text: "4", Offset: 4}, nil)
+	})
+
 	t.Run("should handle atomic writes", func(t *testing.T) {
 		name := createFile(t, "atomicwrite", "line1\nline2\nline3\nline4\n")
 		defer removeFile(t, name)
@@ -563,6 +590,10 @@ func createFile(tb testing.TB, name, content string) string {
 	path := tb.TempDir() + "/" + name
 	require.NoError(tb, os.WriteFile(path, []byte(content), 0600))
 	return path
+}
+
+func createFileWithName(tb testing.TB, name, content string) {
+	require.NoError(tb, os.WriteFile(name, []byte(content), 0600))
 }
 
 func appendToFile(t *testing.T, name, content string) {
