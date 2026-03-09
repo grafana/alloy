@@ -1,0 +1,39 @@
+extensions:
+  opamp:
+    server:
+      ws:
+        endpoint: wss://127.0.0.1:4320/v1/opamp
+        tls:
+          insecure_skip_verify: true
+    instance_uid: 01BX5ZZKBKACTAV9WEVGEMMVRZ
+    remote_configuration_directory: remote_config
+    capabilities:
+      accepts_remote_config: true
+      reports_remote_config: true
+      reports_effective_config: true
+      reports_health: true
+
+receivers:
+  otlp:
+    protocols:
+      grpc: {}
+      http: {}
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 512
+
+exporters:
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  extensions: [opamp]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
