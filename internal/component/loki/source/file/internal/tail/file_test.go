@@ -277,10 +277,9 @@ func TestFile(t *testing.T) {
 
 		verifyResult(t, file, &Line{Text: "1", Offset: 2}, nil)
 		verifyResult(t, file, &Line{Text: "2", Offset: 4}, nil)
+		removeFile(t, name)
 
 		go func() {
-			time.Sleep(100 * time.Millisecond)
-			removeFile(t, name)
 			createFileWithName(t, name, "3\n4\n")
 		}()
 
