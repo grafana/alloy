@@ -3,6 +3,13 @@ name: Trigger Rollout
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.14.0)'
+        required: true
+        default: ''
+        type: string
 
 jobs:
   trigger-argo-deploy:
@@ -14,14 +21,20 @@ jobs:
       - name: Set short SHA
         id: short-sha
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            SHORT_SHA="${GITHUB_SHA::7}"
+          else
+          # use tag-based suffix for uniqueness, so we can run multiple workflows off the same commit manually
+            SHORT_SHA="manual-${GITHUB_RUN_ID}"
+          fi
           echo "sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Extract tag name
         id: tag
         run: |
-          echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-          echo "Detected tag: ${{ github.event.release.tag_name }}"
+          TAG_NAME="${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag }}"
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Detected tag: ${TAG_NAME}"
 
       - name: Verify tag format
         run: |
