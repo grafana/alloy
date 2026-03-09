@@ -270,6 +270,7 @@ func (f *File) drain() {
 // written to. It saves the current file handle info to ensure we only start tailing a
 // different file instance.
 func (f *File) reopen(truncated bool) error {
+	fmt.Println("Truncated: ", truncated)
 	cf, err := f.file.Stat()
 	if !truncated && err != nil {
 		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
