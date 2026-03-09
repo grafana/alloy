@@ -7,15 +7,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
-	"github.com/prometheus-community/postgres_exporter/cmd/postgres_exporter"
 	"github.com/prometheus-community/postgres_exporter/collector"
+	postgres_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -45,8 +44,11 @@ type Config struct {
 
 // Config for the stat_statement collector flags
 type StatStatementFlags struct {
-	IncludeQuery bool
-	QueryLength  uint
+	IncludeQuery     bool
+	QueryLength      uint
+	Limit            uint
+	ExcludeDatabases []string
+	ExcludeUsers     []string
 }
 
 // Name returns the name of the integration this config is for.
@@ -161,18 +163,17 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	logger := slog.New(logging.NewSlogGoKitHandler(log))
 
 	e := postgres_exporter.NewExporter(
 		dsns,
+		logger,
 		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
 		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
 		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
 		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
 		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
-		postgres_exporter.WithLogger(logger),
 		postgres_exporter.WithMetricPrefix("pg"),
 	)
 
@@ -181,32 +182,31 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e)), nil
 	}
 
-	// This is a hack to force the command line flag values for the stat_statements collector.
-	// These flags are not exposed outside the package and cannot be mutated afterwards.
-	if cfg.StatStatementFlags != nil && cfg.StatStatementFlags.IncludeQuery {
-		includeQueryFlag := kingpin.CommandLine.GetFlag("collector.stat_statements.include_query")
-		queryLengthFlag := kingpin.CommandLine.GetFlag("collector.stat_statements.query_length")
-
-		if includeQueryFlag == nil || queryLengthFlag == nil {
-			return nil, fmt.Errorf("failed to find collector.stat_statements.include_query or collector.stat_statements.query_length in postgres_exporter")
-		}
-
-		err := includeQueryFlag.Model().Value.Set("true")
-		if err != nil {
-			return nil, fmt.Errorf("failed to set include query flag using Kingpin : %w", err)
-		}
-
-		err = queryLengthFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.QueryLength))
-		if err != nil {
-			return nil, fmt.Errorf("failed to set query length flag using Kingpin : %w", err)
-		}
+	// Build per-instance collector options.
+	collectorOpts := []collector.Option{
+		collector.WithCollectionTimeout("10s"),
+	}
+	if cfg.StatStatementFlags != nil {
+		collectorOpts = append(collectorOpts, collector.WithStatStatementsConfig(collector.StatStatementsConfig{
+			IncludeQuery:     cfg.StatStatementFlags.IncludeQuery,
+			QueryLength:      cfg.StatStatementFlags.QueryLength,
+			Limit:            cfg.StatStatementFlags.Limit,
+			ExcludeDatabases: cfg.StatStatementFlags.ExcludeDatabases,
+			ExcludeUsers:     cfg.StatStatementFlags.ExcludeUsers,
+		}))
 	}
 
 	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
 	// However, these can only work for the first DSN provided. This matches the current implementation of the exporter.
 	// TODO: Once https://github.com/prometheus-community/postgres_exporter/issues/999 is addressed, update the exporter
 	// and change this.
-	c, err := collector.NewPostgresCollector(logger, cfg.ExcludeDatabases, dsns[0], cfg.EnabledCollectors)
+	c, err := collector.NewPostgresCollector(
+		logger,
+		cfg.ExcludeDatabases,
+		dsns[0],
+		cfg.EnabledCollectors,
+		collectorOpts...,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
 	}

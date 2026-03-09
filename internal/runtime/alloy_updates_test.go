@@ -109,13 +109,14 @@ func TestController_Updates_WithQueueFull(t *testing.T) {
 	}
 `
 
-	ctrl := newController(controllerOptions{
+	ctrl, err := newController(controllerOptions{
 		Options:        testOptions(t),
 		ModuleRegistry: newModuleRegistry(),
 		IsModule:       false,
 		// The small number of workers and small queue means that a lot of updates will need to be retried.
 		WorkerPool: worker.NewFixedWorkerPool(1, 1),
 	})
+	require.NoError(t, err)
 
 	// Use testUpdatesFile from graph_builder_test.go.
 	f, err := ParseSource(t.Name(), []byte(config))
@@ -371,11 +372,13 @@ func TestController_Updates_WithLaggingComponent(t *testing.T) {
 }
 
 func newTestController(t *testing.T) *Runtime {
-	return newController(controllerOptions{
+	ctrl, err := newController(controllerOptions{
 		Options:        testOptions(t),
 		ModuleRegistry: newModuleRegistry(),
 		IsModule:       false,
 		// Make sure that we have consistent number of workers for tests to make them deterministic.
 		WorkerPool: worker.NewFixedWorkerPool(4, 100),
 	})
+	require.NoError(t, err)
+	return ctrl
 }

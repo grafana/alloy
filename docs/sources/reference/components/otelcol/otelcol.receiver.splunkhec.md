@@ -63,13 +63,13 @@ If logs or metrics are exported with `otelcol.exporter.splunkhec` it will check 
 You can use the following blocks with `otelcol.receiver.splunkhec`:
 
 | Block                                                      | Description                                                                | Required |
-|------------------------------------------------------------|----------------------------------------------------------------------------|----------|
+| ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                         | Configures where to send received telemetry data.                          | yes      |
 | [`cors`][cors]                                             | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state. | no       |
 | [`hec_metadata_to_otel_attrs`][hec_metadata_to_otel_attrs] | Configures OpenTelemetry attributes from HEC metadata.                     | no       |
 | [`tls`][tls]                                               | Configures TLS for the HTTP server.                                        | no       |
-| `tls` > [`tpm`][tpm]                                       | Configures TPM settings for the TLS key_file.                              | no       |
+| `tls` > [`tpm`][tpm]                                       | Configures TPM settings for the TLS `key_file`.                            | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
@@ -174,12 +174,12 @@ otelcol.receiver.splunkhec "default" {
 
 otelcol.processor.batch "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }

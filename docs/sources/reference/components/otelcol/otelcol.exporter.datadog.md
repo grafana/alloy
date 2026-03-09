@@ -76,18 +76,19 @@ The > symbol indicates deeper levels of nesting.
 For example, `metrics` > `summaries` refers to a `summaries` block defined inside a `metrics` block.
 
 [api]: #api
-[traces]: #traces
-[logs]: #logs
-[metrics]: #metrics
+[batch]: #batch
+[client]: #client
+[debug_metrics]: #debug_metrics
 [exporter]: #exporter
 [histograms]: #histograms
+[host_metadata]: #host_metadata
+[logs]: #logs
+[metrics]: #metrics
+[queue]: #sending_queue
+[retry_on_failure]: #retry_on_failure
 [sums]: #sums
 [summaries]: #summaries
-[host_metadata]: #host_metadata
-[client]: #client
-[retry_on_failure]: #retry_on_failure
-[queue]: #sending_queue
-[debug_metrics]: #debug_metrics
+[traces]: #traces
 
 ### `api`
 
@@ -146,8 +147,8 @@ By default, the exporter only sends host metadata for a single host, whose name 
 Valid values for `hostname_source` are:
 
 * `"first_resource"` picks the host metadata hostname from the resource attributes on the first OTLP payload that gets to the exporter. 
-  If the first payload lacks hostname-like attributes, it will fallback to 'config_or_system' behavior. **Don't use this hostname source if receiving data from multiple hosts**.
-* `"config_or_system"` picks the host metadata hostname from the 'hostname' setting, falling back to system and cloud provider APIs.
+  If the first payload lacks hostname-like attributes, it will fallback to `config_or_system` behavior. **Don't use this hostname source if receiving data from multiple hosts**.
+* `"config_or_system"` picks the host metadata hostname from the `hostname` setting, falling back to system and cloud provider APIs.
 
 ### `logs`
 
@@ -348,12 +349,12 @@ This example forwards metrics and traces received in Datadog format to {{< param
 ```alloy
 otelcol.receiver.datadog "default" {
     output {
-        metrics = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default input]
-        traces  = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default.input]
+        metrics = [otelcol.exporter.otlphttp.default.input, otelcol.exporter.datadog.default input]
+        traces  = [otelcol.exporter.otlphttp.default.input, otelcol.exporter.datadog.default.input]
     }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
     client {
         endpoint = "database:4317"
     }

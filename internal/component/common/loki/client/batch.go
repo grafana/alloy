@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/golang/snappy"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
@@ -17,6 +15,7 @@ import (
 )
 
 var (
+	errBatchSizeReached        = errors.New("batch size reached")
 	errMaxStreamsLimitExceeded = errors.New("streams limit exceeded")
 )
 
@@ -32,58 +31,108 @@ type SentDataMarkerHandler interface {
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
 	streams map[string]*push.Stream
-	// totalBytes holds the total amounts of bytes, across the log lines in this batch.
-	totalBytes int
-	createdAt  time.Time
-
+	// createdAt is when the batch was created.
+	createdAt time.Time
+	// maxSize is the maximum batch size in bytes. At least one entry is always
+	// allowed even if it exceeds this limit.
+	maxSize int
+	// maxStreams is the maximum number of streams in the batch. Zero means no limit.
 	maxStreams int
-
+	// size holds the total number of bytes across log lines in this batch.
+	size int
 	// segmentCounter tracks the amount of entries for each segment present in this batch.
 	segmentCounter map[int]int
 }
 
-func newBatch(maxStreams int, entries ...loki.Entry) *batch {
-	b := &batch{
-		streams:        map[string]*push.Stream{},
-		totalBytes:     0,
+func newBatch(maxStreams, maxSize int) *batch {
+	return &batch{
+		streams:        make(map[string]*push.Stream),
 		createdAt:      time.Now(),
+		maxSize:        maxSize,
 		maxStreams:     maxStreams,
 		segmentCounter: map[int]int{},
 	}
-
-	// Add entries to the batch
-	for _, entry := range entries {
-		//never error here
-		_ = b.add(entry, 0)
-	}
-
-	return b
 }
 
-// add an entry to the batch. segmentNum is used to associate batch with a segment from WAL.
-// If entry is added from non backed WAL client it can be anything and is unused.
+// add adds an entry to the batch. It returns errBatchSizeReached when
+// entry cannot be added because it would exceed maxSize and
+// errMaxStreamsLimitExceeded when adding a new stream would exceed maxStreams.
+// segmentNum associates the entry with a WAL segment and is unused for non-WAL clients.
 func (b *batch) add(entry loki.Entry, segmentNum int) error {
-	b.totalBytes += entrySize(entry.Entry)
-
-	// Append the entry to an already existing stream (if any)
 	labels := labelsMapToString(entry.Labels)
-	if stream, ok := b.streams[labels]; ok {
+
+	stream, ok := b.streams[labels]
+	if ok {
+		size := entry.Size()
+		if !b.canAdd(size) {
+			return errBatchSizeReached
+		}
+
 		stream.Entries = append(stream.Entries, entry.Entry)
+		b.size += size
 		b.countForSegment(segmentNum)
 		return nil
 	}
 
 	streams := len(b.streams)
+	// Reject if we would exceed the maxStreams limit.
 	if b.maxStreams > 0 && streams >= b.maxStreams {
 		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
 	}
-	// Add the entry as a new stream
+
+	size := entry.Size()
+	// NOTE: We will always allow to add at least one entry to a batch
+	// even if that entry makes the size bigger than maxSize.
+	if streams != 0 && !b.canAdd(size) {
+		return errBatchSizeReached
+	}
+
 	b.streams[labels] = &push.Stream{
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
+	b.size += size
 	b.countForSegment(segmentNum)
 	return nil
+}
+
+// canAdd reports whether adding size bytes would exceed the batch's maxSize.
+func (b *batch) canAdd(size int) bool {
+	return b.size+size <= b.maxSize
+}
+
+// age of the batch since its creation
+func (b *batch) age() time.Duration {
+	return time.Since(b.createdAt)
+}
+
+// request returns a PushRequest and number of entries it contains.
+func (b *batch) request() (*push.PushRequest, int) {
+	req := &push.PushRequest{Streams: make([]push.Stream, 0, len(b.streams))}
+
+	var entries int
+	for _, stream := range b.streams {
+		req.Streams = append(req.Streams, *stream)
+		entries += len(stream.Entries)
+	}
+	return req, entries
+}
+
+// countForSegment tracks that one data item has been read from a certain WAL segment.
+func (b *batch) countForSegment(segmentNum int) {
+	if curr, ok := b.segmentCounter[segmentNum]; ok {
+		b.segmentCounter[segmentNum] = curr + 1
+		return
+	}
+	b.segmentCounter[segmentNum] = 1
+}
+
+// reportAsSentData will report for all segments whose data is part of this batch, the amount of that data as sent to
+// the provided SentDataMarkerHandler
+func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
+	for seg, data := range b.segmentCounter {
+		h.UpdateSentData(seg, data)
+	}
 }
 
 // labelsMapToString encodes an entry's label set as a string, ignoring internal labels
@@ -118,71 +167,4 @@ func labelsMapToString(ls model.LabelSet) string {
 	b.WriteByte('}')
 
 	return b.String()
-}
-
-// sizeBytes returns the current batch size in bytes
-func (b *batch) sizeBytes() int {
-	return b.totalBytes
-}
-
-// sizeBytesAfter returns the size of the batch after the input entry
-// will be added to the batch itself
-func (b *batch) sizeBytesAfter(entry push.Entry) int {
-	return b.totalBytes + entrySize(entry)
-}
-
-// age of the batch since its creation
-func (b *batch) age() time.Duration {
-	return time.Since(b.createdAt)
-}
-
-// encode the batch as snappy-compressed push request, and returns
-// the encoded bytes and the number of encoded entries
-func (b *batch) encode() ([]byte, int, error) {
-	req, entriesCount := b.createPushRequest()
-	buf, err := proto.Marshal(req)
-	if err != nil {
-		return nil, 0, err
-	}
-	buf = snappy.Encode(nil, buf)
-	return buf, entriesCount, nil
-}
-
-// creates push request and returns it, together with number of entries
-func (b *batch) createPushRequest() (*push.PushRequest, int) {
-	req := push.PushRequest{
-		Streams: make([]push.Stream, 0, len(b.streams)),
-	}
-
-	entriesCount := 0
-	for _, stream := range b.streams {
-		req.Streams = append(req.Streams, *stream)
-		entriesCount += len(stream.Entries)
-	}
-	return &req, entriesCount
-}
-
-// countForSegment tracks that one data item has been read from a certain WAL segment.
-func (b *batch) countForSegment(segmentNum int) {
-	if curr, ok := b.segmentCounter[segmentNum]; ok {
-		b.segmentCounter[segmentNum] = curr + 1
-		return
-	}
-	b.segmentCounter[segmentNum] = 1
-}
-
-// reportAsSentData will report for all segments whose data is part of this batch, the amount of that data as sent to
-// the provided SentDataMarkerHandler
-func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
-	for seg, data := range b.segmentCounter {
-		h.UpdateSentData(seg, data)
-	}
-}
-
-func entrySize(entry push.Entry) int {
-	structuredMetadataSize := 0
-	for _, label := range entry.StructuredMetadata {
-		structuredMetadataSize += label.Size()
-	}
-	return len(entry.Line) + structuredMetadataSize
 }

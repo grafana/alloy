@@ -8,6 +8,7 @@
     (import './dashboards/controller.libsonnet') +
     (import './dashboards/prometheus.libsonnet') +
     (import './dashboards/opentelemetry.libsonnet') +
+    (import './dashboards/otel-engine-overview.libsonnet') +
     (import './dashboards/loki.libsonnet'),
 
   grafanaDashboards+::

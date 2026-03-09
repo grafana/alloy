@@ -14,6 +14,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const positionFileMode = 0600
+
 func writePositionFile(filename string, positions map[Entry]string) error {
 	buf, err := yaml.Marshal(File{
 		Positions: positions,

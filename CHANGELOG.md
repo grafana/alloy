@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.13.2](https://github.com/grafana/alloy/compare/v1.13.1...v1.13.2) (2026-02-23)
+
+
+### Bug Fixes 🐛
+
+* Expose missing `otelcol.processor.tail_sampling` options [backport] ([#5614](https://github.com/grafana/alloy/issues/5614)) ([3225ea3](https://github.com/grafana/alloy/commit/3225ea38da1cbf31f065cc5da0b1ee0645eefa15))
+* **mixin:** Add zipped dashboards as a release artifact [backport] ([#5625](https://github.com/grafana/alloy/issues/5625)) ([37ff20f](https://github.com/grafana/alloy/commit/37ff20fd3074869adc57420d7f88a6c9386898d6))
+* **profiler:** Backport Go 1.26 gopclntab textStart fix ([#5572](https://github.com/grafana/alloy/issues/5572)) ([5ca05c9](https://github.com/grafana/alloy/commit/5ca05c9d69ebb3ef3b4f9cfce5585a90e4d4432c))
+* **prometheus.exporter.postgres:** Update version of the exporter fork to fix pg_settings ([#5574](https://github.com/grafana/alloy/issues/5574)) ([62a52f8](https://github.com/grafana/alloy/commit/62a52f8537cd15c9cf1a329c4c35f32f86316740))
+* **pyroscope.ebpf:** Backport dotnet nibble map fix ([#5553](https://github.com/grafana/alloy/issues/5553)) ([6c62760](https://github.com/grafana/alloy/commit/6c62760e6121b1f2c6c75276f7ee6f7f7055bd5e))
+
+## [1.13.1](https://github.com/grafana/alloy/compare/v1.13.0...v1.13.1) (2026-02-13)
+
+
+### Bug Fixes 🐛
+
+* **database_observability.mysql:** Make query sample text nullable in MySQL query details collector [backport] ([#5519](https://github.com/grafana/alloy/issues/5519)) ([fc49bfe](https://github.com/grafana/alloy/commit/fc49bfe172aaed8a9ef5ee8bce7e639e59f432fb))
+* **database_observability.mysql:** Skip wait events with `NULL` timer_wait [backport] ([#5521](https://github.com/grafana/alloy/issues/5521)) ([2f43c91](https://github.com/grafana/alloy/commit/2f43c9123ef8ad75af72bd7c85dc3d08b4034ed1))
+* **database_observability.postgres:** Improvements to SET search_path for postgres explain plans [backport] ([#5520](https://github.com/grafana/alloy/issues/5520)) ([ecbb577](https://github.com/grafana/alloy/commit/ecbb577fce3ca5061294aae74406e98f5f2a464a))
+* **loki.process:** Registration of stage.metric when used inside stage.match [backport] ([#5495](https://github.com/grafana/alloy/issues/5495)) ([2bbc37e](https://github.com/grafana/alloy/commit/2bbc37e1c810d4c6c5655ec4204ff7e30a703d05))
+* **loki.source.docker:** Parse timestamp correctly when log line only contains newline [backport] ([#5496](https://github.com/grafana/alloy/issues/5496)) ([55a82f0](https://github.com/grafana/alloy/commit/55a82f0f634f57bbd5634e486afe276d8c176e51))
+* **loki.source.file:** Close file if we cannot find encoding [backport] ([#5531](https://github.com/grafana/alloy/issues/5531)) ([ccda4a5](https://github.com/grafana/alloy/commit/ccda4a50c38e230b2ed9caff718a8487da2b3f73))
+* **prometheus.receive_http:** Bump prometheus patch for bugfix [backport] ([#5516](https://github.com/grafana/alloy/issues/5516)) ([b3531fb](https://github.com/grafana/alloy/commit/b3531fb8730256eac7f34c877fa6cf73c5a8a60b))
+* **scheduling:** Shutdown runnables with a timeout before starting new ones [backport] ([#5443](https://github.com/grafana/alloy/issues/5443)) ([d446610](https://github.com/grafana/alloy/commit/d44661062d11711e9dae216fa98aaad61f027c30))
+
 ## [1.13.0](https://github.com/grafana/alloy/compare/v1.12.1...v1.13.0) (2026-02-05)
 
 
