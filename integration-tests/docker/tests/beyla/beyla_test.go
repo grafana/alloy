@@ -23,3 +23,11 @@ func TestBeylaTraces(t *testing.T) {
 	}
 	common.TracesTest(t, tags, "beyla")
 }
+
+// TestCapabilities runs after the Beyla tests and reads capability events
+// recorded by Tetragon throughout the test run. Tetragon is started by the
+// test runner before Alloy, so it captures capabilities from Alloy's very
+// first syscall.
+func TestCapabilities(t *testing.T) {
+	common.AssertTetragonCapabilities(t, "alloy", nil)
+}

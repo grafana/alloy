@@ -1,0 +1,3 @@
+// Empty Alloy configuration.
+// Used by the empty-config integration test to observe which Linux capabilities
+// Alloy requests at startup with no components configured.

@@ -1,0 +1,6 @@
+container:
+  tetragon_image: cilium/tetragon:latest
+  # Run with no Linux capabilities at all.  Tetragon still observes every
+  # cap_capable() check (DENIED) via its kprobe, proving that the detection
+  # mechanism works even when the container has no privilege.
+  capabilities: []

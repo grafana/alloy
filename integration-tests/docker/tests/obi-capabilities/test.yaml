@@ -1,0 +1,5 @@
+# OBI capabilities test manages its own containers (OBI + Alloy).
+# Run with: go run . --test obi-capabilities --test-timeout=8m --skip-build
+container:
+  self_managed: true
+  image: ptodev/ebpf-instrument:dev

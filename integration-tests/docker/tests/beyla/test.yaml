@@ -1,4 +1,4 @@
-alloy_container:
+container:
   privileged: true
   cap_add:
     - "SYS_ADMIN"
@@ -7,3 +7,5 @@ alloy_container:
   security_opt:
     - "apparmor:unconfined"
   pid_mode: "host"
+  # tetragon_image: quay.io/cilium/tetragon:v1.6.0
+  tetragon_image: cilium/tetragon:latest

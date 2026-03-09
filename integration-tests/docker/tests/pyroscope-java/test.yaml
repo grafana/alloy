@@ -1,0 +1,7 @@
+container:
+  pid_mode: "host"
+  tetragon_image: cilium/tetragon:latest
+  # Run with no Linux capabilities. All cap_capable() checks — including those
+  # from cilium/ebpf and async-profiler — are denied by the kernel and captured
+  # by Tetragon's kprobe.
+  capabilities: [CAP_SYS_PTRACE]

@@ -1,2 +1,2 @@
-alloy_container:
+container:
   use_mount: true
