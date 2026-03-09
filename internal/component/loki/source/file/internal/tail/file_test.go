@@ -281,7 +281,7 @@ func TestFile(t *testing.T) {
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			removeFile(t, name)
-			time.Sleep(200 * time.Second)
+			time.Sleep(200 * time.Millisecond)
 			createFileWithName(t, name, "3\n4\n")
 		}()
 
