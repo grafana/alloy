@@ -64,7 +64,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 
 	start := time.Now()
 	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
-	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka", "loki", "redis"}
+	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "loki"}
 	executeCommand("docker", waitArgs, "Waiting for dependent services to be healthy")
 	waitForHTTPReady("http://localhost:9009/ready", 3*time.Minute)
 	fmt.Printf("Environment setup completed in %s\n", time.Since(start))
