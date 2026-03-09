@@ -361,7 +361,7 @@ func TestTailer_Compressions(t *testing.T) {
 		logger,
 		handler.Receiver(),
 		positionsFile,
-		// We return false here to verify that position is keept and we don't re-ingest the file.
+		// We return false here to verify that position is kept and we don't re-ingest the file.
 		func() bool { return false },
 		sourceOptions{
 			path:                 filename,
