@@ -6,6 +6,7 @@ import (
 	"compress/zlib"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
@@ -278,6 +280,8 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, &Line{Text: "1", Offset: 2}, nil)
 		verifyResult(t, file, &Line{Text: "2", Offset: 4}, nil)
 		removeFile(t, name)
+		pending, err := fileext.IsDeletePending(file.file)
+		fmt.Println(pending, err)
 
 		go func() {
 			createFileWithName(t, name, "3\n4\n")
