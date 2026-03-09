@@ -54,12 +54,12 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 You can use the following blocks with `otelcol.receiver.influxdb`:
 
 | Block                            | Description                                           | Required |
-|----------------------------------|-------------------------------------------------------|----------|
+| -------------------------------- | ----------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received metrics.            | yes      |
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                  | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates. | no       |
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                   | no       |
-| `tls` > [`tpm`][tpm]             | Configures TPM settings for the TLS key_file.         | no       |
+| `tls` > [`tpm`][tpm]             | Configures TPM settings for the TLS `key_file`.       | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.

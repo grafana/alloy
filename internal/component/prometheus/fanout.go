@@ -2,6 +2,7 @@ package prometheus
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component/prometheus/appenders"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
@@ -37,6 +39,22 @@ type Fanout struct {
 	// lastSeriesCount stores the number of series that were sent through the last appender. It helps to estimate how
 	// much memory to allocate for the staleness trackers.
 	lastSeriesCount atomic.Int64
+
+	useLabelStore         bool
+	seriesRefMappingStore *appenders.SeriesRefMappingStore
+	// deadRefThreshold is updated on every children change. Any store-issued ref
+	// below this value was issued before the last topology change and must be
+	// zeroed before forwarding to a child appender.
+	deadRefThreshold storage.SeriesRef
+}
+
+func normalizeChildren(children []storage.Appendable) []storage.Appendable {
+	if len(children) == 0 {
+		return nil
+	}
+
+	cloned := slices.Clone(children)
+	return slices.DeleteFunc(cloned, func(i storage.Appendable) bool { return i == nil })
 }
 
 // NewFanout creates a fanout appendable.
@@ -48,26 +66,52 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 	})
 	_ = register.Register(wl)
 
+	// Note: this only covers calls to Append. It could make more sense when upstream changes to AppendV2 where there will be
+	// only a single Append function. But we might want to make this a CounterVec with different labels for the
+	// different appended types.
 	s := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "prometheus_forwarded_samples_total",
 		Help: "Total number of samples sent to downstream components.",
 	})
 	_ = register.Register(s)
 
+	useLabelStore := ls != nil && ls.Enabled()
+
 	return &Fanout{
-		children:       children,
+		children:       normalizeChildren(children),
 		componentID:    componentID,
 		writeLatency:   wl,
 		samplesCounter: s,
 		ls:             ls,
+
+		useLabelStore:         useLabelStore,
+		seriesRefMappingStore: appenders.NewSeriesRefMappingStore(register),
 	}
 }
 
 // UpdateChildren allows changing of the children of the fanout.
+//
+// When children change, the store is cleared to start a new ref generation.
+// This guards against two ref collision hazards that arise when the appender
+// type changes between passthrough (1 child) and seriesRefMapping (N children):
+//
+// passthrough → seriesRefMapping: a cached raw child ref (e.g. WAL ref) may collide
+// numerically with a store-issued unique ref for a different series. The store guards
+// against this with a label hash check on every mapping lookup.
+//
+// seriesRefMapping → passthrough: a cached store-issued unique ref is meaningless to
+// the child and must not be forwarded. Clear returns the new generation boundary;
+// the passthrough zeros any ref below it before forwarding.
 func (f *Fanout) UpdateChildren(children []storage.Appendable) {
+	c := normalizeChildren(children)
+
 	f.mut.Lock()
 	defer f.mut.Unlock()
-	f.children = children
+
+	if !slices.Equal(f.children, c) {
+		f.deadRefThreshold = f.seriesRefMappingStore.Clear()
+	}
+	f.children = c
 }
 
 // Appender satisfies the Appendable interface.
@@ -94,19 +138,27 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 	}
 
-	app := &appender{
-		children:          make([]storage.Appender, 0),
-		fanout:            f,
-		stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
+	children := make([]storage.Appender, 0, len(f.children))
+	for _, c := range f.children {
+		children = append(children, c.Appender(ctx))
 	}
 
-	for _, x := range f.children {
-		if x == nil {
-			continue
+	if f.useLabelStore {
+		return &appender{
+			children:          children,
+			fanout:            f,
+			stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
 		}
-		app.children = append(app.children, x.Appender(ctx))
 	}
-	return app
+
+	return appenders.New(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
+}
+
+func (f *Fanout) Clear() {
+	f.mut.Lock()
+	defer f.mut.Unlock()
+
+	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
 }
 
 type appender struct {
@@ -235,7 +287,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	if ref == 0 {
 		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
-	// TODO histograms are not currently tracked for staleness causing them to be held forever
+
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.AppendHistogram(ref, l, t, h, fh)

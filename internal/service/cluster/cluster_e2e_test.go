@@ -582,7 +582,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	})
 	require.NoError(t, err)
 
-	f := runtime.New(runtime.Options{
+	f, err := runtime.New(runtime.Options{
 		Logger:               logger,
 		Tracer:               tracer,
 		DataPath:             nodeDirPath,
@@ -595,6 +595,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 			remoteCfgService,
 		},
 	})
+	require.NoError(t, err)
 
 	// Add the new peer to the state
 	state.peers = append(state.peers, newPeer)

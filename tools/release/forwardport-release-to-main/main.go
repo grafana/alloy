@@ -6,9 +6,15 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/grafana/alloy/tools/release/internal/git"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
+)
+
+const (
+	zizmorCheckName = "zizmor" // Code scanning check from github-advanced-security
+	zizmorTimeout   = 5 * time.Minute
 )
 
 func main() {
@@ -50,9 +56,13 @@ func main() {
 	// Extract version from release branch (release/v1.15 -> v1.15)
 	version := strings.TrimPrefix(releaseBranch, "release/")
 
+	// Temp branch for the forwardport commit (so we can open a draft PR for zizmor)
+	forwardportBranch := "forwardport/" + version
+
 	fmt.Printf("🔀 Merging release branch to main after release-please PR #%d\n", prNumber)
 	fmt.Printf("   Release branch: %s\n", releaseBranch)
 	fmt.Printf("   Version: %s\n", version)
+	fmt.Printf("   Forwardport branch: %s\n", forwardportBranch)
 
 	// Check if the release branch is already fully merged into main
 	alreadyMerged, err := client.IsBranchMergedInto(ctx, releaseBranch, "main")
@@ -66,7 +76,7 @@ func main() {
 
 	if dryRun {
 		fmt.Println("\n🏃 DRY RUN - No changes made")
-		fmt.Printf("Would merge: %s → main\n", releaseBranch)
+		fmt.Printf("Would merge: %s → main (via draft PR on %s, wait for zizmor, then push main)\n", releaseBranch, forwardportBranch)
 		return
 	}
 
@@ -81,10 +91,14 @@ func main() {
 		log.Fatalf("Failed to configure git: %v", err)
 	}
 
-	// Checkout main (assumes branches are already fetched)
+	// Checkout main and create forwardport branch from it (so we build the commit on the side branch)
 	fmt.Println("🔀 Checking out main...")
 	if err := git.Checkout("main"); err != nil {
 		log.Fatalf("Failed to checkout main: %v", err)
+	}
+	fmt.Printf("📌 Creating branch %s from main...\n", forwardportBranch)
+	if err := git.CreateBranchFrom(forwardportBranch, "main"); err != nil {
+		log.Fatalf("Failed to create branch %s: %v", forwardportBranch, err)
 	}
 
 	// Get the merge commit SHA from the release-please PR - this contains the
@@ -95,7 +109,7 @@ func main() {
 	}
 	fmt.Printf("   Release-please merge commit: %s\n", mergeCommitSHA[:7])
 
-	// Merge the release branch into main using "ours" strategy.
+	// Merge the release branch using "ours" strategy (on the forwardport branch).
 	// This creates a merge commit that records the release branch history (including tags)
 	// but keeps main's content unchanged.
 	commitMessage := fmt.Sprintf(`chore: Forwardport %s to main
@@ -115,13 +129,12 @@ This commit serves two purposes:
 		originalPR.GetTitle(),
 	)
 
-	fmt.Printf("🔀 Merging %s into main (ours strategy)...\n", releaseBranch)
+	fmt.Printf("🔀 Merging %s into %s (ours strategy)...\n", releaseBranch, forwardportBranch)
 	if err := git.MergeOurs(releaseBranch, commitMessage); err != nil {
-		log.Fatalf("Failed to merge %s into main: %v", releaseBranch, err)
+		log.Fatalf("Failed to merge %s: %v", releaseBranch, err)
 	}
 
 	// Cherry-pick the release-please changes and amend into the merge commit.
-	// This brings in the version bumps and changelog updates.
 	fmt.Printf("📄 Cherry-picking release-please changes from %s...\n", mergeCommitSHA[:7])
 	if err := git.CherryPick(mergeCommitSHA, false); err != nil {
 		log.Fatalf("Failed to cherry-pick release-please commit: %v", err)
@@ -131,11 +144,68 @@ This commit serves two purposes:
 		log.Fatalf("Failed to amend merge commit: %v", err)
 	}
 
-	// Push the result
-	fmt.Println("📤 Pushing to origin...")
+	// Push the forwardport branch (not main yet)
+	fmt.Printf("📤 Pushing branch %s...\n", forwardportBranch)
+	if err := git.Push(forwardportBranch); err != nil {
+		log.Fatalf("Failed to push %s: %v", forwardportBranch, err)
+	}
+	defer cleanupBranch(ctx, client, forwardportBranch)
+
+	// Open a draft PR so zizmor runs on the commit; we wait for it before pushing to main.
+	draftPR, err := client.CreatePR(ctx, gh.CreatePRParams{
+		Title: fmt.Sprintf("chore: Forwardport %s to main", releaseBranch),
+		Head:  forwardportBranch,
+		Base:  "main",
+		Body:  fmt.Sprintf("Automated forwardport. Triggered by release-please PR #%d.\n\nDo not merge manually; the workflow will push to main after zizmor passes.", originalPR.GetNumber()),
+		Draft: true,
+	})
+	if err != nil {
+		cleanupBranch(ctx, client, forwardportBranch)
+		log.Fatalf("Failed to create draft PR: %v", err)
+	}
+	fmt.Printf("📋 Created draft PR #%d: %s\n", draftPR.GetNumber(), draftPR.GetHTMLURL())
+
+	if err := waitForZizmor(ctx, client, forwardportBranch); err != nil {
+		cleanupBranch(ctx, client, forwardportBranch)
+		log.Fatalf("Zizmor did not pass in time or failed: %v", err)
+	}
+
+	// Fast-forward main to the forwardport commit and push
+	fmt.Println("🔀 Checking out main and merging forwardport branch...")
+	if err := git.Checkout("main"); err != nil {
+		cleanupBranch(ctx, client, forwardportBranch)
+		log.Fatalf("Failed to checkout main: %v", err)
+	}
+	if err := git.MergeFFOnly(forwardportBranch); err != nil {
+		cleanupBranch(ctx, client, forwardportBranch)
+		log.Fatalf("Failed to merge %s into main: %v", forwardportBranch, err)
+	}
+	fmt.Println("📤 Pushing main...")
 	if err := git.Push("main"); err != nil {
+		cleanupBranch(ctx, client, forwardportBranch)
 		log.Fatalf("Failed to push main: %v", err)
 	}
 
-	fmt.Printf("✅ Merged %s into main (ours strategy, with release-please changes)\n", releaseBranch)
+	fmt.Printf("✅ Merged %s into main (forwardport PR #%d closed)\n", releaseBranch, draftPR.GetNumber())
+}
+
+// cleanupBranch deletes the temporary forwardport branch from the remote.
+func cleanupBranch(ctx context.Context, client *gh.Client, branch string) {
+	if err := client.DeleteBranch(ctx, branch); err != nil {
+		log.Printf("⚠️  Failed to delete branch %s: %v", branch, err)
+	} else {
+		fmt.Printf("🗑️  Deleted branch %s\n", branch)
+	}
+}
+
+// waitForZizmor polls until the zizmor check passes on ref or the timeout is reached.
+func waitForZizmor(ctx context.Context, client *gh.Client, ref string) error {
+	waitCtx, cancel := context.WithTimeout(ctx, zizmorTimeout)
+	defer cancel()
+	fmt.Printf("⏳ Waiting for %s check (timeout %s)...\n", zizmorCheckName, zizmorTimeout)
+	if err := client.WaitForCheckRun(waitCtx, ref, zizmorCheckName); err != nil {
+		return err
+	}
+	fmt.Printf("✅ %s check passed\n", zizmorCheckName)
+	return nil
 }

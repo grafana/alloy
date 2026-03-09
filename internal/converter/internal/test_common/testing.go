@@ -215,7 +215,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	})
 	require.NoError(t, err)
 
-	f := alloy_runtime.New(alloy_runtime.Options{
+	f, err := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       logger,
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityExperimental,
@@ -231,6 +231,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 		},
 		EnableCommunityComps: true,
 	})
+	require.NoError(t, err)
 	err = f.LoadSource(cfg, nil, "")
 
 	// Many components will fail to build as e.g. the cert files are missing, so we ignore these errors.
