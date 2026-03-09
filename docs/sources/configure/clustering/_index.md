@@ -22,22 +22,12 @@ Cluster mode at the {{< param "PRODUCT_NAME" >}} level doesn't automatically dis
 You must also enable clustering in each component that should participate in the cluster.
 {{< /admonition >}}
 
-## Components that support clustering
+## Enable clustering in components
 
-The following components support workload distribution through clustering:
+Several components support workload distribution through clustering, including `prometheus.scrape`, `loki.source.kubernetes`, and `pyroscope.scrape`.
+Refer to [Distribute workload across cluster nodes][distribute-workload] for the complete list.
 
-| Component                                                                    | Description                                                         |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [`prometheus.scrape`][prometheus.scrape]                                     | Distributes Prometheus metrics scrape targets across cluster nodes. |
-| [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]         | Distributes PodMonitor scrape targets across cluster nodes.         |
-| [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors] | Distributes ServiceMonitor scrape targets across cluster nodes.     |
-| [`prometheus.operator.scrapeconfigs`][prometheus.operator.scrapeconfigs]     | Distributes ScrapeConfig scrape targets across cluster nodes.       |
-| [`prometheus.operator.probes`][prometheus.operator.probes]                   | Distributes Probe scrape targets across cluster nodes.              |
-| [`pyroscope.scrape`][pyroscope.scrape]                                       | Distributes Pyroscope profiling targets across cluster nodes.       |
-| [`loki.source.kubernetes`][loki.source.kubernetes]                           | Distributes Kubernetes log collection across cluster nodes.         |
-| [`loki.source.podlogs`][loki.source.podlogs]                                 | Distributes PodLogs log collection across cluster nodes.            |
-
-To enable clustering in a component, you must add a `clustering` block with `enabled = true`:
+To enable clustering in a component, add a `clustering` block with `enabled = true`:
 
 ```alloy
 prometheus.scrape "example" {
@@ -58,11 +48,3 @@ prometheus.scrape "example" {
 [clustering]: ../../get-started/clustering/
 [configure-alloy]: ./configure-alloy/
 [distribute-workload]: ./distribute-workload/
-[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/#clustering
-[prometheus.operator.podmonitors]: ../../reference/components/prometheus/prometheus.operator.podmonitors/#clustering
-[prometheus.operator.servicemonitors]: ../../reference/components/prometheus/prometheus.operator.servicemonitors/#clustering
-[prometheus.operator.scrapeconfigs]: ../../reference/components/prometheus/prometheus.operator.scrapeconfigs/#clustering
-[prometheus.operator.probes]: ../../reference/components/prometheus/prometheus.operator.probes/#clustering
-[pyroscope.scrape]: ../../reference/components/pyroscope/pyroscope.scrape/#clustering
-[loki.source.kubernetes]: ../../reference/components/loki/loki.source.kubernetes/#clustering
-[loki.source.podlogs]: ../../reference/components/loki/loki.source.podlogs/#clustering
