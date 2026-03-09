@@ -37,15 +37,19 @@ jobs:
           echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "Detected tag: ${TAG_NAME}"
 
-      - name: Verify tag format
+      - name: Check tag format
+        id: validate
         run: |
-          if ! echo "${TAG_NAME}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Invalid tag format: ${TAG_NAME}. Expected tag in format vX.Y.Z (no additional prefix/suffix)."
-            exit 1
+          if echo "${TAG_NAME}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$'; then
+            echo "is_alloy=true" >> $GITHUB_OUTPUT
+            echo "Valid alloy tag detected: ${TAG_NAME}, proceeding with ArgoCD deployment"
+          else
+            echo "is_alloy=false" >> $GITHUB_OUTPUT
+            echo "::notice::Tag '${TAG_NAME}' does not match vX.Y.Z or vX.Y.Z-rcN format. Skipping ArgoCD deployment"
           fi
-          echo "Tag format valid: ${TAG_NAME}"
 
       - name: Trigger ArgoCD Workflow
+        if: steps.validate.outputs.is_alloy == 'true'
         uses: grafana/shared-workflows/actions/trigger-argo-workflow@a37de51f3d713a30a9e4b21bcdfbd38170020593 # v1.3.0
         with:
           instance: "ops"
