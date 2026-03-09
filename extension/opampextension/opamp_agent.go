@@ -11,6 +11,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -426,13 +427,42 @@ func (o *opampAgent) updateAgentIdentity(instanceID uuid.UUID) {
 	o.instanceID = instanceID
 }
 
-func (o *opampAgent) applyRemoteConfig(config *protobufs.AgentRemoteConfig) (map[string]*protobufs.AgentConfigFile, error) {
+// configFilesEqual compares two config file maps by body content.
+func configFilesEqual(a, b map[string]*protobufs.AgentConfigFile) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, va := range a {
+		vb, ok := b[k]
+		if !ok {
+			return false
+		}
+		if !bytesEqual(va.Body, vb.Body) {
+			return false
+		}
+	}
+	return true
+}
+
+func bytesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (o *opampAgent) applyRemoteConfig(config *protobufs.AgentRemoteConfig) (configChanged bool, err error) {
 	if !o.capabilities.AcceptsRemoteConfig {
-		return nil, errors.New("opamp agent does not accept remote configuration")
+		return false, errors.New("opamp agent does not accept remote configuration")
 	}
 
 	if config.Config == nil || config.Config.ConfigMap == nil {
-		return nil, errors.New("remote config has no config map")
+		return false, errors.New("remote config has no config map")
 	}
 
 	parsed := make(map[string]*protobufs.AgentConfigFile, len(config.Config.ConfigMap))
@@ -444,12 +474,12 @@ func (o *opampAgent) applyRemoteConfig(config *protobufs.AgentRemoteConfig) (map
 
 		var raw map[string]interface{}
 		if err := yaml.Unmarshal(f.Body, &raw); err != nil {
-			return nil, fmt.Errorf("cannot parse config %q: %w", name, err)
+			return false, fmt.Errorf("cannot parse config %q: %w", name, err)
 		}
 
 		normalized, err := yaml.Marshal(raw)
 		if err != nil {
-			return nil, fmt.Errorf("cannot marshal config %q: %w", name, err)
+			return false, fmt.Errorf("cannot marshal config %q: %w", name, err)
 		}
 
 		parsed[name] = &protobufs.AgentConfigFile{
@@ -459,10 +489,69 @@ func (o *opampAgent) applyRemoteConfig(config *protobufs.AgentRemoteConfig) (map
 	}
 
 	o.eclk.Lock()
+	prev := o.remoteConfigMap
+	if configFilesEqual(prev, parsed) {
+		o.eclk.Unlock()
+		return false, nil
+	}
+
 	o.remoteConfigMap = parsed
 	o.eclk.Unlock()
 
-	return parsed, nil
+	dir := o.cfg.RemoteConfigurationDirectory
+	if err := o.saveEffectiveConfig(dir); err != nil {
+		o.eclk.Lock()
+		o.remoteConfigMap = prev
+		o.eclk.Unlock()
+		return false, fmt.Errorf("cannot save effective config to %s: %w", dir, err)
+	}
+
+	return true, nil
+}
+
+// saveEffectiveConfig clears the remote config directory and writes each config
+// file from remoteConfigMap. The directory must exist. Config keys that are
+// empty string are written as config.yaml.
+func (o *opampAgent) saveEffectiveConfig(dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("cannot create remote config directory: %w", err)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("cannot read remote config directory: %w", err)
+	}
+
+	for _, e := range entries {
+		p := filepath.Join(dir, e.Name())
+		if err := os.RemoveAll(p); err != nil {
+			return fmt.Errorf("cannot remove %s: %w", p, err)
+		}
+	}
+
+	o.eclk.RLock()
+	cfgMap := o.remoteConfigMap
+	o.eclk.RUnlock()
+
+	for name, f := range cfgMap {
+		if f == nil || len(f.Body) == 0 {
+			continue
+		}
+		filename := name
+		if filename == "" {
+			filename = "config.yaml"
+		}
+		if !strings.HasSuffix(filename, ".yaml") && !strings.HasSuffix(filename, ".yml") {
+			filename = filename + ".yaml"
+		}
+		p := filepath.Join(dir, filename)
+		if err := os.WriteFile(p, f.Body, 0600); err != nil {
+			_ = os.Remove(p)
+			return fmt.Errorf("cannot write %s: %w", p, err)
+		}
+	}
+
+	return nil
 }
 
 func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
@@ -498,12 +587,15 @@ func (o *opampAgent) onMessage(ctx context.Context, msg *types.MessageData) {
 
 		var status protobufs.RemoteConfigStatuses
 		var applyErr error
-		if _, err := o.applyRemoteConfig(msg.RemoteConfig); err != nil {
+		if changed, err := o.applyRemoteConfig(msg.RemoteConfig); err != nil {
 			o.logger.Error("Failed to apply remote config", zap.Error(err))
 			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED
 			applyErr = err
 		} else {
 			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED
+			if changed {
+				o.logger.Info("Effective config updated from remote config")
+			}
 		}
 
 		if o.capabilities.ReportsRemoteConfig && o.opampClient != nil {

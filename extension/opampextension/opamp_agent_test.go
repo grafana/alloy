@@ -768,6 +768,8 @@ func TestApplyRemoteConfig(t *testing.T) {
 
 	t.Run("parses valid YAML successfully", func(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
+		dir := t.TempDir()
+		cfg.RemoteConfigurationDirectory = dir
 		set := extensiontest.NewNopSettings(extensiontest.NopType)
 		o, err := newOpampAgent(cfg, set)
 		require.NoError(t, err)
@@ -782,12 +784,20 @@ func TestApplyRemoteConfig(t *testing.T) {
 			},
 		}
 
-		parsed, err := o.applyRemoteConfig(remoteConfig)
+		changed, err := o.applyRemoteConfig(remoteConfig)
 		require.NoError(t, err)
+		assert.True(t, changed)
+		o.eclk.RLock()
+		parsed := o.remoteConfigMap
+		o.eclk.RUnlock()
 		require.Len(t, parsed, 1)
 		assert.Contains(t, parsed, "config.yaml")
 		assert.NotEmpty(t, parsed["config.yaml"].Body)
 		assert.Equal(t, "text/yaml", parsed["config.yaml"].ContentType)
+		// Verify file was written
+		data, err := os.ReadFile(filepath.Join(dir, "config.yaml"))
+		require.NoError(t, err)
+		assert.NotEmpty(t, data)
 	})
 
 	t.Run("returns error for invalid YAML", func(t *testing.T) {
@@ -821,6 +831,59 @@ func TestApplyRemoteConfig(t *testing.T) {
 		_, err = o.applyRemoteConfig(&protobufs.AgentRemoteConfig{ConfigHash: []byte("test")})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no config map")
+	})
+
+	t.Run("detects no change when config is identical", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		dir := t.TempDir()
+		cfg.RemoteConfigurationDirectory = dir
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, o.Shutdown(t.Context())) }()
+
+		remoteConfig := &protobufs.AgentRemoteConfig{
+			ConfigHash: []byte("test"),
+			Config: &protobufs.AgentConfigMap{
+				ConfigMap: map[string]*protobufs.AgentConfigFile{
+					"config.yaml": {Body: validYAML},
+				},
+			},
+		}
+
+		changed, err := o.applyRemoteConfig(remoteConfig)
+		require.NoError(t, err)
+		assert.True(t, changed)
+
+		changed, err = o.applyRemoteConfig(remoteConfig)
+		require.NoError(t, err)
+		assert.False(t, changed)
+	})
+
+	t.Run("writes empty key as config.yaml", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		dir := t.TempDir()
+		cfg.RemoteConfigurationDirectory = dir
+		set := extensiontest.NewNopSettings(extensiontest.NopType)
+		o, err := newOpampAgent(cfg, set)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, o.Shutdown(t.Context())) }()
+
+		remoteConfig := &protobufs.AgentRemoteConfig{
+			ConfigHash: []byte("test"),
+			Config: &protobufs.AgentConfigMap{
+				ConfigMap: map[string]*protobufs.AgentConfigFile{
+					"": {Body: validYAML},
+				},
+			},
+		}
+
+		changed, err := o.applyRemoteConfig(remoteConfig)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		data, err := os.ReadFile(filepath.Join(dir, "config.yaml"))
+		require.NoError(t, err)
+		assert.NotEmpty(t, data)
 	})
 }
 
