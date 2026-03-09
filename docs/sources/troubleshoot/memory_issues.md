@@ -106,6 +106,11 @@ If profiling suggests a memory leak, refer to [Report a potential memory leak](#
 Gradual memory growth usually indicates that data is arriving faster than {{< param "PRODUCT_NAME" >}} can send it, sustained load increase, or a component retaining objects longer than expected.
 In some cases, this behavior indicates a leak.
 
+{{< admonition type="note" >}}
+Sustained back pressure on HTTP source components like `loki.source.api` and `loki.source.firehose` can appear as a memory leak.
+This occurs when {{< param "PRODUCT_NAME" >}} receives more HTTP requests than it can process.
+{{< /admonition >}}
+
 Common causes include:
 
 - Remote write endpoints that respond slowly or reject requests
