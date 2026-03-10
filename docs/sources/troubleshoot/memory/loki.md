@@ -14,9 +14,9 @@ Memory issues with these components usually occur when back pressure builds up o
 ## Back pressure from HTTP sources
 
 Sustained back pressure on HTTP source components like [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] can appear as a memory leak.
-This occurs when {{< param "PRODUCT_NAME" >}} receives more HTTP log requests than it can process or forward to downstream destinations.
+This occurs when {{< param "PRODUCT_NAME" >}} receives more HTTP log requests than it can process or forward to log destinations.
 Short bursts of traffic can cause temporary memory spikes while buffers absorb incoming log data.
-Memory typically stabilizes once ingestion rates return to normal and {{< param "PRODUCT_NAME" >}} forwards the buffered logs downstream.
+Memory typically stabilizes once ingestion rates return to normal and {{< param "PRODUCT_NAME" >}} forwards the buffered logs.
 
 If you're unsure whether back pressure causes the memory growth, refer to [Diagnose back pressure and queue buildup][memory-backpressure] in the memory troubleshooting overview.
 
@@ -29,12 +29,12 @@ Memory grows because incoming log data accumulates in memory buffers faster than
 
 1. Check log ingestion latency.
 
-   Inspect the latency of downstream log destinations.
+   Inspect the latency of log destinations.
    When endpoints respond slowly, components buffer data in memory.
 
 1. Check for repeated ingestion failures.
 
-   Inspect {{< param "PRODUCT_NAME" >}} logs for HTTP errors or retries when sending logs to downstream Loki endpoints.
+   Inspect {{< param "PRODUCT_NAME" >}} logs for HTTP errors or retries when sending logs to Loki endpoints.
    Repeated failures or retry loops can cause queues to grow and increase memory usage.
 
 1. Confirm whether traffic volume increased.
@@ -58,7 +58,7 @@ Memory grows because incoming log data accumulates in memory buffers faster than
 - Scale {{< param "PRODUCT_NAME" >}} horizontally to handle higher log ingestion rates.
 - Increase memory limits to accommodate the buffer.
   Refer to [Kubernetes memory issues][kubernetes] for resource configuration.
-- Investigate and resolve downstream latency issues.
+- Investigate and resolve destination latency issues.
 - Consider rate limiting at the source if traffic exceeds capacity.
 - Verify whether component queues continue to grow.
 
@@ -108,7 +108,7 @@ ulimit -n
 If the process is hitting its file descriptor limit:
 
 1. Increase the file descriptor limit for the container or host environment.
-1. Restart the {{< param "PRODUCT_NAME" >}} process so it can reopen files under the new limits.
+1. Restart the {{< param "PRODUCT_NAME" >}} process so it can reopen files under the updated limits.
 
 If storage or permission problems prevent writing the positions file:
 
@@ -140,7 +140,7 @@ Common causes include:
 
 1. Check destination latency.
 
-   Inspect log ingestion latency to downstream systems.
+   Inspect log ingestion latency to log destinations.
    When destinations respond slowly, components buffer data in memory.
 
 1. Confirm whether log volume increased.
@@ -157,6 +157,30 @@ Common causes include:
 
    Collect two profiles several minutes apart and compare them to identify growing allocations.
    Refer to [Profile resource consumption][profile] for more information.
+
+### Initial log catch-up after restart
+
+When {{< param "PRODUCT_NAME" >}} starts or resumes reading log files, it may need to process a backlog of log entries that accumulated while it wasn't running.
+
+If large log files accumulated while {{< param "PRODUCT_NAME" >}} wasn't running, the system may temporarily ingest a large number of log lines while catching up to the end of each file.
+
+During this catch-up phase:
+
+- CPU usage may increase
+- Log ingestion rates may spike
+- Memory usage may temporarily increase while {{< param "PRODUCT_NAME" >}} buffers and processes logs
+
+This behavior is normal and usually stabilizes once {{< param "PRODUCT_NAME" >}} reaches the current end of the log files.
+
+### Diagnose catch-up behavior
+
+1. Check whether {{< param "PRODUCT_NAME" >}} recently restarted.
+
+1. Inspect ingestion metrics to determine whether log volume is temporarily higher than normal.
+
+1. Verify that ingestion rates decrease after {{< param "PRODUCT_NAME" >}} processes the backlog.
+
+If ingestion rates return to normal and memory usage stabilizes, the behavior likely reflects temporary catch-up processing rather than a memory leak.
 
 If queue metrics show that buffered log data is draining over time and memory usage gradually decreases, the behavior likely reflects temporary backlog processing rather than a memory leak.
 If memory continues to grow with stable traffic and healthy endpoints, refer to [Report a potential memory leak][report-leak].

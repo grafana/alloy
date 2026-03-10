@@ -37,7 +37,7 @@ If memory remains elevated or triggers restarts, review WAL size and limits.
 
 1. Reduce replay pressure if needed.
 
-   - Increase Pod memory limit.
+   - Increase Kubernetes Pod memory limit.
      Refer to [Kubernetes memory issues][kubernetes] for resource configuration.
    - Reduce WAL retention using [WAL configuration settings][wal-config].
    - Ensure [persistent storage][kubernetes-storage] exists for WAL data.
@@ -55,8 +55,49 @@ In some cases, this behavior indicates a leak.
 Common causes include:
 
 - Remote write endpoints that respond slowly or reject requests
-- High cardinality causing large internal data structures
+- [High cardinality][high-cardinality] causing large internal data structures.
 - Processing components with expensive metric transformations
+
+## Remote write queue buildup
+
+Prometheus pipelines buffer samples in memory before sending them to remote endpoints using [`prometheus.remote_write`][prometheus-remote-write].
+
+If remote endpoints respond slowly or temporarily reject requests, samples accumulate in the remote write queue.
+As the queue grows, {{< param "PRODUCT_NAME" >}} may increase the number of remote write shards to keep up with ingestion.
+
+This behavior increases memory usage because queued samples remain buffered in memory until {{< param "PRODUCT_NAME" >}} successfully sends them.
+
+### Symptoms
+
+Remote write queue buildup often appears as:
+
+- Memory growing steadily during normal operation
+- Increasing remote write shard counts
+- Remote write queues falling behind ingestion
+- Growing lag between sent and received samples
+
+### Diagnose queue buildup
+
+1. Check remote write endpoint latency.
+
+   Slow or unreliable endpoints can prevent queues from draining.
+
+1. Inspect remote write queue metrics.
+
+   Metrics such as `prometheus_remote_storage_shards_desired` and `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` can indicate that queues are falling behind.
+
+1. Compare ingestion rate to forwarding rate.
+
+   If {{< param "PRODUCT_NAME" >}} receives samples faster than it can send them to remote endpoints, queues grow and memory usage increases.
+
+### Resolve queue buildup
+
+Possible solutions include:
+
+- Investigate latency or availability issues with the remote write endpoint
+- Temporarily increase memory limits to absorb buffered samples
+- Reduce ingestion rate or sample volume if the destination system can't keep up
+- Scale {{< param "PRODUCT_NAME" >}} horizontally to distribute ingestion load
 
 ### Diagnose the cause
 
@@ -120,3 +161,4 @@ Refer to [Report a potential memory leak][report-leak] for next steps.
 [monitor-components]: ../../component_metrics/
 [report-leak]: ../#report-a-potential-memory-leak
 [memory-backpressure]: ../#diagnose-back-pressure-and-queue-buildup
+[high-cardinality]: ../high-cardinality/
