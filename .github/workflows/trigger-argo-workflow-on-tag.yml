@@ -34,19 +34,32 @@ jobs:
       - name: Extract tag name
         id: tag
         run: |
-          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG_NAME}" >> "$GITHUB_OUTPUT"
           echo "Detected tag: ${TAG_NAME}"
 
       - name: Check tag format
         id: validate
         run: |
+          if [ -z "${TAG_NAME}" ]; then
+            echo "::error::Tag name is required"
+            exit 1
+          fi
           if echo "${TAG_NAME}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$'; then
-            echo "is_alloy=true" >> $GITHUB_OUTPUT
+            echo "is_alloy=true" >> "$GITHUB_OUTPUT"
             echo "Valid alloy tag detected: ${TAG_NAME}, proceeding with ArgoCD deployment"
           else
-            echo "is_alloy=false" >> $GITHUB_OUTPUT
+            echo "is_alloy=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Tag '${TAG_NAME}' does not match vX.Y.Z or vX.Y.Z-rcN format. Skipping ArgoCD deployment"
           fi
+
+      - name: Verify tag exists
+        if: env.EVENT_NAME == 'workflow_dispatch' && steps.validate.outputs.is_alloy == 'true'
+        run: |
+          if ! git ls-remote --exit-code --tags "https://github.com/grafana/alloy.git" refs/tags/${TAG_NAME} > /dev/null 2>&1; then
+            echo "::error::Tag '${TAG_NAME}' does not exist in the repository"
+            exit 1
+          fi
+          echo "Tag ${TAG_NAME} exists in repository"
 
       - name: Trigger ArgoCD Workflow
         if: steps.validate.outputs.is_alloy == 'true'
@@ -61,4 +74,4 @@ jobs:
             prCommentContext=This deployment was triggered by publishing release ${{ steps.tag.outputs.tag }}.
             commit_author=${{ github.actor }}
             commit_link=https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-          extra_args: "--name alloy-${{ steps.short-sha.outputs.sha }}-${{ github.run_id }}"
+          extra_args: "--name alloy-${{ steps.tag.outputs.tag }}-${{ github.run_id }}"
