@@ -262,15 +262,21 @@ func (t *tailer) stop(done chan struct{}) {
 	// We need to cleanup created metrics
 	t.cleanupMetrics()
 
-	// If the component is not stopping, then it means that the target for this component is gone and that
-	// we should clear the entry from the positions file.
-	if !t.componentStopping() {
+	if !t.shouldKeepPosition() {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
 }
 
 func (t *tailer) Key() positions.Entry {
 	return t.key
+}
+
+func (t *tailer) shouldKeepPosition() bool {
+	// NOTE: We want to keep position if component is stopping or decompression is enabled.
+	// If component is not stopping that means that target is gone and we should no longer tail the file.
+	// If decompression is enabled we read file until we reach EOF and stop so tailer will exit, but we need
+	// to remember the position so that we don't re-ingest it on restart.
+	return t.componentStopping() || t.decompression.Enabled
 }
 
 // cleanupMetrics removes all metrics exported by this tailer
