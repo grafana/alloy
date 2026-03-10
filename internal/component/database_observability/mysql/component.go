@@ -208,6 +208,9 @@ func (a *Arguments) Validate() error {
 	if err != nil {
 		return err
 	}
+	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
+		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
 	return nil
 }
 

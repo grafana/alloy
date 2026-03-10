@@ -604,4 +604,16 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
 		assert.Equal(t, []string{"perf_schema.eventsstatements", "perf_schema.eventswaits"}, args.PrometheusExporter.EnableCollectors)
 	})
+
+	t.Run("error when both prometheus_exporter and targets are set", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			targets = [{"__address__" = "localhost:9104"}]
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
+	})
 }
