@@ -3,7 +3,6 @@ package aws_firehose
 import (
 	"context"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -155,13 +154,9 @@ func (c *Component) Update(args component.Arguments) error {
 		c.rbs = newRelabels
 	}
 
-	r := strings.NewReplacer(".", "_", "/", "_")
-	jobName := r.Replace(c.opts.ID)
-
 	registry := prometheus.NewRegistry()
 	c.serverMetrics.SetCollector(registry)
-
-	c.server, err = fnet.NewTargetServer(c.logger, jobName, registry, newArgs.Server)
+	c.server, err = fnet.NewTargetServer(c.logger, "loki_source_awsfirehose", registry, newArgs.Server)
 	if err != nil {
 		return err
 	}
