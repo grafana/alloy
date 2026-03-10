@@ -86,7 +86,10 @@ If memory continues to grow with stable traffic and healthy endpoints, refer to 
 ## Memory remains high after traffic drops
 
 Memory should decrease after ingestion slows and queues drain.
-If memory remains high despite lower traffic, the component may still hold objects in memory.
+However, memory may remain elevated for some time because Go retains previously allocated memory for reuse.
+
+This behavior is normal after periods of high ingestion or queue buildup.
+If memory usage stabilizes and doesn't continue increasing, the behavior usually reflects retained allocations rather than a leak.
 
 Validate that the workload actually decreased, then inspect retained allocations.
 
