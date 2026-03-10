@@ -8,18 +8,18 @@ weight: 100
 
 # Kubernetes memory issues
 
-When a container exceeds its memory limit, Kubernetes terminates it with an out of memory (OOM) error, typically showing `OOMKilled` in the Pod status.
+When a container exceeds its memory limit, Kubernetes terminates it with an OOM error, typically showing `OOMKilled` in the Pod status.
 
 Many memory incidents originate from resource configuration rather than defects.
 Incorrect limits, missing persistent storage, or unsuitable workload types increase replay cost and memory pressure.
 
-## {{% param "PRODUCT_NAME" %}} is terminated with OOM
+## {{% param "PRODUCT_NAME" %}} exceeds memory limits
 
 Common causes include:
 
 - Pod memory limit is too low
 - [`GOMEMLIMIT`][env-vars] isn't configured
-- Write-ahead log (WAL) replay consumes additional memory at startup
+- WAL replay consumes additional memory at startup
 - Internal queues grow when remote endpoints can't accept data fast enough
 
 ### Validate resource configuration
@@ -30,8 +30,8 @@ Common causes include:
    kubectl describe pod <POD_NAME>
    ```
 
-   Verify that both memory requests and limits are defined.
-   If no limit is defined, set one.
+   Verify that you defined both memory requests and limits.
+   If you didn't define a limit, set one.
    If the limit is close to observed usage, increase it.
 
    Set the limit high enough to absorb WAL replay and temporary queue growth.
@@ -85,7 +85,7 @@ Refer to [Data durability][data-durability] for more information.
 ## Choose the correct workload type
 
 Use a DaemonSet when collecting logs locally on each node.
-Use a StatefulSet when stable identity or persistent storage per replica is required.
+Use a StatefulSet when you need stable identity or persistent storage per replica.
 Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information.
 
 ## Avoid restart loops

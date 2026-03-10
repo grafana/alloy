@@ -8,7 +8,7 @@ weight: 200
 
 # Prometheus component memory issues
 
-Prometheus components in {{< param "PRODUCT_NAME" >}} use a write-ahead log (WAL) to buffer data before sending it to remote endpoints.
+Prometheus components in {{< param "PRODUCT_NAME" >}} use a WAL to buffer data before sending it to remote endpoints.
 Memory issues with these components often relate to WAL replay, queue buildup in remote write components, or high cardinality.
 
 ## Configure WAL retention
@@ -61,7 +61,7 @@ Common causes include:
 1. Check endpoint latency.
 
    Inspect remote write latency.
-   When endpoints respond slowly, components like `prometheus.remote_write` queue data in memory.
+   When endpoints respond slowly, components like [`prometheus.remote_write`][prometheus-remote-write] queue data in memory.
 
 1. Confirm whether traffic volume increased.
 
@@ -108,6 +108,7 @@ Refer to [Report a potential memory leak][report-leak] for next steps.
 
 [kubernetes]: ../kubernetes/
 [kubernetes-storage]: ../kubernetes/#configure-persistent-storage
+[prometheus-remote-write]: ../../../reference/components/prometheus/prometheus.remote_write/
 [wal-config]: ../../../reference/components/prometheus/prometheus.remote_write/#wal
 [profile]: ../../profile/
 [estimate-resource-usage]: ../../../set-up/estimate-resource-usage/

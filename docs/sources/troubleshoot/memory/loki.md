@@ -13,7 +13,7 @@ Memory issues with these components usually occur when back pressure builds up o
 
 ## Back pressure from HTTP sources
 
-Sustained back pressure on HTTP source components like `loki.source.api` and `loki.source.firehose` can appear as a memory leak.
+Sustained back pressure on HTTP source components like [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] can appear as a memory leak.
 This occurs when {{< param "PRODUCT_NAME" >}} receives more HTTP log requests than it can process or forward to downstream destinations.
 
 {{< admonition type="note" >}}
@@ -94,6 +94,8 @@ Common causes include:
 If memory continues to grow with stable traffic and healthy endpoints, refer to [Report a potential memory leak][report-leak].
 
 [estimate-resource-usage]: ../../../set-up/estimate-resource-usage/
+[loki-source-api]: ../../../reference/components/loki/loki.source.api/
+[loki-source-awsfirehose]: ../../../reference/components/loki/loki.source.awsfirehose/
 [monitor-components]: ../../component_metrics/
 [profile]: ../../profile/
 [kubernetes]: ../kubernetes/
