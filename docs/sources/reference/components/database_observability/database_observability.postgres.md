@@ -3,14 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.postgres
 title: database_observability.postgres
 labels:
-  stage: public-preview
+  stage: stable
   products:
     - oss
 ---
 
 # `database_observability.postgres`
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/stable.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 

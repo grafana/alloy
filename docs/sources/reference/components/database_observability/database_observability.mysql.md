@@ -3,14 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
-  stage: public-preview
+  stage: stable
   products:
     - oss
 ---
 
 # `database_observability.mysql`
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/stable.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
