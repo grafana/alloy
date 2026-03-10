@@ -33,8 +33,8 @@ Memory issues often have multiple contributing factors.
 Start by identifying which category matches your symptoms:
 
 - **`OOMKilled` or startup crashes**: Refer to [Kubernetes memory issues][kubernetes] for resource configuration and persistent storage guidance.
-- **Memory spikes after restart or write-ahead log (WAL) issues**: Refer to [Prometheus component memory issues][prometheus] for WAL replay and retention configuration.
-- **Back pressure from HTTP ingestion sources**: Refer to [Loki component memory issues][loki] for `loki.source.api` and `loki.source.firehose` troubleshooting.
+- **Memory spikes after restart or WAL issues**: Refer to [Prometheus component memory issues][prometheus] for WAL replay and retention configuration.
+- **Back pressure from HTTP ingestion sources**: Refer to [Loki component memory issues][loki] for [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] troubleshooting.
 - **Gradual memory growth**: Review endpoint latency and internal queue metrics. Refer to [Monitor components][monitor-components] for more information.
 
 ## Capture profiles for diagnosis
@@ -56,6 +56,8 @@ Redact any sensitive information before attaching files.
 
 [env-vars]: ../../reference/cli/environment-variables/#gomemlimit
 [automemlimit]: https://github.com/KimMachineGun/automemlimit
+[loki-source-api]: ../../reference/components/loki/loki.source.api/
+[loki-source-awsfirehose]: ../../reference/components/loki/loki.source.awsfirehose/
 [profile]: ../profile/
 [support-bundle]: ../support_bundle/
 [alloy-issues]: https://github.com/grafana/alloy/issues/
