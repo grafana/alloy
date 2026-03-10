@@ -331,6 +331,8 @@ func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	var readData bool
 
 	rec := recordPool.GetRecord()
+	defer func() { recordPool.PutRecord(rec) }()
+
 	if err := DecodeRecord(b, rec); err != nil {
 		w.metrics.recordDecodeFails.WithLabelValues(w.id).Inc()
 		return readData, err

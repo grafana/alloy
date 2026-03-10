@@ -338,13 +338,10 @@ func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Messag
 
 func (t *SyslogTarget) messageSender(entries chan<- loki.Entry) {
 	for msg := range t.messages {
-		entries <- loki.Entry{
-			Labels: msg.labels,
-			Entry: push.Entry{
-				Timestamp: msg.timestamp,
-				Line:      msg.message,
-			},
-		}
+		entries <- loki.NewEntry(msg.labels, push.Entry{
+			Timestamp: msg.timestamp,
+			Line:      msg.message,
+		})
 		t.metrics.syslogEntries.Inc()
 	}
 	t.messagesDone <- struct{}{}

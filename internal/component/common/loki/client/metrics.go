@@ -1,6 +1,8 @@
 package client
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -27,6 +29,7 @@ type metrics struct {
 	requestSize                  *prometheus.HistogramVec
 	requestDuration              *prometheus.HistogramVec
 	batchRetries                 *prometheus.CounterVec
+	entryLatency                 *prometheus.HistogramVec
 	countersWithHostTenant       []*prometheus.CounterVec
 	countersWithHostTenantReason []*prometheus.CounterVec
 }
@@ -56,6 +59,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		MiB = 1024 * KiB
 	)
 
+	m.entryLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:                            "loki_write_entry_propagation_latency_seconds",
+		Help:                            "Write latency for entries",
+		Buckets:                         []float64{0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600},
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
+	}, []string{labelHost, labelTenant})
 	m.requestSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "loki_write_request_size_bytes",
 		Help:    "Number of bytes for requests.",
@@ -83,6 +94,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
 		m.sentEntries = util.MustRegisterOrGet(reg, m.sentEntries).(*prometheus.CounterVec)
 		m.droppedEntries = util.MustRegisterOrGet(reg, m.droppedEntries).(*prometheus.CounterVec)
+		m.entryLatency = util.MustRegisterOrGet(reg, m.entryLatency).(*prometheus.HistogramVec)
 		m.requestSize = util.MustRegisterOrGet(reg, m.requestSize).(*prometheus.HistogramVec)
 		m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
 		m.batchRetries = util.MustRegisterOrGet(reg, m.batchRetries).(*prometheus.CounterVec)
