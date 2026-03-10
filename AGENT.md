@@ -1,6 +1,6 @@
 # Agent
 
-This file is the entry point for AI coding assistants in this repository, including Claude, Cursor, and Codex.
+This file is the entry point for AI coding assistants in this repository.
 It explains what each linked document is for and when to use it.
 
 ## Agent behavior and terminology
@@ -10,6 +10,7 @@ It explains what each linked document is for and when to use it.
 
 ## Documentation writing
 
+- [Alloy docs source tree](docs/sources): Source files for published Alloy documentation.
 - [Documentation style guide](.docs/agent/style.md): How to structure docs and write clear copy (headings, voice, tense, lists, code blocks, API docs, and shortcodes).
 
 ## Code and contribution workflow
