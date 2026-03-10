@@ -207,7 +207,7 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 		}
 
 		if dec.Err() != nil {
-			return fmt.Errorf("entry decode error after %d RefEntries: %w", n-rem, dec.Err())
+			return fmt.Errorf("entry decode error after decoding %d entries in current RefEntries: %w", n-rem, dec.Err())
 		}
 
 		rec.RefEntries = append(rec.RefEntries, refEntries)
