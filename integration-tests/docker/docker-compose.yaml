@@ -139,17 +139,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: testdb
-    networks:
-      - integration-tests
-
-  mysql-init:
-    image: mysql:8.0
-    depends_on:
-      - mysql
     volumes:
-      - ./tests/database-observability-mysql/init_mysql.sh:/init_mysql.sh
-    command: sh /init_mysql.sh
-    restart: "no"
+      - ./tests/database-observability-mysql/init_mysql.sh:/docker-entrypoint-initdb.d/init_mysql.sh
     networks:
       - integration-tests
 

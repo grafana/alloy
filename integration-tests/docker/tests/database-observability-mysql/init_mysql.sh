@@ -1,15 +1,9 @@
 #!/bin/bash
 set -e
 
-# Wait for MySQL to be ready
-echo "Waiting for MySQL to be ready..."
-until mysql -h mysql -u root -prootpassword -e "SELECT 1" > /dev/null 2>&1; do
-    sleep 1
-done
+echo "Creating test tables..."
 
-echo "MySQL is ready. Creating test tables..."
-
-mysql -h mysql -u root -prootpassword testdb <<EOF
+mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" <<EOF
 -- Create products table
 CREATE TABLE IF NOT EXISTS products (
     id INT PRIMARY KEY AUTO_INCREMENT,

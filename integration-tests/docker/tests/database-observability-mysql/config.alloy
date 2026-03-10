@@ -1,3 +1,6 @@
+// WARNING: This configuration is for integration testing only.
+// It is not intended to represent a recommended production configuration.
+
 prometheus.exporter.mysql "mysql" {
   data_source_name = "root:rootpassword@tcp(mysql:3306)/testdb"
 }

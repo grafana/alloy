@@ -1,3 +1,6 @@
+// WARNING: This configuration is for integration testing only.
+// It is not intended to represent a recommended production configuration.
+
 prometheus.exporter.postgres "postgres" {
   data_source_names = ["postgresql://root:rootpassword@postgres:5432/testdb?sslmode=disable"]
 }
