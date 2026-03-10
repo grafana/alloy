@@ -113,16 +113,6 @@ type ShardingConsumer struct { ... }
 func (s *ShardingConsumer) Consume(ctx context.Context, entries []loki.Entry) error
 ```
 
-ShardingConsumer runs N workers which process entries from consistently hashed streams. So entries from the same stream go to the same worker and are processed in order. Different streams are processed concurrently across workers.
-
-Each worker handles the full processing path inline: Consume() called by the worker passes through loki.process (mutations, filtering) and into loki.write. No goroutine hand-offs. This keeps goroutine stacks under control and avoids context switching between pools.
-
-loki.source.api. Calls shardingConsumer.Consume(ctx, entries) with all entries from the HTTP request. If success → respond 200. If error → respond with a retryable status code (429/503). If the client disconnects, the HTTP request context is cancelled and workers abort — no 200 is sent, so no commitment is made. To bound goroutine creation, loki.source.api will limit the number of concurrently accepted connections at the HTTP server level.
-
-loki.source.file. Calls shardingConsumer.Consume(ctx, entries) for each batch read from a file target (already single-stream). If success → advance position. If error → do not advance, will retry. If context is cancelled (shutdown) → do not advance, clean exit.
-
-loki.write. Implements Consumer by appending to a WAL or in-memory queue. Blocks if queue is full; returns error on WAL I/O failure or context cancellation. WAL I/O errors are retryable — another Alloy instance may have a healthy WAL, or the error may be transient.
-
 ### FanoutConsumer
 
 Every component that can fan-out should use `FanoutConsumer`. This one is responsible to call all `Consume` on all consumers a component should forward to. From sources we would pass this one to `ShardingConsumer`.
@@ -133,6 +123,55 @@ type FanoutConsumer struct { ... }
 // Consume calls consume on all internal consumers pass to it and aggregate errors.
 func (f *FanoutConsumer) Consume(ctx context.Context, entries []loki.Entry) error
 ```
+
+### Architecture
+
+```
+loki.source.api                            loki.source.file
+     |                                          |
+     | HTTP handler receives request            | File reader reads entries
+     |                                          | (one stream per target)
+     v                                          v
++------------------------------------------------------------+
+|              ShardingConsumer                              |
+|                                                            |
+|  Groups entries by stream hash, dispatches to N workers.   |
+|  WAITS for all workers to complete, returns result.        |
+|                                                            |
+|  worker 0 --+                                              |
+|  worker 1 --+-- Consume(logs belonging to this worker)     |
+|  worker 2 --+           |                                  |
+|  ...        |           |                                  |
+|  worker N --+           |                                  |
++-------------------------+----------------------------------+
+                          |
+                          | Consume() - synchronous, may block
+                          v
+               +-- loki.process etc. --+
+               |  (mutations,          |
+               |   filtering)          |
+               +-----------------------+
+                        |
+                        | Consume() - synchronous, may block
+                        v
++------------------------------------------------------------+
+|                      loki.write                            |
+|                                                            |
+|  Consume() -> append to in-memory queue or WAL             |
+|  returns error on WAL I/O failure or                       |
+|  blocks if in-memory queue is full for backpressure        |
++------------------------------------------------------------+
+```
+
+ShardingConsumer runs N workers which process entries from consistently hashed streams. So entries from the same stream go to the same worker and are processed in order. Different streams are processed concurrently across workers.
+
+Each worker handles the full processing path inline: Consume() called by the worker passes through loki.process (mutations, filtering) and into loki.write. No goroutine hand-offs. This keeps goroutine stacks under control and avoids context switching between pools.
+
+loki.source.api. Calls shardingConsumer.Consume(ctx, entries) with all entries from the HTTP request. If success → respond 200. If error → respond with a retryable status code (429/503). If the client disconnects, the HTTP request context is cancelled and workers abort — no 200 is sent, so no commitment is made. To bound goroutine creation, loki.source.api will limit the number of concurrently accepted connections at the HTTP server level.
+
+loki.source.file. Calls shardingConsumer.Consume(ctx, entries) for each batch read from a file target (already single-stream). If success → advance position. If error → do not advance, will retry. If context is cancelled (shutdown) → do not advance, clean exit.
+
+loki.write. Implements Consumer by appending to a WAL or in-memory queue. Blocks if queue is full; returns error on WAL I/O failure or context cancellation. WAL I/O errors are retryable — another Alloy instance may have a healthy WAL, or the error may be transient.
 
 ### Error handling and backpressure
 
@@ -182,41 +221,3 @@ We have an option to mitigate this in the future:
 ### Future improvement:
 
 Automatically tune the lag based on a total pipeline latency estimate (e.g. from loki.write metrics).
-
-### Affected components
-
-The following components need to be updated with this new interface and we need to make sure they are concurrency safe:
-
-**Source components** (need to call `Consume()` and handle errors):
-
-- `loki.source.file`
-- `loki.source.api`
-- `loki.source.kafka`
-- `loki.source.journal`
-- `loki.source.docker`
-- `loki.source.kubernetes`
-- `loki.source.kubernetes_events`
-- `loki.source.podlogs`
-- `loki.source.syslog`
-- `loki.source.gelf`
-- `loki.source.cloudflare`
-- `loki.source.gcplog`
-- `loki.source.heroku`
-- `loki.source.azure_event_hubs`
-- `loki.source.aws_firehose`
-- `loki.source.windowsevent`
-- `database_observability.mysql`
-- `database_observability.postgres`
-- `faro.receiver`
-
-**Processing components** (need to implement `Consumer` and forward to next):
-
-- `loki.process`
-- `loki.relabel`
-- `loki.secretfilter`
-- `loki.enrich`
-
-**Sink components** (need to implement `Consumer`):
-
-- `loki.write`
-- `loki.echo`
