@@ -42,8 +42,8 @@ To disable it, use the `--disable-support-bundle` runtime flag.
 
 ## Inspect the bundle
 
-The support bundle contains all information in plain text.
-Inspect it before you share it to verify that no sensitive information has leaked.
+Most information in the support bundle is stored in plain text, but some profiling data (such as files under `pprof/`) may be binary or compressed.
+Inspect the contents before you share the bundle to verify that no sensitive information has leaked and redact data as needed.
 
 You can also inspect the [support bundle implementation](https://github.com/grafana/alloy/blob/main/internal/service/http/supportbundle.go) to verify the code that generates these bundles.
 
