@@ -559,7 +559,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 	})
 }
 
-func Test_MySQLExporterBlock(t *testing.T) {
+func Test_PrometheusExporterBlock(t *testing.T) {
 	t.Run("absent when not specified", func(t *testing.T) {
 		cfg := `
 			data_source_name = ""
@@ -569,7 +569,7 @@ func Test_MySQLExporterBlock(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.NoError(t, err)
-		assert.Nil(t, args.MySQLExporter)
+		assert.Nil(t, args.PrometheusExporter)
 	})
 
 	t.Run("present with defaults when empty block", func(t *testing.T) {
@@ -577,13 +577,13 @@ func Test_MySQLExporterBlock(t *testing.T) {
 			data_source_name = ""
 			forward_to = []
 			targets = []
-			mysql_exporter {}
+			prometheus_exporter {}
 		`
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.NoError(t, err)
-		require.NotNil(t, args.MySQLExporter)
-		exporterArgs := exporter_mysql.Arguments(*args.MySQLExporter)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.PrometheusExporter)
 		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
 	})
 
@@ -592,16 +592,16 @@ func Test_MySQLExporterBlock(t *testing.T) {
 			data_source_name = ""
 			forward_to = []
 			targets = []
-			mysql_exporter {
+			prometheus_exporter {
 			  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
 			}
 		`
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.NoError(t, err)
-		require.NotNil(t, args.MySQLExporter)
-		exporterArgs := exporter_mysql.Arguments(*args.MySQLExporter)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.PrometheusExporter)
 		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
-		assert.Equal(t, []string{"perf_schema.eventsstatements", "perf_schema.eventswaits"}, args.MySQLExporter.EnableCollectors)
+		assert.Equal(t, []string{"perf_schema.eventsstatements", "perf_schema.eventswaits"}, args.PrometheusExporter.EnableCollectors)
 	})
 }

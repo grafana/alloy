@@ -77,7 +77,7 @@ type Arguments struct {
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
 	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
-	MySQLExporter           *MySQLExporterArguments `alloy:"mysql_exporter,block,optional"`
+	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
 type CloudProvider struct {
@@ -138,19 +138,19 @@ type HealthCheckArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-// MySQLExporterArguments configures the embedded mysqld_exporter scrapers.
+// PrometheusExporterArguments configures the embedded mysqld_exporter scrapers.
 // When this block is present, mysqld_exporter metrics are served alongside the
 // component's own metrics at the same /metrics endpoint.
 //
 // It is a distinct type (not an embedded struct) because the Alloy syntax
 // system does not support anonymous/embedded fields.
-type MySQLExporterArguments exporter_mysql.Arguments
+type PrometheusExporterArguments exporter_mysql.Arguments
 
-func (a *MySQLExporterArguments) SetToDefault() {
-	*a = MySQLExporterArguments(exporter_mysql.DefaultArguments)
+func (a *PrometheusExporterArguments) SetToDefault() {
+	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
 }
 
-func (a *MySQLExporterArguments) Validate() error { return nil }
+func (a *PrometheusExporterArguments) Validate() error { return nil }
 
 var DefaultArguments = Arguments{
 	ExcludeSchemas:                []string{},
@@ -451,8 +451,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		c.exporterCollector = nil
 	}
 
-	if c.args.MySQLExporter != nil {
-		exporterArgs := exporter_mysql.Arguments(*c.args.MySQLExporter)
+	if c.args.PrometheusExporter != nil {
+		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
