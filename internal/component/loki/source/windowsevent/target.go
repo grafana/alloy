@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -157,9 +158,7 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 	res := make([]loki.Entry, 0, len(events))
 	lbs := labels.NewBuilder(labels.EmptyLabels())
 	for _, event := range events {
-		entry := loki.Entry{
-			Labels: make(model.LabelSet),
-		}
+		entry := loki.NewEntry(make(model.LabelSet), push.Entry{})
 
 		entry.Timestamp = time.Now()
 		if t.cfg.UseIncomingTimestamp {

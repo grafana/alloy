@@ -123,11 +123,5 @@ func parseGCPLogsEntry(data []byte, other model.LabelSet, otherInternal labels.L
 		line = ge.TextPayload
 	}
 
-	return loki.Entry{
-		Labels: lbls,
-		Entry: push.Entry{
-			Timestamp: ts,
-			Line:      line,
-		},
-	}, nil
+	return loki.NewEntry(lbls, push.Entry{Timestamp: ts, Line: line}), nil
 }
