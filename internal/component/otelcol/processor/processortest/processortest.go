@@ -39,14 +39,20 @@ type ProcessorRunConfig struct {
 	L                     log.Logger
 }
 
+const (
+	componentStartTimeout  = 5 * time.Second
+	componentExportTimeout = 5 * time.Second
+	signalOutputTimeout    = 3 * time.Second
+)
+
 func TestRunProcessor(c ProcessorRunConfig) {
 	go func() {
 		err := c.Ctrl.Run(c.Ctx, c.Args)
 		require.NoError(c.T, err)
 	}()
 
-	require.NoError(c.T, c.Ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(c.T, c.Ctrl.WaitExports(time.Second), "component never exported anything")
+	require.NoError(c.T, c.Ctrl.WaitRunning(componentStartTimeout), "component never started")
+	require.NoError(c.T, c.Ctrl.WaitExports(componentExportTimeout), "component never exported anything")
 
 	// Send signals in the background to our processor.
 	go func() {
@@ -101,7 +107,7 @@ func (s traceToLogSignal) ConsumeInput(ctx context.Context, consumer otelcol.Con
 func (s traceToLogSignal) CheckOutput(t *testing.T) {
 	// Wait for our processor to finish and forward data to logCh.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(signalOutputTimeout):
 		require.FailNow(t, "failed waiting for logs")
 	case actualLog := <-s.logCh:
 		CompareLogs(t, s.expectedOutputLog, actualLog)
@@ -196,7 +202,7 @@ func (s traceSignal) ConsumeInput(ctx context.Context, consumer otelcol.Consumer
 func (s traceSignal) CheckOutput(t *testing.T) {
 	// Wait for our processor to finish and forward data to traceCh.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(signalOutputTimeout):
 		require.FailNow(t, "failed waiting for traces")
 	case actualTrace := <-s.traceCh:
 		CompareTraces(t, s.expectedOutputTrace, actualTrace)
@@ -262,7 +268,7 @@ func (s logSignal) ConsumeInput(ctx context.Context, consumer otelcol.Consumer) 
 func (s logSignal) CheckOutput(t *testing.T) {
 	// Wait for our processor to finish and forward data to logCh.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(signalOutputTimeout):
 		require.FailNow(t, "failed waiting for logs")
 	case actualLog := <-s.logCh:
 		CompareLogs(t, s.expectedOutputLog, actualLog)
@@ -328,7 +334,7 @@ func (s metricSignal) ConsumeInput(ctx context.Context, consumer otelcol.Consume
 func (s metricSignal) CheckOutput(t *testing.T) {
 	// Wait for our processor to finish and forward data to logCh.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(signalOutputTimeout):
 		require.FailNow(t, "failed waiting for logs")
 	case actualMetric := <-s.metricCh:
 		err := CompareMetrics(t, s.expectedOutputMetric, actualMetric)

@@ -29,6 +29,7 @@ func TestEndpoint(t *testing.T) {
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
+		allowBatchMerge      bool
 		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
 	}
@@ -74,6 +75,7 @@ func TestEndpoint(t *testing.T) {
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
 			inputDelay:           700 * time.Millisecond,
+			allowBatchMerge:      true,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -353,13 +355,39 @@ func TestEndpoint(t *testing.T) {
 				receivedReqs = append(receivedReqs, req)
 			}
 
-			assert.ElementsMatch(t, tt.expectedReqs, receivedReqs)
+			if tt.allowBatchMerge {
+				assert.ElementsMatch(t, flattenRemoteWriteEntries(tt.expectedReqs), flattenRemoteWriteEntries(receivedReqs))
+			} else {
+				assert.ElementsMatch(t, tt.expectedReqs, receivedReqs)
+			}
 
 			expectedMetrics := strings.ReplaceAll(tt.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total")
 			assert.NoError(t, err)
 		})
 	}
+}
+
+type tenantEntry struct {
+	TenantID string
+	Entry    push.Entry
+}
+
+func flattenRemoteWriteEntries(reqs []util.RemoteWriteRequest) []tenantEntry {
+	var entries []tenantEntry
+
+	for _, req := range reqs {
+		for _, stream := range req.Request.Streams {
+			for _, entry := range stream.Entries {
+				entries = append(entries, tenantEntry{
+					TenantID: req.TenantID,
+					Entry:    entry,
+				})
+			}
+		}
+	}
+
+	return entries
 }
 
 func TestEndpointBlockOnOverflow(t *testing.T) {

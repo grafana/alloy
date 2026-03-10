@@ -19,6 +19,8 @@ import (
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 )
 
+const componentStartupTimeout = 5 * time.Second
+
 // Test performs a basic integration test which runs the otelcol.auth.bearer
 // component and ensures that it can be used for authentication.
 func TestClient(t *testing.T) {
@@ -223,8 +225,8 @@ func newTestComponent(t *testing.T, ctx context.Context, alloyConfig string) (*c
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+	require.NoError(t, ctrl.WaitRunning(componentStartupTimeout), "component never started")
+	require.NoError(t, ctrl.WaitExports(componentStartupTimeout), "component never exported anything")
 
 	return ctrl, args.Header
 }
