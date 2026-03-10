@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/troubleshoot/memory/
 description: Learn how to troubleshoot memory issues in Grafana Alloy
 title: Troubleshoot memory issues
 menuTitle: Memory issues
-weight: 200
+weight: 100
 ---
 
 # Troubleshoot memory issues
@@ -16,6 +16,19 @@ Common symptoms include:
 - Memory spikes immediately after restart
 - Memory grows steadily and never drops
 - Memory remains high after traffic decreases
+- Memory grows steadily and series count increases
+
+## Diagnostic checklist
+
+Before investigating memory issues in detail, identify the pattern that matches your environment.
+
+| Symptom                                          | Likely cause                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| Container restarts with `OOMKilled`              | [Kubernetes memory limits][kubernetes] or [WAL replay][prometheus-wal] |
+| Memory spikes immediately after restart          | [WAL replay][prometheus-wal]                                           |
+| Memory grows steadily while queues increase      | [Back pressure][loki-backpressure] from slow or failing remote systems |
+| Memory grows steadily and series count increases | [High cardinality][high-cardinality]                                   |
+| Memory remains high after traffic drops          | [Go runtime retaining memory][prometheus-high-memory] for reuse        |
 
 ## Understand {{% param "PRODUCT_NAME" %}} memory behavior
 
@@ -38,15 +51,16 @@ Start by identifying which category matches your symptoms:
 - **`OOMKilled` or startup crashes**: Refer to [Kubernetes memory issues][kubernetes] for resource configuration and persistent storage guidance.
 - **Memory spikes after restart or WAL issues**: Refer to [Prometheus component memory issues][prometheus] for WAL replay and retention configuration.
 - **Back pressure from HTTP ingestion sources**: Refer to [Loki component memory issues][loki] for [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] troubleshooting.
-- **Gradual memory growth during normal operation**: This usually indicates queue buildup caused by slow or failing downstream systems.
+- **Memory grows steadily and series count increases**: Refer to [High cardinality memory issues][high-cardinality] for guidance on identifying and reducing high-cardinality labels.
+- **Gradual memory growth during normal operation**: This usually indicates queue buildup caused by slow or failing remote systems.
   Review endpoint latency and internal queue metrics.
   If your configuration includes Prometheus or other metrics ingestion pipelines, refer to [Prometheus component memory issues][prometheus] for remote write queues, WAL replay behavior, and cardinality-related memory usage.
 
 ## Diagnose back pressure and queue buildup
 
-In many environments, gradual memory growth occurs because {{< param "PRODUCT_NAME" >}} receives telemetry faster than it can forward it to downstream systems.
+In many environments, gradual memory growth occurs because {{< param "PRODUCT_NAME" >}} receives telemetry faster than it can forward it to remote endpoints.
 
-When this happens, components buffer telemetry in memory until downstream systems catch up.
+When this happens, components buffer telemetry in memory until remote systems catch up.
 This behavior can resemble a memory leak, but it usually indicates **back pressure** rather than a defect.
 
 Back pressure most commonly occurs when:
@@ -60,11 +74,11 @@ Back pressure most commonly occurs when:
 
 Start by confirming whether telemetry is accumulating inside {{< param "PRODUCT_NAME" >}}.
 
-1. Check logs for delivery errors or retries when sending telemetry to downstream endpoints.
+1. Check logs for delivery errors or retries when sending telemetry to remote endpoints.
 1. Inspect component metrics to determine whether internal queues are growing.
 1. Compare ingestion rate to forwarding rate to determine whether {{< param "PRODUCT_NAME" >}} is receiving data faster than it can send it.
 
-If queue depth increases over time while downstream latency or errors are present, memory growth likely reflects buffered telemetry rather than a memory leak.
+If queue depth increases over time while latency or errors are present, memory growth likely reflects buffered telemetry rather than a memory leak.
 
 Refer to the pipeline-specific topics for detailed troubleshooting steps:
 
@@ -95,7 +109,10 @@ Redact any sensitive information before attaching files.
 [profile]: ../profile/
 [support-bundle]: ../support_bundle/
 [alloy-issues]: https://github.com/grafana/alloy/issues/
-[monitor-components]: ../component_metrics/
 [kubernetes]: ./kubernetes/
 [prometheus]: ./prometheus/
+[prometheus-wal]: ./prometheus/#memory-spikes-after-restart
+[prometheus-high-memory]: ./prometheus/#memory-remains-high-after-traffic-drops
 [loki]: ./loki/
+[loki-backpressure]: ./loki/#back-pressure-from-http-sources
+[high-cardinality]: ./high-cardinality/

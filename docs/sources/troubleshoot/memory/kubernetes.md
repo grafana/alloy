@@ -41,7 +41,7 @@ Common causes include:
 1. Check whether WAL replay triggers the spike.
 
    If memory jumps immediately after startup, inspect the WAL directory size.
-   Large WAL segments increase memory usage during replay because {{< param "PRODUCT_NAME" >}} must load and process buffered telemetry before forwarding it downstream.
+   Large WAL segments increase memory usage during replay because {{< param "PRODUCT_NAME" >}} must load and process buffered telemetry before forwarding it.
 
    If the container memory limit is too low, the Pod may restart before replay completes.
    This creates a restart loop where each Pod attempts to replay the same WAL.
