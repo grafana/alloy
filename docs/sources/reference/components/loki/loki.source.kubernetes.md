@@ -76,6 +76,7 @@ You can use the following blocks with `loki.source.kubernetes`:
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.                                      | no       |
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.                                      | no       |
 | [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
+| [`position`][position]                           | Configure how positions are keyed and synced to disk.                                       | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
@@ -85,6 +86,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [basic_auth]: #basic_auth
 [clustering]: #clustering
 [oauth2]: #oauth2
+[position]: #position
 [tls_config]: #tls_config
 
 ### `client`
@@ -158,6 +160,10 @@ Clustering looks only at the following labels for determining the shard key:
 * `job`
 * `namespace`
 * `pod`
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 [using clustering]: ../../../../get-started/clustering/
 

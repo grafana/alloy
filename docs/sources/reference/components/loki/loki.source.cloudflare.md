@@ -213,7 +213,17 @@ A sample log looks like this:
 
 ## Blocks
 
-The `loki.source.cloudflare` component doesn't support any blocks. You can configure this component with arguments.
+You can use the following block with `loki.source.cloudflare`:
+
+| Name                   | Description                                           | Required |
+| ---------------------- | ----------------------------------------------------- | -------- |
+| [`position`][position] | Configure how positions are keyed and synced to disk. | no       |
+
+[position]: #position
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
