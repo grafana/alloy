@@ -80,7 +80,7 @@ func TestEndpoint(t *testing.T) {
 				// end up in the same batch so we need to wait longer to make
 				// sure everything is running.
 				if runtime.GOOS == "windows" {
-					return 5 * time.Second
+					return 10 * time.Second
 				}
 				return 700 * time.Millisecond
 			}(),
