@@ -14,14 +14,15 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 		return
 	}
 
-	args := cloudflare.Arguments{
-		APIToken:   alloytypes.Secret(s.cfg.CloudflareConfig.APIToken),
-		ZoneID:     s.cfg.CloudflareConfig.ZoneID,
-		Labels:     convertPromLabels(s.cfg.CloudflareConfig.Labels),
-		Workers:    s.cfg.CloudflareConfig.Workers,
-		PullRange:  time.Duration(s.cfg.CloudflareConfig.PullRange),
-		FieldsType: cloudflare.FieldsType(s.cfg.CloudflareConfig.FieldsType),
-	}
+	args := cloudflare.Arguments{}
+	args.SetToDefault()
+	args.APIToken = alloytypes.Secret(s.cfg.CloudflareConfig.APIToken)
+	args.ZoneID = s.cfg.CloudflareConfig.ZoneID
+	args.Labels = convertPromLabels(s.cfg.CloudflareConfig.Labels)
+	args.Workers = s.cfg.CloudflareConfig.Workers
+	args.PullRange = time.Duration(s.cfg.CloudflareConfig.PullRange)
+	args.FieldsType = cloudflare.FieldsType(s.cfg.CloudflareConfig.FieldsType)
+
 	override := func(val any) any {
 		switch conv := val.(type) {
 		case []loki.LogsReceiver:
