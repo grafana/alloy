@@ -73,13 +73,10 @@ func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// ErrInvalidRate is the error returned when rate is not in [0, 1].
-const ErrInvalidRate = "secretfilter rate must be between 0.0 and 1.0, received %f"
-
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Rate < 0.0 || args.Rate > 1.0 {
-		return fmt.Errorf(ErrInvalidRate, args.Rate)
+		return fmt.Errorf("secretfilter rate must be between 0.0 and 1.0, received %f", args.Rate)
 	}
 	return nil
 }
