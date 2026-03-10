@@ -39,8 +39,8 @@ const CurrentEntriesRec = WALRecordEntriesV4
 type RefEntries struct {
 	// Counter is unused.
 	Counter int64
-	// Created is a unix timestamp in micro seconds that represent
-	// the time entries was ingested.
+	// Created is a Unix timestamp in microseconds that represents
+	// the time the entries were ingested.
 	Created int64
 	// Ref identifies the series these entries belong to.
 	Ref chunks.HeadSeriesRef
