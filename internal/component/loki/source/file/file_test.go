@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
@@ -28,11 +29,13 @@ import (
 )
 
 func Test_UnmarshalConfig(t *testing.T) {
-	tests := []struct {
+	type testCase struct {
 		name     string
 		config   string
 		expected Arguments
-	}{
+	}
+
+	tests := []testCase{
 		{
 			name: "default",
 			config: `
@@ -50,6 +53,10 @@ func Test_UnmarshalConfig(t *testing.T) {
 				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
 				ForwardTo:            []loki.LogsReceiver{},
 				Targets:              []discovery.Target{},
+				Position: positions.Config{
+					SyncPeriod: 10 * time.Second,
+					KeyMode:    positions.KeyModeIncludeLabels,
+				},
 			},
 		},
 		{
@@ -79,6 +86,10 @@ func Test_UnmarshalConfig(t *testing.T) {
 						"__path__": "/tmp/*.log",
 					}),
 				},
+				Position: positions.Config{
+					SyncPeriod: 10 * time.Second,
+					KeyMode:    positions.KeyModeIncludeLabels,
+				},
 			},
 		},
 		{
@@ -107,6 +118,10 @@ func Test_UnmarshalConfig(t *testing.T) {
 					discovery.NewTargetFromMap(map[string]string{
 						"__path__": "/tmp/*.log",
 					}),
+				},
+				Position: positions.Config{
+					SyncPeriod: 10 * time.Second,
+					KeyMode:    positions.KeyModeIncludeLabels,
 				},
 			},
 		},

@@ -96,10 +96,13 @@ func TestTailer(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,10 +158,13 @@ func TestTailerParsingErrors(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,10 +229,13 @@ func TestTailer_JSON(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,10 +289,13 @@ func TestTailer_Since(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,10 +326,13 @@ func TestTailer_Cursor_TooOld(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,10 +369,13 @@ func TestTailer_Cursor_NotTooOld(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,10 +429,13 @@ func TestTailer_Matches(t *testing.T) {
 	// Set the sync period to a really long value, to guarantee the sync timer
 	// never runs, this way we know everything saved was done through channel
 	// notifications when target.stop() was called.
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionsFileName,
-	})
+	ps, err := positions.New(
+		logger,
+		positionsFileName,
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

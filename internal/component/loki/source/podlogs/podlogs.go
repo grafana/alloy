@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/oklog/run"
@@ -44,7 +43,8 @@ type Arguments struct {
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
-	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
+	Client   commonk8s.ClientArguments `alloy:"client,block,optional"`
+	Position positions.Config          `alloy:"position,block,optional"`
 
 	Selector          config.LabelSelector `alloy:"selector,block,optional"`
 	NamespaceSelector config.LabelSelector `alloy:"namespace_selector,block,optional"`
@@ -71,14 +71,10 @@ type NodeFilterConfig struct {
 	NodeName string `alloy:"node_name,attr,optional"`
 }
 
-// DefaultArguments holds default settings for loki.source.kubernetes.
-var DefaultArguments = Arguments{
-	Client: commonk8s.DefaultClientArguments,
-}
-
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	args.Client.SetToDefault()
+	args.Position.SetToDefault()
 }
 
 // Component implements the loki.source.podlogs component.
@@ -114,10 +110,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		filepath.Join(o.DataPath, "positions.yml"),
+		args.Position,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -219,6 +216,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.positions.Update(newArgs.Position)
 	if err := c.updateTailer(newArgs); err != nil {
 		return err
 	}

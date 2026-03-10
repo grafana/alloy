@@ -48,20 +48,16 @@ type Arguments struct {
 	LogFormat  string   `alloy:"log_format,attr,optional"`
 
 	// Client settings to connect to Kubernetes.
-	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
-}
-
-// DefaultArguments holds default settings for loki.source.kubernetes_events.
-var DefaultArguments = Arguments{
-	JobName:   "loki.source.kubernetes_events",
-	LogFormat: logFormatFmt,
-
-	Client: kubernetes.DefaultClientArguments,
+	Client   kubernetes.ClientArguments `alloy:"client,block,optional"`
+	Position positions.Config           `alloy:"position,block,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	args.JobName = "loki.source.kubernetes_events"
+	args.LogFormat = logFormatFmt
+	args.Client.SetToDefault()
+	args.Position.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -103,10 +99,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		filepath.Join(o.DataPath, "positions.yml"),
+		args.Position,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +144,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
+	c.positions.Update(newArgs.Position)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	restConfig := c.restConfig

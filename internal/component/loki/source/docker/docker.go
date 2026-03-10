@@ -66,20 +66,14 @@ type Arguments struct {
 	RelabelRules     alloy_relabel.Rules     `alloy:"relabel_rules,attr,optional"`
 	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
 	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
-}
-
-// GetDefaultArguments return an instance of Arguments with the optional fields
-// initialized.
-func GetDefaultArguments() Arguments {
-	return Arguments{
-		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
-		RefreshInterval:  60 * time.Second,
-	}
+	Position         positions.Config        `alloy:"position,block,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
-	*a = GetDefaultArguments()
+	a.RefreshInterval = 60 * time.Second
+	a.HTTPClientConfig = types.CloneDefaultHTTPClientConfig()
+	a.Position.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -126,12 +120,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		filepath.Join(o.DataPath, "positions.yml"),
+		args.Position,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +178,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.posFile.Update(newArgs.Position)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	client, err := c.getClient(newArgs)

@@ -64,12 +64,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger)
 	}
 
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     positionFile,
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		positionFile,
+		args.Position,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +128,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.positions.Update(newArgs.Position)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.args = newArgs
