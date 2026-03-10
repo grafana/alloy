@@ -38,7 +38,8 @@ Start by identifying which category matches your symptoms:
 - **`OOMKilled` or startup crashes**: Refer to [Kubernetes memory issues][kubernetes] for resource configuration and persistent storage guidance.
 - **Memory spikes after restart or WAL issues**: Refer to [Prometheus component memory issues][prometheus] for WAL replay and retention configuration.
 - **Back pressure from HTTP ingestion sources**: Refer to [Loki component memory issues][loki] for [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] troubleshooting.
-- **Gradual memory growth**: Review endpoint latency and internal queue metrics.
+- **Gradual memory growth during normal operation**: This usually indicates queue buildup caused by slow or failing downstream systems.
+  Review endpoint latency and internal queue metrics.
   If your configuration includes Prometheus or other metrics ingestion pipelines, refer to [Prometheus component memory issues][prometheus] for remote write queues, WAL replay behavior, and cardinality-related memory usage.
 
 ## Diagnose back pressure and queue buildup

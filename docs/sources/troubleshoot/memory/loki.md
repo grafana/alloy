@@ -18,7 +18,7 @@ This occurs when {{< param "PRODUCT_NAME" >}} receives more HTTP log requests th
 Short bursts of traffic can cause temporary memory spikes while buffers absorb incoming log data.
 Memory typically stabilizes once ingestion rates return to normal and {{< param "PRODUCT_NAME" >}} forwards the buffered logs downstream.
 
-If you're unsure whether memory growth is caused by back pressure, refer to [Diagnose back pressure and queue buildup][memory-backpressure] in the memory troubleshooting overview.
+If you're unsure whether back pressure causes the memory growth, refer to [Diagnose back pressure and queue buildup][memory-backpressure] in the memory troubleshooting overview.
 
 {{< admonition type="note" >}}
 Back pressure issues aren't memory leaks.
