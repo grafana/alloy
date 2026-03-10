@@ -3,7 +3,6 @@ package gcplog
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/grafana/alloy/internal/featuregate"
@@ -145,8 +144,7 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		jobName := strings.NewReplacer(".", "_", "/", "_").Replace(c.opts.ID)
-		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, c.handler, jobName, newArgs.PushTarget, rcs, registry)
+		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PushTarget, rcs, registry)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog push target", "err", err)
 			return err

@@ -157,7 +157,6 @@ func TestPushTarget(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		outerName := t.Name()
 		t.Run(name, func(t *testing.T) {
 			eh := loki.NewCollectingHandler()
 			defer eh.Stop()
@@ -181,9 +180,11 @@ func TestPushTarget(t *testing.T) {
 				},
 			}
 
-			prometheus.DefaultRegisterer = prometheus.NewRegistry()
-			metrics := NewMetrics(prometheus.DefaultRegisterer)
-			pt, err := NewPushTarget(metrics, logger, eh.Receiver(), outerName+"_test_job", config, tc.args.RelabelConfigs, nil)
+			var (
+				reg     = prometheus.NewRegistry()
+				metrics = NewMetrics(reg)
+			)
+			pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, tc.args.RelabelConfigs, reg)
 			require.NoError(t, err)
 			defer pt.Stop()
 			require.NoError(t, pt.Run())
@@ -248,9 +249,11 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 		},
 	}
 
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), t.Name()+"_test_job", config, nil, nil)
+	var (
+		reg     = prometheus.NewRegistry()
+		metrics = NewMetrics(reg)
+	)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, nil, reg)
 	require.NoError(t, err)
 	defer pt.Stop()
 	require.NoError(t, pt.Run())
@@ -293,8 +296,10 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 		},
 	}
 
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	metrics := NewMetrics(prometheus.DefaultRegisterer)
+	var (
+		reg     = prometheus.NewRegistry()
+		metrics = NewMetrics(reg)
+	)
 	tenantIDRelabelConfig := []*relabel.Config{
 		{
 			SourceLabels:         model.LabelNames{"__tenant_id__"},
@@ -305,7 +310,7 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 			NameValidationScheme: model.LegacyValidation,
 		},
 	}
-	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), t.Name()+"_test_job", config, tenantIDRelabelConfig, nil)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, tenantIDRelabelConfig, reg)
 	require.NoError(t, err)
 	defer pt.Stop()
 	require.NoError(t, pt.Run())
@@ -350,9 +355,11 @@ func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
 		},
 	}
 
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), t.Name()+"_test_job", config, nil, nil)
+	var (
+		reg     = prometheus.NewRegistry()
+		metrics = NewMetrics(reg)
+	)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, nil, reg)
 	require.NoError(t, err)
 	defer pt.Stop()
 	require.NoError(t, pt.Run())
@@ -424,7 +431,11 @@ func TestPushTargetBlocked(t *testing.T) {
 			},
 		}
 
-		pt, err := NewPushTarget(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), eh, t.Name()+"_test_job", config, nil, nil)
+		var (
+			reg     = prometheus.NewRegistry()
+			metrics = NewMetrics(reg)
+		)
+		pt, err := NewPushTarget(metrics, log.NewNopLogger(), eh, config, nil, reg)
 		require.NoError(t, err)
 		defer pt.Stop()
 		require.NoError(t, pt.Run())
@@ -453,7 +464,11 @@ func TestPushTargetBlocked(t *testing.T) {
 			},
 		}
 
-		pt, err := NewPushTarget(NewMetrics(prometheus.NewRegistry()), log.NewNopLogger(), eh, t.Name()+"_test_job", config, nil, nil)
+		var (
+			reg     = prometheus.NewRegistry()
+			metrics = NewMetrics(reg)
+		)
+		pt, err := NewPushTarget(metrics, log.NewNopLogger(), eh, config, nil, reg)
 		require.NoError(t, err)
 		require.NoError(t, pt.Run())
 

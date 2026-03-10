@@ -44,15 +44,13 @@ func NewPushTarget(
 	metrics *Metrics,
 	logger log.Logger,
 	recv loki.LogsReceiver,
-	jobName string,
 	config *gcptypes.PushConfig,
 	relabel []*relabel.Config,
 	reg prometheus.Registerer,
 ) (*PushTarget, error) {
 
 	logger = log.With(logger, "component", "gcp_push")
-
-	srv, err := fnet.NewTargetServer(logger, jobName+"_push_target", reg, config.Server)
+	srv, err := fnet.NewTargetServer(logger, "loki_source_gcplog_push", reg, config.Server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gcp push server: %w", err)
 	}
