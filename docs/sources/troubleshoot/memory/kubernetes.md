@@ -93,6 +93,8 @@ volumes:
 {{< admonition type="note" >}}
 Without persistent storage, {{< param "PRODUCT_NAME" >}} loses buffered data on restart and must replay the entire WAL from scratch each time.
 Refer to [Data durability][data-durability] for more information.
+
+[data-durability]: ../../../introduction/requirements/#data-durability
 {{< /admonition >}}
 
 ## Choose the correct workload type
@@ -110,10 +112,9 @@ If {{< param "PRODUCT_NAME" >}} keeps restarting:
 - Check for probe failures that trigger premature restarts.
 - Review logs for errors that cause crashes before WAL replay finishes.
 
-[estimate-resource-usage]: ../../../set-up/estimate-resource-usage/
-[env-vars]: ../../../reference/cli/environment-variables/#gomemlimit
-[profile]: ../../profile/
-[data-durability]: ../../../introduction/requirements/#data-durability
 [deploy]: ../../../set-up/deploy/
+[env-vars]: ../../../reference/cli/environment-variables/#gomemlimit
+[estimate-resource-usage]: ../../../set-up/estimate-resource-usage/
+[profile]: ../../profile/
 [prometheus]: ../prometheus/
 [report-leak]: ../#report-a-potential-memory-leak
