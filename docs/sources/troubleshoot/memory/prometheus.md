@@ -58,6 +58,46 @@ Common causes include:
 - [High cardinality][high-cardinality] causing large internal data structures.
 - Processing components with expensive metric transformations
 
+## Large numbers of scrape targets
+
+Memory and CPU usage can increase significantly if {{< param "PRODUCT_NAME" >}} discovers a large number of scrape targets.
+
+This situation often occurs after changes to service discovery configuration or relabeling rules.  
+When the number of targets increases unexpectedly, {{< param "PRODUCT_NAME" >}} must schedule additional scrape loops and process more samples, which increases memory usage.
+
+### Symptoms
+
+Large increases in scrape targets often appear as:
+
+- Sudden increases in memory and CPU usage
+- A sharp rise in the number of active scrape targets
+- Higher scrape load after configuration or deployment changes
+- Increased ingestion rates even when application traffic hasn't changed
+- Remote write queues growing due to increased sample volume
+
+### Diagnose excessive scrape targets
+
+1. Check the number of discovered scrape targets.
+
+   Compare the current number of targets to historical baselines in your monitoring system.
+
+1. Review recent configuration changes.
+
+   Discovery rules, service monitors, or relabeling changes can unintentionally expose many additional targets.
+
+1. Inspect service discovery configuration.
+
+   Ensure discovery rules filter targets correctly and avoid unintentionally matching large sets of services or endpoints.
+
+### Resolve excessive scrape targets
+
+To reduce the number of scrape targets:
+
+- Restrict service discovery rules to only the intended targets
+- Add relabeling rules to drop unnecessary targets
+- Reduce scrape intervals for low-priority targets
+- Partition scrape workloads across multiple {{< param "PRODUCT_NAME" >}} instances
+
 ## Remote write queue buildup
 
 Prometheus pipelines buffer samples in memory before sending them to remote endpoints using [`prometheus.remote_write`][prometheus-remote-write].
