@@ -20,7 +20,7 @@ Common causes include:
 - Pod memory limit is too low
 - [`GOMEMLIMIT`][env-vars] isn't configured
 - WAL replay consumes additional memory at startup
-- Internal queues grow when remote endpoints can't accept data fast enough
+- Internal queues grow when remote endpoints respond slowly or can't accept data fast enough
 
 ### Validate resource configuration
 
@@ -41,7 +41,10 @@ Common causes include:
 1. Check whether WAL replay triggers the spike.
 
    If memory jumps immediately after startup, inspect the WAL directory size.
-   Large WAL segments increase memory usage during replay.
+   Large WAL segments increase memory usage during replay because {{< param "PRODUCT_NAME" >}} must load and process buffered telemetry before forwarding it downstream.
+
+   If the container memory limit is too low, the Pod may restart before replay completes.
+   This creates a restart loop where each Pod attempts to replay the same WAL.
 
    If replay causes OOM errors:
 
@@ -49,6 +52,16 @@ Common causes include:
    - Reduce WAL retention.
      Refer to [Prometheus component memory issues][prometheus] for WAL configuration details.
    - Ensure you have [persistent storage](#configure-persistent-storage) so the WAL persists across restarts and doesn't grow unbounded.
+
+1. Verify whether WAL replay causes restarts.
+
+   If {{< param "PRODUCT_NAME" >}} repeatedly restarts shortly after startup:
+
+   1. Check Pod logs to confirm whether WAL replay begins before the container terminates.
+   1. Check the WAL directory size in the persistent storage volume.
+   1. Confirm the container memory limit can absorb temporary replay spikes.
+
+   Increase the Pod memory limit or reduce WAL retention to resolve replay-related restart loops.
 
 1. Capture a heap profile if OOM errors continue.
 
