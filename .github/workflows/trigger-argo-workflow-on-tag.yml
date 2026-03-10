@@ -61,4 +61,4 @@ jobs:
             prCommentContext=This deployment was triggered by publishing release ${{ steps.tag.outputs.tag }}.
             commit_author=${{ github.actor }}
             commit_link=https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-          extra_args: "--name alloy-${{ steps.short-sha.outputs.sha }}"
+          extra_args: "--name alloy-${{ steps.short-sha.outputs.sha }}-${{ github.run_id }}"
