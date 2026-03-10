@@ -2,6 +2,7 @@ package client
 
 import (
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -73,7 +74,7 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           5 * time.Second,
+			inputDelay:           1 * time.Second,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -333,7 +334,11 @@ func TestEndpoint(t *testing.T) {
 				c.enqueue(logEntry, 0)
 
 				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
-					time.Sleep(tt.inputDelay)
+					delay := tt.inputDelay
+					if runtime.GOOS == "windows" {
+						delay = delay * 5
+					}
+					time.Sleep(delay)
 				}
 			}
 
