@@ -18,6 +18,8 @@ This occurs when {{< param "PRODUCT_NAME" >}} receives more HTTP log requests th
 Short bursts of traffic can cause temporary memory spikes while buffers absorb incoming log data.
 Memory typically stabilizes once ingestion rates return to normal and {{< param "PRODUCT_NAME" >}} forwards the buffered logs downstream.
 
+If you're unsure whether memory growth is caused by back pressure, refer to [Diagnose back pressure and queue buildup][memory-backpressure] in the memory troubleshooting overview.
+
 {{< admonition type="note" >}}
 Back pressure issues aren't memory leaks.
 Memory grows because incoming log data accumulates in memory buffers faster than {{< param "PRODUCT_NAME" >}} can process or forward it.
@@ -167,3 +169,4 @@ If memory continues to grow with stable traffic and healthy endpoints, refer to 
 [kubernetes]: ../kubernetes/
 [kubernetes-storage]: ../kubernetes/#configure-persistent-storage
 [report-leak]: ../#report-a-potential-memory-leak
+[memory-backpressure]: ../#diagnose-back-pressure-and-queue-buildup

@@ -47,6 +47,8 @@ If profiling suggests a memory leak, refer to [Report a potential memory leak][r
 
 ## Memory grows steadily over time
 
+If you're diagnosing gradual memory growth, first review [Diagnose back pressure and queue buildup][memory-backpressure] in the memory troubleshooting overview.
+
 Gradual memory growth usually indicates that data is arriving faster than {{< param "PRODUCT_NAME" >}} can send it, sustained load increase, or a component retaining objects longer than expected.
 In some cases, this behavior indicates a leak.
 
@@ -114,3 +116,4 @@ Refer to [Report a potential memory leak][report-leak] for next steps.
 [estimate-resource-usage]: ../../../set-up/estimate-resource-usage/
 [monitor-components]: ../../component_metrics/
 [report-leak]: ../#report-a-potential-memory-leak
+[memory-backpressure]: ../#diagnose-back-pressure-and-queue-buildup

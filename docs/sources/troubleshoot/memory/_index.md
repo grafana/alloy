@@ -41,6 +41,35 @@ Start by identifying which category matches your symptoms:
 - **Gradual memory growth**: Review endpoint latency and internal queue metrics.
   If your configuration includes Prometheus or other metrics ingestion pipelines, refer to [Prometheus component memory issues][prometheus] for remote write queues, WAL replay behavior, and cardinality-related memory usage.
 
+## Diagnose back pressure and queue buildup
+
+In many environments, gradual memory growth occurs because {{< param "PRODUCT_NAME" >}} receives telemetry faster than it can forward it to downstream systems.
+
+When this happens, components buffer telemetry in memory until downstream systems catch up.
+This behavior can resemble a memory leak, but it usually indicates **back pressure** rather than a defect.
+
+Back pressure most commonly occurs when:
+
+- Downstream systems respond slowly or intermittently fail
+- Remote endpoints return errors such as `429` or `5xx`
+- Retry loops delay successful delivery
+- Incoming telemetry volume temporarily exceeds processing capacity
+
+### Verify whether queues are growing
+
+Start by confirming whether telemetry is accumulating inside {{< param "PRODUCT_NAME" >}}.
+
+1. Check logs for delivery errors or retries when sending telemetry to downstream endpoints.
+1. Inspect component metrics to determine whether internal queues are growing.
+1. Compare ingestion rate to forwarding rate to determine whether {{< param "PRODUCT_NAME" >}} is receiving data faster than it can send it.
+
+If queue depth increases over time while downstream latency or errors are present, memory growth likely reflects buffered telemetry rather than a memory leak.
+
+Refer to the pipeline-specific topics for detailed troubleshooting steps:
+
+- Log ingestion pipelines: [Loki component memory issues][loki]
+- Metrics ingestion pipelines: [Prometheus component memory issues][prometheus]
+
 ## Capture profiles for diagnosis
 
 Heap and goroutine profiles help identify what consumes memory.
