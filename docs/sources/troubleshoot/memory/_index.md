@@ -78,6 +78,28 @@ Start by confirming whether telemetry is accumulating inside {{< param "PRODUCT_
 1. Inspect component metrics to determine whether internal queues are growing.
 1. Compare ingestion rate to forwarding rate to determine whether {{< param "PRODUCT_NAME" >}} is receiving data faster than it can send it.
 
+The following metrics help identify queue buildup and delivery issues:
+
+**Metrics pipelines (`prometheus.remote_write`):**
+
+| Metric                                                           | Type    | Indicates                                  |
+| ---------------------------------------------------------------- | ------- | ------------------------------------------ |
+| `prometheus_remote_storage_samples_pending`                      | gauge   | Samples queued for delivery                |
+| `prometheus_remote_storage_shards_desired`                       | gauge   | Shard scaling demand due to queue backlog  |
+| `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` | gauge   | How far behind the queue is                |
+| `prometheus_remote_storage_samples_failed_total`                 | counter | Delivery failures                          |
+| `prometheus_remote_storage_samples_retries_total`                | counter | Retries due to recoverable errors          |
+
+**Log pipelines (`loki.write`):**
+
+| Metric                             | Type    | Indicates                                |
+| ---------------------------------- | ------- | ---------------------------------------- |
+| `loki_write_sent_entries_total`    | counter | Successfully delivered log entries       |
+| `loki_write_dropped_entries_total` | counter | Entries dropped after all retries failed |
+| `loki_write_sent_bytes_total`      | counter | Bytes successfully sent                  |
+| `loki_write_dropped_bytes_total`   | counter | Bytes dropped after all retries failed   |
+| `loki_write_batch_retries_total`   | counter | Batch retry attempts                     |
+
 If queue depth increases over time while latency or errors are present, memory growth likely reflects buffered telemetry rather than a memory leak.
 
 Refer to the pipeline-specific topics for detailed troubleshooting steps:
@@ -102,8 +124,8 @@ If local troubleshooting and profiling doesn't identify the root cause, collect 
 
 Redact any sensitive information before attaching files.
 
-[env-vars]: ../../reference/cli/environment-variables/#gomemlimit
 [automemlimit]: https://github.com/KimMachineGun/automemlimit
+[env-vars]: ../../reference/cli/environment-variables/#gomemlimit
 [loki-source-api]: ../../reference/components/loki/loki.source.api/
 [loki-source-awsfirehose]: ../../reference/components/loki/loki.source.awsfirehose/
 [profile]: ../profile/
