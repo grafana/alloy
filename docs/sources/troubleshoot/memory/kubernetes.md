@@ -10,7 +10,6 @@ weight: 100
 
 When a container exceeds its memory limit, Kubernetes terminates it with an out of memory (OOM) error, typically showing `OOMKilled` in the Pod status.
 
-Kubernetes terminates a container when it exceeds its memory limit.
 Many memory incidents originate from resource configuration rather than defects.
 Incorrect limits, missing persistent storage, or unsuitable workload types increase replay cost and memory pressure.
 
@@ -19,7 +18,7 @@ Incorrect limits, missing persistent storage, or unsuitable workload types incre
 Common causes include:
 
 - Pod memory limit is too low
-- `GOMEMLIMIT` isn't configured
+- [`GOMEMLIMIT`][env-vars] isn't configured
 - Write-ahead log (WAL) replay consumes additional memory at startup
 - Internal queues grow when remote endpoints can't accept data fast enough
 
@@ -31,7 +30,7 @@ Common causes include:
    kubectl describe pod <POD_NAME>
    ```
 
-   Verify that memory requests and limits exist.
+   Verify that both memory requests and limits are defined.
    If no limit is defined, set one.
    If the limit is close to observed usage, increase it.
 
@@ -79,13 +78,13 @@ volumes:
 ```
 
 {{< admonition type="note" >}}
-Without persistent storage, {{< param "PRODUCT_NAME" >}} loses buffered data on restart and must replay the WAL from scratch each time.
+Without persistent storage, {{< param "PRODUCT_NAME" >}} loses buffered data on restart and must replay the entire WAL from scratch each time.
 Refer to [Data durability][data-durability] for more information.
 {{< /admonition >}}
 
 ## Choose the correct workload type
 
-Use a DaemonSet for node-local log collection.
+Use a DaemonSet when collecting logs locally on each node.
 Use a StatefulSet when stable identity or persistent storage per replica is required.
 Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information.
 
@@ -96,9 +95,10 @@ If {{< param "PRODUCT_NAME" >}} keeps restarting:
 
 - Increase the memory limit to allow WAL replay to complete.
 - Check for probe failures that trigger premature restarts.
-- Review logs for errors that cause crashes before replay finishes.
+- Review logs for errors that cause crashes before WAL replay finishes.
 
 [estimate-resource-usage]: ../../../set-up/estimate-resource-usage/
+[env-vars]: ../../../reference/cli/environment-variables/#gomemlimit
 [profile]: ../../profile/
 [data-durability]: ../../../introduction/requirements/#data-durability
 [deploy]: ../../../set-up/deploy/
