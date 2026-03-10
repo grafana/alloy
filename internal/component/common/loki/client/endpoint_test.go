@@ -74,7 +74,16 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           1 * time.Second,
+			inputDelay: func() time.Duration {
+				// On windows this test is really flaky, a lot of times
+				// shards are not started before we queue all items so they
+				// end up in the same batch so we need to wait longer to make
+				// sure everything is running.
+				if runtime.GOOS == "windows" {
+					return 5 * time.Second
+				}
+				return 700 * time.Millisecond
+			}(),
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -334,11 +343,7 @@ func TestEndpoint(t *testing.T) {
 				c.enqueue(logEntry, 0)
 
 				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
-					delay := tt.inputDelay
-					if runtime.GOOS == "windows" {
-						delay = delay * 5
-					}
-					time.Sleep(delay)
+					time.Sleep(tt.inputDelay)
 				}
 			}
 
