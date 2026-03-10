@@ -20,9 +20,12 @@ Common symptoms include:
 ## Understand {{% param "PRODUCT_NAME" %}} memory behavior
 
 {{< param "PRODUCT_NAME" >}} uses [`automemlimit`][automemlimit] to automatically set the [`GOMEMLIMIT`][env-vars] environment variable to 90% of the container memory limit.
+This leaves room for memory that the Go garbage collector doesn't manage, such as runtime overhead, stacks, and other allocations.
 `GOMEMLIMIT` is a soft limit.
 When memory approaches this threshold, the Go runtime runs garbage collection more aggressively to try to stay under it.
 Memory usage can still temporarily exceed this limit if the runtime can't free memory quickly enough.
+
+Expect short spikes above `GOMEMLIMIT` during periods of high allocation activity or when {{< param "PRODUCT_NAME" >}} processes bursts of telemetry data.
 
 To override the default, set `GOMEMLIMIT` manually.
 Refer to [Environment variables][env-vars] for more information.
@@ -35,7 +38,8 @@ Start by identifying which category matches your symptoms:
 - **`OOMKilled` or startup crashes**: Refer to [Kubernetes memory issues][kubernetes] for resource configuration and persistent storage guidance.
 - **Memory spikes after restart or WAL issues**: Refer to [Prometheus component memory issues][prometheus] for WAL replay and retention configuration.
 - **Back pressure from HTTP ingestion sources**: Refer to [Loki component memory issues][loki] for [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] troubleshooting.
-- **Gradual memory growth**: Review endpoint latency and internal queue metrics. Refer to [Monitor components][monitor-components] for more information.
+- **Gradual memory growth**: Review endpoint latency and internal queue metrics.
+  If your configuration includes Prometheus or other metrics ingestion pipelines, refer to [Prometheus component memory issues][prometheus] for remote write queues, WAL replay behavior, and cardinality-related memory usage.
 
 ## Capture profiles for diagnosis
 
