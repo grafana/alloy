@@ -60,6 +60,9 @@ Memory grows because incoming log data accumulates in memory buffers faster than
   Refer to [Kubernetes memory issues][kubernetes] for resource configuration.
 - Investigate and resolve destination latency issues.
 - Consider rate limiting at the source if traffic exceeds capacity.
+- Set `conn_limit` in the `http` block to limit simultaneous connections.
+  This prevents unbounded connection growth when traffic exceeds processing capacity.
+  All HTTP source components support this setting.
 - Verify whether component queues continue to grow.
 
   Inspect queue-related metrics for the Loki components in {{< param "PRODUCT_NAME" >}}.
