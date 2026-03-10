@@ -671,3 +671,97 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 	}
 	require.Equal(t, float64(0), totalCount, "historical logs must not produce metrics")
 }
+
+func TestLogsCollector_ExcludeDatabases(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:         loki.NewLogsReceiver(),
+		EntryHandler:     entryHandler,
+		Logger:           log.NewNopLogger(),
+		Registry:         registry,
+		ExcludeDatabases: []string{"excluded_db"},
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	excludedLog := ts1 + ":10.0.1.5(12345):app-user@excluded_db:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+	allowedLog := ts1 + ":10.0.1.5(12345):app-user@allowed_db:[9113]:5:57014:" + ts2 + ":25/113:0:693c34cb.2399::psqlERROR:  canceling statement"
+
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: excludedLog, Timestamp: time.Now()}}
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: allowedLog, Timestamp: time.Now()}}
+
+	time.Sleep(200 * time.Millisecond)
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				labels := make(map[string]string)
+				for _, label := range metric.GetLabel() {
+					labels[label.GetName()] = label.GetValue()
+				}
+				totalCount += metric.GetCounter().GetValue()
+				require.Equal(t, "allowed_db", labels["datname"], "only allowed_db should produce metrics")
+			}
+		}
+	}
+	require.Equal(t, float64(1), totalCount, "only the non-excluded database log should be counted")
+}
+
+func TestLogsCollector_ExcludeUsers(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+		ExcludeUsers: []string{"excluded_user"},
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	ts := startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	excludedLog := ts1 + ":10.0.1.5(12345):excluded_user@testdb:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+	allowedLog := ts1 + ":10.0.1.5(12345):allowed_user@testdb:[9113]:5:57014:" + ts2 + ":25/113:0:693c34cb.2399::psqlERROR:  canceling statement"
+
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: excludedLog, Timestamp: time.Now()}}
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: allowedLog, Timestamp: time.Now()}}
+
+	time.Sleep(200 * time.Millisecond)
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				labels := make(map[string]string)
+				for _, label := range metric.GetLabel() {
+					labels[label.GetName()] = label.GetValue()
+				}
+				totalCount += metric.GetCounter().GetValue()
+				require.Equal(t, "allowed_user", labels["user"], "only allowed_user should produce metrics")
+			}
+		}
+	}
+	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
+}

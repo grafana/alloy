@@ -62,6 +62,20 @@ tasks:
         --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
         --wait
 
+  deploy:otelcol:
+    desc: Deploy OpenTelemetry Collector helm chart using Alloy OTel Engine
+    deps: [cluster:create, update-helm-repos]
+    vars:
+      OTELCOL_VALUES_FILE: '{{.OTELCOL_VALUES_FILE | default "config/otelcol-helm/values.yaml"}}'
+    preconditions:
+      - test -f {{.OTELCOL_VALUES_FILE}}
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install otelcol
+        -n monitoring --create-namespace
+        open-telemetry/opentelemetry-collector
+        -f {{.OTELCOL_VALUES_FILE}}
+        --wait
+
   remove:cloud-onboarding:local:
     desc: Remove Grafana Cloud Onboarding helm chart
     deps: [update-helm-repos]

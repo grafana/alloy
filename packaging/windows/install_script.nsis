@@ -44,6 +44,7 @@ Var StabilityFlag
 Var User
 Var Password
 Var AuthFlag
+Var ForceRegistry
 
 # Pages during the installer.
 Page license
@@ -66,9 +67,18 @@ Section "install"
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
   ${GetOptions} $PassedInParameters "/USERNAME=" $User
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
+  ${GetOptions} $PassedInParameters "/FORCEREGISTRY=" $ForceRegistry
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
+
+  # When /FORCEREGISTRY=yes, delete all Alloy registry keys at the start so the
+  # rest of the installation can proceed as normal and write fresh values. This
+  # also cleans up any old or unused keys from previous versions.
+  ${If} $ForceRegistry == "yes"
+    nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy" /reg:64 /f'
+    Pop $0
+  ${EndIf}
 
   # Preemptively stop the existing service if it's running.
   nsExec::ExecToLog 'sc stop "Alloy"'
@@ -173,7 +183,6 @@ Function CreateDataDirectory
 
     Return
 FunctionEnd
-
 
 # InitializeRegistry initializes the keys in the registry that the service
 # runner uses. If the registry values already exist, they are not overwritten.

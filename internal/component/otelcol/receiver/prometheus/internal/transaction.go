@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
@@ -33,14 +32,8 @@ const (
 	receiverName = "otelcol/prometheusreceiver"
 )
 
-var _ = featuregate.GlobalRegistry().MustRegister(
-	"receiver.prometheusreceiver.RemoveStartTimeAdjustment",
-	featuregate.StageStable,
-	featuregate.WithRegisterFromVersion("v0.121.0"),
-	featuregate.WithRegisterToVersion("v0.142.0"),
-	featuregate.WithRegisterDescription("When enabled, the Prometheus receiver will"+
-		" leave the start time unset. Use the new metricstarttime processor instead."),
-)
+// The upstream receiver.prometheusreceiver.RemoveStartTimeAdjustment is
+// purposefully excluded from this module to avoid re-registering the gate.
 
 type resourceKey struct {
 	job      string
@@ -358,13 +351,13 @@ func (t *transaction) AppendHistogram(_ storage.SeriesRef, ls labels.Labels, atM
 	return 1, nil
 }
 
-func (t *transaction) AppendCTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, ctMs int64) (storage.SeriesRef, error) {
+func (t *transaction) AppendSTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, ctMs int64) (storage.SeriesRef, error) {
 	t.addingNativeHistogram = false
 	t.addingNHCB = false
 	return t.setCreationTimestamp(ls, atMs, ctMs)
 }
 
-func (t *transaction) AppendHistogramCTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, ctMs int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+func (t *transaction) AppendHistogramSTZeroSample(_ storage.SeriesRef, ls labels.Labels, atMs, ctMs int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	var schema int32
 	if h != nil {
 		schema = h.Schema

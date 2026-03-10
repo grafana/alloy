@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -31,25 +32,19 @@ var logFormatRegex = regexp.MustCompile(
 		`[A-Z0-9]{5}:`,
 )
 
-var supportedSeverities = map[string]bool{
-	"ERROR": true,
-	"FATAL": true,
-	"PANIC": true,
-}
-
-type ParsedError struct {
-	ErrorSeverity string
-	SQLStateCode  string
-	SQLStateClass string
-	User          string
-	DatabaseName  string
+var supportedSeverities = map[string]struct{}{
+	"ERROR": {},
+	"FATAL": {},
+	"PANIC": {},
 }
 
 type LogsArguments struct {
-	Receiver     loki.LogsReceiver
-	EntryHandler loki.EntryHandler
-	Logger       log.Logger
-	Registry     *prometheus.Registry
+	Receiver         loki.LogsReceiver
+	EntryHandler     loki.EntryHandler
+	Logger           log.Logger
+	Registry         *prometheus.Registry
+	ExcludeDatabases []string
+	ExcludeUsers     []string
 }
 
 type Logs struct {
@@ -57,7 +52,9 @@ type Logs struct {
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
-	receiver loki.LogsReceiver
+	receiver         loki.LogsReceiver
+	excludeDatabases []string
+	excludeUsers     []string
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -79,14 +76,16 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:       log.With(args.Logger, "collector", LogsCollector),
-		entryHandler: args.EntryHandler,
-		registry:     args.Registry,
-		receiver:     args.Receiver,
-		ctx:          ctx,
-		cancel:       cancel,
-		stopped:      atomic.NewBool(false),
-		startTime:    time.Now(),
+		logger:           log.With(args.Logger, "collector", LogsCollector),
+		entryHandler:     args.EntryHandler,
+		registry:         args.Registry,
+		receiver:         args.Receiver,
+		excludeDatabases: args.ExcludeDatabases,
+		excludeUsers:     args.ExcludeUsers,
+		ctx:              ctx,
+		cancel:           cancel,
+		stopped:          atomic.NewBool(false),
+		startTime:        time.Now(),
 	}
 
 	l.initMetrics()
@@ -220,9 +219,17 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	database := strings.TrimSpace(afterAt[:pidMarkerIdx])
 
+	if slices.Contains(l.excludeDatabases, database) {
+		return nil
+	}
+
 	beforeAt := line[:atIdx]
 	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
 	user := strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
+
+	if slices.Contains(l.excludeUsers, user) {
+		return nil
+	}
 
 	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
 	pidEndIdx := strings.Index(afterAt, "]")
@@ -250,19 +257,17 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	if !supportedSeverities[severity] {
+	if _, ok := supportedSeverities[severity]; !ok {
 		return nil
 	}
 
-	parsed := &ParsedError{
-		ErrorSeverity: severity,
-		SQLStateCode:  sqlstateCode,
-		SQLStateClass: sqlstateClass,
-		User:          user,
-		DatabaseName:  database,
-	}
-
-	l.updateMetrics(parsed)
+	l.errorsBySQLState.WithLabelValues(
+		severity,
+		sqlstateCode,
+		sqlstateClass,
+		database,
+		user,
+	).Inc()
 
 	return nil
 }
@@ -297,16 +302,6 @@ func extractSeverity(message string) string {
 		return strings.TrimSpace(message[:idx])
 	}
 	return ""
-}
-
-func (l *Logs) updateMetrics(parsed *ParsedError) {
-	l.errorsBySQLState.WithLabelValues(
-		parsed.ErrorSeverity,
-		parsed.SQLStateCode,
-		parsed.SQLStateClass,
-		parsed.DatabaseName,
-		parsed.User,
-	).Inc()
 }
 
 func truncateString(s string, maxLen int) string {

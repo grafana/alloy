@@ -19,6 +19,9 @@ type PolicyConfig struct {
 
 	// Configs for defining and policy
 	AndConfig AndConfig `alloy:"and,block,optional"`
+
+	// Configs for defining drop policy
+	DropConfig DropConfig `alloy:"drop,block,optional"`
 }
 
 func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
@@ -33,12 +36,14 @@ func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
 		"status_code":       policyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
 		"string_attribute":  policyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
 		"rate_limiting":     policyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    policyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
 		"span_count":        policyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
 		"boolean_attribute": policyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
 		"ottl_condition":    policyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
 		"trace_state":       policyConfig.SharedPolicyConfig.TraceStateConfig.Convert(),
 		"composite":         policyConfig.CompositeConfig.Convert(),
 		"and":               policyConfig.AndConfig.Convert(),
+		"drop":              policyConfig.DropConfig.Convert(),
 	}, &otelConfig)
 
 	return otelConfig
@@ -54,6 +59,7 @@ type SharedPolicyConfig struct {
 	StatusCodeConfig       StatusCodeConfig       `alloy:"status_code,block,optional"`
 	StringAttributeConfig  StringAttributeConfig  `alloy:"string_attribute,block,optional"`
 	RateLimitingConfig     RateLimitingConfig     `alloy:"rate_limiting,block,optional"`
+	BytesLimitingConfig    BytesLimitingConfig    `alloy:"bytes_limiting,block,optional"`
 	SpanCountConfig        SpanCountConfig        `alloy:"span_count,block,optional"`
 	BooleanAttributeConfig BooleanAttributeConfig `alloy:"boolean_attribute,block,optional"`
 	OttlConditionConfig    OttlConditionConfig    `alloy:"ottl_condition,block,optional"`
@@ -171,6 +177,22 @@ type RateLimitingConfig struct {
 func (rateLimitingConfig RateLimitingConfig) Convert() tsp.RateLimitingCfg {
 	return tsp.RateLimitingCfg{
 		SpansPerSecond: rateLimitingConfig.SpansPerSecond,
+	}
+}
+
+// BytesLimitingConfig holds the configurable settings to create a bytes limiting
+// sampling policy evaluator using a token bucket algorithm.
+type BytesLimitingConfig struct {
+	// BytesPerSecond sets the limit on the maximum number of bytes that can be processed each second.
+	BytesPerSecond int64 `alloy:"bytes_per_second,attr"`
+	// BurstCapacity sets the maximum burst capacity in bytes.
+	BurstCapacity int64 `alloy:"burst_capacity,attr,optional"`
+}
+
+func (bytesLimitingConfig BytesLimitingConfig) Convert() tsp.BytesLimitingCfg {
+	return tsp.BytesLimitingCfg{
+		BytesPerSecond: bytesLimitingConfig.BytesPerSecond,
+		BurstCapacity:  bytesLimitingConfig.BurstCapacity,
 	}
 }
 
@@ -348,6 +370,7 @@ func (compositeSubPolicyConfig CompositeSubPolicyConfig) Convert() tsp.Composite
 		"status_code":       compositeSubPolicyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
 		"string_attribute":  compositeSubPolicyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
 		"rate_limiting":     compositeSubPolicyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    compositeSubPolicyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
 		"span_count":        compositeSubPolicyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
 		"boolean_attribute": compositeSubPolicyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
 		"ottl_condition":    compositeSubPolicyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
@@ -386,6 +409,21 @@ func (andConfig AndConfig) Convert() tsp.AndCfg {
 	}
 }
 
+type DropConfig struct {
+	SubPolicyConfig []AndSubPolicyConfig `alloy:"drop_sub_policy,block"`
+}
+
+func (dropConfig DropConfig) Convert() tsp.DropCfg {
+	var otelPolicyCfgs []tsp.AndSubPolicyCfg
+	for _, subPolicyCfg := range dropConfig.SubPolicyConfig {
+		otelPolicyCfgs = append(otelPolicyCfgs, subPolicyCfg.Convert())
+	}
+
+	return tsp.DropCfg{
+		SubPolicyCfg: otelPolicyCfgs,
+	}
+}
+
 // AndSubPolicyConfig holds the common configuration to all policies under and policy.
 type AndSubPolicyConfig struct {
 	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
@@ -403,6 +441,7 @@ func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {
 		"status_code":       andSubPolicyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
 		"string_attribute":  andSubPolicyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
 		"rate_limiting":     andSubPolicyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    andSubPolicyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
 		"span_count":        andSubPolicyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
 		"boolean_attribute": andSubPolicyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
 		"ottl_condition":    andSubPolicyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),

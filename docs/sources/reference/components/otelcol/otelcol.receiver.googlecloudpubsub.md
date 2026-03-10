@@ -105,11 +105,11 @@ otelcol.receiver.googlecloudpubsub "default" {
 
 otelcol.processor.batch "default" {
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = env("<OTLP_ENDPOINT>")
   }

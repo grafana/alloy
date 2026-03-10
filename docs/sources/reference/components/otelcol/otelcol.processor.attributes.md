@@ -316,13 +316,13 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        metrics = [otelcol.exporter.otlp.default.input]
-        logs    = [otelcol.exporter.otlp.default.input]
-        traces  = [otelcol.exporter.otlp.default.input]
+        metrics = [otelcol.exporter.otlphttp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
+        traces  = [otelcol.exporter.otlphttp.default.input]
     }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
   }
@@ -366,7 +366,7 @@ otelcol.processor.attributes "default" {
         action = "delete"
     }
     output {
-        traces  = [otelcol.exporter.otlp.default.input]
+        traces  = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -395,8 +395,8 @@ otelcol.processor.attributes "default" {
         action = "delete"
     }
     output {
-        logs    = [otelcol.exporter.otlp.default.input]
-        traces  = [otelcol.exporter.otlp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
+        traces  = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -425,8 +425,8 @@ otelcol.processor.attributes "default" {
         action = "delete"
     }
     output {
-        logs    = [otelcol.exporter.otlp.default.input]
-        traces  = [otelcol.exporter.otlp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
+        traces  = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -467,7 +467,7 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        traces  = [otelcol.exporter.otlp.default.input]
+        traces  = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -499,9 +499,9 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        metrics = [otelcol.exporter.otlp.default.input]
-        logs    = [otelcol.exporter.otlp.default.input]
-        traces  = [otelcol.exporter.otlp.default.input]
+        metrics = [otelcol.exporter.otlphttp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
+        traces  = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -530,7 +530,7 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        logs    = [otelcol.exporter.otlp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -563,7 +563,7 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        logs    = [otelcol.exporter.otlp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -593,7 +593,7 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        logs    = [otelcol.exporter.otlp.default.input]
+        logs    = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -620,7 +620,7 @@ otelcol.processor.attributes "default" {
     }
 
     output {
-        metrics = [otelcol.exporter.otlp.default.input]
+        metrics = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```

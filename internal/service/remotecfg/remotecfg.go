@@ -16,13 +16,14 @@ import (
 	"github.com/go-kit/log"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Service implements a service for remote configuration.
@@ -128,7 +129,12 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.runCtx = ctx
 	s.mut.Unlock()
 
-	s.cm.setController(host.NewController(ServiceName))
+	c, err := host.NewController(ServiceName)
+	if err != nil {
+		return fmt.Errorf("failed to create controller for %s: %w", ServiceName, err)
+	}
+
+	s.cm.setController(c)
 
 	defer func() {
 		s.cm.cleanup()
@@ -138,7 +144,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}()
 
 	s.fetchLoadConfig(true) // Allow cache fallback on startup
-	err := s.registerCollector()
+	err = s.registerCollector()
 	if err != nil && err != errNoopClient {
 		s.opts.Logger.Log("level", "error", "msg", "failed to register collector during service startup", "err", err)
 		return err
