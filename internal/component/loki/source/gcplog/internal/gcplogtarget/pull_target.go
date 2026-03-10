@@ -100,7 +100,7 @@ func (t *PullTarget) Run() error {
 					useIncomingTimestamp: t.config.UseIncomingTimestamp,
 				})
 				if err != nil {
-					level.Error(t.logger).Log("event", "cloud not parse log entry", "error", err)
+					level.Error(t.logger).Log("msg", "could not parse log entry", "error", err)
 					t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()
 					// NOTE: We want to call Ack here since we cannot process the message.
 					m.Ack()
