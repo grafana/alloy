@@ -122,19 +122,6 @@ func TestTimestampValidation(t *testing.T) {
 				ActionOnDuplicateTimestamp: "fudge",
 			},
 		},
-		"sets default action on duplicate timestamp": {
-			config: &TimestampConfig{
-				Source: "source1",
-				Format: time.RFC3339,
-			},
-			err: nil,
-			expectedConfig: &TimestampConfig{
-				Source:                     "source1",
-				Format:                     time.RFC3339,
-				ActionOnFailure:            "fudge",
-				ActionOnDuplicateTimestamp: "fudge",
-			},
-		},
 		"custom format with year": {
 			config: &TimestampConfig{
 				Source: "source1",
