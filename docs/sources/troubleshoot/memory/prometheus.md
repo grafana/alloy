@@ -62,7 +62,7 @@ Common causes include:
 
 Memory and CPU usage can increase significantly if {{< param "PRODUCT_NAME" >}} discovers a large number of scrape targets.
 
-This situation often occurs after changes to service discovery configuration or relabeling rules.  
+This situation often occurs after changes to service discovery configuration or relabeling rules.
 When the number of targets increases unexpectedly, {{< param "PRODUCT_NAME" >}} must schedule additional scrape loops and process more samples, which increases memory usage.
 
 ### Symptoms
@@ -125,10 +125,19 @@ Remote write queue buildup often appears as:
 1. Inspect remote write queue metrics.
 
    Metrics such as `prometheus_remote_storage_shards_desired` and `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` can indicate that queues are falling behind.
+   Refer to [Monitor components][monitor-components] for more information.
 
 1. Compare ingestion rate to forwarding rate.
 
    If {{< param "PRODUCT_NAME" >}} receives samples faster than it can send them to remote endpoints, queues grow and memory usage increases.
+   Refer to [Estimate resource usage][estimate-resource-usage] for baseline guidance.
+
+1. Capture heap profiles.
+
+   Collect two profiles several minutes apart and compare them to identify growing allocations.
+   Refer to [Profile resource consumption][profile] for more information.
+
+If memory continues to grow with stable traffic and healthy endpoints, refer to [Report a potential memory leak][report-leak].
 
 ### Resolve queue buildup
 
@@ -138,31 +147,6 @@ Possible solutions include:
 - Temporarily increase memory limits to absorb buffered samples
 - Reduce ingestion rate or sample volume if the destination system can't keep up
 - Scale {{< param "PRODUCT_NAME" >}} horizontally to distribute ingestion load
-
-### Diagnose the cause
-
-1. Check endpoint latency.
-
-   Inspect remote write latency.
-   When endpoints respond slowly, components like [`prometheus.remote_write`][prometheus-remote-write] queue data in memory.
-
-1. Confirm whether traffic volume increased.
-
-   Compare ingestion rate to historical baselines.
-   Increased load results in higher steady-state memory.
-   Refer to [Estimate resource usage][estimate-resource-usage] for more information.
-
-1. Inspect queue metrics.
-
-   Check metrics like `prometheus_remote_storage_shards_desired` and `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` to determine if queues are falling behind.
-   Refer to [Monitor components][monitor-components] for more information.
-
-1. Capture heap profiles.
-
-   Collect two profiles several minutes apart and compare them to identify growing allocations.
-   Refer to [Profile resource consumption][profile] for more information.
-
-If memory continues to grow with stable traffic and healthy endpoints, refer to [Report a potential memory leak][report-leak].
 
 ## Memory remains high after traffic drops
 

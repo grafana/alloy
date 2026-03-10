@@ -65,7 +65,7 @@ This behavior can resemble a memory leak, but it usually indicates **back pressu
 
 Back pressure most commonly occurs when:
 
-- Downstream systems respond slowly or intermittently fail
+- Remote systems respond slowly or intermittently fail
 - Remote endpoints return errors such as `429` or `5xx`
 - Retry loops delay successful delivery
 - Incoming telemetry volume temporarily exceeds processing capacity
