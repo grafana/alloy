@@ -109,7 +109,7 @@ func TestTimestampValidation(t *testing.T) {
 			testString:   "2012-11-01T22:08:41-04:00",
 			expectedTime: time.Date(2012, 11, 01, 22, 8, 41, 0, time.FixedZone("", -4*60*60)),
 		},
-		"sets default action on failure": {
+		"sets default action on failure and on duplicate timestamp": {
 			config: &TimestampConfig{
 				Source: "source1",
 				Format: time.RFC3339,
