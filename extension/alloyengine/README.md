@@ -57,6 +57,12 @@ The extension manages the lifecycle of the embedded default engine:
 - **Ready**: The extension reports ready once the default engine has successfully started
 - **Shutdown**: When the extension is shut down, it gracefully terminates the default engine and waits for it to exit
 
+## Limitations
+
+Only one alloyengine instance can be active per process. The embedded Default Engine uses process-global state (Prometheus registry, controller ID, storage path and so forth), so running multiple instances will cause conflicts. If you configure multiple alloyengine extensions, only the first to start will succeed; subsequent instances will fail at startup with a clear error.
+
+Please note that if extensions fail to start, the collector will also fail to start. This means that the errors described above will ultimately mean you cannot start the collector without ensuring that you specify which of the alloyengine extensions you wish to run
+
 ## Stability
 
 This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
