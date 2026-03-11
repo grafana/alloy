@@ -15,7 +15,7 @@ You can configure {{< param "PRODUCT_NAME" >}} to collect logs and forward them 
 To collect Kubernetes logs, you:
 
 1. Configure a `loki.write` component to deliver logs.
-1. Set up collection components for system logs, Pod logs, or Kubernetes events.
+1. Set up collection components for system logs, Pod logs, or Kubernetes Cluster Events.
 
 ## Components used
 
@@ -30,7 +30,7 @@ To collect Kubernetes logs, you:
 
 ## Before you begin
 
-* Ensure that you're familiar with logs labeling when working with Loki.
+* Ensure that you're familiar with log labeling when working with Loki.
 * Identify where you want to write collected logs.
   You can write logs to Loki endpoints such as Grafana Loki, Grafana Cloud, or Grafana Enterprise Logs.
 * Ensure that you're familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
@@ -287,7 +287,7 @@ Replace the following values:
 {{< admonition type="tip" >}}
 Use raw strings delimited by backticks for `regex` values.
 Raw strings don't process escape sequences, so patterns like `\S` and `\d` work without double escaping.
-Double-quoted strings require escaping, for example `"\\S"` instead of `\S`.
+Double-quoted strings require escaping, for example `regex = "\\S"` instead of `regex = "\S"`.
 If you forget to escape, you get `unknown escape sequence` errors.
 {{< /admonition >}}
 
