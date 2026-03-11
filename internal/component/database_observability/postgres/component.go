@@ -508,6 +508,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
+		DB:            c.dbConnection,
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
