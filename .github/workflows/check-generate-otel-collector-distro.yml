@@ -1,10 +1,7 @@
 name: Check generate-otel-collector-distro
 permissions:
   contents: read
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: pull_request
 
 jobs:
   check:
