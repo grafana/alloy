@@ -252,7 +252,7 @@ discovery.relabel "pod_logs" {
     source_labels = ["__meta_kubernetes_pod_container_id"]
     action = "replace"
     target_label = "container_runtime"
-    regex = "^(\\S+):\\/\\/.+$"
+    regex = `^(\S+):\/\/.+$`
     replacement = "$1"
   }
 }
@@ -280,6 +280,13 @@ Replace the following values:
 
 * _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 * _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+
+{{< admonition type="tip" >}}
+Use raw strings delimited by backticks for `regex` values.
+Raw strings don't process escape sequences, so patterns like `\S` and `\d` work without double escaping.
+Double-quoted strings require escaping, for example `"\\S"` instead of `\S`.
+If you forget to escape, you get `unknown escape sequence` errors.
+{{< /admonition >}}
 
 {{< admonition type="note" >}}
 Refer to [Limit to only Pods on the same node][discovery.kubernetes_samenode] for more information about restricting to Pods on the same node.
