@@ -46,6 +46,8 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 		return
 	}
 
+	// NOTE: json.Unmarshal will happily parse any JSON and produce a zero-value struct.
+	// To protect against incorrect usage, validate that the log field is present.
 	if parsed.Log == "" {
 		if Debug {
 			level.Debug(d.logger).Log("msg", "not valid docker format")
