@@ -14,8 +14,8 @@ title: import.http
 
 Use `import.http` to load {{< param "PRODUCT_NAME" >}} configuration from a remote HTTP server.
 The remote file must define configuration inside a `declare` block.
-{{< param "PRODUCT_NAME" >}} evaluates imported modules as reusable components, so the remote file must not include top-level global configuration blocks such as `logging`, `remotecfg`, or CLI settings.
-Global configuration belongs in the local configuration file that imports the module.
+{{< param "PRODUCT_NAME" >}} evaluates imported modules as reusable components, so the remote file must not include top-level global configuration blocks such as `logging` or `remotecfg`.
+Global configuration belongs in the local configuration file that imports the module, and command-line flags must be configured outside the module.
 {{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
 
 Refer to [Load configuration from remote sources][load-remote] for more information.
@@ -88,12 +88,13 @@ The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 ## Behavior when the remote server is unavailable
 
-If {{< param "PRODUCT_NAME" >}} can't reach the configured URL, it continues running with the previously loaded configuration.
+`import.http` must successfully fetch the remote module the first time it is evaluated (for example, during startup or when applying a new configuration). If this initial fetch fails, the configuration that depends on the remote module fails to evaluate and {{< param "PRODUCT_NAME" >}} does **not** continue using a remote module that was never loaded for this run.
 
-{{< param "PRODUCT_NAME" >}} retries fetching the remote module at the next `poll_frequency` interval.
+After a remote module has been fetched and evaluated at least once in the current process, temporary failures to reach the configured URL do **not** interrupt the running configuration. {{< param "PRODUCT_NAME" >}} continues operating with the last successfully loaded remote module held in memory and retries fetching the remote module at the next `poll_frequency` interval.
 
-{{< param "PRODUCT_NAME" >}} writes errors retrieving the configuration to the logs, but these errors don't stop the current configuration from operating.
+Remote module contents are not persisted across process restarts. On a cold start or restart, {{< param "PRODUCT_NAME" >}} must again successfully complete the initial fetch; if the remote server is unavailable at that time, evaluation of the configuration that uses `import.http` fails.
 
+{{< param "PRODUCT_NAME" >}} writes errors retrieving the configuration to the logs in all of these cases, which you can use for troubleshooting and alerting.
 ## Monitor configuration fetch failures
 
 To detect configuration update problems early, monitor for repeated fetch failures:
