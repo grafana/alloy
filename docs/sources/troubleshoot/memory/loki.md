@@ -35,18 +35,13 @@ Memory grows because incoming log data accumulates in memory buffers faster than
 1. Check for repeated ingestion failures.
 
    Inspect {{< param "PRODUCT_NAME" >}} logs for HTTP errors or retries when sending logs to Loki endpoints.
-   Repeated failures or retry loops can cause queues to grow and increase memory usage.
+   Repeated failures or retry loops can cause back pressure to build up and increase memory usage.
 
 1. Confirm whether traffic volume increased.
 
    Compare log ingestion rate to historical baselines.
    Increased load results in higher steady-state memory.
    Refer to [Estimate resource usage][estimate-resource-usage] for more information.
-
-1. Inspect component queues.
-
-   Review internal queue metrics to determine whether log data is accumulating faster than {{< param "PRODUCT_NAME" >}} can forward it.
-   Refer to [Monitor components][monitor-components] for more information.
 
 1. Capture heap profiles.
 
@@ -63,10 +58,6 @@ Memory grows because incoming log data accumulates in memory buffers faster than
 - Set `conn_limit` in the `http` block to limit simultaneous connections.
   This prevents unbounded connection growth when traffic exceeds processing capacity.
   All HTTP source components support this setting.
-- Verify whether component queues continue to grow.
-
-  Inspect queue-related metrics for the Loki components in {{< param "PRODUCT_NAME" >}}.
-  If queue depth or buffered log counts continue to increase over time, {{< param "PRODUCT_NAME" >}} is receiving logs faster than it can forward them.
 
 ## Positions file persistence
 
@@ -151,11 +142,6 @@ Common causes include:
    Compare ingestion rate to historical baselines.
    Increased load results in higher steady-state memory.
 
-1. Inspect component queues.
-
-   Review internal queue metrics to determine whether log data is accumulating faster than {{< param "PRODUCT_NAME" >}} can forward it.
-   Refer to [Monitor components][monitor-components] for more information.
-
 1. Capture heap profiles.
 
    Collect two profiles several minutes apart and compare them to identify growing allocations.
@@ -185,7 +171,7 @@ This behavior is normal and usually stabilizes once {{< param "PRODUCT_NAME" >}}
 
 If ingestion rates return to normal and memory usage stabilizes, the behavior likely reflects temporary catch-up processing rather than a memory leak.
 
-If queue metrics show that buffered log data is draining over time and memory usage gradually decreases, the behavior likely reflects temporary backlog processing rather than a memory leak.
+If memory usage gradually decreases after the initial spike, the behavior likely reflects temporary backlog processing rather than a memory leak.
 If memory continues to grow with stable traffic and healthy endpoints, refer to [Report a potential memory leak][report-leak].
 
 [estimate-resource-usage]: ../../../set-up/estimate-resource-usage/
