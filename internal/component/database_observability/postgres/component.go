@@ -415,7 +415,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			pg_exporter.WithMetricPrefix("pg"),
 		)
 		if err := c.registry.Register(e); err != nil {
-			return fmt.Errorf("failed to register postgres exporter: %w", err)
+			return fmt.Errorf("failed to register prometheus_exporter: %w", err)
 		}
 		c.exporterCollectors = append(c.exporterCollectors, e)
 
