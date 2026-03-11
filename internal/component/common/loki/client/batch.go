@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -31,6 +32,8 @@ type SentDataMarkerHandler interface {
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
 	streams map[string]*push.Stream
+	// created stores per-entry creation timestamps in unix micro seconds for latency observation.
+	created []int64
 	// createdAt is when the batch was created.
 	createdAt time.Time
 	// maxSize is the maximum batch size in bytes. At least one entry is always
@@ -68,9 +71,10 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 			return errBatchSizeReached
 		}
 
-		stream.Entries = append(stream.Entries, entry.Entry)
 		b.size += size
 		b.countForSegment(segmentNum)
+		b.created = append(b.created, entry.Created())
+		stream.Entries = append(stream.Entries, entry.Entry)
 		return nil
 	}
 
@@ -87,12 +91,13 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 		return errBatchSizeReached
 	}
 
+	b.size += size
+	b.countForSegment(segmentNum)
+	b.created = append(b.created, entry.Created())
 	b.streams[labels] = &push.Stream{
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
-	b.size += size
-	b.countForSegment(segmentNum)
 	return nil
 }
 
@@ -127,11 +132,22 @@ func (b *batch) countForSegment(segmentNum int) {
 	b.segmentCounter[segmentNum] = 1
 }
 
-// reportAsSentData will report for all segments whose data is part of this batch, the amount of that data as sent to
-// the provided SentDataMarkerHandler
-func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
+// reportAsSentData reports sent data counts per segment and observes per-entry propagation latency.
+func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observer) {
 	for seg, data := range b.segmentCounter {
 		h.UpdateSentData(seg, data)
+	}
+
+	now := time.Now().UnixMicro()
+	for _, created := range b.created {
+		// NOTE: Some WAL entries may not have a created timestamp, so we ignore 0.
+		// We also only record entries where created <= now. Since created is stored as
+		// Unix microseconds, monotonic time is lost. If wall clock adjustments make
+		// created appear in the future, we skip that sample.
+		if created != 0 && created <= now {
+			// Track entry propagation latency in seconds.
+			obs.Observe(float64(now-created) / 1e6)
+		}
 	}
 }
 
