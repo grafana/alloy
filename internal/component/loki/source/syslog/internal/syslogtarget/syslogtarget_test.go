@@ -738,8 +738,9 @@ func TestSyslogTarget_RFC3164CiscoComponents(t *testing.T) {
 			received := handler.Received()
 			require.NotEmpty(t, received)
 
-			msg := received[0]
-			require.Equal(t, tc.expect, msg)
+			got := received[0]
+			require.Equal(t, tc.expect.Labels, got.Labels)
+			require.Equal(t, tc.expect.Entry, got.Entry)
 		})
 	}
 }

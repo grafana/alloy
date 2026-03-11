@@ -46,13 +46,16 @@ loki.secretfilter "<LABEL>" {
 
 You can use the following arguments with `loki.secretfilter`:
 
-| Name              | Type                 | Description                                                                                                          | Default | Required |
-| ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
-| `gitleaks_config` | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
-| `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
-| `redact_with`     | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
-| `redact_percent`  | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                  | `80`    | no       |
+| Name                 | Type                 | Description                                                                                                          | Default | Required |
+| -------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`         | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
+| `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
+| `origin_label`       | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
+| `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.      | `1.0`   | no       |
+| `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`, for example, `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
+| `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                 | `80`    | no       |
+| `drop_on_timeout`    | `bool`               | When true, drop entries that exceed `processing_timeout` instead of forwarding them unredacted.                      | `false` | no       |
+| `processing_timeout` | `duration`           | Maximum time allowed to process a single log entry. `0` disables the timeout.                                        | `0`     | no       |
 
 The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config].
 The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config).
@@ -73,7 +76,23 @@ For consistent behavior, use an external configuration file via `gitleaks_config
   `100` replaces the entire secret with `"REDACTED"`.
   When `redact_percent` is 0 or unset, 80% redaction is used.
 
+**Sampling:** The `rate` argument controls what fraction of log entries are processed by the secret filter.
+Entries that {{< param "PRODUCT_NAME" >}} does not select based on the sampling rate pass through unchanged, with no detection or redaction applied.
+Use a value below `1.0`, for example, `0.1` for 10%, to reduce CPU usage when processing high-volume logs.
+Monitor `loki_secretfilter_entries_bypassed_total` to observe how many entries were skipped.
+
 **Origin metric:** The `origin_label` argument specifies which Loki label to use for the `secrets_redacted_by_origin` metric, so you can track how many secrets were redacted per source or environment.
+
+**Processing timeout:** The `processing_timeout` argument sets a maximum duration for processing each log entry.
+When the timeout is exceeded, the `loki_secretfilter_lines_timed_out_total` metric is incremented.
+By default (`drop_on_timeout = false`), the original unredacted entry is forwarded so no log lines are lost.
+When `drop_on_timeout = true`, entries that exceed the timeout are dropped and the `loki_secretfilter_lines_dropped_total` metric is incremented.
+
+{{< admonition type="caution" >}}
+Setting `drop_on_timeout = true` means log lines can be silently dropped.
+A dropped line can't be recovered, whereas an unredacted line containing a secret can still be detected and mitigated later.
+Use this option only when dropping lines is preferable to forwarding potentially unredacted data.
+{{< /admonition >}}
 
 [embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
 
@@ -97,12 +116,16 @@ The following fields are exported and can be referenced by other components:
 
 `loki.secretfilter` exposes the following Prometheus metrics:
 
-| Name                                               | Type    | Description                                                                          |
-| -------------------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `loki_secretfilter_processing_duration_seconds`    | Summary | Time taken to process and redact logs, in seconds.                                   |
-| `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                    |
-| `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                |
-| `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set. |
+| Name                                               | Type    | Description                                                                                    |
+| -------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `loki_secretfilter_entries_bypassed_total`         | Counter | Total number of entries forwarded without processing due to sampling.                          |
+| `loki_secretfilter_lines_dropped_total`            | Counter | Total number of log lines dropped due to processing timeout, when `drop_on_timeout` is `true`. |
+| `loki_secretfilter_lines_timed_out_total`          | Counter | Total number of log lines that exceeded the processing timeout, whether dropped or forwarded.  |
+| `loki_secretfilter_processing_duration_seconds`    | Summary | Time taken to process and redact logs, in seconds.                                             |
+| `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                              |
+| `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                          |
+| `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set.           |
+
 
 ## Example
 
@@ -113,6 +136,7 @@ Alternatively, you can:
 - Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
 - Set `redact_percent` to `100` for full redaction.
 - Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
+- Set `rate` to a value below `1.0` to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
 
 ```alloy
 local.file_match "local_logs" {

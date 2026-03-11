@@ -32,6 +32,10 @@
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
+    - name: K8S_NODE_NAME {{- /* Default used by some Alloy components */}}
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
     {{- with $values.extraEnv }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
