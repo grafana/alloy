@@ -191,8 +191,8 @@ func TestMultilineStageStartLineFlushedBeforeNew(t *testing.T) {
 	require.Equal(t, startTs, out[0].Timestamp)
 	require.Equal(t, "START line 1\ncontinuation line 1", out[0].Line)
 
-	require.Equal(t, lset, out[0].Labels)
-	require.Equal(t, startTs, out[0].Timestamp)
+	require.Equal(t, lset, out[1].Labels)
+	require.Equal(t, startTs, out[1].Timestamp)
 	require.Equal(t, "continuation line 2", out[1].Line)
 }
 
