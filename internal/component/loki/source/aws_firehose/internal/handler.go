@@ -136,9 +136,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for l, v := range requestStaticLabels {
 		commonLabels.Set(string(l), string(v))
 	}
-
 	h.metrics.batchSize.WithLabelValues().Observe(float64(len(firehoseReq.Records)))
 
+	created := time.Now()
 	for _, rec := range firehoseReq.Records {
 		// cleanup err since it might have failed in the previous iteration
 		err = nil
@@ -159,15 +159,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		switch recordType {
 		case OriginDirectPUT:
-			h.sender.Send(req.Context(), loki.Entry{
-				Labels: h.postProcessLabels(commonLabels.Labels()),
-				Entry: push.Entry{
-					Timestamp: ts,
-					Line:      string(decodedRecord),
-				},
-			})
+			lset := h.postProcessLabels(commonLabels.Labels())
+			h.sender.Send(req.Context(), loki.NewEntryWithCreated(lset, created, push.Entry{Timestamp: ts, Line: string(decodedRecord)}))
 		case OriginCloudwatchLogs:
-			err = h.handleCloudwatchLogsRecord(req.Context(), decodedRecord, commonLabels.Labels(), ts)
+			err = h.handleCloudwatchLogsRecord(req.Context(), decodedRecord, commonLabels.Labels(), ts, created)
 		}
 		if err != nil {
 			h.metrics.errorsRecord.WithLabelValues(getReason(err)).Inc()
@@ -260,7 +255,7 @@ func (h *Handler) decodeRecord(rec string) ([]byte, RecordOrigin, error) {
 
 // handleCloudwatchLogsRecord explodes the cloudwatch logs record into each log message. Also, it adds all properties
 // sent in the envelope as internal labels, available for relabel.
-func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, commonLabels labels.Labels, timestamp time.Time) error {
+func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, commonLabels labels.Labels, timestamp, created time.Time) error {
 	cwRecord := CloudwatchLogsRecord{}
 	if err := json.Unmarshal(data, &cwRecord); err != nil {
 		return errWithReason{
@@ -280,13 +275,9 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 		if h.useIncomingTs {
 			timestamp = time.UnixMilli(event.Timestamp)
 		}
-		h.sender.Send(ctx, loki.Entry{
-			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
-			Entry: push.Entry{
-				Timestamp: timestamp,
-				Line:      event.Message,
-			},
-		})
+
+		lset := h.postProcessLabels(cwLogsLabels.Labels())
+		h.sender.Send(ctx, loki.NewEntryWithCreated(lset, created, push.Entry{Timestamp: timestamp, Line: event.Message}))
 	}
 
 	return nil

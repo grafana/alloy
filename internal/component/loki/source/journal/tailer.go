@@ -339,13 +339,11 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 
 	t.metrics.journalLines.Inc()
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
-	t.recv.Chan() <- loki.Entry{
-		Labels: lbls,
-		Entry: push.Entry{
-			Line:      msg,
-			Timestamp: ts,
-		},
-	}
+
+	t.recv.Chan() <- loki.NewEntry(lbls, push.Entry{
+		Line:      msg,
+		Timestamp: ts,
+	})
 	return journalEmptyStr, nil
 }
 

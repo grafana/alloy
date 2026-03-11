@@ -203,6 +203,7 @@ The following fields are exported and can be referenced by other components:
 * `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
 * `loki_write_request_size_bytes` (histogram): Number of bytes for encoded requests.
 * `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
+* `loki_write_entry_propagation_latency_seconds` (histogram): Time in seconds from entry creation until it's either successfully sent or dropped.
 
 ## Examples
 
