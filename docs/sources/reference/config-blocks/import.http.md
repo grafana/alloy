@@ -13,7 +13,8 @@ title: import.http
 `import.http` retrieves a module from an HTTP server.
 
 Use `import.http` to load {{< param "PRODUCT_NAME" >}} configuration from a remote HTTP server.
-The remote file can contain custom component definitions or standard {{< param "PRODUCT_NAME" >}} components.
+The remote file must define configuration inside a `declare` block.
+Modules can't contain top-level configuration blocks such as `logging`, `remotecfg`, or CLI settings.
 {{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
 
 Refer to [Load configuration from remote sources][load-remote] for more information.
@@ -83,6 +84,14 @@ The `oauth2` block configures OAuth 2.0 authorization for polling the configured
 The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+## Behavior when the remote server is unavailable
+
+If {{< param "PRODUCT_NAME" >}} can't reach the configured URL, it continues running with the previously loaded configuration.
+
+{{< param "PRODUCT_NAME" >}} retries fetching the remote module at the next `poll_frequency` interval.
+
+{{< param "PRODUCT_NAME" >}} writes errors retrieving the configuration to the logs, but these errors don't stop the current configuration from operating.
 
 ## Example
 

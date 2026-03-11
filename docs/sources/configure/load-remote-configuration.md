@@ -36,18 +36,56 @@ Use the following table to choose the appropriate method for your use case:
 
 ## Load from an HTTP server
 
-Use `import.http` to load configuration from an HTTP server.
-This is the recommended approach when you have a static configuration file hosted on a web server.
+Use `import.http` to load configuration modules from an HTTP server.
+This is the recommended approach when you have configuration modules hosted on a web server.
+
+{{< param "PRODUCT_NAME" >}} treats remote files loaded with `import.http` as modules.
+Modules define reusable components using `declare` blocks, which the local configuration then instantiates.
+
 {{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
+
+{{< admonition type="note" >}}
+You can't point {{< param "PRODUCT_NAME" >}} directly at a remote URL on startup.
+You must have a local configuration file that uses `import.http` to import modules from the remote server.
+The remote file must define reusable components using `declare` blocks.
+{{< /admonition >}}
+
+### Module requirements
+
+Modules must define reusable components using `declare` blocks and can't contain top-level configuration blocks such as `logging`, `remotecfg`, or CLI settings.
+
+The following module is invalid because it contains a `logging` block, which isn't allowed in modules:
+
+```alloy
+logging {
+  level = "debug"
+}
+
+declare "pipeline" {
+  prometheus.scrape "default" {
+    targets = [{"__address__" = "localhost:9090"}]
+  }
+}
+```
+
+The following module is valid because it only contains `declare` blocks:
+
+```alloy
+declare "pipeline" {
+  prometheus.scrape "default" {
+    targets = [{"__address__" = "localhost:9090"}]
+  }
+}
+```
+
+Global configuration such as `logging` must remain in the local configuration file that imports the module.
 
 ### Create the remote configuration file
 
 Create a configuration file on your HTTP server.
 The file must contain valid {{< param "PRODUCT_NAME" >}} configuration wrapped in a `declare` block.
 
-The following example creates a reusable Prometheus scrape configuration.
-
-prometheus_scrape.alloy (hosted on your HTTP server)
+The following example creates a reusable Prometheus scrape configuration:
 
 ```alloy
 declare "scrape" {
@@ -63,12 +101,10 @@ declare "scrape" {
 
 ### Import the remote configuration
 
-Use `import.http` in your local configuration to import the remote file.
-
-config.alloy (local configuration)
+In your local configuration, import the remote file and use the declared component:
 
 ```alloy
-import.http "prometheus" {
+import.http "remote" {
   url            = "http://<CONFIG_SERVER_ADDRESS>/prometheus_scrape.alloy"
   poll_frequency = "5m"
 }
@@ -79,7 +115,7 @@ prometheus.remote_write "default" {
   }
 }
 
-prometheus.scrape "app" {
+remote.scrape "app" {
   targets    = [{"__address__" = "localhost:8080"}]
   forward_to = [prometheus.remote_write.default.receiver]
 }
