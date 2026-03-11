@@ -51,9 +51,9 @@ You can use the following arguments with `loki.secretfilter`:
 | `forward_to`         | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
 | `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
 | `origin_label`       | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
-| `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged       | `1.0`   | no       |
-| `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`. E.g.: `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
-| `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction                  | `80`    | no       |
+| `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.      | `1.0`   | no       |
+| `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`, for example, `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
+| `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                 | `80`    | no       |
 | `drop_on_timeout`    | `bool`               | When true, drop entries that exceed `processing_timeout` instead of forwarding them unredacted.                      | `false` | no       |
 | `processing_timeout` | `duration`           | Maximum time allowed to process a single log entry. `0` disables the timeout.                                        | `0`     | no       |
 
@@ -77,8 +77,9 @@ For consistent behavior, use an external configuration file via `gitleaks_config
   When `redact_percent` is 0 or unset, 80% redaction is used.
 
 **Sampling:** The `rate` argument controls what fraction of log entries are processed by the secret filter.
-Entries that are not selected by the sampling rate are forwarded unchanged (no detection or redaction).
-Use a value below `1.0` (for example, `0.1` for 10%) to reduce CPU usage when processing high-volume logs; monitor `loki_secretfilter_entries_bypassed_total` to observe how many entries were skipped.
+Entries that {{< param "PRODUCT_NAME" >}} does not select based on the sampling rate pass through unchanged, with no detection or redaction applied.
+Use a value below `1.0`, for example, `0.1` for 10%, to reduce CPU usage when processing high-volume logs.
+Monitor `loki_secretfilter_entries_bypassed_total` to observe how many entries were skipped.
 
 **Origin metric:** The `origin_label` argument specifies which Loki label to use for the `secrets_redacted_by_origin` metric, so you can track how many secrets were redacted per source or environment.
 
