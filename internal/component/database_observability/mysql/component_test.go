@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -502,7 +501,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 			args:      args,
 			receivers: args.ForwardTo,
 			handler:   loki.NewLogsReceiver(),
-			registry:  prometheus.NewRegistry(),
+			gatherer:  &atomicGatherer{},
 			healthErr: atomic.NewString(""),
 			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
 			targets:   []*targetState{{instanceKey: "test-instance"}},

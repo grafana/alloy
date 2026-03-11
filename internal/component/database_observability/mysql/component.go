@@ -11,7 +11,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	dto "github.com/prometheus/client_model/go"
 
 	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
@@ -19,11 +22,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
 	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
-	"go.uber.org/atomic"
+	goatomic "go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -241,24 +243,38 @@ type Collector interface {
 }
 
 type targetState struct {
-	instanceKey  string
-	dbConnection *sql.DB
-	registry     *prometheus.Registry
-	collectors   []Collector
+	instanceKey       string
+	dbConnection      *sql.DB
+	registry          *prometheus.Registry
+	exporterCollector prometheus.Collector
+	collectors        []Collector
+}
+
+// atomicGatherer implements prometheus.Gatherer and delegates to a gatherer
+// stored atomically. It allows the metrics handler to always read from the
+// current set of per-target registries without restarting the HTTP server.
+type atomicGatherer struct {
+	g atomic.Value // stores prometheus.Gatherer
+}
+
+func (a *atomicGatherer) Gather() ([]*dto.MetricFamily, error) {
+	if g, ok := a.g.Load().(prometheus.Gatherer); ok {
+		return g.Gather()
+	}
+	return nil, nil
 }
 
 type Component struct {
-	opts      component.Options
-	args      Arguments
-	mut       sync.RWMutex
-	receivers []loki.LogsReceiver
-	handler   loki.LogsReceiver
-	registry  *prometheus.Registry
-	baseTarget discovery.Target
-	targets    []*targetState
-	healthErr  *atomic.String
-	openSQL    func(driverName, dataSourceName string) (*sql.DB, error)
-	exporterCollector prometheus.Collector
+	opts           component.Options
+	args           Arguments
+	mut            sync.RWMutex
+	receivers      []loki.LogsReceiver
+	handler        loki.LogsReceiver
+	gatherer       *atomicGatherer
+	baseTarget     discovery.Target
+	targets        []*targetState
+	healthErr      *goatomic.String
+	openSQL        func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -271,8 +287,8 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		args:      args,
 		receivers: args.ForwardTo,
 		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
+		gatherer:  &atomicGatherer{},
+		healthErr: goatomic.NewString(""),
 		openSQL:   openFn,
 	}
 
@@ -448,7 +464,7 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 
 	t := &targetState{
 		instanceKey: iKey,
-		registry:    c.registry,
+		registry:    prometheus.NewRegistry(),
 	}
 
 	dbConnection, err := c.openSQL("mysql", formatDSN(string(tArgs.DataSourceName), "parseTime=true"))
@@ -507,9 +523,15 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 		cp = cloudProvider
 	}
 
-	if c.exporterCollector != nil {
-		c.registry.Unregister(c.exporterCollector)
-		c.exporterCollector = nil
+	// Create a wrapped registerer that stamps all metrics with target-specific labels.
+	wrappedReg := prometheus.WrapRegistererWith(prometheus.Labels{
+		"instance":  t.instanceKey,
+		"server_id": generatedServerID,
+	}, t.registry)
+
+	if t.exporterCollector != nil {
+		wrappedReg.Unregister(t.exporterCollector)
+		t.exporterCollector = nil
 	}
 
 	if c.args.PrometheusExporter != nil {
@@ -521,35 +543,35 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 			LockTimeout:   exporterCfg.LockWaitTimeout,
 			SlowLogFilter: exporterCfg.LogSlowFilter,
 		})
-		if err := c.registry.Register(exporter); err != nil {
+		if err := wrappedReg.Register(exporter); err != nil {
 			t.dbConnection.Close()
 			return fmt.Errorf("failed to register mysqld_exporter collector: %w", err)
 		}
-		c.exporterCollector = exporter
+		t.exporterCollector = exporter
 	}
 
-	scrapeTargets := append([]discovery.Target{c.baseTarget}, c.args.ScrapeTargets...)
-	targets := make([]discovery.Target, 0, len(scrapeTargets)+1)
-	for _, st := range scrapeTargets {
-		builder := discovery.NewTargetBuilderFrom(st)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
-			targets = append(targets, builder.Target())
-		}
-	}
-
+	// Emit a single discovery target for the component's shared /metrics endpoint.
 	c.opts.OnStateChange(Exports{
-		Targets: targets,
+		Targets: []discovery.Target{c.baseTarget},
 	})
 
-	collectors, err := c.startCollectorsForTarget(t, generatedServerID, engineVersion, parsedEngineVersion, cp)
-	if err != nil {
-		t.dbConnection.Close()
-		return fmt.Errorf("failed to start collectors: %w", err)
-	}
+	collectors, startErr := c.startCollectorsForTarget(t, wrappedReg, generatedServerID, engineVersion, parsedEngineVersion, cp)
 	t.collectors = collectors
 
+	// Add the target even if some collectors failed to start; its registry may
+	// already have metrics from collectors that started successfully.
 	c.targets = append(c.targets, t)
 
+	// Update the atomic gatherer to use the new set of per-target registries.
+	gatherers := make(prometheus.Gatherers, 0, len(c.targets))
+	for _, tgt := range c.targets {
+		gatherers = append(gatherers, tgt.registry)
+	}
+	c.gatherer.g.Store(gatherers)
+
+	if startErr != nil {
+		return fmt.Errorf("failed to start collectors: %w", startErr)
+	}
 	return nil
 }
 
@@ -582,7 +604,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 // startCollectorsForTarget attempts to start all of the enabled collectors for the given target.
 // If one or more collectors fail to start, their errors are accumulated and returned.
 // Returns the list of started collectors and any error.
-func (c *Component) startCollectorsForTarget(t *targetState, serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) ([]Collector, error) {
+func (c *Component) startCollectorsForTarget(t *targetState, reg prometheus.Registerer, serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) ([]Collector, error) {
 	var startErrors []string
 	var collectors []Collector
 
@@ -664,7 +686,7 @@ func (c *Component) startCollectorsForTarget(t *targetState, serverID string, en
 	if enabledCollectors[collector.SetupConsumersCollector] {
 		scCollector, err := collector.NewSetupConsumers(collector.SetupConsumersArguments{
 			DB:              t.dbConnection,
-			Registry:        t.registry,
+			Registry:        reg,
 			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
@@ -741,7 +763,7 @@ func (c *Component) startCollectorsForTarget(t *targetState, serverID string, en
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:           string(c.args.Targets[0].DataSourceName),
-		Registry:      t.registry,
+		Registry:      reg,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
 	})
@@ -778,7 +800,7 @@ func (c *Component) startCollectorsForTarget(t *targetState, serverID string, en
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+	return promhttp.HandlerFor(c.gatherer, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {

@@ -19,7 +19,7 @@ const (
 
 type SetupConsumersArguments struct {
 	DB       *sql.DB
-	Registry *prometheus.Registry
+	Registry prometheus.Registerer
 
 	Logger          log.Logger
 	CollectInterval time.Duration
@@ -27,7 +27,7 @@ type SetupConsumersArguments struct {
 
 type SetupConsumers struct {
 	dbConnection         *sql.DB
-	registry             *prometheus.Registry
+	registry             prometheus.Registerer
 	collectInterval      time.Duration
 	setupConsumersMetric *prometheus.GaugeVec
 

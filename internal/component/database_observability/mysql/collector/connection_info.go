@@ -15,14 +15,14 @@ const ConnectionInfoName = "connection_info"
 
 type ConnectionInfoArguments struct {
 	DSN           string
-	Registry      *prometheus.Registry
+	Registry      prometheus.Registerer
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
 }
 
 type ConnectionInfo struct {
 	DSN           string
-	Registry      *prometheus.Registry
+	Registry      prometheus.Registerer
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
