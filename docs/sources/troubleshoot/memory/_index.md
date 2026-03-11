@@ -26,7 +26,7 @@ Before investigating memory issues in detail, identify the pattern that matches 
 | ------------------------------------------------ | ---------------------------------------------------------------------- |
 | Container restarts with `OOMKilled`              | [Kubernetes memory limits][kubernetes] or [WAL replay][prometheus-wal] |
 | Memory spikes immediately after restart          | [WAL replay][prometheus-wal]                                           |
-| Memory grows steadily while queues increase      | [Back pressure][loki-backpressure] from slow or failing remote systems |
+| Memory grows steadily during back pressure       | [Back pressure][loki-backpressure] from slow or failing remote systems |
 | Memory grows steadily and series count increases | [High cardinality][high-cardinality]                                   |
 | Memory remains high after traffic drops          | [Go runtime retaining memory][prometheus-high-memory] for reuse        |
 
@@ -75,7 +75,7 @@ Back pressure most commonly occurs when:
 Start by confirming whether telemetry is accumulating inside {{< param "PRODUCT_NAME" >}}.
 
 1. Check logs for delivery errors or retries when sending telemetry to remote endpoints.
-1. Inspect component metrics to determine whether internal queues are growing.
+1. Inspect component metrics to determine whether back pressure is building.
 1. Compare ingestion rate to forwarding rate to determine whether {{< param "PRODUCT_NAME" >}} is receiving data faster than it can send it.
 
 The following metrics help identify queue buildup and delivery issues:
@@ -100,7 +100,7 @@ The following metrics help identify queue buildup and delivery issues:
 | `loki_write_dropped_bytes_total`   | counter | Bytes dropped after all retries failed   |
 | `loki_write_batch_retries_total`   | counter | Batch retry attempts                     |
 
-If queue depth increases over time while latency or errors are present, memory growth likely reflects buffered telemetry rather than a memory leak.
+If these metrics indicate back pressure while latency or errors are present, memory growth likely reflects buffered telemetry rather than a memory leak.
 
 Refer to the pipeline-specific topics for detailed troubleshooting steps:
 
