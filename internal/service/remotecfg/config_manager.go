@@ -165,7 +165,7 @@ func (cm *configManager) setLastReceivedCfgHash(h string) {
 
 func (cm *configManager) parseAndLoad(b []byte) error {
 	if len(b) == 0 {
-		return nil
+		return fmt.Errorf("empty configuration: no content to load")
 	}
 
 	cm.mut.RLock()
@@ -288,6 +288,15 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	}
 
 	b := []byte(gcr.GetContent())
+	if len(b) == 0 {
+		err := fmt.Errorf("remote server returned empty configuration")
+		level.Error(cm.logger).Log("msg", "invalid remote config", "err", err)
+		cm.metrics.totalFailures.Add(1)
+		cm.metrics.lastLoadSuccess.Set(0)
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, err.Error())
+		return err
+	}
+
 	newConfigHash := getHash(b)
 
 	// Check if we already received this exact config from remote

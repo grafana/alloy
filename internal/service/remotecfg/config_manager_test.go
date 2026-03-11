@@ -407,3 +407,11 @@ func TestResetLastSentEffectiveConfig(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, config, result.ConfigMap.ConfigMap[""].Body)
 }
+
+func TestParseAndLoad_RejectsEmptyContent(t *testing.T) {
+	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
+
+	err := cm.parseAndLoad([]byte{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty")
+}

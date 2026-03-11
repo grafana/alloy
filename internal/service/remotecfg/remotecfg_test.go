@@ -429,6 +429,40 @@ func TestConfigSkipCacheRestorationWhenSameHash(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 }
 
+func TestEmptyHTTP200Response_Rejected(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	url := "https://example.com/"
+
+	client := &mockCollectorClient{}
+	var registerCalled atomic.Bool
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler("", "", false) // empty body, HTTP 200, NotModified false
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
+		url            = "%s"
+		poll_frequency = "10s"
+	`, url)))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
+
+	// Empty HTTP 200 must be rejected: no successful load, metrics show failure
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, float64(0), testutil.ToFloat64(env.svc.metrics.lastLoadSuccess), "empty response must not be reported as successful load")
+		assert.Equal(c, "", env.svc.cm.getLastLoadedCfgHash(), "no config should be loaded from empty response")
+	}, 1*time.Second, 10*time.Millisecond)
+}
+
 // GetConfigHandlerOptions provides configuration for buildGetConfigHandler
 type GetConfigHandlerOptions struct {
 	Content     string
