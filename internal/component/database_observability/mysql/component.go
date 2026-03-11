@@ -150,7 +150,10 @@ func (a *PrometheusExporterArguments) SetToDefault() {
 	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
 }
 
-func (a *PrometheusExporterArguments) Validate() error { return nil }
+func (a *PrometheusExporterArguments) Validate() error {
+	args := exporter_mysql.Arguments(*a)
+	return args.Validate()
+}
 
 var DefaultArguments = Arguments{
 	ExcludeSchemas:                []string{},
@@ -464,7 +467,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			SlowLogFilter: exporterCfg.LogSlowFilter,
 		})
 		if err := c.registry.Register(exporter); err != nil {
-			return fmt.Errorf("failed to register mysqld_exporter collector: %w", err)
+			return fmt.Errorf("failed to register prometheus_exporter collector: %w", err)
 		}
 		c.exporterCollector = exporter
 	}
