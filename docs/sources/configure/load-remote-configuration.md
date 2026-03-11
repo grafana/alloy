@@ -54,7 +54,7 @@ The remote file must define reusable components using `declare` blocks.
 ### Module requirements
 
 Modules must define reusable components using `declare` blocks and can't contain top-level configuration blocks such as `logging` or `remotecfg`.
-CLI flags (command-line settings) are configured when starting {{< param "PRODUCT_NAME" >}}, not within modules.
+You configure CLI flags when starting {{< param "PRODUCT_NAME" >}}, not within modules.
 
 The following module is invalid because it contains a `logging` block, which isn't allowed in modules:
 
