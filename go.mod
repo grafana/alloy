@@ -7,7 +7,6 @@ go 1.25.7
 replace github.com/grafana/alloy/syntax => ./syntax
 
 require (
-	cloud.google.com/go/pubsub v1.50.1
 	cloud.google.com/go/pubsub/v2 v2.3.0
 	connectrpc.com/connect v1.18.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
