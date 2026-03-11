@@ -67,18 +67,18 @@ The `attributes` map keys can include any custom value except the reserved prefi
 The reserved label prefix is for automatic system attributes.
 You can't override this prefix.
 
-* `collector.os`: The operating system where {{< param "PRODUCT_NAME" >}} is running.
-* `collector.version`: The version of {{< param "PRODUCT_NAME" >}}.
+- `collector.os`: The operating system where {{< param "PRODUCT_NAME" >}} is running.
+- `collector.version`: The version of {{< param "PRODUCT_NAME" >}}.
 
 You must set `poll_frequency` to at least `"10s"`.
 
-At most, one of the following can be provided:
+You can provide at most one of the following:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -129,9 +129,22 @@ remotecfg {
 }
 ```
 
+## Troubleshooting
+
+If {{< param "PRODUCT_NAME" >}} fails to load configuration using `remotecfg`, check the following:
+
+- `401` or `403` errors: Verify that authentication settings are correct, such as `basic_auth`, `authorization`, OAuth2, or bearer token.
+- `404` errors: Confirm that the configured `url` points to a server implementing the alloy-remote-config API.
+  Static HTTP servers can't serve configuration for `remotecfg`.
+- `415 Unsupported Media Type` errors: Ensure the server implements the alloy-remote-config API and returns the expected response format.
+- Connection timeouts: Check network connectivity, proxy settings, and firewall rules between the collector and the remote server.
+
+If you only want to load a static configuration file from an HTTP server, use [`import.http`][import.http] instead.
+
 [API definition]: https://github.com/grafana/alloy-remote-config
 [arguments]: #arguments
-[basic_auth]: #basic_auth
 [authorization]: #authorization
+[basic_auth]: #basic_auth
+[import.http]: ../import.http/
 [oauth2]: #oauth2
 [tls_config]: #tls_config

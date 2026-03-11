@@ -14,7 +14,8 @@ title: import.http
 
 Use `import.http` to load {{< param "PRODUCT_NAME" >}} configuration from a remote HTTP server.
 The remote file must define configuration inside a `declare` block.
-Modules can't contain top-level configuration blocks such as `logging`, `remotecfg`, or CLI settings.
+{{< param "PRODUCT_NAME" >}} evaluates imported modules as reusable components, so the remote file must not include top-level global configuration blocks such as `logging`, `remotecfg`, or CLI settings.
+Global configuration belongs in the local configuration file that imports the module.
 {{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
 
 Refer to [Load configuration from remote sources][load-remote] for more information.
@@ -93,6 +94,17 @@ If {{< param "PRODUCT_NAME" >}} can't reach the configured URL, it continues run
 
 {{< param "PRODUCT_NAME" >}} writes errors retrieving the configuration to the logs, but these errors don't stop the current configuration from operating.
 
+## Monitor configuration fetch failures
+
+To detect configuration update problems early, monitor for repeated fetch failures:
+
+- Check collector logs for repeated HTTP errors when retrieving remote modules.
+- Investigate persistent `4xx` errors, which indicate authentication or URL configuration issues.
+- Investigate persistent `5xx` errors, which indicate remote server problems.
+- Verify network connectivity and proxy configuration if requests time out.
+
+If configuration updates are critical for your deployment, consider adding alerting based on log monitoring or collector health checks.
+
 ## Example
 
 This example imports custom components from an HTTP response and instantiates a custom component for adding two numbers.
@@ -132,7 +144,7 @@ The following example shows how to load a Prometheus scrape configuration from a
 Create a module file and host it on your HTTP server:
 
 ```alloy
-declare "scrape_prometheus" {
+declare "scrape" {
   argument "targets" {}
   argument "forward_to" {}
 
@@ -146,7 +158,7 @@ declare "scrape_prometheus" {
 In your local configuration file, import the remote module and use the declared component:
 
 ```alloy
-import.http "prometheus" {
+import.http "remote" {
   url            = "http://config-server.example.com/prometheus_scrape.alloy"
   poll_frequency = "5m"
 }
@@ -157,7 +169,7 @@ prometheus.remote_write "default" {
   }
 }
 
-prometheus.scrape_prometheus "app" {
+remote.scrape "app" {
   targets    = [{"__address__" = "localhost:8080"}]
   forward_to = [prometheus.remote_write.default.receiver]
 }

@@ -41,14 +41,15 @@ This is the recommended approach when you have configuration modules hosted on a
 
 {{< param "PRODUCT_NAME" >}} treats remote files loaded with `import.http` as modules.
 Modules define reusable components using `declare` blocks, which the local configuration then instantiates.
-
-{{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
+After you import a module, you must instantiate its declared components in the local configuration for them to run.
 
 {{< admonition type="note" >}}
 You can't point {{< param "PRODUCT_NAME" >}} directly at a remote URL on startup.
 You must have a local configuration file that uses `import.http` to import modules from the remote server.
 The remote file must define reusable components using `declare` blocks.
 {{< /admonition >}}
+
+{{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
 
 ### Module requirements
 
@@ -123,8 +124,27 @@ remote.scrape "app" {
 
 Replace the following:
 
-* _`<CONFIG_SERVER_ADDRESS>`_: The address of your HTTP server hosting the configuration file.
-* _`<MIMIR_ADDRESS>`_: The address of your Prometheus-compatible remote write endpoint.
+- _`<CONFIG_SERVER_ADDRESS>`_: The address of your HTTP server hosting the configuration file.
+- _`<MIMIR_ADDRESS>`_: The address of your Prometheus-compatible remote write endpoint.
+
+You can load multiple remote modules by defining multiple `import.http` blocks in your local configuration file.
+Each block can point to a different module file on the remote server.
+
+For example:
+
+```alloy
+import.http "metrics" {
+  url = "http://config-server.example.com/metrics.alloy"
+}
+
+import.http "logs" {
+  url = "http://config-server.example.com/logs.alloy"
+}
+```
+
+Each imported module can define its own `declare` blocks and components.
+
+If you need to manage many configuration files or directories, consider using [`import.git`][import.git] to load modules from a version-controlled repository.
 
 Refer to [`import.http`][import.http] for more information.
 
@@ -156,9 +176,9 @@ prometheus.remote_write "default" {
 
 Replace the following:
 
-* _`<ORGANIZATION>`_: Your GitHub organization or username.
-* _`<REPOSITORY>`_: The name of your Git repository.
-* _`<MIMIR_ADDRESS>`_: The address of your Prometheus-compatible remote write endpoint.
+- _`<ORGANIZATION>`_: Your GitHub organization or username.
+- _`<REPOSITORY>`_: The name of your Git repository.
+- _`<MIMIR_ADDRESS>`_: The address of your Prometheus-compatible remote write endpoint.
 
 Refer to [`import.git`][import.git] for more information.
 
