@@ -12,6 +12,12 @@ title: import.http
 
 `import.http` retrieves a module from an HTTP server.
 
+Use `import.http` to load {{< param "PRODUCT_NAME" >}} configuration from a remote HTTP server.
+The remote file can contain custom component definitions or standard {{< param "PRODUCT_NAME" >}} components.
+{{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
+
+Refer to [Load configuration from remote sources][load-remote] for more information.
+
 ## Usage
 
 ```alloy
@@ -80,9 +86,9 @@ The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 ## Example
 
-This example imports custom components from an HTTP response and instantiates a custom component for adding two numbers:
+This example imports custom components from an HTTP response and instantiates a custom component for adding two numbers.
 
-module.alloy
+Create a module file and host it on your HTTP server:
 
 ```alloy
 declare "add" {
@@ -95,7 +101,7 @@ declare "add" {
 }
 ```
 
-main.alloy
+In your local configuration file, import the remote module and use the declared component:
 
 ```alloy
 import.http "math" {
@@ -108,6 +114,47 @@ math.add "default" {
 }
 ```
 
+### Load configuration from a remote HTTP server
+
+You can use `import.http` to load an {{< param "PRODUCT_NAME" >}} configuration containing standard components from a remote HTTP server.
+
+The following example shows how to load a Prometheus scrape configuration from a remote server.
+
+Create a module file and host it on your HTTP server:
+
+```alloy
+declare "scrape_prometheus" {
+  argument "targets" {}
+  argument "forward_to" {}
+
+  prometheus.scrape "default" {
+    targets    = argument.targets.value
+    forward_to = argument.forward_to.value
+  }
+}
+```
+
+In your local configuration file, import the remote module and use the declared component:
+
+```alloy
+import.http "prometheus" {
+  url            = "http://config-server.example.com/prometheus_scrape.alloy"
+  poll_frequency = "5m"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+prometheus.scrape_prometheus "app" {
+  targets    = [{"__address__" = "localhost:8080"}]
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+```
+
+[load-remote]: ../../configure/load-remote-configuration/
 [client]: #client
 [basic_auth]: #basic_auth
 [authorization]: #authorization

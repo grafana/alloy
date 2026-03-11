@@ -15,6 +15,17 @@ title: remotecfg
 
 The [API definition][] for managing and fetching configuration that the `remotecfg` block uses is available under the Apache 2.0 license.
 
+{{< admonition type="note" >}}
+The `remotecfg` block requires a compatible remote configuration management server that implements the [alloy-remote-config API][API definition].
+The server dynamically decides which configuration to serve based on the collector's `id` and `attributes`.
+
+If you want to load a static configuration file from an HTTP server, use [import.http][] instead.
+Refer to [Load configuration from remote sources][load-remote] for more information.
+
+[import.http]: ../import.http/
+[load-remote]: ../../configure/load-remote-configuration/
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
