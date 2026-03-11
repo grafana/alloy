@@ -9,7 +9,7 @@ Multi-module Go repo: root, `syntax/`, `collector/`, `extension/alloyengine/`, `
 
 - Contributing and PR workflow: [docs/developer/contributing.md](docs/developer/contributing.md)
   - Specifically, make sure you use the conventional commit formats and PR titles as described in the contributing guide.
-  - Verify the changes with `make lint` and run relevant testsbefore opening the PR.
+  - Verify the changes with `make lint` and run relevant tests before opening the PR.
   - Note that we have some code generation steps that need to be run when the generated output is changed. See the contributing guide and Makefile help commands for more details.
 
 ## Documentation writing guidelines
