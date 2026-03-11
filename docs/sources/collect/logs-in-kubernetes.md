@@ -12,12 +12,12 @@ weight: 250
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect logs and forward them to a [Loki][] database.
 
-This topic describes how to:
+To collect Kubernetes logs, you:
 
-* Configure logs delivery.
-* Collect logs from Kubernetes Pods.
+1. Configure a `loki.write` component to deliver logs.
+1. Set up collection components for system logs, Pod logs, or Kubernetes events.
 
-## Components used in this topic
+## Components used
 
 * [`discovery.kubernetes`][discovery.kubernetes]
 * [`discovery.relabel`][discovery.relabel]
@@ -30,17 +30,17 @@ This topic describes how to:
 
 ## Before you begin
 
-* Ensure that you are familiar with logs labelling when working with Loki.
-* Identify where to write collected logs.
+* Ensure that you're familiar with logs labeling when working with Loki.
+* Identify where you want to write collected logs.
   You can write logs to Loki endpoints such as Grafana Loki, Grafana Cloud, or Grafana Enterprise Logs.
-* Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+* Ensure that you're familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Configure logs delivery
 
 Before components can collect logs, you must have a component responsible for writing those logs somewhere.
 
 The [`loki.write`][loki.write] component delivers logs to a Loki endpoint.
-After you define a `loki.write` component, you can use other {{< param "PRODUCT_NAME" >}} components to forward logs to it.
+After you define a `loki.write` component, other {{< param "PRODUCT_NAME" >}} components can forward logs to it.
 
 To configure a `loki.write` component for logs delivery, complete the following steps:
 
@@ -58,7 +58,7 @@ To configure a `loki.write` component for logs delivery, complete the following 
 
    * _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `loki.write` components in the same configuration file.
-   * _`<LOKI_URL>`_ : The full URL of the Loki endpoint where logs are sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
+   * _`<LOKI_URL>`_: The full URL of the Loki endpoint where you send logs, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -76,8 +76,8 @@ To configure a `loki.write` component for logs delivery, complete the following 
 
 1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
 
-The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication,
-and a `loki.source.file` component that collects logs from the filesystem on the {{< param "PRODUCT_NAME" >}} container.
+The following example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, and a `loki.source.file` component.
+The `loki.source.file` component collects logs from the file system on the {{< param "PRODUCT_NAME" >}} container.
 
 ```alloy
 loki.write "default" {
@@ -120,20 +120,22 @@ For more information on configuring logs delivery, refer to [loki.write][].
 You can configure {{< param "PRODUCT_NAME" >}} to collect all kinds of logs from Kubernetes:
 
 1. System logs
-1. Pods logs
+1. Pod logs
 1. Kubernetes Events
 
-Thanks to the component architecture, you can follow one or all of the next sections to get those logs. After you have followed the [Configure logs delivery](#configure-logs-delivery) to ensure collected logs can be written somewhere, jump to the relevant sections.
+With the component architecture, you can follow one or all of the following sections.
+Complete the [Configure logs delivery](#configure-logs-delivery) section first, then proceed to the log type you want to collect.
 
 ### System logs
 
-To get the system logs, you should use the following components:
+To collect system logs, use the following components:
 
-* [`local.file_match`][local.file_match]: Discovers files on the local filesystem.
+* [`local.file_match`][local.file_match]: Discovers files on the local file system.
 * [`loki.source.file`][loki.source.file]: Reads log entries from files.
-* [`loki.write`][loki.write]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section.
+* [`loki.write`][loki.write]: Sends logs to the Loki endpoint.
+  Configure this component in the [Configure logs delivery](#configure-logs-delivery) section.
 
-Here is an example using those stages.
+The following example collects system logs:
 
 ```alloy
 // local.file_match discovers files on the local filesystem using glob patterns and the doublestar library. It returns an array of file paths.
@@ -160,27 +162,28 @@ Replace the following values:
 * _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 * _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
-### Pods logs
+### Pod logs
 
 {{< admonition type="tip" >}}
-You can get pods logs through the log files on each node. In this guide, you get the logs through the Kubernetes API because it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
+You can also get Pod logs through the log files on each node, but that approach requires system privileges.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-When deploying {{< param "PRODUCT_NAME" >}} as a daemonset, ensure that you have [configured discovery][discovery.kubernetes.daemonset] appropriately to only collect logs from the same node.
+When you deploy {{< param "PRODUCT_NAME" >}} as a DaemonSet, ensure that you [configure discovery][discovery.kubernetes.daemonset] to only collect logs from the same node.
 
 [discovery.kubernetes.daemonset]: ../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node
 {{< /admonition >}}
 
-You need the following components:
+Use the following components to collect Pod logs:
 
-* [`discovery.kubernetes`][discovery.kubernetes]: Discover pods information and list them for components to use.
-* [`discovery.relabel`][discovery.relabel]: Enforce relabelling strategies on the list of pods.
-* [`loki.source.kubernetes`][loki.source.kubernetes]: Tails logs from a list of Kubernetes pods targets.
-* [`loki.process`][loki.process]: Modify the logs before sending them to the next component.
-* [`loki.write`][loki.write]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section.
+* [`discovery.kubernetes`][discovery.kubernetes]: Discovers Pod information and lists them for components to use.
+* [`discovery.relabel`][discovery.relabel]: Enforces relabeling strategies on the list of Pods.
+* [`loki.source.kubernetes`][loki.source.kubernetes]: Tails logs from a list of Kubernetes Pods targets.
+* [`loki.process`][loki.process]: Modifies logs before sending them to the next component.
+* [`loki.write`][loki.write]: Sends logs to the Loki endpoint.
+  Configure this component in the [Configure logs delivery](#configure-logs-delivery) section.
 
-Here is an example using those stages:
+The following example uses the Kubernetes API to collect logs, which doesn't require system privileges:
 
 ```alloy
 // discovery.kubernetes allows you to find scrape targets from Kubernetes resources.
@@ -294,13 +297,14 @@ Refer to [Limit to only Pods on the same node][discovery.kubernetes_samenode] fo
 
 ### Kubernetes Cluster Events
 
-You need the following components:
+Use the following components to collect Kubernetes cluster events:
 
-* [`loki.source.kubernetes_events`][loki.source.kubernetes_events]: Tails events from Kubernetes API.
-* [`loki.process`][loki.process]: Modify the logs before sending them to the next component.
-* [`loki.write`][loki.write]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section.
+* [`loki.source.kubernetes_events`][loki.source.kubernetes_events]: Tails events from the Kubernetes API.
+* [`loki.process`][loki.process]: Modifies logs before sending them to the next component.
+* [`loki.write`][loki.write]: Sends logs to the Loki endpoint.
+  Configure this component in the [Configure logs delivery](#configure-logs-delivery) section.
 
-Here is an example using those stages:
+The following example collects Kubernetes cluster events:
 
 ```alloy
 // loki.source.kubernetes_events tails events from the Kubernetes API and converts them
@@ -336,6 +340,12 @@ Replace the following values:
 
 * _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 * _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+
+## Next steps
+
+* [Process and transform logs with loki.process][loki.process]
+* [Configure log delivery endpoints with loki.write][loki.write]
+* [Discover Kubernetes resources with discovery.kubernetes][discovery.kubernetes]
 
 [Loki]: https://grafana.com/oss/loki/
 [discovery.kubernetes]: ../../reference/components/discovery/discovery.kubernetes/
