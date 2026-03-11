@@ -143,6 +143,23 @@ func TestLifecycle_StartTwiceFails(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestLifecycle_SecondInstanceFailsWhileFirstRunning(t *testing.T) {
+	ext1 := newTestExtension(t, blockingCommand, defaultTestConfig())
+	ext2 := newTestExtension(t, blockingCommand, defaultTestConfig())
+
+	require.NoError(t, ext1.Start(context.Background(), componenttest.NewNopHost()))
+	require.Eventually(t, func() bool { return ext1.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "first extension did not reach stateRunning")
+
+	err := ext2.Start(context.Background(), componenttest.NewNopHost())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "only one alloyengine extension can be active per process")
+
+	// Cleanup: shutdown first extension so slot is released
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	t.Cleanup(cancel)
+	require.NoError(t, ext1.Shutdown(shutdownCtx))
+}
+
 func TestLifecycle_NotReadyWhenNotStarted(t *testing.T) {
 	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 	require.Error(t, e.Ready())
