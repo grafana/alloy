@@ -505,10 +505,10 @@ func TestMySQL_Reconnection(t *testing.T) {
 			registry:  prometheus.NewRegistry(),
 			healthErr: atomic.NewString(""),
 			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			targets:   []*targetState{{instanceKey: "test-instance"}},
 		}
-		c.instanceKey = "test-instance"
 		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
-			"instance": c.instanceKey,
+			"instance": "test-instance",
 			"job":      "database_observability",
 		})
 

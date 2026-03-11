@@ -240,19 +240,24 @@ type Collector interface {
 	Stop()
 }
 
+type targetState struct {
+	instanceKey  string
+	dbConnection *sql.DB
+	registry     *prometheus.Registry
+	collectors   []Collector
+}
+
 type Component struct {
-	opts              component.Options
-	args              Arguments
-	mut               sync.RWMutex
-	receivers         []loki.LogsReceiver
-	handler           loki.LogsReceiver
-	registry          *prometheus.Registry
-	baseTarget        discovery.Target
-	collectors        []Collector
-	instanceKey       string
-	dbConnection      *sql.DB
-	healthErr         *atomic.String
-	openSQL           func(driverName, dataSourceName string) (*sql.DB, error)
+	opts      component.Options
+	args      Arguments
+	mut       sync.RWMutex
+	receivers []loki.LogsReceiver
+	handler   loki.LogsReceiver
+	registry  *prometheus.Registry
+	baseTarget discovery.Target
+	targets    []*targetState
+	healthErr  *atomic.String
+	openSQL    func(driverName, dataSourceName string) (*sql.DB, error)
 	exporterCollector prometheus.Collector
 }
 
@@ -271,11 +276,15 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		openSQL:   openFn,
 	}
 
+	// Compute the instance key from the first (only) target for use in the base target.
 	instance, err := instanceKey(string(args.Targets[0].DataSourceName))
 	if err != nil {
 		return nil, err
 	}
-	c.instanceKey = instance
+
+	// Store a temporary placeholder so getBaseTarget can use it.
+	// The real per-target state is in c.targets after connectAndStartAllTargets runs.
+	c.targets = []*targetState{{instanceKey: instance}}
 
 	baseTarget, err := c.getBaseTarget()
 	if err != nil {
@@ -294,11 +303,13 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
 		c.mut.RLock()
-		for _, collector := range c.collectors {
-			collector.Stop()
-		}
-		if c.dbConnection != nil {
-			c.dbConnection.Close()
+		for _, t := range c.targets {
+			for _, col := range t.collectors {
+				col.Stop()
+			}
+			if t.dbConnection != nil {
+				t.dbConnection.Close()
+			}
 		}
 		c.mut.RUnlock()
 	}()
@@ -316,10 +327,18 @@ func (c *Component) Run(ctx context.Context) error {
 				return
 			case <-ticker.C:
 				c.mut.RLock()
-				hasCollectors := len(c.collectors) > 0
+				needsReconnect := len(c.targets) == 0
+				if !needsReconnect && len(c.targets) > 0 {
+					for _, col := range c.targets[0].collectors {
+						if col.Stopped() {
+							needsReconnect = true
+							break
+						}
+					}
+				}
 				c.mut.RUnlock()
 
-				if !hasCollectors {
+				if needsReconnect {
 					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
 					if err := c.tryReconnect(ctx); err != nil {
 						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
@@ -351,11 +370,17 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 	}
 	httpData := data.(http_service.Data)
 
+	// Use instance key from the first target if available.
+	var iKey string
+	if len(c.targets) > 0 {
+		iKey = c.targets[0].instanceKey
+	}
+
 	return discovery.NewTargetFromMap(map[string]string{
 		model.AddressLabel:     httpData.MemoryListenAddr,
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
-		"instance":             c.instanceKey,
+		"instance":             iKey,
 		"job":                  database_observability.JobName,
 	}), nil
 }
@@ -376,7 +401,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	if err := c.connectAndStartCollectors(context.Background()); err != nil {
+	if err := c.connectAndStartAllTargets(context.Background()); err != nil {
 		c.reportError("failed to connect", err)
 		return nil
 	}
@@ -389,7 +414,7 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if err := c.connectAndStartCollectors(ctx); err != nil {
+	if err := c.connectAndStartAllTargets(ctx); err != nil {
 		c.reportError("reconnection failed", err)
 		return err
 	}
@@ -398,16 +423,35 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	return nil
 }
 
-// connectAndStartCollectors handles the full connection lifecycle:
-// closes old connection, opens new one, queries server info, and starts collectors
-// Must be called with c.mut locked
-func (c *Component) connectAndStartCollectors(ctx context.Context) error {
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
-		c.dbConnection = nil
+// connectAndStartAllTargets handles the full connection lifecycle:
+// closes old connections, opens new ones, queries server info, and starts collectors.
+// Must be called with c.mut locked.
+func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
+	// Stop all collectors and close all connections from previous targets.
+	for _, t := range c.targets {
+		for _, col := range t.collectors {
+			col.Stop()
+		}
+		if t.dbConnection != nil {
+			t.dbConnection.Close()
+		}
+	}
+	c.targets = nil
+
+	// Process the single target (multi-target unlocked in a later phase).
+	tArgs := c.args.Targets[0]
+
+	iKey, err := instanceKey(string(tArgs.DataSourceName))
+	if err != nil {
+		return fmt.Errorf("failed to compute instance key: %w", err)
 	}
 
-	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.Targets[0].DataSourceName), "parseTime=true"))
+	t := &targetState{
+		instanceKey: iKey,
+		registry:    c.registry,
+	}
+
+	dbConnection, err := c.openSQL("mysql", formatDSN(string(tArgs.DataSourceName), "parseTime=true"))
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
@@ -420,15 +464,17 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		dbConnection.Close()
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
-	c.dbConnection = dbConnection
+	t.dbConnection = dbConnection
 
-	rs := c.dbConnection.QueryRowContext(ctx, selectServerInfo)
+	rs := t.dbConnection.QueryRowContext(ctx, selectServerInfo)
 	if err = rs.Err(); err != nil {
+		t.dbConnection.Close()
 		return fmt.Errorf("failed to query engine version: %w", err)
 	}
 
 	var serverUUID, hostname, engineVersion string
 	if err := rs.Scan(&serverUUID, &hostname, &engineVersion); err != nil {
+		t.dbConnection.Close()
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
@@ -439,20 +485,23 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	if len(matches) > 1 {
 		parsedEngineVersion, err = semver.ParseTolerant(matches[1])
 		if err != nil {
+			t.dbConnection.Close()
 			return fmt.Errorf("failed to parse engine version: %w", err)
 		}
 	}
 
 	var cp *database_observability.CloudProvider
-	if c.args.Targets[0].CloudProvider != nil {
-		cloudProvider, err := populateCloudProviderFromConfig(c.args.Targets[0].CloudProvider)
+	if tArgs.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(tArgs.CloudProvider)
 		if err != nil {
+			t.dbConnection.Close()
 			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
 		}
 		cp = cloudProvider
 	} else {
-		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.Targets[0].DataSourceName))
+		cloudProvider, err := populateCloudProviderFromDSN(string(tArgs.DataSourceName))
 		if err != nil {
+			t.dbConnection.Close()
 			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
@@ -468,11 +517,12 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
-		exporter := mysqld_collector.New(context.Background(), string(c.args.Targets[0].DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
+		exporter := mysqld_collector.New(context.Background(), string(tArgs.DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
 			LockTimeout:   exporterCfg.LockWaitTimeout,
 			SlowLogFilter: exporterCfg.LogSlowFilter,
 		})
 		if err := c.registry.Register(exporter); err != nil {
+			t.dbConnection.Close()
 			return fmt.Errorf("failed to register mysqld_exporter collector: %w", err)
 		}
 		c.exporterCollector = exporter
@@ -480,8 +530,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 	scrapeTargets := append([]discovery.Target{c.baseTarget}, c.args.ScrapeTargets...)
 	targets := make([]discovery.Target, 0, len(scrapeTargets)+1)
-	for _, t := range scrapeTargets {
-		builder := discovery.NewTargetBuilderFrom(t)
+	for _, st := range scrapeTargets {
+		builder := discovery.NewTargetBuilderFrom(st)
 		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
@@ -491,14 +541,14 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		Targets: targets,
 	})
 
-	for _, collector := range c.collectors {
-		collector.Stop()
-	}
-	c.collectors = nil
-
-	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion, cp); err != nil {
+	collectors, err := c.startCollectorsForTarget(t, generatedServerID, engineVersion, parsedEngineVersion, cp)
+	if err != nil {
+		t.dbConnection.Close()
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
+	t.collectors = collectors
+
+	c.targets = append(c.targets, t)
 
 	return nil
 }
@@ -529,22 +579,25 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) error {
+// startCollectorsForTarget attempts to start all of the enabled collectors for the given target.
+// If one or more collectors fail to start, their errors are accumulated and returned.
+// Returns the list of started collectors and any error.
+func (c *Component) startCollectorsForTarget(t *targetState, serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) ([]Collector, error) {
 	var startErrors []string
+	var collectors []Collector
 
 	logStartError := func(collectorName, action string, err error) {
 		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
 		level.Error(c.opts.Logger).Log("msg", errorString)
 		startErrors = append(startErrors, errorString)
 	}
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), t.instanceKey, serverID)
 
-	collectors := enableOrDisableCollectors(c.args)
+	enabledCollectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryDetailsCollector] {
+	if enabledCollectors[collector.QueryDetailsCollector] {
 		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
+			DB:              t.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
@@ -557,13 +610,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := qtCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QueryDetailsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, qtCollector)
+			collectors = append(collectors, qtCollector)
 		}
 	}
 
-	if collectors[collector.SchemaDetailsCollector] {
+	if enabledCollectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
+			DB:              t.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
@@ -578,17 +631,17 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := stCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, stCollector)
+			collectors = append(collectors, stCollector)
 		}
 	}
 
-	if collectors[collector.QuerySamplesCollector] {
+	if enabledCollectors[collector.QuerySamplesCollector] {
 		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
 			level.Warn(c.opts.Logger).Log("msg", "auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                          c.dbConnection,
+			DB:                          t.dbConnection,
 			EngineVersion:               parsedEngineVersion,
 			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
 			ExcludeSchemas:              c.args.ExcludeSchemas,
@@ -604,14 +657,14 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := qsCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QuerySamplesCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, qsCollector)
+			collectors = append(collectors, qsCollector)
 		}
 	}
 
-	if collectors[collector.SetupConsumersCollector] {
+	if enabledCollectors[collector.SetupConsumersCollector] {
 		scCollector, err := collector.NewSetupConsumers(collector.SetupConsumersArguments{
-			DB:              c.dbConnection,
-			Registry:        c.registry,
+			DB:              t.dbConnection,
+			Registry:        t.registry,
 			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
@@ -621,17 +674,17 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := scCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SetupConsumersCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, scCollector)
+			collectors = append(collectors, scCollector)
 		}
 	}
 
-	if collectors[collector.SetupActorsCollector] {
+	if enabledCollectors[collector.SetupActorsCollector] {
 		if c.args.SetupActorsArguments.AutoUpdateSetupActors && !c.args.AllowUpdatePerfSchemaSettings {
 			level.Warn(c.opts.Logger).Log("msg", "auto_update_setup_actors is true but allow_update_performance_schema_settings is false, setup_actors will not be updated")
 		}
 
 		saCollector, err := collector.NewSetupActors(collector.SetupActorsArguments{
-			DB:                    c.dbConnection,
+			DB:                    t.dbConnection,
 			Logger:                c.opts.Logger,
 			CollectInterval:       c.args.SetupActorsArguments.CollectInterval,
 			AutoUpdateSetupActors: c.args.AllowUpdatePerfSchemaSettings && c.args.SetupActorsArguments.AutoUpdateSetupActors,
@@ -642,13 +695,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := saCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SetupActorsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, saCollector)
+			collectors = append(collectors, saCollector)
 		}
 	}
 
-	if collectors[collector.LocksCollector] {
+	if enabledCollectors[collector.LocksCollector] {
 		locksCollector, err := collector.NewLocks(collector.LocksArguments{
-			DB:                c.dbConnection,
+			DB:                t.dbConnection,
 			CollectInterval:   c.args.LocksArguments.CollectInterval,
 			LockWaitThreshold: c.args.LocksArguments.Threshold,
 			Logger:            c.opts.Logger,
@@ -660,13 +713,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := locksCollector.Start(context.Background()); err != nil {
 				logStartError(collector.LocksCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, locksCollector)
+			collectors = append(collectors, locksCollector)
 		}
 	}
 
-	if collectors[collector.ExplainPlansCollector] {
+	if enabledCollectors[collector.ExplainPlansCollector] {
 		epCollector, err := collector.NewExplainPlans(collector.ExplainPlansArguments{
-			DB:              c.dbConnection,
+			DB:              t.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
@@ -681,14 +734,14 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := epCollector.Start(context.Background()); err != nil {
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, epCollector)
+			collectors = append(collectors, epCollector)
 		}
 	}
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:           string(c.args.Targets[0].DataSourceName),
-		Registry:      c.registry,
+		Registry:      t.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
 	})
@@ -698,12 +751,12 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if err := ciCollector.Start(context.Background()); err != nil {
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
-		c.collectors = append(c.collectors, ciCollector)
+		collectors = append(collectors, ciCollector)
 	}
 
 	// HealthCheck collector is always enabled
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
-		DB:              c.dbConnection,
+		DB:              t.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
@@ -714,14 +767,14 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if err := hcCollector.Start(context.Background()); err != nil {
 			logStartError(collector.HealthCheckCollector, "start", err)
 		}
-		c.collectors = append(c.collectors, hcCollector)
+		collectors = append(collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {
-		return fmt.Errorf("failed to start some collectors: %s", strings.Join(startErrors, ", "))
+		return collectors, fmt.Errorf("failed to start some collectors: %s", strings.Join(startErrors, ", "))
 	}
 
-	return nil
+	return collectors, nil
 }
 
 func (c *Component) Handler() http.Handler {
@@ -740,9 +793,11 @@ func (c *Component) CurrentHealth() component.Health {
 	var unhealthyCollectors []string
 
 	c.mut.RLock()
-	for _, collector := range c.collectors {
-		if collector.Stopped() {
-			unhealthyCollectors = append(unhealthyCollectors, collector.Name())
+	for _, t := range c.targets {
+		for _, col := range t.collectors {
+			if col.Stopped() {
+				unhealthyCollectors = append(unhealthyCollectors, col.Name())
+			}
 		}
 	}
 	c.mut.RUnlock()
