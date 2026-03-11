@@ -106,17 +106,16 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return startErr
 	}
 
-	// Here we check if another extension instance is already running, if so we return an error
-	if !running.CompareAndSwap(false, true) {
-		startErr = fmt.Errorf("only one alloyengine extension can be active per process; an instance is already running")
-		return startErr
-	}
-
 	runCommand := e.runCommandFactory()
 	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
 		startErr = fmt.Errorf("failed to parse flags: %w", err)
 		return startErr
+	}
+
+	// Here we check if another extension instance is already running, if so we return an error
+	if !running.CompareAndSwap(false, true) {
+		return fmt.Errorf("only one alloyengine extension can be active per process; an instance is already running")
 	}
 
 	runCtx, runCancel := context.WithCancel(context.Background())
