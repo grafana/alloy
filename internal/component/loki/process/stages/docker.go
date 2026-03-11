@@ -38,11 +38,17 @@ const (
 )
 
 func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
-	var log DockerLog
-
-	if err := json.Unmarshal([]byte(*entry), &log); err != nil {
+	var parsed DockerLog
+	if err := json.Unmarshal([]byte(*entry), &parsed); err != nil {
 		if Debug {
 			level.Debug(d.logger).Log("msg", "failed to parse docker log", "err", err)
+		}
+		return
+	}
+
+	if parsed.Log == "" {
+		if Debug {
+			level.Debug(d.logger).Log("msg", "not valid docker format")
 		}
 		return
 	}
@@ -52,14 +58,14 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 	// as "extracted" values so the other stages could operate on them.
 	// We don't need this anymore but it would be a breaking change to
 	// no longer set these.
-	extracted[dockerOutput] = log.Log
-	extracted[dockerStream] = log.Stream
-	extracted[dockerTimestamp] = log.Time
+	extracted[dockerOutput] = parsed.Log
+	extracted[dockerStream] = parsed.Stream
+	extracted[dockerTimestamp] = parsed.Time
 
-	*entry = log.Log
-	labels["stream"] = model.LabelValue(log.Stream)
+	*entry = parsed.Log
+	labels["stream"] = model.LabelValue(parsed.Stream)
 
-	ts, err := time.Parse(time.RFC3339Nano, log.Time)
+	ts, err := time.Parse(time.RFC3339Nano, parsed.Time)
 	if err == nil {
 		*t = ts
 	}
