@@ -112,6 +112,7 @@ type Component struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
 type secretDetector interface {
 	DetectContext(ctx context.Context, fragment detect.Fragment) []report.Finding
 }
