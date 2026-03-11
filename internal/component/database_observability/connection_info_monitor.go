@@ -68,7 +68,7 @@ func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometh
 					consecutiveSuccesses++
 					if consecutiveSuccesses >= threshold {
 						registry.MustRegister(infoMetric)
-						infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+						infoMetric.WithLabelValues(labelValues...).Set(1)
 						metricRegistered = true
 						consecutiveSuccesses = 0
 					}

@@ -24,13 +24,12 @@ type ConnectionInfoArguments struct {
 }
 
 type ConnectionInfo struct {
-	DSN               string
-	Registry          *prometheus.Registry
-	EngineVersion     string
-	InfoMetric        *prometheus.GaugeVec
-	CloudProvider     *database_observability.CloudProvider
-	dbConnection      *sql.DB
-	metricLabelValues []string
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
+	InfoMetric    *prometheus.GaugeVec
+	CloudProvider *database_observability.CloudProvider
+	dbConnection  *sql.DB
 
 	running *atomic.Bool
 	cancel  context.CancelFunc
@@ -118,8 +117,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	c.running.Store(true)
 
 	labelValues := []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, engineVersion}
-	c.metricLabelValues = labelValues
-	c.InfoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	c.InfoMetric.WithLabelValues(labelValues...).Set(1)
 
 	if c.dbConnection != nil {
 		c.cancel = database_observability.RunConnectionInfoMonitor(

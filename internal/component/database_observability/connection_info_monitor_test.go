@@ -32,7 +32,7 @@ func TestRunConnectionInfoMonitor_UnregistersAfterConsecutiveFailures(t *testing
 	require.NoError(t, registry.Register(infoMetric))
 
 	labelValues := []string{"aws", "us-east-1", "123456789", "my-db", "postgres", "15.0"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	infoMetric.WithLabelValues(labelValues...).Set(1)
 
 	// Expect 3 pings, all failing
 	pingErr := errors.New("connection refused")
@@ -83,14 +83,16 @@ func TestRunConnectionInfoMonitor_ReregistersAfterConsecutiveSuccesses(t *testin
 	require.NoError(t, registry.Register(infoMetric))
 
 	labelValues := []string{"aws", "us-east-1", "123456789", "my-db", "mysql", "8.0.32"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	infoMetric.WithLabelValues(labelValues...).Set(1)
 
-	// First 3 pings fail (metric gets unregistered), then 3 pings succeed (metric gets re-registered)
+	// First 3 pings fail (metric gets unregistered), then many succeed (metric re-registers and stays up).
+	// Extra success expectations prevent sqlmock from returning errors for pings that occur while
+	// require.Eventually polls, which would re-trigger the failure threshold and unregister again.
 	pingErr := errors.New("connection refused")
 	for i := 0; i < testThreshold; i++ {
 		mock.ExpectPing().WillReturnError(pingErr)
 	}
-	for i := 0; i < testThreshold; i++ {
+	for i := 0; i < 30; i++ {
 		mock.ExpectPing()
 	}
 
@@ -103,28 +105,26 @@ func TestRunConnectionInfoMonitor_ReregistersAfterConsecutiveSuccesses(t *testin
 	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
 	defer cancel()
 
-	// Wait for 6 tick intervals so we get 3 failures (unregister) then 3 successes (re-register).
-	time.Sleep(testCheckInterval*time.Duration(testThreshold*2) + 100*time.Millisecond)
-
-	// All 6 pings must have been consumed (3 fail + 3 success), proving the monitor ran the re-register path.
-	require.NoError(t, mock.ExpectationsWereMet(), "monitor should have performed 3 failing then 3 successful pings")
-
-	// Verify re-registration: the monitor runs MustRegister and Set(1) after 3 consecutive successes.
-	// ExpectationsWereMet above confirms all 6 pings ran (3 fail + 3 success). If the registry
-	// exposes the re-registered metric, assert its value.
-	metrics, err := registry.Gather()
-	require.NoError(t, err)
+	// Poll until the metric is re-registered rather than sleeping a fixed duration, which is
+	// unreliable: extra pings after the mock expectations are exhausted return errors, causing
+	// the failure threshold to be hit again and the metric to be unregistered before we check.
 	var mf *dto.MetricFamily
-	for _, m := range metrics {
-		if m.GetName() == "database_observability_connection_info" {
-			mf = m
-			break
+	require.Eventually(t, func() bool {
+		metrics, err := registry.Gather()
+		if err != nil {
+			return false
 		}
-	}
-	if mf != nil {
-		require.Len(t, mf.Metric, 1, "metric should have one series when present")
-		require.Equal(t, float64(1), mf.Metric[0].GetGauge().GetValue())
-	}
+		for _, m := range metrics {
+			if m.GetName() == "database_observability_connection_info" {
+				mf = m
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, testCheckInterval, "metric should be re-registered after %d consecutive successes", testThreshold)
+
+	require.Len(t, mf.Metric, 1, "metric should have one series when present")
+	require.Equal(t, float64(1), mf.Metric[0].GetGauge().GetValue())
 }
 
 func TestRunConnectionInfoMonitor_MetricRemainsRegisteredWhilePingsSucceed(t *testing.T) {
@@ -143,7 +143,7 @@ func TestRunConnectionInfoMonitor_MetricRemainsRegisteredWhilePingsSucceed(t *te
 	require.NoError(t, registry.Register(infoMetric))
 
 	labelValues := []string{"unknown", "unknown", "unknown", "unknown", "postgres", "15.0"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	infoMetric.WithLabelValues(labelValues...).Set(1)
 
 	// All pings succeed (allow at least 4 successful pings)
 	for i := 0; i < 4; i++ {
@@ -195,7 +195,7 @@ func TestRunConnectionInfoMonitor_CancelStopsGoroutine(t *testing.T) {
 	require.NoError(t, registry.Register(infoMetric))
 
 	labelValues := []string{"a", "b", "c", "d", "e", "f"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	infoMetric.WithLabelValues(labelValues...).Set(1)
 
 	mock.ExpectPing() // at most one ping before we cancel
 
