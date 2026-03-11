@@ -10,19 +10,22 @@ import (
 	"strings"
 	"time"
 
-	json "github.com/json-iterator/go"
+	"github.com/grafana/loki/pkg/push"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/pkg/push"
 )
 
-// GCPLogEntry that will be written to the pubsub topic according to the following spec.
+// reservedLabelTenantID reserved to override the tenant ID while processing
+// pipeline stages
+const reservedLabelTenantID = "__tenant_id__"
+
+// LogEntry that will be written to the pubsub topic according to the following spec.
 // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
-type GCPLogEntry struct {
-	// why was this here?? nolint:revive
+type LogEntry struct {
 	LogName  string `json:"logName"`
 	Resource struct {
 		Type   string            `json:"type"`
@@ -44,47 +47,48 @@ type GCPLogEntry struct {
 	Labels map[string]string `json:"labels"`
 
 	TextPayload string `json:"textPayload"`
-
-	// NOTE(kavi): There are other fields on GCPLogEntry. but we need only need
-	// above fields for now anyway we will be sending the entire entry to Loki.
 }
 
-func parseGCPLogsEntry(data []byte, other model.LabelSet, otherInternal labels.Labels, useIncomingTimestamp bool, useFullLine bool, relabelConfig []*relabel.Config) (loki.Entry, error) {
-	var ge GCPLogEntry
+type parseOptions struct {
+	useFullLine          bool
+	useIncomingTimestamp bool
+	fixedLabels          model.LabelSet
+}
 
-	if err := json.Unmarshal(data, &ge); err != nil {
+func parseLogEntry(data []byte, builder *labels.Builder, relabelConfig []*relabel.Config, opts parseOptions) (loki.Entry, error) {
+	var entry LogEntry
+
+	if err := jsoniter.Unmarshal(data, &entry); err != nil {
 		return loki.Entry{}, err
 	}
 
-	// Adding mandatory labels for gcplog
-	lbs := labels.NewBuilder(otherInternal)
-	lbs.Set("__gcp_logname", ge.LogName)
-	lbs.Set("__gcp_resource_type", ge.Resource.Type)
-	lbs.Set("__gcp_severity", ge.Severity)
+	// Adding mandatory labels for gcplog.
+	builder.Set("__gcp_logname", entry.LogName)
+	builder.Set("__gcp_resource_type", entry.Resource.Type)
+	builder.Set("__gcp_severity", entry.Severity)
 
-	// resource labels from gcp log entry. Add it as internal labels
-	for k, v := range ge.Resource.Labels {
-		lbs.Set("__gcp_resource_labels_"+convertToLokiCompatibleLabel(k), v)
+	// Resource labels from log entry, add it as internal labels.
+	for k, v := range entry.Resource.Labels {
+		builder.Set("__gcp_resource_labels_"+convertToLokiCompatibleLabel(k), v)
 	}
 
-	// labels from gcp log entry. Add it as internal labels
-	for k, v := range ge.Labels {
-		lbs.Set("__gcp_labels_"+convertToLokiCompatibleLabel(k), v)
+	// Labels from log entry, add it as internal labels.
+	for k, v := range entry.Labels {
+		builder.Set("__gcp_labels_"+convertToLokiCompatibleLabel(k), v)
 	}
 
 	var processed labels.Labels
 
-	// apply relabeling
+	// Apply relabeling.
 	if len(relabelConfig) > 0 {
-		processed, _ = relabel.Process(lbs.Labels(), relabelConfig...)
+		processed, _ = relabel.Process(builder.Labels(), relabelConfig...)
 	} else {
-		processed = lbs.Labels()
+		processed = builder.Labels()
 	}
 
-	// final labelset that will be sent to loki
 	lbls := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
-		if strings.HasPrefix(lbl.Name, "__") {
+		if strings.HasPrefix(lbl.Name, "__") && lbl.Name != reservedLabelTenantID {
 			return
 		}
 		// ignore invalid labels
@@ -96,16 +100,14 @@ func parseGCPLogsEntry(data []byte, other model.LabelSet, otherInternal labels.L
 		lbls[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 	})
 
-	// add labels coming from scrapeconfig
-	lbls = lbls.Merge(other)
+	// Add fixed labels.
+	lbls = lbls.Merge(opts.fixedLabels)
 
 	ts := time.Now()
-	line := string(data)
-
-	if useIncomingTimestamp {
-		tt := ge.Timestamp
+	if opts.useIncomingTimestamp {
+		tt := entry.Timestamp
 		if tt == "" {
-			tt = ge.ReceiveTimestamp
+			tt = entry.ReceiveTimestamp
 		}
 		var err error
 		ts, err = time.Parse(time.RFC3339, tt)
@@ -118,16 +120,13 @@ func parseGCPLogsEntry(data []byte, other model.LabelSet, otherInternal labels.L
 		}
 	}
 
-	// Send only `ge.textPayload` as log line if its present and user don't explicitly ask for the whole log.
-	if !useFullLine && strings.TrimSpace(ge.TextPayload) != "" {
-		line = ge.TextPayload
+	var line string
+	// Use text paylod as log line if configured and not empty.
+	if !opts.useFullLine && strings.TrimSpace(entry.TextPayload) != "" {
+		line = entry.TextPayload
+	} else {
+		line = string(data)
 	}
 
-	return loki.Entry{
-		Labels: lbls,
-		Entry: push.Entry{
-			Timestamp: ts,
-			Line:      line,
-		},
-	}, nil
+	return loki.NewEntry(lbls, push.Entry{Timestamp: ts, Line: line}), nil
 }
