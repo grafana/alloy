@@ -39,6 +39,11 @@ func init() {
 	integrations_v2.RegisterLegacy(&Config{}, integrations_v2.TypeMultiplex, metricsutils.NewNamedShim("cloudwatch"))
 }
 
+// DefaultConfig holds the default settings for the cloudwatch_exporter integration.
+var DefaultConfig = Config{
+	UseAWSSDKVersion2: true,
+}
+
 // Config is the configuration for the CloudWatch metrics integration
 type Config struct {
 	STSRegion         string                `yaml:"sts_region"`
@@ -48,6 +53,13 @@ type Config struct {
 	Debug             bool                  `yaml:"debug"`
 	DecoupledScrape   DecoupledScrapeConfig `yaml:"decoupled_scraping"`
 	UseAWSSDKVersion2 bool                  `yaml:"aws_sdk_version_v2"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler for Config.
+func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*c = DefaultConfig
+	type plain Config
+	return unmarshal((*plain)(c))
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
@@ -138,6 +150,11 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 	if err != nil {
 		return nil, fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}
+
+	if !c.UseAWSSDKVersion2 {
+		level.Warn(l).Log("msg", "the `aws_sdk_version_v2` argument is deprecated and will be removed in future releases - AWS SDK for Go v1 is end-of-life, remove this argument to use AWS SDK for Go v2")
+	}
+
 	if c.DecoupledScrape.Enabled {
 		scrapeInterval := defaultDecoupledScrapingInterval
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
