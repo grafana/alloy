@@ -68,15 +68,15 @@ type Arguments struct {
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
-	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
-	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
-	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
-	QueryDetailsArguments   QueryDetailsArguments   `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments  SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
-	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
-	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
-	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
+	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	SetupConsumersArguments SetupConsumersArguments      `alloy:"setup_consumers,block,optional"`
+	SetupActorsArguments    SetupActorsArguments         `alloy:"setup_actors,block,optional"`
+	QueryDetailsArguments   QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	LocksArguments          LocksArguments               `alloy:"locks,block,optional"`
+	QuerySamplesArguments   QuerySamplesArguments        `alloy:"query_samples,block,optional"`
+	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
 	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
