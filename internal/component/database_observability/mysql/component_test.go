@@ -445,7 +445,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 }
 
 func TestMySQL_Reconnection(t *testing.T) {
-	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
+	t.Run("tryReconnect with unavailable db marks target unhealthy", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
 			Logger:        kitlog.NewNopLogger(),
@@ -463,11 +463,13 @@ func TestMySQL_Reconnection(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		c.healthErr.Store("initial error")
-
+		// tryReconnect returns nil (errors are per-target), but the target is unhealthy.
 		err = c.tryReconnect(context.Background())
-		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NoError(t, err)
+
+		h := c.CurrentHealth()
+		assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+		assert.NotEmpty(t, h.Message)
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
@@ -511,10 +513,12 @@ func TestMySQL_Reconnection(t *testing.T) {
 			"job":      "database_observability",
 		})
 
-		// First attempt: connection fails
+		// First attempt: connection fails — tryReconnect itself returns nil.
 		err = c.tryReconnect(context.Background())
-		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NoError(t, err)
+		// But the target should be marked unhealthy.
+		require.Len(t, c.targets, 1)
+		assert.NotNil(t, c.targets[0].err)
 
 		// Second mock: will succeed
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
@@ -529,10 +533,11 @@ func TestMySQL_Reconnection(t *testing.T) {
 
 		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
 
-		// Second attempt: connection succeeds and clears error
+		// Second attempt: connection succeeds.
 		err = c.tryReconnect(context.Background())
 		assert.NoError(t, err)
-		assert.Empty(t, c.healthErr.Load())
+		require.Len(t, c.targets, 1)
+		assert.Nil(t, c.targets[0].err)
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
@@ -633,5 +638,143 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
+	})
+}
+
+func TestMySQL_MultiTarget(t *testing.T) {
+	t.Run("two valid targets start successfully", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test",
+			Logger:        kitlog.NewNopLogger(),
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+			},
+		}
+
+		args := Arguments{
+			Targets: []TargetArguments{
+				{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db1")},
+				{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3307)/db2")},
+			},
+			ForwardTo:         []loki.LogsReceiver{},
+			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+			HealthCheckArguments: HealthCheckArguments{
+				CollectInterval: 1 * time.Hour,
+			},
+		}
+
+		// Use separate DB mocks per target to avoid interleaved call ordering issues.
+		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db1.Close()
+
+		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db2.Close()
+
+		// Target 1
+		mock1.ExpectPing()
+		mock1.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).AddRow("uuid-1", "host-1", "8.0.0"))
+		mock1.ExpectPing()
+		// Target 2
+		mock2.ExpectPing()
+		mock2.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).AddRow("uuid-2", "host-2", "8.0.0"))
+		mock2.ExpectPing()
+
+		callCount := 0
+		c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) {
+			callCount++
+			if callCount == 1 {
+				return db1, nil
+			}
+			return db2, nil
+		})
+		require.NoError(t, err)
+
+		require.Len(t, c.targets, 2)
+		assert.Nil(t, c.targets[0].err)
+		assert.Nil(t, c.targets[1].err)
+
+		h := c.CurrentHealth()
+		assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	})
+
+	t.Run("one valid target and one unreachable target", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test",
+			Logger:        kitlog.NewNopLogger(),
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+			},
+		}
+
+		args := Arguments{
+			Targets: []TargetArguments{
+				{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db1")},
+				{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db2?timeout=100ms")},
+			},
+			ForwardTo:         []loki.LogsReceiver{},
+			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+			HealthCheckArguments: HealthCheckArguments{
+				CollectInterval: 1 * time.Hour,
+			},
+		}
+
+		// Separate mocks for the two different DSNs.
+		dbOK, mockOK, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer dbOK.Close()
+
+		dbFail, mockFail, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer dbFail.Close()
+
+		// Successful target
+		mockOK.ExpectPing()
+		mockOK.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).AddRow("uuid-1", "host-1", "8.0.0"))
+		mockOK.ExpectPing()
+
+		// Failing target
+		mockFail.ExpectPing().WillReturnError(assert.AnError)
+
+		callCount := 0
+		c, err := new(opts, args, func(_ string, dsn string) (*sql.DB, error) {
+			callCount++
+			if callCount == 1 {
+				return dbOK, nil
+			}
+			return dbFail, nil
+		})
+		require.NoError(t, err)
+
+		require.Len(t, c.targets, 2)
+		// First target should be healthy.
+		assert.Nil(t, c.targets[0].err)
+		// Second target should have an error.
+		assert.NotNil(t, c.targets[1].err)
+
+		h := c.CurrentHealth()
+		assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+		assert.NotEmpty(t, h.Message)
+	})
+
+	t.Run("duplicate target DSN fails validation", func(t *testing.T) {
+		cfg := `
+			target {
+				data_source_name = "user:pass@tcp(127.0.0.1:3306)/db"
+			}
+			target {
+				data_source_name = "user:pass@tcp(127.0.0.1:3306)/db"
+			}
+			forward_to = []
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "duplicate target")
 	})
 }

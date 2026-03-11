@@ -210,14 +210,28 @@ func (a *Arguments) SetToDefault() {
 }
 
 func (a *Arguments) Validate() error {
-	if len(a.Targets) != 1 {
-		return fmt.Errorf("exactly one target block is required")
+	if len(a.Targets) < 1 {
+		return fmt.Errorf("at least one target block is required")
 	}
+
+	seen := make(map[string]struct{})
 	for _, t := range a.Targets {
 		_, err := mysql.ParseDSN(string(t.DataSourceName))
 		if err != nil {
 			return err
 		}
+		iKey, err := instanceKey(string(t.DataSourceName))
+		if err != nil {
+			return err
+		}
+		if _, ok := seen[iKey]; ok {
+			return fmt.Errorf("duplicate target: instance key %q appears more than once", iKey)
+		}
+		seen[iKey] = struct{}{}
+	}
+
+	if a.PrometheusExporter != nil && len(a.Targets) > 1 {
+		return fmt.Errorf("prometheus_exporter can only be used with a single target block")
 	}
 	if a.PrometheusExporter != nil && len(a.ScrapeTargets) > 0 {
 		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
@@ -244,10 +258,12 @@ type Collector interface {
 
 type targetState struct {
 	instanceKey       string
+	dsn               string
 	dbConnection      *sql.DB
 	registry          *prometheus.Registry
 	exporterCollector prometheus.Collector
 	collectors        []Collector
+	err               error
 }
 
 // atomicGatherer implements prometheus.Gatherer and delegates to a gatherer
@@ -265,16 +281,16 @@ func (a *atomicGatherer) Gather() ([]*dto.MetricFamily, error) {
 }
 
 type Component struct {
-	opts           component.Options
-	args           Arguments
-	mut            sync.RWMutex
-	receivers      []loki.LogsReceiver
-	handler        loki.LogsReceiver
-	gatherer       *atomicGatherer
-	baseTarget     discovery.Target
-	targets        []*targetState
-	healthErr      *goatomic.String
-	openSQL        func(driverName, dataSourceName string) (*sql.DB, error)
+	opts       component.Options
+	args       Arguments
+	mut        sync.RWMutex
+	receivers  []loki.LogsReceiver
+	handler    loki.LogsReceiver
+	gatherer   *atomicGatherer
+	baseTarget discovery.Target
+	targets    []*targetState
+	healthErr  *goatomic.String
+	openSQL    func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -292,7 +308,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		openSQL:   openFn,
 	}
 
-	// Compute the instance key from the first (only) target for use in the base target.
+	// Compute the instance key from the first target for use in the base target.
 	instance, err := instanceKey(string(args.Targets[0].DataSourceName))
 	if err != nil {
 		return nil, err
@@ -343,19 +359,23 @@ func (c *Component) Run(ctx context.Context) error {
 				return
 			case <-ticker.C:
 				c.mut.RLock()
-				needsReconnect := len(c.targets) == 0
-				if !needsReconnect && len(c.targets) > 0 {
-					for _, col := range c.targets[0].collectors {
+				var stoppedTargets []*targetState
+				for _, t := range c.targets {
+					if t.err != nil {
+						stoppedTargets = append(stoppedTargets, t)
+						continue
+					}
+					for _, col := range t.collectors {
 						if col.Stopped() {
-							needsReconnect = true
+							stoppedTargets = append(stoppedTargets, t)
 							break
 						}
 					}
 				}
 				c.mut.RUnlock()
 
-				if needsReconnect {
-					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+				if len(stoppedTargets) > 0 {
+					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database(s)")
 					if err := c.tryReconnect(ctx); err != nil {
 						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
 					}
@@ -417,10 +437,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	if err := c.connectAndStartAllTargets(context.Background()); err != nil {
-		c.reportError("failed to connect", err)
-		return nil
-	}
+	c.connectAndStartAllTargets(context.Background())
 
 	c.healthErr.Store("")
 	return nil
@@ -430,10 +447,7 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if err := c.connectAndStartAllTargets(ctx); err != nil {
-		c.reportError("reconnection failed", err)
-		return err
-	}
+	c.connectAndStartAllTargets(ctx)
 
 	c.healthErr.Store("")
 	return nil
@@ -442,7 +456,9 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 // connectAndStartAllTargets handles the full connection lifecycle:
 // closes old connections, opens new ones, queries server info, and starts collectors.
 // Must be called with c.mut locked.
-func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
+// Each target is processed independently — failure to connect one target does not
+// prevent others from starting.
+func (c *Component) connectAndStartAllTargets(ctx context.Context) {
 	// Stop all collectors and close all connections from previous targets.
 	for _, t := range c.targets {
 		for _, col := range t.collectors {
@@ -454,44 +470,78 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 	}
 	c.targets = nil
 
-	// Process the single target (multi-target unlocked in a later phase).
-	tArgs := c.args.Targets[0]
+	for i := range c.args.Targets {
+		tArgs := c.args.Targets[i]
+		t := c.connectAndStartTarget(ctx, tArgs)
+		c.targets = append(c.targets, t)
+	}
 
+	// Update the atomic gatherer to use the new set of per-target registries.
+	gatherers := make(prometheus.Gatherers, 0, len(c.targets))
+	for _, tgt := range c.targets {
+		if tgt.registry != nil {
+			gatherers = append(gatherers, tgt.registry)
+		}
+	}
+	c.gatherer.g.Store(gatherers)
+
+	// Emit a single discovery target for the component's shared /metrics endpoint.
+	if c.opts.OnStateChange != nil {
+		c.opts.OnStateChange(Exports{
+			Targets: []discovery.Target{c.baseTarget},
+		})
+	}
+}
+
+// connectAndStartTarget connects to a single target and starts its collectors.
+// It always returns a *targetState; on failure, t.err is set.
+func (c *Component) connectAndStartTarget(ctx context.Context, tArgs TargetArguments) *targetState {
 	iKey, err := instanceKey(string(tArgs.DataSourceName))
 	if err != nil {
-		return fmt.Errorf("failed to compute instance key: %w", err)
+		level.Error(c.opts.Logger).Log("msg", "failed to compute instance key", "err", err)
+		return &targetState{err: fmt.Errorf("failed to compute instance key: %w", err)}
 	}
 
 	t := &targetState{
 		instanceKey: iKey,
+		dsn:         string(tArgs.DataSourceName),
 		registry:    prometheus.NewRegistry(),
 	}
 
 	dbConnection, err := c.openSQL("mysql", formatDSN(string(tArgs.DataSourceName), "parseTime=true"))
 	if err != nil {
-		return fmt.Errorf("failed to open database connection: %w", err)
+		level.Error(c.opts.Logger).Log("msg", "failed to open database connection", "instance", iKey, "err", err)
+		t.err = fmt.Errorf("failed to open database connection: %w", err)
+		return t
 	}
 
 	if dbConnection == nil {
-		return fmt.Errorf("nil DB connection")
+		t.err = fmt.Errorf("nil DB connection")
+		return t
 	}
 
 	if err = dbConnection.Ping(); err != nil {
 		dbConnection.Close()
-		return fmt.Errorf("failed to ping database: %w", err)
+		level.Error(c.opts.Logger).Log("msg", "failed to ping database", "instance", iKey, "err", err)
+		t.err = fmt.Errorf("failed to ping database: %w", err)
+		return t
 	}
 	t.dbConnection = dbConnection
 
 	rs := t.dbConnection.QueryRowContext(ctx, selectServerInfo)
 	if err = rs.Err(); err != nil {
 		t.dbConnection.Close()
-		return fmt.Errorf("failed to query engine version: %w", err)
+		t.dbConnection = nil
+		t.err = fmt.Errorf("failed to query engine version: %w", err)
+		return t
 	}
 
 	var serverUUID, hostname, engineVersion string
 	if err := rs.Scan(&serverUUID, &hostname, &engineVersion); err != nil {
 		t.dbConnection.Close()
-		return fmt.Errorf("failed to scan engine version: %w", err)
+		t.dbConnection = nil
+		t.err = fmt.Errorf("failed to scan engine version: %w", err)
+		return t
 	}
 
 	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverUUID, hostname))))
@@ -502,7 +552,9 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 		parsedEngineVersion, err = semver.ParseTolerant(matches[1])
 		if err != nil {
 			t.dbConnection.Close()
-			return fmt.Errorf("failed to parse engine version: %w", err)
+			t.dbConnection = nil
+			t.err = fmt.Errorf("failed to parse engine version: %w", err)
+			return t
 		}
 	}
 
@@ -511,14 +563,18 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 		cloudProvider, err := populateCloudProviderFromConfig(tArgs.CloudProvider)
 		if err != nil {
 			t.dbConnection.Close()
-			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
+			t.dbConnection = nil
+			t.err = fmt.Errorf("failed to collect cloud provider information from config: %w", err)
+			return t
 		}
 		cp = cloudProvider
 	} else {
 		cloudProvider, err := populateCloudProviderFromDSN(string(tArgs.DataSourceName))
 		if err != nil {
 			t.dbConnection.Close()
-			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
+			t.dbConnection = nil
+			t.err = fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
+			return t
 		}
 		cp = cloudProvider
 	}
@@ -529,12 +585,11 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 		"server_id": generatedServerID,
 	}, t.registry)
 
-	if t.exporterCollector != nil {
-		wrappedReg.Unregister(t.exporterCollector)
-		t.exporterCollector = nil
-	}
-
 	if c.args.PrometheusExporter != nil {
+		if t.exporterCollector != nil {
+			wrappedReg.Unregister(t.exporterCollector)
+			t.exporterCollector = nil
+		}
 		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
@@ -544,35 +599,26 @@ func (c *Component) connectAndStartAllTargets(ctx context.Context) error {
 			SlowLogFilter: exporterCfg.LogSlowFilter,
 		})
 		if err := wrappedReg.Register(exporter); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to register mysqld_exporter collector", "instance", iKey, "err", err)
+			t.err = fmt.Errorf("failed to register mysqld_exporter collector: %w", err)
 			t.dbConnection.Close()
-			return fmt.Errorf("failed to register mysqld_exporter collector: %w", err)
+			t.dbConnection = nil
+			return t
 		}
 		t.exporterCollector = exporter
 	}
 
-	// Emit a single discovery target for the component's shared /metrics endpoint.
-	c.opts.OnStateChange(Exports{
-		Targets: []discovery.Target{c.baseTarget},
-	})
-
 	collectors, startErr := c.startCollectorsForTarget(t, wrappedReg, generatedServerID, engineVersion, parsedEngineVersion, cp)
 	t.collectors = collectors
 
-	// Add the target even if some collectors failed to start; its registry may
-	// already have metrics from collectors that started successfully.
-	c.targets = append(c.targets, t)
-
-	// Update the atomic gatherer to use the new set of per-target registries.
-	gatherers := make(prometheus.Gatherers, 0, len(c.targets))
-	for _, tgt := range c.targets {
-		gatherers = append(gatherers, tgt.registry)
-	}
-	c.gatherer.g.Store(gatherers)
-
 	if startErr != nil {
-		return fmt.Errorf("failed to start collectors: %w", startErr)
+		// Some collectors failed to start; record the error but keep the target —
+		// its registry may already contain metrics from collectors that did start.
+		t.err = startErr
+		level.Error(c.opts.Logger).Log("msg", "some collectors failed to start", "instance", iKey, "err", startErr)
 	}
-	return nil
+
+	return t
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
@@ -762,7 +808,7 @@ func (c *Component) startCollectorsForTarget(t *targetState, reg prometheus.Regi
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           string(c.args.Targets[0].DataSourceName),
+		DSN:           t.dsn,
 		Registry:      reg,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
@@ -812,22 +858,26 @@ func (c *Component) CurrentHealth() component.Health {
 		}
 	}
 
-	var unhealthyCollectors []string
+	var unhealthyTargets []string
 
 	c.mut.RLock()
 	for _, t := range c.targets {
+		if t.err != nil {
+			unhealthyTargets = append(unhealthyTargets, fmt.Sprintf("%s: %v", t.instanceKey, t.err))
+			continue
+		}
 		for _, col := range t.collectors {
 			if col.Stopped() {
-				unhealthyCollectors = append(unhealthyCollectors, col.Name())
+				unhealthyTargets = append(unhealthyTargets, fmt.Sprintf("%s: collector %s stopped", t.instanceKey, col.Name()))
 			}
 		}
 	}
 	c.mut.RUnlock()
 
-	if len(unhealthyCollectors) > 0 {
+	if len(unhealthyTargets) > 0 {
 		return component.Health{
 			Health:     component.HealthTypeUnhealthy,
-			Message:    "One or more collectors are unhealthy: [" + strings.Join(unhealthyCollectors, ", ") + "]",
+			Message:    "One or more targets are unhealthy: [" + strings.Join(unhealthyTargets, ", ") + "]",
 			UpdateTime: time.Now(),
 		}
 	}
