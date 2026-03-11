@@ -27,6 +27,7 @@ func (s *ScrapeConfigBuilder) AppendGCPLog() {
 			Labels:               convertPromLabels(cfg.Labels),
 			UseIncomingTimestamp: cfg.UseIncomingTimestamp,
 			UseFullLine:          cfg.UseFullLine,
+			Limit:                gcptypes.DefaultLimitConfig,
 		}
 	case "push":
 		s.diags.AddAll(common.ValidateWeaveWorksServerCfg(cfg.Server))
