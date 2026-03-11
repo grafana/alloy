@@ -6,12 +6,12 @@ package gcplogtarget
 // from GCP.
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -58,7 +58,7 @@ type parseOptions struct {
 func parseLogEntry(data []byte, builder *labels.Builder, relabelConfig []*relabel.Config, opts parseOptions) (loki.Entry, error) {
 	var entry LogEntry
 
-	if err := json.Unmarshal(data, &entry); err != nil {
+	if err := jsoniter.Unmarshal(data, &entry); err != nil {
 		return loki.Entry{}, err
 	}
 
