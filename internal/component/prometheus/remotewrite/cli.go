@@ -190,7 +190,7 @@ deletion but then comes back at some point).`,
 			table := tablewriter.NewWriter(os.Stdout)
 			defer table.Render()
 
-			table.SetHeader([]string{"Job", "Instance", "Series", "Samples"})
+			table.Header("Job", "Instance", "Series", "Samples")
 
 			sort.Sort(waltools.BySeriesCount(stats.Targets))
 
