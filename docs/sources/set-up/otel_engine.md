@@ -149,6 +149,10 @@ This command starts both the {{< param "DEFAULT_ENGINE" >}} and {{< param "OTEL_
 The output of both engines is visible in the logs.
 You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`.
 
+{{< admonition type="warning" >}}
+Only one `alloyengine` extension can be active per process, please ensure you only specify a single extension in your `service.pipelines` definition. If you specify multiple, you will see a clear error indicating that only one alloy engine extension can be live at once per collector instance. 
+{{< /admonition >}}
+
 ## Run with the OpenTelemetry Collector Helm chart
 
 Use the upstream [OpenTelemetry Collector Helm chart](https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector) to run the {{< param "OTEL_ENGINE" >}}.
