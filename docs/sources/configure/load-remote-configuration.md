@@ -85,7 +85,7 @@ Global configuration such as `logging` must remain in the local configuration fi
 ### Create the remote configuration file
 
 Create a configuration file on your HTTP server.
-The file must contain valid {{< param "PRODUCT_NAME" >}} configuration wrapped in a `declare` block.
+The file must be a valid {{< param "PRODUCT_NAME" >}} module, using top-level `declare` blocks to define the reusable configuration you’ll import.
 
 The following example creates a reusable Prometheus scrape configuration:
 
