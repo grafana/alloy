@@ -73,13 +73,13 @@ type Arguments struct {
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
-	CloudProvider          *CloudProvider             `alloy:"cloud_provider,block,optional"`
-	QuerySampleArguments   QuerySampleArguments       `alloy:"query_samples,block,optional"`
-	QueryTablesArguments   QueryTablesArguments       `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments     `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments      `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments       `alloy:"health_check,block,optional"`
-	PostgresExporter       *PostgresExporterArguments `alloy:"postgres_exporter,block,optional"`
+	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
+	QueryTablesArguments   QueryTablesArguments         `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments   HealthCheckArguments         `alloy:"health_check,block,optional"`
+	PrometheusExporter     *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
 type CloudProvider struct {
@@ -149,20 +149,20 @@ type HealthCheckArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-// PostgresExporterArguments configures the embedded postgres_exporter scrapers.
+// PrometheusExporterArguments configures the embedded postgres_exporter scrapers.
 // When this block is present, postgres_exporter metrics are served alongside the
 // component's own metrics at the same /metrics endpoint.
 //
 // It is a distinct type (not an embedded struct) because the Alloy syntax
 // system does not support anonymous/embedded fields.
 // Note: data_source_names is ignored; the component's data_source_name is always used.
-type PostgresExporterArguments exporter_postgres.Arguments
+type PrometheusExporterArguments exporter_postgres.Arguments
 
-func (a *PostgresExporterArguments) SetToDefault() {
-	*a = PostgresExporterArguments(exporter_postgres.DefaultArguments)
+func (a *PrometheusExporterArguments) SetToDefault() {
+	*a = PrometheusExporterArguments(exporter_postgres.DefaultArguments)
 }
 
-func (a *PostgresExporterArguments) Validate() error {
+func (a *PrometheusExporterArguments) Validate() error {
 	args := exporter_postgres.Arguments(*a)
 	return args.Validate()
 }
@@ -175,6 +175,9 @@ func (a *Arguments) Validate() error {
 	_, err := pq.ParseURL(string(a.DataSourceName))
 	if err != nil {
 		return err
+	}
+	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
+		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
 	}
 	return nil
 }
@@ -396,8 +399,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.exporterCollectors = nil
 
-	if c.args.PostgresExporter != nil {
-		exporterArgs := exporter_postgres.Arguments(*c.args.PostgresExporter)
+	if c.args.PrometheusExporter != nil {
+		exporterArgs := exporter_postgres.Arguments(*c.args.PrometheusExporter)
 		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
 		dsn := string(c.args.DataSourceName)
 
