@@ -6,6 +6,9 @@ import (
 	"path"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/exp/maps"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
@@ -15,8 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/scanner"
-	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/maps"
 )
 
 type moduleController struct {
@@ -50,14 +51,12 @@ func (m *moduleController) NewModule(id string, export component.ExportFunc) (co
 		fullPath = path.Join(fullPath, id)
 	}
 
-	mod := newModule(&moduleOptions{
+	return newModule(&moduleOptions{
 		ID:                      fullPath,
 		export:                  export,
 		moduleControllerOptions: m.o,
 		parent:                  m,
 	})
-
-	return mod, nil
 }
 
 // NewCustomComponent creates a new, unstarted CustomComponent.
@@ -73,14 +72,12 @@ func (m *moduleController) NewCustomComponent(id string, export component.Export
 		fullPath = path.Join(fullPath, id)
 	}
 
-	mod := newModule(&moduleOptions{
+	return newModule(&moduleOptions{
 		ID:                      fullPath,
 		export:                  export,
 		moduleControllerOptions: m.o,
 		parent:                  m,
 	})
-
-	return mod, nil
 }
 
 func (m *moduleController) removeModule(mod *module) {
@@ -127,31 +124,32 @@ var (
 )
 
 // newModule creates a module instance for a specific component.
-func newModule(o *moduleOptions) *module {
-	return &module{
-		o: o,
-		f: newController(controllerOptions{
-			IsModule:          true,
-			ModuleRegistry:    o.ModuleRegistry,
-			ComponentRegistry: o.ComponentRegistry,
-			WorkerPool:        o.WorkerPool,
-			Options: Options{
-				ControllerID:         o.ID,
-				Tracer:               o.Tracer,
-				Reg:                  o.Reg,
-				Logger:               o.Logger,
-				DataPath:             o.DataPath,
-				MinStability:         o.MinStability,
-				EnableCommunityComps: o.EnableCommunityComps,
-				OnExportsChange: func(exports map[string]any) {
-					if o.export != nil {
-						o.export(exports)
-					}
-				},
-				Services: o.ServiceMap.List(),
+func newModule(o *moduleOptions) (*module, error) {
+	c, err := newController(controllerOptions{
+		IsModule:          true,
+		ModuleRegistry:    o.ModuleRegistry,
+		ComponentRegistry: o.ComponentRegistry,
+		WorkerPool:        o.WorkerPool,
+		Options: Options{
+			ControllerID:         o.ID,
+			Tracer:               o.Tracer,
+			Reg:                  o.Reg,
+			Logger:               o.Logger,
+			DataPath:             o.DataPath,
+			MinStability:         o.MinStability,
+			EnableCommunityComps: o.EnableCommunityComps,
+			OnExportsChange: func(exports map[string]any) {
+				if o.export != nil {
+					o.export(exports)
+				}
 			},
-		}),
+			Services: o.ServiceMap.List(),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create module controller: %w", err)
 	}
+	return &module{o: o, f: c}, nil
 }
 
 // LoadConfig parses Alloy config and loads it.

@@ -64,6 +64,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           cd tools
           go run ./release/create-rc --branch "${GITHUB_REF_NAME}" ${{ inputs.dry_run == true && '--dry-run' || '' }}

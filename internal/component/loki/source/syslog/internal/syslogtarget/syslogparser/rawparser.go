@@ -41,23 +41,26 @@ func IterStreamRaw(r io.Reader, delimiter byte) iter.Seq2[*syslog.Base, error] {
 	}
 }
 
-func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
-	b, err := buf.ReadByte()
+func parseLineRaw(src *bufio.Reader, delimiter byte) (*syslog.Base, error) {
+	b, err := src.ReadByte()
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: use bytebufferpool?
-	_ = buf.UnreadByte()
+	_ = src.UnreadByte()
 	ftype := framingTypeFromFirstByte(b)
 	if ftype == framingTypeOctetCounting {
-		contentLength, err := readFrameLength(buf)
+		contentLength, err := readFrameLength(src)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read octet length header: %w", err)
 		}
 
+		// The .Read() method in bufio.Reader will return only buffered data.
+		// io.ReadFull will saturate a whole buffer with desired content length.
+		// Also, it will return an error if bytes read are less than contentLength.
 		buff := make([]byte, contentLength)
-		n, err := buf.Read(buff)
+		n, err := io.ReadFull(src, buff)
 		if err != nil {
 			return nil, fmt.Errorf("cannot read message: %w (length: %d)", err, contentLength)
 		}
@@ -71,7 +74,7 @@ func parseLineRaw(buf *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 	}
 
 	// NOTE: CEF logs don't have log priority prefix and will be detected as [framingTypeUnknown], but logic still the same.
-	buff, err := buf.ReadBytes(delimiter)
+	buff, err := src.ReadBytes(delimiter)
 	if err != nil {
 		// Ignore io.EOF if some data was returned
 		if !errors.Is(err, io.EOF) || len(buff) == 0 {

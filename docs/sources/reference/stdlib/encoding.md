@@ -75,7 +75,7 @@ string123%21%3F%24%2A%26%28%29%27-%3D%40~
 ## encoding.url_decode
 
 The `encoding.url_decode` function decodes a RFC3986 "percent encoding" compliant string.
-`encoding.url_decode` failes if input string is not RFC3986 "percent encoding" compliant.
+`encoding.url_decode` fails if input string is not RFC3986 "percent encoding" compliant.
 
 ### Example
 

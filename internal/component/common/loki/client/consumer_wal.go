@@ -205,8 +205,9 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	)
 
 	if ok {
-		for _, e := range entries.Entries {
-			err := c.endpoint.enqueue(loki.Entry{Labels: l, Entry: e}, segment)
+		for i := range entries.Entries {
+			e := entries.EntryAt(l, i)
+			err := c.endpoint.enqueue(e, segment)
 			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
 			// Here we just skip the entry and try with the next one.
 			if errors.Is(err, errQueueIsFull) {

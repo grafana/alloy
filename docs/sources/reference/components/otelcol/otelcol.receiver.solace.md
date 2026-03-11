@@ -52,7 +52,7 @@ You can use the following arguments with `otelcol.receiver.solace`:
 You can use the following blocks with `otelcol.receiver.solace`:
 
 | Block                                               | Description                                                                                                                      | Required |
-|-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|----------|
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                  | Configures where to send received telemetry data.                                                                                | yes      |
 | [`authentication`][authentication]                  | Configures authentication for connecting to the Solace broker.                                                                   | yes      |
 | `authentication` > [`sasl_external`][sasl_external] | Authenticates against the Solace broker with SASL External.                                                                      | no       |
@@ -62,7 +62,7 @@ You can use the following blocks with `otelcol.receiver.solace`:
 | [`flow`][flow]                                      | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
 | `flow` > [`delayed_retry`][delayed_retry]           | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
 | [`tls`][tls]                                        | Configures TLS for connecting to the Solace broker.                                                                              | no       |
-| `tls` > [`tpm`][tpm]                                | Configures TPM settings for the TLS key_file.                                                                                    | no       |
+| `tls` > [`tpm`][tpm]                                | Configures TPM settings for the TLS `key_file`.                                                                                  | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
