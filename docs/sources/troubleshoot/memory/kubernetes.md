@@ -20,7 +20,7 @@ Common causes include:
 - Pod memory limit is too low
 - [`GOMEMLIMIT`][env-vars] isn't configured
 - WAL replay consumes additional memory at startup
-- Internal queues grow when remote endpoints respond slowly or can't accept data fast enough
+- Back pressure builds when remote endpoints respond slowly or can't accept data fast enough
 
 ### Validate resource configuration
 
@@ -34,7 +34,7 @@ Common causes include:
    If you didn't define a limit, set one.
    If the limit is close to observed usage, increase it.
 
-   Set the limit high enough to absorb WAL replay and temporary queue growth.
+   Set the limit high enough to absorb WAL replay and temporary back pressure.
    In most environments, this means at least two to four times steady-state usage.
    Refer to [Estimate resource usage][estimate-resource-usage] for baseline guidance.
 

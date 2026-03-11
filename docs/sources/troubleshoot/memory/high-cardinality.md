@@ -20,7 +20,7 @@ High cardinality memory issues often appear as:
 - Memory that grows steadily during normal operation
 - Large numbers of active series or log streams
 - Increased CPU usage during ingestion
-- Remote write queues that grow even when endpoints are healthy
+- Back pressure that builds even when endpoints are healthy
 - High WAL growth in metrics pipelines
 - Increasing time series counts in your metrics backend
 
@@ -86,7 +86,7 @@ These labels often generate series continuously.
 High cardinality can also cause secondary symptoms:
 
 - Increased WAL size
-- Larger remote write queues
+- Back pressure on remote write pipelines
 - Higher CPU usage during ingestion
 
 If these symptoms appear alongside growing series counts, cardinality is likely the root cause.
@@ -152,7 +152,7 @@ Examples include:
 - Active time series
 - Ingestion rate
 - WAL size
-- Remote write queue depth
+- Remote write latency and throughput
 
 If series count grows continuously even when traffic is stable, investigate label usage.
 
