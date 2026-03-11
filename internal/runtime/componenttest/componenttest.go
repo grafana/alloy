@@ -41,6 +41,11 @@ type Controller struct {
 	exportsCh  chan struct{}
 }
 
+const (
+	defaultWaitRunningTimeout = 5 * time.Second
+	defaultWaitExportsTimeout = 5 * time.Second
+)
+
 // NewControllerFromID returns a new testing Controller for the component with
 // the provided name.
 func NewControllerFromID(l log.Logger, componentName string) (*Controller, error) {
@@ -89,6 +94,10 @@ func (c *Controller) onStateChange(e component.Exports) {
 // WaitRunning blocks until the Controller is running up to the provided
 // timeout.
 func (c *Controller) WaitRunning(timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = defaultWaitRunningTimeout
+	}
+
 	select {
 	case <-time.After(timeout):
 		return fmt.Errorf("timed out waiting for the controller to start running")
@@ -103,6 +112,10 @@ func (c *Controller) WaitRunning(timeout time.Duration) error {
 // WaitExports blocks until new Exports are available up to the provided
 // timeout.
 func (c *Controller) WaitExports(timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = defaultWaitExportsTimeout
+	}
+
 	select {
 	case <-time.After(timeout):
 		return fmt.Errorf("timed out waiting for exports")

@@ -39,11 +39,7 @@ type ProcessorRunConfig struct {
 	L                     log.Logger
 }
 
-const (
-	componentStartTimeout  = 5 * time.Second
-	componentExportTimeout = 5 * time.Second
-	signalOutputTimeout    = 3 * time.Second
-)
+const signalOutputTimeout = 3 * time.Second
 
 func TestRunProcessor(c ProcessorRunConfig) {
 	go func() {
@@ -51,8 +47,8 @@ func TestRunProcessor(c ProcessorRunConfig) {
 		require.NoError(c.T, err)
 	}()
 
-	require.NoError(c.T, c.Ctrl.WaitRunning(componentStartTimeout), "component never started")
-	require.NoError(c.T, c.Ctrl.WaitExports(componentExportTimeout), "component never exported anything")
+	require.NoError(c.T, c.Ctrl.WaitRunning(0), "component never started")
+	require.NoError(c.T, c.Ctrl.WaitExports(0), "component never exported anything")
 
 	// Send signals in the background to our processor.
 	go func() {

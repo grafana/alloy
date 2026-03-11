@@ -21,8 +21,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"github.com/zricethezav/gitleaks/v8/detect"
+	"github.com/zricethezav/gitleaks/v8/report"
 )
 
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+type detectorFunc func(context.Context, detect.Fragment) []report.Finding
+
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragment) []report.Finding {
+	return f(ctx, fragment)
+}
 func TestSecretFiltering(t *testing.T) {
 	// One component, one config load; all default cases run through it.
 	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
@@ -714,9 +723,14 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		ProcessingTimeout: 10 * time.Millisecond,
 	})
 	require.NoError(t, err)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+	c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+		<-ctx.Done()
+		return nil
+	})
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
@@ -742,10 +756,15 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		ProcessingTimeout: 10 * time.Millisecond,
 		DropOnTimeout:     true,
 	})
 	require.NoError(t, err)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+	c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+		<-ctx.Done()
+		return nil
+	})
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
