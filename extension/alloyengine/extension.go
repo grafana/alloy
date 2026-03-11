@@ -20,7 +20,6 @@ import (
 var _ extension.Extension = (*alloyEngineExtension)(nil)
 
 // running tracks whether any alloyengine instance is currently active.
-// Only one instance can be active per process
 var running = &atomic.Bool{}
 
 type state int
@@ -107,7 +106,7 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 		return startErr
 	}
 
-	// The Default Engine uses process-global state, so we only want one instance per process.
+	// Here we check if another extension instance is already running, if so we return an error
 	if !running.CompareAndSwap(false, true) {
 		startErr = fmt.Errorf("only one alloyengine extension can be active per process; an instance is already running")
 		return startErr
