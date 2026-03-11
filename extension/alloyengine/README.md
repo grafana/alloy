@@ -61,7 +61,7 @@ The extension manages the lifecycle of the embedded default engine:
 
 Only one alloyengine instance can be active per process. The embedded Default Engine uses process-global state (Prometheus registry, controller ID, storage path and so forth), so running multiple instances will cause conflicts. If you configure multiple alloyengine extensions, only the first to start will succeed; subsequent instances will fail at startup with a clear error.
 
-Please note that if extensions fail to start, the collector will also fail to start. This means that the errors described above will ultimately mean you cannot start the collector without ensuring that you specify which of the alloyengine extensions you wish to run
+Please note that if extensions fail to start, the collector will also fail to start. This means that the errors described above will ultimately mean you cannot start the collector without ensuring that you specify which of the alloyengine extensions you wish to run.
 
 ## Stability
 
