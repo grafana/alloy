@@ -460,6 +460,8 @@ func TestEmptyHTTP200Response_Rejected(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, float64(0), testutil.ToFloat64(env.svc.metrics.lastLoadSuccess), "empty response must not be reported as successful load")
 		assert.Equal(c, "", env.svc.cm.getLastLoadedCfgHash(), "no config should be loaded from empty response")
+		assert.GreaterOrEqual(c, testutil.ToFloat64(env.svc.metrics.totalFailures), float64(1), "empty response must be counted as a load failure")
+		assert.GreaterOrEqual(c, testutil.ToFloat64(env.svc.metrics.totalAttempts), float64(1), "empty response must be counted as an attempt")
 	}, 1*time.Second, 10*time.Millisecond)
 }
 
