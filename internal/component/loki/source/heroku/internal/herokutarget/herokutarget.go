@@ -121,13 +121,10 @@ func (h *HerokuTarget) drain(w http.ResponseWriter, r *http.Request) {
 			filtered[ReservedLabelTenantID] = model.LabelValue(tenantIDHeaderValue)
 		}
 
-		entries <- loki.Entry{
-			Labels: filtered,
-			Entry: push.Entry{
-				Timestamp: ts,
-				Line:      message.Message,
-			},
-		}
+		entries <- loki.NewEntry(filtered, push.Entry{
+			Timestamp: ts,
+			Line:      message.Message,
+		})
 		h.metrics.herokuEntries.Inc()
 	}
 	err := herokuScanner.Err()
