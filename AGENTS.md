@@ -7,14 +7,21 @@ Multi-module Go repo: root, `syntax/`, `collector/`, `extension/alloyengine/`, `
 
 ## Essential references
 
-- Agent behavior and style: [.docs/agent/role.md](.docs/agent/role.md), [.docs/agent/grafana.md](.docs/agent/grafana.md), [.docs/agent/style.md](.docs/agent/style.md)
 - Contributing and PR workflow: [docs/developer/contributing.md](docs/developer/contributing.md)
-- PR title/description conventions: see `CLAUDE.md`
-- Build/test/generate targets: `make help`
-- Documentation source tree: [docs/sources](docs/sources)
+  - Specifically, make sure you use the conventional commit formats and PR titles as described in the contributing guide.
+  - Verify the changes with `make lint` and run relevant testsbefore opening the PR.
+  - Note that we have some code generation steps that need to be run when the generated output is changed. See the contributing guide and Makefile help commands for more details.
+
+## Documentation writing guidelines
+
+Whenever you are writing public-facing documentation such as documentation located in [docs/sources](docs/sources), make sure you get familiar with the following:
+
+- Agent role and Grafana context for documentation: [.docs/agent/role.md](.docs/agent/role.md), [.docs/agent/grafana.md](.docs/agent/grafana.md)
 - Documentation style guide: [.docs/agent/style.md](.docs/agent/style.md)
 
 ## Developer playbooks
+
+If you are developing code, depending on what you are building, make sure you get familiar with relevant playbooks from the list below:
 
 - [Handling breaking changes](docs/developer/breaking-changes.md)
 - [Shepherding releases](docs/developer/shepherding-releases.md)
@@ -27,29 +34,40 @@ Multi-module Go repo: root, `syntax/`, `collector/`, `extension/alloyengine/`, `
 - [Create exporter components](docs/developer/writing-exporter-components.md)
 - [Key dependency updates](docs/developer/key-deps-update/key-dep-updates.md)
 
-## Commands
+## Useful commands
+
+Show all Makefile targets and descriptions:
+
+```sh
+make help
+```
 
 Lint (Go + custom alloylint):
+
 ```sh
 make lint
 ```
 
 Test (PR-safe, skips Docker-dependent tests):
+
 ```sh
 GO_TAGS="nodocker" make test
 ```
 
 Test a single package:
+
 ```sh
 go test -race -tags="nodocker" ./internal/component/discovery/...
 ```
 
 Build (without UI):
+
 ```sh
 SKIP_UI_BUILD=1 make alloy
 ```
 
 Run:
+
 ```sh
 ./build/alloy run example-config.alloy
 ```
