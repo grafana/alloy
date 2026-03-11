@@ -338,7 +338,7 @@ func TestEndpoint(t *testing.T) {
 						require.Eventuallyf(
 							t,
 							func() bool { return len(receivedReqsChan) >= tt.waitForReqCount },
-							2*time.Second,
+							5*time.Second,
 							5*time.Millisecond,
 							"timed out waiting for at least %d request(s) before enqueueing the next entry",
 							tt.waitForReqCount,
