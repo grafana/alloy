@@ -14,9 +14,13 @@ type PullConfig struct {
 	ProjectID            string            `alloy:"project_id,attr"`
 	Subscription         string            `alloy:"subscription,attr"`
 	Labels               map[string]string `alloy:"labels,attr,optional"`
-	UseFullLine          bool              `alloy:"use_full_line,attr,optional"`
 	UseIncomingTimestamp bool              `alloy:"use_incoming_timestamp,attr,optional"`
+	UseFullLine          bool              `alloy:"use_full_line,attr,optional"`
 	Limit                LimitConfig       `alloy:"limit,block,optional"`
+}
+
+func (p *PullConfig) SetToDefault() {
+	p.Limit.SetToDefault()
 }
 
 type LimitConfig struct {
@@ -44,8 +48,8 @@ type PushConfig struct {
 	Server               *fnet.ServerConfig `alloy:",squash"`
 	PushTimeout          time.Duration      `alloy:"push_timeout,attr,optional"`
 	Labels               map[string]string  `alloy:"labels,attr,optional"`
-	UseFullLine          bool               `alloy:"use_full_line,attr,optional"`
 	UseIncomingTimestamp bool               `alloy:"use_incoming_timestamp,attr,optional"`
+	UseFullLine          bool               `alloy:"use_full_line,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
