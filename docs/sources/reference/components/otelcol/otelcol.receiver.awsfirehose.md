@@ -40,26 +40,28 @@ otelcol.receiver.awsfirehose "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.awsfirehose`:
 
-| Name                      | Type           | Description                                                                | Default                                                     | Required |
-|---------------------------|----------------|----------------------------------------------------------------------------|-------------------------------------------------------------|----------|
-| `access_key`              | `secret`       | The access key to be checked on each request received.                     |                                                             | no       |
-| `compression_algorithms`  | `list(string)` | A list of compression algorithms the server can accept.                    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
-| `encoding`                | `string`       | Encoding of Firehose records.                                              |                                                             | no       |
-| `endpoint`                | `string`       | `host:port` to listen for traffic on.                                      | `"0.0.0.0:4433"`                                            | no       |
-| `include_metadata`        | `bool`         | Propagate incoming connection metadata to downstream consumers.            | `false`                                                     | no       |
-| `keep_alives_enabled`     | `boolean`      | Whether or not HTTP keep-alives are enabled.                               | `true`                                                      | no       |
-| `max_request_body_size`   | `string`       | Maximum request body size the HTTP server will allow. No limit when unset. |                                                             | no       |
+| Name                     | Type           | Description                                                            | Default                                                    | Required |
+| ------------------------ | -------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `access_key`             | `secret`       | The access key to be checked on each request received.                 |                                                            | no       |
+| `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.                | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+| `encoding`               | `string`       | Encoding of Data Firehose records.                                     |                                                            | no       |
+| `endpoint`               | `string`       | `host:port` to listen for traffic on.                                  | `"0.0.0.0:4433"`                                           | no       |
+| `include_metadata`       | `bool`         | Propagate incoming connection metadata to downstream consumers.        | `false`                                                    | no       |
+| `keep_alives_enabled`    | `boolean`      | Whether or not HTTP keep-alives are enabled.                           | `true`                                                     | no       |
+| `max_request_body_size`  | `string`       | Maximum request body size the HTTP server allows. No limit when unset. |                                                            | no       |
 
-`access_key` can be set when creating or updating the delivery stream. See the [AWS Firehose documentation](https://docs.aws.amazon.com/firehose/latest/dev/create-destination.html#create-destination-http) for more details.
-Although the generic `auth` argument is available, it isn't needed here. AWS Firehose authenticates by sending an `access_key` in each request, making `access_key` the recommended way to secure this receiver.
+You can set `access_key` when creating or updating the delivery stream.
+Refer to the [AWS Data Firehose documentation](https://docs.aws.amazon.com/firehose/latest/dev/create-destination.html#create-destination-http) for more information.
+Although the generic `auth` argument is available, it isn't needed here.
+AWS Data Firehose authenticates by sending an `access_key` in each request, making `access_key` the recommended way to secure this receiver.
 
-If `encoding` is not set, the receiver defaults to a signal-specific encoding: `cwmetrics` for metrics and `cwlogs` for logs.
+If `encoding` isn't set, the receiver defaults to a signal-specific encoding: `cwmetrics` for metrics and `cwlogs` for logs.
 
 The supported values for `encoding` are:
 
-* `cwmetrics`: The JSON encoding for CloudWatch metric streams (metrics only). See the [CloudWatch metric stream JSON documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-metric-streams-formats-json.html) for details.
-* `otlp_v1`: The OpenTelemetry 1.0.0 encoding for CloudWatch metric streams (metrics only). See the [CloudWatch metric streams OpenTelemetry documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-metric-streams-formats-opentelemetry-100.html) for details.
-* `cwlogs`: The encoding for CloudWatch log streams delivered via Firehose (logs only). See the [CloudWatch Logs via Firehose documentation](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-cloudwatch-logs.html) for details.
+* `cwmetrics`: The JSON encoding for CloudWatch metric streams. This encoding applies to metrics only. Refer to the [CloudWatch metric stream JSON documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-metric-streams-formats-json.html) for more information.
+* `otlp_v1`: The OpenTelemetry 1.0.0 encoding for CloudWatch metric streams. This encoding applies to metrics only. Refer to the [CloudWatch metric streams OpenTelemetry documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-metric-streams-formats-opentelemetry-100.html) for more information.
+* `cwlogs`: The encoding for CloudWatch log streams delivered through Data Firehose. This encoding applies to logs only. Refer to the [CloudWatch Logs through Data Firehose documentation](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-cloudwatch-logs.html) for more information.
 
 ## Blocks
 
@@ -143,7 +145,7 @@ information.
 
 ## Example
 
-This example forwards received metrics through a batch processor before finally sending it to an OTLP-capable endpoint:
+This example forwards received metrics through a batch processor before sending them to an OTLP-capable endpoint:
 
 ```alloy
 otelcol.receiver.awsfirehose "default" {
