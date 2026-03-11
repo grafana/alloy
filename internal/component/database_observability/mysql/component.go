@@ -59,16 +59,20 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
+type TargetArguments struct {
+	DataSourceName alloytypes.Secret `alloy:"data_source_name,attr"`
+	CloudProvider  *CloudProvider    `alloy:"cloud_provider,block,optional"`
+}
+
 type Arguments struct {
-	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
+	Targets                       []TargetArguments   `alloy:"target,block"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr"`
+	ScrapeTargets                 []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
-	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
 	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
 	QueryDetailsArguments   QueryDetailsArguments   `alloy:"query_details,block,optional"`
@@ -204,11 +208,16 @@ func (a *Arguments) SetToDefault() {
 }
 
 func (a *Arguments) Validate() error {
-	_, err := mysql.ParseDSN(string(a.DataSourceName))
-	if err != nil {
-		return err
+	if len(a.Targets) != 1 {
+		return fmt.Errorf("exactly one target block is required")
 	}
-	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
+	for _, t := range a.Targets {
+		_, err := mysql.ParseDSN(string(t.DataSourceName))
+		if err != nil {
+			return err
+		}
+	}
+	if a.PrometheusExporter != nil && len(a.ScrapeTargets) > 0 {
 		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
 	}
 	return nil
@@ -262,7 +271,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		openSQL:   openFn,
 	}
 
-	instance, err := instanceKey(string(args.DataSourceName))
+	instance, err := instanceKey(string(args.Targets[0].DataSourceName))
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +407,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		c.dbConnection = nil
 	}
 
-	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
+	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.Targets[0].DataSourceName), "parseTime=true"))
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
@@ -435,14 +444,14 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 
 	var cp *database_observability.CloudProvider
-	if c.args.CloudProvider != nil {
-		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+	if c.args.Targets[0].CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.Targets[0].CloudProvider)
 		if err != nil {
 			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
 		}
 		cp = cloudProvider
 	} else {
-		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.Targets[0].DataSourceName))
 		if err != nil {
 			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
@@ -459,7 +468,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
-		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
+		exporter := mysqld_collector.New(context.Background(), string(c.args.Targets[0].DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
 			LockTimeout:   exporterCfg.LockWaitTimeout,
 			SlowLogFilter: exporterCfg.LogSlowFilter,
 		})
@@ -469,9 +478,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		c.exporterCollector = exporter
 	}
 
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
+	scrapeTargets := append([]discovery.Target{c.baseTarget}, c.args.ScrapeTargets...)
+	targets := make([]discovery.Target, 0, len(scrapeTargets)+1)
+	for _, t := range scrapeTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
 		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
 			targets = append(targets, builder.Target())
@@ -678,7 +687,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           string(c.args.DataSourceName),
+		DSN:           string(c.args.Targets[0].DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,

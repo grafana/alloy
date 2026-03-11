@@ -31,9 +31,10 @@ import (
 func Test_disableQueryRedaction(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		query_samples {
 			disable_query_redaction = true
 		}
@@ -48,9 +49,10 @@ func Test_disableQueryRedaction(t *testing.T) {
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 	`
 
 		var args Arguments
@@ -62,9 +64,10 @@ func Test_disableQueryRedaction(t *testing.T) {
 
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		setup_consumers {
 			collect_interval = "1h"
 		}
@@ -81,93 +84,102 @@ func Test_disableQueryRedaction(t *testing.T) {
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
-		forward_to = []
-		targets = []
-		cloud_provider {
-			aws {
-				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
+		target {
+			data_source_name = ""
+			cloud_provider {
+				aws {
+					arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
+				}
 			}
 		}
+		forward_to = []
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
+		require.Len(t, args.Targets, 1)
+		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.Targets[0].CloudProvider.AWS.ARN)
 	})
 
 	t.Run("parse azure cloud provider block with all fields", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
-		forward_to = []
-		targets = []
-		cloud_provider {
-			azure {
-				subscription_id = "sub-12345-abcde"
-				resource_group  = "my-resource-group"
-				server_name     = "my-mysql-server"
+		target {
+			data_source_name = ""
+			cloud_provider {
+				azure {
+					subscription_id = "sub-12345-abcde"
+					resource_group  = "my-resource-group"
+					server_name     = "my-mysql-server"
+				}
 			}
 		}
+		forward_to = []
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		require.NotNil(t, args.CloudProvider)
-		require.NotNil(t, args.CloudProvider.Azure)
-		assert.Equal(t, "sub-12345-abcde", args.CloudProvider.Azure.SubscriptionID)
-		assert.Equal(t, "my-resource-group", args.CloudProvider.Azure.ResourceGroup)
-		assert.Equal(t, "my-mysql-server", args.CloudProvider.Azure.ServerName)
+		require.Len(t, args.Targets, 1)
+		require.NotNil(t, args.Targets[0].CloudProvider)
+		require.NotNil(t, args.Targets[0].CloudProvider.Azure)
+		assert.Equal(t, "sub-12345-abcde", args.Targets[0].CloudProvider.Azure.SubscriptionID)
+		assert.Equal(t, "my-resource-group", args.Targets[0].CloudProvider.Azure.ResourceGroup)
+		assert.Equal(t, "my-mysql-server", args.Targets[0].CloudProvider.Azure.ServerName)
 	})
 
 	t.Run("parse azure cloud provider block without optional server_name", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
-		forward_to = []
-		targets = []
-		cloud_provider {
-			azure {
-				subscription_id = "sub-12345-abcde"
-				resource_group  = "my-resource-group"
+		target {
+			data_source_name = ""
+			cloud_provider {
+				azure {
+					subscription_id = "sub-12345-abcde"
+					resource_group  = "my-resource-group"
+				}
 			}
 		}
+		forward_to = []
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		require.NotNil(t, args.CloudProvider)
-		require.NotNil(t, args.CloudProvider.Azure)
-		assert.Equal(t, "sub-12345-abcde", args.CloudProvider.Azure.SubscriptionID)
-		assert.Equal(t, "my-resource-group", args.CloudProvider.Azure.ResourceGroup)
-		assert.Empty(t, args.CloudProvider.Azure.ServerName)
+		require.Len(t, args.Targets, 1)
+		require.NotNil(t, args.Targets[0].CloudProvider)
+		require.NotNil(t, args.Targets[0].CloudProvider.Azure)
+		assert.Equal(t, "sub-12345-abcde", args.Targets[0].CloudProvider.Azure.SubscriptionID)
+		assert.Equal(t, "my-resource-group", args.Targets[0].CloudProvider.Azure.ResourceGroup)
+		assert.Empty(t, args.Targets[0].CloudProvider.Azure.ServerName)
 	})
 
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.Nil(t, args.CloudProvider)
+		require.Len(t, args.Targets, 1)
+		assert.Nil(t, args.Targets[0].CloudProvider)
 	})
 }
 
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 	`
 
 		var args Arguments
@@ -189,9 +201,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 	t.Run("enable collectors", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 	`
 
@@ -214,9 +227,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 	t.Run("disable collectors", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans"]
 	`
 
@@ -239,9 +253,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 	t.Run("enable collectors takes precedence over disable collectors", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 	`
@@ -265,9 +280,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 	t.Run("enabling one and disabling others", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"]
 		enable_collectors = ["query_details"]
 	`
@@ -291,9 +307,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 	t.Run("unknown collectors are ignored", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
-		data_source_name = ""
+		target {
+			data_source_name = ""
+		}
 		forward_to = []
-		targets = []
 		enable_collectors = ["some_string"]
 		disable_collectors = ["another_string"]
 	`
@@ -349,7 +366,7 @@ func Test_addLokiLabels(t *testing.T) {
 // TestMySQL_Update_DBUnavailable_ReportsUnhealthy tests that the component does not return an error when the database is unavailable,
 // but reports unhealthy with the error message from the database.
 func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
-	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}
+	args := Arguments{Targets: []TargetArguments{{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}}}
 	opts := cmp.Options{
 		ID:     "test.mysql",
 		Logger: kitlog.NewNopLogger(),
@@ -368,7 +385,7 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 // reports unhealthy stacking errors for the collectors that failed to start and generate metrics for the collectors that started successfully.
 func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	args := Arguments{
-		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
+		Targets:           []TargetArguments{{DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db"}},
 		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "setup_actors", "explain_plans"},
 		EnableCollectors:  []string{"query_samples", "locks"},
 		QuerySamplesArguments: QuerySamplesArguments{
@@ -440,9 +457,8 @@ func TestMySQL_Reconnection(t *testing.T) {
 		}
 
 		args := Arguments{
-			DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms"),
-			ForwardTo:      []loki.LogsReceiver{},
-			Targets:        []discovery.Target{},
+			Targets:   []TargetArguments{{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms")}},
+			ForwardTo: []loki.LogsReceiver{},
 		}
 
 		c, err := New(opts, args)
@@ -466,9 +482,8 @@ func TestMySQL_Reconnection(t *testing.T) {
 		}
 
 		args := Arguments{
-			DataSourceName:    alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db"),
+			Targets:           []TargetArguments{{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db")}},
 			ForwardTo:         []loki.LogsReceiver{},
-			Targets:           []discovery.Target{},
 			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
 			HealthCheckArguments: HealthCheckArguments{
 				CollectInterval: 1 * time.Hour,
@@ -532,9 +547,8 @@ func TestMySQL_Reconnection(t *testing.T) {
 		}
 
 		args := Arguments{
-			DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms"),
-			ForwardTo:      []loki.LogsReceiver{},
-			Targets:        []discovery.Target{},
+			Targets:   []TargetArguments{{DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms")}},
+			ForwardTo: []loki.LogsReceiver{},
 		}
 
 		c, err := New(opts, args)
@@ -562,9 +576,10 @@ func TestMySQL_Reconnection(t *testing.T) {
 func Test_PrometheusExporterBlock(t *testing.T) {
 	t.Run("absent when not specified", func(t *testing.T) {
 		cfg := `
-			data_source_name = ""
+			target {
+				data_source_name = ""
+			}
 			forward_to = []
-			targets = []
 		`
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
@@ -574,9 +589,10 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 
 	t.Run("present with defaults when empty block", func(t *testing.T) {
 		cfg := `
-			data_source_name = ""
+			target {
+				data_source_name = ""
+			}
 			forward_to = []
-			targets = []
 			prometheus_exporter {}
 		`
 		var args Arguments
@@ -589,9 +605,10 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 
 	t.Run("present with defaults when empty block", func(t *testing.T) {
 		cfg := `
-			data_source_name = ""
+			target {
+				data_source_name = ""
+			}
 			forward_to = []
-			targets = []
 			prometheus_exporter {
 			  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
 			}
@@ -607,7 +624,9 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 
 	t.Run("error when both prometheus_exporter and targets are set", func(t *testing.T) {
 		cfg := `
-			data_source_name = ""
+			target {
+				data_source_name = ""
+			}
 			forward_to = []
 			targets = [{"__address__" = "localhost:9104"}]
 			prometheus_exporter {}
