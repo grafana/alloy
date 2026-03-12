@@ -312,7 +312,7 @@ Use this information to check if any of our components have new arguments and to
 
 ### Step 9: Update user facing documentation:
 
-We have documentation for our components. If we have new arguments / blocks they should be added to the documentation. If default values changed we should update docs as well.
+We have documentation for our components. If we have new arguments / blocks they should be added to the documentation. If default values changed we should update docs as well. This documentaion is stored in md files prefix by component name and must be updated.
 
 ### Step 10: Note down important changes
 

@@ -47,7 +47,6 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                                                          |                    | yes      |
 | `protocol_version`                         | `string`        | Kafka protocol version to use.                                                                                        |                    | yes      |
 | `client_id`                                | `string`        | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
-| `default_fetch_size`                       | `int`           | The default number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
 | `encoding`                                 | `string`        | (Deprecated) Encoding of payload read from Kafka.                                                                     | `"otlp_proto"`     | no       |
 | `group_id`                                 | `string`        | Consumer group to consume messages from.                                                                              | `"otel-collector"` | no       |
 | `group_instance_id`                        | `string`        | A unique identifier for the consumer instance within a consumer group.                                                | `""`               | no       |
@@ -91,6 +90,8 @@ Supported strategies are:
 - `sticky`: This strategy aims to maintain the same partition assignments during rebalances as much as possible. 
   It minimizes the number of partition movements, which can be beneficial for stateful consumers. 
   For more information, refer to the Kafka StickyAssignor documentation, see [StickyAssignor][].
+- `cooperative-sticky`: This strategy uses incremental cooperative rebalancing to reduce partition movement during rebalances.
+  For more information, refer to the Kafka CooperativeStickyAssignor documentation, see [CooperativeStickyAssignor][].
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
 
@@ -102,6 +103,7 @@ Using a `group_instance_id` is useful for stateful consumers or when you need to
 [RangeAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/RangeAssignor.html
 [RoundRobinAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/RoundRobinAssignor.html
 [StickyAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/StickyAssignor.html
+[CooperativeStickyAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/CooperativeStickyAssignor.html
 
 ## Blocks
 

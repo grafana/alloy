@@ -42,8 +42,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Interval: 1 * time.Second,
 				},
 				MinFetchSize:           1,
-				DefaultFetchSize:       1048576,
-				MaxFetchSize:           0,
+				MaxFetchSize:           1048576,
 				MaxPartitionFetchSize:  1048576,
 				MaxFetchWait:           250 * time.Millisecond,
 				GroupRebalanceStrategy: "range",
@@ -143,7 +142,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					max_elapsed_time = "1m"
 				}
 				min_fetch_size = 2
-				default_fetch_size = 10000
 				max_fetch_size = 20
 				max_partition_fetch_size = 30000
 				rack_id = "test-rack"
@@ -190,7 +188,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						Interval: 12 * time.Second,
 					},
 					MinFetchSize:           2,
-					DefaultFetchSize:       10000,
 					MaxFetchSize:           20,
 					MaxPartitionFetchSize:  30000,
 					MaxFetchWait:           2 * time.Second,
@@ -263,8 +260,7 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
@@ -344,8 +340,7 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
@@ -431,8 +426,7 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
@@ -519,8 +513,7 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",

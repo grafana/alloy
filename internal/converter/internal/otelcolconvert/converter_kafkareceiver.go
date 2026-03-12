@@ -82,13 +82,12 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
 
 		MinFetchSize:           cfg.MinFetchSize,
-		DefaultFetchSize:       cfg.DefaultFetchSize,
 		MaxFetchSize:           cfg.MaxFetchSize,
 		MaxPartitionFetchSize:  cfg.MaxPartitionFetchSize,
 		MaxFetchWait:           cfg.MaxFetchWait,
 		RackID:                 cfg.RackID,
 		UseLeaderEpoch:         cfg.UseLeaderEpoch,
-		GroupRebalanceStrategy: cfg.GroupRebalanceStrategy,
+		GroupRebalanceStrategy: string(cfg.GroupRebalanceStrategy),
 		GroupInstanceID:        cfg.GroupInstanceID,
 
 		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),

@@ -9,6 +9,7 @@ import (
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configcompression"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configoptional"
 )
@@ -72,7 +73,7 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 	}
 
 	return configoptional.Some(otelconfighttp.ServerConfig{
-		Endpoint:              args.Endpoint,
+		NetAddr:               confignet.AddrConfig{Endpoint: args.Endpoint, Transport: confignet.TransportTypeTCP},
 		TLS:                   args.TLS.Convert(),
 		KeepAlivesEnabled:     keepAliveEnabled,
 		CORS:                  args.CORS.Convert(),

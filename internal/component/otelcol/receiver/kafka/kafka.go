@@ -60,7 +60,6 @@ type Arguments struct {
 	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
 	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
-	DefaultFetchSize       int32         `alloy:"default_fetch_size,attr,optional"`
 	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
 	MaxPartitionFetchSize  int32         `alloy:"max_partition_fetch_size,attr,optional"`
 	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
@@ -94,8 +93,7 @@ func (args *Arguments) SetToDefault() {
 		SessionTimeout:         10 * time.Second,
 		HeartbeatInterval:      3 * time.Second,
 		MinFetchSize:           1,
-		DefaultFetchSize:       1048576,
-		MaxFetchSize:           0,
+		MaxFetchSize:           1048576,
 		MaxPartitionFetchSize:  1048576,
 		MaxFetchWait:           250 * time.Millisecond,
 		GroupRebalanceStrategy: "range",
@@ -134,9 +132,9 @@ func (args *Arguments) Validate() error {
 	}
 
 	switch args.GroupRebalanceStrategy {
-	case "range", "roundrobin", "sticky":
+	case "range", "roundrobin", "sticky", "cooperative-sticky":
 	default:
-		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', or 'sticky'")
+		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
 	}
 
 	return nil
@@ -228,11 +226,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
 	result.MinFetchSize = args.MinFetchSize
-	result.DefaultFetchSize = args.DefaultFetchSize
 	result.MaxFetchSize = args.MaxFetchSize
 	result.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.MaxFetchWait = args.MaxFetchWait
-	result.GroupRebalanceStrategy = args.GroupRebalanceStrategy
+	result.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
 	result.GroupInstanceID = args.GroupInstanceID
 	result.RackID = args.RackID
 	result.UseLeaderEpoch = args.UseLeaderEpoch

@@ -182,7 +182,7 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 	}
 
 	return &otelcol.HTTPServerArguments{
-		Endpoint: cfg.Endpoint,
+		Endpoint: cfg.NetAddr.Endpoint,
 
 		TLS: toTLSServerArguments(cfg.TLS.Get()),
 

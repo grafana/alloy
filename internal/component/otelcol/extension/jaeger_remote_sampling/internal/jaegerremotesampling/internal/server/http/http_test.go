@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling/internal/mocks"
 )
@@ -31,7 +32,10 @@ func TestMissingClientConfigManagerHTTP(t *testing.T) {
 func TestStartAndStopHTTP(t *testing.T) {
 	// prepare
 	srvSettings := confighttp.ServerConfig{
-		Endpoint: "127.0.0.1:0",
+		NetAddr: confignet.AddrConfig{
+			Endpoint:  "127.0.0.1:0",
+			Transport: confignet.TransportTypeTCP,
+		},
 	}
 	s, err := NewHTTP(componenttest.NewNopTelemetrySettings(), srvSettings, &mocks.MockCfgMgr{})
 	require.NoError(t, err)

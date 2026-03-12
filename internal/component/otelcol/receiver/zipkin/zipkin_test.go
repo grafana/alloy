@@ -13,6 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 )
 
 func TestRun(t *testing.T) {
@@ -55,7 +56,7 @@ func TestArguments_UnmarshalDefaults(t *testing.T) {
 
 	expected := zipkinreceiver.Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint:              "0.0.0.0:9411",
+			NetAddr:               confignet.AddrConfig{Endpoint: "0.0.0.0:9411", Transport: confignet.TransportTypeTCP},
 			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 			KeepAlivesEnabled:     true,
 		},
@@ -93,7 +94,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.True(t, ok)
 
 		// Check the arguments
-		require.Equal(t, otelArgs.ServerConfig.Endpoint, httpAddr)
+		require.Equal(t, otelArgs.ServerConfig.NetAddr.Endpoint, httpAddr)
 		require.Equal(t, len(otelArgs.ServerConfig.CORS.Get().AllowedOrigins), 2)
 		require.Equal(t, otelArgs.ServerConfig.CORS.Get().AllowedOrigins[0], "https://*.test.com")
 		require.Equal(t, otelArgs.ServerConfig.CORS.Get().AllowedOrigins[1], "https://test.com")
