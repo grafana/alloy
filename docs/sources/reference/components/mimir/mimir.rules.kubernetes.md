@@ -278,7 +278,7 @@ It also adds a `"label1"` label to each rule. If that label already exists, it's
 
 ```alloy
 mimir.rules.kubernetes "default" {
-    address = ">GRAFANA_CLOUD_METRICS_URL>"
+    address = "<GRAFANA_CLOUD_METRICS_URL>"
     basic_auth {
         username = "<GRAFANA_CLOUD_USER>"
         password = "<GRAFANA_CLOUD_API_KEY>"
