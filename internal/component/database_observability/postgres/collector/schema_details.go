@@ -338,11 +338,10 @@ type SchemaDetails struct {
 
 	tableRegistry *TableRegistry
 
-	logger   log.Logger
-	running  *atomic.Bool
-	ctx      context.Context
-	cancel   context.CancelFunc
-	runnerWg sync.WaitGroup
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
@@ -386,9 +385,7 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	c.runnerWg.Add(1)
 	go func() {
-		defer c.runnerWg.Done()
 		defer func() {
 			c.running.Store(false)
 		}()
@@ -422,7 +419,6 @@ func (c *SchemaDetails) Stop() {
 	if c.cancel != nil {
 		c.cancel()
 	}
-	c.runnerWg.Wait()
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
