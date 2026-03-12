@@ -89,7 +89,7 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 	}
 }
 
-func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
+func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) error {
 	var startErr error
 	defer func() {
 		if startErr != nil {
