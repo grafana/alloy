@@ -67,7 +67,7 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`         | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                 | no       |
 | `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | `"5m"`          | no       |
-| `tenant_id`              | `string`            | Mimir tenant ID.                                                                                 |                 | no       |
+| `tenant_id`              | `string`            | Mimir tenant ID. Required when you enable Mimir multi-tenancy.                                   |                 | no       |
 | `use_legacy_routes`      | `bool`              | Whether to use deprecated ruler API endpoints.                                                   | `false`         | no       |
 
 At most, one of the following can be provided:
@@ -83,17 +83,18 @@ At most, one of the following can be provided:
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-If no `tenant_id` is provided, the component assumes that the Mimir instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
+If you don't provide `tenant_id`, the component assumes the Mimir instance at `address` runs in single-tenant mode.
+The component doesn't send an `X-Scope-OrgID` header.
 
 {{< admonition type="note" >}}
 The mimir-distributed Helm chart enables multi-tenancy by default.
-If you don't provide a `tenant_id`, you receive a "401 Unauthorized: no org id" error.
 
-If you don't need multi-tenancy, set `tenant_id` to any value, such as `"anonymous"`.
-Mimir still requires a tenant identifier even when you deploy it in single-tenant mode with multi-tenancy enabled.
+When you enable multi-tenancy, requests to the Mimir Ruler API must include an `X-Scope-OrgID` tenant header.
+The `mimir.rules.kubernetes` component sends this header only when you configure the `tenant_id` argument.
 
-Alternatively, point the `address` to the `mimir-nginx` service instead of `mimir-ruler` directly.
-You can configure the nginx gateway to inject a default tenant header.
+If you don't set `tenant_id`, the Mimir API returns the error `401 Unauthorized: no org id`
+
+To resolve this, set the `tenant_id` argument in the component configuration.
 {{< /admonition >}}
 
 The `sync_interval` argument determines how often the Mimir ruler API is accessed to reload the current state of rules.
@@ -304,7 +305,7 @@ mimir.rules.kubernetes "default" {
 }
 ```
 
-If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's' modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
+If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
 
 This example shows a `PrometheusRule` with a label set to `application.kubernetes.io/name=my-app`.
 
