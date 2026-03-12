@@ -111,6 +111,63 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 * `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
 * `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 
+### eBPF profiler internal metrics
+
+The component also exposes internal metrics from the embedded eBPF profiler.
+These metrics are only emitted after they have been recorded at least once, so not all metrics appear on every host.
+The metrics carry an `otel_scope_name="pyroscope.ebpf"` label.
+
+Notable metrics include:
+
+#### Native unwinding
+
+* `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
+* `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
+* `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
+* `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
+* `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
+
+#### Interpreter unwinding
+
+* `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
+* `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
+* `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
+* `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
+* `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
+* `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
+* `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
+* `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
+* `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
+* `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
+* `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
+* `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
+* `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
+* `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
+
+#### Symbolization
+
+* `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
+* `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
+* `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
+* `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
+* `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
+* `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
+
+#### Process management
+
+* `NumProcNew_total` (counter): Number of new PID events.
+* `NumProcExit_total` (counter): Number of exit PID events.
+* `NumGenericPID_total` (counter): Number of generic PID events.
+
+#### eBPF map state
+
+* `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
+* `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
+* `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
+* `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
+
+The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
+
 ## Profile collecting behavior
 
 The `pyroscope.ebpf` component collects stack traces associated with a process running on the current host.
