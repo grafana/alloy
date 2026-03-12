@@ -94,6 +94,8 @@ The maximum number of distinct combinations is limited to the configured `metada
 
 You can use the following blocks with `otelcol.processor.batch`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -101,6 +103,8 @@ You can use the following blocks with `otelcol.processor.batch`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

@@ -131,6 +131,8 @@ Any additional data from resources removed from the cache will be given a new st
 
 You can use the following blocks with `otelcol.processor.metric_start_time`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -138,6 +140,8 @@ You can use the following blocks with `otelcol.processor.metric_start_time`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

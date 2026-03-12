@@ -88,11 +88,15 @@ For example, when `pod_associations` is `["ip", "net.host.ip"]`, `"net.host.ip"`
 
 You can use the following block with `otelcol.processor.discovery`:
 
+{{< docs/alloy-config >}}
+
 | Block              | Description                                       | Required |
 |--------------------|---------------------------------------------------|----------|
 | [`output`][output] | Configures where to send received telemetry data. | yes      |
 
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

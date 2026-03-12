@@ -47,11 +47,15 @@ You can use the following arguments with `discovery.consulagent`:
 
 You can use the following block with `discovery.consulagent`:
 
+{{< docs/alloy-config >}}
+
 | Block                      | Description                                            | Required |
 | -------------------------- | ------------------------------------------------------ | -------- |
 | [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no       |
 
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `tls_config`
 

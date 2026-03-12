@@ -106,11 +106,15 @@ The four targets are updated as follows:
 
 You can use the following block with `discovery.process`:
 
+{{< docs/alloy-config >}}
+
 | Block                                | Description                                    | Required |
 | ------------------------------------ | ---------------------------------------------- | -------- |
 | [`discover_config`][discover_config] | Configures which process metadata to discover. | no       |
 
 [discover_config]: #discover_config
+
+{{< /docs/alloy-config >}}
 
 ### `discover_config`
 

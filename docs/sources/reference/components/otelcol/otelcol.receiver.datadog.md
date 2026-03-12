@@ -59,6 +59,8 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 
 You can use the following blocks with `otelcol.receiver.datadog`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -67,14 +69,13 @@ You can use the following blocks with `otelcol.receiver.datadog`:
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                                        | no       |
 | `tls` > [`tpm`][tpm]             | Configures TPM settings for the TLS `key_file`.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
-
 [tls]: #tls
 [tpm]: #tpm
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

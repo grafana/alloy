@@ -81,6 +81,8 @@ Refer to the upstream receiver [documentation](https://github.com/open-telemetry
 
 You can use the following blocks with `otelcol.receiver.awss3`:
 
+{{< docs/alloy-config >}}
+
 | Block                          | Description                                                                  | Required                                  |
 | ------------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------- |
 | [`s3downloader`][s3downloader] | Configures S3 downloader.                                                    | yes                                       |
@@ -90,6 +92,8 @@ You can use the following blocks with `otelcol.receiver.awss3`:
 [s3downloader]: #s3downloader
 [sqs]: #sqs
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `s3downloader`
 

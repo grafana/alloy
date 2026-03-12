@@ -57,6 +57,8 @@ The `max_log_size` argument has a minimum value of `64KiB`.
 
 You can use the following blocks with `otelcol.receiver.tcplog`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                                     | Required |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
@@ -66,15 +68,14 @@ You can use the following blocks with `otelcol.receiver.tcplog`:
 | [`tls`][tls]                           | Configures TLS for the TCP server.                                                              | no       |
 | `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS `key_file`.                                                 | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
-
 [tls]: #tls
 [tpm]: #tpm
 [multiline]: #multiline
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

@@ -80,11 +80,15 @@ The following internal labels prefixed with `__` are available but are discarded
 
 You can use the following block with `loki.source.azure_event_hubs`:
 
+{{< docs/alloy-config >}}
+
 | Name                               | Description                                        | Required |
 |------------------------------------|----------------------------------------------------|----------|
 | [`authentication`][authentication] | Authentication configuration with Azure Event Hub. | yes      |
 
 [authentication]: #authentication
+
+{{< /docs/alloy-config >}}
 
 ### `authentication`
 

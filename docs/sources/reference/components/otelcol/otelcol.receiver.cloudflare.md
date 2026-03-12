@@ -56,6 +56,8 @@ Refer to the upstream receiver [documentation](https://github.com/open-telemetry
 
 You can use the following blocks with `otelcol.receiver.cloudflare`:
 
+{{< docs/alloy-config >}}
+
 | Block              | Description                                       | Required |
 | ------------------ | ------------------------------------------------- | -------- |
 | [`output`][output] | Configures where to send received telemetry data. | yes      |
@@ -63,6 +65,8 @@ You can use the following blocks with `otelcol.receiver.cloudflare`:
 
 [output]: #output
 [tls]: #tls
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

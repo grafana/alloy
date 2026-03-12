@@ -39,6 +39,8 @@ The `otelcol.connector.count` component doesn't support any arguments. You can c
 
 You can use the following blocks with `otelcol.connector.count`:
 
+{{< docs/alloy-config >}}
+
 | Block                                     | Description                                                                | Required |
 | ----------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                        | Configures where to send received telemetry data.                          | yes      |
@@ -54,9 +56,6 @@ You can use the following blocks with `otelcol.connector.count`:
 | [`spans`][spans]                          | Configures custom metrics for counting spans.                              | no       |
 | `spans` > [`attributes`][attributes]      | Groups span counts by attribute values.                                    | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `spans` > `attributes` refers to an `attributes` block defined inside a `spans` block.
-
 [spans]: #spans
 [spanevents]: #spanevents
 [metrics]: #metrics
@@ -65,6 +64,8 @@ For example, `spans` > `attributes` refers to an `attributes` block defined insi
 [attributes]: #attributes
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `spans`
 

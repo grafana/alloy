@@ -59,6 +59,8 @@ At most, one of the following can be provided:
 
 You can use the following blocks with `discovery.ionos`:
 
+{{< docs/alloy-config >}}
+
 | Block                                 | Description                                                | Required |
 | ------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
@@ -67,13 +69,12 @@ You can use the following blocks with `discovery.ionos`:
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authorization`
 

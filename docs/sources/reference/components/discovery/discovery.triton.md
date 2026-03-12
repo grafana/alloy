@@ -53,11 +53,15 @@ If you omit `groups`, all containers owned by the requesting account are scraped
 
 You can use the following block with `discovery.triton`:
 
+{{< docs/alloy-config >}}
+
 | Block                      | Description                                       | Required |
 | -------------------------- | ------------------------------------------------- | -------- |
 | [`tls_config`][tls_config] | TLS configuration for requests to the Triton API. | no       |
 
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `tls_config`
 

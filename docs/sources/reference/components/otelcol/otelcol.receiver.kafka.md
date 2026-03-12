@@ -107,6 +107,8 @@ Using a `group_instance_id` is useful for stateful consumers or when you need to
 
 You can use the following blocks with `otelcol.receiver.kafka`:
 
+{{< docs/alloy-config >}}
+
 | Block                                            | Description                                                                                | Required |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ | -------- |
 | [`output`][output]                               | Configures where to send received telemetry data.                                          | yes      |
@@ -130,9 +132,6 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | [`tls`][tls][]                                   | Configures TLS for connecting to the Kafka brokers.                                        | no       |
 | `tls` > [`tpm`][tpm]                             | Configures TPM settings for the TLS `key_file`.                                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
-
 [logs]: #logs
 [metrics]: #metrics
 [traces]: #traces
@@ -151,6 +150,8 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [debug_metrics]: #debug_metrics
 [output]: #output
 [error_backoff]: #error_backoff
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

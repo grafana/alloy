@@ -105,6 +105,8 @@ This is useful if you configure Mimir to use a different [prefix][gem-path-prefi
 
 You can use the following blocks with `mimir.rules.kubernetes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                              | Description                                                | Required |
 | ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no       |
@@ -119,9 +121,6 @@ You can use the following blocks with `mimir.rules.kubernetes`:
 | `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no       |
 | [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [extra_query_matchers]: #extra_query_matchers
@@ -130,6 +129,8 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 [matcher]: #matcher
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authorization`
 

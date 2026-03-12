@@ -66,6 +66,8 @@ For compatibility with the `eventhandler` integration from static mode, `job_nam
 
 You can use the following blocks with `loki.source.kubernetes_events`:
 
+{{< docs/alloy-config >}}
+
 | Block                                            | Description                                                | Required |
 | ------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`client`][client]                               | Configures Kubernetes client used to tail events.          | no       |
@@ -75,14 +77,13 @@ You can use the following blocks with `loki.source.kubernetes_events`:
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [client]: #client
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

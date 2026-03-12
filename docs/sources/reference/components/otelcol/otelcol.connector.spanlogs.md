@@ -59,6 +59,8 @@ Setting either `spans` or `events` to `true` could lead to a high volume of logs
 
 You can use the following blocks with `otelcol.connector.spanlogs`:
 
+{{< docs/alloy-config >}}
+
 | Block                    | Description                                       | Required |
 |--------------------------|---------------------------------------------------|----------|
 | [`output`][output]       | Configures where to send received telemetry data. | yes      |
@@ -66,6 +68,8 @@ You can use the following blocks with `otelcol.connector.spanlogs`:
 
 [output]: #output
 [overrides]: #overrides
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

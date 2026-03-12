@@ -71,6 +71,8 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 
 You can use the following blocks with `otelcol.receiver.vcenter`:
 
+{{< docs/alloy-config >}}
+
 | Block                                        | Description                                                                | Required |
 | -------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                           | Configures where to send received telemetry data.                          | yes      |
@@ -80,15 +82,14 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 | [`tls`][tls]                                 | Configures TLS for the HTTP client.                                        | no       |
 | `tls` > [`tpm`][tpm]                         | Configures TPM settings for the TLS `key_file`.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
-
 [tls]: #tls
 [tpm]: #tpm
 [debug_metrics]: #debug_metrics
 [metrics]: #metrics
 [resource_attributes]: #resource_attributes
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

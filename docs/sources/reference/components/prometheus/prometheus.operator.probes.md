@@ -47,6 +47,8 @@ You can use the following arguments with `prometheus.operator.probes`:
 
 You can use the following blocks with `prometheus.operator.probes`:
 
+{{< docs/alloy-config >}}
+
 | Name                                                | Description                                                                                 | Required |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                                  | Configures Kubernetes client used to find Probes.                                           | no       |
@@ -61,9 +63,6 @@ You can use the following blocks with `prometheus.operator.probes`:
 | [`selector`][selector]                              | Label selector for which Probes to discover.                                                | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which Probes to discover.                                     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [client]: #client
 [basic_auth]: #basic_auth
 [authorization]: #authorization
@@ -74,6 +73,8 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [rule]: #rule
 [scrape]: #scrape
 [clustering]: #clustering
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

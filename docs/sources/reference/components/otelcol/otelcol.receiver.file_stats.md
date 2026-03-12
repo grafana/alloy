@@ -61,6 +61,8 @@ The timeout applies to the entire collection process across all paths matched by
 
 You can use the following blocks with `otelcol.receiver.file_stats`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                      | Description                                                                | Required |
 |----------------------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                                                         | Configures where to send received telemetry data.                          | yes      |
@@ -92,6 +94,8 @@ You can use the following blocks with `otelcol.receiver.file_stats`:
 [file.path]: #filepath
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

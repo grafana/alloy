@@ -52,6 +52,8 @@ The following collectors are configurable:
 
 You can use the following blocks with `database_observability.mysql`:
 
+{{< docs/alloy-config >}}
+
 | Block                                | Description                                       | Required |
 |--------------------------------------|---------------------------------------------------|----------|
 | [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
@@ -66,9 +68,6 @@ You can use the following blocks with `database_observability.mysql`:
 | [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
 | [`health_check`][health_check]       | Configure the health check collector.             | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
-
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
@@ -80,6 +79,8 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
 [health_check]: #health_check
+
+{{< /docs/alloy-config >}}
 
 ### `cloud_provider`
 

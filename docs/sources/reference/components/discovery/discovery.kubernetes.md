@@ -231,6 +231,8 @@ Discovered ingress objects include the following labels:
 
 You can use the following blocks with `discovery.kubernetes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                 | Description                                                | Required |
 | ------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`attach_metadata`][attach_metadata]  | Optional metadata to attach to discovered targets.         | no       |
@@ -242,9 +244,6 @@ You can use the following blocks with `discovery.kubernetes`:
 | [`selectors`][selectors]              | Selectors to filter discovered Kubernetes resources.       | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [attach_metadata]: #attach_metadata
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -252,6 +251,8 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 [oauth2]: #oauth2
 [selectors]: #selectors
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `attach_metadata`
 
