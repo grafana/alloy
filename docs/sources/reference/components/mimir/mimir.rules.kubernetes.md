@@ -17,7 +17,7 @@ title: mimir.rules.kubernetes
 It can also [federate rules](https://grafana.com/docs/mimir/latest/references/architecture/components/ruler/#federated-rule-groups) from different source tenants into a target Mimir tenant by interpreting the `monitoring.grafana.com/source_tenants` annotation on `PrometheusRule` resources.
 
 * You can specify multiple `mimir.rules.kubernetes` components by giving them different labels.
-* [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
+* [Kubernetes label selectors][] let you limit the `Namespace` and `PrometheusRule` resources the component considers during reconciliation.
 * Compatible with the Ruler APIs of Grafana Mimir, Grafana Cloud, and Grafana Enterprise Metrics.
 * Compatible with the `PrometheusRule` CRD from the [`prometheus-operator`][prometheus-operator].
 * This component accesses the Kubernetes REST API from [within a Pod][].
@@ -56,10 +56,10 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 | `address`                | `string`            | URL of the Mimir ruler.                                                                          |                 | yes      |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |                 | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |                 | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`          | no       |
+| `enable_http2`           | `bool`              | Whether to enable HTTP2 for requests.                                                            | `true`          | no       |
 | `external_labels`        | `map(string)`       | Labels to add to each rule.                                                                      | `{}`            | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`          | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                 | no       |
+| `follow_redirects`       | `bool`              | Whether to follow redirects returned by the server.                                              | `true`          | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to send with each request. The map key is the header name.                   |                 | no       |
 | `mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | `"alloy"`       | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                 | no       |
 | `prometheus_http_prefix` | `string`            | Path prefix for the [Mimir Prometheus endpoint][gem-path-prefix].                                | `"/prometheus"` | no       |
@@ -70,7 +70,7 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 | `tenant_id`              | `string`            | Mimir tenant ID. Required when you enable Mimir multi-tenancy.                                   |                 | no       |
 | `use_legacy_routes`      | `bool`              | Whether to use deprecated ruler API endpoints.                                                   | `false`         | no       |
 
-At most, one of the following can be provided:
+You can provide at most one of the following:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -97,18 +97,18 @@ If you don't set `tenant_id`, the Mimir API returns the error `401 Unauthorized:
 To resolve this, set the `tenant_id` argument in the component configuration.
 {{< /admonition >}}
 
-The `sync_interval` argument determines how often the Mimir ruler API is accessed to reload the current state of rules.
+The `sync_interval` argument determines how often the component accesses the Mimir ruler API to reload the current state of rules.
 The Kubernetes API delivers updates as events using the informer pattern.
 
-The `mimir_namespace_prefix` argument can be used to separate the rules managed by multiple {{< param "PRODUCT_NAME" >}} deployments across your infrastructure.
-It should be set to a unique value for each deployment.
+Use the `mimir_namespace_prefix` argument to separate the rules that multiple {{< param "PRODUCT_NAME" >}} deployments manage across your infrastructure.
+Set it to a unique value for each deployment.
 
-If `use_legacy_routes` is set to `true`, `mimir.rules.kubernetes` contacts Mimir on a `/api/v1/rules` endpoint.
+If you set `use_legacy_routes` to `true`, `mimir.rules.kubernetes` contacts Mimir on a `/api/v1/rules` endpoint.
 
-If `prometheus_http_prefix` is set to `/mimir`, `mimir.rules.kubernetes` contacts Mimir on a `/mimir/config/v1/rules` endpoint.
+If you set `prometheus_http_prefix` to `/mimir`, `mimir.rules.kubernetes` contacts Mimir on a `/mimir/config/v1/rules` endpoint.
 This is useful if you configure Mimir to use a different [prefix][gem-path-prefix] for its Prometheus endpoints than the default one.
 
-`prometheus_http_prefix` is ignored if `use_legacy_routes` is set to `true`.
+The component ignores `prometheus_http_prefix` if you set `use_legacy_routes` to `true`.
 
 `external_labels` overrides label values if labels with the same names already exist inside the rule.
 
@@ -154,14 +154,14 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 
 The `extra_query_matchers` block has no attributes.
 It contains zero or more [matcher][] blocks.
-These blocks allow you to add extra label matchers to all queries that are discovered by `mimir.rules.kubernetes` component.
+These blocks let you add extra label matchers to all queries that the `mimir.rules.kubernetes` component discovers.
 The algorithm of adding the label matchers to queries is the same as the one provided by the [`promtool promql label-matchers set` command](https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-promql).
 
 ### `matcher`
 
-The `matcher` block describes a label matcher that's added to each query found in `PrometheusRule` CRDs.
+The `matcher` block describes a label matcher that the component adds to each query in `PrometheusRule` CRDs.
 
-The following arguments are supported:
+You can use the following arguments:
 
 | Name               | Type     | Description                                              | Default | Required |
 | ------------------ | -------- | -------------------------------------------------------- | ------- | -------- |
@@ -170,25 +170,25 @@ The following arguments are supported:
 | `value`            | `string` | Value of the label to match.                             |         | no       |
 | `value_from_label` | `string` | Value of the Kubernetes `PrometheusRule` label to match. |         | no       |
 
-Only one of `value` or `value_from_label` can be used.
+Use only one of `value` or `value_from_label`.
 
 ### `rule_selector` and `rule_namespace_selector`
 
 The `rule_selector` and `rule_namespace_selector` blocks describe a Kubernetes label selector for rule or namespace discovery.
 
-The following arguments are supported:
+You can use the following arguments:
 
 | Name           | Type          | Description                                       | Default | Required |
 | -------------- | ------------- | ------------------------------------------------- | ------- | -------- |
 | `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | yes      |
 
-When the `match_labels` argument is empty, all resources are matched.
+When the `match_labels` argument is empty, the component matches all resources.
 
 ### `match_expression`
 
 The `match_expression` block describes a Kubernetes label match expression for rule or namespace discovery.
 
-The following arguments are supported:
+You can use the following arguments:
 
 | Name       | Type           | Description                        | Default | Required |
 | ---------- | -------------- | ---------------------------------- | ------- | -------- |
@@ -203,7 +203,7 @@ The `operator` argument should be one of the following strings:
 * `"Exists"`
 * `"DoesNotExist"`
 
-The `values` argument must not be provided when `operator` is set to `"Exists"` or `"DoesNotExist"`.
+Don't provide the `values` argument when you set `operator` to `"Exists"` or `"DoesNotExist"`.
 
 ### `oauth2`
 
@@ -219,40 +219,40 @@ The `values` argument must not be provided when `operator` is set to `"Exists"` 
 
 ## Component health
 
-`mimir.rules.kubernetes` is reported as unhealthy if given an invalid configuration or an error occurs during reconciliation.
+`mimir.rules.kubernetes` reports as unhealthy when given an invalid configuration or when an error occurs during reconciliation.
 
 ## Debug information
 
 `mimir.rules.kubernetes` exposes resource-level debug information.
 
-The following are exposed per discovered `PrometheusRule` resource:
+The component exposes the following per discovered `PrometheusRule` resource:
 
 * The Kubernetes namespace.
 * The resource name.
 * The resource UID.
 * The number of rule groups.
 
-The following are exposed per discovered Mimir rule namespace resource:
+The component exposes the following per discovered Mimir rule namespace resource:
 
 * The namespace name.
 * The number of rule groups.
 
-Only resources managed by the component are exposed, regardless of how many actually exist.
+The component only exposes resources it manages, regardless of how many actually exist.
 
 ## Debug metrics
 
-| Metric Name                                         | Type        | Description                                                              |
-| --------------------------------------------------- | ----------- | ------------------------------------------------------------------------ |
-| `mimir_rules_mimir_client_request_duration_seconds` | `histogram` | Duration of requests to the Mimir API.                                   |
-| `mimir_rules_config_updates_total`                  | `counter`   | Number of times the configuration has been updated.                      |
-| `mimir_rules_events_failed_total`                   | `counter`   | Number of events that failed to be processed, partitioned by event type. |
-| `mimir_rules_events_retried_total`                  | `counter`   | Number of events that were retried, partitioned by event type.           |
-| `mimir_rules_events_total`                          | `counter`   | Number of events processed, partitioned by event type.                   |
+| Metric Name                                         | Type        | Description                                                         |
+| --------------------------------------------------- | ----------- | ------------------------------------------------------------------- |
+| `mimir_rules_mimir_client_request_duration_seconds` | `histogram` | Duration of requests to the Mimir API.                              |
+| `mimir_rules_config_updates_total`                  | `counter`   | Number of configuration updates.                                    |
+| `mimir_rules_events_failed_total`                   | `counter`   | Number of events that failed processing, partitioned by event type. |
+| `mimir_rules_events_retried_total`                  | `counter`   | Number of retried events, partitioned by event type.                |
+| `mimir_rules_events_total`                          | `counter`   | Number of events processed, partitioned by event type.              |
 
 ## Examples
 
 This example creates a `mimir.rules.kubernetes` component that loads discovered rules to a local Mimir instance under the `team-a` tenant.
-Only namespaces and rules with the `alloy` label set to `yes` are included.
+The component only includes namespaces and rules with the `alloy` label set to `yes`.
 
 ```alloy
 mimir.rules.kubernetes "local" {
@@ -274,7 +274,8 @@ mimir.rules.kubernetes "local" {
 ```
 
 This example creates a `mimir.rules.kubernetes` component that loads discovered rules to Grafana Cloud.
-It also adds a `"label1"` label to each rule. If that label already exists, it's overwritten with `"value1"`.
+It also adds a `"label1"` label to each rule.
+If that label already exists, the component overwrites it with `"value1"`.
 
 ```alloy
 mimir.rules.kubernetes "default" {
@@ -304,7 +305,7 @@ mimir.rules.kubernetes "default" {
 }
 ```
 
-If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
+If the component finds a query in the form of `up != 1` in `PrometheusRule` CRDs, it modifies the query to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
 
 This example shows a `PrometheusRule` with a label set to `application.kubernetes.io/name=my-app`.
 
@@ -331,9 +332,10 @@ mimir.rules.kubernetes "default" {
 }
 ```
 
-If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{app="my-app"} != 1` before sending it to Mimir.
+If the component finds a query in the form of `up != 1` in `PrometheusRule` CRDs, it modifies the query to `up{app="my-app"} != 1` before sending it to Mimir.
 
-This example demonstrates tenant federation. Rules defined in the `PrometheusRule` CR are considered to originate from `source-tenant-alpha` and `source-tenant-beta`.
+This example demonstrates tenant federation.
+The component treats rules defined in the `PrometheusRule` CR as originating from `source-tenant-alpha` and `source-tenant-beta`.
 The `mimir.rules.kubernetes` component syncs these rules to the `target-tenant-main` in the configured Mimir instance.
 
 ```alloy
