@@ -1,0 +1,14 @@
+title = "gitleakstests extended config"
+
+[extend]
+useDefault = true
+
+# allowlist by secret – ignore when the “secret” is a UUID.
+[[rules]]
+id = "generic-api-key"
+  [[rules.allowlists]]
+  description = "ignore when extracted secret is a UUID"
+  regexTarget = "secret"
+  regexes = [
+    '''^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$''',
+  ]
