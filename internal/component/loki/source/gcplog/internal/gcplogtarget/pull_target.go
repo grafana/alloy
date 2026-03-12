@@ -41,8 +41,8 @@ type PullTarget struct {
 	backoff *backoff.Backoff
 
 	// pubsub
-	ps  io.Closer
-	sub pubsubSubscription
+	client     io.Closer
+	subscriber subscriber
 }
 
 // TODO(@tpaschalis) Expose this as Alloy configuration in the future.
@@ -52,8 +52,8 @@ var defaultBackoff = backoff.Config{
 	MaxRetries: 0, // Retry forever
 }
 
-// pubsubSubscription allows us to mock pubsub for testing
-type pubsubSubscription interface {
+// subscriber allows us to mock pubsub for testing
+type subscriber interface {
 	Receive(ctx context.Context, f func(context.Context, *pubsub.Message)) error
 }
 
@@ -68,11 +68,15 @@ func NewPullTarget(
 ) (*PullTarget, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ps, err := pubsub.NewClient(ctx, config.ProjectID, clientOptions...)
+	client, err := pubsub.NewClient(ctx, config.ProjectID, clientOptions...)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
+
+	subscriber := client.Subscriber(config.Subscription)
+	subscriber.ReceiveSettings.MaxOutstandingBytes = int(config.Limit.MaxOutstandingBytes)
+	subscriber.ReceiveSettings.MaxOutstandingMessages = config.Limit.MaxOutstandingMessages
 
 	return &PullTarget{
 		metrics:       metrics,
@@ -82,8 +86,8 @@ func NewPullTarget(
 		config:        config,
 		ctx:           ctx,
 		cancel:        cancel,
-		ps:            ps,
-		sub:           ps.Subscriber(config.Subscription),
+		client:        client,
+		subscriber:    subscriber,
 		backoff:       backoff.New(ctx, defaultBackoff),
 	}, nil
 }
@@ -93,7 +97,7 @@ func (t *PullTarget) Run() error {
 		lbls := t.labels()
 
 		for t.backoff.Ongoing() {
-			err := t.sub.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
+			err := t.subscriber.Receive(t.ctx, func(ctx context.Context, m *pubsub.Message) {
 				entry, err := parseLogEntry(m.Data, labels.NewBuilder(labels.EmptyLabels()), t.relabelConfig, parseOptions{
 					fixedLabels:          lbls,
 					useFullLine:          t.config.UseFullLine,
@@ -132,7 +136,7 @@ func (t *PullTarget) Run() error {
 func (t *PullTarget) Stop() {
 	t.cancel()
 	t.wg.Wait()
-	t.ps.Close()
+	t.client.Close()
 }
 
 func (t *PullTarget) labels() model.LabelSet {
