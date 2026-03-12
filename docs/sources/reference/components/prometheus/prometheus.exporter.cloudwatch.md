@@ -88,7 +88,6 @@ To use all of the integration features, use the following AWS IAM Policy:
 ```alloy
 prometheus.exporter.cloudwatch "queues" {
     sts_region      = "us-east-2"
-    aws_sdk_version_v2 = false
     discovery {
         type        = "AWS/SQS"
         regions     = ["us-east-2"]
@@ -116,9 +115,9 @@ prometheus.exporter.cloudwatch "queues" {
 You can use the following arguments with `prometheus.exporter.cloudwatch`:
 
 | Name                      | Type                | Description                                                                    | Default | Required |
-| ------------------------- | ------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
+| ------------------------- | ------------------- |--------------------------------------------------------------------------------|---------| -------- |
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.     |         | yes      |
-| `aws_sdk_version_v2`      | `bool`              | Use AWS SDK version 2.                                                         | `false` | no       |
+| `aws_sdk_version_v2`      | `bool`              | (Deprecated) When `false`, uses AWS SDK for Go v1 instead of v2.               | `true`  | no       |
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
 | `debug`                   | `bool`              | Enable debug logging on CloudWatch exporter internals.                         | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics.               | `{}`    | no       |
@@ -128,6 +127,11 @@ If you define the `["name", "type"]` under `"AWS/EC2"` in the `discovery_exporte
 This affects all discovery jobs.
 
 [STS]: https://docs.aws.amazon.com/STS/latest/APIReference/welcome.html
+
+{{< admonition type="caution" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.15, the `aws_sdk_version_v2` argument is deprecated as AWS SDK for Go v1 is end-of-life since July 31, 2025.
+Remove this argument from your configuration to use AWS SDK for Go v2, which is the default.
+{{< /admonition >}}
 
 ## Blocks
 
