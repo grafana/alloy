@@ -93,15 +93,15 @@ func testPullTarget(t *testing.T, recv loki.LogsReceiver) *testContext {
 	ctx, cancel := context.WithCancel(t.Context())
 	sub := newFakeSubscription()
 	target := &PullTarget{
-		metrics: NewMetrics(prometheus.NewRegistry()),
-		logger:  log.NewNopLogger(),
-		recv:    recv,
-		ctx:     ctx,
-		cancel:  cancel,
-		config:  testConfig,
-		ps:      io.NopCloser(nil),
-		sub:     sub,
-		backoff: backoff.New(ctx, testBackoff),
+		metrics:    NewMetrics(prometheus.NewRegistry()),
+		logger:     log.NewNopLogger(),
+		recv:       recv,
+		ctx:        ctx,
+		cancel:     cancel,
+		config:     testConfig,
+		client:     io.NopCloser(nil),
+		subscriber: sub,
+		backoff:    backoff.New(ctx, testBackoff),
 	}
 
 	return &testContext{
