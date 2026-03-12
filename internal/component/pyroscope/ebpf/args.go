@@ -5,7 +5,26 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 )
+
+// CommMode controls how the process comm (command name) is included in generated profiles.
+type CommMode string
+
+const (
+	// CommModeNone disables including comm in profiles.
+	CommModeNone CommMode = "none"
+	// CommModeLabel adds comm as a pprof sample label.
+	CommModeLabel CommMode = "label"
+	// CommModeStackframe adds comm as the topmost stack frame.
+	CommModeStackframe CommMode = "stackframe"
+	// CommModeBoth adds comm as both a label and the topmost stack frame.
+	CommModeBoth CommMode = "both"
+)
+
+func (m CommMode) toReporter() reporter.CommMode {
+	return reporter.CommMode(m)
+}
 
 type Arguments struct {
 	ForwardTo           []pyroscope.Appendable `alloy:"forward_to,attr"`
@@ -33,6 +52,9 @@ type Arguments struct {
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
 	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
+	PIDLabel                        bool     `alloy:"pid_label,attr,optional"`
+	Comm                            CommMode `alloy:"comm,attr,optional"`             // to address a Grafana Labs customer's escalation
+	DropKernelFrames                bool     `alloy:"drop_kernel_frames,attr,optional"`
 }
 
 type DeprecatedArguments struct {

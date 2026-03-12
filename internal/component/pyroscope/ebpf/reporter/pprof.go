@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -32,11 +33,34 @@ type PPROF struct {
 
 type PPROFConsumer func(ctx context.Context, p []PPROF)
 
+// CommMode controls how the process comm is included in profiles.
+// Valid values: "label", "stackframe", "both", "none", "".
+// "" and "none" are treated the same (comm is not included).
+type CommMode string
+
+const (
+	CommModeNone       CommMode = "none"
+	CommModeLabel      CommMode = "label"
+	CommModeStackframe CommMode = "stackframe"
+	CommModeBoth       CommMode = "both"
+)
+
+func (m CommMode) label() bool {
+	return m == CommModeLabel || m == CommModeBoth
+}
+
+func (m CommMode) stackframe() bool {
+	return m == CommModeStackframe || m == CommModeBoth
+}
+
 type Config struct {
 	ReportInterval            time.Duration
 	SamplesPerSecond          int64
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
+	PIDLabel                  bool
+	CommMode                  CommMode
+	DropKernelFrames          bool
 }
 type PPROFReporter struct {
 	cfg *Config
@@ -196,6 +220,17 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
+		comm := traceKey.Comm.String()
+		sampleLabels := map[string][]string{}
+		if comm != "" && p.cfg.CommMode.label() {
+			sampleLabels["comm"] = []string{comm}
+		}
+		if p.cfg.PIDLabel {
+			sampleLabels["pid"] = []string{strconv.FormatInt(traceKey.Pid, 10)}
+		}
+		if len(sampleLabels) > 0 {
+			s.Label = sampleLabels
+		}
 
 		switch origin {
 		case support.TraceOriginSampling:
@@ -212,6 +247,9 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 
 		for i := range traceInfo.Frames {
 			fr := traceInfo.Frames[i].Value()
+			if p.cfg.DropKernelFrames && fr.Type == libpf.KernelFrame {
+				continue
+			}
 			var (
 				mapping  *profile.Mapping
 				location *profile.Location
@@ -282,6 +320,18 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 			}
 			s.Location = append(s.Location, location)
 		}
+		if comm != "" && p.cfg.CommMode.stackframe() {
+			commLocation := &profile.Location{
+				ID:      uint64(len(b.Profile.Location) + 1),
+				Mapping: fakeMapping,
+				Line: []profile.Line{{
+					Function: b.Function(libpf.Intern(comm), libpf.Intern("")),
+				}},
+			}
+			b.Profile.Location = append(b.Profile.Location, commLocation)
+			fakeMapping.HasFunctions = true
+			s.Location = append(s.Location, commLocation)
+		}
 	}
 	res := make([]PPROF, 0, len(bs.Builders))
 	for _, b := range bs.Builders {
@@ -312,6 +362,7 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 	return res
 }
 
+// TODO: symbols like __GI___clone3 are confusing in profiles, find a way to use a proper/nicer name.
 func (p *PPROFReporter) symbolizeNativeFrame(
 	b *ProfileBuilder,
 	loc *profile.Location,
