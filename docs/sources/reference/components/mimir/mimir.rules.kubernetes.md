@@ -85,6 +85,17 @@ At most, one of the following can be provided:
 
 If no `tenant_id` is provided, the component assumes that the Mimir instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 
+{{< admonition type="note" >}}
+The mimir-distributed Helm chart enables multi-tenancy by default.
+If you don't provide a `tenant_id`, you receive a "401 Unauthorized: no org id" error.
+
+If you don't need multi-tenancy, set `tenant_id` to any value, such as `"anonymous"`.
+Mimir still requires a tenant identifier even when you deploy it in single-tenant mode with multi-tenancy enabled.
+
+Alternatively, point the `address` to the `mimir-nginx` service instead of `mimir-ruler` directly.
+You can configure the nginx gateway to inject a default tenant header.
+{{< /admonition >}}
+
 The `sync_interval` argument determines how often the Mimir ruler API is accessed to reload the current state of rules.
 Interaction with the Kubernetes API works differently.
 Updates are processed as events from the Kubernetes API server according to the informer pattern.
