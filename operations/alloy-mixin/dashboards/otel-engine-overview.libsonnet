@@ -100,7 +100,7 @@ local filename = 'alloy-otel-engine-overview.json';
           panel.withQueries([
             panel.newQuery(
               expr='sum by(${groupby}) (%s)' % rateQuery(receiverRefused),
-              legendFormat='{{${groupby}}}',
+              legendFormat='__auto',
             ),
           ])
         ),
@@ -136,7 +136,7 @@ local filename = 'alloy-otel-engine-overview.json';
           panel.withQueries([
             panel.newQuery(
               expr='sum by(${groupby}) (%s)' % rateQuery(exporterSent),
-              legendFormat='{{${groupby}}} sent',
+              legendFormat='__auto',
             ),
           ])
         ),
@@ -172,7 +172,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 /
                 clamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{%%(groupSelector)s, data_type="%s"}), 1)
               ||| % [queueDataType, queueDataType]) % $._config,
-              legendFormat='{{${groupby}}}',
+              legendFormat='__auto',
             ),
           ])
         ),
@@ -227,7 +227,7 @@ local filename = 'alloy-otel-engine-overview.json';
             expr=|||
               count by(${groupby}) (otelcol_process_uptime_seconds_total{%(groupSelector)s} < 60)
             ||| % $._config,
-            legendFormat='{{${groupby}}}',
+            legendFormat='__auto',
           ),
         ])
       ),
@@ -491,7 +491,7 @@ local filename = 'alloy-otel-engine-overview.json';
                   expr=|||
                     sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{%(groupSelector)s})
                   ||| % $._config,
-                  legendFormat='{{${groupby}}}',
+                  legendFormat='__auto',
                 ),
               ])
             ),
@@ -602,7 +602,7 @@ local filename = 'alloy-otel-engine-overview.json';
                   expr=|||
                     sum by(${groupby}) (otelcol_grafanacloud_host_count_ratio{%(groupSelector)s})
                   ||| % $._config,
-                  legendFormat='{{${groupby}}}',
+                  legendFormat='__auto',
                 ),
               ])
             ),

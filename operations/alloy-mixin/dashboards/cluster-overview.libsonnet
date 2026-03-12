@@ -279,7 +279,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
             expr= |||
               sum by(${groupby}) (cluster_node_peers{%(groupSelector)s})
             ||| % $._config,
-            legendFormat='{{${groupby}}}',
+            legendFormat='__auto',
           ),
           panel.newQuery(
             expr= |||

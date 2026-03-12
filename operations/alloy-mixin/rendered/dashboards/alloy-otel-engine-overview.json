@@ -89,9 +89,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "count by(${groupby}) (otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"} < 60) or vector(0)\n",
+               "expr": "count by(${groupby}) (otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"} < 60)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],
@@ -273,7 +273,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -339,7 +339,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}} sent",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -398,7 +398,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"traces\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"traces\"}), 1)\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -504,7 +504,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -570,7 +570,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}} sent",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -629,7 +629,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"metrics\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"metrics\"}), 1)\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -735,7 +735,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -801,7 +801,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}} sent",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -860,7 +860,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"logs\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"logs\"}), 1)\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -1075,7 +1075,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -1316,7 +1316,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_grafanacloud_host_count_ratio{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],

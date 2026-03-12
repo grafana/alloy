@@ -115,7 +115,7 @@ local filename = 'alloy-cluster-node.json';
             expr= |||
               sum by(${groupby}) (rate(cluster_node_gossip_received_events_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),

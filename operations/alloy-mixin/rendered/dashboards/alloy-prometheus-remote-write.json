@@ -211,7 +211,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  (\n    prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\"}\n    - ignoring(url, remote_name) group_right(instance)\n    prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n  ) < 31536000 > 0\n)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],
@@ -244,7 +244,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n    rate(prometheus_remote_storage_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval]) +\n    rate(prometheus_remote_storage_metadata_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],
@@ -332,7 +332,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n    prometheus_remote_storage_shards{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}\n)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             },
             {
@@ -379,7 +379,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  rate(prometheus_remote_storage_samples_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],
@@ -412,7 +412,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  rate(prometheus_remote_storage_samples_failed_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],
@@ -445,7 +445,7 @@
                "datasource": "${datasource}",
                "expr": "sum by (${groupby}) (\n  rate(prometheus_remote_storage_samples_retried_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", component_path=~\"$component_path\", component_id=~\"$component\", url=~\"$url\"}[$__rate_interval])\n)\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],

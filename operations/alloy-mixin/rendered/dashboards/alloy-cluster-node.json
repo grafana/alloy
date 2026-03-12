@@ -134,7 +134,7 @@
                "datasource": "${datasource}",
                "expr": "sum by(${groupby}) (rate(cluster_node_gossip_received_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "{{${groupby}}}",
+               "legendFormat": "__auto",
                "range": true
             }
          ],

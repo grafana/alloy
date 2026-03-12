@@ -66,7 +66,7 @@ local stackedPanelMixin = {
             expr= |||
               sum by(${groupby}) (rate(alloy_resources_process_cpu_seconds_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
@@ -84,7 +84,7 @@ local stackedPanelMixin = {
             expr= |||
               sum by(${groupby}) (alloy_resources_process_resident_memory_bytes{%(instanceSelector)s})
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
@@ -110,7 +110,7 @@ local stackedPanelMixin = {
                 alloy_build_info{%(instanceSelector)s}
               )
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
@@ -136,7 +136,7 @@ local stackedPanelMixin = {
                 alloy_build_info{%(instanceSelector)s}
               )
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
@@ -161,7 +161,7 @@ local stackedPanelMixin = {
                 alloy_build_info{%(instanceSelector)s}
               )
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
@@ -184,7 +184,7 @@ local stackedPanelMixin = {
             expr= |||
               sum by(${groupby}) (rate(alloy_resources_machine_rx_bytes_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
@@ -207,7 +207,7 @@ local stackedPanelMixin = {
             expr= |||
               sum by(${groupby}) (rate(alloy_resources_machine_tx_bytes_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{${groupby}}}'
+            legendFormat='__auto'
           ),
         ])
       ),
