@@ -103,7 +103,7 @@ func (args *IntakeArguments) Convert() datadogreceiver.IntakeConfig {
 	ic := datadogreceiver.IntakeConfig{
 		Behavior: args.Behavior,
 	}
-	if args.Proxy != nil {
+	if args.Behavior == "proxy" && args.Proxy != nil {
 		apiSite := args.Proxy.API.Site
 		if apiSite == "" {
 			apiSite = datadogconfig.DefaultSite
