@@ -179,6 +179,17 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	require.Equal(t, stateStarting, e.getState())
 
 	require.NoError(t, e.Shutdown(context.Background()))
+
+	// Verify the run goroutine has exited and state is terminated.
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
+	require.Equal(t, stateTerminated, e.getState())
 }
 
 func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
