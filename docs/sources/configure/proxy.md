@@ -39,7 +39,7 @@ In the push-to-proxy pattern, edge {{< param "PRODUCT_NAME" >}} instances push t
 This is the most common and recommended pattern because it provides a straightforward mental model, scales cleanly in dynamic environments, and works across networks with NAT or segmented connectivity.
 You can centralize authentication and routing at the proxy layer, and the pattern is compatible with both Kubernetes and VM environments.
 
-```mermaid
+{{< mermaid >}}
 flowchart LR
 
   EdgeAlloy[Edge Alloy]
@@ -55,7 +55,7 @@ flowchart LR
   classDef grafana fill:#ffffff,stroke:#F05A28,stroke-width:2px,rx:8,ry:8,color:#1f2937,font-weight:600;
 
   class EdgeAlloy,LoadBalancer,ProxyAlloy,Backend grafana
-```
+{{< /mermaid >}}
 
 For metrics, edge instances push data using `prometheus.remote_write` to proxy instances running `prometheus.receive_http`.
 For logs, edge instances push data using `loki.write` to proxy instances running `loki.source.api`.
