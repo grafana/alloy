@@ -43,7 +43,7 @@ Set the following environment variables for Oracle Client library access:
 ### Database user permissions
 
 The database user specified in the connection string must have permissions to query Oracle system views.
-The user requires the `SELECT_CATALOG_ROLE` privilege, or `SELECT` permission on specific system views.
+The user requires the `SELECT_CATALOG_ROLE` role, or `SELECT` privilege on specific system views.
 
 Refer to the [Oracle AI Database Metrics Exporter Installation guide][oracledb_exporter_install] for the complete list of required permissions.
 
