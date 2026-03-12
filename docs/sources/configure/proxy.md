@@ -39,8 +39,11 @@ In the push-to-proxy pattern, edge {{< param "PRODUCT_NAME" >}} instances push t
 This is the most common and recommended pattern because it provides a straightforward mental model, scales cleanly in dynamic environments, and works across networks with NAT or segmented connectivity.
 You can centralize authentication and routing at the proxy layer, and the pattern is compatible with both Kubernetes and VM environments.
 
-```text
-[Edge Alloy] --remote_write--> [Load Balancer] --> [Proxy Alloy x N] --> Backend
+```mermaid
+flowchart LR
+    A[Edge Alloy] -->|remote_write| B[Load Balancer]
+    B --> C[Proxy Alloy x N]
+    C --> D[Backend]
 ```
 
 For metrics, edge instances push data using `prometheus.remote_write` to proxy instances running `prometheus.receive_http`.
