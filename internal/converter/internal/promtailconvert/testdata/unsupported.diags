@@ -1,5 +1,5 @@
 (Error) Promtail's WAL is currently not supported in Alloy
-(Error) limits_config is not yet supported in Alloy
+(Warning) limits_config rate limiting settings (readline_rate, readline_burst, readline_rate_drop) have been converted to stage.limit stages in each loki.process component. Unlike Promtail's global rate limiter, these limits apply independently per pipeline rather than across all pipelines combined.
 (Warning) If you have a tracing set up for Promtail, it cannot be migrated to Alloy automatically. Refer to the documentation on how to configure tracing in Alloy.
 (Error) reading targets from stdin is not supported in Alloy configuration file
 (Warning) server.profiling_enabled is not supported - use Alloy's main HTTP server's profiling endpoints instead

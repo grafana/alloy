@@ -115,6 +115,7 @@ func AppendAll(f *builder.File, cfg *promtailcfg.Config, labelPrefix string, dia
 		WriteReceivers:   writeReceivers,
 		TargetSyncPeriod: cfg.TargetConfig.SyncPeriod,
 		LabelPrefix:      labelPrefix,
+		LimitsConfig:     cfg.LimitsConfig,
 	}
 
 	for _, sc := range cfg.ScrapeConfig {
