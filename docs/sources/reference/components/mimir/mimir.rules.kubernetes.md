@@ -23,7 +23,7 @@ It can also [federate rules](https://grafana.com/docs/mimir/latest/references/ar
 * This component accesses the Kubernetes REST API from [within a Pod][].
 
 {{< admonition type="note" >}}
-This component requires [Role-based access control (RBAC)][] to be set up in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kubernetes REST API.
+You must configure Role-based access control (RBAC) in Kubernetes so {{< param "PRODUCT_NAME" >}} can access the Kubernetes REST API.
 
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 {{< /admonition >}}
@@ -98,8 +98,7 @@ To resolve this, set the `tenant_id` argument in the component configuration.
 {{< /admonition >}}
 
 The `sync_interval` argument determines how often the Mimir ruler API is accessed to reload the current state of rules.
-Interaction with the Kubernetes API works differently.
-Updates are processed as events from the Kubernetes API server according to the informer pattern.
+The Kubernetes API delivers updates as events using the informer pattern.
 
 The `mimir_namespace_prefix` argument can be used to separate the rules managed by multiple {{< param "PRODUCT_NAME" >}} deployments across your infrastructure.
 It should be set to a unique value for each deployment.
@@ -312,9 +311,9 @@ This example shows a `PrometheusRule` with a label set to `application.kubernete
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
-  metadata:
-    labels:
-      application.kubernetes.io/name: my-app
+metadata:
+  labels:
+    application.kubernetes.io/name: my-app
 ```
 
 The following configuration extracts the value from the PrometheusRules CR label `application.kubernetes.io/name` and adds a label matcher with the value `{app=~"extracted_value"}` to all the queries discovered by the `mimir.rules.kubernetes` component.
