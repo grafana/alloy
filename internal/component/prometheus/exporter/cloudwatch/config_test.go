@@ -1184,6 +1184,27 @@ var expectedCustomNamespaceDelayConfig = yaceModel.JobsConfig{
 	},
 }
 
+func TestUseAWSSDKVersion(t *testing.T) {
+	t.Run("defaults to true", func(t *testing.T) {
+		args := Arguments{}
+		err := syntax.Unmarshal([]byte(`sts_region = "us-east-1"`), &args)
+		require.NoError(t, err)
+		require.NotEmpty(t, args.STSRegion)
+		require.True(t, args.UseAWSSDKVersion2)
+	})
+
+	t.Run("can be explicitly set to false", func(t *testing.T) {
+		args := Arguments{}
+		err := syntax.Unmarshal([]byte(`
+sts_region = "us-east-1"
+aws_sdk_version_v2 = false
+`), &args)
+		require.NoError(t, err)
+		require.NotEmpty(t, args.STSRegion)
+		require.False(t, args.UseAWSSDKVersion2)
+	})
+}
+
 func TestCloudwatchComponentConfig(t *testing.T) {
 	type testcase struct {
 		raw                 string
