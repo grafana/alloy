@@ -46,7 +46,8 @@
 ##   generate                  Generate everything.
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
-##   generate-ui               Generate the UI assets.
+##   ui                        Generate the UI assets.
+##   graphql                   Generate the GraphQL assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
@@ -159,19 +160,19 @@ endif
 #
 
 .PHONY: lint
-lint: alloylint
+lint: graphql alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
-run-alloylint: alloylint
+run-alloylint: graphql alloylint
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
-test:
+test: graphql
 	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
 		if echo "$$dir" | grep -qv testdata; then \
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
@@ -215,7 +216,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+alloy: graphql ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -263,8 +264,34 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+.PHONY: generate generate-helm-docs generate-helm-tests ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro graphql
+generate: generate-helm-docs generate-helm-tests ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro graphql
+
+GRAPHQL_DIR    := internal/service/graphql
+GRAPHQL_SCHEMA := $(wildcard $(GRAPHQL_DIR)/graph/schema/*.graphqls)
+GRAPHQL_CONFIG := $(GRAPHQL_DIR)/gqlgen.yml
+
+UI_DIR     := internal/web/ui
+UI_SOURCES := $(shell find $(UI_DIR) -type f -not -path '$(UI_DIR)/dist/*' -not -path '$(UI_DIR)/node_modules/*')
+
+# Produces: graph/generated.go, graph/model/models_gen.go, graph/*.resolvers.go
+build/.graphql.stamp: $(GRAPHQL_SCHEMA) $(GRAPHQL_CONFIG)
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./$(GRAPHQL_DIR) && GOOS= GOARCH= go generate ./...
+	@mkdir -p $(@D) && touch $@
+endif
+
+graphql: build/.graphql.stamp
+
+build/.ui.stamp: $(UI_SOURCES)
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./$(UI_DIR) && npm install && npm run build
+	@mkdir -p $(@D) && touch $@
+endif
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
@@ -298,13 +325,11 @@ else
 	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
-generate-ui:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else ifeq ($(SKIP_UI_BUILD),1)
+ifeq ($(SKIP_UI_BUILD),1)
+ui:
 	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
-	cd ./internal/web/ui && npm install && npm run build
+ui: build/.ui.stamp
 endif
 
 generate-docs:

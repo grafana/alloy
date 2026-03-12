@@ -19,6 +19,15 @@ type Component {
 
   "Name of the component."
   name: String!
+
+  "Arguments of the component."
+  arguments: String!
+
+  "Exports of the component."
+  exports: String!
+
+  "Debug info of the component."
+  debugInfo: String!
 }
 
 """
