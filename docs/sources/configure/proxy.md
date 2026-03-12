@@ -41,9 +41,20 @@ You can centralize authentication and routing at the proxy layer, and the patter
 
 ```mermaid
 flowchart LR
-    A[Edge Alloy] -->|remote_write| B[Load Balancer]
-    B --> C[Proxy Alloy x N]
-    C --> D[Backend]
+
+  EdgeAlloy[Edge Alloy]
+  LoadBalancer[Load Balancer]
+  ProxyAlloy[Proxy Alloy x N]
+  Backend[Backend]
+
+  EdgeAlloy -->|remote_write| LoadBalancer
+  LoadBalancer --> ProxyAlloy
+  ProxyAlloy --> Backend
+
+  %% Grafana styling
+  classDef grafana fill:#ffffff,stroke:#F05A28,stroke-width:2px,rx:8,ry:8,color:#1f2937,font-weight:600;
+
+  class EdgeAlloy,LoadBalancer,ProxyAlloy,Backend grafana
 ```
 
 For metrics, edge instances push data using `prometheus.remote_write` to proxy instances running `prometheus.receive_http`.
