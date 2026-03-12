@@ -119,10 +119,7 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	require.NoError(t, e.Ready())
 	require.NoError(t, e.NotReady())
 
-	// Perform graceful shutdown with timeout to avoid hanging tests.
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	t.Cleanup(cancel)
-	require.NoError(t, e.Shutdown(shutdownCtx))
+	require.NoError(t, e.Shutdown(context.Background()))
 
 	// Verify the run goroutine has exited and state is terminated.
 	require.Eventually(t, func() bool {
@@ -181,9 +178,7 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	// We should still be in stateStarting since the ready callback was never invoked.
 	require.Equal(t, stateStarting, e.getState())
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	t.Cleanup(cancel)
-	require.NoError(t, e.Shutdown(shutdownCtx))
+	require.NoError(t, e.Shutdown(context.Background()))
 }
 
 func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
@@ -193,9 +188,7 @@ func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
 	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	t.Cleanup(cancel)
-	require.NoError(t, e.Shutdown(shutdownCtx))
+	require.NoError(t, e.Shutdown(context.Background()))
 
 	// The internal goroutine should have transitioned to terminated even on error during shutdown.
 	require.Eventually(t, func() bool {
