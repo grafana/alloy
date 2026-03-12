@@ -150,7 +150,7 @@ The output of both engines is visible in the logs.
 You can access the {{< param "DEFAULT_ENGINE" >}} UI and metrics on port `12345`.
 
 {{< admonition type="warning" >}}
-Only one `alloyengine` extension can be active per process, please ensure you only specify a single extension in your `service.extensions` definition. If you specify multiple, you will see a clear error indicating that only one alloy engine extension can be live at once per collector instance. 
+Only one `alloyengine` extension can be active per process.
 {{< /admonition >}}
 
 ## Run with the OpenTelemetry Collector Helm chart
