@@ -128,7 +128,7 @@ Here is a summary of the relationships between the key dependencies of Alloy.
 
 ## Steps to update key dependencies
 
-Don't write anything in this document. Create a separate document called 'deps-update-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
+Don't write anything in this document. Create a separate document called 'deps-update-<version>-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
 
 ### Step 1: Familiarize yourself with the tools and snippets
 
@@ -292,3 +292,28 @@ Consider this step successful if all the tests pass and there were no big change
 If the tests pass, but we had to change the test expectations in a meaningful way that will impact end users, explain what is the breaking change.
 
 If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on. Provide description of what you think is failing and how does it relate to our dependency updates.
+
+
+### Step 8: Fetch changelog for target release
+Fetch the changelog using curl
+
+For otel we are intrested in these repos
+* github.com/open-telemetry/opentelemetry-collector
+* github.com/open-telemetry/opentelemetry-go-build-tools
+* github.com/grafana/opentelemetry-ebpf-instrumentation
+* github.com/grafana/opentelemetry-ebpf-profiler
+
+Run curl to get changelog for release
+```
+curl https://api.github.com/repos/<repo>/<project>/releases/tags/<version>
+```
+
+Use this information to check if any of our components have new arguments and to document important changes in step 9.
+
+### Step 9: Update user facing documentation:
+
+We have documentation for our components. If we have new arguments / blocks they should be added to the documentation. If default values changed we should update docs as well.
+
+### Step 10: Note down important changes
+
+It's important to list changes done in dependecis. Especcialy breaking changes and changes to default config values. What we note down here should only be user facing changes and not internal implementaiton details.
