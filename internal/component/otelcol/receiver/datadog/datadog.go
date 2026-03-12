@@ -9,8 +9,11 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	datadogconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -31,13 +34,35 @@ func init() {
 type Arguments struct {
 	HTTPServer otelcol.HTTPServerArguments `alloy:",squash"`
 
-	ReadTimeout time.Duration `alloy:"read_timeout,attr,optional"`
+	ReadTimeout      time.Duration `alloy:"read_timeout,attr,optional"`
+	TraceIDCacheSize int           `alloy:"trace_id_cache_size,attr,optional"`
+
+	Intake *IntakeArguments `alloy:"intake,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+}
+
+// IntakeArguments controls the /intake endpoint behavior.
+type IntakeArguments struct {
+	// "disable" (default) or "proxy"
+	Behavior string          `alloy:"behavior,attr"`
+	Proxy    *ProxyArguments `alloy:"proxy,block,optional"`
+}
+
+// ProxyArguments controls how the /intake proxy operates.
+type ProxyArguments struct {
+	API APIArguments `alloy:"api,block"`
+}
+
+// APIArguments configures the Datadog API connection for the intake proxy.
+type APIArguments struct {
+	Key              alloytypes.Secret `alloy:"key,attr"`
+	Site             string            `alloy:"site,attr,optional"`
+	FailOnInvalidKey bool              `alloy:"fail_on_invalid_key,attr,optional"`
 }
 
 var _ receiver.Arguments = Arguments{}
@@ -61,10 +86,33 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	return &datadogreceiver.Config{
-		ServerConfig: *convertedHttpServer,
-		ReadTimeout:  args.ReadTimeout,
-	}, nil
+	cfg := &datadogreceiver.Config{
+		ServerConfig:     *convertedHttpServer,
+		ReadTimeout:      args.ReadTimeout,
+		TraceIDCacheSize: args.TraceIDCacheSize,
+	}
+
+	if args.Intake != nil {
+		cfg.Intake = args.Intake.Convert()
+	}
+
+	return cfg, nil
+}
+
+func (args *IntakeArguments) Convert() datadogreceiver.IntakeConfig {
+	ic := datadogreceiver.IntakeConfig{
+		Behavior: args.Behavior,
+	}
+	if args.Proxy != nil {
+		ic.Proxy = datadogreceiver.ProxyConfig{
+			API: datadogconfig.APIConfig{
+				Key:              configopaque.String(args.Proxy.API.Key),
+				Site:             args.Proxy.API.Site,
+				FailOnInvalidKey: args.Proxy.API.FailOnInvalidKey,
+			},
+		}
+	}
+	return ic
 }
 
 // Extensions implements receiver.Arguments.
