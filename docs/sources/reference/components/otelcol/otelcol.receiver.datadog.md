@@ -67,7 +67,7 @@ You can use the following blocks with `otelcol.receiver.datadog`:
 | [`debug_metrics`][debug_metrics]            | Configures the metrics that this component generates to monitor its state. | no       |
 | [`intake`][intake]                          | Configures the `/intake` endpoint behavior.                                | no       |
 | `intake` > [`proxy`][proxy]                 | Configures the proxy for the `/intake` endpoint.                           | no       |
-| `intake` > `proxy` > [`api`][api]           | Configures the Datadog API connection for the intake proxy.                | yes      |
+| `intake` > `proxy` > [`api`][api]           | Configures the Datadog API connection for the intake proxy.                | conditional |
 | [`tls`][tls]                                | Configures TLS for the HTTP server.                                        | no       |
 | `tls` > [`tpm`][tpm]                        | Configures TPM settings for the TLS `key_file`.                            | no       |
 
@@ -123,12 +123,14 @@ The following arguments are supported:
 | `behavior` | `string` | How the `/intake` endpoint behaves: `"disable"` or `"proxy"`. | | yes |
 
 Set `behavior` to `"proxy"` to forward `/intake` requests to Datadog's API.
+Proxying requires a nested `proxy { api { ... } }` block with a Datadog API key.
 When set to `"disable"`, the endpoint returns an error for any incoming request.
 
 ### `proxy`
 
 The `proxy` block configures how the `/intake` proxy operates.
 It's only used when `behavior` is set to `"proxy"`.
+If `behavior` isn't `"proxy"`, this block is ignored.
 
 This block has no arguments and is configured with the nested [`api`][api] block.
 

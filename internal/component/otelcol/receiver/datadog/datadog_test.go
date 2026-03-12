@@ -116,6 +116,30 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.True(t, otelArgs.Intake.Proxy.API.FailOnInvalidKey)
 	})
 
+	t.Run("intake_proxy_default_site", func(t *testing.T) {
+		in := `
+		intake {
+			behavior = "proxy"
+			proxy {
+				api {
+					key = "my-secret-key"
+				}
+			}
+		}
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+		ext, err := args.Convert()
+		require.NoError(t, err)
+		otelArgs := ext.(*datadogreceiver.Config)
+
+		require.Equal(t, "proxy", otelArgs.Intake.Behavior)
+		require.Equal(t, configopaque.String("my-secret-key"), otelArgs.Intake.Proxy.API.Key)
+		require.Equal(t, "datadoghq.com", otelArgs.Intake.Proxy.API.Site)
+	})
+
 	t.Run("intake_disable", func(t *testing.T) {
 		in := `
 		intake {

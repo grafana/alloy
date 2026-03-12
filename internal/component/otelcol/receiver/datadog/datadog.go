@@ -48,7 +48,7 @@ type Arguments struct {
 
 // IntakeArguments controls the /intake endpoint behavior.
 type IntakeArguments struct {
-	// "disable" (default) or "proxy"
+	// Behavior is required; allowed values are "disable" or "proxy".
 	Behavior string          `alloy:"behavior,attr"`
 	Proxy    *ProxyArguments `alloy:"proxy,block,optional"`
 }
@@ -104,10 +104,15 @@ func (args *IntakeArguments) Convert() datadogreceiver.IntakeConfig {
 		Behavior: args.Behavior,
 	}
 	if args.Proxy != nil {
+		apiSite := args.Proxy.API.Site
+		if apiSite == "" {
+			apiSite = datadogconfig.DefaultSite
+		}
+
 		ic.Proxy = datadogreceiver.ProxyConfig{
 			API: datadogconfig.APIConfig{
 				Key:              configopaque.String(args.Proxy.API.Key),
-				Site:             args.Proxy.API.Site,
+				Site:             apiSite,
 				FailOnInvalidKey: args.Proxy.API.FailOnInvalidKey,
 			},
 		}
