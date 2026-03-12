@@ -1378,9 +1378,8 @@
             "type": "datasource"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "cluster",
             "multi": true,
             "name": "cluster",
@@ -1393,9 +1392,8 @@
             "type": "query"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "namespace",
             "multi": true,
             "name": "namespace",

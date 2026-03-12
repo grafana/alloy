@@ -42,7 +42,7 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              count(group(alloy_component_controller_running_components{%(groupSelector)s}) by (${groupby}))
+              count(group(alloy_component_controller_running_components{%(groupSelector)s}) by (instance))
             ||| % $._config,
           ),
         ])

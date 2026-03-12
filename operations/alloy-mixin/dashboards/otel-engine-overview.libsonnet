@@ -8,11 +8,13 @@ local filename = 'alloy-otel-engine-overview.json';
       'cluster',
       'label_values(otelcol_process_uptime_seconds_total, cluster)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
+      defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'namespace',
       'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster"}, namespace)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
+      defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'job',
