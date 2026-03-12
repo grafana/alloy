@@ -13,7 +13,7 @@ title: prometheus.exporter.oracledb
 # `prometheus.exporter.oracledb`
 
 The `prometheus.exporter.oracledb` component embeds
-[`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) for collecting statistics from a OracleDB server.
+[`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) for collecting statistics from an OracleDB server.
 
 Ensure you have the following:
 
@@ -23,7 +23,7 @@ Ensure you have the following:
 ### Oracle instant client basic
 
 When you run the standalone binary, you must install the [Oracle Instant Client Basic](http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html) for your operating system.
-Only the basic version is required for the exporter.
+The exporter only requires the basic version.
 
 {{< admonition type="note" >}}
 You must also provide Oracle Instant Client Basic when you run {{< param "PRODUCT_NAME" >}} in Docker or Kubernetes.
@@ -72,15 +72,15 @@ You can use the following arguments with `prometheus.exporter.oracledb`:
 | `query_timeout`     | `int`          | The query timeout in seconds.                                  | `5`     | no       |
 | `username`          | `string`       | The username to use for authentication to the Oracle Database. |         | no       |
 
-Examples of TOML metrics files can be found in the [`oracledb_exporter` repository](https://github.com/oracle/oracle-db-appdev-monitoring).
+Refer to the [`oracledb_exporter` repository](https://github.com/oracle/oracle-db-appdev-monitoring) for examples of TOML metrics files.
 
-For backward compatibility, the `username` and `password` arguments can still be provided in the `connection_string` argument:
+For backward compatibility, you can still provide the `username` and `password` arguments in the `connection_string` argument:
 
 ```conn
 oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
-If the `connection_string` argument doesn't contain the `username` and `password`, the `username` and `password` arguments must be provided.
+If the `connection_string` argument doesn't contain the `username` and `password`, you must provide the `username` and `password` arguments.
 In this case, the URL must have the format:
 
 ```conn
