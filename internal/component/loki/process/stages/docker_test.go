@@ -7,9 +7,11 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/loki/pkg/push"
 )
 
 var (
@@ -22,63 +24,91 @@ var (
 )
 
 func TestDocker(t *testing.T) {
-	loc, err := time.LoadLocation("UTC")
-	if err != nil {
-		t.Fatal("could not parse timezone", err)
+	type testCase struct {
+		name     string
+		input    loki.Entry
+		expected loki.Entry
 	}
 
-	tests := map[string]struct {
-		entry          string
-		expectedEntry  string
-		t              time.Time
-		expectedT      time.Time
-		labels         map[string]string
-		expectedLabels map[string]string
-	}{
-		"happy path": {
-			dockerRaw,
-			dockerProcessed,
-			time.Now(),
-			time.Date(2019, 4, 30, 02, 12, 41, 844351500, loc),
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
+	tests := []testCase{
+		{
+			name: "happy path",
+			input: loki.Entry{
+				Entry: push.Entry{
+					Line:      dockerRaw,
+					Timestamp: time.Now(),
+				},
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{"stream": "stderr"},
+				Entry: push.Entry{
+					Line:      dockerProcessed,
+					Timestamp: time.Date(2019, 4, 30, 02, 12, 41, 844351500, time.UTC),
+				},
 			},
 		},
-		"invalid timestamp": {
-			dockerInvalidTimestampRaw,
-			"log message\n",
-			dockerTestTimeNow,
-			dockerTestTimeNow,
-			map[string]string{},
-			map[string]string{
-				"stream": "stderr",
+		{
+			name: "invalid timestamp",
+			input: loki.Entry{
+				Entry: push.Entry{
+					Line:      dockerInvalidTimestampRaw,
+					Timestamp: dockerTestTimeNow,
+				},
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{"stream": "stderr"},
+				Entry: push.Entry{
+					Line:      "log message\n",
+					Timestamp: dockerTestTimeNow,
+				},
 			},
 		},
-		"invalid json": {
-			"i'm not json!",
-			"i'm not json!",
-			dockerTestTimeNow,
-			dockerTestTimeNow,
-			map[string]string{},
-			map[string]string{},
+		{
+			name: "not json",
+			input: loki.Entry{
+				Entry: push.Entry{
+					Line:      "i'm not json!",
+					Timestamp: dockerTestTimeNow,
+				},
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{},
+				Entry: push.Entry{
+					Line:      "i'm not json!",
+					Timestamp: dockerTestTimeNow,
+				},
+			},
+		},
+		{
+			name: "json but not docker format",
+			input: loki.Entry{
+				Entry: push.Entry{
+					Line:      `{"msg": "test"}`,
+					Timestamp: dockerTestTimeNow,
+				},
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{},
+				Entry: push.Entry{
+					Line:      `{"msg": "test"}`,
+					Timestamp: dockerTestTimeNow,
+				},
+			},
 		},
 	}
 
-	for tName, tt := range tests {
-		t.Run(tName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			p, err := NewDocker(log.NewNopLogger(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatalf("failed to create Docker parser: %s", err)
 			}
-			out := processEntries(p, newEntry(nil, toLabelSet(tt.labels), tt.entry, tt.t))[0]
+			out := processEntries(p, newEntry(nil, tt.input.Labels, tt.input.Line, tt.input.Timestamp))[0]
 
-			assertLabels(t, tt.expectedLabels, out.Labels)
-			assert.Equal(t, tt.expectedEntry, out.Line, "did not receive expected log entry")
-			if out.Timestamp.Unix() != tt.expectedT.Unix() {
-				t.Fatalf("mismatch ts want: %s got:%s", tt.expectedT, tt.t)
-			}
+			require.EqualValues(t, tt.expected.Labels, out.Entry.Labels)
+			require.Equal(t, tt.expected.Entry.Line, out.Entry.Line)
+			require.Equal(t, tt.expected.Entry.Timestamp, out.Entry.Timestamp)
 		})
 	}
 }
