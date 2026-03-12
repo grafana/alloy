@@ -124,8 +124,9 @@ func TestInstanceKey(t *testing.T) {
 			testName:      "cloudwatch",
 			componentName: "prometheus.exporter.cloudwatch",
 			args: cloudwatch.Arguments{
-				STSRegion:    "us-west-2",
-				FIPSDisabled: true,
+				STSRegion:         "us-west-2",
+				FIPSDisabled:      true,
+				UseAWSSDKVersion2: true,
 				Discovery: []cloudwatch.DiscoveryJob{
 					{
 						Type: "AWS/EC2",
