@@ -10,6 +10,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -994,4 +995,101 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQueryDetails_LogFormatFlags(t *testing.T) {
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	testcases := []struct {
+		name                     string
+		enableIndexedLabels      bool
+		enableStructuredMetadata bool
+		assocV2Labels            model.LabelSet
+		assocV2Line              string
+		assocV2SM                push.LabelsAdapter
+	}{
+		{
+			name:                     "both indexed labels and structured metadata enabled",
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: true,
+			assocV2Labels:            model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
+			assocV2Line:              `level="info" querytext="SELECT * FROM some_table WHERE id = $1"`,
+			assocV2SM:                push.LabelsAdapter{{Name: "queryid", Value: "abc123"}},
+		},
+		{
+			name:                     "only indexed labels enabled",
+			enableIndexedLabels:      true,
+			enableStructuredMetadata: false,
+			assocV2Labels:            model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2, "datname": "some_database"},
+			assocV2Line:              `level="info" querytext="SELECT * FROM some_table WHERE id = $1" queryid="abc123"`,
+			assocV2SM:                nil,
+		},
+		{
+			name:                     "only structured metadata enabled",
+			enableIndexedLabels:      false,
+			enableStructuredMetadata: true,
+			assocV2Labels:            model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2},
+			assocV2Line:              `level="info" datname="some_database" querytext="SELECT * FROM some_table WHERE id = $1"`,
+			assocV2SM:                push.LabelsAdapter{{Name: "queryid", Value: "abc123"}},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient := loki.NewCollectingHandler()
+
+			collector, err := NewQueryDetails(QueryDetailsArguments{
+				DB:                       db,
+				CollectInterval:          time.Second,
+				EntryHandler:             lokiClient,
+				Logger:                   log.NewLogfmtLogger(os.Stderr),
+				EnableIndexedLabels:      tc.enableIndexedLabels,
+				EnableStructuredMetadata: tc.enableStructuredMetadata,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, collector)
+
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "")).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"queryid",
+					"query",
+					"datname",
+				}).AddRow(
+					"abc123",
+					"SELECT * FROM some_table WHERE id = $1",
+					"some_database",
+				))
+
+			err = collector.Start(t.Context())
+			require.NoError(t, err)
+
+			// expect: query_association (V1) + query_association_v2 + query_parsed_table_name = 3
+			require.Eventually(t, func() bool {
+				return len(lokiClient.Received()) == 3
+			}, 5*time.Second, 100*time.Millisecond)
+
+			collector.Stop()
+			lokiClient.Stop()
+
+			require.Eventually(t, func() bool {
+				return collector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
+
+			require.NoError(t, mock.ExpectationsWereMet())
+
+			entries := lokiClient.Received()
+			// entries[0] = query_association (V1), entries[1] = query_association_v2, entries[2] = query_parsed_table_name
+			require.Equal(t, tc.assocV2Labels, entries[1].Labels)
+			require.Equal(t, tc.assocV2Line, entries[1].Line)
+			require.Equal(t, tc.assocV2SM, entries[1].StructuredMetadata)
+		})
+	}
 }

@@ -21,7 +21,9 @@ import (
 const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
+	OP_QUERY_SAMPLE_V2    = "query_sample_v2"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 )
 
 const (
@@ -29,7 +31,6 @@ const (
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxnAborted = "idle in transaction (aborted)"
-	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -100,24 +101,28 @@ type QuerySamplesInfo struct {
 }
 
 type QuerySamplesArguments struct {
-	DB                    *sql.DB
-	CollectInterval       time.Duration
-	ExcludeDatabases      []string
-	ExcludeUsers          []string
-	EntryHandler          loki.EntryHandler
-	Logger                log.Logger
-	DisableQueryRedaction bool
-	ExcludeCurrentUser    bool
+	DB                       *sql.DB
+	CollectInterval          time.Duration
+	ExcludeDatabases         []string
+	ExcludeUsers             []string
+	EntryHandler             loki.EntryHandler
+	Logger                   log.Logger
+	DisableQueryRedaction    bool
+	ExcludeCurrentUser       bool
+	EnableIndexedLabels      bool
+	EnableStructuredMetadata bool
 }
 
 type QuerySamples struct {
-	dbConnection          *sql.DB
-	collectInterval       time.Duration
-	excludeDatabases      []string
-	excludeUsers          []string
-	entryHandler          loki.EntryHandler
-	disableQueryRedaction bool
-	excludeCurrentUser    bool
+	dbConnection             *sql.DB
+	collectInterval          time.Duration
+	excludeDatabases         []string
+	excludeUsers             []string
+	entryHandler             loki.EntryHandler
+	disableQueryRedaction    bool
+	excludeCurrentUser       bool
+	enableIndexedLabels      bool
+	enableStructuredMetadata bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -219,17 +224,19 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	const emittedCacheTTL = 10 * time.Minute
 
 	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		excludeDatabases:      args.ExcludeDatabases,
-		excludeUsers:          args.ExcludeUsers,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		excludeCurrentUser:    args.ExcludeCurrentUser,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
+		dbConnection:             args.DB,
+		collectInterval:          args.CollectInterval,
+		excludeDatabases:         args.ExcludeDatabases,
+		excludeUsers:             args.ExcludeUsers,
+		entryHandler:             args.EntryHandler,
+		disableQueryRedaction:    args.DisableQueryRedaction,
+		excludeCurrentUser:       args.ExcludeCurrentUser,
+		enableIndexedLabels:      args.EnableIndexedLabels,
+		enableStructuredMetadata: args.EnableStructuredMetadata,
+		logger:                   log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                  &atomic.Bool{},
+		samples:                  map[SampleKey]*SampleState{},
+		idleEmitted:              expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 	}, nil
 }
 
@@ -478,6 +485,19 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		ts,
 	)
 
+	if c.enableIndexedLabels || c.enableStructuredMetadata {
+		c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
+			logging.LevelInfo,
+			OP_QUERY_SAMPLE_V2,
+			c.buildQuerySampleV2Labels(state, state.EndAt),
+			[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
+			[]database_observability.Field{{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)}},
+			c.enableIndexedLabels,
+			c.enableStructuredMetadata,
+			ts,
+		)
+	}
+
 	for _, we := range state.tracker.WaitEvents() {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
@@ -489,6 +509,24 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			waitEventLabels,
 			we.LastTimestamp.UnixNano(),
 		)
+
+		if c.enableIndexedLabels || c.enableStructuredMetadata {
+			waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+			c.entryHandler.Chan() <- database_observability.BuildV2LokiEntry(
+				logging.LevelInfo,
+				OP_WAIT_EVENT_V2,
+				c.buildWaitEventLabelsV2(state, we),
+				[]database_observability.Field{{Name: "datname", Value: state.LastRow.DatabaseName.String}},
+				[]database_observability.Field{
+					{Name: "queryid", Value: fmt.Sprintf("%d", state.LastRow.QueryID.Int64)},
+					{Name: "wait_event_type", Value: we.WaitEventType},
+					{Name: "wait_event_name", Value: waitEventFullName},
+				},
+				c.enableIndexedLabels,
+				c.enableStructuredMetadata,
+				we.LastTimestamp.UnixNano(),
+			)
+		}
 	}
 
 	delete(c.samples, key)
@@ -540,6 +578,50 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	return labels
 }
 
+func (c *QuerySamples) buildQuerySampleV2Labels(state *SampleState, endAt sql.NullTime) string {
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	end := state.LastRow.Now
+	if endAt.Valid {
+		end = endAt.Time
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
+
+	clientAddr := ""
+	if state.LastRow.ClientAddr.Valid {
+		clientAddr = state.LastRow.ClientAddr.String
+		if state.LastRow.ClientPort.Valid {
+			clientAddr = fmt.Sprintf("%s:%d", clientAddr, state.LastRow.ClientPort.Int32)
+		}
+	}
+
+	labels := fmt.Sprintf(
+		`pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s"`,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.ApplicationName.String,
+		clientAddr,
+		state.LastRow.BackendType.String,
+		state.LastRow.State.String,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		xactDuration,
+		queryDuration,
+	)
+	if state.LastCpuTime != "" {
+		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction && state.LastRow.Query.Valid {
+		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+	}
+	return labels
+}
+
 func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
@@ -562,6 +644,28 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		waitEventFullName,
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
+	)
+}
+
+func (c *QuerySamples) buildWaitEventLabelsV2(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	return fmt.Sprintf(
+		`pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v"`,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		we.LastState,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		we.LastWaitTime,
+		we.WaitEvent,
+		waitEventFullName,
+		we.BlockedByPIDs,
 	)
 }
 
