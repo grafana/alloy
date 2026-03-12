@@ -92,7 +92,7 @@ The mimir-distributed Helm chart enables multi-tenancy by default.
 When you enable multi-tenancy, requests to the Mimir Ruler API must include an `X-Scope-OrgID` tenant header.
 The `mimir.rules.kubernetes` component sends this header only when you configure the `tenant_id` argument.
 
-If you don't set `tenant_id`, the Mimir API returns the error `401 Unauthorized: no org id`
+If you don't set `tenant_id`, the Mimir API returns the error: `401 Unauthorized: no org id`.
 
 To resolve this, set the `tenant_id` argument in the component configuration.
 {{< /admonition >}}
