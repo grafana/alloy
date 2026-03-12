@@ -49,6 +49,7 @@ You can use the following blocks with `loki.source.gcplog`:
 | Name                           | Description                                                                   | Required |
 | ------------------------------ | ----------------------------------------------------------------------------- | -------- |
 | [`pull`][pull]                 | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
+| `pull` > [`limit`][limit]      | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
 | [`push`][push]                 | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
 | `push` > [`grpc`][grpc]        | Configures the gRPC server that receives requests when using the `push` mode. | no       |
 | `push` > `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
@@ -57,6 +58,7 @@ You can use the following blocks with `loki.source.gcplog`:
 
 [grpc]: #grpc
 [http]: #http
+[limit]: #limit
 [pull]: #pull
 [push]: #push
 [tls]: #tls
@@ -82,10 +84,26 @@ Any omitted fields take their default values.
 | `use_full_line`          | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. | `false` | no       |
 | `use_incoming_timestamp` | `bool`        | Whether to use the incoming log timestamp.                                | `false` | no       |
 
+The following blocks can be used to configure the `pull` block:
+
+| Name              | Description                                                                   | Required |
+| ----------------- | ----------------------------------------------------------------------------- | -------- |
+| [`limit`][limit]  | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
+
 To make use of the `pull` strategy, the GCP project must have been [configured](/docs/loki/next/clients/promtail/gcplog-cloud/) to forward its cloud resource logs onto a Pub/Sub topic for `loki.source.gcplog` to consume.
 
 Typically, the host system also needs to have its GCP [credentials](https://cloud.google.com/docs/authentication/application-default-credentials) configured.
 One way to do it, is to point the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the location of a credential configuration JSON file or a service account key.
+
+### `limit`
+
+The `limit` block configures flow-control budgets for unprocessed Pub/Sub messages.
+When either budget is reached, Pub/Sub delivery is throttled, which limits concurrent in-flight message handling.
+
+| Name                       | Type     | Description                                                                               | Default | Required |
+| -------------------------- | -------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `max_outstanding_bytes`    | `string` | Byte budget for unprocessed messages, hitting this budget throttles delivery concurrency. | `"1GiB"`| no       |
+| `max_outstanding_messages` | `int`    | Count budget for unprocessed messages, hitting this budget caps in-flight concurrency.    | `1000`  | no       |
 
 ### `push`
 
