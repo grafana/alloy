@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -732,5 +733,64 @@ func TestPostgres_Reconnection(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("Run did not exit after context cancellation")
 		}
+	})
+}
+
+func Test_PrometheusExporterBlock(t *testing.T) {
+	t.Run("absent when not specified", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			targets = []
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		assert.Nil(t, args.PrometheusExporter)
+	})
+
+	t.Run("present with defaults when empty block", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			targets = []
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_postgres.Arguments(*args.PrometheusExporter)
+		assert.False(t, exporterArgs.DisableDefaultMetrics)
+		assert.False(t, exporterArgs.DisableSettingsMetrics)
+	})
+
+	t.Run("present with explicit config", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			targets = []
+			prometheus_exporter {
+				disable_settings_metrics = true
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_postgres.Arguments(*args.PrometheusExporter)
+		assert.True(t, exporterArgs.DisableSettingsMetrics)
+	})
+
+	t.Run("error when both prometheus_exporter and targets are set", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			targets = [{"__address__" = "localhost:9187"}]
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
 	})
 }
