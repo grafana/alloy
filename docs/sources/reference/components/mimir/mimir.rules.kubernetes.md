@@ -74,7 +74,7 @@ At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments]argument
+* [`bearer_token_file`][arguments] argument
 * [`bearer_token`][arguments] argument
 * [`oauth2`][oauth2] block
 
@@ -170,7 +170,7 @@ The following arguments are supported:
 | `value`            | `string` | Value of the label to match.                             |         | no       |
 | `value_from_label` | `string` | Value of the Kubernetes `PrometheusRule` label to match. |         | no       |
 
-Only one of `value` or `value_from_label` can be used. 
+Only one of `value` or `value_from_label` can be used.
 
 ### `rule_selector` and `rule_namespace_selector`
 
