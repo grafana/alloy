@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
 
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
@@ -390,12 +389,6 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 	// Step 5: Close the send side to signal EOF.
 	if err := stream.CloseRequest(); err != nil {
 		return fmt.Errorf("close send: %w", err)
-	}
-	if err := stream.CloseResponse(); err != nil {
-		if connectErr := new(connect.Error); !connect.IsNotModifiedError(err) {
-			_ = connectErr // suppress unused
-			return fmt.Errorf("close response: %w", err)
-		}
 	}
 
 	u.uploadRequestBytes.Add(float64(bytesSent))
