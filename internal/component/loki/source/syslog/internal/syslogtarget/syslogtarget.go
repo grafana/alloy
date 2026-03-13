@@ -139,7 +139,7 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 	if msg.Message == nil {
 		t.metrics.syslogEmptyMessages.Inc()
 
-		if !t.config.AllowEmptyRFC5424Msg {
+		if !t.config.RFC5424AllowEmptyMsg {
 			return
 		}
 	}

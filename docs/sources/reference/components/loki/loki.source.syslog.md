@@ -115,7 +115,7 @@ Only the `address` field is required and any omitted fields take their default v
 | Name                              | Type          | Description                                                                            | Default     | Required |
 |-----------------------------------|---------------|----------------------------------------------------------------------------------------|-------------|----------|
 | `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                            |             | yes      |
-| `allow_empty_rfc5424_msg`         | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`     | no       |
+| `rfc5424_allow_empty_msg`         | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`     | no       |
 | `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                  | `"120s"`    | no       |
 | `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                            | `false`     | no       |
 | `labels`                          | `map(string)` | The labels to associate with each received syslog record.                              | `{}`        | no       |
@@ -153,7 +153,7 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
   Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
   `loki.source.syslog` drops messages with empty MSG content by default.
-  Set `allow_empty_rfc5424_msg` to `true` to forward them.
+  Set `rfc5424_allow_empty_msg` to `true` to forward them.
   `loki.source.syslog` increments the `loki_source_syslog_empty_messages_total` counter in both cases for debugging.
 * **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].

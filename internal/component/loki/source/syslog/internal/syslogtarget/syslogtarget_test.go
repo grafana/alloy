@@ -584,7 +584,7 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenAllowed(t *testing.T) {
 		Config: &scrapeconfig.SyslogTargetConfig{
 			ListenAddress:        "127.0.0.1:0",
 			ListenProtocol:       ProtocolUDP,
-			AllowEmptyRFC5424Msg: true,
+			RFC5424AllowEmptyMsg: true,
 			Labels: model.LabelSet{
 				"test": "syslog_target",
 			},
@@ -631,7 +631,7 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
 		Config: &scrapeconfig.SyslogTargetConfig{
 			ListenAddress:        "127.0.0.1:0",
 			ListenProtocol:       ProtocolUDP,
-			AllowEmptyRFC5424Msg: false,
+			RFC5424AllowEmptyMsg: false,
 		},
 	})
 	require.NoError(t, err)
@@ -651,7 +651,7 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
 	start := time.Now()
 	require.Eventually(t, func() bool {
 		return time.Since(start) >= 100*time.Millisecond && len(handler.Received()) == 0
-	}, 200*time.Millisecond, 10*time.Millisecond, "RFC5424 log with nil Message should be dropped when AllowEmptyRFC5424Msg is false")
+	}, 200*time.Millisecond, 10*time.Millisecond, "RFC5424 log with nil Message should be dropped when RFC5424AllowEmptyMsg is false")
 }
 
 const layout = "Jan 02 15:04:05"

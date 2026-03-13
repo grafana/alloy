@@ -22,7 +22,7 @@ type ListenerConfig struct {
 	UseIncomingTimestamp        bool                      `alloy:"use_incoming_timestamp,attr,optional"`
 	UseRFC5424Message           bool                      `alloy:"use_rfc5424_message,attr,optional"`
 	RFC3164DefaultToCurrentYear bool                      `alloy:"rfc3164_default_to_current_year,attr,optional"`
-	AllowEmptyRFC5424Msg        bool                      `alloy:"allow_empty_rfc5424_msg,attr,optional"`
+	RFC5424AllowEmptyMsg        bool                      `alloy:"rfc5424_allow_empty_msg,attr,optional"`
 	MaxMessageLength            int                       `alloy:"max_message_length,attr,optional"`
 	TLSConfig                   config.TLSConfig          `alloy:"tls_config,block,optional"`
 	SyslogFormat                scrapeconfig.SyslogFormat `alloy:"syslog_format,attr,optional"`
@@ -91,8 +91,8 @@ func (sc *ListenerConfig) Validate() error {
 	}
 
 	if sc.SyslogFormat != scrapeconfig.SyslogFormatRFC5424 {
-		if sc.AllowEmptyRFC5424Msg {
-			return fmt.Errorf(`"allow_empty_rfc5424_msg" has no effect when syslog format is set to %q`, sc.SyslogFormat)
+		if sc.RFC5424AllowEmptyMsg {
+			return fmt.Errorf(`"rfc5424_allow_empty_msg" has no effect when syslog format is set to %q`, sc.SyslogFormat)
 		}
 	}
 
@@ -136,7 +136,7 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 		UseIncomingTimestamp:        sc.UseIncomingTimestamp,
 		UseRFC5424Message:           sc.UseRFC5424Message,
 		RFC3164DefaultToCurrentYear: sc.RFC3164DefaultToCurrentYear,
-		AllowEmptyRFC5424Msg:        sc.AllowEmptyRFC5424Msg,
+		RFC5424AllowEmptyMsg:        sc.RFC5424AllowEmptyMsg,
 		MaxMessageLength:            sc.MaxMessageLength,
 		TLSConfig:                   *sc.TLSConfig.Convert(),
 		SyslogFormat:                sc.SyslogFormat,
