@@ -3,9 +3,11 @@ package write
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -14,7 +16,8 @@ import (
 	"sync"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"golang.org/x/net/http2"
+
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -23,6 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -35,7 +39,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -226,14 +229,12 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) Client() debuginfogrpc.DebuginfoServiceClient {
+func (f *fanOutClient) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
 	for _, client := range f.debugInfos {
-		cl := client.Client()
-		if cl != nil {
-			return cl
-		}
+		clients = append(clients, client.DebugInfoClients()...)
 	}
-	return nil
+	return clients
 }
 
 func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
@@ -265,10 +266,6 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for i, endpoint := range config.Endpoints {
-		u, err := url.Parse(endpoint.URL)
-		if err != nil {
-			return nil, err
-		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -286,9 +283,12 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		ingestClients[endpoint] = httpClient
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		debugInfo := debuginfo.NewClient(logger, func() (*grpc.ClientConn, error) {
-			return newDebugInfoGRPCClient(u, endpoint)
-		}, metrics.debugInfoUploadBytes, endpointDataPath)
+		// Bidi streaming (debuginfo upload) requires HTTP/2. For HTTPS this
+		// works via ALPN; for plain HTTP we need an h2c-capable transport
+		// because receive_http and pyroscope both serve h2c.
+		debuginfoHTTPClient := newH2CClient(endpoint.URL, httpClient)
+		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(debuginfoHTTPClient, endpoint.URL)
+		debugInfo := debuginfo.NewClient(logger, connectClient, metrics.debugInfoUploadBytes, endpointDataPath)
 		debugInfos = append(debugInfos, debugInfo)
 	}
 
@@ -753,6 +753,34 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
+}
+
+// newH2CClient returns an HTTP client for Connect bidi streaming.
+// For HTTPS endpoints, the base client is returned as-is (HTTP/2 via ALPN).
+// For plain HTTP endpoints, returns a client with h2c transport because bidi
+// streaming requires HTTP/2 and both receive_http and pyroscope serve h2c.
+//
+// Note: the Go standard library and prometheus/common/config do not support
+// h2c natively (same pattern used in internal/service/cluster/cluster.go).
+// The h2c transport reuses the base client's settings where possible.
+func newH2CClient(endpointURL string, base *http.Client) *http.Client {
+	u, err := url.Parse(endpointURL)
+	if err != nil || u.Scheme == "https" {
+		return base
+	}
+	return &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				// Plain TCP dial for h2c (same approach as cluster.go).
+				var d net.Dialer
+				return d.DialContext(ctx, network, addr)
+			},
+		},
+		Timeout:       base.Timeout,
+		CheckRedirect: base.CheckRedirect,
+		Jar:           base.Jar,
+	}
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {
