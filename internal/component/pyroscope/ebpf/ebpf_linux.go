@@ -68,17 +68,20 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	nfs, err := irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
-		Options: []lidia.Option{
-			lidia.WithFiles(),
-			lidia.WithLines(),
-		},
-	}, irsymcache.Options{
-		SizeEntries: uint32(args.SymbCacheSizeEntries),
-		Path:        args.SymbCachePath,
-	})
-	if err != nil {
-		return nil, err
+	var nfs *irsymcache.Resolver
+	if args.SymbCacheEnabled {
+		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
+			Options: []lidia.Option{
+				lidia.WithFiles(),
+				lidia.WithLines(),
+			},
+		}, irsymcache.Options{
+			SizeEntries: uint32(args.SymbCacheSizeEntries),
+			Path:        args.SymbCachePath,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if dynamicProfilingPolicy {
@@ -283,9 +286,11 @@ func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
 	if c.symbols != nil {
 		c.symbols.ReportExecutable(md)
 	}
+	if c.args.DebugInfoArguments.UploadEnabled {
+		c.reportExecutableForDebugInfoUpload(md)
+	}
 }
 
-//nolint:unused
 func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
 	extractAsFile := func(pid libpf.PID, file string) string {
 		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file)
@@ -308,6 +313,7 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 	c.appendable.Upload(debuginfo.UploadJob{
 		FrameMappingFileData: mf,
 		Open:                 open,
+		InitArguments:        c.args.DebugInfoArguments,
 	})
 }
 
@@ -338,6 +344,13 @@ func NewDefaultArguments() Arguments {
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
 		SymbCacheSizeEntries:            2048,
+		SymbCacheEnabled:                true,
+		DebugInfoArguments: debuginfo.Arguments{
+			UploadEnabled: false,
+			CacheSize:     1024,
+			QueueSize:     64,
+			WorkerNum:     4,
+		},
 	}
 }
 
