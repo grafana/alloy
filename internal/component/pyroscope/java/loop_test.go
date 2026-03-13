@@ -43,7 +43,7 @@ func (m *mockAppendable) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (m *mockAppendable) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (m *mockAppendable) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }
 

@@ -13,7 +13,7 @@ var _ Appendable = AppenderMock{}
 type AppenderMock struct {
 	AppendIngestFunc    func(ctx context.Context, profile *IncomingProfile) error
 	AppendFunc          func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-	ConnectClientsFunc  func() []debuginfov1alpha1connect.DebuginfoServiceClient
+	DebugInfoClientsFunc  func() []debuginfov1alpha1connect.DebuginfoServiceClient
 	DebugInfoUploadFunc func(j debuginfo.UploadJob)
 }
 
@@ -29,9 +29,9 @@ func (a AppenderMock) Appender() Appender {
 	return a
 }
 
-func (a AppenderMock) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
-	if a.ConnectClientsFunc != nil {
-		return a.ConnectClientsFunc()
+func (a AppenderMock) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	if a.DebugInfoClientsFunc != nil {
+		return a.DebugInfoClientsFunc()
 	}
 	return nil
 }

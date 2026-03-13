@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 )
 
 type Arguments struct {
@@ -29,12 +30,13 @@ type Arguments struct {
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
 	// undocumented
-	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
-	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
-	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
-	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
-	SymbolUploadEnabled             bool   `alloy:"symbol_upload_enabled,attr,optional"`
-	SymbCacheEnabled                bool   `alloy:"symb_cache_enabled,attr,optional"`
+	PyroscopeDynamicProfilingPolicy bool                `alloy:"targets_only,attr,optional"`
+	SymbCachePath                   string              `alloy:"symb_cache_path,attr,optional"`
+	SymbCacheSizeEntries            int                 `alloy:"symb_cache_size,attr,optional"`
+	ReporterUnsymbolizedStubs       bool                `alloy:"reporter_unsymbolized_stubs,attr,optional"`
+	SymbolUploadEnabled             bool                `alloy:"symbol_upload_enabled,attr,optional"`
+	SymbCacheEnabled                bool                `alloy:"symb_cache_enabled,attr,optional"`
+	DebugInfoArguments              debuginfo.Arguments `alloy:"debug_info,block,optional"`
 }
 
 type DeprecatedArguments struct {

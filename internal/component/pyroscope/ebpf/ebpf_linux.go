@@ -309,11 +309,7 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 	c.appendable.Upload(debuginfo.UploadJob{
 		FrameMappingFileData: mf,
 		Open:                 open,
-		InitArguments: debuginfo.Arguments{
-			CacheSize: 1024,
-			QueueSize: 64,
-			WorkerNum: 4,
-		},
+		InitArguments:        c.args.DebugInfoArguments,
 	})
 }
 
@@ -342,6 +338,11 @@ func NewDefaultArguments() Arguments {
 		SymbCachePath:                   "/tmp/symb-cache",
 		SymbCacheSizeEntries:            2048,
 		SymbCacheEnabled:                true,
+		DebugInfoArguments: debuginfo.Arguments{
+			CacheSize: 1024,
+			QueueSize: 64,
+			WorkerNum: 4,
+		},
 	}
 }
 

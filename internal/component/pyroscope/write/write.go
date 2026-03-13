@@ -229,10 +229,10 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (f *fanOutClient) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
 	for _, client := range f.debugInfos {
-		clients = append(clients, client.ConnectClients()...)
+		clients = append(clients, client.DebugInfoClients()...)
 	}
 	return clients
 }
@@ -285,7 +285,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
 		// Bidi streaming (used by debuginfo upload) requires HTTP/2.
 		// For HTTPS this works via ALPN; for plain HTTP we need an h2c transport.
-		debuginfoHTTPClient := newHTTP2Client(httpClient)
+		debuginfoHTTPClient := newH2CClient(endpoint.URL, httpClient)
 		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(debuginfoHTTPClient, endpoint.URL)
 		debugInfo := debuginfo.NewClient(logger, connectClient, metrics.debugInfoUploadBytes, endpointDataPath)
 		debugInfos = append(debugInfos, debugInfo)
@@ -754,10 +754,15 @@ func validateLabels(lbls labels.Labels) error {
 	return err
 }
 
-// newHTTP2Client wraps an existing HTTP client's transport with HTTP/2 support.
-// For HTTPS, HTTP/2 is negotiated via ALPN automatically. For plain HTTP (h2c),
-// we use the http2 transport with AllowHTTP and a custom dialer.
-func newHTTP2Client(base *http.Client) *http.Client {
+// newH2CClient returns an HTTP client suitable for Connect bidi streaming.
+// For HTTPS endpoints, the base client is returned as-is (HTTP/2 via ALPN).
+// For plain HTTP endpoints, an h2c-capable client is returned since bidi
+// streaming requires HTTP/2 which isn't negotiated over cleartext by default.
+func newH2CClient(endpointURL string, base *http.Client) *http.Client {
+	u, err := url.Parse(endpointURL)
+	if err != nil || u.Scheme == "https" {
+		return base
+	}
 	return &http.Client{
 		Transport: &http2.Transport{
 			AllowHTTP: true,

@@ -14,9 +14,9 @@ type Appender interface {
 	// Upload dispatches the job recursively to each of the nested children, down to each write component,
 	// down to Client and therefore the uploader.
 	Upload(j UploadJob)
-	// ConnectClients returns ALL Connect debuginfo clients from all nested children.
+	// DebugInfoClients returns ALL Connect debuginfo clients from all nested children.
 	// This is used by the receive_http proxy to fan-out uploads to all downstream endpoints.
-	ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient
+	DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient
 }
 
 type Arguments struct {
@@ -54,7 +54,7 @@ type Client struct {
 	dataPath      string
 }
 
-func (c *Client) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (c *Client) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	if c.connectClient != nil {
 		return []debuginfov1alpha1connect.DebuginfoServiceClient{c.connectClient}
 	}

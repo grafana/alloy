@@ -552,7 +552,7 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (a *testAppender) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }
 
@@ -779,7 +779,7 @@ func (d *debuginfoAppendable) AppendIngest(_ context.Context, _ *pyroscope.Incom
 	return nil
 }
 func (d *debuginfoAppendable) Upload(_ debuginfo.UploadJob) {}
-func (d *debuginfoAppendable) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (d *debuginfoAppendable) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return d.clients
 }
 
