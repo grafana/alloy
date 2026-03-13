@@ -7,13 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"sync"
 	"testing"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
+	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/phayes/freeport"
@@ -547,7 +549,7 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) Client() debuginfogrpc.DebuginfoServiceClient {
+func (a *testAppender) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }
 
@@ -689,4 +691,308 @@ func TestAPIToAlloySamples(t *testing.T) {
 			}
 		})
 	}
+}
+
+// --- debuginfo proxy tests ---
+
+// mockDebuginfoHandler implements debuginfov1alpha1connect.DebuginfoServiceHandler for testing.
+type mockDebuginfoHandler struct {
+	uploadFunc func(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error
+}
+
+func (m *mockDebuginfoHandler) Upload(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
+	return m.uploadFunc(ctx, stream)
+}
+
+// downstreamResult captures what a mock downstream server received.
+type downstreamResult struct {
+	initFile *debuginfov1alpha1.FileMetadata
+	data     []byte
+	chunks   int
+}
+
+// startMockDownstream creates a TLS httptest server (HTTP/2) running a mock debuginfo handler.
+// shouldUpload controls whether the server accepts uploads.
+// resultCh receives the captured result after the handler finishes.
+func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) debuginfov1alpha1connect.DebuginfoServiceClient {
+	t.Helper()
+	handler := &mockDebuginfoHandler{
+		uploadFunc: func(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
+			req, err := stream.Receive()
+			if err != nil {
+				return err
+			}
+
+			if err := stream.Send(&debuginfov1alpha1.UploadResponse{
+				Data: &debuginfov1alpha1.UploadResponse_Init{
+					Init: &debuginfov1alpha1.ShouldInitiateUploadResponse{
+						ShouldInitiateUpload: shouldUpload,
+					},
+				},
+			}); err != nil {
+				return err
+			}
+
+			res := downstreamResult{
+				initFile: req.GetInit().GetFile(),
+			}
+
+			if shouldUpload {
+				for {
+					chunkReq, err := stream.Receive()
+					if err != nil {
+						break
+					}
+					if chunk := chunkReq.GetChunk(); chunk != nil {
+						res.chunks++
+						res.data = append(res.data, chunk.GetChunk()...)
+					}
+				}
+			}
+
+			resultCh <- res
+			return nil
+		},
+	}
+
+	_, h := debuginfov1alpha1connect.NewDebuginfoServiceHandler(handler)
+	server := httptest.NewUnstartedServer(h)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	return debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
+}
+
+// debuginfoAppendable is a test pyroscope.Appendable that returns Connect debuginfo clients.
+type debuginfoAppendable struct {
+	clients []debuginfov1alpha1connect.DebuginfoServiceClient
+}
+
+func (d *debuginfoAppendable) Appender() pyroscope.Appender { return d }
+func (d *debuginfoAppendable) Append(_ context.Context, _ labels.Labels, _ []*pyroscope.RawSample) error {
+	return nil
+}
+func (d *debuginfoAppendable) AppendIngest(_ context.Context, _ *pyroscope.IncomingProfile) error {
+	return nil
+}
+func (d *debuginfoAppendable) Upload(_ debuginfo.UploadJob) {}
+func (d *debuginfoAppendable) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	return d.clients
+}
+
+// startProxyServer creates a Component with the given appendables and serves its
+// debuginfo Upload handler via an HTTP/2 TLS test server. Returns a Connect client.
+func startProxyServer(t *testing.T, appendables []pyroscope.Appendable) debuginfov1alpha1connect.DebuginfoServiceClient {
+	t.Helper()
+	comp := &Component{
+		appendables: appendables,
+	}
+	_, h := debuginfov1alpha1connect.NewDebuginfoServiceHandler(comp)
+	server := httptest.NewUnstartedServer(h)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	return debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
+}
+
+// sendUploadViaProxy opens a bidi stream to the proxy client, sends an init request, reads the
+// init response, and if accepted, streams fileData as chunks.
+func sendUploadViaProxy(t *testing.T, proxyClient debuginfov1alpha1connect.DebuginfoServiceClient, fileData []byte) (bool, error) {
+	t.Helper()
+	stream := proxyClient.Upload(context.Background())
+
+	// Send init.
+	err := stream.Send(&debuginfov1alpha1.UploadRequest{
+		Data: &debuginfov1alpha1.UploadRequest_Init{
+			Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+				File: &debuginfov1alpha1.FileMetadata{
+					GnuBuildId: "test-build-id",
+					Name:       "test.so",
+					Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+				},
+			},
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("send init: %w", err)
+	}
+
+	// Receive init response.
+	resp, err := stream.Receive()
+	if err != nil {
+		return false, fmt.Errorf("receive init response: %w", err)
+	}
+
+	initResp := resp.GetInit()
+	if initResp == nil {
+		return false, fmt.Errorf("expected init response")
+	}
+
+	if !initResp.ShouldInitiateUpload {
+		_ = stream.CloseRequest()
+		return false, nil
+	}
+
+	// Stream chunks.
+	chunkSize := 1024
+	for offset := 0; offset < len(fileData); offset += chunkSize {
+		end := offset + chunkSize
+		if end > len(fileData) {
+			end = len(fileData)
+		}
+		if err := stream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Chunk{
+				Chunk: &debuginfov1alpha1.UploadChunk{
+					Chunk: fileData[offset:end],
+				},
+			},
+		}); err != nil {
+			return true, fmt.Errorf("send chunk: %w", err)
+		}
+	}
+
+	_ = stream.CloseRequest()
+	return true, nil
+}
+
+func TestDebugInfoProxy_SingleEndpoint_AcceptsUpload(t *testing.T) {
+	resultCh := make(chan downstreamResult, 1)
+	dsClient := startMockDownstream(t, true, resultCh)
+
+	appendable := &debuginfoAppendable{clients: []debuginfov1alpha1connect.DebuginfoServiceClient{dsClient}}
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
+
+	fileData := []byte("hello proxy debuginfo upload test data")
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
+	require.NoError(t, err)
+	require.True(t, accepted)
+
+	select {
+	case res := <-resultCh:
+		require.Equal(t, "test-build-id", res.initFile.GetGnuBuildId())
+		require.Equal(t, "test.so", res.initFile.GetName())
+		require.Equal(t, fileData, res.data)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for downstream to receive upload")
+	}
+}
+
+func TestDebugInfoProxy_MultipleEndpoints_AllAccept(t *testing.T) {
+	const numEndpoints = 3
+	resultChs := make([]chan downstreamResult, numEndpoints)
+	clients := make([]debuginfov1alpha1connect.DebuginfoServiceClient, numEndpoints)
+
+	for i := 0; i < numEndpoints; i++ {
+		resultChs[i] = make(chan downstreamResult, 1)
+		clients[i] = startMockDownstream(t, true, resultChs[i])
+	}
+
+	appendable := &debuginfoAppendable{clients: clients}
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
+
+	fileData := []byte("multi-endpoint-test-data-for-all-accepting-servers")
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
+	require.NoError(t, err)
+	require.True(t, accepted)
+
+	for i := 0; i < numEndpoints; i++ {
+		select {
+		case res := <-resultChs[i]:
+			require.Equal(t, "test-build-id", res.initFile.GetGnuBuildId(), "endpoint %d", i)
+			require.Equal(t, fileData, res.data, "endpoint %d data mismatch", i)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timed out waiting for downstream %d", i)
+		}
+	}
+}
+
+func TestDebugInfoProxy_MultipleEndpoints_AllDecline(t *testing.T) {
+	const numEndpoints = 3
+	resultChs := make([]chan downstreamResult, numEndpoints)
+	clients := make([]debuginfov1alpha1connect.DebuginfoServiceClient, numEndpoints)
+
+	for i := 0; i < numEndpoints; i++ {
+		resultChs[i] = make(chan downstreamResult, 1)
+		clients[i] = startMockDownstream(t, false, resultChs[i])
+	}
+
+	appendable := &debuginfoAppendable{clients: clients}
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
+
+	fileData := []byte("should-not-be-sent")
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
+	require.NoError(t, err)
+	require.False(t, accepted, "proxy should decline when all endpoints decline")
+
+	// Verify all downstreams received the init but no chunks.
+	for i := 0; i < numEndpoints; i++ {
+		select {
+		case res := <-resultChs[i]:
+			require.Equal(t, "test-build-id", res.initFile.GetGnuBuildId(), "endpoint %d", i)
+			require.Nil(t, res.data, "endpoint %d should not have received chunks", i)
+			require.Equal(t, 0, res.chunks, "endpoint %d should not have received chunks", i)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timed out waiting for downstream %d", i)
+		}
+	}
+}
+
+func TestDebugInfoProxy_MultipleEndpoints_SomeAccept(t *testing.T) {
+	// 3 endpoints: [0]=decline, [1]=accept, [2]=accept
+	accepts := []bool{false, true, true}
+	resultChs := make([]chan downstreamResult, len(accepts))
+	clients := make([]debuginfov1alpha1connect.DebuginfoServiceClient, len(accepts))
+
+	for i, shouldAccept := range accepts {
+		resultChs[i] = make(chan downstreamResult, 1)
+		clients[i] = startMockDownstream(t, shouldAccept, resultChs[i])
+	}
+
+	appendable := &debuginfoAppendable{clients: clients}
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
+
+	fileData := []byte("partial-accept-test-data")
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
+	require.NoError(t, err)
+	require.True(t, accepted, "proxy should accept when at least one endpoint accepts")
+
+	for i, shouldAccept := range accepts {
+		select {
+		case res := <-resultChs[i]:
+			require.Equal(t, "test-build-id", res.initFile.GetGnuBuildId(), "endpoint %d", i)
+			if shouldAccept {
+				require.Equal(t, fileData, res.data, "accepting endpoint %d data mismatch", i)
+			} else {
+				require.Nil(t, res.data, "declining endpoint %d should not receive chunks", i)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timed out waiting for downstream %d", i)
+		}
+	}
+}
+
+func TestDebugInfoProxy_NoEndpoints(t *testing.T) {
+	// No downstream clients at all.
+	appendable := &debuginfoAppendable{clients: nil}
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
+	stream := proxyClient.Upload(context.Background())
+
+	err := stream.Send(&debuginfov1alpha1.UploadRequest{
+		Data: &debuginfov1alpha1.UploadRequest_Init{
+			Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+				File: &debuginfov1alpha1.FileMetadata{
+					GnuBuildId: "test",
+					Name:       "test.so",
+				},
+			},
+		},
+	})
+	if err != nil {
+		// Error on send is acceptable — server may reject immediately.
+		return
+	}
+
+	_, err = stream.Receive()
+	require.Error(t, err)
+	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
 }
