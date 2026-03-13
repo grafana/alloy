@@ -339,9 +339,10 @@ func NewDefaultArguments() Arguments {
 		SymbCacheSizeEntries:            2048,
 		SymbCacheEnabled:                true,
 		DebugInfoArguments: debuginfo.Arguments{
-			CacheSize: 1024,
-			QueueSize: 64,
-			WorkerNum: 4,
+			UploadEnabled: false,
+			CacheSize:     1024,
+			QueueSize:     64,
+			WorkerNum:     4,
 		},
 	}
 }
