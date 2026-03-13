@@ -129,9 +129,10 @@ type mappingKey struct {
 type ProfileBuilder struct {
 	p *ProfileBuilders
 
-	locations map[locationsKey]*profile.Location
-	functions map[functionsKey]*profile.Function
-	mappings  map[mappingKey]*profile.Mapping
+	locations     map[locationsKey]*profile.Location
+	functions     map[functionsKey]*profile.Function
+	mappings      map[mappingKey]*profile.Mapping
+	commLocations map[string]*profile.Location
 
 	Profile *profile.Profile
 	Target  *discovery.Target
@@ -141,6 +142,26 @@ type ProfileBuilder struct {
 
 func (p *ProfileBuilder) FakeMapping() *profile.Mapping {
 	return p.dummyMapping
+}
+
+func (p *ProfileBuilder) CommLocation(comm string) *profile.Location {
+	if loc, ok := p.commLocations[comm]; ok {
+		return loc
+	}
+	loc := &profile.Location{
+		ID:      uint64(len(p.Profile.Location) + 1),
+		Mapping: p.dummyMapping,
+		Line: []profile.Line{{
+			Function: p.Function(libpf.Intern(comm), libpf.Intern("")),
+		}},
+	}
+	p.Profile.Location = append(p.Profile.Location, loc)
+	p.dummyMapping.HasFunctions = true
+	if p.commLocations == nil {
+		p.commLocations = make(map[string]*profile.Location)
+	}
+	p.commLocations[comm] = loc
+	return loc
 }
 
 func (p *ProfileBuilder) Mapping(

@@ -321,16 +321,7 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 			s.Location = append(s.Location, location)
 		}
 		if comm != "" && p.cfg.CommMode.stackframe() {
-			commLocation := &profile.Location{
-				ID:      uint64(len(b.Profile.Location) + 1),
-				Mapping: fakeMapping,
-				Line: []profile.Line{{
-					Function: b.Function(libpf.Intern(comm), libpf.Intern("")),
-				}},
-			}
-			b.Profile.Location = append(b.Profile.Location, commLocation)
-			fakeMapping.HasFunctions = true
-			s.Location = append(s.Location, commLocation)
+			s.Location = append(s.Location, b.CommLocation(comm))
 		}
 	}
 	res := make([]PPROF, 0, len(bs.Builders))
@@ -362,7 +353,6 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 	return res
 }
 
-// TODO: symbols like __GI___clone3 are confusing in profiles, find a way to use a proper/nicer name.
 func (p *PPROFReporter) symbolizeNativeFrame(
 	b *ProfileBuilder,
 	loc *profile.Location,
