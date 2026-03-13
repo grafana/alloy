@@ -9,6 +9,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/akamai"
+	alibabaecs "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/alibaba/ecs"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ec2"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ecs"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/eks"
@@ -30,7 +31,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/oraclecloud"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/scaleway"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
-	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/tencent"
+	tencentcvm "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/tencent/cvm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/upcloud"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/vultr"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -161,7 +162,10 @@ type DetectorConfig struct {
 	VultrConfig vultr.Config `alloy:"vultr,block,optional"`
 
 	// TencentCVMConfig contains user-specified configurations for the Tencent Cloud CVM detector
-	TencentCVMConfig tencent.Config `alloy:"tencent_cvm,block,optional"`
+	TencentCVMConfig tencentcvm.Config `alloy:"tencent_cvm,block,optional"`
+
+	// AlibabaECSConfig contains user-specified configurations for the Alibaba Cloud ECS detector
+	AlibabaECSConfig alibabaecs.Config `alloy:"alibaba_ecs,block,optional"`
 }
 
 func (dc *DetectorConfig) SetToDefault() {
@@ -189,7 +193,8 @@ func (dc *DetectorConfig) SetToDefault() {
 		ScalewayConfig:         scaleway.DefaultArguments,
 		UpCloudConfig:          upcloud.DefaultArguments,
 		VultrConfig:            vultr.DefaultArguments,
-		TencentCVMConfig:       tencent.DefaultArguments,
+		TencentCVMConfig:       tencentcvm.DefaultArguments,
+		AlibabaECSConfig:       alibabaecs.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -244,7 +249,8 @@ func (args *Arguments) Validate() error {
 			scaleway.Name,
 			upcloud.Name,
 			vultr.Name,
-			tencent.Name:
+			tencentcvm.Name,
+			alibabaecs.Name:
 		// Valid option - nothing to do
 		default:
 			return fmt.Errorf("invalid detector: %s", detector)
@@ -304,6 +310,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["upcloud"] = args.DetectorConfig.UpCloudConfig.Convert()
 	input["vultr"] = args.DetectorConfig.VultrConfig.Convert()
 	input["tencent_cvm"] = args.DetectorConfig.TencentCVMConfig.Convert()
+	input["alibaba_ecs"] = args.DetectorConfig.AlibabaECSConfig.Convert()
 	var result resourcedetectionprocessor.Config
 	err := mapstructure.Decode(input, &result)
 

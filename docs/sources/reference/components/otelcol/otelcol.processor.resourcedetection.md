@@ -52,6 +52,7 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 {{< column-list >}}
 
 - `akamai`
+- `alibaba_ecs`
 - `aks`
 - `azure`
 - `consul`
@@ -116,6 +117,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                                          | yes      |
 | [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.      | no       |
+| [`alibaba_ecs`][alibaba_ecs]           | Queries the Alibaba Cloud ECS metadata service to retrieve various resource attributes.                     | no       |
 | [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                             | no       |
 | [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                       | no       |
 | [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes.    | no       |
@@ -144,6 +146,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [output]: #output
 [debug_metrics]: #debug_metrics
 [akamai]: #akamai
+[alibaba_ecs]: #alibaba_ecs
 [ec2]: #ec2
 [ecs]: #ecs
 [eks]: #eks
@@ -944,6 +947,38 @@ The `tencent_cvm` block supports the following blocks:
 | [`resource_attributes`](#tencent_cvm--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `tencent_cvm` > `resource_attributes`
+
+The `resource_attributes` block supports the following blocks:
+
+| Block                                     | Description                                                                                    | Required |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
+| [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.image.id`][res-attr-cfg]           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+
+### `alibaba_ecs`
+
+The `alibaba_ecs` block queries the Alibaba Cloud ECS metadata service to retrieve resource attributes.
+
+The `alibaba_ecs` block supports the following attributes:
+
+| Attribute                  | Type   | Description                                                                              | Default | Required |
+| -------------------------- | ------ | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| `fail_on_missing_metadata` | `bool` | Whether to fail if the metadata endpoint is unavailable or required fields are missing. | `false` | no       |
+
+The `alibaba_ecs` block supports the following blocks:
+
+| Block                                                      | Description                                  | Required |
+| ---------------------------------------------------------- | -------------------------------------------- | -------- |
+| [`resource_attributes`](#alibaba_ecs--resource_attributes) | Configures which resource attributes to add. | no       |
+
+#### `alibaba_ecs` > `resource_attributes`
 
 The `resource_attributes` block supports the following blocks:
 

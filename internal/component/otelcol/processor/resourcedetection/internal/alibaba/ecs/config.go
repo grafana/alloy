@@ -1,11 +1,11 @@
-package tencent
+package ecs
 
 import (
 	rac "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
 	"github.com/grafana/alloy/syntax"
 )
 
-const Name = "tencent_cvm"
+const Name = "alibaba_ecs"
 
 type Config struct {
 	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
@@ -42,7 +42,7 @@ func (args Config) Convert() map[string]any {
 	}
 }
 
-// ResourceAttributesConfig provides config for Tencent Cloud CVM resource attributes.
+// ResourceAttributesConfig provides config for Alibaba Cloud ECS resource attributes.
 type ResourceAttributesConfig struct {
 	CloudAccountID        rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
 	CloudAvailabilityZone rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
