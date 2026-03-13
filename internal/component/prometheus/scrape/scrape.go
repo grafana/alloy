@@ -315,8 +315,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
-		// NOTE: This is not Update()-able.
-		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
@@ -471,9 +469,6 @@ func (c *Component) Update(args component.Arguments) error {
 	} else {
 		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
 			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
-		}
-		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
-			return fmt.Errorf("extra_metrics cannot be updated at runtime")
 		}
 	}
 

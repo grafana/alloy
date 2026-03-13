@@ -1117,8 +1117,8 @@ github.com/google/pprof v0.0.0-20200212024743-f11f1df84d12/go.mod h1:ZgVRPoUq/hf
 github.com/google/pprof v0.0.0-20200229191704-1ebb73c60ed3/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/pprof v0.0.0-20200430221834-fc25d7d30c6d/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
-github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f h1:HU1RgM6NALf/KW9HEY6zry3ADbDKcmpQ+hJedoNGQYQ=
-github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f/go.mod h1:67FPmZWbr+KDT/VlpWtw6sO9XSjpJmLuHpoLmWiTGgY=
+github.com/google/pprof v0.0.0-20260111202518-71be6bfdd440 h1:oKBqR+eQXiIM7X8K1JEg9aoTEePLq/c6Awe484abOuA=
+github.com/google/pprof v0.0.0-20260111202518-71be6bfdd440/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/renameio/v2 v2.0.0 h1:UifI23ZTGY8Tt29JbYFiuyIU3eX+RNFtUwefq9qAhxg=
 github.com/google/renameio/v2 v2.0.0/go.mod h1:BtmJXm5YlszgC+TD4HOEEUFgkJP3nLxehU6hfe7jRt4=
@@ -1196,8 +1196,6 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
 github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966 h1:flIED1bVVc8XGgEM9J2M8oRnllD0R+Gydf/mXHSeww0=
 github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966/go.mod h1:TeJMg8YjVMx9w+vYu6HD15o37zW2HUizPZrh58hUSGY=
-github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98 h1:apxqPZ/z3s6+ywDUMi3o1lodO8yKcqrzDA0ihTkwWV4=
-github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98/go.mod h1:Ua8tMv8erMLb50kiUSRK7UfeTnscC42TKgueLUaZ+yY=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11 h1:Pi46xuPzRjAeB6XB4PzdF8kV93jl4NB58OZj08Bi33U=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11/go.mod h1:rrgRM6X22UVa3bKaoNz43ab59Qx0CNrVOc2uiCVfBwU=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-241376220646 h1:CqmZlZuuNwhDsN9tHzVvQMeMh0wDjr5ohtWYzyb5KJg=
@@ -1206,8 +1204,8 @@ github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a h1:uT3vXB+E1dAMfvrgwQR6PwQbNmgLe6cyvTxHnHcmuns=
 github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a/go.mod h1:4zH24t6LEqkdL3ZfBTtp0kGHOBr6komR55CrmL2AAg4=
-github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463 h1:sAqtOzQS5uV0hxNS07w4yv/ClF8kHtLVHql9DwoJ+n8=
-github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463/go.mod h1:d+dOGiVhuNDa4MaFXHVdnUBy/CzqlcNTooR8oM1wdTU=
+github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57 h1:v/2M4OKUYTjV01i9bKXOFmEIHQlc8w79V/rZQZ9HbTk=
+github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57/go.mod h1:wSFyaZQ1ioryO2X47s2wvQEWypS+Mwf9IQ1ABDEo2Sk=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxROhiL4U=
@@ -1984,6 +1982,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.144.0/go.mod h1:PVM7Y1BwcxVLNNJUOkPVDB1ZzK9ct1NUv+gDZj0l2zc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.144.0 h1:s8wZP1zI7AdGRCQ6leBv3IoYr+7SfreNkBMpnUBpPMU=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.144.0/go.mod h1:jOFUkzwhXKsYH0opfLU2BzPWetbWr63/9k8gCuJws+k=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.144.0 h1:XKQCsHDTo1RQgftC3dSNyBQH0D4OPNRziV9R48tZ1gY=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.144.0/go.mod h1:GOQNM30eSQR7zy9rxV27hcgl+HC8CumUIgkI2d0FYoA=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.144.0 h1:Zx7jvGIMhZnQScjwQCO9pqlTE1g7X+R7HZM62LCcoKA=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.144.0/go.mod h1:dK0GQ9scfciTtbEae7/r1fqKc1Oczxnq23wMcSWTxtQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.144.0 h1:72MuSMSGGWXKF/AQTAq1eCSVDDyokNH8KSohdUCM2EE=

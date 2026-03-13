@@ -410,7 +410,7 @@ require (
 	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
-	github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f // indirect
+	github.com/google/pprof v0.0.0-20260111202518-71be6bfdd440 // indirect
 	github.com/google/renameio/v2 v2.0.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -1063,7 +1063,7 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
 // TODO - remove forks when changes are merged upstream — non-singleton cadvisor
-replace github.com/google/cadvisor => github.com/grafana/cadvisor grafana-v0.54.1-noglobals
+replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
 
 // TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
@@ -1098,14 +1098,10 @@ replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 // Fork to grafana repo to address issue with freebsd build tags. This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
 
-// Keep prometheusreceiver on the Grafana fork while Alloy carries the Prometheus fork/version that does not expose GlobalConfig.ExtraScrapeMetrics yet. Revisit when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/42701 is released in a form compatible with Alloy's Prometheus dependency set
-replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98
-
-// Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
+// Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-c7bc56cf6c8f Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57
 
 // Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/DataDog/vault/tree/master. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
+
 // END GENERATED REPLACES
-
-
