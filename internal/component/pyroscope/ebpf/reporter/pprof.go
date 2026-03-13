@@ -33,18 +33,6 @@ type PPROF struct {
 
 type PPROFConsumer func(ctx context.Context, p []PPROF)
 
-// CommMode controls how the process comm is included in profiles.
-// Valid values: "label", "stackframe", "both", "none", "".
-// "" and "none" are treated the same (comm is not included).
-type CommMode string
-
-const (
-	CommModeNone       CommMode = "none"
-	CommModeLabel      CommMode = "label"
-	CommModeStackframe CommMode = "stackframe"
-	CommModeBoth       CommMode = "both"
-)
-
 func (m CommMode) label() bool {
 	return m == CommModeLabel || m == CommModeBoth
 }
