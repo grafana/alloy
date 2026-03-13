@@ -97,6 +97,9 @@ You can use the following blocks with `otelcol.processor.filter`:
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
+| [`trace_conditions`][trace_conditions] | Inferred-context conditions for traces.                              | no       |
+| [`metric_conditions`][metric_conditions] | Inferred-context conditions for metrics.                            | no       |
+| [`log_conditions`][log_conditions] | Inferred-context conditions for logs.                                    | no       |
 | [`logs`][logs]                   | Statements which filter logs.                                              | no       |
 | [`metrics`][metrics]             | Statements which filter metrics.                                           | no       |
 | [`traces`][traces]               | Statements which filter traces.                                            | no       |
@@ -104,6 +107,9 @@ You can use the following blocks with `otelcol.processor.filter`:
 [traces]: #traces
 [metrics]: #metrics
 [logs]: #logs
+[trace_conditions]: #trace_conditions
+[metric_conditions]: #metric_conditions
+[log_conditions]: #log_conditions
 [output]: #output
 [debug_metrics]: #debug_metrics
 
@@ -181,6 +187,52 @@ If at least one `span` condition is satisfied, the `spanevent` conditions won't 
 Only one of the statements inside the list of statements has to be satisfied.
 
 If all span events for a span are dropped, the span will be left intact.
+
+### `trace_conditions`
+
+The `trace_conditions` block specifies inferred-context OTTL conditions for traces.
+
+| Name         | Type           | Description                              | Default | Required |
+|--------------|----------------|------------------------------------------|---------|----------|
+| `context`    | `string`       | OTTL context for evaluating conditions.  |         | no       |
+| `conditions` | `list(string)` | List of OTTL conditions.                 |         | yes      |
+
+Supported `context` values are:
+
+* `resource`
+* `span`
+* `spanevent`
+
+### `metric_conditions`
+
+The `metric_conditions` block specifies inferred-context OTTL conditions for metrics.
+
+| Name         | Type           | Description                              | Default | Required |
+|--------------|----------------|------------------------------------------|---------|----------|
+| `context`    | `string`       | OTTL context for evaluating conditions.  |         | no       |
+| `conditions` | `list(string)` | List of OTTL conditions.                 |         | yes      |
+
+Supported `context` values are:
+
+* `resource`
+* `metric`
+* `datapoint`
+
+### `log_conditions`
+
+The `log_conditions` block specifies inferred-context OTTL conditions for logs.
+
+| Name         | Type           | Description                              | Default | Required |
+|--------------|----------------|------------------------------------------|---------|----------|
+| `context`    | `string`       | OTTL context for evaluating conditions.  |         | no       |
+| `conditions` | `list(string)` | List of OTTL conditions.                 |         | yes      |
+
+Supported `context` values are:
+
+* `resource`
+* `log`
+
+`trace_conditions`, `metric_conditions`, and `log_conditions` can't be used together with `traces`, `metrics`, and `logs` blocks in the same component.
 
 ## Exported fields
 

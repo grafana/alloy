@@ -20,6 +20,9 @@ type PolicyConfig struct {
 	// Configs for defining and policy
 	AndConfig AndConfig `alloy:"and,block,optional"`
 
+	// Configs for defining not policy
+	NotConfig NotConfig `alloy:"not,block,optional"`
+
 	// Configs for defining drop policy
 	DropConfig DropConfig `alloy:"drop,block,optional"`
 }
@@ -43,6 +46,7 @@ func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
 		"trace_state":       policyConfig.SharedPolicyConfig.TraceStateConfig.Convert(),
 		"composite":         policyConfig.CompositeConfig.Convert(),
 		"and":               policyConfig.AndConfig.Convert(),
+		"not":               policyConfig.NotConfig.Convert(),
 		"drop":              policyConfig.DropConfig.Convert(),
 	}, &otelConfig)
 
@@ -422,6 +426,43 @@ func (dropConfig DropConfig) Convert() tsp.DropCfg {
 	return tsp.DropCfg{
 		SubPolicyCfg: otelPolicyCfgs,
 	}
+}
+
+type NotConfig struct {
+	SubPolicyConfig NotSubPolicyConfig `alloy:"not_sub_policy,block"`
+}
+
+func (notConfig NotConfig) Convert() tsp.NotCfg {
+	return tsp.NotCfg{
+		SubPolicy: notConfig.SubPolicyConfig.Convert(),
+	}
+}
+
+// NotSubPolicyConfig holds the common configuration to the policy under the not policy.
+type NotSubPolicyConfig struct {
+	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
+}
+
+func (notSubPolicyConfig NotSubPolicyConfig) Convert() tsp.NotSubPolicyCfg {
+	var otelConfig tsp.NotSubPolicyCfg
+
+	mustDecodeMapStructure(map[string]any{
+		"name":              notSubPolicyConfig.SharedPolicyConfig.Name,
+		"type":              notSubPolicyConfig.SharedPolicyConfig.Type,
+		"latency":           notSubPolicyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
+		"numeric_attribute": notSubPolicyConfig.SharedPolicyConfig.NumericAttributeConfig.Convert(),
+		"probabilistic":     notSubPolicyConfig.SharedPolicyConfig.ProbabilisticConfig.Convert(),
+		"status_code":       notSubPolicyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
+		"string_attribute":  notSubPolicyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
+		"rate_limiting":     notSubPolicyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    notSubPolicyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
+		"span_count":        notSubPolicyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
+		"boolean_attribute": notSubPolicyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
+		"ottl_condition":    notSubPolicyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
+		"trace_state":       notSubPolicyConfig.SharedPolicyConfig.TraceStateConfig.Convert(),
+	}, &otelConfig)
+
+	return otelConfig
 }
 
 // AndSubPolicyConfig holds the common configuration to all policies under and policy.

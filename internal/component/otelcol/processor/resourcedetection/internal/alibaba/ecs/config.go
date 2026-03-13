@@ -1,28 +1,30 @@
-package oraclecloud
+package ecs
 
 import (
 	rac "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
 	"github.com/grafana/alloy/syntax"
 )
 
-const Name = "oraclecloud"
+const Name = "alibaba_ecs"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
+	ResourceAttributes    ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
 var DefaultArguments = Config{
+	FailOnMissingMetadata: false,
 	ResourceAttributes: ResourceAttributesConfig{
+		CloudAccountID:        rac.ResourceAttributeConfig{Enabled: true},
+		CloudAvailabilityZone: rac.ResourceAttributeConfig{Enabled: true},
 		CloudPlatform:         rac.ResourceAttributeConfig{Enabled: true},
 		CloudProvider:         rac.ResourceAttributeConfig{Enabled: true},
 		CloudRegion:           rac.ResourceAttributeConfig{Enabled: true},
-		CloudAvailabilityZone: rac.ResourceAttributeConfig{Enabled: true},
 		HostID:                rac.ResourceAttributeConfig{Enabled: true},
+		HostImageID:           rac.ResourceAttributeConfig{Enabled: true},
 		HostName:              rac.ResourceAttributeConfig{Enabled: true},
 		HostType:              rac.ResourceAttributeConfig{Enabled: true},
-		K8sClusterName:        rac.ResourceAttributeConfig{Enabled: true},
-		OracleCloudRealm:      rac.ResourceAttributeConfig{Enabled: true},
 	},
 }
 
@@ -35,33 +37,34 @@ func (args *Config) SetToDefault() {
 
 func (args Config) Convert() map[string]any {
 	return map[string]any{
-		"resource_attributes": args.ResourceAttributes.Convert(),
+		"fail_on_missing_metadata": args.FailOnMissingMetadata,
+		"resource_attributes":      args.ResourceAttributes.Convert(),
 	}
 }
 
-// ResourceAttributesConfig provides config for oracle cloud resource attributes.
+// ResourceAttributesConfig provides config for Alibaba Cloud ECS resource attributes.
 type ResourceAttributesConfig struct {
+	CloudAccountID        rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
+	CloudAvailabilityZone rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
 	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
 	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
 	CloudRegion           rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
-	CloudAvailabilityZone rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
 	HostID                rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostImageID           rac.ResourceAttributeConfig `alloy:"host.image.id,block,optional"`
 	HostName              rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 	HostType              rac.ResourceAttributeConfig `alloy:"host.type,block,optional"`
-	K8sClusterName        rac.ResourceAttributeConfig `alloy:"k8s.cluster.name,block,optional"`
-	OracleCloudRealm      rac.ResourceAttributeConfig `alloy:"oracle_cloud.realm,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]any {
 	return map[string]any{
+		"cloud.account.id":        r.CloudAccountID.Convert(),
+		"cloud.availability_zone": r.CloudAvailabilityZone.Convert(),
 		"cloud.platform":          r.CloudPlatform.Convert(),
 		"cloud.provider":          r.CloudProvider.Convert(),
 		"cloud.region":            r.CloudRegion.Convert(),
-		"cloud.availability_zone": r.CloudAvailabilityZone.Convert(),
 		"host.id":                 r.HostID.Convert(),
+		"host.image.id":           r.HostImageID.Convert(),
 		"host.name":               r.HostName.Convert(),
 		"host.type":               r.HostType.Convert(),
-		"k8s.cluster.name":        r.K8sClusterName.Convert(),
-		"oracle_cloud.realm":      r.OracleCloudRealm.Convert(),
 	}
 }

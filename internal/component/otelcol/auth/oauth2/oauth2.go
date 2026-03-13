@@ -32,15 +32,24 @@ func init() {
 
 // Arguments configures the otelcol.auth.oauth2 component.
 type Arguments struct {
-	ClientID         string                     `alloy:"client_id,attr,optional"`
-	ClientIDFile     string                     `alloy:"client_id_file,attr,optional"`
-	ClientSecret     alloytypes.Secret          `alloy:"client_secret,attr,optional"`
-	ClientSecretFile string                     `alloy:"client_secret_file,attr,optional"`
-	TokenURL         string                     `alloy:"token_url,attr"`
-	EndpointParams   url.Values                 `alloy:"endpoint_params,attr,optional"`
-	Scopes           []string                   `alloy:"scopes,attr,optional"`
-	TLS              otelcol.TLSClientArguments `alloy:"tls,block,optional"`
-	Timeout          time.Duration              `alloy:"timeout,attr,optional"`
+	ClientID                 string                     `alloy:"client_id,attr,optional"`
+	ClientIDFile             string                     `alloy:"client_id_file,attr,optional"`
+	ClientSecret             alloytypes.Secret          `alloy:"client_secret,attr,optional"`
+	ClientSecretFile         string                     `alloy:"client_secret_file,attr,optional"`
+	ClientCertificateKeyID   string                     `alloy:"client_certificate_key_id,attr,optional"`
+	ClientCertificateKey     alloytypes.Secret          `alloy:"client_certificate_key,attr,optional"`
+	ClientCertificateKeyFile string                     `alloy:"client_certificate_key_file,attr,optional"`
+	GrantType                string                     `alloy:"grant_type,attr,optional"`
+	SignatureAlgorithm       string                     `alloy:"signature_algorithm,attr,optional"`
+	Iss                      string                     `alloy:"iss,attr,optional"`
+	Audience                 string                     `alloy:"audience,attr,optional"`
+	Claims                   map[string]any             `alloy:"claims,attr,optional"`
+	TokenURL                 string                     `alloy:"token_url,attr"`
+	EndpointParams           url.Values                 `alloy:"endpoint_params,attr,optional"`
+	Scopes                   []string                   `alloy:"scopes,attr,optional"`
+	TLS                      otelcol.TLSClientArguments `alloy:"tls,block,optional"`
+	Timeout                  time.Duration              `alloy:"timeout,attr,optional"`
+	ExpiryBuffer             time.Duration              `alloy:"expiry_buffer,attr,optional"`
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
@@ -49,22 +58,36 @@ var _ auth.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	args.GrantType = "client_credentials"
 	args.DebugMetrics.SetToDefault()
 }
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	return &oauth2clientauthextension.Config{
-		ClientID:         args.ClientID,
-		ClientIDFile:     args.ClientIDFile,
-		ClientSecret:     configopaque.String(args.ClientSecret),
-		ClientSecretFile: args.ClientSecretFile,
-		TokenURL:         args.TokenURL,
-		EndpointParams:   args.EndpointParams,
-		Scopes:           args.Scopes,
-		TLS:              *args.TLS.Convert(),
-		Timeout:          args.Timeout,
-	}, nil
+	cfg := oauth2clientauthextension.NewFactory().CreateDefaultConfig().(*oauth2clientauthextension.Config)
+	cfg.ClientID = args.ClientID
+	cfg.ClientIDFile = args.ClientIDFile
+	cfg.ClientSecret = configopaque.String(args.ClientSecret)
+	cfg.ClientSecretFile = args.ClientSecretFile
+	cfg.ClientCertificateKeyID = args.ClientCertificateKeyID
+	cfg.ClientCertificateKey = configopaque.String(args.ClientCertificateKey)
+	cfg.ClientCertificateKeyFile = args.ClientCertificateKeyFile
+	if args.GrantType != "" {
+		cfg.GrantType = args.GrantType
+	}
+	if args.SignatureAlgorithm != "" {
+		cfg.SignatureAlgorithm = args.SignatureAlgorithm
+	}
+	cfg.Iss = args.Iss
+	cfg.Audience = args.Audience
+	cfg.Claims = args.Claims
+	cfg.TokenURL = args.TokenURL
+	cfg.EndpointParams = args.EndpointParams
+	cfg.Scopes = args.Scopes
+	cfg.TLS = *args.TLS.Convert()
+	cfg.Timeout = args.Timeout
+	cfg.ExpiryBuffer = args.ExpiryBuffer
+	return cfg, nil
 }
 
 // ConvertServer returns nil since the ouath2 client extension does not support server auth.

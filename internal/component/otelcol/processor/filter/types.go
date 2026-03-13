@@ -5,12 +5,30 @@ type TraceConfig struct {
 	SpanEvent []string `alloy:"spanevent,attr,optional"`
 }
 
+type ContextConditions struct {
+	Context    string   `alloy:"context,attr,optional"`
+	Conditions []string `alloy:"conditions,attr"`
+}
+
 type MetricConfig struct {
 	Metric    []string `alloy:"metric,attr,optional"`
 	Datapoint []string `alloy:"datapoint,attr,optional"`
 }
 type LogConfig struct {
 	LogRecord []string `alloy:"log_record,attr,optional"`
+}
+
+type ContextConditionsSlice []ContextConditions
+
+func (args ContextConditionsSlice) convert() []map[string]any {
+	result := make([]map[string]any, 0, len(args))
+	for _, cond := range args {
+		result = append(result, map[string]any{
+			"context":    cond.Context,
+			"conditions": append([]string{}, cond.Conditions...),
+		})
+	}
+	return result
 }
 
 func (args *TraceConfig) convert() map[string]any {

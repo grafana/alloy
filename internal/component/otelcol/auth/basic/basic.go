@@ -48,17 +48,21 @@ func (c HtpasswdConfig) convert() *basicauthextension.HtpasswdSettings {
 }
 
 type ClientAuthConfig struct {
-	Username string `alloy:"username,attr"`
-	Password string `alloy:"password,attr"`
+	Username     string `alloy:"username,attr,optional"`
+	UsernameFile string `alloy:"username_file,attr,optional"`
+	Password     string `alloy:"password,attr,optional"`
+	PasswordFile string `alloy:"password_file,attr,optional"`
 }
 
 func (c ClientAuthConfig) convert() *basicauthextension.ClientAuthSettings {
-	if c.Username == "" && c.Password == "" {
+	if c.Username == "" && c.UsernameFile == "" && c.Password == "" && c.PasswordFile == "" {
 		return nil
 	}
 	return &basicauthextension.ClientAuthSettings{
-		Username: c.Username,
-		Password: configopaque.String(c.Password),
+		Username:     c.Username,
+		UsernameFile: c.UsernameFile,
+		Password:     configopaque.String(c.Password),
+		PasswordFile: c.PasswordFile,
 	}
 }
 

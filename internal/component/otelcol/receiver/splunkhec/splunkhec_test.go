@@ -15,6 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
@@ -191,7 +192,10 @@ func TestUnmarshalDefault(t *testing.T) {
 
 	expected := splunkhecreceiver.Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint:              "localhost:8088",
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  "localhost:8088",
+				Transport: confignet.TransportTypeTCP,
+			},
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
 			KeepAlivesEnabled:     true,
 		},
