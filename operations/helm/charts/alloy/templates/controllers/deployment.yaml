@@ -14,7 +14,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled)) }}
+  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled) (not .Values.controller.autoscaling.scaledobject.enabled)) }}
   replicas: {{ .Values.controller.replicas }}
   {{- end }}
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}

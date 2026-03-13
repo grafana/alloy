@@ -432,6 +432,14 @@ controller:
         # are applied during the life of a Pod. Possible values are "Off", "Initial", "Recreate", and "Auto".
         # updateMode: Auto
 
+    # -- Configures support for external autoscaling solutions (e.g., KEDA ScaledObject).
+    # When enabled, the replicas field is omitted from the controller spec, allowing the external
+    # autoscaler to manage replica counts. Users must create their own ScaledObject or other
+    # autoscaling resource separately. Only one autoscaling method should be enabled at a time.
+    scaledobject:
+      # -- Enables support for external autoscaling by omitting the replicas field from the controller spec.
+      enabled: false
+
   # -- Affinity configuration for pods.
   affinity: {}
 
