@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:fixtures": "npx tsx src/test/fixtures/writeFixture.ts",
+    "dev:mock": "npm run generate:fixtures && MOCK=true vite",
     "build": "tsc -b && vite build",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",
@@ -34,19 +38,24 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/d3": "7.4.3",
     "@types/d3-zoom": "3.0.8",
     "@types/react": "18.3.27",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "5.1.2",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "9.39.2",
     "eslint-plugin-react-hooks": "5.2.0",
     "eslint-plugin-react-refresh": "0.4.26",
     "eslint-plugin-simple-import-sort": "12.1.1",
     "globals": "16.5.0",
+    "jsdom": "^28.0.0",
     "prettier": "3.7.4",
     "typescript": "5.9.3",
     "typescript-eslint": "8.53.0",
-    "vite": "7.3.1"
+    "vite": "7.3.1",
+    "vitest": "^4.0.18"
   }
 }
