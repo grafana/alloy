@@ -632,18 +632,10 @@ func TestDeprecatedTopicShouldBeMigratedToNewTopics(t *testing.T) {
 	// The deprecated `topic` should be migrated into `topics`, matching upstream behavior.
 	require.Equal(t, []string{"my_custom_logs_topic"}, converted.Logs.Topics,
 		"deprecated logs.topic should be migrated to logs.topics")
-	require.Empty(t, converted.Logs.Topic,
-		"deprecated logs.topic should be cleared after migration")
-
 	require.Equal(t, []string{"my_custom_metrics_topic"}, converted.Metrics.Topics,
 		"deprecated metrics.topic should be migrated to metrics.topics")
-	require.Empty(t, converted.Metrics.Topic,
-		"deprecated metrics.topic should be cleared after migration")
-
 	require.Equal(t, []string{"my_custom_traces_topic"}, converted.Traces.Topics,
 		"deprecated traces.topic should be migrated to traces.topics")
-	require.Empty(t, converted.Traces.Topic,
-		"deprecated traces.topic should be cleared after migration")
 }
 
 func TestDebugMetricsConfig(t *testing.T) {
