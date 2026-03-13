@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	crypto_tls "crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,7 +17,6 @@ import (
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/net/http2"
 
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
@@ -783,27 +780,26 @@ func (d *debuginfoAppendable) DebugInfoClients() []debuginfov1alpha1connect.Debu
 	return d.clients
 }
 
-// h2cClient returns an HTTP client that speaks h2c (HTTP/2 over cleartext).
-func h2cClient() *http.Client {
-	return &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *crypto_tls.Config) (net.Conn, error) {
-				var d net.Dialer
-				return d.DialContext(ctx, network, addr)
-			},
-		},
+// startProxyServer creates a Component with the given appendables and serves its
+// debuginfo Upload handler via an HTTP/2 TLS test server. Returns a Connect client.
+func startProxyServer(t *testing.T, appendables []pyroscope.Appendable) debuginfov1alpha1connect.DebuginfoServiceClient {
+	t.Helper()
+	comp := &Component{
+		appendables: appendables,
 	}
+	_, h := debuginfov1alpha1connect.NewDebuginfoServiceHandler(comp)
+	server := httptest.NewUnstartedServer(h)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	return debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
 }
 
-// sendUploadViaProxy opens a bidi stream to the proxy, sends an init request, reads the
+// sendUploadViaProxy opens a bidi stream to the proxy client, sends an init request, reads the
 // init response, and if accepted, streams fileData as chunks.
-func sendUploadViaProxy(t *testing.T, port int, fileData []byte) (bool, error) {
+func sendUploadViaProxy(t *testing.T, proxyClient debuginfov1alpha1connect.DebuginfoServiceClient, fileData []byte) (bool, error) {
 	t.Helper()
-	proxyURL := fmt.Sprintf("http://localhost:%d", port)
-	client := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2cClient(), proxyURL)
-
-	stream := client.Upload(context.Background())
+	stream := proxyClient.Upload(context.Background())
 
 	// Send init.
 	err := stream.Send(&debuginfov1alpha1.UploadRequest{
@@ -864,10 +860,10 @@ func TestDebugInfoProxy_SingleEndpoint_AcceptsUpload(t *testing.T) {
 	dsClient := startMockDownstream(t, true, resultCh)
 
 	appendable := &debuginfoAppendable{clients: []debuginfov1alpha1connect.DebuginfoServiceClient{dsClient}}
-	port := startComponent(t, []pyroscope.Appendable{appendable})
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("hello proxy debuginfo upload test data")
-	accepted, err := sendUploadViaProxy(t, port, fileData)
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
 	require.NoError(t, err)
 	require.True(t, accepted)
 
@@ -892,10 +888,10 @@ func TestDebugInfoProxy_MultipleEndpoints_AllAccept(t *testing.T) {
 	}
 
 	appendable := &debuginfoAppendable{clients: clients}
-	port := startComponent(t, []pyroscope.Appendable{appendable})
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("multi-endpoint-test-data-for-all-accepting-servers")
-	accepted, err := sendUploadViaProxy(t, port, fileData)
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
 	require.NoError(t, err)
 	require.True(t, accepted)
 
@@ -921,10 +917,10 @@ func TestDebugInfoProxy_MultipleEndpoints_AllDecline(t *testing.T) {
 	}
 
 	appendable := &debuginfoAppendable{clients: clients}
-	port := startComponent(t, []pyroscope.Appendable{appendable})
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("should-not-be-sent")
-	accepted, err := sendUploadViaProxy(t, port, fileData)
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
 	require.NoError(t, err)
 	require.False(t, accepted, "proxy should decline when all endpoints decline")
 
@@ -953,10 +949,10 @@ func TestDebugInfoProxy_MultipleEndpoints_SomeAccept(t *testing.T) {
 	}
 
 	appendable := &debuginfoAppendable{clients: clients}
-	port := startComponent(t, []pyroscope.Appendable{appendable})
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("partial-accept-test-data")
-	accepted, err := sendUploadViaProxy(t, port, fileData)
+	accepted, err := sendUploadViaProxy(t, proxyClient, fileData)
 	require.NoError(t, err)
 	require.True(t, accepted, "proxy should accept when at least one endpoint accepts")
 
@@ -978,11 +974,8 @@ func TestDebugInfoProxy_MultipleEndpoints_SomeAccept(t *testing.T) {
 func TestDebugInfoProxy_NoEndpoints(t *testing.T) {
 	// No downstream clients at all.
 	appendable := &debuginfoAppendable{clients: nil}
-	port := startComponent(t, []pyroscope.Appendable{appendable})
-
-	proxyURL := fmt.Sprintf("http://localhost:%d", port)
-	client := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2cClient(), proxyURL)
-	stream := client.Upload(context.Background())
+	proxyClient := startProxyServer(t, []pyroscope.Appendable{appendable})
+	stream := proxyClient.Upload(context.Background())
 
 	err := stream.Send(&debuginfov1alpha1.UploadRequest{
 		Data: &debuginfov1alpha1.UploadRequest_Init{

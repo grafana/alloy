@@ -3,11 +3,9 @@ package write
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,8 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/net/http2"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -283,10 +279,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		ingestClients[endpoint] = httpClient
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		// Bidi streaming (used by debuginfo upload) requires HTTP/2.
-		// For HTTPS this works via ALPN; for plain HTTP we need an h2c transport.
-		debuginfoHTTPClient := newH2CClient(endpoint.URL, httpClient)
-		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(debuginfoHTTPClient, endpoint.URL)
+		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL)
 		debugInfo := debuginfo.NewClient(logger, connectClient, metrics.debugInfoUploadBytes, endpointDataPath)
 		debugInfos = append(debugInfos, debugInfo)
 	}
@@ -752,27 +745,6 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
-}
-
-// newH2CClient returns an HTTP client suitable for Connect bidi streaming.
-// For HTTPS endpoints, the base client is returned as-is (HTTP/2 via ALPN).
-// For plain HTTP endpoints, an h2c-capable client is returned since bidi
-// streaming requires HTTP/2 which isn't negotiated over cleartext by default.
-func newH2CClient(endpointURL string, base *http.Client) *http.Client {
-	u, err := url.Parse(endpointURL)
-	if err != nil || u.Scheme == "https" {
-		return base
-	}
-	return &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-				var d net.Dialer
-				return d.DialContext(ctx, network, addr)
-			},
-		},
-		Timeout: base.Timeout,
-	}
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {
