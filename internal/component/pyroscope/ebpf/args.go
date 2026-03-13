@@ -63,6 +63,6 @@ type DeprecatedArguments struct {
 }
 
 // Validate implements syntax.Validator.
-func (args *Arguments) Validate() error {
-	return nil
+func (a *Arguments) Validate() error {
+	return a.Comm.Validate()
 }
