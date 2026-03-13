@@ -7,12 +7,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"

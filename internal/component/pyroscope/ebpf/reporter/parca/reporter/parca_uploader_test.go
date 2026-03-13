@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/process"
+	"go.uber.org/atomic"
 )
 
 // mockDebuginfoHandler implements debuginfov1alpha1connect.DebuginfoServiceHandler.
@@ -79,7 +79,7 @@ func newTestUploader(t *testing.T) (*PyroscopeSymbolUploader, prometheus.Counter
 	return u, counter
 }
 
-func startMockServer(t *testing.T, handler *mockDebuginfoHandler) (debuginfov1alpha1connect.DebuginfoServiceClient, *httptest.Server) {
+func startMockServer(t *testing.T, handler *mockDebuginfoHandler) debuginfov1alpha1connect.DebuginfoServiceClient {
 	t.Helper()
 	_, h := debuginfov1alpha1connect.NewDebuginfoServiceHandler(handler)
 	// Bidi streaming requires HTTP/2, so use TLS test server.
@@ -87,8 +87,7 @@ func startMockServer(t *testing.T, handler *mockDebuginfoHandler) (debuginfov1al
 	server.EnableHTTP2 = true
 	server.StartTLS()
 	t.Cleanup(server.Close)
-	client := debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
-	return client, server
+	return debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
 }
 
 func counterValue(c prometheus.Counter) float64 {
@@ -209,7 +208,7 @@ func acceptUploadHandler(t *testing.T, resultCh chan<- uploadResult) *mockDebugi
 func TestAttemptUpload_Success(t *testing.T) {
 	fileData := []byte("hello debuginfo world")
 	resultCh := make(chan uploadResult, 1)
-	client, _ := startMockServer(t, acceptUploadHandler(t, resultCh))
+	client := startMockServer(t, acceptUploadHandler(t, resultCh))
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(1, 2)
 
@@ -244,7 +243,7 @@ func TestAttemptUpload_ServerDeclinesUpload(t *testing.T) {
 		},
 	}
 
-	client, _ := startMockServer(t, handler)
+	client := startMockServer(t, handler)
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(3, 4)
 
@@ -274,7 +273,7 @@ func TestAttemptUpload_UploadInProgress(t *testing.T) {
 		},
 	}
 
-	client, _ := startMockServer(t, handler)
+	client := startMockServer(t, handler)
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(5, 6)
 
@@ -306,7 +305,7 @@ func TestAttemptUpload_EmptyBuildID(t *testing.T) {
 		},
 	}
 
-	client, _ := startMockServer(t, handler)
+	client := startMockServer(t, handler)
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(7, 8)
 
@@ -325,7 +324,7 @@ func TestAttemptUpload_LargeFile_MultipleChunks(t *testing.T) {
 	}
 
 	resultCh := make(chan uploadResult, 1)
-	client, _ := startMockServer(t, acceptUploadHandler(t, resultCh))
+	client := startMockServer(t, acceptUploadHandler(t, resultCh))
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(9, 10)
 
@@ -343,7 +342,7 @@ func TestAttemptUpload_LargeFile_MultipleChunks(t *testing.T) {
 }
 
 func TestUpload_Dedup(t *testing.T) {
-	var uploadCount atomic.Int32
+	uploadCount := atomic.NewInt32(0)
 
 	handler := &mockDebuginfoHandler{
 		uploadFunc: func(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
@@ -371,7 +370,7 @@ func TestUpload_Dedup(t *testing.T) {
 		},
 	}
 
-	client, _ := startMockServer(t, handler)
+	client := startMockServer(t, handler)
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(11, 12)
 
@@ -400,7 +399,7 @@ func TestUpload_Dedup(t *testing.T) {
 func TestUpload_WorkerProcessesQueue(t *testing.T) {
 	fileData := []byte("worker-test-data")
 	resultCh := make(chan uploadResult, 1)
-	client, _ := startMockServer(t, acceptUploadHandler(t, resultCh))
+	client := startMockServer(t, acceptUploadHandler(t, resultCh))
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(13, 14)
 

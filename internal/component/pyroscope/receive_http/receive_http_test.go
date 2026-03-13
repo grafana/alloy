@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/phayes/freeport"
