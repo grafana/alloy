@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -17,6 +18,9 @@ import (
 )
 
 var _ extension.Extension = (*alloyEngineExtension)(nil)
+
+// running tracks whether any alloyengine instance is currently active.
+var running = &atomic.Bool{}
 
 type state int
 
@@ -85,20 +89,33 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 	}
 }
 
-func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) error {
+func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) error {
+	var startErr error
+	defer func() {
+		if startErr != nil {
+			running.Store(false)
+		}
+	}()
+
 	currentState := e.getState()
 	switch currentState {
 	case stateNotStarted:
 		break
 	default:
-		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
+		startErr = fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
+		return startErr
 	}
 
 	runCommand := e.runCommandFactory()
 	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
-	err := runCommand.ParseFlags(e.config.flagsAsSlice())
-	if err != nil {
-		return fmt.Errorf("failed to parse flags: %w", err)
+	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
+		startErr = fmt.Errorf("failed to parse flags: %w", err)
+		return startErr
+	}
+
+	// Here we check if another extension instance is already running, if so we return an error
+	if !running.CompareAndSwap(false, true) {
+		return fmt.Errorf("only one alloyengine extension can be active per process; an instance is already running")
 	}
 
 	runCtx, runCancel := context.WithCancel(context.Background())
@@ -112,7 +129,10 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 	e.setState(stateStarting)
 
 	go func() {
-		defer close(e.runExited)
+		defer func() {
+			running.Store(false)
+			close(e.runExited)
+		}()
 
 		err := e.runWithBackoffRetry(runCommand, runCtx)
 
