@@ -1113,7 +1113,7 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 // Replace thanos-io/objstore with Grafana fork
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-// TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+// TODO - remove forks when changes are merged upstream — non-singleton cadvisor Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.54.1-noglobals
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
 
 // TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
@@ -1157,5 +1157,6 @@ replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/
 
 // Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps. Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
 replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
-
 // END GENERATED REPLACES
+
+

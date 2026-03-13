@@ -69,9 +69,11 @@ replaces:
     dependency: github.com/thanos-io/objstore
     replacement: github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-  - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+  - comment: >
+      TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+      Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.54.1-noglobals
     dependency: github.com/google/cadvisor
-    replacement: github.com/grafana/cadvisor grafana-v0.54.1-noglobals
+    replacement: github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
 
   - comment: TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
