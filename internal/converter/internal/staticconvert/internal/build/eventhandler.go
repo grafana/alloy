@@ -89,17 +89,16 @@ func getLogsReceiver(config *eventhandler_v2.Config) common.ConvertLogsReceiver 
 }
 
 func toEventHandlerV2(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver) *kubernetes_events.Arguments {
-	defaultOverrides := kubernetes_events.DefaultArguments
-	defaultOverrides.Client.KubeConfig = config.KubeconfigPath
+	args := &kubernetes_events.Arguments{}
+	args.SetToDefault()
+
+	args.ForwardTo = []loki.LogsReceiver{receiver}
+	args.LogFormat = config.LogFormat
+	args.Client.KubeConfig = config.KubeconfigPath
+
 	if config.Namespace != "" {
-		defaultOverrides.Namespaces = []string{config.Namespace}
+		args.Namespaces = []string{config.Namespace}
 	}
 
-	return &kubernetes_events.Arguments{
-		ForwardTo:  []loki.LogsReceiver{receiver},
-		JobName:    kubernetes_events.DefaultArguments.JobName,
-		Namespaces: defaultOverrides.Namespaces,
-		LogFormat:  config.LogFormat,
-		Client:     defaultOverrides.Client,
-	}
+	return args
 }

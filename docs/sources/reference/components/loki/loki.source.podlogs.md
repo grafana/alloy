@@ -135,6 +135,7 @@ You can use the following blocks with `loki.source.podlogs`:
 | [`namespace_selector`][selector]                              | Label selector for which namespaces to discover `PodLogs` in.                               | no       |
 | `namespace_selector` > [`match_expression`][match_expression] | Label selector expression for which namespaces to discover `PodLogs` in.                    | no       |
 | [`node_filter`][node_filter]                                  | Filter Pods by node to limit discovery scope.                                               | no       |
+| [`position`][position]                                        | Configure how positions are keyed and synced to disk.                                       | no       |
 | [`selector`][selector]                                        | Label selector for which `PodLogs` to discover.                                             | no       |
 | `selector` > [`match_expression`][match_expression]           | Label selector expression for which `PodLogs` to discover.                                  | no       |
 
@@ -148,6 +149,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [match_expression]: #match_expression
 [node_filter]: #node_filter
 [oauth2]: #oauth2
+[position]: #position
 [selector]: #selector-and-namespace_selector
 [tls_config]: #tls_config
 
@@ -276,6 +278,10 @@ Both `selector` and `namespace_selector` can make use of multiple
 ### `oauth2`
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `selector` and `namespace_selector`
 

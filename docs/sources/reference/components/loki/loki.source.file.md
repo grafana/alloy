@@ -78,10 +78,12 @@ You can use the following blocks with `loki.source.file`:
 | [`decompression`][decompression] | Configure reading logs from compressed files.                                | no       |
 | [`file_match`][file_match]       | Configure file discovery using glob patterns for automatic target discovery. | no       |
 | [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes.            | no       |
+| [`position`][position]           | Configure how positions are keyed and synced to disk.                        | no       |
 
 [decompression]: #decompression
 [file_watch]: #file_watch
 [file_match]: #file_match
+[position]: #position
 
 ### `decompression`
 
@@ -146,6 +148,10 @@ The glob patterns support the `{a,b,c}` syntax for matching multiple alternative
 
 * `/tmp/*.{log,txt,json}` matches files with `.log`, `.txt`, or `.json` extensions.
 * `/var/log/{nginx,apache}/*.log` matches `.log` files in either the `nginx` or `apache` subdirectories.
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

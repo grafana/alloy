@@ -74,6 +74,7 @@ You can use the following blocks with `loki.source.kubernetes_events`:
 | `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`position`][position]                           | Configure how positions are keyed and synced to disk.      | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
@@ -82,6 +83,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [basic_auth]: #basic_auth
 [client]: #client
 [oauth2]: #oauth2
+[position]: #position
 [tls_config]: #tls_config
 
 ### `client`
@@ -130,6 +132,10 @@ The following arguments are supported:
 ### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

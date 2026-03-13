@@ -43,19 +43,16 @@ type Arguments struct {
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
-	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
+	Client   commonk8s.ClientArguments `alloy:"client,block,optional"`
+	Position positions.Config          `alloy:"position,block,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
-// DefaultArguments holds default settings for loki.source.kubernetes.
-var DefaultArguments = Arguments{
-	Client: commonk8s.DefaultClientArguments,
-}
-
 // SetToDefault implements syntax.Defaulter.
-func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+func (a *Arguments) SetToDefault() {
+	a.Client.SetToDefault()
+	a.Position.SetToDefault()
 }
 
 // Component implements the loki.source.kubernetes component.
@@ -88,10 +85,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		filepath.Join(o.DataPath, "positions.yml"),
+		args.Position,
+	)
 
 	if err != nil {
 		return nil, err
@@ -158,6 +156,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.positions.Update(newArgs.Position)
 	managerOpts, err := c.getTailerOptions(newArgs)
 	if err != nil {
 		return err

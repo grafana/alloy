@@ -52,15 +52,14 @@ func (s *ScrapeConfigBuilder) AppendDockerPipeline() {
 }
 
 func toLokiSourceDocker(sd *moby.DockerSDConfig, forwardTo []loki.LogsReceiver) *loki_docker.Arguments {
-	return &loki_docker.Arguments{
-		Host:             sd.Host,
-		Targets:          nil,
-		ForwardTo:        forwardTo,
-		Labels:           nil,
-		RelabelRules:     alloy_relabel.Rules{},
-		HTTPClientConfig: common.ToHttpClientConfig(&sd.HTTPClientConfig),
-		RefreshInterval:  time.Duration(sd.RefreshInterval),
-	}
+	args := &loki_docker.Arguments{}
+	args.SetToDefault()
+	args.Host = sd.Host
+	args.ForwardTo = forwardTo
+	args.HTTPClientConfig = common.ToHttpClientConfig(&sd.HTTPClientConfig)
+	args.RefreshInterval = time.Duration(sd.RefreshInterval)
+	args.RelabelRules = alloy_relabel.Rules{}
+	return args
 }
 
 func toDiscoveryDocker(sdConfig *moby.DockerSDConfig) *docker.Arguments {

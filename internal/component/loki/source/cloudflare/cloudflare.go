@@ -47,6 +47,7 @@ type Arguments struct {
 	FieldsType       FieldsType          `alloy:"fields_type,attr,optional"`
 	AdditionalFields []string            `alloy:"additional_fields,attr,optional"`
 	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Position         positions.Config    `alloy:"position,block,optional"`
 }
 
 func (c Arguments) tailerConfig() *tailerConfig {
@@ -66,16 +67,12 @@ func (c Arguments) tailerConfig() *tailerConfig {
 	}
 }
 
-// DefaultArguments sets the configuration defaults.
-var DefaultArguments = Arguments{
-	Workers:    3,
-	PullRange:  1 * time.Minute,
-	FieldsType: FieldsTypeDefault,
-}
-
 // SetToDefault implements syntax.Defaulter.
 func (c *Arguments) SetToDefault() {
-	*c = DefaultArguments
+	c.Workers = 3
+	c.PullRange = 1 * time.Minute
+	c.FieldsType = FieldsTypeDefault
+	c.Position.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -106,12 +103,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		filepath.Join(o.DataPath, "positions.yml"),
+		args.Position,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +153,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
+	c.posFile.Update(newArgs.Position)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.tailer != nil {
