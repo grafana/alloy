@@ -1,16 +1,20 @@
 package mongodb_exporter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strings"
 
 	"github.com/go-kit/log"
+	gokitlevel "github.com/go-kit/log/level"
 	"github.com/percona/mongodb_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -36,10 +40,42 @@ var DefaultConfig = Config{
 	EnablePBMMetrics:         false,
 }
 
+// LogLevel holds the level for logging.
+type LogLevel struct {
+	slog.Level
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (l *LogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	return l.Set(s)
+}
+
+// Set sets the level.
+func (l *LogLevel) Set(s string) error {
+	switch strings.ToLower(s) {
+	case "debug":
+		l.Level = slog.LevelDebug
+	case "info":
+		l.Level = slog.LevelInfo
+	case "warn":
+		l.Level = slog.LevelWarn
+	case "error":
+		l.Level = slog.LevelError
+	default:
+		return fmt.Errorf("unrecognized log level %q", s)
+	}
+	return nil
+}
+
 // Config controls mongodb_exporter
 type Config struct {
 	// MongoDB connection URI. example:mongodb://user:pass@127.0.0.1:27017/admin?ssl=true"
 	URI                      config_util.Secret `yaml:"mongodb_uri"`
+	LogLevel                 LogLevel           `yaml:"log_level,omitempty"`
 	CompatibleMode           bool               `yaml:"compatible_mode,omitempty"`
 	CollectAll               bool               `yaml:"collect_all,omitempty"`
 	DirectConnect            bool               `yaml:"direct_connect,omitempty"`
@@ -90,13 +126,43 @@ func init() {
 	integrations_v2.RegisterLegacy(&Config{}, integrations_v2.TypeMultiplex, metricsutils.NewNamedShim("mongodb"))
 }
 
+// levelAwareLogger wraps a go-kit log.Logger with an explicit slog.Level
+// so that it satisfies the logging.EnabledAware interface. This is needed
+// because go-kit's level.NewFilter returns an unexported type that does not
+// implement EnabledAware, yet SlogGoKitHandler.Enabled() needs it to gate
+// debug output (e.g. percona/mongodb_exporter's debugResult).
+type levelAwareLogger struct {
+	log.Logger
+	minLevel slog.Level
+}
+
+// Enabled implements logging.EnabledAware.
+func (l *levelAwareLogger) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= l.minLevel
+}
+
 // New creates a new mongodb_exporter integration.
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	logrusLogger := slog.New(logging.NewSlogGoKitHandler(logger))
+	var levelOption gokitlevel.Option
+	switch c.LogLevel.Level {
+	case slog.LevelDebug:
+		levelOption = gokitlevel.AllowDebug()
+	case slog.LevelWarn:
+		levelOption = gokitlevel.AllowWarn()
+	case slog.LevelError:
+		levelOption = gokitlevel.AllowError()
+	default:
+		levelOption = gokitlevel.AllowInfo()
+	}
+	filteredLogger := &levelAwareLogger{
+		Logger:   level.NewFilter(logger, levelOption),
+		minLevel: c.LogLevel.Level,
+	}
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(filteredLogger))
 
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),
-		Logger:                 logrusLogger,
+		Logger:                 slogLogger,
 		DisableDefaultRegistry: true,
 
 		CompatibleMode:           c.CompatibleMode,
