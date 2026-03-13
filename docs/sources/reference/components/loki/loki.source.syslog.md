@@ -147,7 +147,7 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
 
 * **`rfc3164`**
   A legacy syslog format, also known as BSD syslog.
-  Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`
+  Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`.
   `loki.source.syslog` drops messages with empty MSG content and increments the `loki_source_syslog_empty_messages_total` counter.
 * **`rfc5424`**
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
