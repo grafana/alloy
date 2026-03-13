@@ -28,6 +28,15 @@ func TestSecretFiltering(t *testing.T) {
 	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
 }
 
+// TestDefaultRate_Unmarshalled verifies that when rate is not set in config, the default (1.0) is used.
+// The syntax package calls SetToDefault() before decoding, so omitted optional fields keep their default.
+func TestDefaultRate_Unmarshalled(t *testing.T) {
+	var args Arguments
+	config := `forward_to = []`
+	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+	require.Equal(t, defaultRate, args.Rate, "rate should default to 1.0 when not set in config")
+}
+
 // TestGitleaksConfig_InvalidPath checks that a missing config path returns an error.
 // Valid custom config file loading (and [extend] useDefault) is tested in the
 // extend package so it runs in a separate process and avoids gitleaks global state.

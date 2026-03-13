@@ -5,8 +5,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"math"
-	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -15,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/sampling"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -75,16 +74,13 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.Rate < 0.0 || args.Rate > 1.0 {
-		return fmt.Errorf("secretfilter rate must be between 0.0 and 1.0, received %f", args.Rate)
+	if err := sampling.ValidateRate(args.Rate); err != nil {
+		return fmt.Errorf("secretfilter: %w", err)
 	}
 	return nil
 }
 
 var _ syntax.Validator = (*Arguments)(nil)
-
-// maxRandomNumber is the maximum value used for sampling boundary
-const maxRandomNumber = ^(uint64(1) << 63) // 0x7fffffffffffffff
 
 var (
 	_ component.Component     = (*Component)(nil)
@@ -105,8 +101,7 @@ type Component struct {
 	redactPercent uint
 
 	// sampling state (used when 0 < Rate < 1)
-	samplingBoundary uint64
-	samplingSource   rand.Source
+	sampler *sampling.Sampler
 
 	metrics            *metrics
 	debugDataPublisher livedebugging.DebugDataPublisher
@@ -324,29 +319,12 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 }
 
-// shouldProcessEntry returns true if this entry should be processed through the secret filter (rate = probability of "keep" / process).
+// shouldProcessEntry returns true if this entry should be processed through the secret filter (rate = probability of process).
 func (c *Component) shouldProcessEntry() bool {
-	rate := c.args.Rate
-	if rate >= 1.0 {
+	if c.sampler == nil {
 		return true
 	}
-	if rate <= 0.0 {
-		return false
-	}
-	return c.samplingBoundary >= c.samplingRandomID()&maxRandomNumber
-}
-
-// samplingRandomID returns a random uint64 in [1, maxRandomNumber] for sampling.
-// If samplingSource is nil (e.g. rate was 0 or 1), returns maxRandomNumber so the caller does not panic.
-func (c *Component) samplingRandomID() uint64 {
-	if c.samplingSource == nil {
-		return maxRandomNumber
-	}
-	val := uint64(c.samplingSource.Int63())
-	for val == 0 {
-		val = uint64(c.samplingSource.Int63())
-	}
-	return val
+	return c.sampler.ShouldSample()
 }
 
 // processEntry scans the log entry for secrets and redacts them. Returns the
@@ -450,12 +428,13 @@ func (c *Component) Update(args component.Arguments) error {
 	} else {
 		c.redactPercent = defaultRedactPercent
 	}
-	if newArgs.Rate > 0 && newArgs.Rate < 1 {
-		c.samplingBoundary = uint64(float64(maxRandomNumber) * math.Max(0, math.Min(newArgs.Rate, 1)))
-		c.samplingSource = rand.NewSource(time.Now().UnixNano())
+	if c.sampler == nil {
+		if err := sampling.ValidateRate(newArgs.Rate); err != nil {
+			return fmt.Errorf("failed to create gitleaks sampler: %w", err)
+		}
+		c.sampler = sampling.NewSampler(newArgs.Rate)
 	} else {
-		c.samplingBoundary = 0
-		c.samplingSource = nil
+		c.sampler.Update(newArgs.Rate)
 	}
 	c.metrics = newMetrics(c.opts.Registerer, newArgs.OriginLabel)
 
