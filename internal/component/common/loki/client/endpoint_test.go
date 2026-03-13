@@ -29,6 +29,7 @@ func TestEndpoint(t *testing.T) {
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
+		waitForReqCount      int
 		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
 	}
@@ -73,7 +74,7 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           700 * time.Millisecond,
+			waitForReqCount:      1,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -332,8 +333,20 @@ func TestEndpoint(t *testing.T) {
 			for i, logEntry := range tt.inputEntries {
 				c.enqueue(logEntry, 0)
 
-				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
-					time.Sleep(tt.inputDelay)
+				if i < len(tt.inputEntries)-1 {
+					if tt.waitForReqCount > 0 {
+						require.Eventuallyf(
+							t,
+							func() bool { return len(receivedReqsChan) >= tt.waitForReqCount },
+							5*time.Second,
+							5*time.Millisecond,
+							"timed out waiting for at least %d request(s) before enqueueing the next entry",
+							tt.waitForReqCount,
+						)
+					}
+					if tt.inputDelay > 0 {
+						time.Sleep(tt.inputDelay)
+					}
 				}
 			}
 

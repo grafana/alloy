@@ -387,11 +387,11 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 
 	go func() {
 		defer func() {
-			c.Stop()
 			c.running.Store(false)
 		}()
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.extractNames(c.ctx); err != nil {
@@ -416,7 +416,9 @@ func (c *SchemaDetails) Stopped() bool {
 
 // Stop should be kept idempotent
 func (c *SchemaDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
