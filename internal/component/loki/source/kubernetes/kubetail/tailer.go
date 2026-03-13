@@ -198,6 +198,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 	if err != nil {
 		return err
 	}
+	defer stream.Close()
 
 	k8sServerVersion, err := t.opts.Client.Discovery().ServerVersion()
 	if err != nil {
@@ -218,6 +219,13 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 	// The computed average will never be less than the minimum of 2s.
 	calc := newRollingAverageCalculator(10000, 100, 2*time.Second, maxTailerLifetime)
 
+	// Create a cancellable context for signaling intentional stream closure.
+	// This context is cancelled BEFORE the stream is closed (via defer), ensuring
+	// that streamCtx.Err() is non-nil when processLogStream checks for errors
+	// after the stream read fails.
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	defer streamCancel()
+
 	// Versions of Kubernetes which do not contain
 	// kubernetes/kubernetes#115702 (<= v1.29.1) will fail to detect rotated log files
 	// and stop sending logs to us.
@@ -234,8 +242,14 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 			rolledFileTicker := time.NewTicker(1 * time.Second)
 			defer func() {
 				rolledFileTicker.Stop()
+				// Cancel streamCtx first to signal intentional closure,
+				// then close the stream to unblock the reader.
+				// This ensures streamCtx.Err() is non-nil when processLogStream
+				// checks for errors, preventing spurious warning logs.
+				streamCancel()
 				_ = stream.Close()
 			}()
+
 			for {
 				select {
 				case <-ctx.Done():
@@ -255,15 +269,19 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 			}
 		}()
 	} else {
+		// For K8s >= 1.29, we only need to handle context cancellation.
 		go func() {
 			<-ctx.Done()
+			// Cancel streamCtx first to signal intentional closure,
+			// then close the stream to unblock the reader.
+			streamCancel()
 			_ = stream.Close()
 		}()
 	}
 
 	level.Info(t.log).Log("msg", "opened log stream", "start time", lastReadTime)
 
-	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc)
+	return t.processLogStream(streamCtx, stream, handler, lastReadTime, positionsEnt, calc)
 }
 
 // processLogStream reads log lines from a reader and processes them.
