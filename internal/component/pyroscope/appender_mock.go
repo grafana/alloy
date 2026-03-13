@@ -11,10 +11,10 @@ import (
 var _ Appendable = AppenderMock{}
 
 type AppenderMock struct {
-	AppendIngestFunc    func(ctx context.Context, profile *IncomingProfile) error
-	AppendFunc          func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-	DebugInfoClientsFunc  func() []debuginfov1alpha1connect.DebuginfoServiceClient
-	DebugInfoUploadFunc func(j debuginfo.UploadJob)
+	AppendIngestFunc     func(ctx context.Context, profile *IncomingProfile) error
+	AppendFunc           func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+	DebugInfoClientsFunc func() []debuginfov1alpha1connect.DebuginfoServiceClient
+	DebugInfoUploadFunc  func(j debuginfo.UploadJob)
 }
 
 func (a AppenderMock) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {

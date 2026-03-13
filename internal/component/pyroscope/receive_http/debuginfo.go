@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 )
 
-func (c *Component) getDebugInfoDebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (c *Component) getDebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
@@ -24,7 +24,7 @@ func (c *Component) getDebugInfoDebugInfoClients() []debuginfov1alpha1connect.De
 // Upload implements debuginfov1alpha1connect.DebuginfoServiceHandler.
 // It fans out the upload to all downstream Connect clients.
 func (c *Component) Upload(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
-	clients := c.getDebugInfoDebugInfoClients()
+	clients := c.getDebugInfoClients()
 	if len(clients) == 0 {
 		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("no debug info clients available"))
 	}
