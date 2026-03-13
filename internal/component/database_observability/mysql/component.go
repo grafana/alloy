@@ -584,6 +584,9 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
 			level.Warn(c.opts.Logger).Log("msg", "auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
 		}
+		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
+			level.Warn(c.opts.Logger).Log("msg", "wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
