@@ -282,7 +282,7 @@ func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
 	if c.symbols != nil {
 		c.symbols.ReportExecutable(md)
 	}
-	if c.args.SymbolUploadEnabled {
+	if c.args.DebugInfoArguments.UploadEnabled {
 		c.reportExecutableForDebugInfoUpload(md)
 	}
 }

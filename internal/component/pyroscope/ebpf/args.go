@@ -34,7 +34,6 @@ type Arguments struct {
 	SymbCachePath                   string              `alloy:"symb_cache_path,attr,optional"`
 	SymbCacheSizeEntries            int                 `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool                `alloy:"reporter_unsymbolized_stubs,attr,optional"`
-	SymbolUploadEnabled             bool                `alloy:"symbol_upload_enabled,attr,optional"`
 	SymbCacheEnabled                bool                `alloy:"symb_cache_enabled,attr,optional"`
 	DebugInfoArguments              debuginfo.Arguments `alloy:"debug_info,block,optional"`
 }
