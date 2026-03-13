@@ -119,7 +119,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ReadTimeout:      args.ReadTimeout,
 		TraceIDCacheSize: args.TraceIDCacheSize,
 	}
-	
+
 	if args.Intake != nil {
 		cfg.Intake = args.Intake.Convert()
 	}
