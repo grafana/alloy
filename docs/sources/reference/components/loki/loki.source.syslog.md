@@ -152,7 +152,9 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
 * **`rfc5424`**
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
   Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
-  Messages with empty MSG content are dropped by default; set `allow_empty_rfc5424_msg` to `true` to forward them. The `loki_source_syslog_empty_messages_total` counter is incremented in both cases for debugging.
+  `loki.source.syslog` drops messages with empty MSG content by default.
+  Set `allow_empty_rfc5424_msg` to `true` to forward them.
+  `loki.source.syslog` increments the `loki_source_syslog_empty_messages_total` counter in both cases for debugging.
 * **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
