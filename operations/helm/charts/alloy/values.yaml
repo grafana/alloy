@@ -434,6 +434,13 @@ controller:
 
   # -- Affinity configuration for pods.
   affinity: {}
+# affinity: |
+#   podAntiAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       - labelSelector:
+#           matchLabels:
+#             {{- include "alloy.selectorLabels" . | nindent 10 }}
+#         topologyKey: kubernetes.io/hostname
 
   volumes:
     # -- Extra volumes to add to the Grafana Alloy pod.
