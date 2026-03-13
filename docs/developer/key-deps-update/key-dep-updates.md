@@ -167,7 +167,7 @@ Only continue to the next step if all the key dependenies have a fork ready, don
 
 ### Step 4: Update Go modules to desired versions
 
-Replace directives are generated. Do not edit them directly in go.mod or builder-config.yaml. Update `dependency-replacements.yaml` and run `make generate-module-dependencies` to update the root go.mod, extension/alloyengine/go.mod, and collector/builder-config.yaml.
+Replace directives are generated. Do not edit them directly in go.mod or builder-config.yaml. Update `dependency-replacements.yaml`, run `make generate-module-dependencies` and ` make generate-otel-collector-distro` to update the root go.mod, extension/alloyengine/go.mod, collector/go.mod, collector/builder-config.yaml and generate otel distro
 
 Having determined the desired versions of the key dependencies, update the go.mod files to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
 
