@@ -1,0 +1,3 @@
+(Warning) limits_config.max_streams is not supported in Alloy and will be ignored in the converted configuration.
+(Warning) limits_config rate limiting settings (readline_rate, readline_burst, readline_rate_drop) have been converted to stage.limit stages in each loki.process component. Unlike Promtail's global rate limiter, these limits apply independently per pipeline rather than across all pipelines combined.
+(Warning) If you have a tracing set up for Promtail, it cannot be migrated to Alloy automatically. Refer to the documentation on how to configure tracing in Alloy.
