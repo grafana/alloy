@@ -1,0 +1,37 @@
+// This config file is designed to send traces and metrics to the docker
+// compose environment from example/docker-compose.
+
+logging {
+	level  = "debug"
+	format = "logfmt"
+}
+
+tracing {
+	// Sample all traces. This value should be lower for production configs!
+	sampling_fraction = 1
+
+	write_to = [otelcol.exporter.otlp.tempo.input]
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "localhost:4317"
+
+		tls {
+			insecure = true
+		}
+	}
+}
+
+prometheus.exporter.unix "default" { /* use defaults */ }
+
+prometheus.scrape "default" {
+	targets    = prometheus.exporter.unix.default.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		url = "http://localhost:9009/api/prom/push"
+	}
+}
