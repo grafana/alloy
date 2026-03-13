@@ -70,7 +70,7 @@ type Arguments struct {
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
-	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
+	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
 	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
@@ -97,8 +97,9 @@ type QuerySampleArguments struct {
 	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
 }
 
-type QueryTablesArguments struct {
+type QueryDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	StatementsLimit int           `alloy:"statements_limit,attr,optional"`
 }
 
 type SchemaDetailsArguments struct {
@@ -116,8 +117,9 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction: false,
 		ExcludeCurrentUser:    true,
 	},
-	QueryTablesArguments: QueryTablesArguments{
+	QueryDetailsArguments: QueryDetailsArguments{
 		CollectInterval: 1 * time.Minute,
+		StatementsLimit: 100,
 	},
 	SchemaDetailsArguments: SchemaDetailsArguments{
 		CollectInterval: 1 * time.Minute,
@@ -470,7 +472,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
+			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			ExcludeUsers:     c.args.ExcludeUsers,
 			EntryHandler:     entryHandler,
