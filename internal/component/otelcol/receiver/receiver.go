@@ -175,7 +175,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	var components []otelcomponent.Component
 
 	if len(next.Traces) > 0 {
-		fanout := fanoutconsumer.Traces(next.Traces)
+		fanout := fanoutconsumer.Traces(next.Traces, reg)
 		tracesInterceptor := interceptconsumer.Traces(fanout,
 			func(ctx context.Context, td ptrace.Traces) error {
 				livedebuggingpublisher.PublishTracesIfActive(r.debugDataPublisher, r.opts.ID, td, otelcol.GetComponentMetadata(next.Traces))
@@ -191,7 +191,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	}
 
 	if len(next.Metrics) > 0 {
-		fanout := fanoutconsumer.Metrics(next.Metrics)
+		fanout := fanoutconsumer.Metrics(next.Metrics, reg)
 		metricsInterceptor := interceptconsumer.Metrics(fanout,
 			func(ctx context.Context, md pmetric.Metrics) error {
 				livedebuggingpublisher.PublishMetricsIfActive(r.debugDataPublisher, r.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
@@ -207,7 +207,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	}
 
 	if len(next.Logs) > 0 {
-		fanout := fanoutconsumer.Logs(next.Logs)
+		fanout := fanoutconsumer.Logs(next.Logs, reg)
 		logsInterceptor := interceptconsumer.Logs(fanout,
 			func(ctx context.Context, ld plog.Logs) error {
 				livedebuggingpublisher.PublishLogsIfActive(r.debugDataPublisher, r.opts.ID, ld, otelcol.GetComponentMetadata(next.Logs))

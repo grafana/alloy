@@ -10,17 +10,32 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/prometheus/client_golang/prometheus"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/multierr"
 )
 
 // Logs creates a new fanout consumer for logs.
-func Logs(in []otelcol.Consumer) otelconsumer.Logs {
+func Logs(in []otelcol.Consumer, reg prometheus.Registerer) otelconsumer.Logs {
+	counter := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "otelcol_forwarded_log_records_total",
+		Help: "Total number of log records forwarded to downstream components.",
+	}, []string{"destination"})
+	if err := reg.Register(counter); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			counter = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
+
 	if len(in) == 0 {
-		return &logsFanout{}
+		return &logsFanout{logRecordsCounter: counter}
 	} else if len(in) == 1 {
-		return in[0]
+		return &logsPassthrough{
+			consumer:          in[0],
+			destID:            componentID(in[0]),
+			logRecordsCounter: counter,
+		}
 	}
 
 	var passthrough, clone []otelconsumer.Logs
@@ -53,14 +68,34 @@ func Logs(in []otelcol.Consumer) otelconsumer.Logs {
 	}
 
 	return &logsFanout{
-		passthrough: passthrough,
-		clone:       clone,
+		passthrough:       passthrough,
+		clone:             clone,
+		logRecordsCounter: counter,
 	}
 }
 
+type logsPassthrough struct {
+	consumer          otelconsumer.Logs
+	destID            string
+	logRecordsCounter *prometheus.CounterVec
+}
+
+func (p *logsPassthrough) Capabilities() otelconsumer.Capabilities {
+	return p.consumer.Capabilities()
+}
+
+func (p *logsPassthrough) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	if err := p.consumer.ConsumeLogs(ctx, ld); err != nil {
+		return err
+	}
+	p.logRecordsCounter.WithLabelValues(p.destID).Add(float64(ld.LogRecordCount()))
+	return nil
+}
+
 type logsFanout struct {
-	passthrough []otelconsumer.Logs // Consumers where data can be passed through directly
-	clone       []otelconsumer.Logs // Consumes which require cloning data
+	passthrough       []otelconsumer.Logs // Consumers where data can be passed through directly
+	clone             []otelconsumer.Logs // Consumes which require cloning data
+	logRecordsCounter *prometheus.CounterVec
 }
 
 func (f *logsFanout) Capabilities() otelconsumer.Capabilities {
@@ -71,16 +106,26 @@ func (f *logsFanout) Capabilities() otelconsumer.Capabilities {
 func (f *logsFanout) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	var errs error
 
+	logRecordCount := ld.LogRecordCount()
+
 	// Initially pass to clone exporter to avoid the case where the optimization
 	// of sending the incoming data to a mutating consumer is used that may
 	// change the incoming data before cloning.
-	for _, f := range f.clone {
+	for _, c := range f.clone {
 		newLogs := plog.NewLogs()
 		ld.CopyTo(newLogs)
-		errs = multierr.Append(errs, f.ConsumeLogs(ctx, newLogs))
+		if err := c.ConsumeLogs(ctx, newLogs); err != nil {
+			errs = multierr.Append(errs, err)
+		} else {
+			f.logRecordsCounter.WithLabelValues(componentID(c)).Add(float64(logRecordCount))
+		}
 	}
-	for _, f := range f.passthrough {
-		errs = multierr.Append(errs, f.ConsumeLogs(ctx, ld))
+	for _, c := range f.passthrough {
+		if err := c.ConsumeLogs(ctx, ld); err != nil {
+			errs = multierr.Append(errs, err)
+		} else {
+			f.logRecordsCounter.WithLabelValues(componentID(c)).Add(float64(logRecordCount))
+		}
 	}
 
 	return errs

@@ -33,7 +33,7 @@ type Fanout struct {
 	// ComponentID is what component this belongs to.
 	componentID    string
 	writeLatency   prometheus.Histogram
-	samplesCounter prometheus.Counter
+	samplesCounter *prometheus.CounterVec
 	ls             labelstore.LabelStore
 
 	// lastSeriesCount stores the number of series that were sent through the last appender. It helps to estimate how
@@ -67,12 +67,11 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 	_ = register.Register(wl)
 
 	// Note: this only covers calls to Append. It could make more sense when upstream changes to AppendV2 where there will be
-	// only a single Append function. But we might want to make this a CounterVec with different labels for the
-	// different appended types.
-	s := prometheus.NewCounter(prometheus.CounterOpts{
+	// only a single Append function. But we might want to add labels for different appended types in the future.
+	s := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "prometheus_forwarded_samples_total",
 		Help: "Total number of samples sent to downstream components.",
-	})
+	}, []string{"destination"})
 	_ = register.Register(s)
 
 	useLabelStore := ls != nil && ls.Enabled()
@@ -139,13 +138,21 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	}
 
 	children := make([]storage.Appender, 0, len(f.children))
-	for _, c := range f.children {
+	childrenIDs := make([]string, len(f.children))
+	for idx, c := range f.children {
 		children = append(children, c.Appender(ctx))
+		switch cid := c.(type) {
+		case *Interceptor:
+			childrenIDs[idx] = cid.componentID
+		default:
+			childrenIDs[idx] = "undefined"
+		}
 	}
 
 	if f.useLabelStore {
 		return &appender{
 			children:          children,
+			childrenIDs:       childrenIDs,
 			fanout:            f,
 			stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
 		}
@@ -163,6 +170,7 @@ func (f *Fanout) Clear() {
 
 type appender struct {
 	children          []storage.Appender
+	childrenIDs       []string
 	start             time.Time
 	stalenessTrackers []labelstore.StalenessTracker
 	fanout            *Fanout
@@ -190,17 +198,13 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		Value:       v,
 	})
 	var multiErr error
-	updated := false
-	for _, x := range a.children {
+	for idx, x := range a.children {
 		_, err := x.Append(ref, l, t, v)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
-		} else {
-			updated = true
+			continue
 		}
-	}
-	if updated {
-		a.fanout.samplesCounter.Inc()
+		a.fanout.samplesCounter.With(prometheus.Labels{"destination": a.childrenIDs[idx]}).Inc()
 	}
 	return ref, multiErr
 }
