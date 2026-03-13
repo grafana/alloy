@@ -1,6 +1,9 @@
 package mysql
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
@@ -32,6 +35,7 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 		limit = 3
 		time_limit = 4
 		text_limit = 5
+		drop_digest_text = true
 	}
 
 	perf_schema.file_instances {
@@ -71,6 +75,7 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 	require.Equal(t, 3, args.PerfSchemaEventsStatements.Limit)
 	require.Equal(t, 4, args.PerfSchemaEventsStatements.TimeLimit)
 	require.Equal(t, 5, args.PerfSchemaEventsStatements.TextLimit)
+	require.True(t, args.PerfSchemaEventsStatements.DropDigestText)
 	require.Equal(t, "instances_filter", args.PerfSchemaFileInstances.Filter)
 	require.Equal(t, "instances_remove", args.PerfSchemaFileInstances.RemovePrefix)
 	require.Equal(t, "innodb/", args.PerfSchemaMemoryEvents.RemovePrefix)
@@ -170,4 +175,81 @@ func TestValidate_InvalidDataSource(t *testing.T) {
 		DataSourceName: alloytypes.Secret("root:secret_password@invalid/mydb"),
 	}
 	require.Error(t, args.Validate())
+}
+
+func TestLabelDropHandler_DropsSpecifiedLabel(t *testing.T) {
+	const metricsInput = `# HELP mysql_perf_schema_events_statements_total Total events statements.
+# TYPE mysql_perf_schema_events_statements_total counter
+mysql_perf_schema_events_statements_total{digest="abc123",digest_text="SELECT * FROM foo",schema="mydb"} 42
+mysql_perf_schema_events_statements_total{digest="def456",digest_text="INSERT INTO bar VALUES (?)",schema="mydb"} 7
+# HELP mysql_up Whether MySQL is up.
+# TYPE mysql_up gauge
+mysql_up{instance="localhost:3306"} 1
+`
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(metricsInput))
+	})
+
+	handler := newLabelDropHandler(inner, []string{"digest_text"})
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	body, err := io.ReadAll(rec.Body)
+	require.NoError(t, err)
+	output := string(body)
+
+	// digest_text must be gone
+	require.NotContains(t, output, "digest_text")
+
+	// other labels and values must be preserved
+	require.Contains(t, output, `digest="abc123"`)
+	require.Contains(t, output, `digest="def456"`)
+	require.Contains(t, output, `schema="mydb"`)
+	require.Contains(t, output, "42")
+	require.Contains(t, output, "7")
+
+	// unrelated metrics must be untouched
+	require.Contains(t, output, `mysql_up`)
+	require.Contains(t, output, `instance="localhost:3306"`)
+}
+
+func TestLabelDropHandler_PreservesMetricsWhenLabelAbsent(t *testing.T) {
+	const metricsInput = `# HELP mysql_up Whether MySQL is up.
+# TYPE mysql_up gauge
+mysql_up{instance="localhost:3306"} 1
+`
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(metricsInput))
+	})
+
+	handler := newLabelDropHandler(inner, []string{"digest_text"})
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	body, err := io.ReadAll(rec.Body)
+	require.NoError(t, err)
+	output := string(body)
+
+	require.Contains(t, output, `mysql_up`)
+	require.Contains(t, output, `instance="localhost:3306"`)
+	require.Contains(t, output, "1")
+}
+
+func TestDropDigestText_DefaultIsFalse(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+	require.False(t, args.PerfSchemaEventsStatements.DropDigestText)
 }

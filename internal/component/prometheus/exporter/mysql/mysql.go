@@ -1,6 +1,11 @@
 package mysql
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"net/http"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -9,6 +14,8 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -25,8 +32,105 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	integration, instanceKey, err := integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	if err != nil {
+		return nil, instanceKey, err
+	}
+	if a.PerfSchemaEventsStatements.DropDigestText {
+		integration = &integrationWrapper{
+			Integration: integration,
+			dropLabels:  []string{"digest_text"},
+		}
+	}
+	return integration, instanceKey, nil
 }
+
+// integrationWrapper wraps an Integration to apply label filtering on the metrics it serves.
+type integrationWrapper struct {
+	integrations.Integration
+	dropLabels []string
+}
+
+func (w *integrationWrapper) MetricsHandler() (http.Handler, error) {
+	h, err := w.Integration.MetricsHandler()
+	if err != nil {
+		return nil, err
+	}
+	return newLabelDropHandler(h, w.dropLabels), nil
+}
+
+func (w *integrationWrapper) Run(ctx context.Context) error {
+	return w.Integration.Run(ctx)
+}
+
+// labelDropHandler wraps an http.Handler, intercepting the response to drop
+// the specified labels from all metric families before writing to the client.
+type labelDropHandler struct {
+	inner      http.Handler
+	dropLabels map[string]struct{}
+}
+
+func newLabelDropHandler(inner http.Handler, labels []string) http.Handler {
+	m := make(map[string]struct{}, len(labels))
+	for _, l := range labels {
+		m[l] = struct{}{}
+	}
+	return &labelDropHandler{inner: inner, dropLabels: m}
+}
+
+func (h *labelDropHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rec := &responseRecorder{
+		header: make(http.Header),
+		code:   http.StatusOK,
+	}
+	h.inner.ServeHTTP(rec, r)
+
+	p := expfmt.NewTextParser(model.LegacyValidation)
+	mfs, err := p.TextToMetricFamilies(bytes.NewReader(rec.buf.Bytes()))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to parse metrics: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	for _, mf := range mfs {
+		for _, m := range mf.GetMetric() {
+			filtered := m.Label[:0]
+			for _, lp := range m.Label {
+				if _, drop := h.dropLabels[lp.GetName()]; !drop {
+					filtered = append(filtered, lp)
+				}
+			}
+			m.Label = filtered
+		}
+	}
+
+	for k, vs := range rec.header {
+		for _, v := range vs {
+			w.Header().Add(k, v)
+		}
+	}
+	// Always re-encode as text format since we parsed as text.
+	w.Header().Set("Content-Type", string(expfmt.FmtText))
+	w.WriteHeader(rec.code)
+
+	enc := expfmt.NewEncoder(w, expfmt.FmtText)
+	for _, mf := range mfs {
+		if err := enc.Encode(mf); err != nil {
+			return
+		}
+	}
+}
+
+// responseRecorder buffers the response from an inner http.Handler.
+type responseRecorder struct {
+	code   int
+	buf    bytes.Buffer
+	header http.Header
+}
+
+func (r *responseRecorder) Header() http.Header        { return r.header }
+func (r *responseRecorder) WriteHeader(code int)       { r.code = code }
+func (r *responseRecorder) Write(b []byte) (int, error) { return r.buf.Write(b) }
 
 // DefaultArguments holds the default settings for the mysqld_exporter integration.
 var DefaultArguments = Arguments{
@@ -101,6 +205,9 @@ type PerfSchemaEventsStatements struct {
 	Limit     int `alloy:"limit,attr,optional"`
 	TimeLimit int `alloy:"time_limit,attr,optional"`
 	TextLimit int `alloy:"text_limit,attr,optional"`
+	// DropDigestText drops the digest_text label from all mysql_perf_schema_events_statements_*
+	// metrics to reduce cardinality. The digest (hash) label is preserved for query identification.
+	DropDigestText bool `alloy:"drop_digest_text,attr,optional"`
 }
 
 // PerfSchemaFileInstances configures the perf_schema.file_instances collector
