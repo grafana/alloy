@@ -158,7 +158,7 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
 * **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
-  Messages with nil or empty body are dropped and the `loki_source_syslog_empty_messages_total` counter is incremented.
+  `loki.source.syslog` drops messages with nil or empty body and increments the `loki_source_syslog_empty_messages_total` counter.
 
 [cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
 
