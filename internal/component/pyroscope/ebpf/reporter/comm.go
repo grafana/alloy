@@ -11,3 +11,11 @@ const (
 	CommModeStackframe CommMode = "stackframe"
 	CommModeBoth       CommMode = "both"
 )
+
+func (m CommMode) label() bool {
+	return m == CommModeLabel || m == CommModeBoth
+}
+
+func (m CommMode) stackframe() bool {
+	return m == CommModeStackframe || m == CommModeBoth
+}

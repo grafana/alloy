@@ -33,14 +33,6 @@ type PPROF struct {
 
 type PPROFConsumer func(ctx context.Context, p []PPROF)
 
-func (m CommMode) label() bool {
-	return m == CommModeLabel || m == CommModeBoth
-}
-
-func (m CommMode) stackframe() bool {
-	return m == CommModeStackframe || m == CommModeBoth
-}
-
 type Config struct {
 	ReportInterval            time.Duration
 	SamplesPerSecond          int64
