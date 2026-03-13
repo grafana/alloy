@@ -1,6 +1,8 @@
 package mongodb
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -29,6 +31,7 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 
 type Arguments struct {
 	URI                      alloytypes.Secret `alloy:"mongodb_uri,attr"`
+	LogLevel                 string            `alloy:"log_level,attr,optional"`
 	CompatibleMode           bool              `alloy:"compatible_mode,attr,optional"`
 	CollectAll               bool              `alloy:"collect_all,attr,optional"`
 	DirectConnect            bool              `alloy:"direct_connect,attr,optional"`
@@ -48,8 +51,18 @@ type Arguments struct {
 	EnablePBMMetrics         bool              `alloy:"enable_pbm_metrics,attr,optional"`
 }
 
+// Validate implements syntax.Validator.
+func (a *Arguments) Validate() error {
+	switch a.LogLevel {
+	case "debug", "info", "warn", "error":
+		return nil
+	default:
+		return fmt.Errorf("invalid log_level %q: must be one of debug, info, warn, error", a.LogLevel)
+	}
+}
+
 func (a *Arguments) Convert() *mongodb_exporter.Config {
-	return &mongodb_exporter.Config{
+	cfg := &mongodb_exporter.Config{
 		URI:                      config_util.Secret(a.URI),
 		CompatibleMode:           a.CompatibleMode,
 		CollectAll:               a.CollectAll,
@@ -69,10 +82,15 @@ func (a *Arguments) Convert() *mongodb_exporter.Config {
 		EnableFCV:                a.EnableFCV,
 		EnablePBMMetrics:         a.EnablePBMMetrics,
 	}
+	if a.LogLevel != "" {
+		_ = cfg.LogLevel.Set(a.LogLevel)
+	}
+	return cfg
 }
 
 // SetToDefault sets the default values for the Arguments.
 func (a *Arguments) SetToDefault() {
+	a.LogLevel = "info"
 	a.DirectConnect = false
 	a.CompatibleMode = true
 	a.CollectAll = true

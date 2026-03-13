@@ -1,6 +1,8 @@
 package build
 
 import (
+	"strings"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/mongodb"
 	"github.com/grafana/alloy/internal/static/integrations/mongodb_exporter"
@@ -15,6 +17,7 @@ func (b *ConfigBuilder) appendMongodbExporter(config *mongodb_exporter.Config, i
 func toMongodbExporter(config *mongodb_exporter.Config) *mongodb.Arguments {
 	return &mongodb.Arguments{
 		URI:                      alloytypes.Secret(config.URI),
+		LogLevel:                 strings.ToLower(config.LogLevel.Level.String()),
 		CompatibleMode:           config.CompatibleMode,
 		CollectAll:               config.CollectAll,
 		DirectConnect:            config.DirectConnect,
