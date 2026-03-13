@@ -94,8 +94,10 @@ alloy:
   extraArgs: []
 
   # -- Extra ports to expose on the Alloy container.
+  # NodePort `nodePort`. Only takes effect when `service.type: NodePort`
   extraPorts: []
   # - name: "faro"
+  #   nodePort: 31129
   #   port: 12347
   #   targetPort: 12347
   #   protocol: "TCP"
