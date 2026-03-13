@@ -493,6 +493,41 @@ func TestSourceTenants(t *testing.T) {
 	}
 }
 
+func TestIsManagedMimirNamespace(t *testing.T) {
+	tests := []struct {
+		name      string
+		prefix    string
+		namespace string
+		expected  bool
+	}{
+		{
+			name:      "simple prefix matches its own namespace",
+			prefix:    "alloy",
+			namespace: "alloy/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf",
+			expected:  true,
+		},
+		{
+			name:      "prefix with slash matches its own namespace",
+			prefix:    "prefix/with/slashes",
+			namespace: "prefix/with/slashes/namespace/name/7f93a3fe-405d-4dae-9555-67290acbe173",
+			expected:  true,
+		},
+		{
+			name:      "shorter prefix must not match longer prefix namespace",
+			prefix:    "prefix",
+			namespace: "prefix/with/slashes/namespace/name/7f93a3fe-405d-4dae-9555-67290acbe173",
+			expected:  false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := isManagedMimirNamespace(tc.prefix, tc.namespace)
+			require.Equal(t, tc.expected, result)
+		})
+	}
+}
+
 func testRuleIndexer() cache.Indexer {
 	ruleIndexer := cache.NewIndexer(
 		cache.DeletionHandlingMetaNamespaceKeyFunc,
