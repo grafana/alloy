@@ -34,6 +34,7 @@ type Arguments struct {
 	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 	SymbolUploadEnabled             bool   `alloy:"symbol_upload_enabled,attr,optional"`
+	SymbCacheEnabled                bool   `alloy:"symb_cache_enabled,attr,optional"`
 }
 
 type DeprecatedArguments struct {
