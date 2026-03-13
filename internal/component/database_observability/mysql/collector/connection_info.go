@@ -2,8 +2,10 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -11,9 +13,13 @@ import (
 	"go.uber.org/atomic"
 )
 
-const ConnectionInfoName = "connection_info"
+const (
+	ConnectionInfoName     = "connection_info"
+	connectionInfoInterval = 5 * time.Minute
+)
 
 type ConnectionInfoArguments struct {
+	DB            *sql.DB
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
@@ -21,6 +27,7 @@ type ConnectionInfoArguments struct {
 }
 
 type ConnectionInfo struct {
+	dbConnection  *sql.DB
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
@@ -28,6 +35,8 @@ type ConnectionInfo struct {
 	CloudProvider *database_observability.CloudProvider
 
 	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -37,9 +46,8 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Help:      "Information about the connection",
 	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
 
-	args.Registry.MustRegister(infoMetric)
-
 	return &ConnectionInfo{
+		dbConnection:  args.DB,
 		DSN:           args.DSN,
 		Registry:      args.Registry,
 		EngineVersion: args.EngineVersion,
@@ -54,6 +62,41 @@ func (c *ConnectionInfo) Name() string {
 }
 
 func (c *ConnectionInfo) Start(ctx context.Context) error {
+	labels, err := c.buildLabels()
+	if err != nil {
+		return err
+	}
+
+	c.running.Store(true)
+	ctx, cancel := context.WithCancel(ctx)
+	c.ctx = ctx
+	c.cancel = cancel
+
+	c.ping(ctx, labels)
+
+	go func() {
+		defer func() {
+			c.Registry.Unregister(c.InfoMetric)
+			c.running.Store(false)
+		}()
+
+		ticker := time.NewTicker(connectionInfoInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-ticker.C:
+				c.ping(c.ctx, labels)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (c *ConnectionInfo) buildLabels() (prometheus.Labels, error) {
 	var (
 		providerName         = "unknown"
 		providerRegion       = "unknown"
@@ -82,9 +125,8 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	} else {
 		cfg, err := mysql.ParseDSN(c.DSN)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
 		host, _, err := net.SplitHostPort(cfg.Addr)
 		if err == nil && host != "" {
 			if strings.HasSuffix(host, "rds.amazonaws.com") {
@@ -103,10 +145,24 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			}
 		}
 	}
-	c.running.Store(true)
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
-	return nil
+	return prometheus.Labels{
+		"provider_name":          providerName,
+		"provider_region":        providerRegion,
+		"provider_account":       providerAccount,
+		"db_instance_identifier": dbInstanceIdentifier,
+		"engine":                 engine,
+		"engine_version":         c.EngineVersion,
+	}, nil
+}
+
+func (c *ConnectionInfo) ping(ctx context.Context, labels prometheus.Labels) {
+	if err := c.dbConnection.PingContext(ctx); err != nil {
+		c.Registry.Unregister(c.InfoMetric)
+		return
+	}
+	_ = c.Registry.Register(c.InfoMetric)
+	c.InfoMetric.With(labels).Set(1)
 }
 
 func (c *ConnectionInfo) Stopped() bool {
@@ -114,6 +170,7 @@ func (c *ConnectionInfo) Stopped() bool {
 }
 
 func (c *ConnectionInfo) Stop() {
-	c.Registry.Unregister(c.InfoMetric)
-	c.running.Store(false)
+	if c.cancel != nil {
+		c.cancel()
+	}
 }

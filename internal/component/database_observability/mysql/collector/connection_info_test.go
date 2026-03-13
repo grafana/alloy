@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -85,9 +86,16 @@ func TestConnectionInfo(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual), sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectPing()
+
 		reg := prometheus.NewRegistry()
 
 		collector, err := NewConnectionInfo(ConnectionInfoArguments{
+			DB:            db,
 			DSN:           tc.dsn,
 			Registry:      reg,
 			EngineVersion: tc.engineVersion,
@@ -98,8 +106,10 @@ func TestConnectionInfo(t *testing.T) {
 
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
+		defer collector.Stop()
 
 		err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))
 		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
 	}
 }
