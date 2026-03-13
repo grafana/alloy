@@ -29,9 +29,9 @@ func (h SlogGoKitHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	// Sometimes libraries will use this to check if certain logs should be emitted
 	// and then write logs using other methods such as fmt package.
 	// See https://github.com/percona/mongodb_exporter/blob/8290ba50eeb73d6380885d2546619afc878a6016/exporter/debug.go#L26-L42.
-	// We try to assert the concrete type so we can delegate the check.
-	// As a fallback we keep the old behavior.
-	l, ok := h.logger.(*Logger)
+	// We check for the EnabledAware interface so any logger wrapper that
+	// implements Enabled() can participate in level gating, not just *Logger.
+	l, ok := h.logger.(EnabledAware)
 	if !ok {
 		// return always true, we expect the underlying logger to handle the level
 		return true

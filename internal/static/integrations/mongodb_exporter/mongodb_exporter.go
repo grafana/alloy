@@ -1,6 +1,7 @@
 package mongodb_exporter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -125,6 +126,21 @@ func init() {
 	integrations_v2.RegisterLegacy(&Config{}, integrations_v2.TypeMultiplex, metricsutils.NewNamedShim("mongodb"))
 }
 
+// levelAwareLogger wraps a go-kit log.Logger with an explicit slog.Level
+// so that it satisfies the logging.EnabledAware interface. This is needed
+// because go-kit's level.NewFilter returns an unexported type that does not
+// implement EnabledAware, yet SlogGoKitHandler.Enabled() needs it to gate
+// debug output (e.g. percona/mongodb_exporter's debugResult).
+type levelAwareLogger struct {
+	log.Logger
+	minLevel slog.Level
+}
+
+// Enabled implements logging.EnabledAware.
+func (l *levelAwareLogger) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= l.minLevel
+}
+
 // New creates a new mongodb_exporter integration.
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	var levelOption gokitlevel.Option
@@ -138,7 +154,10 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	default:
 		levelOption = gokitlevel.AllowInfo()
 	}
-	filteredLogger := level.NewFilter(logger, levelOption)
+	filteredLogger := &levelAwareLogger{
+		Logger:   level.NewFilter(logger, levelOption),
+		minLevel: c.LogLevel.Level,
+	}
 	slogLogger := slog.New(logging.NewSlogGoKitHandler(filteredLogger))
 
 	exp := exporter.New(&exporter.Opts{
