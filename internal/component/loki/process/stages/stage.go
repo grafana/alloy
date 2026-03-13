@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/common/model"
 )
 
+
 // Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
 // timestamp and log entry
 type Processor interface {
@@ -188,6 +189,11 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 		}
 	case cfg.TruncateConfig != nil:
 		s, err = newTruncateStage(logger, *cfg.TruncateConfig, registerer)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.UserAgentConfig != nil:
+		s, err = newUserAgentStage(logger, *cfg.UserAgentConfig)
 		if err != nil {
 			return nil, err
 		}
