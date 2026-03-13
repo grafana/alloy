@@ -35,7 +35,7 @@ type Arguments struct {
 	SymbCacheSizeEntries            int      `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool     `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 	PIDLabel                        bool     `alloy:"pid_label,attr,optional"`
-	Comm                            args.CommMode `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
+	Comm                            string `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
 	KernelFrames                    bool     `alloy:"kernel_frames,attr,optional"`
 }
 
@@ -64,5 +64,5 @@ type DeprecatedArguments struct {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
-	return a.Comm.Validate()
+	return args.CommMode(a.Comm).Validate()
 }

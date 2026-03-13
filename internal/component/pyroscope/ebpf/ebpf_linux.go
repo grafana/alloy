@@ -35,7 +35,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
+	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -109,7 +109,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
 		PIDLabel:                  args.PIDLabel,
-		CommMode:                  args.Comm,
+		CommMode:                  rargs.CommMode(args.Comm),
 		KernelFrames:              args.KernelFrames,
 	}, discovery,
 		symbols,
@@ -331,7 +331,7 @@ func NewDefaultArguments() Arguments {
 		VerboseMode:     false,
 		LazyMode:        false,
 
-		Comm:         args.CommModeNone,
+		Comm:         string(rargs.CommModeNone),
 		KernelFrames: true,
 
 		// undocumented
