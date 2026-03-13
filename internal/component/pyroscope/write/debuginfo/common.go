@@ -4,21 +4,21 @@ import (
 	"context"
 	"sync"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc"
 )
 
 type Appender interface {
 	// Upload dispatches the job recursively to each of the nested children, down to each write component,
-	//down to Client and therefore parca's uploader
+	// down to Client and therefore the uploader.
 	Upload(j UploadJob)
-	// Client returns the direct grpc client of the first nested child (down to write component)
-	// this is a best-effort support for the proxy case - we do not support fan-out for proxy only one-to-one
-	// forwarding to the first write endpoint.
-	Client() debuginfogrpc.DebuginfoServiceClient
+	// ConnectClient returns the Connect debuginfo client of the first nested child (down to write component).
+	ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient
+	// ConnectClients returns ALL Connect debuginfo clients from all nested children.
+	// This is used by the receive_http proxy to fan-out uploads to all downstream endpoints.
+	ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient
 }
 
 type Arguments struct {
@@ -30,52 +30,45 @@ type Arguments struct {
 	WorkerNum                    int    `alloy:"worker_num,attr,optional"`
 }
 
-func NewClient(logger log.Logger, newClient func() (*grpc.ClientConn, error),
+func NewClient(logger log.Logger, connectClient debuginfov1alpha1connect.DebuginfoServiceClient,
 	metric prometheus.Counter, dataPath string) *Client {
 
 	return &Client{
-		newClient: newClient,
-		metric:    metric,
-		dataPath:  dataPath,
-
-		logger:       logger,
-		uploaderChan: make(chan *uploader, 1),
+		connectClient: connectClient,
+		metric:        metric,
+		dataPath:      dataPath,
+		logger:        logger,
+		uploaderChan:  make(chan *uploader, 1),
 	}
 }
 
-// Client is per write-endpoint debug info upload client
+// Client is per write-endpoint debug info upload client.
 // This structure serves two purposes:
-//   - return the grpc client to the receive_http component
+//   - return the connect client to the receive_http component for proxying
 //   - perform the debug info upload from the current host by the ebpf profiler request
 type Client struct {
-	logger       log.Logger
-	newClient    func() (*grpc.ClientConn, error)
-	clientOnce   sync.Once
-	cc           *grpc.ClientConn
-	client       debuginfogrpc.DebuginfoServiceClient
-	uploaderOnce sync.Once
-	uploader     *uploader
-	uploaderChan chan *uploader
-	metric       prometheus.Counter
-	dataPath     string
+	logger        log.Logger
+	connectClient debuginfov1alpha1connect.DebuginfoServiceClient
+	uploaderOnce  sync.Once
+	uploader      *uploader
+	uploaderChan  chan *uploader
+	metric        prometheus.Counter
+	dataPath      string
 }
 
-func (c *Client) Client() debuginfogrpc.DebuginfoServiceClient {
-	c.clientOnce.Do(func() {
-		var err error
-		c.cc, err = c.newClient()
-		if err != nil {
-			_ = level.Error(c.logger).Log("msg", "error initializing debuginfo client", "err", err)
-			return
-		}
-		c.client = debuginfogrpc.NewDebuginfoServiceClient(c.cc)
-	})
-	return c.client
+func (c *Client) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
+	return c.connectClient
+}
+
+func (c *Client) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	if c.connectClient != nil {
+		return []debuginfov1alpha1connect.DebuginfoServiceClient{c.connectClient}
+	}
+	return nil
 }
 
 func (c *Client) Upload(j UploadJob) {
-	cc := c.Client()
-	if cc == nil {
+	if c.connectClient == nil {
 		return
 	}
 	c.uploaderOnce.Do(func() {
@@ -92,15 +85,10 @@ func (c *Client) Upload(j UploadJob) {
 		return
 	}
 
-	c.uploader.upload(cc, j)
+	c.uploader.upload(c.connectClient, j)
 }
 
 func (c *Client) Run(ctx context.Context) error {
-	defer func() {
-		if c.cc != nil {
-			_ = c.cc.Close()
-		}
-	}()
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

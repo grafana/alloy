@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -23,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -35,7 +35,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -226,14 +225,22 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) Client() debuginfogrpc.DebuginfoServiceClient {
+func (f *fanOutClient) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
 	for _, client := range f.debugInfos {
-		cl := client.Client()
+		cl := client.ConnectClient()
 		if cl != nil {
 			return cl
 		}
 	}
 	return nil
+}
+
+func (f *fanOutClient) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+	for _, client := range f.debugInfos {
+		clients = append(clients, client.ConnectClients()...)
+	}
+	return clients
 }
 
 func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
@@ -265,10 +272,6 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
 	for i, endpoint := range config.Endpoints {
-		u, err := url.Parse(endpoint.URL)
-		if err != nil {
-			return nil, err
-		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -286,9 +289,8 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		ingestClients[endpoint] = httpClient
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		debugInfo := debuginfo.NewClient(logger, func() (*grpc.ClientConn, error) {
-			return newDebugInfoGRPCClient(u, endpoint)
-		}, metrics.debugInfoUploadBytes, endpointDataPath)
+		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL)
+		debugInfo := debuginfo.NewClient(logger, connectClient, metrics.debugInfoUploadBytes, endpointDataPath)
 		debugInfos = append(debugInfos, debugInfo)
 	}
 

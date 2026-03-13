@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -61,15 +61,25 @@ type Fanout struct {
 	writeLatency prometheus.Histogram
 }
 
-func (f *Fanout) Client() debuginfogrpc.DebuginfoServiceClient {
+func (f *Fanout) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 	for _, c := range f.children {
-		if client := c.Client(); client != nil {
+		if client := c.ConnectClient(); client != nil {
 			return client
 		}
 	}
 	return nil
+}
+
+func (f *Fanout) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+	for _, c := range f.children {
+		clients = append(clients, c.ConnectClients()...)
+	}
+	return clients
 }
 
 func (f *Fanout) Upload(j debuginfo.UploadJob) {

@@ -8,16 +8,16 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
-	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -25,11 +25,17 @@ import (
 	lru "github.com/elastic/go-freelru"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup" //nolint:depguard
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/process"
+)
+
+const (
+	ChunkSize = 1024 * 1024 * 3
+)
+
+const (
+	ReasonUploadInProgress = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
 )
 
 type uploadRequest struct {
@@ -37,13 +43,11 @@ type uploadRequest struct {
 	fileName string
 	buildID  string
 	open     func() (process.ReadAtCloser, error)
-	client   debuginfogrpc.DebuginfoServiceClient
+	client   debuginfov1alpha1connect.DebuginfoServiceClient
 }
 
-type ParcaSymbolUploader struct {
+type PyroscopeSymbolUploader struct {
 	logger log.Logger
-
-	httpClient *http.Client
 
 	retry *lru.SyncedLRU[libpf.FileID, struct{}]
 
@@ -57,7 +61,7 @@ type ParcaSymbolUploader struct {
 	uploadRequestBytes prometheus.Counter
 }
 
-func NewParcaSymbolUploader(
+func NewPyroscopeSymbolUploader(
 	logger log.Logger,
 	cacheSize uint32,
 	stripTextSection bool,
@@ -65,7 +69,7 @@ func NewParcaSymbolUploader(
 	workerNum int,
 	cacheDir string,
 	uploadRequestBytes prometheus.Counter,
-) (*ParcaSymbolUploader, error) {
+) (*PyroscopeSymbolUploader, error) {
 
 	retryCache, err := lru.NewSynced[libpf.FileID, struct{}](cacheSize, libpf.FileID.Hash32)
 	if err != nil {
@@ -103,9 +107,8 @@ func NewParcaSymbolUploader(
 		return nil, fmt.Errorf("failed to clean cache directory (%s): %s", cacheDirectory, err)
 	}
 
-	return &ParcaSymbolUploader{
+	return &PyroscopeSymbolUploader{
 		logger:             logger,
-		httpClient:         http.DefaultClient,
 		retry:              retryCache,
 		stripTextSection:   stripTextSection,
 		tmp:                cacheDirectory,
@@ -115,10 +118,6 @@ func NewParcaSymbolUploader(
 		uploadRequestBytes: uploadRequestBytes,
 	}, nil
 }
-
-const (
-	ReasonUploadInProgress = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
-)
 
 // inProgressTracker is a simple in-progress tracker that keeps track of which
 // fileIDs are currently in-progress/enqueued to be uploaded.
@@ -173,8 +172,8 @@ func (i *inProgressTracker) Remove(fileID libpf.FileID) {
 	}
 }
 
-// Start starts the upload workers.
-func (u *ParcaSymbolUploader) Run(ctx context.Context) error {
+// Run starts the upload workers.
+func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 	var g errgroup.Group
 
 	for i := 0; i < u.workerNum; i++ {
@@ -197,7 +196,7 @@ func (u *ParcaSymbolUploader) Run(ctx context.Context) error {
 
 // Upload enqueues a file for upload if it's not already in progress, or if it
 // is marked not to be retried.
-func (u *ParcaSymbolUploader) Upload(ctx context.Context, client debuginfogrpc.DebuginfoServiceClient,
+func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
 
@@ -224,43 +223,67 @@ func (u *ParcaSymbolUploader) Upload(ctx context.Context, client debuginfogrpc.D
 	}
 }
 
-// attemptUpload attempts to upload the file with the given fileID and buildID.
-func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginfogrpc.DebuginfoServiceClient, fileID libpf.FileID, fileName string, buildID string,
+// attemptUpload attempts to upload the file with the given fileID and buildID
+// using the new Connect bidirectional streaming API.
+func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient,
+	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) error {
 
 	defer u.inProgressTracker.Remove(fileID)
 
-	buildIDType := debuginfopb.BuildIDType_BUILD_ID_TYPE_GNU
-	if buildID == "" {
-		buildIDType = debuginfopb.BuildIDType_BUILD_ID_TYPE_HASH
-		buildID = fileID.StringNoQuotes()
+	gnuBuildID := buildID
+	if gnuBuildID == "" {
+		gnuBuildID = fileID.StringNoQuotes()
 	}
 
-	shouldInitiateUploadResp, err := client.ShouldInitiateUpload(ctx, &debuginfopb.ShouldInitiateUploadRequest{
-		BuildId:     buildID,
-		BuildIdType: buildIDType,
-		Type:        debuginfopb.DebuginfoType_DEBUGINFO_TYPE_DEBUGINFO_UNSPECIFIED,
-	})
+	fileType := debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL
+	if u.stripTextSection {
+		fileType = debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT
+	}
+
+	// Open bidi stream.
+	stream := client.Upload(ctx)
+
+	// Step 1: Send ShouldInitiateUploadRequest.
+	if err := stream.Send(&debuginfov1alpha1.UploadRequest{
+		Data: &debuginfov1alpha1.UploadRequest_Init{
+			Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+				File: &debuginfov1alpha1.FileMetadata{
+					GnuBuildId: gnuBuildID,
+					OtelFileId: fileID.StringNoQuotes(),
+					Name:       fileName,
+					Type:       fileType,
+				},
+			},
+		},
+	}); err != nil {
+		return fmt.Errorf("send init request: %w", err)
+	}
+
+	// Step 2: Receive ShouldInitiateUploadResponse.
+	resp, err := stream.Receive()
 	if err != nil {
-		return err
+		return fmt.Errorf("receive init response: %w", err)
+	}
+
+	initResp := resp.GetInit()
+	if initResp == nil {
+		u.retry.Add(fileID, struct{}{})
+		return fmt.Errorf("unexpected response type, expected init response")
 	}
 
 	l := log.With(u.logger,
 		"file_name", fileName,
 		"file_id", fileID,
-		"build_id", buildID,
+		"build_id", gnuBuildID,
 	)
 
 	level.Debug(l).Log("msg", "ShouldInitiateUpload result",
-		"should_initiate_upload", shouldInitiateUploadResp.ShouldInitiateUpload,
-		"reason", shouldInitiateUploadResp.Reason)
+		"should_initiate_upload", initResp.ShouldInitiateUpload,
+		"reason", initResp.Reason)
 
-	if !shouldInitiateUploadResp.ShouldInitiateUpload {
-		// This can happen when two agents simultaneously try to upload the
-		// same file. The other agent already started the upload so we don't
-		// need to do it again, however the upload may fail so we should retry
-		// after a while.
-		if shouldInitiateUploadResp.Reason == ReasonUploadInProgress {
+	if !initResp.ShouldInitiateUpload {
+		if initResp.Reason == ReasonUploadInProgress {
 			u.retry.AddWithLifetime(fileID, struct{}{}, 5*time.Minute)
 			return nil
 		}
@@ -268,22 +291,15 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 		return nil
 	}
 
-	var (
-		r    io.Reader
-		size int64
-	)
+	// Step 3: Prepare the file data.
+	var r io.Reader
 	if !u.stripTextSection {
-		// We're not stripping the text section so we can upload the original file.
 		f, err := open()
 		if err != nil {
 			if os.IsNotExist(err) {
-				// File doesn't exist, likely because the process is already
-				// gone.
 				return nil
 			}
 			if err.Error() == "no backing file for anonymous memory" {
-				// This is an anonymous memory mapping, it's not backed by
-				// a file so we will never be able to extract debuginfo.
 				u.retry.Add(fileID, struct{}{})
 				return nil
 			}
@@ -291,12 +307,11 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 		}
 		defer f.Close()
 
-		size, err = readAtCloserSize(u.logger, f)
+		size, err := readAtCloserSize(u.logger, f)
 		if err != nil {
 			return err
 		}
 		if size == 0 {
-			// The original file is empty no need to ever upload it.
 			u.retry.Add(fileID, struct{}{})
 			return nil
 		}
@@ -312,15 +327,10 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 
 		original, err := open()
 		if err != nil {
-			os.Remove(f.Name())
 			if os.IsNotExist(err) {
-				// Original file doesn't exist the process is likely
-				// already gone.
 				return nil
 			}
 			if err.Error() == "no backing file for anonymous memory" {
-				// This is an anonymous memory mapping, it's not backed by
-				// a file so we will never be able to extract debuginfo.
 				u.retry.Add(fileID, struct{}{})
 				return nil
 			}
@@ -329,111 +339,67 @@ func (u *ParcaSymbolUploader) attemptUpload(ctx context.Context, client debuginf
 		defer original.Close()
 
 		if err := elfwriter.OnlyKeepDebug(f, original); err != nil {
-			os.Remove(f.Name())
-			// If we can't extract the debuginfo we can't upload the file.
 			u.retry.Add(fileID, struct{}{})
 			return fmt.Errorf("extract debuginfo: %w", err)
 		}
 
 		if _, err := f.Seek(0, io.SeekStart); err != nil {
-			os.Remove(f.Name())
-			// Something is probably seriously wrong so don't retry.
 			u.retry.Add(fileID, struct{}{})
 			return fmt.Errorf("seek extracted debuginfo to start: %w", err)
 		}
 
 		stat, err := f.Stat()
 		if err != nil {
-			os.Remove(f.Name())
-			// Something is probably seriously wrong so don't retry.
 			u.retry.Add(fileID, struct{}{})
 			return fmt.Errorf("stat file to upload: %w", err)
 		}
-		size = stat.Size()
-
-		if size == 0 {
-			os.Remove(f.Name())
-			// Extraction is a deterministic process so if the file is empty we
-			// will never be able to extract non-zero debuginfo the original
-			// binary.
+		if stat.Size() == 0 {
 			u.retry.Add(fileID, struct{}{})
 			return nil
 		}
 
 		r = f
 	}
-	initiateUploadResp, err := client.InitiateUpload(ctx, &debuginfopb.InitiateUploadRequest{
-		BuildId:     buildID,
-		BuildIdType: buildIDType,
-		Type:        debuginfopb.DebuginfoType_DEBUGINFO_TYPE_DEBUGINFO_UNSPECIFIED,
-		Hash:        fileID.StringNoQuotes(),
-		Size:        size,
-	})
 
-	if err != nil {
-		level.Debug(u.logger).Log("msg", "InitiateUpload", "err", err)
-		if status.Code(err) == codes.FailedPrecondition {
-			// This is a race that can happen when multiple agents are trying
-			// to upload the same file. This happens when another upload is
-			// still in progress. Since we don't know if it will succeed or not
-			// we retry after a while.
-			u.retry.AddWithLifetime(fileID, struct{}{}, 5*time.Minute)
-			return nil
-		}
-		if status.Code(err) == codes.AlreadyExists {
-			// This is a race that can happen when multiple agents are trying
-			// to upload the same file. The other upload already succeeded so
-			// we don't need to upload it again.
-			u.retry.Add(fileID, struct{}{})
-			return nil
-		}
-		if status.Code(err) == codes.InvalidArgument {
-			// This will never succeed, no need to retry.
-			u.retry.Add(fileID, struct{}{})
-			return nil
-		}
-		return err
-	}
-	level.Debug(u.logger).Log("msg", "InitiateUpload", "res", fmt.Sprintf("%+v", initiateUploadResp))
+	// Step 4: Stream chunks.
+	reader := bufio.NewReader(r)
+	buffer := make([]byte, ChunkSize)
+	var bytesSent uint64
 
-	if initiateUploadResp.UploadInstructions == nil {
-		u.retry.Add(fileID, struct{}{})
-		return nil
-	}
-
-	instructions := initiateUploadResp.UploadInstructions
-	var uploadedBytes uint64
-	switch instructions.UploadStrategy {
-	case debuginfopb.UploadInstructions_UPLOAD_STRATEGY_SIGNED_URL:
-		if err := u.uploadViaSignedURL(ctx, instructions.SignedUrl, r, size); err != nil {
-			return err
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
 		}
-		uploadedBytes = uint64(size)
-	case debuginfopb.UploadInstructions_UPLOAD_STRATEGY_GRPC:
-		var err error
-		uploadedBytes, err = NewGrpcUploadClient(client).Upload(ctx, instructions, r)
 		if err != nil {
-			return err
+			return fmt.Errorf("read next chunk (%d bytes sent so far): %w", bytesSent, err)
 		}
-	default:
-		// No clue what to do with this upload strategy.
-		level.Warn(u.logger).Log("msg", "unknown upload strategy", "strategy", instructions.UploadStrategy)
-		u.retry.Add(fileID, struct{}{})
-		return nil
+
+		if err := stream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Chunk{
+				Chunk: &debuginfov1alpha1.UploadChunk{
+					Chunk: buffer[:n],
+				},
+			},
+		}); err != nil {
+			return fmt.Errorf("send chunk (%d bytes sent so far): %w", bytesSent, err)
+		}
+		bytesSent += uint64(n)
 	}
 
-	u.uploadRequestBytes.Add(float64(uploadedBytes))
-
-	_, err = client.MarkUploadFinished(ctx, &debuginfopb.MarkUploadFinishedRequest{
-		BuildId:  buildID,
-		UploadId: initiateUploadResp.UploadInstructions.UploadId,
-	})
-	if err != nil {
-		level.Debug(u.logger).Log("msg", "upload failed", "file_name", fileName, "build_id", buildID, "err", err)
-		return err
+	// Step 5: Close the send side to signal EOF.
+	if err := stream.CloseRequest(); err != nil {
+		return fmt.Errorf("close send: %w", err)
+	}
+	if err := stream.CloseResponse(); err != nil {
+		if connectErr := new(connect.Error); !connect.IsNotModifiedError(err) {
+			_ = connectErr // suppress unused
+			return fmt.Errorf("close response: %w", err)
+		}
 	}
 
-	level.Debug(u.logger).Log("msg", "upload succeeded", "file_name", fileName, "build_id", buildID, "bytes", uploadedBytes)
+	u.uploadRequestBytes.Add(float64(bytesSent))
+	level.Debug(l).Log("msg", "upload succeeded", "bytes", bytesSent)
 	u.retry.Add(fileID, struct{}{})
 	return nil
 }
@@ -456,33 +422,4 @@ func readAtCloserSize(logger log.Logger, r process.ReadAtCloser) (int64, error) 
 	}
 
 	return stat.Size(), nil
-}
-
-// uploadViaSignedURL uploads the reader to the signed URL.
-func (u *ParcaSymbolUploader) uploadViaSignedURL(ctx context.Context, url string, r io.Reader, size int64) error {
-	// Client is closing the reader if the reader is also closer.
-	// We need to wrap the reader to avoid this.
-	// We want to have total control over the reader.
-	r = bufio.NewReader(r)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, r)
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-
-	req.ContentLength = size
-	resp, err := u.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("do upload request: %w", err)
-	}
-	defer func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode/100 != 2 {
-		data, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, msg: %s", resp.StatusCode, string(data))
-	}
-
-	return nil
 }

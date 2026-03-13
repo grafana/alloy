@@ -5,12 +5,12 @@ import (
 	"context"
 	"sync"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
@@ -206,6 +206,10 @@ func (e *enrichAppendable) Upload(j debuginfo.UploadJob) {
 	e.component.fanout.Upload(j)
 }
 
-func (e *enrichAppendable) Client() debuginfogrpc.DebuginfoServiceClient {
-	return e.component.fanout.Client()
+func (e *enrichAppendable) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
+	return e.component.fanout.ConnectClient()
+}
+
+func (e *enrichAppendable) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	return e.component.fanout.ConnectClients()
 }

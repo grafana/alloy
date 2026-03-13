@@ -5,8 +5,8 @@ package debuginfo
 import (
 	"context"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/process"
 )
@@ -14,15 +14,15 @@ import (
 type UploadJob struct {
 	FrameMappingFileData libpf.FrameMappingFileData
 	Open                 func() (process.ReadAtCloser, error)
-	// InitArguments is the structure used to create a new parca uploader
-	// it is passed as the job field to have the configuration in the ebpf component instead of write component,
+	// InitArguments is the structure used to create a new uploader.
+	// It is passed as the job field to have the configuration in the ebpf component instead of write component,
 	// to not confuse users.
 	InitArguments Arguments
 }
 
 func (c *Client) newUploader(j UploadJob) (*uploader, error) {
 	args := j.InitArguments
-	u, err := reporter.NewParcaSymbolUploader(
+	u, err := reporter.NewPyroscopeSymbolUploader(
 		c.logger,
 		args.CacheSize,
 		args.StripTextSection,
@@ -38,10 +38,10 @@ func (c *Client) newUploader(j UploadJob) (*uploader, error) {
 }
 
 type uploader struct {
-	u *reporter.ParcaSymbolUploader
+	u *reporter.PyroscopeSymbolUploader
 }
 
-func (u *uploader) upload(c debuginfogrpc.DebuginfoServiceClient, j UploadJob) {
+func (u *uploader) upload(c debuginfov1alpha1connect.DebuginfoServiceClient, j UploadJob) {
 	u.u.Upload(context.Background(),
 		c,
 		j.FrameMappingFileData.FileID,

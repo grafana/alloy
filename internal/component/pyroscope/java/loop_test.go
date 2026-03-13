@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
@@ -43,7 +43,11 @@ func (m *mockAppendable) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (m *mockAppendable) Client() debuginfogrpc.DebuginfoServiceClient {
+func (m *mockAppendable) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
+	return nil
+}
+
+func (m *mockAppendable) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }
 

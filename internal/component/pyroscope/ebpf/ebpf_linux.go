@@ -279,9 +279,11 @@ func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
 	if c.symbols != nil {
 		c.symbols.ReportExecutable(md)
 	}
+	if c.args.SymbolUploadEnabled {
+		c.reportExecutableForDebugInfoUpload(md)
+	}
 }
 
-//nolint:unused
 func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
 	extractAsFile := func(pid libpf.PID, file string) string {
 		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file)
