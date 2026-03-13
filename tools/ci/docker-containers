@@ -79,6 +79,7 @@ case "$TARGET_CONTAINER" in
       --platform $BUILD_PLATFORMS            \
       --build-arg RELEASE_BUILD=1            \
       --build-arg VERSION="$VERSION"         \
+      --build-arg CI="$CI"                   \
       -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION" \
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                          \
@@ -93,8 +94,9 @@ case "$TARGET_CONTAINER" in
     docker buildx build $DOCKER_FLAGS                     \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO            \
       --build-arg RELEASE_BUILD=1                         \
-      --build-arg VERSION="$VERSION"                      \
+      --build-arg VERSION="$VERSION"                       \
       --build-arg GOEXPERIMENT=boringcrypto               \
+      --build-arg CI="$CI"                                \
       -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                       \
@@ -103,9 +105,10 @@ case "$TARGET_CONTAINER" in
 
   alloy-devel)
     docker buildx build $DOCKER_FLAGS      \
-      --platform $BUILD_PLATFORMS          \
+      --platform $BUILD_PLATFORMS           \
       --build-arg RELEASE_BUILD=1          \
       --build-arg VERSION="$VERSION"       \
+      --build-arg CI="$CI"                 \
       -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION" \
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                        \
@@ -122,6 +125,7 @@ case "$TARGET_CONTAINER" in
       --build-arg RELEASE_BUILD=1                       \
       --build-arg VERSION="$VERSION"                    \
       --build-arg GOEXPERIMENT=boringcrypto             \
+      --build-arg CI="$CI"                             \
       -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                     \
@@ -132,9 +136,10 @@ case "$TARGET_CONTAINER" in
 	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
 
     docker buildx build $DOCKER_FLAGS      \
-      --platform $BUILD_PLATFORMS          \
+      --platform $BUILD_PLATFORMS           \
       --build-arg RELEASE_BUILD=1          \
       --build-arg VERSION="$VERSION"       \
+      --build-arg CI="$CI"                 \
       -t "$DEVEL_ALLOY_IMAGE:$TAG" \
       -f Dockerfile                        \
       .
@@ -148,6 +153,7 @@ case "$TARGET_CONTAINER" in
       --build-arg RELEASE_BUILD=1                       \
       --build-arg VERSION="$VERSION"                    \
       --build-arg GOEXPERIMENT=boringcrypto             \
+      --build-arg CI="$CI"                             \
       -t "$DEVEL_ALLOY_IMAGE:$TAG-boringcrypto" \
       -f Dockerfile                                     \
       .
