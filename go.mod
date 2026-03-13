@@ -78,7 +78,7 @@ require (
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf
 	github.com/grafana/loki/v3 v3.6.2
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
-	github.com/grafana/pyroscope/api v1.3.2-0.20260313054416-e3337965d68a
+	github.com/grafana/pyroscope/api v1.3.2
 	github.com/grafana/pyroscope/ebpf v0.4.11
 	github.com/grafana/pyroscope/lidia v0.0.2
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
