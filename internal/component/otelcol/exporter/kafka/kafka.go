@@ -75,6 +75,7 @@ type Arguments struct {
 	PartitionLogsByResourceAttributes    bool          `alloy:"partition_logs_by_resource_attributes,attr,optional"`
 	PartitionLogsByTraceID               bool          `alloy:"partition_logs_by_trace_id,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
+	ConnIdleTimeout                      time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 	IncludeMetadataKeys                  []string      `alloy:"include_metadata_keys,attr,optional"`
 
 	Logs    *KafkaExporterSignalConfig `alloy:"logs,block,optional"`
@@ -200,9 +201,10 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Brokers:  []string{"localhost:9092"},
-		ClientID: "otel-collector",
-		Timeout:  5 * time.Second,
+		Brokers:         []string{"localhost:9092"},
+		ClientID:        "otel-collector",
+		Timeout:         5 * time.Second,
+		ConnIdleTimeout: 9 * time.Minute,
 		Metadata: otelcol.KafkaMetadataArguments{
 			Full:            true,
 			RefreshInterval: 10 * time.Minute,
@@ -263,6 +265,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}
+	result.ConnIdleTimeout = args.ConnIdleTimeout
 	result.Metadata = args.Metadata.Convert()
 	result.BackOffConfig = *args.Retry.Convert()
 

@@ -67,6 +67,7 @@ type Arguments struct {
 	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
 	RackID                 string        `alloy:"rack_id,attr,optional"`
 	UseLeaderEpoch         bool          `alloy:"use_leader_epoch,attr,optional"`
+	ConnIdleTimeout        time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -99,6 +100,7 @@ func (args *Arguments) SetToDefault() {
 		GroupRebalanceStrategy: "range",
 		RackID:                 "",
 		UseLeaderEpoch:         true,
+		ConnIdleTimeout:        9 * time.Minute,
 		Logs: KafkaReceiverTopicEncodingConfig{
 			Topics:   []string{"otlp_logs"},
 			Encoding: "otlp_proto",
@@ -233,6 +235,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.GroupInstanceID = args.GroupInstanceID
 	result.RackID = args.RackID
 	result.UseLeaderEpoch = args.UseLeaderEpoch
+	result.ConnIdleTimeout = args.ConnIdleTimeout
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
 	result.Logs = args.Logs.convert()

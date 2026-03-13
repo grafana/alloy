@@ -136,3 +136,9 @@ replaces:
       Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
     dependency: github.com/hashicorp/vault/api/auth/aws
     replacement: github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
+
+  - comment: >
+      Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps.
+      Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
+    dependency: github.com/DataDog/datadog-agent/pkg/util/system
+    replacement: github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2

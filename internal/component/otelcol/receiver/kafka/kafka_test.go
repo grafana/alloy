@@ -23,6 +23,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ClientID:        "otel-collector",
 				RackID:          "",
 				UseLeaderEpoch:  true,
+				ConnIdleTimeout: 9 * time.Minute,
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -169,6 +170,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ClientID:        "test_client_id",
 					RackID:          "test-rack",
 					UseLeaderEpoch:  true,
+					ConnIdleTimeout: 9 * time.Minute,
 					Metadata: configkafka.MetadataConfig{
 						Full:            true,
 						RefreshInterval: 10 * time.Minute,
@@ -266,6 +268,7 @@ func TestArguments_Auth(t *testing.T) {
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -346,6 +349,7 @@ func TestArguments_Auth(t *testing.T) {
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -432,6 +436,7 @@ func TestArguments_Auth(t *testing.T) {
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -519,6 +524,7 @@ func TestArguments_Auth(t *testing.T) {
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,

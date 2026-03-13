@@ -65,6 +65,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Brokers:         []string{"localhost:9092"},
 				ProtocolVersion: "2.0.0",
 				ClientID:        "otel-collector",
+				ConnIdleTimeout: 9 * time.Minute,
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -314,6 +315,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Brokers:                              []string{"redpanda:123"},
 					ProtocolVersion:                      "2.0.0",
 					ClientID:                             "my-client",
+					ConnIdleTimeout:                      9 * time.Minute,
 					ResolveCanonicalBootstrapServersOnly: true,
 					Metadata: configkafka.MetadataConfig{
 						Full:            false,
