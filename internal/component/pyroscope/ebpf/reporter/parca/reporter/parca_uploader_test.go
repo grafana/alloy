@@ -286,7 +286,7 @@ func TestAttemptUpload_UploadInProgress(t *testing.T) {
 }
 
 func TestAttemptUpload_EmptyBuildID(t *testing.T) {
-	var receivedBuildID string
+	var receivedFile *debuginfov1alpha1.FileMetadata
 
 	handler := &mockDebuginfoHandler{
 		uploadFunc: func(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
@@ -294,7 +294,7 @@ func TestAttemptUpload_EmptyBuildID(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			receivedBuildID = req.GetInit().GetFile().GetGnuBuildId()
+			receivedFile = req.GetInit().GetFile()
 			return stream.Send(&debuginfov1alpha1.UploadResponse{
 				Data: &debuginfov1alpha1.UploadResponse_Init{
 					Init: &debuginfov1alpha1.ShouldInitiateUploadResponse{
@@ -309,10 +309,11 @@ func TestAttemptUpload_EmptyBuildID(t *testing.T) {
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(7, 8)
 
-	// Pass empty buildID — should fall back to fileID.StringNoQuotes().
+	// Pass empty buildID — GnuBuildId should be empty, OtelFileId should have the fileID.
 	err := u.attemptUpload(context.Background(), client, fileID, "test.so", "", newMockReadAtCloser([]byte("data")))
 	require.NoError(t, err)
-	require.Equal(t, fileID.StringNoQuotes(), receivedBuildID)
+	require.Equal(t, "", receivedFile.GetGnuBuildId())
+	require.Equal(t, fileID.StringNoQuotes(), receivedFile.GetOtelFileId())
 }
 
 func TestAttemptUpload_LargeFile_MultipleChunks(t *testing.T) {

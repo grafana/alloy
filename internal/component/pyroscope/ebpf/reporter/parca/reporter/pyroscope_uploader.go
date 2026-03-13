@@ -230,11 +230,6 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 
 	defer u.inProgressTracker.Remove(fileID)
 
-	gnuBuildID := buildID
-	if gnuBuildID == "" {
-		gnuBuildID = fileID.StringNoQuotes()
-	}
-
 	fileType := debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL
 	if u.stripTextSection {
 		fileType = debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT
@@ -248,7 +243,7 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 		Data: &debuginfov1alpha1.UploadRequest_Init{
 			Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
 				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId: gnuBuildID,
+					GnuBuildId: buildID,
 					OtelFileId: fileID.StringNoQuotes(),
 					Name:       fileName,
 					Type:       fileType,
@@ -274,7 +269,7 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 	l := log.With(u.logger,
 		"file_name", fileName,
 		"file_id", fileID,
-		"build_id", gnuBuildID,
+		"build_id", buildID,
 	)
 
 	level.Debug(l).Log("msg", "ShouldInitiateUpload result",
