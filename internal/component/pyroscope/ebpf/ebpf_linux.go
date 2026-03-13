@@ -108,7 +108,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
 		PIDLabel:                  args.PIDLabel,
-		CommMode:                  args.Comm.toReporter(),
+		CommMode:                  args.Comm,
 		KernelFrames:              args.KernelFrames,
 	}, discovery,
 		symbols,
@@ -330,7 +330,7 @@ func NewDefaultArguments() Arguments {
 		VerboseMode:     false,
 		LazyMode:        false,
 
-		Comm:         CommModeNone,
+		Comm:         reporter.CommModeNone,
 		KernelFrames: true,
 
 		// undocumented
