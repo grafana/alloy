@@ -197,6 +197,74 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	})
 }
 
+func TestArguments_Validate(t *testing.T) {
+	// syntax.Unmarshal calls Validate() automatically, so validation errors
+	// surface at unmarshal time.
+
+	t.Run("invalid_intake_behavior", func(t *testing.T) {
+		in := `
+		intake {
+			behavior = "bogus"
+		}
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		err := syntax.Unmarshal([]byte(in), &args)
+		require.ErrorContains(t, err, `invalid value "bogus"`)
+	})
+
+	t.Run("proxy_behavior_without_proxy_block", func(t *testing.T) {
+		in := `
+		intake {
+			behavior = "proxy"
+		}
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		err := syntax.Unmarshal([]byte(in), &args)
+		require.ErrorContains(t, err, `proxy block with an api block is required`)
+	})
+
+	t.Run("valid_proxy_config", func(t *testing.T) {
+		in := `
+		intake {
+			behavior = "proxy"
+			proxy {
+				api {
+					key = "my-secret-key"
+				}
+			}
+		}
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	})
+
+	t.Run("valid_disable", func(t *testing.T) {
+		in := `
+		intake {
+			behavior = "disable"
+		}
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	})
+
+	t.Run("valid_no_intake", func(t *testing.T) {
+		in := `
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	})
+}
+
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string

@@ -2,6 +2,7 @@
 package datadog
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -67,6 +68,33 @@ type APIArguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
+// Validate implements syntax.Validator.
+func (args *Arguments) Validate() error {
+	if args.Intake != nil {
+		if err := args.Intake.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Validate the converted upstream config. The upstream Validate() is not
+	// called automatically by the Alloy receiver framework, so we call it
+	// explicitly here. This also avoids duplicating upstream validation logic
+	// (e.g. allowed intake behavior values) which may evolve over time.
+	cfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+	return cfg.(*datadogreceiver.Config).Validate()
+}
+
+// Validate checks IntakeArguments constraints documented in the component reference.
+func (args *IntakeArguments) Validate() error {
+	if args.Behavior == "proxy" && args.Proxy == nil {
+		return fmt.Errorf("a proxy block with an api block is required when intake behavior is %q", args.Behavior)
+	}
+	return nil
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
@@ -91,7 +119,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ReadTimeout:      args.ReadTimeout,
 		TraceIDCacheSize: args.TraceIDCacheSize,
 	}
-
+	
 	if args.Intake != nil {
 		cfg.Intake = args.Intake.Convert()
 	}
