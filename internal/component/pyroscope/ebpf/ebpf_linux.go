@@ -4,6 +4,7 @@ package ebpf
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -29,7 +30,8 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 
 	reporter2 "go.opentelemetry.io/ebpf-profiler/reporter"
-	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -52,11 +54,24 @@ func init() {
 		},
 	})
 	python.NoContinueWithNextUnwinder.Store(true)
-	// Disable ebpf profiler metrics
-	ebpfmetrics.Start(metricnoop.Meter{})
 }
 
 func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
+	// Bridge OTel eBPF profiler metrics to Prometheus.
+	otelPromRegistry := prometheus.NewRegistry()
+	promExporter, err := sdkprometheus.New(
+		sdkprometheus.WithRegisterer(otelPromRegistry),
+		sdkprometheus.WithoutTargetInfo(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating OTel prometheus exporter: %w", err)
+	}
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(promExporter))
+	ebpfmetrics.Start(mp.Meter("pyroscope.ebpf"))
+	if reg != nil {
+		reg.MustRegister(otelPromRegistry)
+	}
+
 	cfg, err := args.Convert()
 	if err != nil {
 		return nil, err
