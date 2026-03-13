@@ -41,7 +41,7 @@ The `otelcol.extension.jaeger_remote_sampling` component doesn't support any arg
 You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`:
 
 | Block                                                             | Description                                                                      | Required |
-|-------------------------------------------------------------------|----------------------------------------------------------------------------------|----------|
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------- |
 | [`source`][source]                                                | Configures the Jaeger remote sampling document.                                  | yes      |
 | `source` > [`remote`][remote]                                     | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no       |
 | `source` > `remote` > [`keepalive` client][keepalive_client]      | Configures keepalive settings for the gRPC client.                               | no       |
@@ -49,13 +49,13 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | [`http`][http]                                                    | Configures the HTTP server to serve Jaeger remote sampling.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                             | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                              | no       |
-| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                                    | no       |
+| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                                  | no       |
 | [`grpc`][grpc]                                                    | Configures the gRPC server to serve Jaeger remote sampling.                      | no       |
 | `grpc` > [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                         | no       |
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                       | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                          | no       |
 | `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                              | no       |
-| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                                    | no       |
+| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                                  | no       |
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state.       | no       |
 
 The > symbol indicates deeper levels of nesting.

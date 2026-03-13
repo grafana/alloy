@@ -57,7 +57,8 @@ func TestUpdates_EmptyModule(t *testing.T) {
 	}
 `
 
-	ctrl := runtime.New(testOptions(t))
+	ctrl, err := runtime.New(testOptions(t))
+	require.NoError(t, err)
 	f, err := runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)
@@ -122,7 +123,8 @@ func TestUpdates_ThroughModule(t *testing.T) {
 	}
 `
 
-	ctrl := runtime.New(testOptions(t))
+	ctrl, err := runtime.New(testOptions(t))
+	require.NoError(t, err)
 	f, err := runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)
@@ -178,7 +180,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	testcomponents.summation "sum_1" {
 		input = module.string.test_1.exports.output
 	}
-	
+
 	module.string "test_2" {
 		content = ` + strconv.Quote(module) + `
 	}
@@ -188,7 +190,8 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	}
 `
 
-	ctrl := runtime.New(testOptions(t))
+	ctrl, err := runtime.New(testOptions(t))
+	require.NoError(t, err)
 	f, err := runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)
@@ -259,7 +262,8 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 	}
 `
 
-	ctrl := runtime.New(testOptions(t))
+	ctrl, err := runtime.New(testOptions(t))
+	require.NoError(t, err)
 	f, err := runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)

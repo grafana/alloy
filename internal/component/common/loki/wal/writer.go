@@ -261,16 +261,18 @@ func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error 
 	var fp uint64
 	lbs := labels.FromMap(util.ModelLabelSetToMap(entry.Labels))
 	fp, _ = lbs.HashWithoutLabels(nil, []string(nil)...)
+	ref := chunks.HeadSeriesRef(fp)
 
 	// Append the entry to an already existing stream (if any)
 	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, RefEntries{
-		Ref: chunks.HeadSeriesRef(fp),
+		Ref: ref,
 		Entries: []push.Entry{
 			entry.Entry,
 		},
+		Created: entry.Created(),
 	})
 	ew.reusableWALRecord.Series = append(ew.reusableWALRecord.Series, record.RefSeries{
-		Ref:    chunks.HeadSeriesRef(fp),
+		Ref:    ref,
 		Labels: lbs,
 	})
 

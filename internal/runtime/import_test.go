@@ -382,7 +382,7 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
 	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
-	ctrl := alloy_runtime.New(alloy_runtime.Options{
+	ctrl, err := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
 		MinStability: stability,
@@ -391,6 +391,7 @@ func setup(t *testing.T, config string, reg prometheus.Registerer, stability fea
 			&testservices.Fake{},
 		},
 	})
+	require.NoError(t, err)
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)

@@ -655,11 +655,11 @@ otelcol.connector.spanmetrics "default" {
   namespace = "test.namespace"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }

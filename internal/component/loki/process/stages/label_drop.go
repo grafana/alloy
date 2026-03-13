@@ -35,8 +35,3 @@ func (l *labelDropStage) Process(labels model.LabelSet, extracted map[string]any
 		delete(labels, model.LabelName(label))
 	}
 }
-
-// Name implements Stage.
-func (l *labelDropStage) Name() string {
-	return StageTypeLabelDrop
-}

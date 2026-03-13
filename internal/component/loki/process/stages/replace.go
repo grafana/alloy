@@ -176,8 +176,3 @@ func (r *replaceStage) getTemplateData(extracted map[string]any) map[string]stri
 	}
 	return td
 }
-
-// Name implements Stage
-func (r *replaceStage) Name() string {
-	return StageTypeReplace
-}

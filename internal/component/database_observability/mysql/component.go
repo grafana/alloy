@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -25,9 +27,12 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -63,15 +68,16 @@ type Arguments struct {
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
-	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
-	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
-	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
-	QueryDetailsArguments   QueryDetailsArguments   `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments  SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
-	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
-	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
-	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
+	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	SetupConsumersArguments SetupConsumersArguments      `alloy:"setup_consumers,block,optional"`
+	SetupActorsArguments    SetupActorsArguments         `alloy:"setup_actors,block,optional"`
+	QueryDetailsArguments   QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	LocksArguments          LocksArguments               `alloy:"locks,block,optional"`
+	QuerySamplesArguments   QuerySamplesArguments        `alloy:"query_samples,block,optional"`
+	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
+	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
 type CloudProvider struct {
@@ -132,6 +138,23 @@ type HealthCheckArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+// PrometheusExporterArguments configures the embedded mysqld_exporter scrapers.
+// When this block is present, mysqld_exporter metrics are served alongside the
+// component's own metrics at the same /metrics endpoint.
+//
+// It is a distinct type (not an embedded struct) because the Alloy syntax
+// system does not support anonymous/embedded fields.
+type PrometheusExporterArguments exporter_mysql.Arguments
+
+func (a *PrometheusExporterArguments) SetToDefault() {
+	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+}
+
+func (a *PrometheusExporterArguments) Validate() error {
+	args := exporter_mysql.Arguments(*a)
+	return args.Validate()
+}
+
 var DefaultArguments = Arguments{
 	ExcludeSchemas:                []string{},
 	AllowUpdatePerfSchemaSettings: false,
@@ -188,6 +211,9 @@ func (a *Arguments) Validate() error {
 	if err != nil {
 		return err
 	}
+	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
+		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
 	return nil
 }
 
@@ -209,18 +235,19 @@ type Collector interface {
 }
 
 type Component struct {
-	opts         component.Options
-	args         Arguments
-	mut          sync.RWMutex
-	receivers    []loki.LogsReceiver
-	handler      loki.LogsReceiver
-	registry     *prometheus.Registry
-	baseTarget   discovery.Target
-	collectors   []Collector
-	instanceKey  string
-	dbConnection *sql.DB
-	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	opts              component.Options
+	args              Arguments
+	mut               sync.RWMutex
+	receivers         []loki.LogsReceiver
+	handler           loki.LogsReceiver
+	registry          *prometheus.Registry
+	baseTarget        discovery.Target
+	collectors        []Collector
+	instanceKey       string
+	dbConnection      *sql.DB
+	healthErr         *atomic.String
+	openSQL           func(driverName, dataSourceName string) (*sql.DB, error)
+	exporterCollector prometheus.Collector
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -423,6 +450,26 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
+	}
+
+	if c.exporterCollector != nil {
+		c.registry.Unregister(c.exporterCollector)
+		c.exporterCollector = nil
+	}
+
+	if c.args.PrometheusExporter != nil {
+		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
+		exporterCfg := exporterArgs.Convert()
+		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
+		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
+			LockTimeout:   exporterCfg.LockWaitTimeout,
+			SlowLogFilter: exporterCfg.LogSlowFilter,
+		})
+		if err := c.registry.Register(exporter); err != nil {
+			return fmt.Errorf("failed to register prometheus_exporter collector: %w", err)
+		}
+		c.exporterCollector = exporter
 	}
 
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)

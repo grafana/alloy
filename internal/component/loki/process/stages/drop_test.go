@@ -432,9 +432,8 @@ func Test_dropStage_Process(t *testing.T) {
 
 func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	plName := "test_drop_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),

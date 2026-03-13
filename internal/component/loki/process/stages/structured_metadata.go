@@ -43,10 +43,6 @@ type structuredMetadataStage struct {
 	logger       log.Logger
 }
 
-func (s *structuredMetadataStage) Name() string {
-	return StageTypeStructuredMetadata
-}
-
 // Cleanup implements Stage.
 func (*structuredMetadataStage) Cleanup() {
 	// no-op

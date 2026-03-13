@@ -74,7 +74,7 @@ The `name` argument can use the following template variables. By default it uses
 * `{{.ExeBase}}`: Basename of the executable from argv[0].
 * `{{.ExeFull}}`: Fully qualified path of the executable.
 * `{{.Username}}`: Username of the effective user.
-* `{{.Matches}}`: Map containing all regular explression capture groups resulting from matching a process with the cmdline rule group.
+* `{{.Matches}}`: Map containing all regular expression capture groups resulting from matching a process with the cmdline rule group.
 * `{{.PID}}`: PID of the process. Note that the PID is copied from the first executable found.
 * `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDS get reused over time.
 * `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.

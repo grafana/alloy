@@ -76,7 +76,7 @@ type Host interface {
 
 	// NewController returns an unstarted, isolated Controller that a Service
 	// can use to instantiate its own components.
-	NewController(id string) Controller
+	NewController(id string) (Controller, error)
 }
 
 // Controller is implemented by alloy.Alloy.

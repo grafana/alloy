@@ -267,7 +267,7 @@ faro.receiver "default" {
 
     output {
         logs   = [loki.write.default.receiver]
-        traces = [otelcol.exporter.otlp.traces.input]
+        traces = [otelcol.exporter.otlphttp.traces.input]
     }
 }
 
@@ -277,7 +277,7 @@ loki.write "default" {
     }
 }
 
-otelcol.exporter.otlp "traces" {
+otelcol.exporter.otlphttp "traces" {
     client {
         endpoint = "<OTLP_ADDRESS>"
     }
@@ -293,10 +293,10 @@ Replace the following:
 * `LOKI_ADDRESS`: Address of the Loki server to send logs to.
   Refer to [`loki.write`][loki.write] if you want to use authentication to send logs to the Loki server.
 * _`<OTLP_ADDRESS>`_: The address of the OTLP-compatible server to send traces to.
-  Refer to[`otelcol.exporter.otlp`][otelcol.exporter.otlp] if you want to use authentication to send logs to the Loki server.
+  Refer to[`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] if you want to use authentication to send logs to an OTLP server.
 
 [loki.write]: ../../loki/loki.write/
-[otelcol.exporter.otlp]: ../../otelcol/otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../../otelcol/otelcol.exporter.otlphttp/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

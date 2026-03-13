@@ -66,8 +66,3 @@ func (l *staticLabelStage) Process(labels model.LabelSet, _ map[string]any, _ *t
 		labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
 	}
 }
-
-// Name implements Stage.
-func (l *staticLabelStage) Name() string {
-	return StageTypeStaticLabels
-}

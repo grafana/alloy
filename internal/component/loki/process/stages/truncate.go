@@ -244,11 +244,6 @@ func markTruncated(metric *prometheus.CounterVec, set map[string]struct{}, field
 	set[field] = struct{}{}
 }
 
-// Name implements Stage
-func (m *truncateStage) Name() string {
-	return StageTypeTruncate
-}
-
 // Cleanup implements Stage.
 func (*truncateStage) Cleanup() {
 	// no-op

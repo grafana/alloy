@@ -87,6 +87,7 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			continue
 		}
 
+		level.Debug(s.logger).Log("msg", "Stopping task", "id", id)
 		stopping.Add(1)
 		go func(t *task) {
 			defer stopping.Done()
@@ -118,6 +119,7 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 			continue
 		}
 
+		level.Debug(s.logger).Log("msg", "Starting task", "id", id)
 		var (
 			nodeID      = id
 			newRunnable = r

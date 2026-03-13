@@ -221,11 +221,6 @@ func splitSource(s string) []string {
 	return strings.Split(s, ",")
 }
 
-// Name implements Stage
-func (m *dropStage) Name() string {
-	return StageTypeDrop
-}
-
 // Cleanup implements Stage.
 func (*dropStage) Cleanup() {
 	// no-op

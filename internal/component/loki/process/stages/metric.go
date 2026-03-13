@@ -155,11 +155,6 @@ func (m *metricStage) Process(labels model.LabelSet, extracted map[string]any, _
 	}
 }
 
-// Name implements Stage
-func (m *metricStage) Name() string {
-	return StageTypeMetric
-}
-
 // Cleanup implements Stage.
 func (m *metricStage) Cleanup() {
 	for _, cfgCollector := range m.metrics {

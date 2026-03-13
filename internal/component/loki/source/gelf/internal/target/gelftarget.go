@@ -148,13 +148,11 @@ func (t *Target) handleMessage(msg *gelf.Message) {
 		t.metrics.gelfErrors.Inc()
 		return
 	}
-	t.handler.Chan() <- loki.Entry{
-		Labels: filtered,
-		Entry: push.Entry{
-			Timestamp: timestamp,
-			Line:      t.encodeBuff.String(),
-		},
-	}
+
+	t.handler.Chan() <- loki.NewEntry(filtered, push.Entry{
+		Timestamp: timestamp,
+		Line:      t.encodeBuff.String(),
+	})
 }
 
 func secondsToUnixTimestamp(seconds float64) time.Time {

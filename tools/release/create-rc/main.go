@@ -85,7 +85,17 @@ func main() {
 	branchSHA := pr.GetHead().GetSHA()
 	fmt.Printf("Branch HEAD SHA: %s\n", branchSHA)
 
-	// Create draft prerelease (this also creates the tag - GitHub signs tags created via Releases API)
+	// Draft releases don't create tags until published, but we need it to pre-load artifacts to the draft
+	if err := client.CreateTag(ctx, gh.CreateTagParams{
+		Tag:     rcTag,
+		SHA:     branchSHA,
+		Message: fmt.Sprintf("Release candidate %s", rcTag),
+	}); err != nil {
+		log.Fatalf("Failed to create tag: %v", err)
+	}
+	fmt.Printf("Created tag: %s -> %s\n", rcTag, branchSHA[:12])
+
+	// Create draft prerelease pointing to the existing tag
 	releaseURL, err := createDraftPrerelease(ctx, client, prereleaseParams{
 		Tag:       rcTag,
 		TargetSHA: branchSHA,
@@ -96,7 +106,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create draft prerelease: %v", err)
 	}
-	fmt.Printf("✅ Created tag: %s\n", rcTag)
 	fmt.Printf("✅ Created draft prerelease: %s\n", releaseURL)
 }
 
@@ -198,7 +207,7 @@ See the [release PR #%d](https://github.com/%s/%s/pull/%d) for the full changelo
 
 	release := &github.RepositoryRelease{
 		TagName:         github.String(p.Tag),
-		TargetCommitish: github.String(p.TargetSHA), // GitHub creates & signs the tag when using Releases API
+		TargetCommitish: github.String(p.TargetSHA),
 		Name:            github.String(p.Tag),
 		Body:            github.String(body),
 		Draft:           github.Bool(true),

@@ -36,12 +36,35 @@ type staleMarker struct {
 
 type Arguments struct{}
 
-var _ alloy_service.Service = (*Service)(nil)
+var (
+	_ alloy_service.Service = (*Service)(nil)
+	_ alloy_service.Service = (*disabledStore)(nil)
+)
 
-func New(l log.Logger, r prometheus.Registerer) *Service {
+type LabelStoreService interface {
+	alloy_service.Service
+	LabelStore
+}
+
+func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStoreService {
 	if l == nil {
 		l = log.NewNopLogger()
 	}
+
+	e := true
+	if len(enabled) != 0 {
+		e = enabled[0]
+	}
+
+	if !e {
+		level.Info(l).Log("msg", "labelstore service is disabled")
+		return disabledStore{}
+	}
+
+	return newLabelStore(l, r)
+}
+
+func newLabelStore(l log.Logger, r prometheus.Registerer) *Service {
 	s := &Service{
 		log:                 l,
 		globalRefID:         0,
@@ -55,6 +78,7 @@ func New(l log.Logger, r prometheus.Registerer) *Service {
 			Help: "Last time stale check was ran expressed in unix timestamp.",
 		}),
 	}
+
 	_ = r.Register(s.lastStaleCheck)
 	_ = r.Register(s)
 	return s
@@ -261,6 +285,20 @@ func (s *Service) CheckAndRemoveStaleMarkers() {
 	}
 }
 
+func (s *Service) Clear() {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+
+	s.globalRefID = 0
+	s.mappings = make(map[string]*remoteWriteMapping)
+	s.labelsHashToGlobal = make(map[uint64]uint64)
+	s.staleGlobals = make(map[uint64]*staleMarker)
+}
+
+func (s *Service) Enabled() bool {
+	return true
+}
+
 func (rw *remoteWriteMapping) deleteStaleIDs(globalID uint64) {
 	localID, found := rw.globalToLocal[globalID]
 	if !found {
@@ -275,4 +313,55 @@ type remoteWriteMapping struct {
 	RemoteWriteID string
 	localToGlobal map[uint64]uint64
 	globalToLocal map[uint64]uint64
+}
+
+type disabledStore struct{}
+
+func (d disabledStore) Definition() alloy_service.Definition {
+	return alloy_service.Definition{
+		Name:       ServiceName,
+		ConfigType: Arguments{},
+		DependsOn:  nil,
+		Stability:  featuregate.StabilityGenerallyAvailable,
+	}
+}
+
+func (d disabledStore) Run(ctx context.Context, host alloy_service.Host) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (d disabledStore) Update(newConfig any) error {
+	return nil
+}
+
+func (d disabledStore) Data() any {
+	return d
+}
+
+func (d disabledStore) AddLocalLink(componentID string, globalRefID uint64, localRefID uint64) {
+}
+
+func (d disabledStore) GetOrAddGlobalRefID(l labels.Labels) uint64 {
+	return 0
+}
+
+func (d disabledStore) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
+	return 0
+}
+
+func (d disabledStore) TrackStaleness(ids []StalenessTracker) {
+}
+
+func (d disabledStore) CheckAndRemoveStaleMarkers() {
+}
+
+func (d disabledStore) ReplaceLocalLink(componentID string, globalRefID uint64, cachedLocalRef uint64, newLocalRef uint64) {
+}
+
+func (d disabledStore) Clear() {
+}
+
+func (d disabledStore) Enabled() bool {
+	return false
 }

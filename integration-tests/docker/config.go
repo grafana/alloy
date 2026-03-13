@@ -8,18 +8,18 @@ type TestConfig struct {
 // ContainerConfig is used to configure alloy container used for the test.
 type ContainerConfig struct {
 	// UseMount when set to true will create "mount" directory inside test
-	// folder that will be mounted into the countainer.
+	// folder that will be mounted into the container.
 	UseMount bool `yaml:"use_mount"`
 	// Ports are all the port mappings required by the test.
 	// These will be configured and exposed for the container.
 	Ports []PortMapping `yaml:"ports"`
 	// Privileged if set to true will run alloy as a privileged container.
 	Privileged bool `yaml:"privileged"`
-	// List of kernel capabilities to add to the container
+	// CapAdd is a list of kernel capabilities to add to the container.
 	CapAdd []string `yaml:"cap_add"`
-	// List of string values to customize labels for MLS systems, such as SELinux.
+	// SecurityOpt is a list of string values to customize labels for MLS systems, such as SELinux.
 	SecurityOpt []string `yaml:"security_opts"`
-	// PID namespace to use for the container
+	// PIDMode is the PID namespace to use for the container.
 	PIDMode string `yaml:"pid_mode"`
 }
 

@@ -246,7 +246,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -280,7 +280,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -312,7 +312,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -332,7 +332,7 @@ otelcol.processor.span "keep_original_name" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -365,7 +365,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -382,7 +382,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -405,7 +405,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```

@@ -179,6 +179,17 @@ func Push(branch string) error {
 	return nil
 }
 
+// MergeFFOnly merges the given branch into the current branch using fast-forward only.
+func MergeFFOnly(branch string) error {
+	if err := validateBranchName(branch); err != nil {
+		return err
+	}
+	if err := run("git", "merge", "--ff-only", branch); err != nil {
+		return fmt.Errorf("merging branch %s (ff-only): %w", branch, err)
+	}
+	return nil
+}
+
 // CoAuthor represents a co-author extracted from a commit message.
 type CoAuthor struct {
 	Name  string

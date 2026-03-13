@@ -58,13 +58,13 @@ The `max_log_size` argument has a minimum value of `64KiB`.
 You can use the following blocks with `otelcol.receiver.tcplog`:
 
 | Block                                  | Description                                                                                     | Required |
-|----------------------------------------|-------------------------------------------------------------------------------------------------|----------|
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
 | [`multiline`][multiline]               | Configures rules for multiline parsing of incoming messages                                     | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | [`tls`][tls]                           | Configures TLS for the TCP server.                                                              | no       |
-| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS key_file.                                                   | no       |
+| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS `key_file`.                                                 | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.

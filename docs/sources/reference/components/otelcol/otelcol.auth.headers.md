@@ -109,7 +109,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use custom headers:
+This example configures [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] to use custom headers:
 
 ```alloy
 otelcol.receiver.otlp "default" {
@@ -132,9 +132,9 @@ otelcol.processor.batch "default" {
   metadata_keys = ["tenant_id"]
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
-    logs    = [otelcol.exporter.otlp.production.input]
-    traces  = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
+    logs    = [otelcol.exporter.otlphttp.production.input]
+    traces  = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
@@ -150,7 +150,7 @@ otelcol.auth.headers "creds" {
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
     auth     = otelcol.auth.headers.creds.handler
@@ -158,4 +158,4 @@ otelcol.exporter.otlp "production" {
 }
 ```
 
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/

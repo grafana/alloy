@@ -78,8 +78,11 @@ type AutoDiscovery struct {
 
 // StatStatementFlags describe the flags to pass along the activation of the stat_statements collector
 type StatStatementFlags struct {
-	IncludeQuery bool `alloy:"include_query,attr,optional"`
-	QueryLength  uint `alloy:"query_length,attr,optional"`
+	IncludeQuery     bool     `alloy:"include_query,attr,optional"`
+	QueryLength      uint     `alloy:"query_length,attr,optional"`
+	Limit            uint     `alloy:"limit,attr,optional"`
+	ExcludeDatabases []string `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers     []string `alloy:"exclude_users,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -107,8 +110,11 @@ func (s *StatStatementFlags) Convert() *postgres_exporter.StatStatementFlags {
 		return nil
 	}
 	return &postgres_exporter.StatStatementFlags{
-		IncludeQuery: s.IncludeQuery,
-		QueryLength:  s.QueryLength,
+		IncludeQuery:     s.IncludeQuery,
+		QueryLength:      s.QueryLength,
+		Limit:            s.Limit,
+		ExcludeDatabases: s.ExcludeDatabases,
+		ExcludeUsers:     s.ExcludeUsers,
 	}
 }
 

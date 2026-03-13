@@ -144,7 +144,7 @@ otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15.3
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -156,7 +156,7 @@ otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -170,7 +170,7 @@ otelcol.processor.probabilistic_sampler "default" {
   from_attribute      = "logID"
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -183,7 +183,7 @@ otelcol.processor.probabilistic_sampler "default" {
   sampling_priority   = "priority"
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```

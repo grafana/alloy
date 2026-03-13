@@ -51,15 +51,23 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 		// treat the remote_write ID as a "local ID" and translate it to a "global
 		// ID" to ensure Alloy compatibility.
 
-		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if exited.Load() {
 				return 0, fmt.Errorf("%s has exited", componentID)
 			}
 
-			localRef := ls.GetLocalRefID(componentID, uint64(globalRef))
-			newLocalRef, nextErr := next.Append(storage.SeriesRef(localRef), l, t, v)
-			if nextErr == nil {
-				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.Append(storage.SeriesRef(localRef), l, t, v)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.Append(ref, l, t, v)
 			}
 
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -70,17 +78,25 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 					return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
 				},
 			))
-			return globalRef, nextErr
+			return finalRef, err
 		}),
-		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithHistogramHook(func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
 			if exited.Load() {
 				return 0, fmt.Errorf("%s has exited", componentID)
 			}
 
-			localRef := ls.GetLocalRefID(componentID, uint64(globalRef))
-			newLocalRef, nextErr := next.AppendHistogram(storage.SeriesRef(localRef), l, t, h, fh)
-			if nextErr == nil {
-				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.AppendHistogram(storage.SeriesRef(localRef), l, t, h, fh)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.AppendHistogram(ref, l, t, h, fh)
 			}
 
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -99,17 +115,25 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 					return data
 				},
 			))
-			return globalRef, nextErr
+			return finalRef, err
 		}),
-		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
 			if exited.Load() {
 				return 0, fmt.Errorf("%s has exited", componentID)
 			}
 
-			localRef := ls.GetLocalRefID(componentID, uint64(globalRef))
-			newLocalRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localRef), l, m)
-			if nextErr == nil {
-				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localRef), l, m)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.UpdateMetadata(ref, l, m)
 			}
 
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -120,17 +144,25 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
 				},
 			))
-			return globalRef, nextErr
+			return finalRef, err
 		}),
-		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithExemplarHook(func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
 			if exited.Load() {
 				return 0, fmt.Errorf("%s has exited", componentID)
 			}
 
-			localRef := ls.GetLocalRefID(componentID, uint64(globalRef))
-			newLocalRef, nextErr := next.AppendExemplar(storage.SeriesRef(localRef), l, e)
-			if nextErr == nil {
-				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.AppendExemplar(storage.SeriesRef(localRef), l, e)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.AppendExemplar(ref, l, e)
 			}
 
 			debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -141,7 +173,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 					return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
 				},
 			))
-			return globalRef, nextErr
+			return finalRef, err
 		}),
 	)
 }

@@ -134,7 +134,7 @@ otelcol.processor.discovery "default" {
     targets = discovery.http.dynamic_targets.targets
 
     output {
-        traces = [otelcol.exporter.otlp.default.input]
+        traces = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -158,7 +158,7 @@ otelcol.processor.discovery "default" {
     targets = array.concat(discovery.http.dynamic_targets.targets, discovery.kubelet.k8s_pods.targets)
 
     output {
-        traces = [otelcol.exporter.otlp.default.input]
+        traces = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -178,7 +178,7 @@ otelcol.processor.discovery "default" {
         "test.label.with.dots" = "test.val2.with.dots"}]
 
     output {
-        traces = [otelcol.exporter.otlp.default.input]
+        traces = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```

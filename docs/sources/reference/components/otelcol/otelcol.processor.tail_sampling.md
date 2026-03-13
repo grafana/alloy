@@ -49,6 +49,8 @@ You can use the following arguments with `otelcol.processor.tail_sampling`:
 | `num_traces`                  | `int`      | Number of traces kept in memory.                                             | `50000` | no       |
 | `block_on_overflow`           | `boolean`  | If `true`, wait for space when the `num_traces` limit is reached. If `false`, old traces will be evicted to make space. | `false` | no       |
 | `expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures).         | `0`     | no       |
+| `sample_on_first_match`       | `boolean`  | Make a sampling decision as soon as any policy matches.                      | `false` | no       |
+| `drop_pending_traces_on_shutdown` | `boolean` | Drop pending traces on shutdown instead of deciding with partial data.    | `false` | no       |
 | `decision_cache`              | `object`   | Configures caches for sampling decisions.                                    | `{}`    | no       |
 
 `decision_wait` determines the number of batches to maintain on a channel.
@@ -59,6 +61,10 @@ Increasing the number will increase the memory usage of the component while decr
 
 `expected_new_traces_per_sec` determines the initial slice sizing of the current batch.
 A larger number will use more memory but be more efficient when adding traces to the batch.
+
+If `sample_on_first_match` is `true`, the component makes a decision as soon as one policy matches.
+
+If `drop_pending_traces_on_shutdown` is `true`, the component drops traces that are still waiting for `decision_wait` when shutdown starts.
 
 `decision_cache` can contain two keys:
 
@@ -85,6 +91,7 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 | `policy` > [`ottl_condition`][ottl_condition]                                              | The policy samples based on a given boolean OTTL condition (span and span event).                           | no       |
 | `policy` > [`probabilistic`][probabilistic]                                                | The policy samples a percentage of traces.                                                                  | no       |
 | `policy` > [`rate_limiting`][rate_limiting]                                                | The policy samples based on rate.                                                                           | no       |
+| `policy` > [`bytes_limiting`][bytes_limiting]                                              | The policy samples based on the rate of bytes per second.                                                   | no       |
 | `policy` > [`span_count`][span_count]                                                      | The policy samples based on the minimum number of spans within a batch.                                     | no       |
 | `policy` > [`status_code`][status_code]                                                    | The policy samples based upon the status code.                                                              | no       |
 | `policy` > [`string_attribute`][string_attribute]                                          | The policy samples based on string attributes (resource and record) value matches.                          | no       |
@@ -97,10 +104,24 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 | `policy` > `and` > `and_sub_policy` > [`ottl_condition`][ottl_condition]                   | The policy samples based on a given boolean OTTL condition (span and span event).                           | no       |
 | `policy` > `and` > `and_sub_policy` > [`probabilistic`][probabilistic]                     | The policy samples a percentage of traces.                                                                  | no       |
 | `policy` > `and` > `and_sub_policy` > [`rate_limiting`][rate_limiting]                     | The policy samples based on rate.                                                                           | no       |
+| `policy` > `and` > `and_sub_policy` > [`bytes_limiting`][bytes_limiting]                   | The policy samples based on the rate of bytes per second.                                                   | no       |
 | `policy` > `and` > `and_sub_policy` > [`span_count`][span_count]                           | The policy samples based on the minimum number of spans within a batch.                                     | no       |
 | `policy` > `and` > `and_sub_policy` > [`status_code`][status_code]                         | The policy samples based upon the status code.                                                              | no       |
 | `policy` > `and` > `and_sub_policy` > [`string_attribute`][string_attribute]               | The policy samples based on string attributes (resource and record) value matches.                          | no       |
 | `policy` > `and` > `and_sub_policy` > [`trace_state`][trace_state]                         | The policy samples based on TraceState value matches.                                                       | no       |
+| `policy` > [`drop`][drop]                                                                  | The policy drops traces based on multiple sub-policies.                                                     | no       |
+| `policy` > `drop` > [`drop_sub_policy`][drop_sub_policy]                                    | A set of policies underneath a `drop` policy type.                                                          | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`boolean_attribute`][boolean_attribute]           | The policy samples based on a boolean attribute (resource and record).                                      | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`latency`][latency]                               | The policy samples based on the duration of the trace.                                                      | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`numeric_attribute`][numeric_attribute]           | The policy samples based on number attributes (resource and record).                                        | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`ottl_condition`][ottl_condition]                 | The policy samples based on a given boolean OTTL condition (span and span event).                           | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`probabilistic`][probabilistic]                   | The policy samples a percentage of traces.                                                                  | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`rate_limiting`][rate_limiting]                   | The policy samples based on rate.                                                                           | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`bytes_limiting`][bytes_limiting]                 | The policy samples based on the rate of bytes per second.                                                   | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`span_count`][span_count]                         | The policy samples based on the minimum number of spans within a batch.                                     | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`status_code`][status_code]                       | The policy samples based upon the status code.                                                              | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`string_attribute`][string_attribute]             | The policy samples based on string attributes (resource and record) value matches.                          | no       |
+| `policy` > `drop` > `drop_sub_policy` > [`trace_state`][trace_state]                       | The policy samples based on TraceState value matches.                                                       | no       |
 | `policy` > [`composite`][composite]                                                        | The policy samples based on a combination of above samplers, with ordering and rate allocation per sampler. | no       |
 | `policy` > `composite` > [`composite_sub_policy`][composite_sub_policy]                    | A set of policies underneath a `composite` policy type.                                                     | no       |
 | `policy` > `composite` > `composite_sub_policy` > [`boolean_attribute`][boolean_attribute] | The policy samples based on a boolean attribute (resource and record).                                      | no       |
@@ -109,6 +130,7 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 | `policy` > `composite` > `composite_sub_policy` > [`ottl_condition`][ottl_condition]       | The policy samples based on a given boolean OTTL condition (span and span event).                           | no       |
 | `policy` > `composite` > `composite_sub_policy` > [`probabilistic`][probabilistic]         | The policy samples a percentage of traces.                                                                  | no       |
 | `policy` > `composite` > `composite_sub_policy` > [`rate_limiting`][rate_limiting]         | The policy samples based on rate.                                                                           | no       |
+| `policy` > `composite` > `composite_sub_policy` > [`bytes_limiting`][bytes_limiting]       | The policy samples based on the rate of bytes per second.                                                   | no       |
 | `policy` > `composite` > `composite_sub_policy` > [`span_count`][span_count]               | The policy samples based on the minimum number of spans within a batch.                                     | no       |
 | `policy` > `composite` > `composite_sub_policy` > [`status_code`][status_code]             | The policy samples based upon the status code.                                                              | no       |
 | `policy` > `composite` > `composite_sub_policy` > [`string_attribute`][string_attribute]   | The policy samples based on string attributes (resource and record) value matches.                          | no       |
@@ -122,16 +144,19 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 [status_code]: #status_code
 [string_attribute]: #string_attribute
 [rate_limiting]: #rate_limiting
+[bytes_limiting]: #bytes_limiting
 [span_count]: #span_count
 [boolean_attribute]: #boolean_attribute
 [ottl_condition]: #ottl_condition
 [trace_state]: #trace_state
 [and]: #and
 [and_sub_policy]: #and_sub_policy
+[drop]: #drop
+[drop_sub_policy]: #drop_sub_policy
 [composite]: #composite
 [composite_sub_policy]: #composite_sub_policy
 [output]: #output
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 [debug_metrics]: #debug_metrics
 
 ### `output`
@@ -155,6 +180,7 @@ The following arguments are supported:
 
 Each policy results in a decision, and the processor evaluates them to make a final decision:
 
+* When there's a "drop" decision, the trace isn't sampled.
 * When there's an "inverted not sample" decision, the trace isn't sampled. ***Deprecated***
 * When there's a "sample" decision, the trace is sampled.
 * When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled. ***Deprecated***
@@ -257,6 +283,18 @@ The following arguments are supported:
 |--------------------|----------|---------------------------------------------------------------------|---------|----------|
 | `spans_per_second` | `number` | Sets the maximum number of spans that can be processed each second. |         | yes      |
 
+### `bytes_limiting`
+
+The `bytes_limiting` block configures a policy of type `bytes_limiting`.
+The policy samples based on the rate of bytes per second using a token bucket algorithm.
+
+The following arguments are supported:
+
+| Name               | Type     | Description                                                                                                       | Default | Required |
+|--------------------|----------|-------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `bytes_per_second` | `number` | Sets the sustained byte throughput limit.                                                                         |         | yes      |
+| `burst_capacity`   | `number` | Sets the maximum burst size in bytes. If omitted, it defaults to `2 * bytes_per_second` in the upstream policy. | `0`     | no       |
+
 ### `span_count`
 
 The `span_count` block configures a policy of type `span_count`.
@@ -330,6 +368,23 @@ The following arguments are supported:
 | `name` | `string` | The custom name given to the policy.   |         | yes      |
 | `type` | `string` | The valid policy type for this policy. |         | yes      |
 
+### `drop`
+
+The `drop` block configures a policy of type `drop`.
+This policy drops traces when all `drop_sub_policy` blocks match.
+
+### `drop_sub_policy`
+
+The `drop_sub_policy` block configures a sampling policy used by the `drop` block.
+At least one `drop_sub_policy` block is required inside a `drop` block.
+
+The following arguments are supported:
+
+| Name   | Type     | Description                            | Default | Required |
+|--------|----------|----------------------------------------|---------|----------|
+| `name` | `string` | The custom name given to the policy.   |         | yes      |
+| `type` | `string` | The valid policy type for this policy. |         | yes      |
+
 ### `composite`
 
 The `composite` block configures a policy of type `composite`.
@@ -376,7 +431,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlp][] for further processing.
+This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp][] for further processing.
 This example shows an impractical number of policies for the purpose of demonstrating how to set up each type.
 
 ```alloy
@@ -393,6 +448,8 @@ otelcol.processor.tail_sampling "default" {
   decision_wait               = "10s"
   num_traces                  = 100
   expected_new_traces_per_sec = 10
+  sample_on_first_match       = true
+  drop_pending_traces_on_shutdown = true
 
   policy {
     name = "test-policy-1"
@@ -470,6 +527,16 @@ otelcol.processor.tail_sampling "default" {
 
   policy {
     name = "test-policy-9"
+    type = "bytes_limiting"
+
+    bytes_limiting {
+      bytes_per_second = 2048
+      burst_capacity   = 4096
+    }
+  }
+
+  policy {
+    name = "test-policy-10"
     type = "string_attribute"
 
     string_attribute {
@@ -481,7 +548,7 @@ otelcol.processor.tail_sampling "default" {
   }
 
   policy {
-    name = "test-policy-10"
+    name = "test-policy-11"
     type = "span_count"
 
     span_count {
@@ -490,7 +557,7 @@ otelcol.processor.tail_sampling "default" {
   }
 
   policy {
-    name = "test-policy-11"
+    name = "test-policy-12"
     type = "trace_state"
 
     trace_state {
@@ -500,7 +567,7 @@ otelcol.processor.tail_sampling "default" {
   }
 
   policy {
-    name = "test-policy-12"
+    name = "test-policy-13"
     type = "ottl_condition"
     ottl_condition {
       error_mode = "ignore"
@@ -512,6 +579,24 @@ otelcol.processor.tail_sampling "default" {
         "name != \"test_span_event_name\"",
         "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\"",
       ]
+    }
+  }
+
+  policy {
+    name = "drop-policy-1"
+    type = "drop"
+
+    drop {
+      drop_sub_policy {
+        name = "test-drop-policy-1"
+        type = "string_attribute"
+
+        string_attribute {
+          key                    = "url.path"
+          values                 = ["/health", "/metrics"]
+          enabled_regex_matching = true
+        }
+      }
     }
   }
 
@@ -590,11 +675,11 @@ otelcol.processor.tail_sampling "default" {
   }
 
   output {
-    traces = [otelcol.exporter.otlp.production.input]
+    traces = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }

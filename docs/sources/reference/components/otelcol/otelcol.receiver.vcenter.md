@@ -72,13 +72,13 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 You can use the following blocks with `otelcol.receiver.vcenter`:
 
 | Block                                        | Description                                                                | Required |
-|----------------------------------------------|----------------------------------------------------------------------------|----------|
+| -------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                           | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]             | Configures the metrics that this component generates to monitor its state. | no       |
 | [`metrics`][metrics]                         | Configures which metrics will be sent to downstream components.            | no       |
 | [`resource_attributes`][resource_attributes] | Configures resource attributes for metrics sent to downstream components.  | no       |
 | [`tls`][tls]                                 | Configures TLS for the HTTP client.                                        | no       |
-| `tls` > [`tpm`][tpm]                         | Configures TPM settings for the TLS key_file.                              | no       |
+| `tls` > [`tpm`][tpm]                         | Configures TPM settings for the TLS `key_file`.                            | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
@@ -251,11 +251,11 @@ otelcol.receiver.vcenter "default" {
 
 otelcol.processor.batch "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }

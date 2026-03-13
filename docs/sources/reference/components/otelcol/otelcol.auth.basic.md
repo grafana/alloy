@@ -142,7 +142,7 @@ These examples show how to perform basic authentication using the `client_auth` 
 
 #### Use client authentication
 
-This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication with a single username and password combination:
+This example configures [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] to use basic authentication with a single username and password combination:
 
 ```alloy
 otelcol.receiver.otlp "example" {
@@ -151,23 +151,23 @@ otelcol.receiver.otlp "example" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
-    endpoint = "my-otlp-grpc-server:4317"
-    auth = otelcol.auth.basic.creds.handler
+    endpoint = `https://otlp-gateway-prod-gb-south-0.grafana.net/otlp`
+    auth     = otelcol.auth.basic.creds.handler
   }
 }
 
 otelcol.auth.basic "creds" {
   client_auth {
-    username = "demo"
-    password = sys.env("API_KEY")
+    username = sys.env("OTLP_USERNAME")
+    password = sys.env("OTLP_API_KEY")
   }
 }
 ```
@@ -267,3 +267,4 @@ otelcol.auth.basic "creds" {
 
 [otelcol.receiver.otlp]: ../otelcol.receiver.otlp/
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/

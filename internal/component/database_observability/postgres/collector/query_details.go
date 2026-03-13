@@ -39,14 +39,17 @@ var selectQueriesFromActivity = `
 				FROM pg_stat_statements
 		)
 		AND pg_database.datname NOT IN %s
+		%s
 	ORDER BY total_exec_time DESC
-	LIMIT 100
+	LIMIT %d
 `
 
 type QueryDetailsArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
+	StatementsLimit  int
 	ExcludeDatabases []string
+	ExcludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	TableRegistry    *TableRegistry
 
@@ -56,7 +59,9 @@ type QueryDetailsArguments struct {
 type QueryDetails struct {
 	dbConnection     *sql.DB
 	collectInterval  time.Duration
+	statementsLimit  int
 	excludeDatabases []string
+	excludeUsers     []string
 	entryHandler     loki.EntryHandler
 	tableRegistry    *TableRegistry
 	normalizer       *sqllexer.Normalizer
@@ -71,7 +76,9 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
+		statementsLimit:  args.StatementsLimit,
 		excludeDatabases: args.ExcludeDatabases,
+		excludeUsers:     args.ExcludeUsers,
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    args.TableRegistry,
 		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
@@ -127,7 +134,9 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause(c.excludeDatabases))
+	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
+	query := fmt.Sprintf(selectQueriesFromActivity, excludedDatabasesClause, excludedUsersClause, c.statementsLimit)
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)

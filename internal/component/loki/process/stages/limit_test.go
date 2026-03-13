@@ -54,12 +54,10 @@ var testNonAppLogLine = `
 }
 `
 
-var plName = "testPipeline"
-
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitWaitPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitWaitAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitWaitAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {
@@ -77,7 +75,7 @@ func TestLimitWaitPipeline(t *testing.T) {
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 10
 	for i := 0; i < logCount; i++ {
@@ -95,7 +93,7 @@ func TestLimitDropPipeline(t *testing.T) {
 // TestLimitByLabelPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitByLabelPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitByLabelAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLimitByLabelAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {

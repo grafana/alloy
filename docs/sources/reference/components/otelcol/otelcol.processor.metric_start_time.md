@@ -182,18 +182,18 @@ otelcol.receiver.prometheus "default" {
 
 otelcol.processor.metric_start_time "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
 
-### Using subtract_initial_point strategy
+### Using `subtract_initial_point` strategy
 
 This example uses the `subtract_initial_point` strategy, which preserves cumulative semantics and produces correct rates:
 
@@ -208,20 +208,20 @@ otelcol.processor.metric_start_time "default" {
   strategy = "subtract_initial_point"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
 
-### Using start_time_metric strategy with custom regex
+### Use a `start_time_metric` strategy with a custom regular expression
 
-This example uses the `start_time_metric` strategy with a custom regex to find the start time metric:
+This example uses the `start_time_metric` strategy with a custom regular expression to find the start time metric:
 
 ```alloy
 otelcol.receiver.prometheus "default" {
@@ -236,11 +236,11 @@ otelcol.processor.metric_start_time "default" {
   start_time_metric_regex  = "^.+_start_time$"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }

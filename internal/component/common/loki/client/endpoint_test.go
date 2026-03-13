@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
@@ -22,17 +23,21 @@ import (
 )
 
 func TestEndpoint(t *testing.T) {
-	tests := map[string]struct {
+	type testCase struct {
+		name                 string
 		endpointConfig       Config
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
 		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
-	}{
-		"batch log entries together until the batch size is reached": {
+	}
+
+	tests := []testCase{
+		{
+			name: "batch log entries together until the batch size is reached",
 			endpointConfig: Config{
-				BatchSize: 10,
+				BatchSize: logEntries[0].Size() + logEntries[1].Size(),
 				BatchWait: 100 * time.Millisecond,
 			},
 			serverResponseStatus: 200,
@@ -55,30 +60,20 @@ func TestEndpoint(t *testing.T) {
                                # TYPE loki_write_dropped_entries_total counter
                                loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
+							   loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                               # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                               # TYPE loki_write_mutated_entries_total counter
-                               loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                               # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                               # TYPE loki_write_mutated_bytes_total counter
-                               loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                               loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                               loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                        `,
 		},
-		"batch log entries together until the batch wait time is reached": {
+		{
+			name: "batch log entries separately when the batch wait time is reached",
 			endpointConfig: Config{
-				BatchSize: 10,
-				BatchWait: 100 * time.Millisecond,
+				BatchSize: int(1 * units.GB),
+				BatchWait: 50 * time.Millisecond,
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           110 * time.Millisecond,
+			inputDelay:           700 * time.Millisecond,
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
@@ -97,23 +92,13 @@ func TestEndpoint(t *testing.T) {
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                        `,
 		},
-		"retry send a batch up to backoff's max retries in case the server responds with a 5xx": {
+		{
+			name: "retry send a batch up to backoff's max retries in case the server responds with a 5xx",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 10 * time.Millisecond,
@@ -139,26 +124,16 @@ func TestEndpoint(t *testing.T) {
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 1
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do not retry send a batch in case the server responds with a 4xx": {
+		{
+			name: "do not retry send a batch in case the server responds with a 4xx",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 10 * time.Millisecond,
@@ -176,26 +151,16 @@ func TestEndpoint(t *testing.T) {
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 1
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do retry sending a batch in case the server responds with a 429": {
+		{
+			name: "do retry sending a batch in case the server responds with a 429",
 			endpointConfig: Config{
 				BatchSize: 10,
 				BatchWait: 10 * time.Millisecond,
@@ -221,26 +186,16 @@ func TestEndpoint(t *testing.T) {
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 1
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"do not retry in case of 429 when endpoint is configured to drop rate limited batches": {
+		{
+			name: "do not retry in case of 429 when endpoint is configured to drop rate limited batches",
 			endpointConfig: Config{
 				BatchSize:              10,
 				BatchWait:              10 * time.Millisecond,
@@ -259,26 +214,16 @@ func TestEndpoint(t *testing.T) {
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 1
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
-		"batch log entries together honoring the endpoint tenant ID": {
+		{
+			name: "batch log entries together honoring the endpoint tenant ID",
 			endpointConfig: Config{
 				BatchSize: 100,
 				BatchWait: 100 * time.Millisecond,
@@ -300,23 +245,13 @@ func TestEndpoint(t *testing.T) {
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__", reason="ingester_error", tenant="tenant-default"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-default"} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-default"} 0
                               loki_write_dropped_entries_total{host="__HOST__", reason="rate_limited", tenant="tenant-default"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-default"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-default"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-default"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant="tenant-default"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant="tenant-default"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant="tenant-default"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
                        `,
 		},
-		"batch log entries together honoring the tenant ID overridden while processing the pipeline stages": {
+		{
+			name: "batch log entries together honoring the tenant ID overridden while processing the pipeline stages",
 			endpointConfig: Config{
 				BatchSize: 100,
 				BatchWait: 100 * time.Millisecond,
@@ -352,46 +287,21 @@ func TestEndpoint(t *testing.T) {
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-1"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-2"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-default"} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-1"} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-2"} 0
+							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-default"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-1"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-2"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-default"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-1"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-2"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
-                              # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                              # TYPE loki_write_mutated_entries_total counter
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-1"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-2"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-default"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-1"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-2"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant="tenant-default"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-1"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-2"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-default"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-1"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-2"} 0
-                              loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant="tenant-1"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant="tenant-2"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant="tenant-default"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant="tenant-1"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant="tenant-2"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant="tenant-default"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant="tenant-1"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant="tenant-2"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant="tenant-default"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant="tenant-1"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant="tenant-2"} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
                        `,
 		},
 	}
 
-	for testName, tt := range tests {
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
@@ -446,7 +356,7 @@ func TestEndpoint(t *testing.T) {
 			assert.ElementsMatch(t, tt.expectedReqs, receivedReqs)
 
 			expectedMetrics := strings.ReplaceAll(tt.expectedMetrics, "__HOST__", serverURL.Host)
-			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total", "loki_write_mutated_entries_total", "loki_write_mutated_bytes_total")
+			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total")
 			assert.NoError(t, err)
 		})
 	}
