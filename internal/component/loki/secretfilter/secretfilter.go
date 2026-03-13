@@ -274,7 +274,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	level.Debug(c.log).Log(
 		"msg", "loki.secretfilter initialized",
-		"forward_to_count", len(args.ForwardTo),
 		"origin_label", args.OriginLabel,
 		"redact_with", args.RedactWith,
 		"redact_percent", c.redactPercent,
@@ -303,8 +302,8 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RLock()
 
 			var newEntry loki.Entry
-			var dropped bool
 			if c.shouldProcessEntry() {
+				var dropped bool
 				newEntry, dropped = c.processEntry(ctx, entry)
 				if dropped {
 					level.Debug(c.log).Log("msg", "entry dropped", "reason", "processing_timeout")
@@ -461,7 +460,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	level.Debug(c.log).Log(
 		"msg", "loki.secretfilter config updated",
-		"forward_to_count", len(newArgs.ForwardTo),
 		"origin_label", newArgs.OriginLabel,
 		"redact_with", newArgs.RedactWith,
 		"redact_percent", c.redactPercent,
