@@ -143,6 +143,19 @@ func (p *ProfileBuilder) FakeMapping() *profile.Mapping {
 	return p.dummyMapping
 }
 
+func (p *ProfileBuilder) CommLocation(comm string) *profile.Location {
+	commInterned := libpf.Intern(comm)
+	loc, fresh := p.Location(p.dummyMapping, 0, commInterned, 0)
+	if fresh {
+		loc.Mapping = p.dummyMapping
+		loc.Line = []profile.Line{{
+			Function: p.Function(commInterned, libpf.Intern("")),
+		}}
+		p.dummyMapping.HasFunctions = true
+	}
+	return loc
+}
+
 func (p *ProfileBuilder) Mapping(
 	start libpf.Address,
 	file libpf.FrameMappingFile,
