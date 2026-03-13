@@ -3,9 +3,11 @@ package write
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -13,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -279,7 +283,10 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		ingestClients[endpoint] = httpClient
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL)
+		// Bidi streaming (used by debuginfo upload) requires HTTP/2.
+		// For HTTPS this works via ALPN; for plain HTTP we need an h2c transport.
+		debuginfoHTTPClient := newHTTP2Client(httpClient)
+		connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(debuginfoHTTPClient, endpoint.URL)
 		debugInfo := debuginfo.NewClient(logger, connectClient, metrics.debugInfoUploadBytes, endpointDataPath)
 		debugInfos = append(debugInfos, debugInfo)
 	}
@@ -745,6 +752,22 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
+}
+
+// newHTTP2Client wraps an existing HTTP client's transport with HTTP/2 support.
+// For HTTPS, HTTP/2 is negotiated via ALPN automatically. For plain HTTP (h2c),
+// we use the http2 transport with AllowHTTP and a custom dialer.
+func newHTTP2Client(base *http.Client) *http.Client {
+	return &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, network, addr)
+			},
+		},
+		Timeout: base.Timeout,
+	}
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {

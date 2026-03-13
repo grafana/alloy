@@ -309,6 +309,11 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 	c.appendable.Upload(debuginfo.UploadJob{
 		FrameMappingFileData: mf,
 		Open:                 open,
+		InitArguments: debuginfo.Arguments{
+			CacheSize: 1024,
+			QueueSize: 64,
+			WorkerNum: 4,
+		},
 	})
 }
 
