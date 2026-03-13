@@ -463,10 +463,6 @@ func (t *TestAppender) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (t *TestAppender) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
-	return nil
-}
-
 func (t *TestAppender) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }

@@ -225,16 +225,6 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
-	for _, client := range f.debugInfos {
-		cl := client.ConnectClient()
-		if cl != nil {
-			return cl
-		}
-	}
-	return nil
-}
-
 func (f *fanOutClient) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
 	for _, client := range f.debugInfos {

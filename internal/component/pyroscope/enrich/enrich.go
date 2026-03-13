@@ -206,10 +206,6 @@ func (e *enrichAppendable) Upload(j debuginfo.UploadJob) {
 	e.component.fanout.Upload(j)
 }
 
-func (e *enrichAppendable) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
-	return e.component.fanout.ConnectClient()
-}
-
 func (e *enrichAppendable) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return e.component.fanout.ConnectClients()
 }

@@ -547,10 +547,6 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
-	return nil
-}
-
 func (a *testAppender) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }

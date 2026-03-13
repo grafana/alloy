@@ -309,10 +309,6 @@ func (c *Component) Upload(j debuginfo.UploadJob) {
 	c.fanout.Upload(j)
 }
 
-func (c *Component) ConnectClient() debuginfov1alpha1connect.DebuginfoServiceClient {
-	return c.fanout.ConnectClient()
-}
-
 func (c *Component) ConnectClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return c.fanout.ConnectClients()
 }
