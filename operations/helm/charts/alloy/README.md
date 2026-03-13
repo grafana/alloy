@@ -181,6 +181,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
 | service.internalTrafficPolicy | string | `"Cluster"` | Value for internal traffic policy. 'Cluster' or 'Local' |
 | service.nodePort | int | `31128` | NodePort port. Only takes effect when `service.type: NodePort` |
+| service.trafficDistribution | string | `nil` | Value for traffic distribution. Unset or PreferClose |
 | service.type | string | `"ClusterIP"` | Service type |
 | serviceAccount.additionalLabels | object | `{}` | Additional labels to add to the created service account. |
 | serviceAccount.annotations | object | `{}` | Annotations to add to the created service account. |
