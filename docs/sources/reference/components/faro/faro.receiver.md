@@ -63,6 +63,7 @@ You can use the following blocks with `faro.receiver`:
 | [`sourcemaps`][sourcemaps]                   | Configures sourcemap retrieval.                      | no       |
 | `sourcemaps` > [`cache`][cache]              | Configures sourcemap caching behavior.               | no       |
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
+| `sourcemaps` >  [`location`][location]       | Configures the location for sourcemap retrieval.     | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
@@ -167,7 +168,7 @@ The `*` character indicates a wildcard.
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.
 
-To retrieve sourcemaps from disk instead of the network, specify one or more [`location` blocks][location].
+To retrieve sourcemaps from disk or another network location, specify one or more [`location` blocks][location].
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
 
 #### `cache`
@@ -194,10 +195,10 @@ Set `cleanup_check_interval` to adjust this frequency.
 The `location` block declares a location where sourcemaps are stored on the filesystem.
 You can specify the `location` block multiple times to declare multiple locations where sourcemaps are stored.
 
-| Name                   | Type     | Description                                         | Default | Required |
-|------------------------|----------|-----------------------------------------------------|---------|----------|
-| `minified_path_prefix` | `string` | The prefix of the minified path sent from browsers. |         | yes      |
-| `path`                 | `string` | The path on disk where sourcemaps are stored.       |         | yes      |
+| Name                   | Type     | Description                                               | Default | Required |
+|------------------------|----------|-----------------------------------------------------------|---------|----------|
+| `minified_path_prefix` | `string` | The prefix of the minified path sent from browsers.       |         | yes      |
+| `path`                 | `string` | The path on disk or base URL where sourcemaps are stored. |         | yes      |
 
 The `minified_path_prefix` argument determines the prefix of paths to JavaScript files, such as `http://example.com/`.
 The `path` argument then determines where to find the sourcemap for the file.
@@ -218,6 +219,35 @@ To look up the sourcemaps for a file hosted at `http://example.com/example.js`, 
 
 Optionally, the value for the `path` argument may contain `{{ .Release }}` as a template value, such as `/var/my-app/{{ .Release }}/build`.
 The template value is replaced with the release value provided by the [Faro Web App SDK][faro-sdk].
+
+When you specify a remote location, the procedure for retrieving the sourcemaps is the same as for a location block with a local path, except that the component retrieves the sourcemap from a remote HTTP server.
+
+In the following example, the `faro.receiver` sends a GET request to `http://storage.example.com/blob/sourcemaps/example.js.map` and retrieves the sourcemap for a file hosted at
+`http://example.com/example.js`.
+
+You can specify multiple location blocks. For example:
+
+```alloy
+location {
+    path                 = "http://storage.example.com/blob/sourcemaps/"
+    minified_path_prefix = "http://example.com/"
+}
+
+```alloy
+location {
+    path                 = "/var/my-app/build"
+    minified_path_prefix = "http://example.com/"
+}
+location {
+    path                 = "http://storage.example.com/blob/sourcemaps/"
+    minified_path_prefix = "http://example.com/"
+}
+```
+
+The `faro.receiver` component searches through all locations for the sourcemap files.
+Local on-disk paths take precedence over remote paths.
+For a file hosted at `http://example.com/example.js`, the `faro.receiver` first checks
+the path `/var/my-app/build/example.js.map`, and then tries to retrieve `http://storage.example.com/blob/sourcemaps/example.js.map`.
 
 ## Exported fields
 
