@@ -10,9 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/sampling"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
@@ -90,6 +92,7 @@ var (
 // Component implements the loki.secretfilter component.
 type Component struct {
 	opts component.Options
+	log  log.Logger
 
 	mut      sync.RWMutex
 	args     Arguments
@@ -257,6 +260,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               o,
+		log:                o.Logger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		detector:           detector,
 		metrics:            newMetrics(o.Registerer, args.OriginLabel),
@@ -267,6 +271,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
+
+	level.Debug(c.log).Log(
+		"msg", "loki.secretfilter initialized",
+		"forward_to_count", len(args.ForwardTo),
+		"origin_label", args.OriginLabel,
+		"redact_with", args.RedactWith,
+		"redact_percent", c.redactPercent,
+		"gitleaks_config", args.GitleaksConfig,
+		"rate", args.Rate,
+		"processing_timeout", args.ProcessingTimeout,
+		"drop_on_timeout", args.DropOnTimeout,
+	)
 
 	// Immediately export the receiver which remains the same for the component
 	// lifetime.
@@ -287,9 +303,11 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RLock()
 
 			var newEntry loki.Entry
+			var dropped bool
 			if c.shouldProcessEntry() {
-				newEntry, dropped := c.processEntry(ctx, entry)
+				newEntry, dropped = c.processEntry(ctx, entry)
 				if dropped {
+					level.Debug(c.log).Log("msg", "entry dropped", "reason", "processing_timeout")
 					c.mut.RUnlock()
 					continue
 				}
@@ -304,6 +322,7 @@ func (c *Component) Run(ctx context.Context) error {
 			} else {
 				newEntry = entry
 				c.metrics.entriesBypassedTotal.Inc()
+				level.Debug(c.log).Log("msg", "entry bypassed by sampling", "rate", c.args.Rate)
 			}
 
 			for _, f := range c.fanout {
@@ -349,6 +368,7 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 
 	if ctx.Err() != nil {
 		c.metrics.linesTimedOutTotal.Inc()
+		level.Debug(c.log).Log("msg", "processing timeout exceeded", "drop_on_timeout", c.args.DropOnTimeout, "partial_findings", len(findings))
 		if c.args.DropOnTimeout {
 			c.metrics.linesDroppedTotal.Inc()
 			return loki.Entry{}, true
@@ -364,6 +384,7 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 	if len(findings) == 0 {
 		return entry, false
 	}
+	level.Debug(c.log).Log("msg", "secrets detected in line", "findings", len(findings))
 	return c.redactLine(entry, findings), false
 }
 
@@ -437,6 +458,18 @@ func (c *Component) Update(args component.Arguments) error {
 		c.sampler.Update(newArgs.Rate)
 	}
 	c.metrics = newMetrics(c.opts.Registerer, newArgs.OriginLabel)
+
+	level.Debug(c.log).Log(
+		"msg", "loki.secretfilter config updated",
+		"forward_to_count", len(newArgs.ForwardTo),
+		"origin_label", newArgs.OriginLabel,
+		"redact_with", newArgs.RedactWith,
+		"redact_percent", c.redactPercent,
+		"gitleaks_config", newArgs.GitleaksConfig,
+		"rate", newArgs.Rate,
+		"processing_timeout", newArgs.ProcessingTimeout,
+		"drop_on_timeout", newArgs.DropOnTimeout,
+	)
 
 	return nil
 }
