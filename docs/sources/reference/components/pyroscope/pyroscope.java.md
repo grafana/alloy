@@ -158,17 +158,11 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 ### `custom_arguments`
 
-Use `custom_arguments` when you want direct control over async-profiler `start` flags.
+`custom_arguments` passes async-profiler `start` flags directly.
 
-When you set `custom_arguments`, Alloy skips these options from this block:
+When `custom_arguments` is set, Alloy skips these options from this block:
 
-- `cpu`
-- `event`
-- `per_thread`
-- `sample_rate`
-- `alloc`
-- `lock`
-- `log_level`
+`cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`.
 
 For example, this enables multi-event profiling (`cpu`, `alloc`, and `lock`) with custom thresholds:
 
