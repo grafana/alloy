@@ -756,26 +756,25 @@ func validateLabels(lbls labels.Labels) error {
 }
 
 // newH2CClient returns an HTTP client for Connect bidi streaming.
-// For HTTPS endpoints, the base client is returned (HTTP/2 via ALPN).
+// For HTTPS endpoints, the base client is returned as-is (HTTP/2 via ALPN).
 // For plain HTTP endpoints, returns a client with h2c transport because bidi
 // streaming requires HTTP/2 and both receive_http and pyroscope serve h2c.
-// The h2c transport reuses the base client's dialer and timeout settings.
+//
+// Note: the Go standard library and prometheus/common/config do not support
+// h2c natively (same pattern used in internal/service/cluster/cluster.go).
+// The h2c transport reuses the base client's settings where possible.
 func newH2CClient(endpointURL string, base *http.Client) *http.Client {
 	u, err := url.Parse(endpointURL)
 	if err != nil || u.Scheme == "https" {
 		return base
 	}
-	// For h2c we need http2.Transport with AllowHTTP. Reuse the base
-	// transport's DialContext if available so proxy/timeout settings apply.
-	dialCtx := (&net.Dialer{}).DialContext
-	if t, ok := base.Transport.(*http.Transport); ok && t.DialContext != nil {
-		dialCtx = t.DialContext
-	}
 	return &http.Client{
 		Transport: &http2.Transport{
 			AllowHTTP: true,
 			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-				return dialCtx(ctx, network, addr)
+				// Plain TCP dial for h2c (same approach as cluster.go).
+				var d net.Dialer
+				return d.DialContext(ctx, network, addr)
 			},
 		},
 		Timeout:       base.Timeout,
