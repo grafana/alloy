@@ -152,10 +152,9 @@ func (c *Component) Upload(ctx context.Context, stream *connect.BidiStream[debug
 		wg.Wait()
 	}
 
-	// Step 5: Close all active downstream streams.
+	// Step 5: Close the send side of all active downstream streams to signal EOF.
 	for _, ds := range activeStreams {
 		_ = ds.stream.CloseRequest()
-		_ = ds.stream.CloseResponse()
 	}
 
 	return nil
