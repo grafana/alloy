@@ -148,12 +148,15 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
 * **`rfc3164`**
   A legacy syslog format, also known as BSD syslog.
   Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`
+  Messages with empty MSG content are dropped and the `loki_source_syslog_empty_messages_total` counter is incremented.
 * **`rfc5424`**
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
   Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
+  Messages with empty MSG content are dropped by default; set `allow_empty_rfc5424_msg` to `true` to forward them. The `loki_source_syslog_empty_messages_total` counter is incremented in both cases for debugging.
 * **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
+  Messages with nil or empty body are dropped and the `loki_source_syslog_empty_messages_total` counter is incremented.
 
 [cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
 
