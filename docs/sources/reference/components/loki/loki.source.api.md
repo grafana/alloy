@@ -50,14 +50,7 @@ The component starts an HTTP server on the configured port and address with the 
 
 You can use the following arguments with `loki.source.api`:
 
-| Name                        | Type                 | Description                                                                        | Default    | Required |
-| --------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ---------- | -------- |
-| `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                          |            | yes      |
-| `labels`                    | `map(string)`        | The labels to associate with each received logs record.                            | `{}`       | no       |
-| `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                          | `{}`       | no       |
-| `use_incoming_timestamp`    | `bool`               | Whether to use the timestamp received from request.                                | `false`    | no       |
-| `max_send_message_size`     | `size`               | Maximum size of a request to the push API.                                         | `"100MiB"` | no       |
-| `graceful_shutdown_timeout` | `duration`           | Timeout for server's graceful shutdown. If configured, should be greater than zero. | `"30s"`    | no       |
+{{< docs/shared lookup="generated/components/loki/source/api/__arguments.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
@@ -65,22 +58,18 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 ## Blocks
 
+<!-- TODO: Add this note to the docgen -->
 You can use the following blocks with `loki.source.api`:
 
-| Name                  | Description                                        | Required |
-| --------------------- | -------------------------------------------------- | -------- |
-| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
-| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+{{< docs/shared lookup="generated/components/loki/source/api/__blocks.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+<!-- TODO: Add this note to the docgen -->
 The > symbol indicates deeper levels of nesting.
 For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
-[http]: #http
-[tls]: #tls
-
 ### `http`
 
-{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="generated/components/loki/source/api/http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 
@@ -90,7 +79,7 @@ The `tls` block configures TLS for the HTTP server.
 
 ## Exported fields
 
-`loki.source.api` doesn't export any fields.
+{{< docs/shared lookup="generated/components/loki/source/api/__exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

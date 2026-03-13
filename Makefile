@@ -314,6 +314,22 @@ else
 	go generate ./internal/tools/docs_generator/
 endif
 
+generate-docs-args:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@echo "Generating documentation config arguments for all components..."
+	@go list -f '{{.Dir}}' $$(go list -f '{{join .Imports " "}}' ./internal/component/all) | while read dir; do \
+		if [ -f "$$dir/metadata.yml" ]; then \
+			component_name=$$(echo $$dir | sed 's|.*/internal/component/||'); \
+			output_dir="docs/sources/shared/generated/components/$$component_name"; \
+			echo "Generating docs for component: $$component_name"; \
+			mkdir -p "$$output_dir"; \
+			go run ./internal/tools/docs_args_generator/ "$$dir/metadata.yml" "$$output_dir"; \
+		fi; \
+	done
+endif
+
 generate-winmanifest:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
@@ -372,6 +388,9 @@ else
 # This script requires bash 4.0 or higher or zsh to work properly
 	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
 endif
+
+validate-metadata:
+	bash ./tools/validate-metadata
 
 #
 # Other targets
