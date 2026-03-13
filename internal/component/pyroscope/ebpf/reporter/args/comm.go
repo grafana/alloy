@@ -1,4 +1,4 @@
-package reporter
+package args
 
 // CommMode controls how the process comm is included in profiles.
 // Valid values: "label", "stackframe", "both", "none", "".
@@ -12,10 +12,10 @@ const (
 	CommModeBoth       CommMode = "both"
 )
 
-func (m CommMode) label() bool {
+func (m CommMode) Label() bool {
 	return m == CommModeLabel || m == CommModeBoth
 }
 
-func (m CommMode) stackframe() bool {
+func (m CommMode) Stackframe() bool {
 	return m == CommModeStackframe || m == CommModeBoth
 }

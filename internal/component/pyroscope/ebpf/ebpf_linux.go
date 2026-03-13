@@ -35,6 +35,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -330,7 +331,7 @@ func NewDefaultArguments() Arguments {
 		VerboseMode:     false,
 		LazyMode:        false,
 
-		Comm:         reporter.CommModeNone,
+		Comm:         args.CommModeNone,
 		KernelFrames: true,
 
 		// undocumented

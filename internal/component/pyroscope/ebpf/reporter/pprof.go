@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -39,7 +40,7 @@ type Config struct {
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
 	PIDLabel                  bool
-	CommMode                  CommMode
+	CommMode                  args.CommMode
 	KernelFrames              bool
 }
 type PPROFReporter struct {
@@ -202,7 +203,7 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 		s := b.NewSample(len(traceInfo.Frames))
 		comm := traceKey.Comm.String()
 		sampleLabels := map[string][]string{}
-		if comm != "" && p.cfg.CommMode.label() {
+		if comm != "" && p.cfg.CommMode.Label() {
 			sampleLabels["comm"] = []string{comm}
 		}
 		if p.cfg.PIDLabel {
@@ -300,7 +301,7 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 			}
 			s.Location = append(s.Location, location)
 		}
-		if comm != "" && p.cfg.CommMode.stackframe() {
+		if comm != "" && p.cfg.CommMode.Stackframe() {
 			s.Location = append(s.Location, b.CommLocation(comm))
 		}
 	}

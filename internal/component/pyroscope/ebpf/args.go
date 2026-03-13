@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 )
 
 type Arguments struct {
@@ -35,7 +35,7 @@ type Arguments struct {
 	SymbCacheSizeEntries            int      `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool     `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 	PIDLabel                        bool     `alloy:"pid_label,attr,optional"`
-	Comm                            reporter.CommMode `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
+	Comm                            args.CommMode `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
 	KernelFrames                    bool     `alloy:"kernel_frames,attr,optional"`
 }
 
