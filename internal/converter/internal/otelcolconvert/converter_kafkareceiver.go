@@ -115,7 +115,6 @@ func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArgume
 
 func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
 	return kafka.KafkaReceiverTopicEncodingConfig{
-		Topic:         cfg.Topic,
 		Topics:        cfg.Topics,
 		Encoding:      cfg.Encoding,
 		ExcludeTopics: cfg.ExcludeTopics,

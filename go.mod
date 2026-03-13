@@ -24,11 +24,11 @@ require (
 	github.com/PuerkitoBio/rehttp v1.4.0
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b
-	github.com/aws/aws-sdk-go-v2 v1.41.1
-	github.com/aws/aws-sdk-go-v2/config v1.32.8
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
-	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.22
+	github.com/aws/aws-sdk-go-v2 v1.41.2
+	github.com/aws/aws-sdk-go-v2/config v1.32.10
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.18
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.1
+	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.23
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e
@@ -119,66 +119,66 @@ require (
 	github.com/oklog/run v1.2.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.74.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.146.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.146.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.147.0
 	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/oschwald/geoip2-golang v1.13.0
@@ -233,56 +233,56 @@ require (
 	github.com/xdg-go/scram v1.2.0
 	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2 // indirect
 	github.com/zeebo/xxh3 v1.1.0
-	go.opentelemetry.io/collector/client v1.52.0
-	go.opentelemetry.io/collector/component v1.52.0
-	go.opentelemetry.io/collector/component/componentstatus v0.146.1
-	go.opentelemetry.io/collector/component/componenttest v0.146.1
-	go.opentelemetry.io/collector/config/configauth v1.52.0
-	go.opentelemetry.io/collector/config/configcompression v1.52.0
-	go.opentelemetry.io/collector/config/configgrpc v0.146.1
-	go.opentelemetry.io/collector/config/confighttp v0.146.1
-	go.opentelemetry.io/collector/config/confignet v1.52.0
-	go.opentelemetry.io/collector/config/configopaque v1.52.0
-	go.opentelemetry.io/collector/config/configoptional v1.52.0
-	go.opentelemetry.io/collector/config/configretry v1.52.0
-	go.opentelemetry.io/collector/config/configtelemetry v0.146.1
-	go.opentelemetry.io/collector/config/configtls v1.52.0
-	go.opentelemetry.io/collector/confmap v1.52.0
-	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.52.0
-	go.opentelemetry.io/collector/confmap/xconfmap v0.146.1
-	go.opentelemetry.io/collector/connector v0.146.1
-	go.opentelemetry.io/collector/connector/connectortest v0.146.1
-	go.opentelemetry.io/collector/consumer v1.52.0
-	go.opentelemetry.io/collector/consumer/consumertest v0.146.1
-	go.opentelemetry.io/collector/exporter v1.52.0
-	go.opentelemetry.io/collector/exporter/debugexporter v0.146.0
-	go.opentelemetry.io/collector/exporter/exporterhelper v0.146.1
-	go.opentelemetry.io/collector/exporter/otlpexporter v0.146.1
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.146.0
-	go.opentelemetry.io/collector/extension v1.52.0
-	go.opentelemetry.io/collector/extension/extensionauth v1.52.0
-	go.opentelemetry.io/collector/extension/extensiontest v0.146.1
-	go.opentelemetry.io/collector/extension/xextension v0.146.1
-	go.opentelemetry.io/collector/featuregate v1.52.0
-	go.opentelemetry.io/collector/otelcol v0.146.1
-	go.opentelemetry.io/collector/pdata v1.52.0
-	go.opentelemetry.io/collector/pipeline v1.52.0
-	go.opentelemetry.io/collector/processor v1.52.0
-	go.opentelemetry.io/collector/processor/batchprocessor v0.146.0
-	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.146.0
-	go.opentelemetry.io/collector/receiver v1.52.0
-	go.opentelemetry.io/collector/receiver/otlpreceiver v0.146.1
-	go.opentelemetry.io/collector/receiver/receiverhelper v0.146.1
-	go.opentelemetry.io/collector/receiver/receivertest v0.146.1
-	go.opentelemetry.io/collector/scraper/scraperhelper v0.146.1
-	go.opentelemetry.io/collector/service v0.146.1
+	go.opentelemetry.io/collector/client v1.53.0
+	go.opentelemetry.io/collector/component v1.53.0
+	go.opentelemetry.io/collector/component/componentstatus v0.147.0
+	go.opentelemetry.io/collector/component/componenttest v0.147.0
+	go.opentelemetry.io/collector/config/configauth v1.53.0
+	go.opentelemetry.io/collector/config/configcompression v1.53.0
+	go.opentelemetry.io/collector/config/configgrpc v0.147.0
+	go.opentelemetry.io/collector/config/confighttp v0.147.0
+	go.opentelemetry.io/collector/config/confignet v1.53.0
+	go.opentelemetry.io/collector/config/configopaque v1.53.0
+	go.opentelemetry.io/collector/config/configoptional v1.53.0
+	go.opentelemetry.io/collector/config/configretry v1.53.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.147.0
+	go.opentelemetry.io/collector/config/configtls v1.53.0
+	go.opentelemetry.io/collector/confmap v1.53.0
+	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.53.0
+	go.opentelemetry.io/collector/confmap/xconfmap v0.147.0
+	go.opentelemetry.io/collector/connector v0.147.0
+	go.opentelemetry.io/collector/connector/connectortest v0.147.0
+	go.opentelemetry.io/collector/consumer v1.53.0
+	go.opentelemetry.io/collector/consumer/consumertest v0.147.0
+	go.opentelemetry.io/collector/exporter v1.53.0
+	go.opentelemetry.io/collector/exporter/debugexporter v0.147.0
+	go.opentelemetry.io/collector/exporter/exporterhelper v0.147.0
+	go.opentelemetry.io/collector/exporter/otlpexporter v0.147.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.147.0
+	go.opentelemetry.io/collector/extension v1.53.0
+	go.opentelemetry.io/collector/extension/extensionauth v1.53.0
+	go.opentelemetry.io/collector/extension/extensiontest v0.147.0
+	go.opentelemetry.io/collector/extension/xextension v0.147.0
+	go.opentelemetry.io/collector/featuregate v1.53.0
+	go.opentelemetry.io/collector/otelcol v0.147.0
+	go.opentelemetry.io/collector/pdata v1.53.0
+	go.opentelemetry.io/collector/pipeline v1.53.0
+	go.opentelemetry.io/collector/processor v1.53.0
+	go.opentelemetry.io/collector/processor/batchprocessor v0.147.0
+	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.147.0
+	go.opentelemetry.io/collector/receiver v1.53.0
+	go.opentelemetry.io/collector/receiver/otlpreceiver v0.147.0
+	go.opentelemetry.io/collector/receiver/receiverhelper v0.147.0
+	go.opentelemetry.io/collector/receiver/receivertest v0.147.0
+	go.opentelemetry.io/collector/scraper/scraperhelper v0.147.0
+	go.opentelemetry.io/collector/service v0.147.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.45.0
 	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
 	go.opentelemetry.io/obi v1.2.2
 	go.opentelemetry.io/otel v1.40.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.39.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.39.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.40.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.40.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.40.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.60.0
 	go.opentelemetry.io/otel/metric v1.40.0
 	go.opentelemetry.io/otel/sdk v1.40.0
@@ -361,7 +361,7 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0 // indirect
 	github.com/ClickHouse/clickhouse-go v1.5.4 // indirect
 	github.com/Code-Hex/go-generics-cache v1.5.1 // indirect
-	github.com/DataDog/agent-payload/v5 v5.0.181 // indirect
+	github.com/DataDog/agent-payload/v5 v5.0.182 // indirect
 	github.com/DataDog/datadog-agent/comp/core/config v0.77.0-devel.0.20260213154712-e02b9359151a // indirect
 	github.com/DataDog/datadog-agent/comp/core/flare/builder v0.77.0-devel.0.20260213154712-e02b9359151a // indirect
 	github.com/DataDog/datadog-agent/comp/core/flare/types v0.77.0-devel.0.20260213154712-e02b9359151a // indirect
@@ -460,7 +460,7 @@ require (
 	github.com/DataDog/go-tuf v1.1.1-0.5.2 // indirect
 	github.com/DataDog/gohai v0.0.0-20230524154621-4316413895ee // indirect
 	github.com/DataDog/mmh3 v0.0.0-20210722141835-012dc69a9e49 // indirect
-	github.com/DataDog/sketches-go v1.4.7 // indirect
+	github.com/DataDog/sketches-go v1.4.8 // indirect
 	github.com/DataDog/viper v1.15.0 // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
 	github.com/DataDog/zstd_0 v0.0.0-20210310093942-586c1286621f // indirect
@@ -478,44 +478,44 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/antchfx/xmlquery v1.5.0 // indirect
-	github.com/antchfx/xpath v1.3.5 // indirect
+	github.com/antchfx/xpath v1.3.6 // indirect
 	github.com/apache/arrow-go/v18 v18.4.0 // indirect
 	github.com/apache/thrift v0.22.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4 // indirect
 	github.com/aws/aws-sdk-go v1.55.7 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.8 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.5 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.21.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.18 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.18 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.17 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/amp v1.30.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/apigateway v1.28.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.24.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.51.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.45.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.63.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.63.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.45.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.290.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.291.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.70.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.38.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/lightsail v1.50.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.25.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/shield v1.29.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.21 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.14 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.22 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.34.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6 // indirect
-	github.com/aws/smithy-go v1.24.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.41.7 // indirect
+	github.com/aws/smithy-go v1.24.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bboreham/go-loser v0.0.0-20230920113527-fcc2c21820a3 // indirect
 	github.com/beevik/ntp v1.3.0 // indirect
@@ -648,7 +648,7 @@ require (
 	github.com/grafana/jvmtools v0.0.3 // indirect
 	github.com/grafana/otel-profiling-go v0.5.1 // indirect
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.4 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/hashicorp/cronexpr v1.1.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -773,33 +773,33 @@ require (
 	github.com/ohler55/ojg v1.26.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
-	github.com/open-telemetry/opamp-go v0.22.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.146.0 // indirect; indirect)
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/datadog v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/metadataproviders v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.146.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.146.0 // indirect
+	github.com/open-telemetry/opamp-go v0.23.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.147.0 // indirect; indirect)
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/datadog v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/metadataproviders v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.147.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opencontainers/runc v1.3.3 // indirect
@@ -835,7 +835,6 @@ require (
 	github.com/prometheus-community/prom-label-proxy v0.12.1 // indirect
 	github.com/prometheus/exporter-toolkit v0.15.1 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/redis/go-redis/v9 v9.11.0 // indirect
 	github.com/relvacode/iso8601 v1.7.0 // indirect
@@ -882,11 +881,11 @@ require (
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/ua-parser/uap-go v0.0.0-20240611065828-3a4781585db6 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	github.com/valyala/fastjson v1.6.7 // indirect
+	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vertica/vertica-sql-go v1.3.3 // indirect
 	github.com/vishvananda/netlink v1.3.1 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
-	github.com/vmware/govmomi v0.52.0 // indirect
+	github.com/vmware/govmomi v0.53.0 // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -911,58 +910,58 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.3.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector v0.146.1 // indirect
-	go.opentelemetry.io/collector/config/configmiddleware v1.52.0 // indirect
-	go.opentelemetry.io/collector/connector/xconnector v0.146.1 // indirect
-	go.opentelemetry.io/collector/consumer/consumererror v0.146.1 // indirect
-	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.146.1 // indirect
-	go.opentelemetry.io/collector/consumer/xconsumer v0.146.1 // indirect
-	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.146.1 // indirect
-	go.opentelemetry.io/collector/exporter/exportertest v0.146.1 // indirect
-	go.opentelemetry.io/collector/exporter/xexporter v0.146.1 // indirect
-	go.opentelemetry.io/collector/extension/extensioncapabilities v0.146.1 // indirect
-	go.opentelemetry.io/collector/extension/extensionmiddleware v0.146.1 // indirect
-	go.opentelemetry.io/collector/filter v0.146.1 // indirect
-	go.opentelemetry.io/collector/internal/fanoutconsumer v0.146.1 // indirect
-	go.opentelemetry.io/collector/internal/memorylimiter v0.146.0 // indirect
-	go.opentelemetry.io/collector/internal/sharedcomponent v0.146.1 // indirect
-	go.opentelemetry.io/collector/internal/telemetry v0.146.1 // indirect
-	go.opentelemetry.io/collector/pdata/pprofile v0.146.1 // indirect
-	go.opentelemetry.io/collector/pdata/testdata v0.146.1 // indirect
-	go.opentelemetry.io/collector/pdata/xpdata v0.146.1 // indirect
-	go.opentelemetry.io/collector/pipeline/xpipeline v0.146.1 // indirect
-	go.opentelemetry.io/collector/processor/processorhelper v0.146.1 // indirect
-	go.opentelemetry.io/collector/processor/processorhelper/xprocessorhelper v0.146.1 // indirect
-	go.opentelemetry.io/collector/processor/processortest v0.146.1 // indirect
-	go.opentelemetry.io/collector/processor/xprocessor v0.146.1 // indirect
-	go.opentelemetry.io/collector/receiver/xreceiver v0.146.1 // indirect
-	go.opentelemetry.io/collector/scraper v0.146.1 // indirect
+	go.opentelemetry.io/collector v0.147.0 // indirect
+	go.opentelemetry.io/collector/config/configmiddleware v1.53.0 // indirect
+	go.opentelemetry.io/collector/connector/xconnector v0.147.0 // indirect
+	go.opentelemetry.io/collector/consumer/consumererror v0.147.0 // indirect
+	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.147.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.147.0 // indirect
+	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.147.0 // indirect
+	go.opentelemetry.io/collector/exporter/exportertest v0.147.0 // indirect
+	go.opentelemetry.io/collector/exporter/xexporter v0.147.0 // indirect
+	go.opentelemetry.io/collector/extension/extensioncapabilities v0.147.0 // indirect
+	go.opentelemetry.io/collector/extension/extensionmiddleware v0.147.0 // indirect
+	go.opentelemetry.io/collector/filter v0.147.0 // indirect
+	go.opentelemetry.io/collector/internal/fanoutconsumer v0.147.0 // indirect
+	go.opentelemetry.io/collector/internal/memorylimiter v0.147.0 // indirect
+	go.opentelemetry.io/collector/internal/sharedcomponent v0.147.0 // indirect
+	go.opentelemetry.io/collector/internal/telemetry v0.147.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.147.0 // indirect
+	go.opentelemetry.io/collector/pdata/testdata v0.147.0 // indirect
+	go.opentelemetry.io/collector/pdata/xpdata v0.147.0 // indirect
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.147.0 // indirect
+	go.opentelemetry.io/collector/processor/processorhelper v0.147.0 // indirect
+	go.opentelemetry.io/collector/processor/processorhelper/xprocessorhelper v0.147.0 // indirect
+	go.opentelemetry.io/collector/processor/processortest v0.147.0 // indirect
+	go.opentelemetry.io/collector/processor/xprocessor v0.147.0 // indirect
+	go.opentelemetry.io/collector/receiver/xreceiver v0.147.0 // indirect
+	go.opentelemetry.io/collector/scraper v0.147.0 // indirect
 	go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685 // indirect
-	go.opentelemetry.io/collector/service/hostcapabilities v0.146.1 // indirect
-	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0 // indirect
+	go.opentelemetry.io/collector/service/hostcapabilities v0.147.0 // indirect
+	go.opentelemetry.io/contrib/bridges/otelzap v0.15.0 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.61.0 // indirect
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.0.0 // indirect
 	go.opentelemetry.io/contrib/detectors/aws/eks v1.38.0 // indirect
 	go.opentelemetry.io/contrib/detectors/azure/azurevm v0.10.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
 	go.opentelemetry.io/contrib/exporters/autoexport v0.61.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.65.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.64.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
 	go.opentelemetry.io/contrib/otelconf v0.18.0 // indirect
-	go.opentelemetry.io/contrib/propagators/b3 v1.39.0 // indirect
+	go.opentelemetry.io/contrib/propagators/b3 v1.40.0 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.35.0
 	go.opentelemetry.io/contrib/samplers/jaegerremote v0.30.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.14.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.14.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.39.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.39.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.14.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.16.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.16.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.40.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.40.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.16.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.40.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.39.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.40.0 // indirect
 	go.opentelemetry.io/otel/log v0.16.0 // indirect
-	go.opentelemetry.io/otel/sdk/log v0.14.0 // indirect
+	go.opentelemetry.io/otel/sdk/log v0.16.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
@@ -1007,7 +1006,7 @@ require (
 require (
 	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.0-20251203114737-dab2f094ec25.1
 	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20251203114737-dab2f094ec25.1
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.146.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.147.0
 	github.com/spf13/viper v1.19.0
 	github.com/zricethezav/gitleaks/v8 v8.30.0
 )
@@ -1027,8 +1026,8 @@ require (
 	github.com/DeRuina/timberjack v1.3.9 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
 	github.com/STARRY-S/zip v0.2.1 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.6 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.0 // indirect
@@ -1059,8 +1058,10 @@ require (
 	github.com/minio/minlz v1.0.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/nwaples/rardecode/v2 v2.1.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/credentialsfile v0.147.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
+	github.com/puzpuzpuz/xsync/v4 v4.4.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -1076,7 +1077,7 @@ require (
 	github.com/wasilibs/go-re2 v1.9.0 // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	go.opentelemetry.io/collector/internal/componentalias v0.146.1 // indirect
+	go.opentelemetry.io/collector/internal/componentalias v0.147.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 )
 

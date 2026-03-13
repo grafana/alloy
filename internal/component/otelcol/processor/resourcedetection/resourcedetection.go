@@ -30,6 +30,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/oraclecloud"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/scaleway"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/tencent"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/upcloud"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/vultr"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -158,6 +159,9 @@ type DetectorConfig struct {
 
 	// VultrConfig contains user-specified configurations for the Vultr detector
 	VultrConfig vultr.Config `alloy:"vultr,block,optional"`
+
+	// TencentCVMConfig contains user-specified configurations for the Tencent Cloud CVM detector
+	TencentCVMConfig tencent.Config `alloy:"tencent_cvm,block,optional"`
 }
 
 func (dc *DetectorConfig) SetToDefault() {
@@ -185,6 +189,7 @@ func (dc *DetectorConfig) SetToDefault() {
 		ScalewayConfig:         scaleway.DefaultArguments,
 		UpCloudConfig:          upcloud.DefaultArguments,
 		VultrConfig:            vultr.DefaultArguments,
+		TencentCVMConfig:       tencent.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -238,7 +243,8 @@ func (args *Arguments) Validate() error {
 			oraclecloud.Name,
 			scaleway.Name,
 			upcloud.Name,
-			vultr.Name:
+			vultr.Name,
+			tencent.Name:
 		// Valid option - nothing to do
 		default:
 			return fmt.Errorf("invalid detector: %s", detector)
@@ -297,6 +303,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["scaleway"] = args.DetectorConfig.ScalewayConfig.Convert()
 	input["upcloud"] = args.DetectorConfig.UpCloudConfig.Convert()
 	input["vultr"] = args.DetectorConfig.VultrConfig.Convert()
+	input["tencent_cvm"] = args.DetectorConfig.TencentCVMConfig.Convert()
 	var result resourcedetectionprocessor.Config
 	err := mapstructure.Decode(input, &result)
 
