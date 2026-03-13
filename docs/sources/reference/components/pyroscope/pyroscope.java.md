@@ -127,18 +127,18 @@ The `profiling_config` block describes how async-profiler is invoked.
 
 The following arguments are supported:
 
-| Name                              | Type            | Description                                                                                                        | Default    | Required |
-| --------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------ | ---------- | -------- |
-| `alloc`                           | `string`        | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.               | `"512k"`   | no       |
-| `cpu`                             | `bool`          | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                    | `true`     | no       |
-| `event`                           | `string`        | Sets the CPU profiling event. Refer to [`event`](#event) for supported values.                                     | `"itimer"` | no       |
-| `extra_arguments`                 | `list(string)`  | Extra async-profiler CLI arguments. They are appended as-is to the `start` subcommand.                             | `[]`       | no       |
-| `interval`                        | `duration`      | How frequently to collect profiles from the targets.                                                               | `"60s"`    | no       |
-| `lock`                            | `string`        | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                      | `"10ms"`   | no       |
-| `log_level`                       | `string`        | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                 | `"INFO"`   | no       |
-| `per_thread`                      | `bool`          | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                         | `false`    | no       |
-| `quiet`                           | `bool`          | If set, suppresses the `Profiling started/stopped` log message.                                                    | `false`    | no       |
-| `sample_rate`                     | `int`           | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.    | `100`      | no       |
+| Name                              | Type            | Description                                                                                                                        | Default    | Required |
+| --------------------------------- | --------------- | -----------------------------------------------------------------------------------------------------------------------------------| ---------- | -------- |
+| `alloc`                           | `string`        | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.                               | `"512k"`   | no       |
+| `cpu`                             | `bool`          | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                                    | `true`     | no       |
+| `custom_arguments`                | `list(string)`  | Sends raw args to async-profiler, skipping all Alloy arguments except `interval`. Refer to [`custom_arguments`](#custom_arguments).| `[]`       | no       |
+| `event`                           | `string`        | Sets the CPU profiling event. Refer to [`event`](#event) for supported values.                                                     | `"itimer"` | no       |
+| `interval`                        | `duration`      | How frequently to collect profiles from the targets.                                                                               | `"60s"`    | no       |
+| `lock`                            | `string`        | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                                      | `"10ms"`   | no       |
+| `log_level`                       | `string`        | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                                 | `"INFO"`   | no       |
+| `per_thread`                      | `bool`          | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                         | `false`    | no       |
+| `quiet`                           | `bool`          | If set, suppresses the `Profiling started/stopped` log message.                                                                    | `false`    | no       |
+| `sample_rate`                     | `int`           | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                    | `100`      | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
@@ -150,15 +150,42 @@ For a complete overview of all available profiling modes and their use cases, re
 
 #### `per_thread`
 
-{{< admonition type="note" >}}
+{{< admonition type="warning" >}}
 The `per_thread` option doesn't apply when using JFR output format.
 Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
 For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
 {{< /admonition >}}
 
-The `per_thread` argument sets per thread mode on async profiler. Threads are profiled separately and each stack trace ends with a frame that denotes a single thread.
+### `custom_arguments`
 
-The Wall-clock profiler (`event=wall`) is most useful in per-thread mode.
+Use `custom_arguments` when you want direct control over async-profiler `start` flags.
+
+When you set `custom_arguments`, Alloy skips these options from this block:
+
+- `cpu`
+- `event`
+- `per_thread`
+- `sample_rate`
+- `alloc`
+- `lock`
+- `log_level`
+
+For example, this enables multi-event profiling (`cpu`, `alloc`, and `lock`) with custom thresholds:
+
+```alloy
+pyroscope.java "java" {
+  targets    = discovery.relabel.java.output
+  forward_to = [pyroscope.write.staging.receiver]
+
+  profiling_config {
+    interval = "60s"
+    custom_arguments = ["-e", "cpu,alloc,lock", "--alloc", "2m", "--lock", "10ms"]
+  }
+}
+```
+
+Refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) and [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for the complete async-profiler option list.
+
 
 ## Exported fields
 

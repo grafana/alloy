@@ -226,30 +226,26 @@ func (p *profilingLoop) start() error {
 		"-f", p.jfrFile,
 		"-o", "jfr",
 	)
-
-	// If CPU profiling is enabled and no event is specified, default to itimer
-	if cfg.CPU {
-		if cfg.Event == "" {
-			cfg.Event = "itimer"
+	if len(cfg.CustomArguments) == 0 {
+		if cfg.CPU {
+			argv = append(argv, "-e", cfg.Event)
+			if cfg.PerThread {
+				argv = append(argv, "-t")
+			}
+			profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
+			argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
 		}
-	}
-	argv = append(argv, "-e", cfg.Event)
-	if cfg.PerThread {
-		argv = append(argv, "-t")
-	}
-	profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
-	argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
-	if cfg.Alloc != "" {
-		argv = append(argv, "--alloc", cfg.Alloc)
-	}
-	if cfg.Lock != "" {
-		argv = append(argv, "--lock", cfg.Lock)
-	}
-	if cfg.LogLevel != "" {
-		argv = append(argv, "-L", cfg.LogLevel)
-	}
-	if len(cfg.ExtraArguments) > 0 {
-		argv = append(argv, cfg.ExtraArguments...)
+		if cfg.Alloc != "" {
+			argv = append(argv, "--alloc", cfg.Alloc)
+		}
+		if cfg.Lock != "" {
+			argv = append(argv, "--lock", cfg.Lock)
+		}
+		if cfg.LogLevel != "" {
+			argv = append(argv, "-L", cfg.LogLevel)
+		}
+	} else {
+		argv = append(argv, cfg.CustomArguments...)
 	}
 
 	argv = append(argv,

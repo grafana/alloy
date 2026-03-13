@@ -19,16 +19,16 @@ type Arguments struct {
 }
 
 type ProfilingConfig struct {
-	Interval       time.Duration `alloy:"interval,attr,optional"`
-	SampleRate     int           `alloy:"sample_rate,attr,optional"`
-	Alloc          string        `alloy:"alloc,attr,optional"`
-	Lock           string        `alloy:"lock,attr,optional"`
-	CPU            bool          `alloy:"cpu,attr,optional"`
-	Event          string        `alloy:"event,attr,optional"`
-	PerThread      bool          `alloy:"per_thread,attr,optional"`
-	LogLevel       string        `alloy:"log_level,attr,optional"`
-	Quiet          bool          `alloy:"quiet,attr,optional"`
-	ExtraArguments []string      `alloy:"extra_arguments,attr,optional"`
+	Interval        time.Duration `alloy:"interval,attr,optional"`
+	SampleRate      int           `alloy:"sample_rate,attr,optional"`
+	Alloc           string        `alloy:"alloc,attr,optional"`
+	Lock            string        `alloy:"lock,attr,optional"`
+	CPU             bool          `alloy:"cpu,attr,optional"`
+	Event           string        `alloy:"event,attr,optional"`
+	PerThread       bool          `alloy:"per_thread,attr,optional"`
+	LogLevel        string        `alloy:"log_level,attr,optional"`
+	Quiet           bool          `alloy:"quiet,attr,optional"`
+	CustomArguments []string      `alloy:"custom_arguments,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
@@ -45,16 +45,16 @@ func DefaultArguments() Arguments {
 	return Arguments{
 		TmpDir: "/tmp",
 		ProfilingConfig: ProfilingConfig{
-			Interval:       60 * time.Second,
-			SampleRate:     100,
-			Alloc:          "512k",
-			Lock:           "10ms",
-			CPU:            true,
-			Event:          "itimer",
-			PerThread:      false,
-			LogLevel:       "INFO",
-			Quiet:          false,
-			ExtraArguments: []string{},
+			Interval:        60 * time.Second,
+			SampleRate:      100,
+			Alloc:           "512k",
+			Lock:            "10ms",
+			CPU:             true,
+			Event:           "itimer",
+			PerThread:       false,
+			LogLevel:        "INFO",
+			Quiet:           false,
+			CustomArguments: []string{},
 		},
 	}
 }
