@@ -629,6 +629,38 @@ func (c *Component) DebugInfo() any {
 	}
 }
 
+// GetTargets implements component.TargetsProvider
+func (c *Component) GetTargets() []component.TargetInfo {
+	targets := c.scraper.TargetsActive()
+	var result []component.TargetInfo
+
+	for job, jobTargets := range targets {
+		for _, st := range jobTargets {
+			if st == nil {
+				continue
+			}
+			var lastError string
+			if st.LastError() != nil {
+				lastError = st.LastError().Error()
+			}
+
+			lb := labels.NewBuilder(labels.EmptyLabels())
+			dlb := labels.NewBuilder(labels.EmptyLabels())
+			result = append(result, component.TargetInfo{
+				JobName:            job,
+				Endpoint:           st.URL().String(),
+				State:              string(st.Health()),
+				Labels:             st.Labels(lb).Map(),
+				DiscoveredLabels:   st.DiscoveredLabels(dlb).Map(),
+				LastScrape:         st.LastScrape(),
+				LastScrapeDuration: st.LastScrapeDuration(),
+				LastError:          lastError,
+			})
+		}
+	}
+	return result
+}
+
 func (c *Component) populatePromLabels(targets []discovery.Target, jobName string, args Arguments) []*scrape.Target {
 	// We need to call scrape.TargetsFromGroup to reuse the rather complex logic of populating labels on targets.
 	allTargets := make([]*scrape.Target, 0, len(targets))
