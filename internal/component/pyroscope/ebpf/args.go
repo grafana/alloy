@@ -48,12 +48,12 @@ type Arguments struct {
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
 	// undocumented
-	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
-	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
-	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
-	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
+	PyroscopeDynamicProfilingPolicy bool     `alloy:"targets_only,attr,optional"`
+	SymbCachePath                   string   `alloy:"symb_cache_path,attr,optional"`
+	SymbCacheSizeEntries            int      `alloy:"symb_cache_size,attr,optional"`
+	ReporterUnsymbolizedStubs       bool     `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 	PIDLabel                        bool     `alloy:"pid_label,attr,optional"`
-	Comm                            CommMode `alloy:"comm,attr,optional"`             // to address a Grafana Labs customer's escalation
+	Comm                            CommMode `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
 	KernelFrames                    bool     `alloy:"kernel_frames,attr,optional"`
 }
 
