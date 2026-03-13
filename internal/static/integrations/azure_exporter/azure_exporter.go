@@ -18,9 +18,8 @@ import (
 )
 
 type Exporter struct {
-	cfg               Config
-	logger            *zap.SugaredLogger // used by azure client
-	ConcurrencyConfig azure_config.Opts
+	cfg    Config
+	logger *zap.SugaredLogger // used by azure client
 }
 
 func (e Exporter) MetricsHandler() (http.Handler, error) {
@@ -72,7 +71,12 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 			return
 		}
 
-		prober := metrics.NewMetricProber(ctx, logEntry, nil, settings, e.ConcurrencyConfig)
+		// Use concurrency settings from merged config to support query parameter overrides
+		concurrencyConfig := azure_config.Opts{}
+		concurrencyConfig.Prober.ConcurrencySubscription = mergedConfig.ConcurrencySubscription
+		concurrencyConfig.Prober.ConcurrencySubscriptionResource = mergedConfig.ConcurrencySubscriptionResource
+
+		prober := metrics.NewMetricProber(ctx, logEntry, nil, settings, concurrencyConfig)
 		prober.SetAzureClient(client)
 		prober.SetPrometheusRegistry(reg)
 		prober.SetAzureResourceTagManager(tagManager)
