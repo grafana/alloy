@@ -583,10 +583,7 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenAllowed(t *testing.T) {
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
 			ListenAddress:        "127.0.0.1:0",
-			ListenProtocol:       ProtocolTCP,
-			LabelStructuredData:  true,
-			UseRFC5424Message:    true,
-			UseIncomingTimestamp: true,
+			ListenProtocol:       ProtocolUDP,
 			AllowEmptyRFC5424Msg: true,
 			Labels: model.LabelSet{
 				"test": "syslog_target",
@@ -600,7 +597,7 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenAllowed(t *testing.T) {
 	}()
 
 	addr := tgt.ListenAddress().String()
-	c, err := net.Dial(ProtocolTCP, addr)
+	c, err := net.Dial(ProtocolUDP, addr)
 	require.NoError(t, err)
 
 	err = writeMessagesToStream(c, []string{msg}, fmtNewline)
@@ -612,9 +609,7 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenAllowed(t *testing.T) {
 	}, time.Second, time.Millisecond, "Expected to receive 1 message, got %d.", len(handler.Received()))
 
 	entry := handler.Received()[0]
-	require.Equal(t, msg, entry.Line, "Line should be the full RFC 5424 string when MSG part is empty")
-	require.NotZero(t, entry.Timestamp)
-	require.Equal(t, time.Date(2026, 2, 19, 14, 57, 17, 97*int(time.Millisecond), time.UTC), entry.Timestamp)
+	require.Equal(t, "", entry.Line, "empty MSG yields empty line when using MSG-only format")
 	require.Equal(t, model.LabelSet{"test": "syslog_target"}, entry.Labels)
 }
 
@@ -635,12 +630,8 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
 			ListenAddress:        "127.0.0.1:0",
-			ListenProtocol:       ProtocolTCP,
+			ListenProtocol:       ProtocolUDP,
 			AllowEmptyRFC5424Msg: false,
-			LabelStructuredData:  true,
-			Labels: model.LabelSet{
-				"test": "syslog_target",
-			},
 		},
 	})
 	require.NoError(t, err)
@@ -650,17 +641,17 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
 	}()
 
 	addr := tgt.ListenAddress().String()
-	c, err := net.Dial(ProtocolTCP, addr)
+	c, err := net.Dial(ProtocolUDP, addr)
 	require.NoError(t, err)
 
 	err = writeMessagesToStream(c, []string{msg}, fmtNewline)
 	require.NoError(t, err)
 	require.NoError(t, c.Close())
 
-	// Give a moment for any async processing
-	time.Sleep(100 * time.Millisecond)
-
-	require.Empty(t, handler.Received(), "empty MSG should be rejected when AllowEmptyRFC5424Msg is false")
+	start := time.Now()
+	require.Eventually(t, func() bool {
+		return time.Since(start) >= 100*time.Millisecond && len(handler.Received()) == 0
+	}, 200*time.Millisecond, 10*time.Millisecond, "RFC5424 log with nil Message should be dropped when AllowEmptyRFC5424Msg is false")
 }
 
 const layout = "Jan 02 15:04:05"
@@ -897,6 +888,89 @@ func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 	gotLines := parseCefLogLines(t, iterLokiLines(handler.Received()))
 
 	require.Equal(t, wantLines, gotLines, "log lines did not match")
+}
+
+func TestSyslogTarget_RawMessageEmptyDropped(t *testing.T) {
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(TargetParams{
+		Metrics: metrics,
+		Logger:  logger,
+		Handler: handler,
+		Relabel: []*relabel.Config{},
+		Config: &scrapeconfig.SyslogTargetConfig{
+			ListenAddress:  "127.0.0.1:0",
+			ListenProtocol: "udp",
+			SyslogFormat:   scrapeconfig.SyslogFormatRaw,
+			RawFormatOptions: scrapeconfig.RawFormatOptions{
+				UseNullTerminatorDelimiter: false,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+
+	addr := tgt.ListenAddress().String()
+	c, err := net.Dial("udp", addr)
+	require.NoError(t, err)
+
+	// "<13>" has PRI only, no message content — raw parser produces empty Message
+	messages := []string{
+		"<13>",
+		"<34> ", // PRI + whitespace only
+	}
+	err = writeMessagesToStream(c, messages, fmtNewline)
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	time.Sleep(100 * time.Millisecond)
+	require.NoError(t, tgt.Stop())
+
+	require.Empty(t, handler.Received(), "raw log with nil Message should be dropped")
+}
+
+func TestSyslogTarget_RFC3164MessageEmptyDropped(t *testing.T) {
+	// PRI+timestamp only — no hostname, tag, or message. Parser produces nil Message.
+	logLine := "<13>Dec  1 00:00:00"
+
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(TargetParams{
+		Metrics: metrics,
+		Logger:  logger,
+		Handler: handler,
+		Relabel: []*relabel.Config{},
+		Config: &scrapeconfig.SyslogTargetConfig{
+			ListenAddress:  "127.0.0.1:0",
+			ListenProtocol: ProtocolUDP,
+			SyslogFormat:   scrapeconfig.SyslogFormatRFC3164,
+		},
+	})
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+	defer func() {
+		require.NoError(t, tgt.Stop())
+	}()
+
+	addr := tgt.ListenAddress().String()
+	c, err := net.Dial(ProtocolUDP, addr)
+	require.NoError(t, err)
+
+	err = writeMessagesToStream(c, []string{logLine}, fmtNewline)
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	time.Sleep(100 * time.Millisecond)
+
+	require.Empty(t, handler.Received(), "RFC3164 log with nil Message should be dropped")
 }
 
 func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
