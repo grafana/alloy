@@ -60,7 +60,7 @@ type Config struct {
 	ReporterUnsymbolizedStubs bool
 	PIDLabel                  bool
 	CommMode                  CommMode
-	DropKernelFrames          bool
+	KernelFrames              bool
 }
 type PPROFReporter struct {
 	cfg *Config
@@ -247,7 +247,7 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 
 		for i := range traceInfo.Frames {
 			fr := traceInfo.Frames[i].Value()
-			if p.cfg.DropKernelFrames && fr.Type == libpf.KernelFrame {
+			if !p.cfg.KernelFrames && fr.Type == libpf.KernelFrame {
 				continue
 			}
 			var (

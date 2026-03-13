@@ -109,7 +109,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
 		PIDLabel:                  args.PIDLabel,
 		CommMode:                  args.Comm.toReporter(),
-		DropKernelFrames:          args.DropKernelFrames,
+		KernelFrames:              args.KernelFrames,
 	}, discovery,
 		symbols,
 		func(ctx context.Context, ps []reporter.PPROF) {
@@ -330,7 +330,8 @@ func NewDefaultArguments() Arguments {
 		VerboseMode:     false,
 		LazyMode:        false,
 
-		Comm: CommModeNone,
+		Comm:         CommModeNone,
+		KernelFrames: true,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,

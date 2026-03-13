@@ -54,7 +54,7 @@ type Arguments struct {
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 	PIDLabel                        bool     `alloy:"pid_label,attr,optional"`
 	Comm                            CommMode `alloy:"comm,attr,optional"`             // to address a Grafana Labs customer's escalation
-	DropKernelFrames                bool     `alloy:"drop_kernel_frames,attr,optional"`
+	KernelFrames                    bool     `alloy:"kernel_frames,attr,optional"`
 }
 
 type DeprecatedArguments struct {
