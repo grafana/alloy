@@ -10,6 +10,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -198,6 +199,11 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
+
+	// Skip virtual DSOs — they have no backing file and no build ID.
+	if strings.HasPrefix(fileName, "linux-vdso") || strings.HasPrefix(fileName, "[vdso]") {
+		return
+	}
 
 	_, ok := u.retry.Get(fileID)
 	if ok {
