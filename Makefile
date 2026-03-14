@@ -130,6 +130,8 @@ GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOA
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
+BEYLA_VERSION := $(shell go list -m github.com/grafana/beyla/v2 | cut -d' ' -f2)
+BEYLA_PKG     := github.com/grafana/beyla/v2/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
 VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
 ifdef SOURCE_DATE_EPOCH
@@ -140,7 +142,8 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
-                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ")
+                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ")	\
+                -X $(BEYLA_PKG).Version=$(BEYLA_VERSION)
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
 DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
