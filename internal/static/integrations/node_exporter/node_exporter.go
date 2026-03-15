@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime"
 	"sort"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,6 +27,45 @@ type Integration struct {
 	nc     *collector.NodeCollector
 
 	exporterMetricsRegistry *prometheus.Registry
+}
+
+// nodeExporterVersion holds the version information for the node_exporter library.
+// This should match the version of github.com/prometheus/node_exporter being used.
+const (
+	nodeExporterVersion  = "v1.9.1"
+	nodeExporterRevision = "318b01780c89" // From grafana/node_exporter fork
+	nodeExporterBranch   = "HEAD"
+)
+
+// buildInfoCollector is a custom collector that exposes node_exporter version information.
+type buildInfoCollector struct {
+	desc *prometheus.Desc
+}
+
+func newBuildInfoCollector() *buildInfoCollector {
+	return &buildInfoCollector{
+		desc: prometheus.NewDesc(
+			"node_exporter_build_info",
+			"A metric with a constant '1' value labeled by version, revision, branch, goversion from which node_exporter was built, and the goos and goarch for the build.",
+			nil,
+			prometheus.Labels{
+				"version":   nodeExporterVersion,
+				"revision":  nodeExporterRevision,
+				"branch":    nodeExporterBranch,
+				"goversion": runtime.Version(),
+				"goos":      runtime.GOOS,
+				"goarch":    runtime.GOARCH,
+			},
+		),
+	}
+}
+
+func (c *buildInfoCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.desc
+}
+
+func (c *buildInfoCollector) Collect(ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, 1)
 }
 
 // New creates a new node_exporter integration.
@@ -62,6 +101,13 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 	if err := r.Register(i.nc); err != nil {
 		return nil, fmt.Errorf("couldn't register node_exporter node collector: %w", err)
 	}
+
+	// Register node_exporter_build_info metrics with correct node_exporter version,
+	// generally useful for dashboards that depend on them for discovering targets.
+	if err := r.Register(newBuildInfoCollector()); err != nil {
+		return nil, fmt.Errorf("couldn't register node_exporter build info: %w", err)
+	}
+
 	handler := promhttp.HandlerFor(
 		prometheus.Gatherers{i.exporterMetricsRegistry, r},
 		promhttp.HandlerOpts{
@@ -70,12 +116,6 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 			Registry:            i.exporterMetricsRegistry,
 		},
 	)
-
-	// Register node_exporter_build_info metrics, generally useful for
-	// dashboards that depend on them for discovering targets.
-	if err := r.Register(build.NewCollector(i.c.Name())); err != nil {
-		return nil, fmt.Errorf("couldn't register %s: %w", i.c.Name(), err)
-	}
 
 	if i.c.IncludeExporterMetrics {
 		// Note that we have to use reg here to use the same promhttp metrics for
