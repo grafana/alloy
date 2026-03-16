@@ -165,8 +165,11 @@ When using the `pull` strategy, the component exposes the following debug metric
 
 When using the `push` strategy, the component exposes the following debug metrics:
 
+* `loki_source_gcplog_push_inflight_requests`: Gauge metric for the current number of inflight requests.
+* `loki_source_gcplog_push_request_duration_seconds`: Histogram metric for HTTP request handling time, in seconds.
+* `loki_source_gcplog_push_request_message_bytes`: Histogram metric for request message size, in bytes.
 * `loki_source_gcplog_push_entries_total` (counter): Number of entries received by the gcplog target.
-* `loki_source_gcplog_push_entries_total` (counter): Number of parsing errors while receiving gcplog messages.
+* `loki_source_gcplog_push_parsing_errors_total` (counter): Number of parsing errors while receiving gcplog messages.
 
 ## Example
 
