@@ -25,7 +25,7 @@ func (args ContextConditionsSlice) convert() []map[string]any {
 	for _, cond := range args {
 		result = append(result, map[string]any{
 			"context":    cond.Context,
-			"conditions": append([]string{}, cond.Conditions...),
+			"conditions": cond.Conditions,
 		})
 	}
 	return result

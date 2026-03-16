@@ -51,19 +51,52 @@ func toFilterProcessor(state *State, id componentstatus.InstanceID, cfg *filterp
 		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
+	var (
+		logConditions    = make(filter.ContextConditionsSlice, 0, len(cfg.LogConditions))
+		traceConditions  = make(filter.ContextConditionsSlice, 0, len(cfg.TraceConditions))
+		metricConditions = make(filter.ContextConditionsSlice, 0, len(cfg.MetricConditions))
+	)
+
+	for _, c := range cfg.LogConditions {
+		logConditions = append(logConditions, filter.ContextConditions{
+			Context:    string(c.Context),
+			Conditions: c.Conditions,
+		})
+	}
+
+	for _, c := range cfg.TraceConditions {
+		traceConditions = append(traceConditions, filter.ContextConditions{
+			Context:    string(c.Context),
+			Conditions: c.Conditions,
+		})
+	}
+
+	for _, c := range cfg.MetricConditions {
+		metricConditions = append(metricConditions, filter.ContextConditions{
+			Context:    string(c.Context),
+			Conditions: c.Conditions,
+		})
+	}
+
 	return &filter.Arguments{
 		ErrorMode: cfg.ErrorMode,
+		//nolint:staticcheck
 		Traces: filter.TraceConfig{
 			Span:      cfg.Traces.SpanConditions,
 			SpanEvent: cfg.Traces.SpanEventConditions,
 		},
+		//nolint:staticcheck
 		Metrics: filter.MetricConfig{
 			Metric:    cfg.Metrics.MetricConditions,
 			Datapoint: cfg.Metrics.DataPointConditions,
 		},
+		//nolint:staticcheck
 		Logs: filter.LogConfig{
 			LogRecord: cfg.Logs.LogConditions,
 		},
+		LogConditions:    logConditions,
+		TraceConditions:  traceConditions,
+		MetricConditions: metricConditions,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 			Logs:    ToTokenizedConsumers(nextLogs),

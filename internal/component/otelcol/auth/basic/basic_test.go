@@ -300,10 +300,10 @@ func deleteTestHtpasswdFile(t *testing.T, path string) {
 	require.NoError(t, err)
 }
 
-func createTempCredentialFile(t *testing.T, pattern, value string) string {
+func createTempCredentialFile(t *testing.T, path, value string) string {
 	t.Helper()
 
-	file, err := os.CreateTemp("", pattern)
+	file, err := os.CreateTemp(t.TempDir(), path)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_ = os.Remove(file.Name())

@@ -158,7 +158,7 @@ func TestGetPodInfo(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a fake Kubernetes client with the test pod
-			fakeClient := fake.NewSimpleClientset(tc.pod)
+			fakeClient := fake.NewClientset(tc.pod)
 
 			// Create a target for testing
 			target := &Target{
@@ -393,10 +393,10 @@ func TestShouldStopTailingJobContainer(t *testing.T) {
 			// Special handling for the "pod not found" test case
 			if tc.name == "job pod not found (deleted)" {
 				// Create a fake client without the pod to simulate deletion
-				fakeClient = fake.NewSimpleClientset()
+				fakeClient = fake.NewClientset()
 			} else {
 				// Create a fake Kubernetes client with the test pod
-				fakeClient = fake.NewSimpleClientset(tc.pod)
+				fakeClient = fake.NewClientset(tc.pod)
 			}
 
 			// Create a target for testing
