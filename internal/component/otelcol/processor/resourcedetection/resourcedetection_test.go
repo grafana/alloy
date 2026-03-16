@@ -2691,6 +2691,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
