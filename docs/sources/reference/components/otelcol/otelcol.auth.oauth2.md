@@ -45,11 +45,11 @@ You can use the following arguments with `otelcol.auth.oauth2`:
 
 | Name                          | Type                | Description                                                                                                 | Default                | Required |
 | ----------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
-| `token_url`                   | `string`            | The server endpoint URL from which to get tokens.                                                           |                        | yes      |
-| `client_id_file`              | `string`            | The file path to retrieve the client identifier issued to the client.                                       |                        | no       |
-| `client_id`                   | `string`            | The client identifier issued to the client.                                                                 |                        | no       |
-| `client_secret_file`          | `string`            | The file path to retrieve the secret string associated with the client identifier.                          |                        | no       |
-| `client_secret`               | `secret`            | The secret string associated with the client identifier.                                                    |                        | no       |
+| `token_url`                   | `string`            | The server endpoint URL from which to get tokens.                                                           | `""`                   | yes      |
+| `client_id_file`              | `string`            | The file path to retrieve the client identifier issued to the client.                                       | `""`                   | no       |
+| `client_id`                   | `string`            | The client identifier issued to the client.                                                                 | `""`                   | no       |
+| `client_secret_file`          | `string`            | The file path to retrieve the secret string associated with the client identifier.                          | `""`                   | no       |
+| `client_secret`               | `secret`            | The secret string associated with the client identifier.                                                    | `""`                   | no       |
 | `grant_type`                  | `string`            | OAuth2 grant type. Valid values: `"client_credentials"` or `"urn:ietf:params:oauth:grant-type:jwt-bearer"`. | `"client_credentials"` | no       |
 | `client_certificate_key_id`   | `string`            | Key ID included in JWT bearer grant requests.                                                               | `""`                   | no       |
 | `client_certificate_key_file` | `string`            | File path to JWT bearer private key.                                                                        | `""`                   | no       |
