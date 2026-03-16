@@ -56,20 +56,33 @@ func init() {
 	python.NoContinueWithNextUnwinder.Store(true)
 }
 
+var (
+	ebpfMetricsOnce     sync.Once
+	ebpfMetricsRegistry *prometheus.Registry // reused by all instances
+	ebpfMetricsErr      error                // stored for all instances to check
+)
+
 func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
-	// Bridge OTel eBPF profiler metrics to Prometheus.
-	otelPromRegistry := prometheus.NewRegistry()
-	promExporter, err := sdkprometheus.New(
-		sdkprometheus.WithRegisterer(otelPromRegistry),
-		sdkprometheus.WithoutTargetInfo(),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("creating OTel prometheus exporter: %w", err)
+	// ebpfmetrics.Start writes to package-level globals in the upstream library,
+	// so it must only be called once. All instances share the same OTel registry.
+	ebpfMetricsOnce.Do(func() {
+		ebpfMetricsRegistry = prometheus.NewRegistry()
+		promExporter, err := sdkprometheus.New(
+			sdkprometheus.WithRegisterer(ebpfMetricsRegistry),
+			sdkprometheus.WithoutTargetInfo(),
+		)
+		if err != nil {
+			ebpfMetricsErr = fmt.Errorf("creating OTel prometheus exporter: %w", err)
+			return
+		}
+		mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(promExporter))
+		ebpfmetrics.Start(mp.Meter("pyroscope.ebpf"))
+	})
+	if ebpfMetricsErr != nil {
+		return nil, ebpfMetricsErr
 	}
-	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(promExporter))
-	ebpfmetrics.Start(mp.Meter("pyroscope.ebpf"))
 	if reg != nil {
-		reg.MustRegister(otelPromRegistry)
+		reg.MustRegister(ebpfMetricsRegistry)
 	}
 
 	cfg, err := args.Convert()
