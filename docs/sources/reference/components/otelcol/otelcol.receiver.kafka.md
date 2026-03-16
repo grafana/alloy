@@ -44,8 +44,8 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 
 | Name                                       | Type           | Description                                                                                                           | Default            | Required |
 | ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
-| `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                          |                    | yes      |
-| `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                        |                    | yes      |
+| `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                          | `[]`               | yes      |
+| `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                        | `""`               | yes      |
 | `client_id`                                | `string`       | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
 | `conn_idle_timeout`                        | `duration`     | Time after which idle connections are not reused and may be closed.                                                   | `"9m"`             | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                     | `"otlp_proto"`     | no       |
@@ -54,7 +54,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `group_rebalance_strategy`                 | `string`       | The strategy used to assign partitions to consumers within a consumer group.                                          | `"range"`          | no       |
 | `heartbeat_interval`                       | `duration`     | The expected time between heartbeats to the consumer coordinator when using Kafka group management.                   | `"3s"`             | no       |
 | `initial_offset`                           | `string`       | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
-| `max_fetch_size`                           | `int`          | The maximum number of message bytes to fetch in a request.                                                            | `0`                | no       |
+| `max_fetch_size`                           | `int`          | The maximum number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
 | `max_fetch_wait`                           | `duration`     | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
 | `max_partition_fetch_size`                 | `int`          | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
 | `min_fetch_size`                           | `int`          | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |

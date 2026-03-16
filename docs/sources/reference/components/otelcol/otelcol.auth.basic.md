@@ -67,9 +67,9 @@ The `client_auth` block configures credentials that client extensions (such as e
 
 | Name            | Type     | Description                                                                       | Default | Required |
 | --------------- | -------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| `password`      | `string` | Password to use for basic authentication requests.                                |         | no       |
+| `password`      | `secret` | Password to use for basic authentication requests.                                | `""`    | no       |
 | `password_file` | `string` | Path to a file containing the password. If set, takes precedence over `password`. | `""`    | no       |
-| `username`      | `string` | Username to use for basic authentication requests.                                |         | no       |
+| `username`      | `string` | Username to use for basic authentication requests.                                | `""`    | no       |
 | `username_file` | `string` | Path to a file containing the username. If set, takes precedence over `username`. | `""`    | no       |
 
 {{< admonition type="note" >}}
