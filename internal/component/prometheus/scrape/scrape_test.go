@@ -164,7 +164,7 @@ func TestCustomDialer(t *testing.T) {
 	err := syntax.Unmarshal([]byte(config), &args)
 	require.NoError(t, err)
 
-	opts := newRuntimeUpdateOpts(t, t.Name(), func(ctx context.Context, network, address string) (net.Conn, error) {
+	opts := newComponentOpts(t, func(ctx context.Context, network, address string) (net.Conn, error) {
 		return memLis.DialContext(ctx)
 	})
 
@@ -698,7 +698,7 @@ func testScrapingAllMetricTypes(t *testing.T, enableTypeAndUnitLabels bool) {
 	mockAppendable := testappender.ConstantAppendable{Inner: appender}
 
 	// Set up component options
-	opts := newRuntimeUpdateOpts(t, strings.ReplaceAll(t.Name(), " ", "_"))
+	opts := newComponentOpts(t)
 
 	// Configure scrape arguments
 	var args Arguments
@@ -861,17 +861,16 @@ func hasSampleForMetric(samples map[string]*testappender.MetricSample, name stri
 
 // TestRuntimeUpdate verifies that config fields can (or gracefully cannot) be changed
 // while the component is running, and that targets are always updated regardless.
-//
-// Each sub-test uses two real HTTP servers (A and B) that expose metrics with distinct
-// names, so pre- and post-update assertions are unambiguous without any appender swapping.
 func TestRuntimeUpdate(t *testing.T) {
 	type testCase struct {
 		name string
-		// setupRegistryA/B build the metric registries that the two HTTP servers expose.
+		// Metric registry scraped prior to the config update.
 		setupRegistryA func(t *testing.T) *prometheus_client.Registry
+		// Metric registry scraped after the config update.
 		setupRegistryB func(t *testing.T) *prometheus_client.Registry
-		// initialArgs / updatedArgs receive both server addresses and the shared appendable.
+		// Arguments used to configure the component prior to the config update.
 		initialArgs func(t *testing.T, addrA, addrB string, app storage.Appendable) Arguments
+		// Arguments used to configure the component after the config update.
 		updatedArgs func(t *testing.T, addrA, addrB string, app storage.Appendable) Arguments
 		// preUpdateCheck is polled until it passes, then Update is called.
 		preUpdateCheck func(ct *assert.CollectT, c testappender.CollectingAppender)
@@ -1018,7 +1017,7 @@ func TestRuntimeUpdate(t *testing.T) {
 			appender := testappender.NewCollectingAppender()
 			appendable := testappender.ConstantAppendable{Inner: appender}
 
-			c, err := New(newRuntimeUpdateOpts(t, strings.ReplaceAll(tc.name, " ", "_")), tc.initialArgs(t, addrA, addrB, appendable))
+			c, err := New(newComponentOpts(t), tc.initialArgs(t, addrA, addrB, appendable))
 			require.NoError(t, err)
 			go c.Run(ctx)
 
@@ -1064,13 +1063,14 @@ func startMetricsServer(t *testing.T, reg *prometheus_client.Registry) string {
 	return addr
 }
 
-// newRuntimeUpdateOpts returns component.Options suitable for tests.
+// newComponentOpts returns component.Options suitable for tests.
 // componentID is used as the component identifier and is included in every log line
 // as component_path/component_id fields, mirroring production behaviour.
 // An optional dialFunc overrides the default (*net.Dialer).DialContext, which is
 // useful for tests that need an in-memory or otherwise custom transport.
-func newRuntimeUpdateOpts(t *testing.T, componentID string, dialFunc ...func(context.Context, string, string) (net.Conn, error)) component.Options {
+func newComponentOpts(t *testing.T, dialFunc ...func(context.Context, string, string) (net.Conn, error)) component.Options {
 	t.Helper()
+	componentID := strings.ReplaceAll(t.Name(), " ", "_")
 	df := (&net.Dialer{}).DialContext
 	if len(dialFunc) > 0 && dialFunc[0] != nil {
 		df = dialFunc[0]
