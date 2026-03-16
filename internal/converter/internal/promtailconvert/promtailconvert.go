@@ -108,7 +108,7 @@ func AppendAll(f *builder.File, cfg *promtailcfg.Config, labelPrefix string, dia
 	// Each client config needs to be a separate remote_write,
 	// because they may have different ExternalLabels fields.
 	for i, cc := range cfg.ClientConfigs {
-		writeBlocks[i], writeReceivers[i] = build.NewLokiWrite(&cc, &diags, i, labelPrefix)
+		writeBlocks[i], writeReceivers[i] = build.NewLokiWrite(&cc, &diags, i, labelPrefix, cfg.LimitsConfig.MaxStreams)
 	}
 
 	gc := &build.GlobalContext{

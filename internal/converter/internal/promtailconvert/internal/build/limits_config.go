@@ -12,9 +12,8 @@ import (
 // buildLimitsConfigStages converts the global Promtail limits_config into
 // equivalent loki.process pipeline stages.
 //
-// Note: limits_config.max_streams has no equivalent in Alloy's pipeline stages
-// and is silently omitted. A diagnostic warning is emitted by the top-level
-// validator when max_streams is set.
+// Note: limits_config.max_streams is converted separately into the max_streams
+// argument on each loki.write component.
 //
 // The conversion is inherently approximate: Promtail's limits apply globally
 // across all pipelines, whereas the returned stages are injected into each

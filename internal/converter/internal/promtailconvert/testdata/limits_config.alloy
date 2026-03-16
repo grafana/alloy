@@ -40,4 +40,5 @@ loki.write "default" {
 		url = "http://localhost/loki/api/v1/push"
 	}
 	external_labels = {}
+	max_streams     = 100
 }

@@ -17,13 +17,6 @@ func validateTopLevelConfig(cfg *promtailcfg.Config, diags *diag.Diagnostics) {
 		)
 	}
 
-	if cfg.LimitsConfig.MaxStreams > 0 {
-		diags.Add(
-			diag.SeverityLevelWarn,
-			"limits_config.max_streams is not supported in Alloy and will be ignored in the converted configuration.",
-		)
-	}
-
 	if cfg.LimitsConfig.ReadlineRateEnabled {
 		diags.Add(
 			diag.SeverityLevelWarn,
