@@ -67,13 +67,14 @@ LEFT JOIN
 	performance_schema.events_waits_history waits
 	ON statements.thread_id = waits.thread_id
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+	%s
 LEFT JOIN
 	performance_schema.threads threads
 	ON statements.THREAD_ID = threads.THREAD_ID
 WHERE
 	statements.DIGEST IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN %s
-	%s %s`
+	%s %s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -89,6 +90,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
 	SetupConsumersCheckInterval time.Duration
+	SampleMinDuration           time.Duration
+	WaitEventMinDuration        time.Duration
 
 	Logger log.Logger
 }
@@ -102,6 +105,8 @@ type QuerySamples struct {
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
 	setupConsumersCheckInterval time.Duration
+	sampleMinDuration           time.Duration
+	waitEventMinDuration        time.Duration
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -122,6 +127,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		sampleMinDuration:           args.SampleMinDuration,
+		waitEventMinDuration:        args.WaitEventMinDuration,
 		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
@@ -242,15 +249,25 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
 
+	var waitDurationClause string
+	if c.waitEventMinDuration > 0 {
+		waitDurationClause = fmt.Sprintf("AND waits.timer_wait >= %.0f", secondsToPicoseconds(c.waitEventMinDuration.Seconds()))
+	}
+
+	var sampleDurationClause string
+	if c.sampleMinDuration > 0 {
+		sampleDurationClause = fmt.Sprintf("AND statements.TIMER_WAIT >= %.0f", secondsToPicoseconds(c.sampleMinDuration.Seconds()))
+	}
+
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, textField, excludedSchemasClause, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, textField, waitDurationClause, excludedSchemasClause, textNotNullClause, sampleDurationClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
 		additionalFields := cpuTimeField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, excludedSchemasClause, textNotNullClause, sampleDurationClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, excludedSchemasClause, textNotNullClause, sampleDurationClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
