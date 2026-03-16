@@ -111,6 +111,7 @@ metrics:
 			MetricNameValidationScheme: model.UTF8Validation,
 			MetricNameEscapingScheme:   model.AllowUTF8,
 			ScrapeNativeHistograms:     &falseVal,
+			ExtraScrapeMetrics:         &falseVal,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")
