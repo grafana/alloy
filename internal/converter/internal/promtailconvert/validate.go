@@ -17,13 +17,12 @@ func validateTopLevelConfig(cfg *promtailcfg.Config, diags *diag.Diagnostics) {
 		)
 	}
 
-	// Not yet supported, see https://github.com/grafana/agent/issues/4342. It's an error since we want to
-	// err on the safe side.
-	//TODO(thampiotr): seems like it's possible to support this using loki.process component
-	if cfg.LimitsConfig != DefaultLimitsConfig() {
+	if cfg.LimitsConfig.ReadlineRateEnabled {
 		diags.Add(
-			diag.SeverityLevelError,
-			"limits_config is not yet supported in Alloy",
+			diag.SeverityLevelWarn,
+			"limits_config rate limiting settings (readline_rate, readline_burst, readline_rate_drop) have been "+
+				"converted to stage.limit stages in each loki.process component. Unlike Promtail's global rate "+
+				"limiter, these limits apply independently per pipeline rather than across all pipelines combined.",
 		)
 	}
 
