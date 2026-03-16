@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/klauspost/compress/gzip"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 )
 
@@ -51,10 +52,7 @@ func NewProfileBuilders(options BuildersOptions) *ProfileBuilders {
 	return &ProfileBuilders{Builders: make(map[builderHashKey]*ProfileBuilder), opt: options}
 }
 
-func (b *ProfileBuilders) BuilderForSample(
-	target *discovery.Target,
-	pid uint32,
-) *ProfileBuilder {
+func (b *ProfileBuilders) BuilderForSample(target *discovery.Target, pid uint32, key samples.TraceAndMetaKey) *ProfileBuilder {
 
 	labelsHash, _ := target.Labels()
 
@@ -104,6 +102,7 @@ func (b *ProfileBuilders) BuilderForSample(
 			TimeNanos:  time.Now().UnixNano(),
 		},
 		dummyMapping: dummyMapping,
+		Key:          key,
 	}
 	res = builder
 	b.Builders[k] = res
@@ -137,6 +136,7 @@ type ProfileBuilder struct {
 	Target  *discovery.Target
 
 	dummyMapping *profile.Mapping
+	Key          samples.TraceAndMetaKey
 }
 
 func (p *ProfileBuilder) FakeMapping() *profile.Mapping {

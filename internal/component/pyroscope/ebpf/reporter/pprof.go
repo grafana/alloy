@@ -192,7 +192,7 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 		if target == nil {
 			continue
 		}
-		b := bs.BuilderForSample(target, uint32(traceKey.Pid))
+		b := bs.BuilderForSample(target, uint32(traceKey.Pid), traceKey)
 		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
@@ -259,8 +259,8 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 						location.Line = []profile.Line{{
 							Line: 0,
 							Function: b.Function(
-								libpf.Intern("[unknown]"),
-								libpf.Intern("[unknown]"),
+								libpf.Intern("[abort]"),
+								libpf.Intern("[abort]"),
 							)},
 						}
 						location.Mapping.HasFunctions = true
@@ -302,6 +302,8 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 			builder.Add(l.Name, l.Value)
 		})
 		builder.Add(model.MetricNameLabel, metric)
+		builder.Add("comm", b.Key.Comm.String())
+		builder.Add("exe", b.Key.ExecutablePath.String())
 		builder.Sort()
 		res = append(res, PPROF{
 			Raw:    buf.Bytes(),

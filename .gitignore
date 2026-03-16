@@ -33,6 +33,7 @@ node_modules
 .tag-only
 .image-tag
 /alloy
+/collector/alloy
 collector/otel_engine
 collector/otel_engine.exe
 
