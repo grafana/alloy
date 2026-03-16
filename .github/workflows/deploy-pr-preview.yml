@@ -15,9 +15,7 @@ permissions:
 jobs:
   deploy-pr-preview:
     if: "!github.event.pull_request.head.repo.fork"
-    uses: grafana/writers-toolkit/.github/workflows/deploy-preview.yml@main
-    # ^ We can't pin a hash for this action because deploy-preview's checkout step relies on it
-    # having been called against the main branch
+    uses: grafana/writers-toolkit/.github/workflows/deploy-preview.yml@4f777048885c917cfa20cdc848fc0af79445550e # deploy-pr-preview/v1.0
     permissions:
       contents: read # Clone repositories.
       id-token: write # Fetch Vault secrets.
