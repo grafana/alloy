@@ -265,6 +265,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	if HasAuthFeature(authFeature, ClientAuthSupported) {
 		// FIXME(kalleep): It should be possible only start
 		// either client or server auth depending on config.
+		// https://github.com/grafana/alloy/issues/5793
 		components = append(components, clientEh.Extension)
 	}
 
@@ -283,6 +284,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	if HasAuthFeature(authFeature, ServerAuthSupported) {
 		// FIXME(kalleep): It should be possible only start
 		// either client or server auth depending on config.
+		// https://github.com/grafana/alloy/issues/5793
 		components = append(components, serverEh.Extension)
 	}
 
