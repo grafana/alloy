@@ -2,6 +2,7 @@ package client
 
 import (
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -73,7 +74,16 @@ func TestEndpoint(t *testing.T) {
 			},
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			inputDelay:           700 * time.Millisecond,
+			inputDelay: func() time.Duration {
+				// On windows this test is really flaky, a lot of times
+				// shards are not started before we queue all items so they
+				// end up in the same batch so we need to wait longer to make
+				// sure everything is running.
+				if runtime.GOOS == "windows" {
+					return 2 * time.Second
+				}
+				return 700 * time.Millisecond
+			}(),
 			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
