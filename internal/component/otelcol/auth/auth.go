@@ -158,8 +158,8 @@ type Auth struct {
 	opts    component.Options
 	factory otelextension.Factory
 
-	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
+	sched     *scheduler.AuthExtentionScheduler
 }
 
 var (
@@ -188,7 +188,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewAuthExtentionScheduler(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -199,8 +199,12 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 
 // Run starts the Auth component.
 func (a *Auth) Run(ctx context.Context) error {
-	defer a.cancel()
-	return a.sched.Run(ctx)
+	defer func() {
+		a.cancel()
+		a.sched.Stop()
+	}()
+	<-ctx.Done()
+	return nil
 }
 
 // Update implements component.Component. It will convert the Arguments into
@@ -259,6 +263,8 @@ func (a *Auth) Update(args component.Arguments) error {
 
 	// If the extension supports client auth schedule it.
 	if HasAuthFeature(authFeature, ClientAuthSupported) {
+		// FIXME(kalleep): It should be possible only start
+		// either client or server auth depending on config.
 		components = append(components, clientEh.Extension)
 	}
 
@@ -275,6 +281,8 @@ func (a *Auth) Update(args component.Arguments) error {
 
 	// If the extension supports server auth schedule it.
 	if HasAuthFeature(authFeature, ServerAuthSupported) {
+		// FIXME(kalleep): It should be possible only start
+		// either client or server auth depending on config.
 		components = append(components, serverEh.Extension)
 	}
 
@@ -283,14 +291,12 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
-	// Inform listeners that our handler changed.
-	a.opts.OnStateChange(Exports{
-		Handler: handler,
-	},
-	)
+	// Schedule the components, start will be called directly.
+	a.sched.Schedule(a.ctx, host, components...)
 
-	// Schedule the components to run once our component is running.
-	a.sched.Schedule(a.ctx, func() {}, host, components...)
+	// Inform listeners that our handler changed.
+	a.opts.OnStateChange(Exports{Handler: handler})
+
 	return nil
 }
 

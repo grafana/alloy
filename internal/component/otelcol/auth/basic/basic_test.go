@@ -167,11 +167,14 @@ func TestClientAuthWithCredentialFiles(t *testing.T) {
 	passwordFile := createTempCredentialFile(t, "password", clientAuthPassword)
 
 	testCfg := fmt.Sprintf(`
+		username = "%s"
+		password = "%s"
+
 		client_auth {
 			username_file = "%s"
 			password_file = "%s"
 		}
-	`, usernameFile, passwordFile)
+	`, actualUsername, actualPasswordSHA512, usernameFile, passwordFile)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()

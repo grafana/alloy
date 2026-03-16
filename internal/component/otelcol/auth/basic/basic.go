@@ -48,10 +48,10 @@ func (c HtpasswdConfig) convert() *basicauthextension.HtpasswdSettings {
 }
 
 type ClientAuthConfig struct {
-	Username     string `alloy:"username,attr,optional"`
-	UsernameFile string `alloy:"username_file,attr,optional"`
-	Password     string `alloy:"password,attr,optional"`
-	PasswordFile string `alloy:"password_file,attr,optional"`
+	Username     string            `alloy:"username,attr,optional"`
+	UsernameFile string            `alloy:"username_file,attr,optional"`
+	Password     alloytypes.Secret `alloy:"password,attr,optional"`
+	PasswordFile string            `alloy:"password_file,attr,optional"`
 }
 
 func (c ClientAuthConfig) convert() *basicauthextension.ClientAuthSettings {

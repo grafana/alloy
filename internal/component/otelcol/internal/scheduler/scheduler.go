@@ -105,7 +105,7 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	cs.onPause()
 
 	// 2. Stop the old components
-	cs.stopComponents(ctx, cs.schedComponents...)
+	stopComponents(ctx, cs.log, cs.schedComponents...)
 
 	// 3. Change the consumers
 	// This can only be done after stopping the previous components and before starting the new ones.
@@ -114,7 +114,7 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	// 4. Start the new components
 	level.Debug(cs.log).Log("msg", "scheduling otelcol components", "count", len(cc))
 	var err error
-	cs.schedComponents, err = cs.startComponents(ctx, h, cc...)
+	cs.schedComponents, err = startComponents(ctx, cs.log, cs, h, cc...)
 	if err != nil {
 		level.Error(cs.log).Log("msg", "failed to start some scheduled components", "err", err)
 	}
@@ -132,7 +132,7 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 	cs.running = true
 
 	cs.onPause()
-	started, err := cs.startComponents(ctx, cs.host, cs.schedComponents...)
+	started, err := startComponents(ctx, cs.log, cs, cs.host, cs.schedComponents...)
 	cs.onResume()
 
 	cs.schedMut.Unlock()
@@ -145,7 +145,7 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 	defer func() {
 		cs.schedMut.Lock()
 		defer cs.schedMut.Unlock()
-		cs.stopComponents(context.Background(), cs.schedComponents...)
+		stopComponents(context.Background(), cs.log, cs.schedComponents...)
 		// this Resume call should not be needed but is added for robustness to ensure that
 		// it does not ever exit in "paused" state.
 		cs.onResume()
@@ -153,43 +153,6 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 	return nil
-}
-
-func (cs *Scheduler) stopComponents(ctx context.Context, cc ...otelcomponent.Component) {
-	for _, c := range cc {
-		if err := c.Shutdown(ctx); err != nil {
-			level.Error(cs.log).Log("msg", "failed to stop scheduled component; future updates may fail", "err", err)
-		}
-	}
-}
-
-// startComponent schedules the provided components from cc. It then returns
-// the list of components which started successfully.
-func (cs *Scheduler) startComponents(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) (started []otelcomponent.Component, errs error) {
-	for _, c := range cc {
-		if err := c.Start(ctx, h); err != nil {
-			level.Error(cs.log).Log("msg", "failed to start scheduled component", "err", err)
-			errs = multierr.Append(errs, err)
-		} else {
-			started = append(started, c)
-		}
-	}
-
-	if errs != nil {
-		cs.setHealth(component.Health{
-			Health:     component.HealthTypeUnhealthy,
-			Message:    fmt.Sprintf("failed to create components: %s", errs),
-			UpdateTime: time.Now(),
-		})
-	} else {
-		cs.setHealth(component.Health{
-			Health:     component.HealthTypeHealthy,
-			Message:    "started scheduled components",
-			UpdateTime: time.Now(),
-		})
-	}
-
-	return started, errs
 }
 
 // CurrentHealth implements component.HealthComponent. The component is
@@ -205,4 +168,46 @@ func (cs *Scheduler) setHealth(h component.Health) {
 	cs.healthMut.Lock()
 	defer cs.healthMut.Unlock()
 	cs.health = h
+}
+
+// stopComponents stops all provided components from cc.
+func stopComponents(ctx context.Context, logger log.Logger, cc ...otelcomponent.Component) {
+	for _, c := range cc {
+		if err := c.Shutdown(ctx); err != nil {
+			level.Error(logger).Log("msg", "failed to stop scheduled component; future updates may fail", "err", err)
+		}
+	}
+}
+
+type healthScheduler interface {
+	setHealth(h component.Health)
+}
+
+// startComponent schedules the provided components from cc. It then returns
+// the list of components which started successfully.
+func startComponents(ctx context.Context, logger log.Logger, s healthScheduler, h otelcomponent.Host, cc ...otelcomponent.Component) (started []otelcomponent.Component, errs error) {
+	for _, c := range cc {
+		if err := c.Start(ctx, h); err != nil {
+			level.Error(logger).Log("msg", "failed to start scheduled component", "err", err)
+			errs = multierr.Append(errs, err)
+		} else {
+			started = append(started, c)
+		}
+	}
+
+	if errs != nil {
+		s.setHealth(component.Health{
+			Health:     component.HealthTypeUnhealthy,
+			Message:    fmt.Sprintf("failed to create components: %s", errs),
+			UpdateTime: time.Now(),
+		})
+	} else {
+		s.setHealth(component.Health{
+			Health:     component.HealthTypeHealthy,
+			Message:    "started scheduled components",
+			UpdateTime: time.Now(),
+		})
+	}
+
+	return started, errs
 }
