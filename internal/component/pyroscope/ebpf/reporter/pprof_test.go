@@ -50,6 +50,7 @@ func newReporter() *PPROFReporter {
 		nil,
 		&Config{
 			SamplesPerSecond: 97,
+			KernelFrames:     true,
 		},
 		tp,
 		nil,
