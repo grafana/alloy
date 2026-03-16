@@ -55,9 +55,13 @@ type ClientAuthConfig struct {
 }
 
 func (c ClientAuthConfig) convert() *basicauthextension.ClientAuthSettings {
-	if c.Username == "" && c.UsernameFile == "" && c.Password == "" && c.PasswordFile == "" {
+	hasUsername := c.Username != "" || c.UsernameFile != ""
+	hasPassword := c.Password != "" || c.PasswordFile != ""
+
+	if !hasUsername || !hasPassword {
 		return nil
 	}
+
 	return &basicauthextension.ClientAuthSettings{
 		Username:     c.Username,
 		UsernameFile: c.UsernameFile,
