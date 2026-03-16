@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/static/config/encoder"
 	"github.com/grafana/alloy/internal/static/metrics/instance"
@@ -73,16 +74,16 @@ metrics:
   wal_directory: /tmp/wal
   global:
     scrape_timeout: 33s`
-	falseVal := false
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
 			ScrapeInterval:             model.Duration(1 * time.Minute),
 			ScrapeTimeout:              model.Duration(33 * time.Second),
 			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
 			EvaluationInterval:         model.Duration(1 * time.Minute),
+			ExtraScrapeMetrics:         ptr.To(false),
 			MetricNameValidationScheme: model.UTF8Validation,
 			MetricNameEscapingScheme:   model.AllowUTF8,
-			ScrapeNativeHistograms:     &falseVal,
+			ScrapeNativeHistograms:     ptr.To(false),
 		},
 	}
 
