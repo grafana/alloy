@@ -297,7 +297,7 @@ If after all your best efforts there are remaining test failures, make sure you 
 ### Step 8: Fetch changelog for target release
 Fetch the changelog using curl
 
-For otel we are intrested in these repos
+For otel we are interested in these repos
 * github.com/open-telemetry/opentelemetry-collector
 * github.com/open-telemetry/opentelemetry-go-build-tools
 * github.com/grafana/opentelemetry-ebpf-instrumentation
