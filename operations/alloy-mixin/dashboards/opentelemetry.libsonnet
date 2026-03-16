@@ -21,7 +21,13 @@ local stackedPanelMixin = {
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=true,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,receiver,transport,exporter,processor,component_id,otel_signal,otel_scope_name,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
 
   local panelPosition3Across(row, col) = panel.withPosition({x: col*8, y: row*10, w: 8, h: 10}),
   local panelPosition4Across(row, col) = panel.withPosition({x: col*6, y: row*10, w: 6, h: 10}),
@@ -49,7 +55,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_receiver_accepted_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_receiver_accepted_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -65,7 +71,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_receiver_refused_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_receiver_refused_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -81,7 +87,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_receiver_accepted_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_receiver_accepted_log_records_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -97,7 +103,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_receiver_refused_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_receiver_refused_log_records_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -113,7 +119,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -129,7 +135,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -202,7 +208,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s})
+              sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s})
             ||| % $._config,
           ),
         ])
@@ -217,7 +223,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -239,7 +245,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= ||| 
-              sum by(instance) (rate(otelcol_exporter_sent_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_exporter_sent_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -255,7 +261,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_exporter_send_failed_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_exporter_send_failed_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -271,7 +277,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_exporter_sent_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_exporter_sent_log_records_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -287,7 +293,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_exporter_send_failed_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_exporter_send_failed_log_records_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -303,7 +309,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -319,7 +325,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by(instance) (rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval]))
+              sum by(${groupby}) (rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])

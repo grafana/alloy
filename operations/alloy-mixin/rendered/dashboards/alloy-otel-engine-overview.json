@@ -37,12 +37,21 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Number of instances with OTel engine metrics.\n",
+         "description": "Current number of pods with OTel engine metrics.\n",
+         "fieldConfig": {
+            "defaults": {
+               "min": 0
+            }
+         },
          "gridPos": {
-            "h": 10,
+            "h": 5,
             "w": 8,
             "x": 0,
             "y": 0
+         },
+         "options": {
+            "colorMode": "none",
+            "graphMode": "area"
          },
          "targets": [
             {
@@ -53,7 +62,40 @@
                "range": true
             }
          ],
-         "title": "Instances Count",
+         "title": "Pods count",
+         "type": "stat"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Count of series with process uptime under 60 seconds, grouped by the selected dimension.\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "drawStyle": "bars",
+                  "fillOpacity": 100,
+                  "gradientMode": "none",
+                  "stacking": {
+                     "mode": "normal"
+                  }
+               }
+            }
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 5
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "count by(${groupby}) (otelcol_process_uptime_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"} < 60)\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Recently started by ${groupby}",
          "type": "timeseries"
       },
       {
@@ -231,7 +273,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -297,7 +339,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}} sent",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -356,7 +398,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"traces\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"traces\"}), 1)\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -462,7 +504,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -528,7 +570,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}} sent",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -587,7 +629,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"metrics\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"metrics\"}), 1)\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -693,7 +735,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_receiver_refused_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -759,7 +801,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (rate(otelcol_exporter_sent_log_records_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}} sent",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -818,7 +860,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_exporter_queue_size{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"logs\"})\n/\nclamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", data_type=\"logs\"}), 1)\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -940,7 +982,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "Distribution of batch sizes when sent. Shows how full batches are before being flushed. Requires \"normal\" telemetry level.",
+               "description": "Distribution of batch sizes when sent. Works with both batching approaches:\nthe batch processor (processor/batch) and the exporter sending_queue batch (sending_queue.batch).\nWhichever is active will populate this panel.\nRequires \"normal\" telemetry level.",
                "gridPos": {
                   "h": 10,
                   "w": 8,
@@ -976,7 +1018,7 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "expr": "sum by (le) (increase(otelcol_exporter_queue_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\nor\nsum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "format": "heatmap",
                      "instant": false,
                      "legendFormat": "{{le}}",
@@ -988,7 +1030,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Requires \"normal\" telemetry level.",
+               "description": "How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Only available with the batch processor; the exporter sending_queue batch does not emit trigger metrics. Requires \"normal\" telemetry level.",
                "fieldConfig": {
                   "defaults": {
                      "unit": "cps"
@@ -1021,7 +1063,7 @@
             },
             {
                "datasource": "${datasource}",
-               "description": "Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Requires \"normal\" telemetry level.",
+               "description": "Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Only available with the batch processor; the exporter sending_queue batch does not emit this metric. Requires \"normal\" telemetry level.",
                "gridPos": {
                   "h": 10,
                   "w": 8,
@@ -1033,7 +1075,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -1274,7 +1316,7 @@
                      "datasource": "${datasource}",
                      "expr": "sum by(${groupby}) (otelcol_grafanacloud_host_count_ratio{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
                      "instant": false,
-                     "legendFormat": "{{${groupby}}}",
+                     "legendFormat": "__auto",
                      "range": true
                   }
                ],
@@ -1312,7 +1354,7 @@
          "type": "row"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -1336,9 +1378,8 @@
             "type": "datasource"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "cluster",
             "multi": true,
             "name": "cluster",
@@ -1351,9 +1392,8 @@
             "type": "query"
          },
          {
-            "allValue": ".*",
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": true,
             "label": "namespace",
             "multi": true,
             "name": "namespace",
@@ -1381,6 +1421,12 @@
             "type": "query"
          },
          {
+            "allowCustomValue": true,
+            "current": {
+               "selected": true,
+               "text": "instance",
+               "value": "instance"
+            },
             "label": "Group by",
             "name": "groupby",
             "query": "instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod",

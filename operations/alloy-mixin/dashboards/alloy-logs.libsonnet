@@ -16,7 +16,7 @@ local filename = 'alloy-logs.json';
       '{%s}' % baseLabels,
 
   local lokiTemplateVariables = 
-    if $._config.enableK8sCluster then [
+    if $._config.enableK8sCluster then ([
       {
         name: 'cluster',
         label: 'Cluster',
@@ -26,7 +26,7 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: false,
+        allowCustomValue: true,
       },
       {
         name: 'namespace',
@@ -37,7 +37,7 @@ local filename = 'alloy-logs.json';
         refresh: 2,
         sort: 1,
         multi: true,
-        includeAll: false,
+        allowCustomValue: true,
       },
       {
         name: 'job',
@@ -93,8 +93,8 @@ local filename = 'alloy-logs.json';
           },
         ],
       },
-    ]
-  else [
+    ])
+  else ([
     {
       name: 'job',
       label: 'Job',
@@ -104,7 +104,8 @@ local filename = 'alloy-logs.json';
       refresh: 2,
       sort: 1,
       multi: true,
-      includeAll: false,
+      includeAll: true,
+      allValue: '.*',
     },
     {
       name: 'instance',
@@ -148,7 +149,7 @@ local filename = 'alloy-logs.json';
         },
       ],
     },
-  ],
+  ]),
 
   grafanaDashboards+::
     if $._config.enableLokiLogs then {
@@ -176,7 +177,7 @@ local filename = 'alloy-logs.json';
                   uid: '${loki_datasource}',
                 },
                 expr: 'sum by (level) (count_over_time(%s\n|~ "$regex_search"\n\n[$__auto]))\n' % logsSelector,
-                legendFormat: '{{ level }}',
+                legendFormat: '{{level}}',
               },
             ]) +
             {

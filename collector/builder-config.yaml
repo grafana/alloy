@@ -2,7 +2,7 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.13.1 # x-release-please-version
+  version: v1.14.0 # x-release-please-version
   output_path: .
 
 extensions:
@@ -20,8 +20,8 @@ extensions:
 
 exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.142.0
-#   TODO: Address this as part of https://github.com/grafana/alloy/issues/5348
-#  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.142.0
+  #   TODO: Address this as part of https://github.com/grafana/alloy/issues/5348
+  #  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.142.0
@@ -121,8 +121,8 @@ replaces:
   - github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
   # TODO - remove forks when changes are merged upstream — non-singleton cadvisor
   - github.com/google/cadvisor => github.com/grafana/cadvisor grafana-v0.54.1-noglobals
-  # TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
-  - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260212092411-d256e52d0faf
+  # TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
+  - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
   # TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
   - github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
   # TODO: replace node_exporter with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
@@ -145,4 +145,8 @@ replaces:
   - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
   # TODO: Fork to update Prometheus to v0.309.1 while keeping OTel Collector at v0.142.0. Remove when OTel Collector is upgraded to v0.144.0+, which includes this change upstream.
   - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98
+  # Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
+  - github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
+  # Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/DataDog/vault/tree/master. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
+  - github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
   # END GENERATED REPLACES

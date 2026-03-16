@@ -7,69 +7,56 @@ import (
 	"testing"
 	"time"
 
-	//nolint:staticcheck // TODO: upgrade to v2
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
 
-func TestPullTarget_RunStop(t *testing.T) {
-	t.Run("it sends messages to the promclient and stopps when Stop() is called", func(t *testing.T) {
-		tc := testPullTarget(t)
+func TestPullTarget(t *testing.T) {
+	t.Run("it sends messages to recv and stops when Stop() is called", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
 
-		runErr := make(chan error)
-		go func() {
-			runErr <- tc.target.run()
-		}()
+		tc := testPullTarget(t, collector.Receiver())
+
+		require.NoError(t, tc.target.Run())
 
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
-		require.Eventually(t, func() bool {
-			return len(tc.handler.Received()) > 0
-		}, time.Second, 50*time.Millisecond)
 
-		require.NoError(t, tc.target.Stop())
-		require.EqualError(t, <-runErr, "context canceled")
+		require.Eventually(t, func() bool {
+			return len(collector.Received()) > 0
+		}, time.Second, 50*time.Millisecond)
+		tc.target.Stop()
 	})
 
 	t.Run("it retries when there is an error", func(t *testing.T) {
-		tc := testPullTarget(t)
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
 
-		runErr := make(chan error)
-		go func() {
-			runErr <- tc.target.run()
-		}()
+		tc := testPullTarget(t, collector.Receiver())
+		require.NoError(t, tc.target.Run())
 
 		tc.sub.errors <- errors.New("something bad")
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
-		require.Eventually(t, func() bool {
-			return len(tc.handler.Received()) > 0
-		}, time.Second, 50*time.Millisecond)
-
-		require.NoError(t, tc.target.Stop())
 
 		require.Eventually(t, func() bool {
-			select {
-			case e := <-runErr:
-				return e.Error() == "context canceled"
-			default:
-				return false
-			}
+			return len(collector.Received()) > 0
 		}, time.Second, 50*time.Millisecond)
+
+		tc.target.Stop()
 	})
 
 	t.Run("a successful message resets retries", func(t *testing.T) {
-		tc := testPullTarget(t)
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
 
-		runErr := make(chan error)
-		go func() {
-			runErr <- tc.target.run()
-		}()
+		tc := testPullTarget(t, collector.Receiver())
+		require.NoError(t, tc.target.Run())
 
 		tc.sub.errors <- errors.New("something bad")
 		tc.sub.errors <- errors.New("something bad")
@@ -81,55 +68,45 @@ func TestPullTarget_RunStop(t *testing.T) {
 		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
 
 		require.Eventually(t, func() bool {
-			return len(tc.handler.Received()) > 1
+			return len(collector.Received()) > 1
 		}, time.Second, 50*time.Millisecond)
 
-		require.NoError(t, tc.target.Stop())
+		tc.target.Stop()
+	})
+
+	t.Run("stops when blocked on send", func(t *testing.T) {
+		tc := testPullTarget(t, newBlockingReceiver())
+		require.NoError(t, tc.target.Run())
+		tc.sub.messages <- &pubsub.Message{Data: []byte(gcpLogEntry)}
+		tc.target.Stop()
 	})
 }
 
-// func TestPullTarget_Ready(t *testing.T) {
-// 	tc := testPullTarget(t)
-// 	assert.Equal(t, true, tc.target.Ready())
-// }
-
-func TestPullTarget_Labels(t *testing.T) {
-	tc := testPullTarget(t)
-
-	assert.Equal(t, `{job="test-gcplogtarget"}`, tc.target.Labels().String())
-}
-
 type testContext struct {
-	target  *PullTarget
-	handler *loki.CollectingHandler
-	sub     *fakeSubscription
+	target *PullTarget
+	sub    *fakeSubscription
 }
 
-func testPullTarget(t *testing.T) *testContext {
+func testPullTarget(t *testing.T, recv loki.LogsReceiver) *testContext {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	sub := newFakeSubscription()
-	handler := loki.NewCollectingHandler()
 	target := &PullTarget{
-		metrics:       NewMetrics(prometheus.NewRegistry()),
-		logger:        log.NewNopLogger(),
-		handler:       handler,
-		relabelConfig: nil,
-		ctx:           ctx,
-		cancel:        cancel,
-		config:        testConfig,
-		jobName:       t.Name() + "job-test-gcplogtarget",
-		ps:            io.NopCloser(nil),
-		sub:           sub,
-		msgs:          make(chan *pubsub.Message),
-		backoff:       backoff.New(ctx, testBackoff),
+		metrics:    NewMetrics(prometheus.NewRegistry()),
+		logger:     log.NewNopLogger(),
+		recv:       recv,
+		ctx:        ctx,
+		cancel:     cancel,
+		config:     testConfig,
+		client:     io.NopCloser(nil),
+		subscriber: sub,
+		backoff:    backoff.New(ctx, testBackoff),
 	}
 
 	return &testContext{
-		target:  target,
-		handler: handler,
-		sub:     sub,
+		target: target,
+		sub:    sub,
 	}
 }
 
@@ -228,6 +205,8 @@ type fakeSubscription struct {
 func (s *fakeSubscription) Receive(ctx context.Context, f func(context.Context, *pubsub.Message)) error {
 	for {
 		select {
+		case <-ctx.Done():
+			return nil
 		case m := <-s.messages:
 			f(ctx, m)
 		case e := <-s.errors:

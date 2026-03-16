@@ -159,7 +159,7 @@
                   "uid": "${loki_datasource}"
                },
                "expr": "sum by (level) (count_over_time({cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", level=~\"$level\"}\n|~ \"$regex_search\"\n\n[$__auto]))\n",
-               "legendFormat": "{{ level }}"
+               "legendFormat": "{{level}}"
             }
          ],
          "title": "Logs volume",
@@ -205,7 +205,7 @@
          "type": "logs"
       }
    ],
-   "refresh": "10s",
+   "refresh": "30s",
    "schemaVersion": 36,
    "tags": [
       "alloy-mixin"
@@ -229,8 +229,8 @@
             "type": "datasource"
          },
          {
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": false,
             "label": "Cluster",
             "multi": true,
             "name": "cluster",
@@ -240,8 +240,8 @@
             "type": "query"
          },
          {
+            "allowCustomValue": true,
             "datasource": "${datasource}",
-            "includeAll": false,
             "label": "Namespace",
             "multi": true,
             "name": "namespace",

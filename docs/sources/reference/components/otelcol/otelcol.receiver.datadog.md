@@ -49,6 +49,7 @@ You can use the following arguments with `otelcol.receiver.datadog`:
 | `keep_alives_enabled`    | `boolean`                  | Whether or not HTTP keep-alives are enabled                                  | `true`                                                     | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `read_timeout`           | `duration`                 | Read timeout for requests of the HTTP server.                                | `"60s"`                                                    | no       |
+| `trace_id_cache_size`    | `int`                      | Cache size for mapping 64-bit to 128-bit trace IDs.                          | `0`                                                        | no       |
 
 
 
@@ -59,13 +60,16 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 
 You can use the following blocks with `otelcol.receiver.datadog`:
 
-| Block                            | Description                                                                | Required |
-|----------------------------------|----------------------------------------------------------------------------|----------|
-| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
-| [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`tls`][tls]                     | Configures TLS for the HTTP server.                                        | no       |
-| `tls` > [`tpm`][tpm]             | Configures TPM settings for the TLS key_file.                              | no       |
+| Block                                       | Description                                                                | Required |
+| ------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]                          | Configures where to send received telemetry data.                          | yes      |
+| [`cors`][cors]                              | Configures CORS for the HTTP server.                                       | no       |
+| [`debug_metrics`][debug_metrics]            | Configures the metrics that this component generates to monitor its state. | no       |
+| [`intake`][intake]                          | Configures the `/intake` endpoint behavior.                                | no       |
+| `intake` > [`proxy`][proxy]                 | Configures the proxy for the `/intake` endpoint.                           | no       |
+| `intake` > `proxy` > [`api`][api]           | Configures the Datadog API connection for the intake proxy.                | conditional |
+| [`tls`][tls]                                | Configures TLS for the HTTP server.                                        | no       |
+| `tls` > [`tpm`][tpm]                        | Configures TPM settings for the TLS `key_file`.                            | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
@@ -74,6 +78,9 @@ For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 [tpm]: #tpm
 [cors]: #cors
 [debug_metrics]: #debug_metrics
+[intake]: #intake
+[proxy]: #proxy
+[api]: #api
 [output]: #output
 
 ### `output`
@@ -103,6 +110,41 @@ The following headers are always implicitly allowed:
 * `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
+
+### `intake`
+
+The `intake` block configures how the `/intake` endpoint behaves.
+The Datadog Agent uses this endpoint to submit host tags and other metadata.
+
+The following arguments are supported:
+
+| Name       | Type     | Description                                             | Default | Required |
+|------------|----------|---------------------------------------------------------|---------|----------|
+| `behavior` | `string` | How the `/intake` endpoint behaves: `"disable"` or `"proxy"`. | | yes |
+
+Set `behavior` to `"proxy"` to forward `/intake` requests to Datadog's API.
+Proxying requires a nested `proxy { api { ... } }` block with a Datadog API key.
+When set to `"disable"`, the endpoint returns an error for any incoming request.
+
+### `proxy`
+
+The `proxy` block configures how the `/intake` proxy operates.
+It's only used when `behavior` is set to `"proxy"`.
+If `behavior` isn't `"proxy"`, this block is ignored.
+
+This block has no arguments and is configured with the nested [`api`][api] block.
+
+### `api`
+
+The `api` block configures the Datadog API connection used by the intake proxy.
+
+The following arguments are supported:
+
+| Name                  | Type       | Description                                      | Default            | Required |
+|-----------------------|------------|--------------------------------------------------|--------------------|----------|
+| `key`                 | `secret`   | Datadog API key.                                 |                    | yes      |
+| `site`                | `string`   | Datadog site to send data to.                    | `"datadoghq.com"`  | no       |
+| `fail_on_invalid_key` | `bool`     | Exit on startup if the API key is invalid.       | `false`            | no       |
 
 ### `debug_metrics`
 
@@ -155,6 +197,29 @@ otelcol.processor.batch "default" {
 otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
+  }
+}
+```
+
+## Proxy `/intake` requests to Datadog
+
+You can configure the receiver to forward `/intake` requests (host tags and metadata) to Datadog's API while processing metrics and traces locally:
+
+```alloy
+otelcol.receiver.datadog "default" {
+  intake {
+    behavior = "proxy"
+    proxy {
+      api {
+        key  = sys.env("DD_API_KEY")
+        site = "datadoghq.eu"
+      }
+    }
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
   }
 }
 ```

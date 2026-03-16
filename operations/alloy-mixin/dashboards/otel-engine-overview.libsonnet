@@ -8,18 +8,23 @@ local filename = 'alloy-otel-engine-overview.json';
       'cluster',
       'label_values(otelcol_process_uptime_seconds_total, cluster)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
+      defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'namespace',
       'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster"}, namespace)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
+      defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'job',
       'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster", namespace=~"$namespace"}, job)',
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
     ),
-    dashboard.newTemplateVariableCustom('groupby', 'instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod') { label: 'Group by' },
+    dashboard.newGroupByTemplateVariable(
+      query='instance,receiver,transport,exporter,processor,otel_signal,otel_scope_name,job,namespace,cluster,pod',
+      defaultValue='instance'
+    ),
     {
       name: 'filters',
       type: 'adhoc',
@@ -97,7 +102,7 @@ local filename = 'alloy-otel-engine-overview.json';
           panel.withQueries([
             panel.newQuery(
               expr='sum by(${groupby}) (%s)' % rateQuery(receiverRefused),
-              legendFormat='{{${groupby}}}',
+              legendFormat='__auto',
             ),
           ])
         ),
@@ -133,7 +138,7 @@ local filename = 'alloy-otel-engine-overview.json';
           panel.withQueries([
             panel.newQuery(
               expr='sum by(${groupby}) (%s)' % rateQuery(exporterSent),
-              legendFormat='{{${groupby}}} sent',
+              legendFormat='__auto',
             ),
           ])
         ),
@@ -169,7 +174,7 @@ local filename = 'alloy-otel-engine-overview.json';
                 /
                 clamp_min(sum by(${groupby}) (otelcol_exporter_queue_capacity{%%(groupSelector)s, data_type="%s"}), 1)
               ||| % [queueDataType, queueDataType]) % $._config,
-              legendFormat='{{${groupby}}}',
+              legendFormat='__auto',
             ),
           ])
         ),
@@ -194,17 +199,37 @@ local filename = 'alloy-otel-engine-overview.json';
         rowPosition(0)
       ),
       (
-        panel.new(title='Instances Count', type='timeseries') +
+        panel.newSingleStat('Pods count') {
+          options+: { graphMode: 'area' },
+          fieldConfig+: { defaults+: { min: 0 } },
+        } +
         panel.withDescription(|||
-          Number of instances with OTel engine metrics.
+          Current number of pods with OTel engine metrics.
         |||) +
-        panelPosition3Across(row=0, col=0) +
+        panel.withPosition({ x: 0, y: 0, w: 8, h: 5 }) +
         panel.withQueries([
           panel.newQuery(
             expr=|||
               count(otelcol_process_uptime_seconds_total{%(groupSelector)s})
             ||| % $._config,
             legendFormat='count',
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Recently started by ${groupby}', type='timeseries') +
+        panel.withDescription(|||
+          Count of series with process uptime under 60 seconds, grouped by the selected dimension.
+        |||) +
+        panel.withPosition({ x: 0, y: 5, w: 8, h: 5 }) +
+        panel.withStacked(opacity=100, gradientMode='none') +
+        panel.withDrawStyle('bars') +
+        panel.withQueries([
+          panel.newQuery(
+            expr=|||
+              count by(${groupby}) (otelcol_process_uptime_seconds_total{%(groupSelector)s} < 60)
+            ||| % $._config,
+            legendFormat='__auto',
           ),
         ])
       ),
@@ -421,13 +446,20 @@ local filename = 'alloy-otel-engine-overview.json';
             // Row 2: Batching
             (
               panel.newHeatmap('Batch send size', 'short') +
-              panel.withDescription(
-                'Distribution of batch sizes when sent. Shows how full batches are before being flushed. ' + normalNote,
-              ) +
+              panel.withDescription(|||
+                Distribution of batch sizes when sent. Works with both batching approaches:
+                the batch processor (processor/batch) and the exporter sending_queue batch (sending_queue.batch).
+                Whichever is active will populate this panel.
+              ||| + normalNote) +
               panelPosition3Across(row=12, col=0) +
               panel.withQueries([
                 panel.newQuery(
+                  // Both the batch processor and the exporter sending_queue emit a batch
+                  // send size histogram. Typically only one is active, so we use "or" to
+                  // show whichever has data. If both are active, exporter wins.
                   expr=|||
+                    sum by (le) (increase(otelcol_exporter_queue_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
+                    or
                     sum by (le) (increase(otelcol_processor_batch_batch_send_size_bucket{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
                   format='heatmap',
@@ -438,7 +470,7 @@ local filename = 'alloy-otel-engine-overview.json';
             (
               panel.new(title='Batch send triggers by ${groupby}', type='timeseries') +
               panel.withDescription(
-                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. ' + normalNote,
+                'How batches are flushed: by reaching the size limit or by timeout. Mostly timeout triggers may indicate low throughput or a large batch size setting. Only available with the batch processor; the exporter sending_queue batch does not emit trigger metrics. ' + normalNote,
               ) +
               panel.withUnit('cps') +
               panelPosition3Across(row=12, col=1) +
@@ -460,7 +492,7 @@ local filename = 'alloy-otel-engine-overview.json';
             (
               panel.new(title='Batch metadata cardinality by ${groupby}', type='timeseries') +
               panel.withDescription(
-                'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. ' + normalNote,
+                'Number of distinct metadata value combinations being processed. High cardinality increases memory usage and may hit the metadata_cardinality_limit. Only available with the batch processor; the exporter sending_queue batch does not emit this metric. ' + normalNote,
               ) +
               panelPosition3Across(row=12, col=2) +
               panel.withQueries([
@@ -468,7 +500,7 @@ local filename = 'alloy-otel-engine-overview.json';
                   expr=|||
                     sum by(${groupby}) (otelcol_processor_batch_metadata_cardinality{%(groupSelector)s})
                   ||| % $._config,
-                  legendFormat='{{${groupby}}}',
+                  legendFormat='__auto',
                 ),
               ])
             ),
@@ -579,7 +611,7 @@ local filename = 'alloy-otel-engine-overview.json';
                   expr=|||
                     sum by(${groupby}) (otelcol_grafanacloud_host_count_ratio{%(groupSelector)s})
                   ||| % $._config,
-                  legendFormat='{{${groupby}}}',
+                  legendFormat='__auto',
                 ),
               ])
             ),

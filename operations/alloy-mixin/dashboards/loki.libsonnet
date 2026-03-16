@@ -20,7 +20,7 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by(instance) (loki_source_file_files_active_total{%(instanceSelector)s})
+            sum by(${groupby}) (loki_source_file_files_active_total{%(instanceSelector)s})
           ||| % $._config,
         ),
       ])
@@ -38,7 +38,7 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance) (rate(loki_source_file_read_lines_total{%(instanceSelector)s}[$__rate_interval]))
+            sum by (${groupby}) (rate(loki_source_file_read_lines_total{%(instanceSelector)s}[$__rate_interval]))
           ||| % $._config,
         ),
       ])
@@ -60,7 +60,7 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance) (rate(loki_source_journal_target_lines_total{%(instanceSelector)s}[$__rate_interval]))
+            sum by (${groupby}) (rate(loki_source_journal_target_lines_total{%(instanceSelector)s}[$__rate_interval]))
           ||| % $._config,
         ),
       ])
@@ -82,9 +82,9 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by(instance) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
+            sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
             /
-            sum by(instance) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])) * 100 
+            sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])) * 100 
           ||| % $._config,
         ),
       ])
@@ -103,34 +103,34 @@ local filename = 'alloy-loki.json';
           expr=|||
             histogram_quantile(
               0.99,
-              sum by (le, instance) (
+              sum by (le, ${groupby}) (
             	rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
               )
             )
           ||| % $._config,
-          legendFormat='{{instance}} p99'
+          legendFormat='{{${groupby}}} p99'
         ),
         panel.newQuery(
           expr=|||
             histogram_quantile(
               0.95,
-              sum by (le, instance) (
+              sum by (le, ${groupby}) (
             	rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
               )
             )
           ||| % $._config,
-          legendFormat='{{instance}} p95'
+          legendFormat='{{${groupby}}} p95'
         ),
         panel.newQuery(
           expr=|||
             histogram_quantile(
               0.50,
-              sum by (le, instance) (
+              sum by (le, ${groupby}) (
             	rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
               )
             )
           ||| % $._config,
-          legendFormat='{{instance}} p50'
+          legendFormat='{{${groupby}}} p50'
         ),
       ])
     ),
@@ -147,7 +147,7 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by (instance) (rate(loki_write_sent_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+            sum by (${groupby}) (rate(loki_write_sent_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
           ||| % $._config,
         ),
       ])
@@ -165,7 +165,7 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by(instance) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+            sum by(${groupby}) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
           ||| % $._config,
         ),
       ])
@@ -180,21 +180,21 @@ local filename = 'alloy-loki.json';
   local k8sEndpointQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(loki_write_sent_bytes_total{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"}, host)
       |||
     else
       |||
-        label_values(loki_write_sent_bytes_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"}, host)
       ||| % $._config,
 
   local endpointQuery =
     if std.isEmpty($._config.filterSelector) then
       |||
-        label_values(loki_write_sent_bytes_total{job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{job=~"$job", instance=~"$instance"}, host)
       |||
     else
       |||
-        label_values(loki_write_sent_bytes_total{%(filterSelector)s, job="$job", instance=~"$instance"}, host)
+        label_values(loki_write_sent_bytes_total{%(filterSelector)s, job=~"$job", instance=~"$instance"}, host)
       ||| % $._config,
 
   local lokiTemplateVariables =
@@ -221,7 +221,12 @@ local filename = 'alloy-loki.json';
       enableK8sCluster=$._config.enableK8sCluster,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
-    ) + lokiTemplateVariables,
+    ) + lokiTemplateVariables + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,host,status_code,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
 
   [filename]:
     dashboard.new(name='Alloy / Loki Components', tag=$._config.dashboardTag) +

@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 )
 
 type Arguments struct {
@@ -33,6 +34,9 @@ type Arguments struct {
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
 	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
 	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
+	PIDLabel                        bool   `alloy:"pid_label,attr,optional"`
+	Comm                            string `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
+	KernelFrames                    bool   `alloy:"kernel_frames,attr,optional"`
 }
 
 type DeprecatedArguments struct {
@@ -59,6 +63,6 @@ type DeprecatedArguments struct {
 }
 
 // Validate implements syntax.Validator.
-func (args *Arguments) Validate() error {
-	return nil
+func (a *Arguments) Validate() error {
+	return args.CommMode(a.Comm).Validate()
 }
