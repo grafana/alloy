@@ -117,7 +117,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                                          | yes      |
 | [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.      | no       |
-| [`alibaba_ecs`][alibaba_ecs]           | Queries the Alibaba Cloud ECS metadata service to retrieve various resource attributes.                     | no       |
+| [`alibaba_ecs`][alibaba_ecs]           | Queries the Alibaba Cloud ECS metadata service to retrieve various resource attributes.                    | no       |
 | [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                             | no       |
 | [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                       | no       |
 | [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes.    | no       |
@@ -548,6 +548,7 @@ The `resource_attributes` block supports the following blocks:
 | [`cloud.provider`][res-attr-cfg]                        | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                        | no       |
 | [`cloud.region`][res-attr-cfg]                          | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                          | no       |
 | [`faas.instance`][res-attr-cfg]                         | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.                         | no       |
+| [`faas.id`][res-attr-cfg]                               | Deprecated. Removed upstream and has no effect.                                                              | no       |
 | [`faas.name`][res-attr-cfg]                             | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
 | [`faas.version`][res-attr-cfg]                          | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.                          | no       |
 | [`gcp.cloud_run.job.execution`][res-attr-cfg]           | Toggles the `gcp.cloud_run.job.execution` resource attribute. Sets `enabled` to `true` by default.           | no       |
@@ -968,8 +969,8 @@ The `alibaba_ecs` block queries the Alibaba Cloud ECS metadata service to retrie
 
 The `alibaba_ecs` block supports the following attributes:
 
-| Attribute                  | Type   | Description                                                                              | Default | Required |
-| -------------------------- | ------ | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| Attribute                  | Type   | Description                                                                             | Default | Required |
+| -------------------------- | ------ | --------------------------------------------------------------------------------------- | ------- | -------- |
 | `fail_on_missing_metadata` | `bool` | Whether to fail if the metadata endpoint is unavailable or required fields are missing. | `false` | no       |
 
 The `alibaba_ecs` block supports the following blocks:

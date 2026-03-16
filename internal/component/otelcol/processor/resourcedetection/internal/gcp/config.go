@@ -51,11 +51,13 @@ func (args Config) Convert() map[string]any {
 
 // ResourceAttributesConfig provides config for gcp resource attributes.
 type ResourceAttributesConfig struct {
-	CloudAccountID                   rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
-	CloudAvailabilityZone            rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
-	CloudPlatform                    rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
-	CloudProvider                    rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
-	CloudRegion                      rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	CloudAccountID        rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
+	CloudAvailabilityZone rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
+	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	CloudRegion           rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	// FaasID is removed upstream and have no effect, we keep it around to not break config.
+	FaasID                           rac.ResourceAttributeConfig `alloy:"faas.id,block,optional"`
 	FaasInstance                     rac.ResourceAttributeConfig `alloy:"faas.instance,block,optional"`
 	FaasName                         rac.ResourceAttributeConfig `alloy:"faas.name,block,optional"`
 	FaasVersion                      rac.ResourceAttributeConfig `alloy:"faas.version,block,optional"`
