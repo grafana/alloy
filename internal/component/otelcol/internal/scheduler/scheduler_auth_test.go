@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthExtentionScheduler(t *testing.T) {
+func TestAuthExtensionScheduler(t *testing.T) {
 	t.Run("Scheduled components get started", func(t *testing.T) {
 		var (
 			l  = util.TestLogger(t)
 			h  = scheduler.NewHost(l)
-			cs = scheduler.NewAuthExtentionScheduler(l)
+			cs = scheduler.NewAuthExtensionScheduler(l)
 		)
 		defer cs.Stop()
 
@@ -28,7 +28,7 @@ func TestAuthExtentionScheduler(t *testing.T) {
 		var (
 			l  = util.TestLogger(t)
 			h  = scheduler.NewHost(l)
-			cs = scheduler.NewAuthExtentionScheduler(l)
+			cs = scheduler.NewAuthExtensionScheduler(l)
 		)
 		defer cs.Stop()
 
@@ -48,7 +48,7 @@ func TestAuthExtentionScheduler(t *testing.T) {
 		var (
 			l  = util.TestLogger(t)
 			h  = scheduler.NewHost(l)
-			cs = scheduler.NewAuthExtentionScheduler(l)
+			cs = scheduler.NewAuthExtensionScheduler(l)
 		)
 
 		component, started, stopped := newTriggerComponent()

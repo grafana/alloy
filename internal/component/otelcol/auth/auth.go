@@ -159,7 +159,7 @@ type Auth struct {
 	factory otelextension.Factory
 
 	collector *lazycollector.Collector
-	sched     *scheduler.AuthExtentionScheduler
+	sched     *scheduler.AuthExtensionScheduler
 }
 
 var (
