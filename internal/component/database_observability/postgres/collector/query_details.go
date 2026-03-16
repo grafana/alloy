@@ -101,9 +101,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
@@ -121,7 +119,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -137,7 +135,7 @@ func (c *QueryDetails) Stop() {
 	c.wg.Wait()
 }
 
-func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
+func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
 	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
 	query := fmt.Sprintf(selectQueriesFromActivity, excludedDatabasesClause, excludedUsersClause, c.statementsLimit)

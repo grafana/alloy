@@ -70,9 +70,7 @@ func (c *SetupConsumers) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
@@ -90,7 +88,7 @@ func (c *SetupConsumers) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
