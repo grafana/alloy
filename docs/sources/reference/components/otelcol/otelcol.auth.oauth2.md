@@ -50,10 +50,10 @@ You can use the following arguments with `otelcol.auth.oauth2`:
 | `client_id`                   | `string`            | The client identifier issued to the client.                                                                 | `""`                   | no       |
 | `client_secret_file`          | `string`            | The file path to retrieve the secret string associated with the client identifier.                          | `""`                   | no       |
 | `client_secret`               | `secret`            | The secret string associated with the client identifier.                                                    | `""`                   | no       |
-| `grant_type`                  | `string`            | OAuth2 grant type. Valid values: `"client_credentials"` or `"urn:ietf:params:oauth:grant-type:jwt-bearer"`. | `"client_credentials"` | no       |
 | `client_certificate_key_id`   | `string`            | Key ID included in JWT bearer grant requests.                                                               | `""`                   | no       |
 | `client_certificate_key_file` | `string`            | File path to JWT bearer private key.                                                                        | `""`                   | no       |
 | `client_certificate_key`      | `secret`            | JWT bearer private key.                                                                                     | `""`                   | no       |
+| `grant_type`                  | `string`            | OAuth2 grant type. Valid values: `"client_credentials"` or `"urn:ietf:params:oauth:grant-type:jwt-bearer"`. | `"client_credentials"` | no       |
 | `signature_algorithm`         | `string`            | JWT signing algorithm for JWT bearer grant. Valid values: `RS256`, `RS384`, `RS512`.                        | `"RS256"`              | no       |
 | `iss`                         | `string`            | JWT issuer claim for JWT bearer grant. Defaults to `client_id` when empty.                                  | `""`                   | no       |
 | `audience`                    | `string`            | JWT audience claim for JWT bearer grant. Defaults to `token_url` when empty.                                | `""`                   | no       |
