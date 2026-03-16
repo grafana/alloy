@@ -66,6 +66,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		GroupID:           cfg.GroupID,
 		ClientID:          cfg.ClientID,
 		InitialOffset:     cfg.InitialOffset,
+		ConnIdleTimeout:   cfg.ConnIdleTimeout,
 
 		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
 

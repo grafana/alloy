@@ -86,7 +86,6 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-
 		Brokers:                []string{"localhost:9092"},
 		ClientID:               "otel-collector",
 		GroupID:                "otel-collector",

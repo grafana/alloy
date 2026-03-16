@@ -58,7 +58,10 @@ var _ auth.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	cfg := oauth2clientauthextension.NewFactory().CreateDefaultConfig().(*oauth2clientauthextension.Config)
 	args.GrantType = "client_credentials"
+	args.ExpiryBuffer = cfg.ExpiryBuffer
+
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -72,12 +75,7 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	cfg.ClientCertificateKeyID = args.ClientCertificateKeyID
 	cfg.ClientCertificateKey = configopaque.String(args.ClientCertificateKey)
 	cfg.ClientCertificateKeyFile = args.ClientCertificateKeyFile
-	if args.GrantType != "" {
-		cfg.GrantType = args.GrantType
-	}
-	if args.SignatureAlgorithm != "" {
-		cfg.SignatureAlgorithm = args.SignatureAlgorithm
-	}
+
 	cfg.Iss = args.Iss
 	cfg.Audience = args.Audience
 	cfg.Claims = args.Claims
@@ -87,6 +85,15 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	cfg.TLS = *args.TLS.Convert()
 	cfg.Timeout = args.Timeout
 	cfg.ExpiryBuffer = args.ExpiryBuffer
+
+	if args.GrantType != "" {
+		cfg.GrantType = args.GrantType
+	}
+
+	if args.SignatureAlgorithm != "" {
+		cfg.SignatureAlgorithm = args.SignatureAlgorithm
+	}
+
 	return cfg, nil
 }
 

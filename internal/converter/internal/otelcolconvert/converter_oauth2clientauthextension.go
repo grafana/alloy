@@ -42,14 +42,35 @@ func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *State, id comp
 }
 
 func toOAuth2ClientAuthExtension(cfg *oauth2clientauthextension.Config) *oauth2.Arguments {
-	return &oauth2.Arguments{
-		ClientID:       cfg.ClientID,
-		ClientSecret:   alloytypes.Secret(cfg.ClientSecret),
-		TokenURL:       cfg.TokenURL,
-		EndpointParams: cfg.EndpointParams,
-		Scopes:         cfg.Scopes,
-		TLS:            toTLSClientArguments(cfg.TLS),
-		Timeout:        cfg.Timeout,
-		DebugMetrics:   common.DefaultValue[oauth2.Arguments]().DebugMetrics,
+	args := &oauth2.Arguments{
+		ClientID:                 cfg.ClientID,
+		ClientSecret:             alloytypes.Secret(cfg.ClientSecret),
+		ClientSecretFile:         cfg.ClientSecretFile,
+		TokenURL:                 cfg.TokenURL,
+		EndpointParams:           cfg.EndpointParams,
+		Scopes:                   cfg.Scopes,
+		TLS:                      toTLSClientArguments(cfg.TLS),
+		Timeout:                  cfg.Timeout,
+		DebugMetrics:             common.DefaultValue[oauth2.Arguments]().DebugMetrics,
+		ClientIDFile:             cfg.ClientIDFile,
+		ClientCertificateKeyID:   cfg.ClientCertificateKeyID,
+		ClientCertificateKey:     alloytypes.Secret(cfg.ClientCertificateKey),
+		ClientCertificateKeyFile: cfg.ClientCertificateKeyFile,
+		SignatureAlgorithm:       cfg.SignatureAlgorithm,
+		Iss:                      cfg.Iss,
+		Audience:                 cfg.Iss,
+		Claims:                   cfg.Claims,
 	}
+
+	args.SetToDefault()
+
+	if cfg.ExpiryBuffer != 0 {
+		args.ExpiryBuffer = cfg.ExpiryBuffer
+	}
+
+	if cfg.GrantType != "" {
+		args.GrantType = cfg.GrantType
+	}
+
+	return args
 }

@@ -114,6 +114,11 @@ func convertEnvvars(str string) string {
 // ProviderFactories slice. These each handle one particular value "scheme" (e.g. "env", "yaml",
 // "file", etc).
 func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
+	factories, err := getFactories()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build otelcol factories: %w", err)
+	}
+
 	configProvider, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
 		ResolverSettings: confmap.ResolverSettings{
 			URIs: []string{"yaml:" + string(in)},
@@ -129,7 +134,7 @@ func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
 		return nil, fmt.Errorf("failed to create otelcol config provider: %w", err)
 	}
 
-	cfg, err := configProvider.Get(context.Background(), getFactories())
+	cfg, err := configProvider.Get(context.Background(), factories)
 	if err != nil {
 		// TODO(rfratto): users may pass unknown components in YAML here. Can we
 		// improve the errors? Can we ignore the errors?
@@ -139,37 +144,68 @@ func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
 	return cfg, nil
 }
 
-func getFactories() otelcol.Factories {
-	facts := otelcol.Factories{
-		Receivers:  make(map[component.Type]receiver.Factory),
-		Processors: make(map[component.Type]processor.Factory),
-		Exporters:  make(map[component.Type]exporter.Factory),
-		Extensions: make(map[component.Type]extension.Factory),
-		Connectors: make(map[component.Type]connector.Factory),
-		Telemetry:  otelconftelemetry.NewFactory(),
-	}
+func getFactories() (otelcol.Factories, error) {
+	var (
+		receiverFactories  []receiver.Factory
+		processorFactories []processor.Factory
+		exporterFactories  []exporter.Factory
+		extensionFactories []extension.Factory
+		connectorFactories []connector.Factory
+	)
 
 	for _, converter := range converters {
 		fact := converter.Factory()
 
 		switch fact := fact.(type) {
 		case receiver.Factory:
-			facts.Receivers[fact.Type()] = fact
+			receiverFactories = append(receiverFactories, fact)
 		case processor.Factory:
-			facts.Processors[fact.Type()] = fact
+			processorFactories = append(processorFactories, fact)
 		case exporter.Factory:
-			facts.Exporters[fact.Type()] = fact
+			exporterFactories = append(exporterFactories, fact)
 		case extension.Factory:
-			facts.Extensions[fact.Type()] = fact
+			extensionFactories = append(extensionFactories, fact)
 		case connector.Factory:
-			facts.Connectors[fact.Type()] = fact
+			connectorFactories = append(connectorFactories, fact)
 
 		default:
 			panic(fmt.Sprintf("unknown component factory type %T", fact))
 		}
 	}
 
-	return facts
+	receivers, err := otelcol.MakeFactoryMap(receiverFactories...)
+	if err != nil {
+		return otelcol.Factories{}, err
+	}
+
+	processors, err := otelcol.MakeFactoryMap(processorFactories...)
+	if err != nil {
+		return otelcol.Factories{}, err
+	}
+
+	exporters, err := otelcol.MakeFactoryMap(exporterFactories...)
+	if err != nil {
+		return otelcol.Factories{}, err
+	}
+
+	extensions, err := otelcol.MakeFactoryMap(extensionFactories...)
+	if err != nil {
+		return otelcol.Factories{}, err
+	}
+
+	connectors, err := otelcol.MakeFactoryMap(connectorFactories...)
+	if err != nil {
+		return otelcol.Factories{}, err
+	}
+
+	return otelcol.Factories{
+		Receivers:  receivers,
+		Processors: processors,
+		Exporters:  exporters,
+		Extensions: extensions,
+		Connectors: connectors,
+		Telemetry:  otelconftelemetry.NewFactory(),
+	}, nil
 }
 
 // AppendConfig converts the provided OpenTelemetry config into an equivalent
@@ -322,12 +358,27 @@ func buildConverterTable(extraConverters []ComponentConverter) map[converterKey]
 			kinds = append(kinds, component.KindExtension)
 		}
 
+		type Alias interface {
+			DeprecatedAlias() component.Type
+		}
+
 		for _, kind := range kinds {
 			// If a converter for this kind and type already exists, skip it.
 			if _, ok := table[converterKey{Kind: kind, Type: fact.Type()}]; ok {
 				continue
 			}
 			table[converterKey{Kind: kind, Type: fact.Type()}] = conv
+
+			// Also register deprecated aliases so legacy component types (for example,
+			// exporter "otlp") can be converted using the same converter.
+			if aliasHolder, ok := fact.(Alias); ok {
+				alias := aliasHolder.DeprecatedAlias()
+				if alias.String() != "" {
+					if _, exists := table[converterKey{Kind: kind, Type: alias}]; !exists {
+						table[converterKey{Kind: kind, Type: alias}] = conv
+					}
+				}
+			}
 		}
 	}
 
