@@ -52,19 +52,27 @@ The following collectors are configurable:
 
 You can use the following blocks with `database_observability.mysql`:
 
-| Block                                | Description                                       | Required |
-|--------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
-| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
-| [`setup_consumers`][setup_consumers] | Configure the `setup_consumers` collector.        | no       |
-| [`setup_actors`][setup_actors]       | Configure the `setup_actors` collector.           | no       |
-| [`query_details`][query_details]     | Configure the queries collector.                  | no       |
-| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
-| [`explain_plans`][explain_plans]     | Configure the explain plans collector.            | no       |
-| [`locks`][locks]                     | Configure the locks collector.                    | no       |
-| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
-| [`health_check`][health_check]       | Configure the health check collector.             | no       |
+| Block                                                                                | Description                                       | Required |
+|--------------------------------------------------------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider]                                                   | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]                                                      | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]                                                  | Provide Azure database host information.          | no       |
+| [`setup_consumers`][setup_consumers]                                                 | Configure the `setup_consumers` collector.        | no       |
+| [`setup_actors`][setup_actors]                                                       | Configure the `setup_actors` collector.           | no       |
+| [`query_details`][query_details]                                                     | Configure the queries collector.                  | no       |
+| [`schema_details`][schema_details]                                                   | Configure the schema and table details collector. | no       |
+| [`explain_plans`][explain_plans]                                                     | Configure the explain plans collector.            | no       |
+| [`locks`][locks]                                                                     | Configure the locks collector.                    | no       |
+| [`query_samples`][query_samples]                                                     | Configure the query samples collector.            | no       |
+| [`health_check`][health_check]                                                       | Configure the health check collector.             | no       |
+| [`prometheus_exporter`][prometheus_exporter]                                         | Embed a MySQL Prometheus exporter.                | no       |
+| `prometheus_exporter` > [`heartbeat`][pe_heartbeat]                                 | Configure the `heartbeat` collector.              | no       |
+| `prometheus_exporter` > [`info_schema.processlist`][pe_info_schema_processlist]     | Configure the `info_schema.processlist` collector.| no       |
+| `prometheus_exporter` > [`info_schema.tables`][pe_info_schema_tables]               | Configure the `info_schema.tables` collector.     | no       |
+| `prometheus_exporter` > [`mysql.user`][pe_mysql_user]                               | Configure the `mysql.user` collector.             | no       |
+| `prometheus_exporter` > [`perf_schema.eventsstatements`][pe_perf_eventsstatements]  | Configure the `perf_schema.eventsstatements` collector. | no  |
+| `prometheus_exporter` > [`perf_schema.file_instances`][pe_perf_file_instances]      | Configure the `perf_schema.file_instances` collector. | no   |
+| `prometheus_exporter` > [`perf_schema.memory_events`][pe_perf_memory_events]        | Configure the `perf_schema.memory_events` collector. | no    |
 
 The > symbol indicates deeper levels of nesting.
 For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
@@ -80,6 +88,14 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
 [health_check]: #health_check
+[prometheus_exporter]: #prometheus_exporter
+[pe_heartbeat]: #heartbeat-1
+[pe_info_schema_processlist]: #info_schemaprocesslist
+[pe_info_schema_tables]: #info_schematables
+[pe_mysql_user]: #mysqluser
+[pe_perf_eventsstatements]: #perf_schemaeventsstatements
+[pe_perf_file_instances]: #perf_schemafile_instances
+[pe_perf_memory_events]: #perf_schemamemory_events
 
 ### `cloud_provider`
 
@@ -169,8 +185,94 @@ The `azure` block supplies the identifying information for the database being mo
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`         | `duration` | How frequently to run health checks.                                   | `"1h"`  | no       |
 
+### `prometheus_exporter`
+
+The `prometheus_exporter` block embeds a [mysqld_exporter](https://github.com/prometheus/mysqld_exporter) directly inside `database_observability.mysql`.
+When this block is present, the component serves mysqld_exporter metrics at its own `/metrics` endpoint alongside the Database Observability metrics, without requiring a separate `prometheus.exporter.mysql` component.
+
+The component's own `data_source_name` is used for the embedded exporter; you don't need to specify it again inside this block.
+
+{{< admonition type="note" >}}
+`prometheus_exporter` and `targets` are mutually exclusive.
+If you use `prometheus_exporter`, leave `targets` unconfigured, and the component exports its own target automatically.
+{{< /admonition >}}
+
+| Name                 | Type           | Description                                                                       | Default | Required |
+| -------------------- | -------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `disable_collectors` | `list(string)` | A list of [collectors][supported-collectors] to disable from the default set.     |         | no       |
+| `enable_collectors`  | `list(string)` | A list of [collectors][supported-collectors] to enable on top of the default set. |         | no       |
+| `set_collectors`     | `list(string)` | A list of [collectors][supported-collectors] to run, fully overriding the default set. |    | no       |
+| `lock_wait_timeout`  | `int`          | Timeout, in seconds, to acquire a metadata lock.                                  | `2`     | no       |
+| `log_slow_filter`    | `bool`         | Avoid queries from scrapes being logged in the slow query log.                    | `false` | no       |
+
+[supported-collectors]: ../../../../prometheus/prometheus.exporter.mysql/#supported-collectors
+
+### `heartbeat`
+
+Configures the `heartbeat` collector inside `prometheus_exporter`.
+
+| Name       | Type     | Description                                                                          | Default       | Required |
+| ---------- | -------- | ------------------------------------------------------------------------------------ | ------------- | -------- |
+| `database` | `string` | Database to collect heartbeat data from.                                             | `"heartbeat"` | no       |
+| `table`    | `string` | Table to collect heartbeat data from.                                                | `"heartbeat"` | no       |
+| `utc`      | `bool`   | Use UTC for timestamps of the current server.                                        | `false`       | no       |
+
+### `info_schema.processlist`
+
+Configures the `info_schema.processlist` collector inside `prometheus_exporter`.
+
+| Name                | Type   | Description                                                | Default | Required |
+| ------------------- | ------ | ---------------------------------------------------------- | ------- | -------- |
+| `min_time`          | `int`  | Minimum time a thread must be in each state to be counted. | `0`     | no       |
+| `processes_by_host` | `bool` | Enable collecting the number of processes by host.         | `true`  | no       |
+| `processes_by_user` | `bool` | Enable collecting the number of processes by user.         | `true`  | no       |
+
+### `info_schema.tables`
+
+Configures the `info_schema.tables` collector inside `prometheus_exporter`.
+
+| Name        | Type     | Description                                                       | Default | Required |
+| ----------- | -------- | ----------------------------------------------------------------- | ------- | -------- |
+| `databases` | `string` | Regular expression to match databases to collect table stats for. | `"*"`   | no       |
+
+### `mysql.user`
+
+Configures the `mysql.user` collector inside `prometheus_exporter`.
+
+| Name         | Type   | Description                                          | Default | Required |
+| ------------ | ------ | ---------------------------------------------------- | ------- | -------- |
+| `privileges` | `bool` | Enable collecting user privileges from `mysql.user`. | `false` | no       |
+
+### `perf_schema.eventsstatements`
+
+Configures the `perf_schema.eventsstatements` collector inside `prometheus_exporter`.
+
+| Name         | Type  | Description                                                                        | Default | Required |
+| ------------ | ----- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `limit`      | `int` | Limit the number of events statements digests, in descending order by `last_seen`. | `250`   | no       |
+| `text_limit` | `int` | Maximum length of the normalized statement text.                                   | `120`   | no       |
+| `time_limit` | `int` | Limit how old, in seconds, the `last_seen` events statements can be.               | `86400` | no       |
+
+### `perf_schema.file_instances`
+
+Configures the `perf_schema.file_instances` collector inside `prometheus_exporter`.
+
+| Name            | Type     | Description                                                                         | Default            | Required |
+| --------------- | -------- | ----------------------------------------------------------------------------------- | ------------------ | -------- |
+| `filter`        | `string` | Regular expression to select rows in `performance_schema.file_summary_by_instance`. | `".*"`             | no       |
+| `remove_prefix` | `string` | Prefix to trim away from `file_name`.                                               | `"/var/lib/mysql"` | no       |
+
+### `perf_schema.memory_events`
+
+Configures the `perf_schema.memory_events` collector inside `prometheus_exporter`.
+
+| Name            | Type     | Description                                                                        | Default     | Required |
+| --------------- | -------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
+| `remove_prefix` | `string` | Prefix to trim away from `performance_schema.memory_summary_global_by_event_name`. | `"memory/"` | no       |
 
 ## Example
+
+The following example uses an external `prometheus.exporter.mysql` component to collect MySQL metrics alongside the Database Observability component.
 
 ```alloy
 database_observability.mysql "orders_db" {
@@ -251,6 +353,78 @@ Replace the following:
 * _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
+
+The following example uses the `prometheus_exporter` block to embed mysqld_exporter metrics directly inside the component, without a separate `prometheus.exporter.mysql`.
+
+```alloy
+database_observability.mysql "orders_db" {
+  data_source_name = "user:pass@tcp(mysql:3306)/"
+  forward_to       = [loki.relabel.orders_db.receiver]
+
+  enable_collectors = ["query_samples", "explain_plans"]
+
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
+  }
+
+  prometheus_exporter {
+    enable_collectors = ["perf_schema.eventsstatements"]
+  }
+}
+
+loki.relabel "orders_db" {
+  forward_to = [loki.write.logs_service.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+discovery.relabel "orders_db" {
+  targets = database_observability.mysql.orders_db.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+prometheus.scrape "orders_db" {
+  targets    = discovery.relabel.orders_db.targets
+  job_name   = "integrations/db-o11y"
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
+
+prometheus.remote_write "metrics_service" {
+  endpoint {
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
+    basic_auth {
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
+    }
+  }
+}
+
+loki.write "logs_service" {
+  endpoint {
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
+    basic_auth {
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
+    }
+  }
+}
+```
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
