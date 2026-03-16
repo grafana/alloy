@@ -56,7 +56,7 @@ type ResourceAttributesConfig struct {
 	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
 	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
 	CloudRegion           rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
-	// FaasID is removed upstream and have no effect, we keep it around to not break config.
+	// Deprecated: FaasID was removed upstream and have no effect.
 	FaasID                           rac.ResourceAttributeConfig `alloy:"faas.id,block,optional"`
 	FaasInstance                     rac.ResourceAttributeConfig `alloy:"faas.instance,block,optional"`
 	FaasName                         rac.ResourceAttributeConfig `alloy:"faas.name,block,optional"`
