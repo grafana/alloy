@@ -462,13 +462,25 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	// Always store the latest targets and schedule a reload, even if the rest
+	// of the update fails. This ensures the component scrapes the correct set
+	// of targets when running with a partially-updated config.
+	c.args.Targets = newArgs.Targets
+	defer func() {
+		select {
+		case c.reloadTargets <- struct{}{}:
+		default:
+		}
+	}()
+
 	// Some fields are not updateable at runtime - only allow them when Update()
 	// is called for the first time from New().
 	if !c.firstUpdateDone {
 		c.firstUpdateDone = true
 	} else {
 		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
-			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
+			level.Warn(c.opts.Logger).Log("msg", "scrape_native_histograms cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.ScrapeNativeHistograms, "requested", newArgs.ScrapeNativeHistograms)
+			newArgs.ScrapeNativeHistograms = c.args.ScrapeNativeHistograms
 		}
 	}
 
@@ -487,11 +499,6 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
 	level.Debug(c.opts.Logger).Log("msg", "scrape config was updated")
-
-	select {
-	case c.reloadTargets <- struct{}{}:
-	default:
-	}
 
 	return nil
 }
