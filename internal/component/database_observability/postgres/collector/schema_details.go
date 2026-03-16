@@ -342,6 +342,7 @@ type SchemaDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
@@ -385,13 +386,13 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	c.wg.Add(1)
 	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+		defer c.wg.Done()
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.extractNames(c.ctx); err != nil {
@@ -414,9 +415,11 @@ func (c *SchemaDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *SchemaDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {

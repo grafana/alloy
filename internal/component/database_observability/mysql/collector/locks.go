@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -65,6 +66,7 @@ type Locks struct {
 	running           *atomic.Bool
 	ctx               context.Context
 	cancel            context.CancelFunc
+	wg                sync.WaitGroup
 }
 
 func (c *Locks) Name() string {
@@ -98,21 +100,21 @@ func (c *Locks) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	c.wg.Add(1)
 	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+		defer c.wg.Done()
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
-			if err := c.fetchLocks(ctx); err != nil {
+			if err := c.fetchLocks(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {
-			case <-ctx.Done():
+			case <-c.ctx.Done():
 				return
 			case <-ticker.C:
 				// continue loop
@@ -127,9 +129,11 @@ func (c *Locks) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *Locks) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *Locks) fetchLocks(ctx context.Context) error {

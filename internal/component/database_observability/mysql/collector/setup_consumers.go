@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -35,6 +36,7 @@ type SetupConsumers struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewSetupConsumers(args SetupConsumersArguments) (*SetupConsumers, error) {
@@ -68,13 +70,13 @@ func (c *SetupConsumers) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	c.wg.Add(1)
 	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+		defer c.wg.Done()
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.getSetupConsumers(c.ctx); err != nil {
@@ -98,9 +100,11 @@ func (c *SetupConsumers) Stopped() bool {
 }
 
 func (c *SetupConsumers) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 	c.registry.Unregister(c.setupConsumersMetric)
-	c.running.Store(false)
 }
 
 type consumer struct {

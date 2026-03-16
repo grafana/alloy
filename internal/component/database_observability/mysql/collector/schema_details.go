@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -124,6 +125,7 @@ type SchemaDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 type tableInfo struct {
@@ -195,13 +197,13 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	c.wg.Add(1)
 	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+		defer c.wg.Done()
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {
@@ -224,9 +226,11 @@ func (c *SchemaDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *SchemaDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {

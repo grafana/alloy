@@ -280,7 +280,6 @@ func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
 	if c.cancel != nil {
 		c.cancel()

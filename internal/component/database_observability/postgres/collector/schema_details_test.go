@@ -116,9 +116,11 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -299,9 +301,11 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -407,7 +411,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		db2Mock.ExpectQuery(selectForeignKeys).WithArgs("public", "metrics").RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}))
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -415,6 +419,9 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		require.NoError(t, initialConnectionMock.ExpectationsWereMet())
@@ -534,9 +541,11 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -599,9 +608,11 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -698,9 +709,11 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -808,9 +821,11 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -915,9 +930,11 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -1024,6 +1041,9 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		err = mock.ExpectationsWereMet()

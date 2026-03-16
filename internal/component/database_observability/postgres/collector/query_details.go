@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
@@ -70,6 +71,7 @@ type QueryDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
@@ -99,13 +101,13 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	c.wg.Add(1)
 	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+		defer c.wg.Done()
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchAndAssociate(c.ctx); err != nil {
@@ -128,9 +130,11 @@ func (c *QueryDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QueryDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {

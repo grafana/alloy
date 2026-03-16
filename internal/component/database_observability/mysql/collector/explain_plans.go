@@ -10,6 +10,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -415,10 +416,11 @@ type ExplainPlans struct {
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
 	lastSeen         time.Time
-	logger           log.Logger
-	running          *atomic.Bool
-	ctx              context.Context
-	cancel           context.CancelFunc
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
@@ -485,13 +487,13 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
+	c.wg.Add(1)
 	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+		defer c.wg.Done()
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.scrapeInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchExplainPlans(c.ctx); err != nil {
@@ -515,7 +517,10 @@ func (c *ExplainPlans) Stopped() bool {
 }
 
 func (c *ExplainPlans) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
