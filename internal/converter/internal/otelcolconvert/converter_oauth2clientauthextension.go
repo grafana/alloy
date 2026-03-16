@@ -58,7 +58,7 @@ func toOAuth2ClientAuthExtension(cfg *oauth2clientauthextension.Config) *oauth2.
 		ClientCertificateKeyFile: cfg.ClientCertificateKeyFile,
 		SignatureAlgorithm:       cfg.SignatureAlgorithm,
 		Iss:                      cfg.Iss,
-		Audience:                 cfg.Iss,
+		Audience:                 cfg.Audience,
 		Claims:                   cfg.Claims,
 	}
 
