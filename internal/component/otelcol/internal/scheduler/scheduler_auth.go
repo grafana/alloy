@@ -54,7 +54,6 @@ func (s *AuthExtentionScheduler) Stop() {
 	s.schedMut.Lock()
 	defer s.schedMut.Unlock()
 	stopComponents(context.Background(), s.log, s.schedComponents...)
-
 }
 
 // CurrentHealth reports the most recent component health status.
