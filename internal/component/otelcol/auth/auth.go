@@ -188,7 +188,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.NewAuthExtentionScheduler(opts.Logger),
+		sched:     scheduler.NewAuthExtensionScheduler(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
