@@ -30,11 +30,12 @@ func init() {
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
 	ErrorMode ottl.ErrorMode `alloy:"error_mode,attr,optional"`
-	Traces    TraceConfig    `alloy:"traces,block,optional"`
-	Metrics   MetricConfig   `alloy:"metrics,block,optional"`
-	Logs      LogConfig      `alloy:"logs,block,optional"`
-	// Inferred-context conditions. These cannot be configured together with the explicit
-	// signal blocks above (traces/metrics/logs), as enforced by upstream validation.
+
+	// These are deprecated in favor of Condition variants below.
+	Traces  TraceConfig  `alloy:"traces,block,optional"`
+	Metrics MetricConfig `alloy:"metrics,block,optional"`
+	Logs    LogConfig    `alloy:"logs,block,optional"`
+
 	TraceConditions  ContextConditionsSlice `alloy:"trace_conditions,block,optional"`
 	MetricConditions ContextConditionsSlice `alloy:"metric_conditions,block,optional"`
 	LogConditions    ContextConditionsSlice `alloy:"log_conditions,block,optional"`
