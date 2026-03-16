@@ -818,28 +818,29 @@ metric names and attributes will be normalized to be compliant with Prometheus n
 [merge_maps]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#merge_maps
 [prom-data-model]: https://prometheus.io/docs/concepts/data_model/
 
-## Troubleshooting span metrics high cardinality
+## Troubleshoot span metrics high cardinality
 
 High cardinality issues in span metrics commonly manifest in APM dashboards as an excessive number of service operations with non-unique names.
 Examples include URIs with unique identifiers such as `GET /product/1YMWWN1N4O` or HTTP parameters with random values such as `GET /?_ga=GA1.2.569539246.1760114706`.
 These patterns render operation lists difficult to interpret and ineffective for monitoring purposes.
 
-This issue stems from violations of [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/), which require span names to have low {{< term "cardinality" >}}cardinality{{< /term >}} (refer to [HTTP span name specs](https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name) for example).
+This issue stems from violations of [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/), which require span names to have low {{< term "cardinality" >}}cardinality{{< /term >}}.
+Refer to [HTTP span name specs](https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name) for more information.
 Beyond degrading APM interfaces with numerous non-meaningful operation names, this problem leads to metric time series explosion, resulting in significant performance degradation and increased costs.
 
 `otelcol.connector.spanmetrics` provides an optional circuit breaker through the `aggregation_cardinality_limit` attribute (disabled by default) to mitigate cardinality explosion.
-While this feature addresses performance and cost concerns, it does not resolve the underlying issue of semantically meaningless operation names.
+While this feature addresses performance and cost concerns, it doesn't resolve the underlying issue of semantically meaningless operation names.
 
-### Fixing high cardinality span name issues
+### Fix high cardinality span name issues
 
 The ideal long-term solution is to modify the OpenTelemetry instrumentation code to comply with semantic conventions, preventing the generation of non-compliant high cardinality span names.
 
 However, deploying updated instrumentation libraries can be time-consuming, often requiring an immediate interim solution to restore observability backend functionality.
 
-#### Addressing high cardinality span names in the ingestion pipeline
+#### Address high cardinality span names in the ingestion pipeline
 
-An effective short-term solution is to implement a span sanitization layer within the observability ingestion pipeline.
-This can be achieved by using `otelcol.processor.transform`'s [`set_semconv_span_name()` function][set_semconv_span_name] immediately before `otelcol.connector.spanmetrics` to enforce semantic conventions on span names.
+An effective short-term solution is to implement a layer that sanitizes span names within the observability ingestion pipeline.
+You can use `otelcol.processor.transform`'s [`set_semconv_span_name()` function][set_semconv_span_name] immediately before `otelcol.connector.spanmetrics` to enforce semantic conventions on span names.
 
 {{< collapse title="Simple example configuration to prevent span metrics cardinality explosion" >}}
 
@@ -889,7 +890,7 @@ otelcol.exporter.otlphttp "observability_backend" {
 
 {{< /collapse >}}
 
-Aggressive span name sanitization may be overly restrictive for instrumentations with incomplete resource attributes.
+Aggressive span name cleanup may be overly restrictive for instrumentation libraries with incomplete resource attributes.
 For instance, HTTP service operations may be reduced to generic names like `GET` and `POST` when HTTP spans lack the `http.route` attribute.
 This information loss can impact the monitoring of critical business operations.
 
@@ -965,12 +966,12 @@ otelcol.exporter.otlphttp "observability_backend" {
 }
 ```
 
-#### Addressing high cardinality span names in the instrumentation code
+#### Address high cardinality span names in the instrumentation code
 
 The preferred long-term solution is to ensure span names and attributes comply with [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) directly in the instrumentation code.
 
 Custom web frameworks are a common source of high cardinality span names.
-While default OpenTelemetry instrumentation (for example, Java Servlet) may assign generic span names like `GET /my-web-fwk/*`, your framework has access to more specific routing information.
+While default OpenTelemetry instrumentation, for example, Java Servlet, may assign generic span names like `GET /my-web-fwk/*`, your framework has access to more specific routing information.
 By overwriting span attributes in your framework code, you can create compliant, low-cardinality span names that preserve operational granularity.
 
 **Example: Custom Web Framework in Java**
