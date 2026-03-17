@@ -245,7 +245,9 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 	file, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
-	_, err = file.Write([]byte("line that will block on send\n"))
+	_, err = file.Write([]byte("1\n"))
+	require.NoError(t, err)
+	_, err = file.Write([]byte("2\n"))
 	require.NoError(t, err)
 	file.Close()
 
@@ -258,6 +260,14 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	require.NoError(t, err)
 	defer positionsFile.Stop()
 
+	var (
+		path   = file.Name()
+		labels = model.LabelSet{
+			"filename": model.LabelValue(file.Name()),
+			"foo":      "bar",
+		}
+	)
+
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
@@ -265,11 +275,8 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
-			path: file.Name(),
-			labels: model.LabelSet{
-				"filename": model.LabelValue(file.Name()),
-				"foo":      "bar",
-			},
+			path:   path,
+			labels: labels,
 			fileWatch: FileWatch{
 				MinPollFrequency: 25 * time.Millisecond,
 				MaxPollFrequency: 25 * time.Millisecond,
@@ -285,9 +292,18 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 		tailer.Run(ctx)
 	})
 
-	time.Sleep(100 * time.Millisecond)
+	// Read first line.
+	entry := <-recv.Chan()
+	require.Equal(t, "1", entry.Line)
+
+	// Stop tailer without reading from recv.
 	cancel()
+
+	// Wait for tailer to finish.
 	wg.Wait()
+	pos, err := positionsFile.Get(path, labels.String())
+	require.NoError(t, err)
+	require.Equal(t, int64(2), pos)
 }
 
 func TestTailerCorruptedPositions(t *testing.T) {
