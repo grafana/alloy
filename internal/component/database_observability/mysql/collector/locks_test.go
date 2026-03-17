@@ -56,6 +56,9 @@ func TestLocks(t *testing.T) {
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
 		lokiClient.Stop()
 
 		lokiEntries := lokiClient.Received()
@@ -109,6 +112,9 @@ func TestLocks(t *testing.T) {
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
 		lokiClient.Stop()
 
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -173,6 +179,9 @@ func TestLocks(t *testing.T) {
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
 		lokiClient.Stop()
 
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -231,6 +240,9 @@ func TestLocks(t *testing.T) {
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
 		lokiClient.Stop()
 
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -288,6 +300,9 @@ func TestLocks(t *testing.T) {
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
 		lokiClient.Stop()
 
 		lokiEntries := lokiClient.Received()
@@ -352,6 +367,9 @@ func TestLocks(t *testing.T) {
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
 		lokiClient.Stop()
 
 		require.NoError(t, mock.ExpectationsWereMet())

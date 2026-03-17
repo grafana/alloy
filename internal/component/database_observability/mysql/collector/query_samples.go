@@ -160,13 +160,10 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 	// Start setup_consumers check goroutine if enabled
 	if c.autoEnableSetupConsumers {
-		c.wg.Add(1)
-		go c.runSetupConsumersCheck()
+		c.wg.Go(c.runSetupConsumersCheck)
 	}
 
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
@@ -184,7 +181,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -193,7 +190,6 @@ func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
 	if c.cancel != nil {
 		c.cancel()
@@ -202,8 +198,6 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) runSetupConsumersCheck() {
-	defer c.wg.Done()
-
 	ticker := time.NewTicker(c.setupConsumersCheckInterval)
 	defer ticker.Stop()
 

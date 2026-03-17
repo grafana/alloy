@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -39,6 +40,7 @@ type HealthCheck struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
@@ -64,13 +66,11 @@ func (c *HealthCheck) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			c.fetchHealthChecks(c.ctx)
@@ -81,7 +81,7 @@ func (c *HealthCheck) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -90,11 +90,11 @@ func (c *HealthCheck) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *HealthCheck) Stop() {
 	if c.cancel != nil {
 		c.cancel()
 	}
+	c.wg.Wait()
 }
 
 type healthCheckResult struct {
