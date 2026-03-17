@@ -80,7 +80,6 @@ func NewCollectingBatchReceiver() *CollectingBatchReceiver {
 		}
 	})
 	return c
-
 }
 
 // CollectingBatchReceiver is a LogsBatchReciver that will
@@ -91,6 +90,7 @@ type CollectingBatchReceiver struct {
 	received []Entry
 	mtx      sync.Mutex
 	wg       sync.WaitGroup
+	once     sync.Once
 }
 
 func (c *CollectingBatchReceiver) Chan() chan []Entry {
@@ -112,6 +112,6 @@ func (c *CollectingBatchReceiver) Clear() {
 }
 
 func (c *CollectingBatchReceiver) Stop() {
-	close(c.entries)
+	c.once.Do(func() { close(c.entries) })
 	c.wg.Wait()
 }
