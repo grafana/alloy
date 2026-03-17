@@ -21,7 +21,8 @@ Run the workflow using the GitHub CLI:
 gh workflow run release-create-branch.yml --repo grafana/alloy --field dry_run=false
 ```
 
-Alternatively, trigger it from the Actions page on github.com by leaving everything as it is except unchecking the `Dry run` box.
+Alternatively, trigger it from the Actions page on github.com by leaving everything as it is except
+unchecking the `Dry run` box.
 
 This will create a new release branch, a new backport tag, and open a draft release-please PR.
 
@@ -29,18 +30,21 @@ This will create a new release branch, a new backport tag, and open a draft rele
 
 1. Run the workflow using either the GitHub CLI or github.com.
    - **From the GitHub CLI**
-      - Run the following, replacing `<VERSION>` with the release branch (e.g. `v1.14`):
+     - Run the following, replacing `<VERSION>` with the release branch (e.g. `v1.14`):
 
-        ```sh
-        gh workflow run release-create-rc.yml --repo grafana/alloy --ref release/<VERSION> --field dry_run=false
-        ```
+       ```sh
+       gh workflow run release-create-rc.yml --repo grafana/alloy --ref release/<VERSION> --field dry_run=false
+       ```
+
    - **From github.com**
-      - Navigate to the pinned workflow on the Actions page.
-      - Select the release branch under `Use workflow from`.
-      - Uncheck the `Dry run` box.
-   - This will trigger workflows to create a tag for the RC, draft a release on GitHub, build the release artifacts, and attach them to the release.
+     - Navigate to the pinned workflow on the Actions page.
+     - Select the release branch under `Use workflow from`.
+     - Uncheck the `Dry run` box.
+   - This will trigger workflows to create a tag for the RC, draft a release on GitHub, build the
+     release artifacts, and attach them to the release.
 
-2. Once everything is attached, add any relevant changelog details to the RC draft release and publish it from either the CLI or github.com. For example:
+2. Once everything is attached, add any relevant changelog details to the RC draft release and
+   publish it from either the CLI or github.com. For example:
 
    ```sh
    gh release edit <VERSION>-rc.0 --draft=false --repo grafana/alloy
@@ -48,7 +52,9 @@ This will create a new release branch, a new backport tag, and open a draft rele
 
 ### 3. Validate the RC on internal deployments
 
-1. Deploy the RC to internal clusters following the [Argo Workflows documentation](https://github.com/grafana/alloy-internal/tree/main/Argo-Workflows) in the internal repo.
+1. Deploy the RC to internal clusters following the
+   [Argo Workflows documentation](https://github.com/grafana/alloy-internal/tree/main/Argo-Workflows)
+   in the internal repo.
 2. Validate performance metrics are consistent with the prior version.
 3. Validate components are healthy.
 
@@ -63,8 +69,8 @@ branch. Once fixes are merged, cut a new RC and repeat step 3.
    1. You might realize that some changelog entries don't look the way you want. To address that,
       check out the section below on modifying a PR's changelog entry after it's been merged.
 2. Merge the release-please PR.
-3. This will trigger workflows to create a draft release on GitHub, build the release artifacts,
-   and attach them to the release.
+3. This will trigger workflows to create a draft release on GitHub, build the release artifacts, and
+   attach them to the release.
 4. Once everything is attached, publish the release.
 
 ### 6. Update Helm Chart
@@ -171,38 +177,3 @@ PR, follow these steps:
 3. Go go the Actions page, find the release-please workflow, find the most recent entry for the
    target branch (e.g. `release/v.1.12`), and re-run it.
 4. (The PR will automatically get recreated.)
-
-## Manually forwardporting a release branch to `main`
-
-The forwardport PRs are what allow the changelog, manifest, and related files to be kept up to date
-on the main branch so that subsequent releases have an appropriate starting point when looking for
-changes.
-
-When a release-please PR is merged, a workflow automatically forwardports its content by pushing a
-branch, opening a draft PR (so the zizmor check runs), waiting for zizmor to pass, then pushing to
-`main` and deleting the temp branch. If that workflow fails, use the steps below to forwardport
-manually.
-
-1. `git checkout` and `git pull` both the release branch and the main branch
-2. Run `git checkout main`
-3. Run `git log -1 release/vA.B` and retain the commit hash
-4. Add a Bypass to the `Important branches require pull requests (except trusted apps)` Ruleset for
-   the `Repository admin` role.
-5. Run the following commands:
-   ```bash
-   git merge --strategy ours origin/release/vN.M --message "chore: Forwardport release A.B.C to main"
-   git cherry-pick --no-commit <release_please_commit_hash_from_earlier>
-   git commit --amend --no-edit
-   git checkout -b tmp/manual-forwardport-for-A.B.C
-   git push -u origin tmp/manual-forwardport-for-A.B.C
-   gh pr create --draft --base main --title "chore: Forwardport release A.B.C to main"
-   ```
-6. **DO NOT MERGE THIS PR**. This is only needed to get a passing `zizmor` check for the new commit.
-7. Once `zizmor` reports green, run the following commands:
-   ```bash
-   git checkout main
-   git push
-   ```
-8. The PR will automatically close itself.
-9. **Delete the Bypass** from `Important branches require pull requests (except trusted apps)` for
-   the `Repository admin` role.
