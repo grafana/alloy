@@ -1103,7 +1103,7 @@ replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.202
 
 replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
 
-replace go.opentelemetry.io/ebpf-profiler => /home/korniltsev/opentelemetry-ebpf-profiler
+replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317035705-87cd1d867994
 
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 

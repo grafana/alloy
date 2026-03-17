@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf"
+	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/java"
 	"github.com/grafana/alloy/internal/component/pyroscope/testutil"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
@@ -56,7 +57,7 @@ func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component
 	args.ReporterUnsymbolizedStubs = true
 	args.Demangle = "full"
 	args.PIDLabel = true
-	args.Comm = "both"
+	args.Comm = string(rargs.CommModeLabel)
 	args.KernelFrames = true
 	args.UProbeLinks = uprobeLinks
 	// args.DebugInfoOptions.UploadEnabled = true

@@ -13,6 +13,11 @@ discovery.relabel "all_process_targets" {
 		target_label  = "service_name"
 		action        = "replace"
 	}
+	rule {
+	    source_labels = ["service_name"]
+	    regex = ".*ruby.*"
+	    action = "keep"
+	}
 }
 
 pyroscope.write "local_pyroscope" {
